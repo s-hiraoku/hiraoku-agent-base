@@ -272,3 +272,163 @@ test("Node byte/body/exchange limits and portable stalled responses release only
     hub.close();
   }
 });
+test(
+  "disconnect during request-audit ACK releases all four native slots before ACK and never dispatches",
+  { timeout: 3000 },
+  async () => {
+    const { request } = await import("node:http");
+    const hub = new Hub();
+    const acknowledgements = [];
+    let delayed = true,
+      admittedResolve,
+      closedResolve,
+      settledResolve;
+    const admitted = new Promise((resolve) => {
+      admittedResolve = resolve;
+    });
+    const closed = new Promise((resolve) => {
+      closedResolve = resolve;
+    });
+    const settled = new Promise((resolve) => {
+      settledResolve = resolve;
+    });
+    let closes = 0,
+      settlements = 0,
+      authenticated = 0;
+    const monitor = new SecurityMonitor({
+      record(category) {
+        if (category === "request" && delayed)
+          return new Promise((resolve) => {
+            acknowledgements.push(resolve);
+            if (acknowledgements.length === 4) admittedResolve();
+          });
+      },
+    });
+    const serve = handler(
+      hub,
+      async () => {
+        authenticated++;
+        return owner;
+      },
+      undefined,
+      undefined,
+      undefined,
+      monitor,
+    );
+    const server = createServer((req, res) => {
+      res.once("close", () => {
+        if (++closes === 4) closedResolve();
+      });
+      void serve(req, res).finally(() => {
+        if (++settlements === 4) settledResolve();
+      });
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const url = `http://127.0.0.1:${server.address().port}/mcp`;
+    const clients = [];
+    try {
+      for (let i = 0; i < 4; i++) {
+        const client = request(url, { method: "POST", headers });
+        client.on("error", () => {});
+        client.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "submit",
+              arguments: {
+                task_type: "connectivity_check",
+                request_key: `disconnect-fixture-${i}`,
+              },
+            },
+          }),
+        );
+        clients.push(client);
+      }
+      await admitted;
+      clients.forEach((client) => client.destroy());
+      await closed;
+      delayed = false;
+      const recovered = await Promise.all(
+        Array.from({ length: 4 }, () => monitor.enter()),
+      );
+      recovered.forEach((context) => context.release());
+      acknowledgements.forEach((resolve) => resolve());
+      await settled;
+      assert.equal(authenticated, 0);
+      assert.equal(
+        hub.sqlite.db.prepare("SELECT count(*) AS count FROM tasks").get()
+          .count,
+        0,
+      );
+      const recoveredAfterAck = await Promise.all(
+        Array.from({ length: 4 }, () => monitor.enter()),
+      );
+      recoveredAfterAck.forEach((context) => context.release());
+    } finally {
+      clients.forEach((client) => client.destroy());
+      acknowledgements.forEach((resolve) => resolve());
+      server.close();
+      await once(server, "close");
+      hub.close();
+    }
+  },
+);
+test("native and portable SDK media-type/version/envelope/header rejection outcomes have safe audit", async () => {
+  const hub = new Hub(),
+    audit = new MemoryAudit(),
+    monitor = new SecurityMonitor(audit);
+  const { server, url } = await fixture(hub, monitor);
+  const body = { jsonrpc: "2.0", id: 1, method: "tools/list" };
+  try {
+    const cases = [
+      { headers: { ...headers, "Content-Type": "text/plain" }, body },
+      {
+        headers: {
+          ...headers,
+          "MCP-Protocol-Version": "PRIVATE-invalid-version",
+        },
+        body,
+      },
+      { headers, body: { ...body, jsonrpc: "PRIVATE-invalid-envelope" } },
+      { headers: { ...headers, Accept: "text/plain" }, body },
+    ];
+    for (const value of cases) {
+      const response = await globalThis.fetch(url, {
+        method: "POST",
+        headers: value.headers,
+        body: JSON.stringify(value.body),
+      });
+      assert(response.status >= 400);
+      await response.text();
+      const context = await monitor.enter();
+      try {
+        const portable = await fetchMCP(
+          hub,
+          new Request("https://hub.example/mcp", {
+            method: "POST",
+            headers: value.headers,
+            body: JSON.stringify(value.body),
+          }),
+          async () => owner,
+          undefined,
+          undefined,
+          undefined,
+          context,
+        );
+        assert(portable.status >= 400);
+        await portable.text();
+      } finally {
+        context.release();
+      }
+    }
+    assert.equal(audit.counts.get("transport_error"), 8);
+    assert.equal(audit.counts.get("tool_started"), undefined);
+  } finally {
+    server.close();
+    await once(server, "close");
+    hub.close();
+  }
+});

@@ -277,6 +277,7 @@ export async function fetchMCP(
     await security?.record("transport_error");
     return new Response(null, { status: 503 });
   }
+  if (response.status >= 400) await security?.record("transport_error");
   // Allowed exchanges have finite bounded bodies. Subscription dispatch is refused above.
   return response;
 }

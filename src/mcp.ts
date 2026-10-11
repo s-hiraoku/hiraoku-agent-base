@@ -34,15 +34,23 @@ export function handler(
   return async (req: IncomingMessage, res: ServerResponse) => {
     let security: SecurityContext & { release(): void };
     try {
-      security = await monitor.enter();
+      security = await monitor.enter((release) => {
+        res.once("finish", release);
+        res.once("close", release);
+        if (res.destroyed || req.aborted) release();
+      });
     } catch {
-      res.writeHead(503);
-      res.end();
+      if (!res.destroyed) {
+        res.writeHead(503);
+        res.end();
+      }
+      return;
+    }
+    if (res.destroyed || req.aborted) {
+      security.release();
       return;
     }
     res.setHeader("X-Request-ID", security.correlation);
-    res.once("finish", security.release);
-    res.once("close", security.release);
     const metadata = oauth?.response(req.url ?? "/", req.method ?? "");
     if (metadata) {
       res.writeHead(metadata.status, Object.fromEntries(metadata.headers));

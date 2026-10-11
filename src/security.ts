@@ -35,7 +35,9 @@ export class SecurityMonitor {
     this.sink = sink;
     this.now = now;
   }
-  async enter(): Promise<SecurityContext & { release(): void }> {
+  async enter(
+    onAdmitted?: (release: () => void) => void,
+  ): Promise<SecurityContext & { release(): void }> {
     const correlation = crypto.randomUUID();
     this.sink.check?.();
     const time = this.now();
@@ -50,12 +52,6 @@ export class SecurityMonitor {
       throw new Error("Admission rejected");
     }
     this.active++;
-    try {
-      await this.sink.record("request", correlation);
-    } catch {
-      this.active--;
-      throw new Error("Audit unavailable");
-    }
     let released = false,
       closing = false,
       pending = 0;
@@ -66,6 +62,14 @@ export class SecurityMonitor {
         this.active--;
       }
     };
+    try {
+      onAdmitted?.(release);
+      await this.sink.record("request", correlation);
+      if (closing) throw new Error("Admission rejected");
+    } catch {
+      release();
+      throw new Error("Admission rejected");
+    }
     const record = async (category: AuditCategory) => {
       if (
         category === "tool_started" &&
