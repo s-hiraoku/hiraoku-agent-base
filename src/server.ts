@@ -1,3 +1,4 @@
+import { LocalAudit } from "./local-audit.ts";
 import { createServer } from "node:http";
 import { mkdirSync } from "node:fs";
 import { Hub } from "./sqlite.ts";
@@ -10,10 +11,19 @@ const config = process.env.HAB_RUNTIME_CONFIG
   : undefined;
 mkdirSync("runtime", { recursive: true, mode: 0o700 });
 const hub = new Hub("runtime/hub.db"),
-  runtime = createRuntime(hub, config);
-createServer((req, res) => {
-  void runtime.handle(req, res).catch(() => {
-    if (!res.headersSent) res.writeHead(500);
-    res.end();
+  runtime = createRuntime(hub, config, {
+    audit: new LocalAudit("runtime/audit"),
   });
-}).listen(8787, "127.0.0.1");
+const server = createServer(
+  { requestTimeout: 10000, headersTimeout: 5000, maxHeaderSize: 16384 },
+  (req, res) => {
+    void runtime.handle(req, res).catch(() => {
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+  },
+).listen(8787, "127.0.0.1");
+
+server.maxConnections = 32;
+server.maxRequestsPerSocket = 60;
+server.keepAliveTimeout = 5000;

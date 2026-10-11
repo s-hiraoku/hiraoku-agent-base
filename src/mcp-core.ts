@@ -1,3 +1,5 @@
+import type { SecurityContext, ToolFinish } from "./security.ts";
+import { boundedBody } from "./security.ts";
 import { pingSchemas, type PingService } from "./ping.ts";
 import { taskTypes, canonicalResult } from "./task-contract.ts";
 import {
@@ -58,6 +60,7 @@ export function createMCP(
   p: Principal,
   events?: EventAPI,
   ping?: PingService,
+  security?: SecurityContext,
 ) {
   const server = new McpServer({ name: "agent-hub", version: "0.2.0" });
   const invoke = async (name: string, args: unknown) => {
@@ -89,12 +92,21 @@ export function createMCP(
         },
       },
       async (args: unknown) => {
+        let finish: ToolFinish | undefined;
         try {
+          finish = security?.beginTool();
           const result = await invoke(name, args);
+          finish?.("tool_succeeded");
           return {
             content: [{ type: "text" as const, text: JSON.stringify(result) }],
           };
         } catch {
+          try {
+            if (finish) finish("tool_error");
+            else security?.record("tool_error");
+          } catch {
+            /* Admission stays closed. */
+          }
           return {
             isError: true,
             content: [{ type: "text" as const, text: "Operation rejected" }],
@@ -114,7 +126,9 @@ export function createMCP(
           },
         },
         async (args: unknown) => {
+          let finish: ToolFinish | undefined;
           try {
+            finish = security?.beginTool();
             const method = {
               ping_submit: "submit",
               ping_get: "get",
@@ -122,10 +136,17 @@ export function createMCP(
               ping_pending: "pending",
             }[name] as "submit" | "get" | "reply" | "pending";
             const value = await ping[method](p, args);
+            finish?.("tool_succeeded");
             return {
               content: [{ type: "text" as const, text: JSON.stringify(value) }],
             };
           } catch {
+            try {
+              if (finish) finish("tool_error");
+              else security?.record("tool_error");
+            } catch {
+              /* Admission stays closed. */
+            }
             return {
               isError: true,
               content: [{ type: "text" as const, text: "Operation rejected" }],
@@ -139,9 +160,19 @@ export function createMCP(
     const eventCall = async (
       work: () => Promise<unknown>,
     ): Promise<Record<string, unknown>> => {
+      let finish: ToolFinish | undefined;
       try {
-        return (await work()) as Record<string, unknown>;
+        finish = security?.beginTool();
+        const result = await work();
+        finish?.("tool_succeeded");
+        return result as Record<string, unknown>;
       } catch (error) {
+        try {
+          if (finish) finish("tool_error");
+          else security?.record("tool_error");
+        } catch {
+          /* Admission stays closed. */
+        }
         if (error instanceof CallbackEndpointError)
           throw new ProtocolError(-32015, "CallbackEndpointError", {
             reason: error.reason,
@@ -176,6 +207,7 @@ export async function fetchMCP(
   events?: EventAPI,
   oauth?: OAuthResource,
   ping?: PingService,
+  security?: SecurityContext,
 ): Promise<Response> {
   const metadata = oauth?.response(
     new URL(request.url).pathname +
@@ -191,13 +223,15 @@ export async function fetchMCP(
   } catch {
     /* Authentication or authoritative DB failure denies admission. */
   }
-  if (!p)
+  if (!p) {
+    security?.record("auth_denied");
     return new Response(null, {
       status: 401,
       headers: oauth
         ? { "WWW-Authenticate": oauth.challenge(), "Cache-Control": "no-store" }
         : {},
     });
+  }
   const target = new URL(request.url);
   if (
     target.pathname !== (oauth?.mcpPath ?? "/mcp") ||
@@ -206,5 +240,14 @@ export async function fetchMCP(
     request.method !== "POST"
   )
     return new Response(null, { status: 405 });
-  return createMcpHandler(() => createMCP(hub, p, events, ping)).fetch(request);
+  let bounded: Request;
+  try {
+    bounded = await boundedBody(request);
+  } catch {
+    security?.record("resource_rejected");
+    return new Response(null, { status: 413 });
+  }
+  return createMcpHandler(() =>
+    createMCP(hub, p, events, ping, security),
+  ).fetch(bounded);
 }

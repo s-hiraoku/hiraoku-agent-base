@@ -80,7 +80,7 @@ export class TaskService {
       throw new Error("invalid_grant_policy");
     const r = await this.authorization.batch(p, [
       stmt(
-        `INSERT OR IGNORE INTO tasks(id,owner,destination,request_key,task_type,state,actor,at,mutation) VALUES(?,?,?,?,?,'queued',?,${clock},?)`,
+        `INSERT OR IGNORE INTO tasks(id,owner,destination,request_key,task_type,state,actor,at,mutation) SELECT ?,?,?,?,?,'queued',?,${clock},? WHERE (SELECT count(*) FROM tasks)<10000 AND (SELECT count(*) FROM tasks WHERE state IN ('queued','running','waiting_approval'))<128`,
         crypto.randomUUID(),
         p.subject,
         p.destination,
