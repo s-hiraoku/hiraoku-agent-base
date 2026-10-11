@@ -1,3 +1,4 @@
+import process from "node:process";
 import { ReadableStream } from "node:stream/web";
 import assert from "node:assert/strict";
 import { test } from "node:test";
