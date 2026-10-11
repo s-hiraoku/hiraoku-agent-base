@@ -1,5 +1,6 @@
+import { protocolAdmission } from "./protocol.ts";
 import type { SecurityContext, ToolFinish } from "./security.ts";
-import { boundedBody } from "./security.ts";
+import { exchangeResponse, boundedBody } from "./security.ts";
 import { pingSchemas, type PingService } from "./ping.ts";
 import { taskTypes, canonicalResult } from "./task-contract.ts";
 import {
@@ -63,6 +64,7 @@ export function createMCP(
   security?: SecurityContext,
 ) {
   const server = new McpServer({ name: "agent-hub", version: "0.2.0" });
+  server.server.registerCapabilities({ tools: { listChanged: false } });
   const invoke = async (name: string, args: unknown) => {
     switch (name) {
       case "submit":
@@ -94,16 +96,16 @@ export function createMCP(
       async (args: unknown) => {
         let finish: ToolFinish | undefined;
         try {
-          finish = security?.beginTool();
+          finish = await security?.beginTool();
           const result = await invoke(name, args);
-          finish?.("tool_succeeded");
+          await finish?.("tool_succeeded");
           return {
             content: [{ type: "text" as const, text: JSON.stringify(result) }],
           };
         } catch {
           try {
-            if (finish) finish("tool_error");
-            else security?.record("tool_error");
+            if (finish) await finish("tool_error");
+            else await security?.record("tool_error");
           } catch {
             /* Admission stays closed. */
           }
@@ -128,7 +130,7 @@ export function createMCP(
         async (args: unknown) => {
           let finish: ToolFinish | undefined;
           try {
-            finish = security?.beginTool();
+            finish = await security?.beginTool();
             const method = {
               ping_submit: "submit",
               ping_get: "get",
@@ -136,14 +138,14 @@ export function createMCP(
               ping_pending: "pending",
             }[name] as "submit" | "get" | "reply" | "pending";
             const value = await ping[method](p, args);
-            finish?.("tool_succeeded");
+            await finish?.("tool_succeeded");
             return {
               content: [{ type: "text" as const, text: JSON.stringify(value) }],
             };
           } catch {
             try {
-              if (finish) finish("tool_error");
-              else security?.record("tool_error");
+              if (finish) await finish("tool_error");
+              else await security?.record("tool_error");
             } catch {
               /* Admission stays closed. */
             }
@@ -162,14 +164,14 @@ export function createMCP(
     ): Promise<Record<string, unknown>> => {
       let finish: ToolFinish | undefined;
       try {
-        finish = security?.beginTool();
+        finish = await security?.beginTool();
         const result = await work();
-        finish?.("tool_succeeded");
+        await finish?.("tool_succeeded");
         return result as Record<string, unknown>;
       } catch (error) {
         try {
-          if (finish) finish("tool_error");
-          else security?.record("tool_error");
+          if (finish) await finish("tool_error");
+          else await security?.record("tool_error");
         } catch {
           /* Admission stays closed. */
         }
@@ -208,6 +210,7 @@ export async function fetchMCP(
   oauth?: OAuthResource,
   ping?: PingService,
   security?: SecurityContext,
+  responseMs = 30000,
 ): Promise<Response> {
   const metadata = oauth?.response(
     new URL(request.url).pathname +
@@ -224,7 +227,7 @@ export async function fetchMCP(
     /* Authentication or authoritative DB failure denies admission. */
   }
   if (!p) {
-    security?.record("auth_denied");
+    await security?.record("auth_denied");
     return new Response(null, {
       status: 401,
       headers: oauth
@@ -244,10 +247,36 @@ export async function fetchMCP(
   try {
     bounded = await boundedBody(request);
   } catch {
-    security?.record("resource_rejected");
+    await security?.record("resource_rejected");
     return new Response(null, { status: 413 });
   }
-  return createMcpHandler(() =>
+  let parsed: unknown;
+  try {
+    parsed = await bounded.clone().json();
+  } catch {
+    await security?.record("transport_error");
+    return new Response(null, { status: 400 });
+  }
+  if (
+    !(await protocolAdmission(
+      parsed,
+      bounded.headers.get("mcp-method") ?? undefined,
+      { ...schemas, ...(ping ? pingSchemas : {}) },
+      security,
+      !!events,
+    ))
+  )
+    return new Response(null, { status: 405 });
+  const handler = createMcpHandler(() =>
     createMCP(hub, p, events, ping, security),
-  ).fetch(bounded);
+  );
+  let response: Response;
+  try {
+    response = await exchangeResponse(handler.fetch(bounded), responseMs);
+  } catch {
+    await security?.record("transport_error");
+    return new Response(null, { status: 503 });
+  }
+  // Allowed exchanges have finite bounded bodies. Subscription dispatch is refused above.
+  return response;
 }

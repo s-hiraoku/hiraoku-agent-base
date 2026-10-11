@@ -6,7 +6,6 @@ import {
   lstatSync,
   mkdirSync,
   openSync,
-  readdirSync,
   renameSync,
   unlinkSync,
   writeSync,
@@ -23,10 +22,13 @@ export const CATEGORIES = [
   "tool_error",
   "transport_error",
   "anomaly",
+  "aggregate",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 export interface Audit {
-  record(category: Category, correlation: string): void;
+  record(category: Category, correlation: string): void | Promise<void>;
+  check?(): void;
+  note?(category: Category): void;
 }
 export class LocalAudit implements Audit {
   private count = 0;
@@ -85,10 +87,49 @@ export class LocalAudit implements Audit {
       this.append("anomaly", correlation, time);
     }
   }
-  private append(category: Category, correlation: string, time: number) {
+  aggregate(
+    counts: Partial<Record<Category, number>>,
+    dropped: number,
+    saturated: boolean,
+  ) {
+    if (
+      !counts ||
+      Object.keys(counts).length > CATEGORIES.length ||
+      Object.entries(counts).some(
+        ([key, value]) =>
+          !CATEGORIES.includes(key as Category) ||
+          !Number.isSafeInteger(value) ||
+          value < 0 ||
+          value > 65535,
+      ) ||
+      !Number.isSafeInteger(dropped) ||
+      dropped < 1 ||
+      dropped > 65535 ||
+      typeof saturated !== "boolean"
+    )
+      throw new Error("Invalid audit event");
+    this.append(
+      "aggregate",
+      "00000000-0000-4000-8000-000000000000",
+      this.now(),
+      { counts, dropped, saturated, anomaly: dropped >= 20 },
+    );
+  }
+  private append(
+    category: Category,
+    correlation: string,
+    time: number,
+    summary?: {
+      counts: Partial<Record<Category, number>>;
+      dropped: number;
+      saturated: boolean;
+      anomaly: boolean;
+    },
+  ) {
     try {
       const path = join(this.directory, "audit.jsonl");
-      for (const name of readdirSync(this.directory)) {
+      for (const name of ["audit.jsonl.1", "audit.jsonl.2"]) {
+        if (!existsSync(join(this.directory, name))) continue;
         if (/^audit\.jsonl\.[12]$/.test(name)) {
           const file = join(this.directory, name),
             stat = lstatSync(file);
@@ -121,7 +162,9 @@ export class LocalAudit implements Audit {
           stat.mode & 0o077
         )
           throw new Error("Audit unavailable");
-        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation })}\n`;
+        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(summary ? { summary } : {}) })}\n`;
+        if (Buffer.byteLength(line) > this.maxBytes)
+          throw new Error("Audit unavailable");
         if (stat.size + Buffer.byteLength(line) > this.maxBytes) rotate = true;
         else if (this.write(fd, line) !== Buffer.byteLength(line))
           throw new Error("Audit unavailable");
@@ -132,7 +175,7 @@ export class LocalAudit implements Audit {
         if (existsSync(`${path}.2`)) unlinkSync(`${path}.2`);
         if (existsSync(`${path}.1`)) renameSync(`${path}.1`, `${path}.2`);
         renameSync(path, `${path}.1`);
-        this.append(category, correlation, time);
+        this.append(category, correlation, time, summary);
       }
     } catch {
       throw new Error("Audit unavailable");
@@ -141,6 +184,12 @@ export class LocalAudit implements Audit {
 }
 export class MemoryAudit implements Audit {
   readonly counts = new Map<Category, number>();
+  note(category: Category) {
+    this.counts.set(
+      category,
+      Math.min(65535, (this.counts.get(category) ?? 0) + 1),
+    );
+  }
   record(category: Category, correlation: string) {
     void correlation;
     this.counts.set(

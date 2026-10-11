@@ -9,3 +9,7 @@ HTTP admission is capped at 120 requests per minute and four active exchanges; t
 Portable runtime callers may provide an `AuditSink`; Node filesystem logging is never imported into the worker bundle. The supplied Node entrypoint uses required filesystem logging. Direct library callers are responsible for supplying their own security context/sink; the deny-all worker entrypoint remains deny-all. The local audit is separate from task transitions and does not change existing outbox delivery semantics.
 
 Host/Origin and duplicate-header checks remain authoritative. Forwarded-IP headers are ignored; rate limits do not assume a trusted Funnel proxy. Actual proxy header preservation, production authentication and the deployed image are unverified. Auth0 migration of the model MCP is documented in its own repository and must use a separate resource audience. Existing OS isolation is unverified. Deployment, credentials/scopes, route changes, process restart and paid-model budget require separate approval; this PR grants none.
+
+## Corrections after independent review
+
+See [review finding/test mapping](review-fixes.md). The Node entry now uses an isolated acknowledged audit worker, aggregates rejected admission without immediate disk I/O, explicitly refuses SDK listener streams, and applies the portable response-byte/deadline guard. Fixed-method protocol inspection observes SDK pre-callback errors. This supersedes the original synchronous logging behavior described above.

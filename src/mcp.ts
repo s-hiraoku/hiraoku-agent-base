@@ -1,11 +1,14 @@
-import { SecurityMonitor, type SecurityContext } from "./security.ts";
+import {
+  guardedResponse,
+  SecurityMonitor,
+  type SecurityContext,
+} from "./security.ts";
 import type { PingService } from "./ping.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createMcpHandler } from "@modelcontextprotocol/server";
 import type { EventAPI } from "./subscriptions.ts";
 import type { TaskService } from "./store.ts";
 import type { Principal } from "./types.ts";
-import { createMCP } from "./mcp-core.ts";
+import { fetchMCP } from "./mcp-core.ts";
 import type { OAuthResource } from "./oauth.ts";
 export * from "./mcp-core.ts";
 export function handler(
@@ -17,11 +20,21 @@ export function handler(
   oauth?: OAuthResource,
   ping?: PingService,
   monitor = new SecurityMonitor(),
+  limits = { bodyMs: 5000, responseMs: 30000 },
 ) {
+  if (
+    !Number.isSafeInteger(limits.bodyMs) ||
+    limits.bodyMs < 1 ||
+    limits.bodyMs > 5000 ||
+    !Number.isSafeInteger(limits.responseMs) ||
+    limits.responseMs < 1 ||
+    limits.responseMs > 30000
+  )
+    throw new Error("Invalid limit");
   return async (req: IncomingMessage, res: ServerResponse) => {
     let security: SecurityContext & { release(): void };
     try {
-      security = monitor.enter();
+      security = await monitor.enter();
     } catch {
       res.writeHead(503);
       res.end();
@@ -45,7 +58,7 @@ export function handler(
     }
     if (!p) {
       try {
-        security.record("auth_denied");
+        await security.record("auth_denied");
       } catch {
         res.writeHead(503);
         res.end();
@@ -73,7 +86,7 @@ export function handler(
     const chunks: Buffer[] = [];
     const timeout = setTimeout(() => {
       req.destroy();
-    }, 5000);
+    }, limits.bodyMs);
     try {
       for await (const chunk of req) {
         const buffer = Buffer.from(chunk);
@@ -84,7 +97,9 @@ export function handler(
       body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     } catch {
       try {
-        security.record("resource_rejected");
+        await security.record(
+          bytes > 32768 ? "resource_rejected" : "transport_error",
+        );
       } catch {
         /* No unsafe logging. */
       }
@@ -94,9 +109,45 @@ export function handler(
     } finally {
       clearTimeout(timeout);
     }
-    const { toNodeHandler } = await import("@modelcontextprotocol/node");
-    await toNodeHandler(
-      createMcpHandler(() => createMCP(hub, p, events, ping, security)),
-    )(req, res, body);
+    const headers = new Headers();
+    for (const name of [
+      "content-type",
+      "accept",
+      "mcp-method",
+      "mcp-name",
+      "mcp-protocol-version",
+    ]) {
+      const value = req.headers[name];
+      if (typeof value === "string") headers.set(name, value);
+    }
+    try {
+      const response = await fetchMCP(
+        hub,
+        new Request(oauth?.resource ?? "http://mcp.internal/mcp", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        }),
+        async () => p,
+        events,
+        oauth,
+        ping,
+        security,
+        limits.responseMs,
+      );
+      const bounded = guardedResponse(response, security, limits.responseMs);
+      const bytes = await bounded.arrayBuffer();
+      res.writeHead(bounded.status, Object.fromEntries(bounded.headers));
+      res.setTimeout(5000, () => res.destroy());
+      res.end(Buffer.from(bytes));
+    } catch {
+      try {
+        await security.record("transport_error");
+      } catch {
+        /* Admission stays closed. */
+      }
+      if (!res.headersSent) res.writeHead(503);
+      res.end();
+    }
   };
 }

@@ -15,24 +15,30 @@ import { SecurityMonitor, boundedBody } from "../src/security.ts";
 import { LocalAudit, MemoryAudit } from "../src/local-audit.ts";
 import { fetchMCP } from "../src/mcp-core.ts";
 import { Hub, owner, submit } from "./fixtures.js";
-test("bounded ingress/tool counters ignore attacker-selected identifiers and reset windows", () => {
+test("bounded ingress/tool counters ignore attacker-selected identifiers and reset windows", async () => {
   let time = 0;
   const audit = new MemoryAudit();
   const monitor = new SecurityMonitor(audit, () => time);
-  const live = Array.from({ length: 4 }, () => monitor.enter());
-  assert.throws(() => monitor.enter());
+  const live = await Promise.all(
+    Array.from({ length: 4 }, () => monitor.enter()),
+  );
+  await assert.rejects(monitor.enter());
   live.forEach((c) => c.release());
   for (let i = 0; i < 60; i++) {
-    const c = monitor.enter();
-    c.beginTool()("tool_succeeded");
+    const c = await monitor.enter();
+    await (
+      await c.beginTool()
+    )("tool_succeeded");
     c.release();
   }
-  const blocked = monitor.enter();
-  assert.throws(() => blocked.record("tool_started"));
+  const blocked = await monitor.enter();
+  await assert.rejects(blocked.record("tool_started"));
   blocked.release();
   time = 60001;
-  const next = monitor.enter();
-  next.beginTool()("tool_succeeded");
+  const next = await monitor.enter();
+  await (
+    await next.beginTool()
+  )("tool_succeeded");
   next.release();
   assert.equal(audit.counts.get("rate_limited"), 2);
 });
@@ -87,7 +93,7 @@ test("HTTP 200 tool rejection and successful get have separate audit outcomes wi
   const hub = new Hub();
   const audit = new MemoryAudit();
   const monitor = new SecurityMonitor(audit);
-  const context = monitor.enter();
+  const context = await monitor.enter();
   try {
     const task = await submit(hub);
     for (const id of [task.id, "11111111-1111-4111-8111-111111111111"]) {
@@ -138,7 +144,9 @@ test("atomic task admission quota preserves idempotent replay and blocks the 129
 test("response admission is held until a delayed response finishes and bounded by bytes", async () => {
   const { guardedResponse } = await import("../src/security.ts");
   const monitor = new SecurityMonitor();
-  const active = Array.from({ length: 4 }, () => monitor.enter());
+  const active = await Promise.all(
+    Array.from({ length: 4 }, () => monitor.enter()),
+  );
   let finish;
   const response = guardedResponse(
     new Response(
@@ -150,19 +158,19 @@ test("response admission is held until a delayed response finishes and bounded b
     ),
     active[0],
   );
-  assert.throws(() => monitor.enter());
+  await assert.rejects(monitor.enter());
   const consumed = response.text();
   finish();
   await consumed;
-  const next = monitor.enter();
+  const next = await monitor.enter();
   next.release();
   active.slice(1).forEach((c) => c.release());
   const capped = guardedResponse(
     new Response("x".repeat(65537)),
-    monitor.enter(),
+    await monitor.enter(),
   );
   await assert.rejects(capped.text(), /rejected/);
-  const after = monitor.enter();
+  const after = await monitor.enter();
   after.release();
 });
 test("audit failure prevents mutation and a retained-row cap preserves idempotency", async () => {
@@ -219,19 +227,21 @@ test("audit failure prevents mutation and a retained-row cap preserves idempoten
     hub.close();
   }
 });
-test("closed response cannot free a still-running tool or admit deferred work", () => {
+test("closed response cannot free a still-running tool or admit deferred work", async () => {
   const monitor = new SecurityMonitor();
-  const live = Array.from({ length: 4 }, () => monitor.enter());
-  const finish = live[0].beginTool();
+  const live = await Promise.all(
+    Array.from({ length: 4 }, () => monitor.enter()),
+  );
+  const finish = await live[0].beginTool();
   live[0].release();
-  assert.throws(() => monitor.enter());
-  finish("tool_succeeded");
-  assert.throws(() => live[0].beginTool());
-  const next = monitor.enter();
+  await assert.rejects(monitor.enter());
+  await finish("tool_succeeded");
+  await assert.rejects(live[0].beginTool());
+  const next = await monitor.enter();
   next.release();
   live.slice(1).forEach((c) => c.release());
 });
-test("per-invocation finish rejects double release when another tool is pending", () => {
+test("per-invocation finish rejects double release when another tool is pending", async () => {
   let failed = false;
   const monitor = new SecurityMonitor({
     record(category) {
@@ -239,20 +249,22 @@ test("per-invocation finish rejects double release when another tool is pending"
         throw new Error("Audit unavailable");
     },
   });
-  const live = Array.from({ length: 4 }, () => monitor.enter());
-  const first = live[0].beginTool(),
-    second = live[0].beginTool();
+  const live = await Promise.all(
+    Array.from({ length: 4 }, () => monitor.enter()),
+  );
+  const first = await live[0].beginTool(),
+    second = await live[0].beginTool();
   live[0].release();
-  assert.throws(() => live[0].beginTool());
-  live[0].record("tool_error");
-  assert.throws(() => monitor.enter());
+  await assert.rejects(live[0].beginTool());
+  await live[0].record("tool_error");
+  await assert.rejects(monitor.enter());
   failed = true;
-  assert.throws(() => first("tool_succeeded"));
-  first("tool_error");
-  assert.throws(() => monitor.enter());
+  await assert.rejects(first("tool_succeeded"));
+  await first("tool_error");
+  await assert.rejects(monitor.enter());
   failed = false;
-  second("tool_succeeded");
-  const next = monitor.enter();
+  await second("tool_succeeded");
+  const next = await monitor.enter();
   next.release();
   live.slice(1).forEach((c) => c.release());
 });

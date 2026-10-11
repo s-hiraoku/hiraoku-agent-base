@@ -144,9 +144,9 @@ export function createRuntime(
       );
       if (duplicate || !admissible(req.headers.host, req.headers.origin)) {
         try {
-          const context = monitor.enter();
+          const context = await monitor.enter();
           try {
-            context.record("access_denied");
+            await context.record("access_denied");
           } finally {
             context.release();
           }
@@ -169,9 +169,9 @@ export function createRuntime(
         )
       ) {
         try {
-          const context = monitor.enter();
+          const context = await monitor.enter();
           try {
-            context.record("access_denied");
+            await context.record("access_denied");
           } finally {
             context.release();
           }
@@ -185,7 +185,7 @@ export function createRuntime(
       }
       let context;
       try {
-        context = monitor.enter();
+        context = await monitor.enter();
       } catch {
         return new Response(null, { status: 503 });
       }
