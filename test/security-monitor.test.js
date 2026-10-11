@@ -255,3 +255,16 @@ test("per-invocation finish rejects double release when another tool is pending"
   next.release();
   live.slice(1).forEach((c) => c.release());
 });
+test("startup configuration failures emit a fixed category without a stack or private path", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const result = spawnSync(process.execPath, ["src/server.ts"], {
+    encoding: "utf8",
+    env: {
+      HAB_RUNTIME_CONFIG: "/tmp/nonexistent-private-hub-config-fixture",
+      NODE_NO_WARNINGS: "1",
+    },
+  });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr, "startup_rejected\n");
+});
