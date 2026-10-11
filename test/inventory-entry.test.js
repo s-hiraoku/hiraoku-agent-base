@@ -17,6 +17,7 @@ import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { request } from "node:http";
 import { fileURLToPath } from "node:url";
+import { inspectWorkerIdentity } from "../src/worker-identity.ts";
 import { startInventoryBootstrap } from "../src/inventory-bootstrap.ts";
 import { DatabaseSync } from "node:sqlite";
 import { startInventoryEntry } from "../src/inventory-entry.ts";
@@ -215,6 +216,29 @@ test(
   { timeout: 20000, skip: process.getuid?.() === 0 },
   async () => {
     const f = await fixture();
+    const workerToken = await f.sign("worker", {
+      iat: Math.floor(Date.now() / 1000),
+      gty: "client-credentials",
+    });
+    const candidate = await inspectWorkerIdentity(
+      {
+        version: 1,
+        mode: "verify-worker-identity",
+        oauth: f.config.oauth,
+        workerClientId: f.config.worker.clientId,
+      },
+      workerToken,
+      { fetch: f.dependencies.fetch },
+    );
+    assert.equal(candidate.enrolled, false);
+    assert.equal(candidate.subject, f.config.worker.subject);
+    assert.equal(f.state.entropy, 0);
+    assert.equal(f.state.launches, 0);
+    // Explicit operator decision after verification; the helper never writes config.
+    f.config.worker = {
+      subject: candidate.subject,
+      clientId: candidate.clientId,
+    };
     let entry;
     let releaseAck;
     const ack = new Promise((resolve) => {
@@ -255,7 +279,7 @@ test(
     try {
       entry = await startInventoryEntry(
         f.config,
-        { workerAuthorization: () => f.sign("worker") },
+        { workerAuthorization: async () => workerToken },
         f.dependencies,
       );
       const client = new InventoryMCPClient({
