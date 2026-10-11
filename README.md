@@ -74,3 +74,5 @@ python3 -m unittest hermes_bridge.test_inventory_agent hermes_bridge.test_launch
 ## 技術文書
 
 [Hub内部設計](docs/architecture.md)、[認証・Events・worker](docs/local-integration.md)、[Auth0境界](docs/auth0-boundary.md)、[ping/pong](docs/ping-pong-mvp.md)、[inventory MVP](docs/mvp-inventory.md)、[Hermes接続](docs/hermes-connection.md)、[固定pilot履歴](docs/fixed-pilot.md)、[import隔離](docs/hermes-import-boundary.md)、[一時キー](docs/local-hermes-key.md)、[永続停止](docs/durable-stop-gate.md)、[移植とEvents](docs/migration-plan.md)、[Auth0アカウント手順](docs/auth0-account-step.md)を参照してください。実運用の手順・値は承認後に非公開で管理します。
+
+固定1件の次段階は、[positive getとworker主体確認](docs/fixed-readback-worker-identity.md)を参照してください。fixtureの成功結果はHermesの実行成功とは区別します。

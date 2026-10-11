@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "mode": "verify-worker-identity",
+  "oauth": {
+    "issuer": "https://example-tenant.jp.auth0.com/",
+    "resource": "https://hub.example/hab/mcp"
+  },
+  "workerClientId": "operator-confirmed-worker-client"
+}
