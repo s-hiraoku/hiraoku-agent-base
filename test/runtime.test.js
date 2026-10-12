@@ -314,12 +314,17 @@ test("configured Node boundary serves metadata, verifies tokens and denies dupli
       status: null,
       headers: null,
       body: null,
+      setHeader() {},
+      once(name, work) {
+        if (name === "finish") this.finish = work;
+      },
       writeHead(status, fields) {
         this.status = status;
         this.headers = fields;
       },
       end(body) {
         this.body = body;
+        this.finish?.();
       },
     };
     await f.runtime.handle(

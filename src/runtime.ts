@@ -1,3 +1,8 @@
+import {
+  guardedResponse,
+  SecurityMonitor,
+  type AuditSink,
+} from "./security.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
 import { ApprovedSubjects, Auth0Verifier, OAuthResource } from "./oauth.ts";
@@ -32,6 +37,7 @@ export function createRuntime(
   dependencies: {
     fetch?: typeof fetch;
     now?: () => number;
+    audit?: AuditSink;
   } = {},
 ) {
   let oauth: OAuthResource | undefined;
@@ -115,6 +121,7 @@ export function createRuntime(
     !!host &&
     allowedHosts.has(host) &&
     (origin === undefined || allowedOrigins.has(origin));
+  const monitor = new SecurityMonitor(dependencies.audit, dependencies.now);
   const nodeHandler = handler(
     hub,
     (req) =>
@@ -122,6 +129,7 @@ export function createRuntime(
     undefined,
     oauth,
     ping,
+    monitor,
   );
   return Object.freeze({
     oauth,
@@ -135,6 +143,18 @@ export function createRuntime(
           ).length > 1,
       );
       if (duplicate || !admissible(req.headers.host, req.headers.origin)) {
+        try {
+          const context = await monitor.enter();
+          try {
+            await context.record("access_denied");
+          } finally {
+            context.release();
+          }
+        } catch {
+          res.writeHead(503);
+          res.end();
+          return;
+        }
         res.writeHead(403, { "Cache-Control": "no-store" });
         res.end();
         return;
@@ -147,21 +167,47 @@ export function createRuntime(
           request.headers.get("host") ?? new URL(request.url).host,
           request.headers.get("origin") ?? undefined,
         )
-      )
+      ) {
+        try {
+          const context = await monitor.enter();
+          try {
+            await context.record("access_denied");
+          } finally {
+            context.release();
+          }
+        } catch {
+          return new Response(null, { status: 503 });
+        }
         return new Response(null, {
           status: 403,
           headers: { "Cache-Control": "no-store" },
         });
-      return fetchMCP(
-        hub,
-        request,
-        (req) =>
-          verifier?.verify(req.headers.get("authorization") ?? undefined) ??
-          Promise.resolve(null),
-        undefined,
-        oauth,
-        ping,
-      );
+      }
+      let context;
+      try {
+        context = await monitor.enter();
+      } catch {
+        return new Response(null, { status: 503 });
+      }
+      try {
+        return guardedResponse(
+          await fetchMCP(
+            hub,
+            request,
+            (req) =>
+              verifier?.verify(req.headers.get("authorization") ?? undefined) ??
+              Promise.resolve(null),
+            undefined,
+            oauth,
+            ping,
+            context,
+          ),
+          context,
+        );
+      } catch {
+        context.release();
+        return new Response(null, { status: 503 });
+      }
     },
   });
 }
