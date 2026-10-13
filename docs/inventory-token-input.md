@@ -25,7 +25,9 @@ select enabled `inventory-one-shot` mode before prompting. The entry remains the
 authority for the complete config. After stdin delivery the helper waits up to
 130 seconds (the entry's maximum lifetime is 120 seconds), then requests SIGTERM,
 waits two seconds, requests SIGKILL if necessary, and waits two more seconds.
-Cancellation follows the same owned-child cleanup. Failure to confirm exit is
+Cancellation follows the same owned-child cleanup. Further SIGINTs are ignored
+only during the bounded stop escalation, then the prior signal handler is restored;
+a second Ctrl-C cannot skip SIGKILL or exit confirmation. Failure to confirm exit is
 reported as uncertain. No receipt or runtime artifact is deleted, no task is
 resubmitted, and a parent crash cannot guarantee child cleanup. The existing
 Python launcher lifetime guard and reconciliation requirements remain necessary.

@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -149,6 +150,86 @@ class TokenInputTests(unittest.TestCase):
             helper.stop_child(child)
         child.terminate.assert_called_once()
         child.kill.assert_called_once()
+
+    @unittest.skipUnless(os.name == "posix", "POSIX Ctrl-C cleanup")
+    def test_spawned_child_cancel_and_second_sigint_still_confirms_kill(self):
+        entry = Path(self.temp.name) / "ignore_term_fixture.py"
+        ready = Path(self.temp.name) / "ready"
+        entry.write_text(
+            "import signal,sys,time; from pathlib import Path; "
+            "signal.signal(signal.SIGTERM,signal.SIG_IGN); "
+            f"Path({str(ready)!r}).touch(); "
+            "sys.stdin.buffer.read(); time.sleep(30)\n"
+        )
+        original_spawn = subprocess.Popen
+        previous = signal.getsignal(signal.SIGINT)
+        seen, senders = [], []
+        cleanup_started = threading.Event()
+        signals_sent = []
+
+        def spawn(args, **kwargs):
+            child = original_spawn(args, **kwargs)
+            seen.append(child)
+            original_terminate = child.terminate
+
+            def terminate():
+                original_terminate()
+                cleanup_started.set()
+
+            child.terminate = terminate
+            deadline = time.monotonic() + 5
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(ready.exists())
+
+            def interrupt_twice():
+                time.sleep(0.1)
+                os.kill(os.getpid(), signal.SIGINT)
+                signals_sent.append(1)
+                if cleanup_started.wait(timeout=5):
+                    os.kill(os.getpid(), signal.SIGINT)
+                    signals_sent.append(2)
+
+            sender = threading.Thread(target=interrupt_twice)
+            senders.append(sender)
+            sender.start()
+            return child
+
+        output = TTY()
+        try:
+            with (
+                patch.object(helper, "ENTRY", entry),
+                patch.object(helper.subprocess, "Popen", side_effect=spawn),
+                patch.object(helper.getpass, "getpass", return_value=DUMMY),
+                patch.object(sys, "stdin", TTY()),
+                patch.object(sys, "stderr", output),
+            ):
+                result = helper.main(
+                    ["--config", str(self.config), "--node", sys.executable]
+                )
+            for sender in senders:
+                sender.join(timeout=5)
+                self.assertFalse(sender.is_alive())
+            self.assertEqual(result, 1)
+            self.assertEqual(signals_sent, [1, 2])
+            self.assertEqual(seen[0].poll(), -signal.SIGKILL)
+            self.assertEqual(signal.getsignal(signal.SIGINT), previous)
+            self.assertIn("inventory_input_cancelled", output.getvalue())
+            self.assertNotIn(DUMMY, output.getvalue())
+        finally:
+            for child in seen:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait(timeout=5)
+
+    def test_stop_os_error_is_uncertain_and_restores_handler(self):
+        previous = signal.getsignal(signal.SIGINT)
+        child = unittest.mock.Mock()
+        child.poll.return_value = None
+        child.terminate.side_effect = OSError("dummy-only")
+        with self.assertRaisesRegex(helper.Rejected, "stop_uncertain"):
+            helper.stop_child(child)
+        self.assertEqual(signal.getsignal(signal.SIGINT), previous)
 
     def test_cancel_before_input_never_spawns(self):
         spawn = unittest.mock.Mock()

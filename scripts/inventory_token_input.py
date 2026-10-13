@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import stat
 import subprocess
 import sys
@@ -76,17 +77,25 @@ def encode_authorization(authorization):
 
 
 def stop_child(child):
-    if child.poll() is not None:
-        return
-    child.terminate()
+    # A second terminal Ctrl-C must not interrupt the bounded stop escalation.
+    previous = signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
-        child.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        child.kill()
+        if child.poll() is not None:
+            return
+        child.terminate()
         try:
             child.wait(timeout=2)
         except subprocess.TimeoutExpired:
+            child.kill()
+            try:
+                child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                raise Rejected("inventory_input_stop_uncertain") from None
+    except OSError:
+        if child.poll() is None:
             raise Rejected("inventory_input_stop_uncertain") from None
+    finally:
+        signal.signal(signal.SIGINT, previous)
 
 
 def handoff(
