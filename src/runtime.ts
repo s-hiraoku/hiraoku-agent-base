@@ -38,6 +38,7 @@ export function createRuntime(
     fetch?: typeof fetch;
     now?: () => number;
     audit?: AuditSink;
+    pingOnly?: boolean;
   } = {},
 ) {
   let oauth: OAuthResource | undefined;
@@ -101,6 +102,16 @@ export function createRuntime(
         policy.some((p) => p.operations.some((op) => op.startsWith("ping_")))
       )
         throw Error();
+      if (
+        dependencies.pingOnly &&
+        (!ping ||
+          policy.some(
+            (p) =>
+              p.kind !== "user" ||
+              p.operations.some((op) => !op.startsWith("ping_")),
+          ))
+      )
+        throw Error();
       if (config.enabled)
         verifier = new Auth0Verifier({
           resource: oauth,
@@ -130,6 +141,8 @@ export function createRuntime(
     oauth,
     ping,
     monitor,
+    undefined,
+    dependencies.pingOnly ? "ping-only" : "all",
   );
   return Object.freeze({
     oauth,
@@ -201,6 +214,8 @@ export function createRuntime(
             oauth,
             ping,
             context,
+            30000,
+            dependencies.pingOnly ? "ping-only" : "all",
           ),
           context,
         );

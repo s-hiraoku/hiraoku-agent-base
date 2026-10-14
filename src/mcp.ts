@@ -21,6 +21,7 @@ export function handler(
   ping?: PingService,
   monitor = new SecurityMonitor(),
   limits = { bodyMs: 5000, responseMs: 30000 },
+  toolMode: "all" | "ping-only" = "all",
 ) {
   if (
     !Number.isSafeInteger(limits.bodyMs) ||
@@ -142,6 +143,7 @@ export function handler(
         ping,
         security,
         limits.responseMs,
+        toolMode,
       );
       const bounded = guardedResponse(response, security, limits.responseMs);
       const bytes = await bounded.arrayBuffer();

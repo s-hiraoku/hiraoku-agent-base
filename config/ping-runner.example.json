@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "mode": "manual-ping-only",
+  "enabled": true,
+  "lifetimeMs": 900000,
+  "oauth": {
+    "issuer": "https://REPLACE.jp.auth0.com/",
+    "resource": "https://hub.example/hab/mcp"
+  },
+  "peers": {
+    "dots": {
+      "subject": "REPLACE_VERIFIED_DOTS_SUBJECT",
+      "clientId": "REPLACE_DOTS_CLIENT"
+    },
+    "grok": {
+      "subject": "REPLACE_VERIFIED_GROK_SUBJECT",
+      "clientId": "REPLACE_GROK_CLIENT"
+    }
+  }
+}
