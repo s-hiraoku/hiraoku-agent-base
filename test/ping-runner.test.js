@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import process from "node:process";
 import { Hub } from "../src/sqlite.ts";
 import {
   startPingRunner,
