@@ -15,6 +15,11 @@ permissive Hub fallback. Principal arguments do not replace server authenticatio
 
 The real path:
 
+Before the steps below, [read-only preparation](inventory-preparation.md) must pass
+without issuing a key or creating runtime artifacts. The manual entry also checks
+before consuming token stdin or creating its Hub database/listener. Preparation
+does not replace the post-start Inspector or establish live readiness.
+
 1. Uses `LocalHermesKey` for a single-use, at-most-120-second in-memory API bearer.
    Persists fingerprint/lifecycle metadata, never the bearer.
 2. Refuses existing manifest, marker, PID, stores and SQLite sidecars. Exclusively

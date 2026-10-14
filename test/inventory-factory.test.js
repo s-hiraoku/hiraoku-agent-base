@@ -73,6 +73,7 @@ function fixture() {
     }),
   };
   const dependencies = {
+    checkPreparation: async () => {}, // Synthetic missing code, never live evidence.
     entropy: () => Buffer.alloc(32, 9),
     child: (launch) => {
       state.launches++;
@@ -119,6 +120,74 @@ function fixture() {
     },
   };
 }
+test("default preparation rejection precedes entropy/artifact/child/worker/connector effects", async () => {
+  const f = fixture();
+  try {
+    let entropy = 0,
+      workers = 0;
+    const before = readdirSync(f.profile).sort();
+    const deps = {
+      ...f.dependencies,
+      entropy: () => {
+        entropy++;
+        return Buffer.alloc(32, 9);
+      },
+    };
+    delete deps.checkPreparation;
+    await assert.rejects(
+      runInventoryOnce(
+        {
+          ...f.options,
+          worker: async () => {
+            workers++;
+            throw Error("must not call");
+          },
+        },
+        deps,
+      ),
+    );
+    assert.equal(entropy, 0);
+    assert.equal(workers, 0);
+    assert.equal(f.state.launches, 0);
+    assert.equal(f.state.connections, 0);
+    assert.deepEqual(readdirSync(f.profile).sort(), before);
+  } finally {
+    f.cleanup();
+  }
+});
+
+test("preparation refusal propagates before provision for EPERM, drift and existing artifacts", async () => {
+  for (const code of [
+    "EPERM",
+    "inventory_integrity_rejected",
+    "inventory_existing_artifact_requires_reconciliation",
+  ]) {
+    const f = fixture();
+    try {
+      let entropy = 0;
+      const before = readdirSync(f.profile).sort();
+      await assert.rejects(
+        runInventoryOnce(f.options, {
+          ...f.dependencies,
+          checkPreparation: async () => {
+            throw Object.assign(Error("dummy preparation failure"), { code });
+          },
+          entropy: () => {
+            entropy++;
+            return Buffer.alloc(32, 9);
+          },
+        }),
+        { code },
+      );
+      assert.equal(entropy, 0);
+      assert.equal(f.state.launches, 0);
+      assert.equal(f.state.connections, 0);
+      assert.deepEqual(readdirSync(f.profile).sort(), before);
+    } finally {
+      f.cleanup();
+    }
+  }
+});
 test("exclusive artifact writer creates private SQLite stores and digest-only files", async () => {
   const f = fixture();
   try {

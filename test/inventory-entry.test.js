@@ -9,6 +9,7 @@ import {
   chmodSync,
   realpathSync,
   rmSync,
+  readdirSync,
   existsSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -131,6 +132,7 @@ async function fixture() {
     },
     lifetimeMs: 15000,
     factory: {
+      checkPreparation: async () => {}, // Synthetic fixture, not a live Inspector grant.
       entropy: () => {
         state.entropy++;
         return Buffer.alloc(32, 9);
@@ -182,6 +184,75 @@ const args = {
   task_type: "shift_log_inventory",
   request_key: INVENTORY_ONE_SHOT_KEY,
 };
+test("default preparation failure precedes Hub database, token callback, key and listener", async () => {
+  const f = await fixture();
+  try {
+    writeFileSync(join(f.profile, "config.yaml"), "dummy configuration drift", {
+      mode: 0o600,
+    });
+    const before = readdirSync(f.profile).sort();
+    const deps = { ...f.dependencies, factory: { ...f.dependencies.factory } };
+    delete deps.factory.checkPreparation;
+    let tokens = 0,
+      fetches = 0;
+    deps.fetch = async () => {
+      fetches++;
+      throw Error("must not fetch");
+    };
+    await assert.rejects(
+      startInventoryEntry(
+        f.config,
+        {
+          workerAuthorization: async () => {
+            tokens++;
+            return "unused-dummy";
+          },
+        },
+        deps,
+      ),
+      /integrity_rejected/,
+    );
+    assert.equal(tokens, 0);
+    assert.equal(fetches, 0);
+    assert.equal(f.state.entropy, 0);
+    assert.equal(f.state.launches, 0);
+    assert.deepEqual(readdirSync(f.profile).sort(), before);
+  } finally {
+    f.cleanup();
+  }
+});
+
+test("manual active CLI rejects preparation before accessing token stdin", async () => {
+  const f = await fixture();
+  const descriptor = Object.getOwnPropertyDescriptor(process, "stdin");
+  const previous = process.env.HAB_INVENTORY_CONFIG;
+  try {
+    writeFileSync(join(f.profile, "config.yaml"), "dummy configuration drift", {
+      mode: 0o600,
+    });
+    const configPath = join(f.root, "active.local.json");
+    writeFileSync(configPath, JSON.stringify(f.config), { mode: 0o600 });
+    process.env.HAB_INVENTORY_CONFIG = configPath;
+    const { inventoryMain } = await import("../src/inventory-server.ts");
+    let reads = 0;
+    Object.defineProperty(process, "stdin", {
+      configurable: true,
+      get() {
+        reads++;
+        throw Error("must not read token input");
+      },
+    });
+    await assert.rejects(inventoryMain(), /integrity_rejected/);
+    assert.equal(reads, 0);
+    assert.equal(f.state.entropy, 0);
+    assert.equal(f.state.launches, 0);
+  } finally {
+    Object.defineProperty(process, "stdin", descriptor);
+    if (previous === undefined) delete process.env.HAB_INVENTORY_CONFIG;
+    else process.env.HAB_INVENTORY_CONFIG = previous;
+    f.cleanup();
+  }
+});
 const principal = { subject: "unused-local-label", operations: [] };
 const rawCall = async (entry, authorization, name, input) => {
   const response = await globalThis.fetch(entry.endpoint, {

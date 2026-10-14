@@ -453,6 +453,53 @@ export class InventoryInspector {
       throw Error("inventory_integrity_rejected");
     return result;
   }
+  /** Read-only checks of existing inputs; never runtime isolation evidence.
+   * PID, key/store identities and pre-process timestamps still require inspect(). */
+  async inspectPreparation(): Promise<void> {
+    const p = this.#policy;
+    const snapshot = async () => {
+      const profile = await this.owned(p.profileRoot, true, true);
+      const workdir = await this.owned(
+        join(p.profileRoot, "empty-workdir"),
+        true,
+        true,
+      );
+      if ((await readdir(join(p.profileRoot, "empty-workdir"))).length)
+        throw Error("inventory_preparation_workdir_rejected");
+      await this.owned(p.sourceRoot, true);
+      const wrapper = await this.pinnedFile(p.wrapperPath, p.wrapperSHA256);
+      const config = await this.pinnedFile(
+        join(p.profileRoot, "config.yaml"),
+        p.configSHA256,
+      );
+      await this.owned(join(p.profileRoot, "config.yaml"), false, true);
+      const python = await this.pinnedFile(
+        p.pythonPath,
+        p.pythonSHA256,
+        1048576,
+        p.codeTrees.some(
+          (t) =>
+            t.systemRuntime &&
+            (p.pythonPath === t.root || p.pythonPath.startsWith(`${t.root}/`)),
+        ),
+      );
+      for (const tree of p.codeTrees) {
+        const { root, sha256, ...options } = tree;
+        if ((await measureCodeTree(root, Infinity, options)) !== sha256)
+          throw Error("inventory_code_integrity_rejected");
+      }
+      return [profile, workdir, wrapper, config, python].map((s) => [
+        s.dev,
+        s.ino,
+        s.ctimeMs,
+        s.mode,
+      ]);
+    };
+    const first = await snapshot(),
+      second = await snapshot();
+    if (JSON.stringify(first) !== JSON.stringify(second))
+      throw Error("inventory_preparation_changed");
+  }
   private async snapshot() {
     const p = this.#policy;
     const manifestStat = await this.pinnedFile(

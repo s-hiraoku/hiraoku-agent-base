@@ -52,6 +52,37 @@ async function exclusiveFile(path: string, bytes: string) {
   }
 }
 
+/** Read-only artifact freshness and real Inspector input checks before provision.
+ * A successful return is not a live worker grant or isolation attestation. */
+export async function checkInventoryPreparation(plan: InventoryLaunchPlan) {
+  await plan.inspectPreparation();
+  const artifacts = plan.artifacts();
+  const manifest = JSON.parse(artifacts.manifestBytes);
+  const profile = manifest.profileRoot;
+  const stores = [
+    manifest.runStorePath,
+    manifest.evidencePath,
+    join(profile, "inventory-worker.sqlite"),
+  ];
+  const paths = [
+    artifacts.manifestPath,
+    artifacts.scopePath,
+    ...stores,
+    join(profile, "inventory-key-record.json"),
+    join(profile, "inventory.pid"),
+    ...stores.flatMap((path) =>
+      ["-wal", "-shm", "-journal"].map((s) => path + s),
+    ),
+  ];
+  for (const path of paths) {
+    try {
+      await lstat(path);
+      throw Error("inventory_existing_artifact_requires_reconciliation");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+}
 /** Local filesystem implementation, never an MCP tool or automatic entrypoint.
  * Refuses existing artifacts. Partial failure leaves evidence for reconciliation.
  */
@@ -182,6 +213,8 @@ export type InventoryFactoryOptions = {
   ) => Promise<{ hub: HubClient; principal: Principal }>;
 };
 type Dependencies = {
+  // Trusted in-process fixture seam; never serialized config/request arguments.
+  checkPreparation?: typeof checkInventoryPreparation;
   entropy?: (size: number) => Buffer;
   ttlMs?: number;
   child?: (launch: ReturnType<InventoryLaunchPlan["launch"]>) => InventoryChild;
@@ -197,6 +230,15 @@ export async function runInventoryOnce(
   options: InventoryFactoryOptions,
   dependencies: Dependencies = {},
 ) {
+  options.signal?.throwIfAborted();
+  const preparationPlan = new InventoryLaunchPlan(
+    options.reviewed,
+    "0".repeat(64),
+  );
+  await (dependencies.checkPreparation ?? checkInventoryPreparation)(
+    preparationPlan,
+  );
+  options.signal?.throwIfAborted();
   const lifetime = new LocalHermesKey();
   const controller = new AbortController();
   options.signal?.throwIfAborted();
