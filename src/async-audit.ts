@@ -12,6 +12,7 @@ const MAX_COUNT = 65535;
 /** One isolated writer, bounded acknowledged queue, fixed-memory rejection aggregation. */
 export class AsyncAudit implements Audit {
   private readonly port: AuditPort;
+  private termination?: Promise<number>;
   private readonly pending = new Map<
     number,
     { resolve(): void; reject(error: Error): void; timer: NodeJS.Timeout }
@@ -207,12 +208,26 @@ export class AsyncAudit implements Audit {
       entry.reject(new Error("Audit unavailable"));
     }
     this.pending.clear();
-    void this.port.terminate().catch(() => {});
+    void this.terminate().catch(() => {});
+  }
+  private terminate(): Promise<number> {
+    if (!this.termination) {
+      try {
+        this.termination = this.port.terminate();
+      } catch {
+        this.termination = Promise.reject(
+          new Error("Audit termination unconfirmed"),
+        );
+      }
+    }
+    return this.termination;
   }
   async close() {
     if (this.state !== "closed") this.fail();
     this.state = "closed";
     clearInterval(this.timer);
-    await this.port.terminate().catch(() => {});
+    await this.terminate().catch(() => {
+      throw new Error("Audit termination unconfirmed");
+    });
   }
 }

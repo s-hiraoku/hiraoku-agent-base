@@ -62,7 +62,13 @@ export function createMCP(
   events?: EventAPI,
   ping?: PingService,
   security?: SecurityContext,
+  toolMode: "all" | "ping-only" = "all",
 ) {
+  if (
+    toolMode === "ping-only" &&
+    (!ping || events || p.operations.some((op) => !op.startsWith("ping_")))
+  )
+    throw Error("ping_only_boundary_rejected");
   const server = new McpServer({ name: "agent-hub", version: "0.2.0" });
   server.server.registerCapabilities({ tools: { listChanged: false } });
   const invoke = async (name: string, args: unknown) => {
@@ -83,7 +89,9 @@ export function createMCP(
         throw new Error("unknown_tool");
     }
   };
-  for (const [name, schema] of Object.entries(schemas))
+  for (const [name, schema] of Object.entries(
+    toolMode === "ping-only" ? {} : schemas,
+  ))
     server.registerTool(
       name,
       {
@@ -211,6 +219,7 @@ export async function fetchMCP(
   ping?: PingService,
   security?: SecurityContext,
   responseMs = 30000,
+  toolMode: "all" | "ping-only" = "all",
 ): Promise<Response> {
   const metadata = oauth?.response(
     new URL(request.url).pathname +
@@ -268,7 +277,7 @@ export async function fetchMCP(
   )
     return new Response(null, { status: 405 });
   const handler = createMcpHandler(() =>
-    createMCP(hub, p, events, ping, security),
+    createMCP(hub, p, events, ping, security, toolMode),
   );
   let response: Response;
   try {
