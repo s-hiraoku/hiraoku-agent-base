@@ -94,6 +94,9 @@ sidecar/stop-failure cases. A synthetic callback success alone is not acceptance
    JSON object containing the already acquired Bearer authorization, then EOF.
    Do not paste tokens into a shell command/history. Prefer a reviewed in-memory
    operator integration calling `startInventoryEntry` with its token callback.
+   A [manual hidden-input helper](inventory-token-input.md) supplies an already
+   acquired worker token to this existing stdin contract without changing its
+   authentication or execution gates. Its dummy tests do not establish live readiness.
    Submit/get via authenticated MCP, observe result/closed state, and preserve
    evidence if reconciliation is required.
 
