@@ -44,6 +44,15 @@ export async function inventoryMain() {
   )
     throw Error("inventory_config_rejected");
   const { startInventoryEntry } = await import("./inventory-entry.ts");
+  // Fail read-only before even consuming the operator's worker Bearer.
+  const { InventoryLaunchPlan } = await import("./inventory-launch-plan.ts");
+  const { checkInventoryPreparation } = await import("./inventory-factory.ts");
+  await checkInventoryPreparation(
+    new InventoryLaunchPlan(
+      (config as { reviewed?: unknown }).reviewed,
+      "0".repeat(64),
+    ),
+  );
   let bytes = Buffer.alloc(0);
   const timeout = setTimeout(
     () => process.stdin.destroy(Error("inventory_input_timeout")),

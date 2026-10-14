@@ -7,7 +7,10 @@ import { ApprovedSubjects, Auth0Verifier, OAuthResource } from "./oauth.ts";
 import { handler } from "./mcp.ts";
 import { Hub } from "./sqlite.ts";
 import { InventoryLaunchPlan } from "./inventory-launch-plan.ts";
-import { runInventoryOnce } from "./inventory-factory.ts";
+import {
+  runInventoryOnce,
+  checkInventoryPreparation,
+} from "./inventory-factory.ts";
 import {
   INVENTORY_ONE_SHOT_KEY,
   InventoryMCPClient,
@@ -74,6 +77,9 @@ export async function startInventoryEntry(
   } catch {
     throw Error("inventory_entry_config_rejected");
   }
+  await (dependencies.factory?.checkPreparation ?? checkInventoryPreparation)(
+    plan,
+  );
   const profile = plan.policy({
     credential: { dev: 0, ino: 0, size: 65, mtimeMs: 0, ctimeMs: 0 },
     store: { dev: 0, ino: 0 },

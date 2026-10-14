@@ -118,6 +118,17 @@ export class InventoryLaunchPlan {
       throw Error("inventory_runtime_metadata_rejected");
     }
   }
+  async inspectPreparation(): Promise<void> {
+    // Structural placeholders are never persisted or returned as live evidence.
+    const inspector = new InventoryInspector(
+      this.policy({
+        credential: markerMetadata,
+        store: { dev: 0, ino: 0 },
+        evidenceStore: { dev: 0, ino: 0 },
+      }),
+    );
+    await inspector.inspectPreparation();
+  }
   /** Sensitive return value for a trusted local child factory only. Do not serialize/log.
    * No ambient env, shell, argv secret, default spawn or worker activation.
    */
