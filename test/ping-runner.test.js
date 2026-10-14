@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 import { Hub } from "../src/sqlite.ts";
+import { AsyncAudit } from "../src/async-audit.ts";
 import {
   startPingRunner,
   pingRunnerSettings,
@@ -348,6 +349,13 @@ test("in-process authenticated Grok/dots ping/pong exposes four tools only and r
       await rpc(grok, "tools/call", "submit", { request_key: "must-not-run" })
     ).json();
     assert.ok(refused.error || refused.result?.isError);
+    for (const port of [8787, 8789]) {
+      assert.equal(
+        (await runner.fetch(new Request(`http://127.0.0.1:${port}/hab/mcp`)))
+          .status,
+        403,
+      );
+    }
     assert.equal(
       (await runner.fetch(new Request("https://wrong.example/hab/mcp"))).status,
       403,
@@ -371,6 +379,32 @@ test("in-process authenticated Grok/dots ping/pong exposes four tools only and r
     assert.ok(!JSON.stringify(f.records).includes(dots));
   } finally {
     if (runner) await runner.close();
+    f.cleanup();
+  }
+});
+
+test("real AsyncAudit termination rejection propagates as runner stop uncertainty", async () => {
+  const f = fixture();
+  const port = new EventEmitter();
+  port.postMessage = () => {};
+  let terminations = 0;
+  port.terminate = async () => {
+    terminations++;
+    throw Error("PRIVATE_TERMINATION_DETAIL");
+  };
+  f.deps.createAudit = () => {
+    const audit = new AsyncAudit("unused", { port });
+    port.emit("message", { kind: "ready" });
+    return audit;
+  };
+  try {
+    const runner = await startPingRunner(settings(), f.root, f.deps);
+    await assert.rejects(runner.close(), /^Error: ping_runner_stop_uncertain$/);
+    await assert.rejects(runner.closed, /^Error: ping_runner_stop_uncertain$/);
+    assert.equal(f.server.listening, false);
+    assert.equal(terminations, 1);
+    assert.throws(() => f.state.hub.sqlite.db.prepare("SELECT 1"));
+  } finally {
     f.cleanup();
   }
 });

@@ -124,7 +124,7 @@ export function createRuntime(
     throw Error("runtime_config_rejected");
   }
   const allowedHosts = new Set([
-    "127.0.0.1:8787",
+    ...(dependencies.pingOnly ? [] : ["127.0.0.1:8787"]),
     ...(oauth ? [new URL(oauth.resource).host] : []),
   ]);
   const allowedOrigins = new Set(oauth ? [new URL(oauth.resource).origin] : []);
