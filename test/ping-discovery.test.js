@@ -130,6 +130,8 @@ test("only fixed metadata and 401 are exposed; every MCP operation and Bearer is
     );
     assert.equal((await request(app, "/mcp")).status, 404);
     assert.equal((await request(app, "/hab/mcp?other=1")).status, 404);
+    assert.equal((await request(app, metadata + "#fragment")).status, 404);
+    assert.equal((await request(app, "/hab/mcp#fragment")).status, 404);
     assert.equal(network, 0);
   } finally {
     globalThis.fetch = original;

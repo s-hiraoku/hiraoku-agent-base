@@ -126,7 +126,7 @@ export function createPingDiscovery(input: unknown) {
           return new Response(null, { status: 413 });
         }
         if (stopped) return new Response(null, { status: 503 });
-        return response(url.pathname + url.search, request.method);
+        return response(url.pathname + url.search + url.hash, request.method);
       } finally {
         context.release();
       }
