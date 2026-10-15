@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "mode": "ping-discovery",
+  "enabled": false,
+  "lifetimeMs": 900000,
+  "oauth": {
+    "issuer": "https://REPLACE.auth0.com/",
+    "resource": "https://hub.example/hab/mcp"
+  }
+}
