@@ -103,8 +103,9 @@ export class PingService {
           p.subject,
           p.clientId!,
         ),
+        // Materialize one DB-clock sample: SQLite UDF calls may cross a millisecond.
         sql(
-          `INSERT OR IGNORE INTO diagnostic_pings(id,correlation_id,request_key,sender_side,recipient_side,sender_subject,sender_client,recipient_subject,recipient_client,state,created,expires,authorization_epoch,actor_subject,actor_client,at) SELECT ?,?,?,?,?,?,?,?,?,'pending',${clock},${clock}+?,(SELECT epoch FROM authorization_state WHERE kind='global' AND target='*'),?,?,${clock} WHERE (SELECT COUNT(*) FROM diagnostic_pings WHERE sender_subject=? AND sender_client=? AND state='pending')<10 OR EXISTS(SELECT 1 FROM diagnostic_pings WHERE sender_subject=? AND sender_client=? AND request_key=?)`,
+          `WITH ping_clock AS MATERIALIZED (SELECT ${clock} AS now) INSERT OR IGNORE INTO diagnostic_pings(id,correlation_id,request_key,sender_side,recipient_side,sender_subject,sender_client,recipient_subject,recipient_client,state,created,expires,authorization_epoch,actor_subject,actor_client,at) SELECT ?,?,?,?,?,?,?,?,?,'pending',ping_clock.now,ping_clock.now+?,(SELECT epoch FROM authorization_state WHERE kind='global' AND target='*'),?,?,ping_clock.now FROM ping_clock WHERE (SELECT COUNT(*) FROM diagnostic_pings WHERE sender_subject=? AND sender_client=? AND state='pending')<10 OR EXISTS(SELECT 1 FROM diagnostic_pings WHERE sender_subject=? AND sender_client=? AND request_key=?)`,
           crypto.randomUUID(),
           crypto.randomUUID(),
           a.request_key,
