@@ -1,10 +1,12 @@
 # HAB — Hiraoku Agent Base
 
-HABは、個人文脈を持つDots（スタローン）、クラウドで働くGrok Bot、Macで実験・開発するHermesを、共通のAgent Hubでつなぐための基盤です。依頼・担当・進捗・結果を仲介し、それぞれのエージェントが持つ判断や既存の仕事を尊重します。Claude Code・Codex・Cursorも、将来の開発実行手段として位置づけます。
+HABは、個人文脈を持つDots（スタローン）、クラウドで働くGrok Bot、Macで実験・開発するHermesを、共通のAgent Hubでつなぐための基盤です。依頼・担当・進捗・結果を仲介し、それぞれのエージェントが持つ判断や既存の仕事を尊重します。Claude Code・Codex・Cursorなども、MCPクライアントとしての接続対象に含めます。配送の許可と、開発・業務を実行する権限は別に管理します。
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
-採用した通信設計は[HAB Relay正式仕様](docs/hab-relay-spec.md)で管理します。store-and-forward、個体認証、受信ACK、Task Engineとの接続、受入れ条件を定義しています。Relayの実装・実接続は今後の作業です。
+通信部分の**HAB Relay**は、HAB固有の登録・アドレス、Task Engine、製品別Adapterから独立した再利用可能なコンポーネントとして実装しています。[正式仕様](docs/hab-relay-spec.md)でstore-and-forward、個体認証、受信ACK、Task Engineとの境界、受入れ条件を管理し、[実装手順と検証範囲](src/relay/README.md)に現在の到達点を記録します。
+
+**現在はテキスト・構造化データの配送基盤と、未配線のMCP 4ツールを模擬接続で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 個体登録・認証binding、HTTP入口、MCPクライアント、添付bytes、運用整備などが残っています。
 
 ## 全体図
 
@@ -39,13 +41,35 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 永続タスクキュー、HTTP MCP、lease/fencing、監査・outbox、停止・照合                        | **実装済み**。SQLiteとローカルD1で失敗系を検証                                                                                   |
 | 固定テキストの`connectivity_check`、固定候補metadataの`shift_log_inventory`、診断ping/pong | **実装済み**。信頼済みpolicyで個別に許可する限定契約。自由入力・任意shellなし                                                    |
 | JWT/Auth0 resource-server、OAuth discovery、Events、限定キー管理、Hermes隔離bridge         | **実装済み**。通常runtimeと専用inventory入口の認証配線をfixtureで検証。本番の主体・設定・実接続は未確認                          |
+| Relayの独立契約・SQLite受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。本文はテキスト・構造化データ。管理添付は未対応として拒否し、配送受領だけでTaskを実行しない |
+| Relayの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
+| Relay専用MCP 4ツール | **実装済み／HTTP入口へ未配線**。`relay_submit/status/poll/ack`をSDKのin-process Request/Responseで検証。検証済みcontext・認可がなければ拒否 |
 | Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-実装baselineのCIではNode 292件・Python 23件、lint・typecheck・build・Ruffが成功し、依存auditは0件でした。これは本番接続の受入れではありません。最新のゲートは[MVP受入れ表](docs/mvp-acceptance.md)で管理します。
+2026-10-17のRelay MCP層までの検証（[PR #33](https://github.com/s-hiraoku/hiraoku-agent-base/pull/33)）では、Node **498件**・Python **47件**（34件＋13件）、lint・typecheck・build・Ruffが成功しました。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
-## 残しておく7項目
+## Relayの残りタスク
+
+以下は2026-10-17時点の残り**10大項目**です。項目ごとの規模は異なり、件数から完成率・納期を算出するものではありません。実装変更は通常PRに分け、依存する変更は`gh stack`で管理します。
+
+| 順序 | タスク | 完了の目安 |
+| --- | --- | --- |
+| 1・次 | HTTP MCP入口 | protocol処理前の認証、Host／Origin／path／method、raw body・時間・rate・同時数・応答上限、監査と未対応listener拒否 |
+| 2・次 | MCPクライアント | 永続outbox／inboxと通信を接続し、timeout・応答消失・再起動でも同じ要求で復旧 |
+| 3 | 登録・アドレス解決・認証binding | `<bot_name>@<agent_name>.hab`の半自動登録、個体IDとの対応、確定後の変更・再利用禁止、検証済み接続とのbinding、停止・失効 |
+| 4 | 管理添付 | 画像・音声・ファイルのupload、再開・finalize、digest／所有者／宛先検証、ACK前のdurable保存、削除・孤立回収 |
+| 5 | 個体別の容量・公平性 | 個体別quotaと最低枠、混雑時の公平な配送、有限backoffを検証 |
+| 6 | Task bridge | 受領・引受け・完了を分離し、許可済み固定Taskを最大1件で連携。結果再送で仕事を再実行しない |
+| 7 | 運用・復旧 | クリーンsetup、明示migration、保守実行、backup／restore、停止・照合・復旧手順 |
+| 8 | 統合試験 | registry・HTTP通信込みの模擬3個体で、不在・失効・競合・停止・復旧・loop制御を検証 |
+| 9・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
+| 10・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
+
+次の到達点は、1〜3と8の対応範囲をそろえ、**HTTP経由で模擬エージェント3個体が往復できること**です。添付を含む初版仕様の完成と、実製品での本番往復は別の到達点として確認します。実製品の読み取り調査は先行できますが、新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+
+## ドキュメント一覧
 
 | 文書                                          | 内容                                                           |
 | --------------------------------------------- | -------------------------------------------------------------- |
@@ -66,10 +90,13 @@ npm ci
 npm run lint
 npm run typecheck
 npm test
-python3 -m unittest hermes_bridge.test_inventory_agent hermes_bridge.test_launch_manifest
+python3 -B -m unittest discover -s hermes_bridge -p 'test_*.py'
+python3 -B -m unittest scripts.test_inventory_token_input
 ```
 
 `node src/server.ts` はloopback HTTP MCPを起動しますが、既定の認証は全件拒否です。Auth0・peer registry・必要なserviceを明示的に配線するまで本番Hubとして公開しません。`npm run build` はWorker版を生成します。D1/Workerは移植性の検証対象で、現在の本番方針はMac＋SQLiteです。
+
+上記のserverは既存Task用で、Relay専用MCP factoryは未配線です。Relayだけの模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
 
 通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
 
