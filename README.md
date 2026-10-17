@@ -47,11 +47,12 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | Relay専用MCPクライアント | **実装済み／模擬検証済み**。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
 | HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、変更／再利用禁止、権限分離、有効化・失効・blockを実装。HAB専用catalogの`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復。既存runtimeへは未配線 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
+| 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
 | Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-2026-10-17の人向け登録フローまでのローカル検証では、Node **628件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+2026-10-17の登録・配送統合までのローカル検証では、Node **645件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## Relayの残りタスク
 
@@ -64,11 +65,11 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 3 | 個体別の容量・公平性 | 個体別quotaと最低枠、混雑時の公平な配送、有限backoffを検証 |
 | 4 | Task bridge | 受領・引受け・完了を分離し、許可済み固定Taskを最大1件で連携。結果再送で仕事を再実行しない |
 | 5 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守実行、backup／restore、停止・照合・復旧手順 |
-| 6 | 統合試験 | registry・HTTP通信込みの模擬3個体で、不在・失効・競合・停止・復旧・loop制御を検証 |
+| 6・進行中 | 統合試験 | 人向け登録→HTTP配送→不在・失効・競合・停止・復旧の17シナリオは確認済み。添付、実Adapterのloop制御、運用restore等は機能追加とともに拡張 |
 | 7・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
 | 8・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-MCPアドレス解決を含む模擬3個体のHTTP往復は確認済みです。送信受付の応答消失後にoutbox／clientを再起動しても、保存した宛先IDで再送し、アドレスを再解決せず復旧します。登録フローも専用DBの再起動後に同じ要求から再開し、途中の停止・失効・接続変更を拒否します。次の到達点は、管理フローとHTTP配送を統合し、**登録から停止・不在・競合・復旧まで一連の操作で再現できること**です。添付を含む初版仕様の完成と、実製品での本番往復は別の到達点として確認します。実製品の読み取り調査は先行できますが、新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+人向け登録から模擬3個体のHTTP往復・停止・不在・競合・復旧まで、[17シナリオ](docs/hab-relay-integration.md)を一連で確認しました。送信受付の応答消失後も保存した宛先IDで再送し、アドレスを再解決せず復旧します。途中の停止・失効では再送を隔離し、登録フロー再実行で権限を復活させません。次の実装は**管理添付のupload・finalize・所有者／宛先・digest検証・durable受信**です。添付を含む初版仕様の完成と、実製品での本番往復は別の到達点として確認します。実製品の読み取り調査は先行できますが、新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
 ## ドキュメント一覧
 
@@ -100,6 +101,8 @@ python3 -B -m unittest scripts.test_inventory_token_input
 上記のserverは既存Task用で、Relay専用HTTP adapterは別moduleとして存在し、このserverへは未配線です。Relayだけの模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
 
 人向け登録フローは`npm run demo:hab-enrollment -- --simulate`で、中断→DB再起動→有効化を再現できます。対話操作は`--interactive`を指定します。どちらも新規の一時DB・模擬主体のみを使い、終了時に削除します。実Botを登録するコマンドではありません。実hostへの組込み条件と再開時の扱いは[登録フロー](src/hab/README.md#human-enrollment-workflow)を参照してください。
+
+登録からHTTP配送・停止・復旧までの一連の模擬検証は`npm run test:hab-integration`で再現できます。[試験matrix](docs/hab-relay-integration.md)には、17件の結果と障害注入の方法、本番接続に進む前の未確認範囲を記録しています。
 
 通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
 

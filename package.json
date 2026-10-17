@@ -8,6 +8,7 @@
   },
   "scripts": {
     "demo:hab-enrollment": "node scripts/hab-enrollment-demo.mjs",
+    "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
     "test": "npm run build && node --test test/*.test.js",
     "check": "tsc --noEmit",
     "lint": "eslint src db test",
