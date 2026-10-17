@@ -56,6 +56,7 @@ export interface BindingRecord {
   agent_epoch: number;
 }
 export type AdminOperation =
+  | "catalog"
   | "preview"
   | "inspect"
   | "product"

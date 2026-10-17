@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "demo:hab-enrollment": "node scripts/hab-enrollment-demo.mjs",
     "test": "npm run build && node --test test/*.test.js",
     "check": "tsc --noEmit",
     "lint": "eslint src db test",
