@@ -74,7 +74,11 @@ export interface RegistryAuthority {
   /** Host has actually authenticated a specific individual, not just its owner. */
   individual?(context: unknown): VerifiedIndividual | undefined;
 }
-const slugPattern = /^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$/;
+const slugExpression = "[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?";
+// JavaScript $ alone also matches before a final line terminator.
+const endOfInput = "$(?![\\s\\S])";
+export const HAB_ADDRESS_PATTERN = `^${slugExpression}@${slugExpression}\\.hab${endOfInput}`;
+const slugPattern = new RegExp(`^${slugExpression}${endOfInput}`);
 export function habSlug(value: unknown): string {
   if (typeof value !== "string" || !slugPattern.test(value))
     throw new RegistryError("invalid_registry_request");

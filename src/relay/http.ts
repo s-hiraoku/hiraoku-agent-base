@@ -4,6 +4,8 @@ import type { AuditSink, AuditCategory } from "../security.ts";
 import { protocolAdmission } from "../protocol.ts";
 import { createRelayMcpServer, relayMcpSchemas } from "./mcp.ts";
 import type { RelayMcpGate } from "./mcp.ts";
+import type { RelayContextResolver } from "./mcp.ts";
+import type { z } from "zod";
 import type { RelayOperations } from "./service.ts";
 export interface RelayHttpPolicy {
   resource_url: string;
@@ -53,6 +55,13 @@ export class RelayHttpGateway {
   readonly #service: RelayOperations;
   readonly #audit: AuditSink;
   readonly #verify: RelayHttpVerifier;
+  /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
+  protected get toolSchemas(): Record<string, z.ZodType> {
+    return relayMcpSchemas;
+  }
+  protected createServer(resolve: RelayContextResolver, gate: RelayMcpGate) {
+    return createRelayMcpServer(this.#service, resolve, gate);
+  }
   #window = 0;
   #requests = 0;
   #active = 0;
@@ -289,7 +298,7 @@ export class RelayHttpGateway {
           !(await protocolAdmission(
             parsed,
             request.headers.get("mcp-method") ?? undefined,
-            relayMcpSchemas,
+            this.toolSchemas,
             {
               correlation,
               record,
@@ -312,14 +321,10 @@ export class RelayHttpGateway {
           throw new HttpFailure(400, "transport_error");
         check();
         handler = createMcpHandler(() =>
-          createRelayMcpServer(
-            this.#service,
-            () => {
-              check();
-              return context;
-            },
-            gate,
-          ),
+          this.createServer(() => {
+            check();
+            return context;
+          }, gate),
         );
         // Forward only MCP framing, never cookies, credentials, host audit IDs or forwarded identities.
         const safeHeaders = new Headers();

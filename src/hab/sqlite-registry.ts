@@ -35,7 +35,7 @@ export interface RegistryOptions {
   busy_timeout_ms: number;
   allowed_kinds: readonly string[];
 }
-const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
+const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
 const slug = z.string().refine((value) => {
   try {
     habSlug(value);
@@ -48,7 +48,7 @@ const claim = z
   .string()
   .min(1)
   .max(512)
-  .regex(/^[^\x00-\x1f\x7f]+$/);
+  .regex(/^[^\x00-\x1f\x7f]+$(?![\s\S])/);
 const principalSchema = z.strictObject({
   issuer: claim,
   audience: claim,

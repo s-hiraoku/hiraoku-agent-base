@@ -30,6 +30,9 @@ test("version-1 names are canonical ASCII slugs; address parser never normalizes
     "x".repeat(49),
     "a@b",
     "a\nb",
+    "a\n",
+    "a\r",
+    "a\u2028",
     "",
   ])
     assert.throws(
@@ -45,6 +48,8 @@ test("version-1 names are canonical ASCII slugs; address parser never normalizes
     "a@@grok-bot.hab",
     "a@grok-bot",
     "a@grok-bot.hab ",
+    "a@grok-bot.hab\n",
+    "a\n@grok-bot.hab",
   ])
     assert.throws(() => parseHabAddress(s), code("invalid_registry_request"));
 });
@@ -333,6 +338,24 @@ test("full principal tuple is exclusive and never rebound, including after revoc
       }),
     code("invalid_registry_request"),
   );
+  for (const input of [
+    {
+      request_id: "bad-claim",
+      agent_id: b.agent_id,
+      expected_epoch: 1,
+      principal: principal("b", { subject: "shared-owner\n" }),
+    },
+    {
+      request_id: "bad-id\n",
+      agent_id: b.agent_id,
+      expected_epoch: 1,
+      principal: principal("b"),
+    },
+  ])
+    assert.throws(
+      () => f.registry.bind(f.admin, input),
+      code("invalid_registry_request"),
+    );
 });
 
 test("retirement is terminal and database guards preserve ID/address/principal reservations", (t) => {

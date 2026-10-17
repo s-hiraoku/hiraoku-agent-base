@@ -102,14 +102,66 @@ accepted remain tracked until normal ACK/expiry; registry changes never delete
 Relay data. A sender with current status rights can inspect its own receipt even
 when the peer is stopped; it cannot inspect another sender's receipt.
 
-`resolve(context,address)` is currently a **local host API**, requiring both
+`resolve(context,address)` is a local host API, also exposed by the optional HAB
+MCP adapter below. It requires both
 resolve and submit grants. It returns only the immutable recipient ID, exact
 address and normalization version. Unknown, inactive and blocked targets share
 `forbidden`. Malformed syntax has a fixed validation error. Save the resolved ID
 in the durable outbox before sending; retries use that stored ID and never
 re-resolve or redirect it. Acceptance still checks current state, so a cached
-resolution cannot bypass a later stop. The four-tool MCP catalog is unchanged:
-`relay_resolve` and a user-facing enrollment CLI/UI are separate next work.
+resolution cannot bypass a later stop. The standalone Relay catalog remains
+four tools. Human enrollment CLI/UI remains separate next work.
+
+## Optional HAB MCP/HTTP and client
+
+`./mcp.ts` provides `createHabMcpServer`: exactly the four Relay tools plus
+`relay_resolve`. Its strict input is `{address}` using the shared version-1 HAB
+grammar, including a published JSON Schema pattern. It accepts no sender,
+principal, mailbox, recipient selector or alternative URL. The result contains
+only `{recipient_id,address,normalization_version:1}`. Lookup is read-only and
+idempotent as a query; hints never replace current authorization. Registration,
+binding, activation, maintenance, Task, arbitrary shell and subscriptions are
+absent. Importing the generic Relay factory still exposes exactly four tools,
+even when the supplied service also implements the HAB directory interface.
+
+The explicit `HabHttpGateway` in `./http.ts` selects that catalog using host-code
+composition hooks in the existing gateway. It inherits the same mandatory
+verification-before-protocol, fixed resource/Host/Origin checks, input/response
+byte limits, deadline, active/rate limits and audit. The common MCP executor
+rechecks the gate after async context resolution and before the synchronous
+operation. A late/stalled verifier or audit cannot dispatch lookup after timeout
+or release admission early. Missing verification is all-deny; no fallback to an
+anonymous or different catalog is installed. Construction starts no listener,
+edits no runtime and provisions no credentials. The optional Node callback works
+with this gateway; the activating host still owns its TCP/header/proxy/TLS bounds.
+
+`HabMcpClient` in `./mcp-client.ts` adds the fixed `resolve(address)` operation to
+`RelayMcpClient`. The protected host-subclass transport hook carries no HAB naming
+policy into reusable Relay code. It shares that client's fixed endpoint, existing
+credential port, JSON/SSE decoding, response limits, deadline and active counter
+with submit/status/poll/ACK. No generic tool-call MCP API, arbitrary destination,
+OAuth flow, implicit send or automatic retry is added. Input is validated before
+network IO; output must match the exact requested canonical address, known
+normalization version and opaque-ID syntax, with no unknown fields. Unexpected
+results/errors fail with fixed codes and no raw private details.
+
+After configuring private stores and a verified connection, host code explicitly
+resolves once and persists the ID before sending:
+
+```ts
+const target = await habClient.resolve("research@grok-bot.hab");
+sender.enqueue({ ...preparedSubmission, recipient_id: target.recipient_id });
+await sender.sendOnce();
+```
+
+`preparedSubmission` carries the already fixed message ID and original deadline.
+Further attempts call `sendOnce()` against the journal, without another lookup.
+Reopening a client/outbox after a lost acceptance response preserves that same
+ID/recipient and recovers the original receipt. Lookup itself creates no message,
+reservation or durable send intent; if its response is lost, nothing is sent and
+the caller owns any finite retry/earlier intent persistence. A cached lookup gives
+no delivery guarantee: acceptance always rechecks current state. Wire address
+resolution is locally tested, not enabled on an existing production endpoint.
 
 ## Storage, capacity and stopping
 
@@ -149,18 +201,23 @@ to a fixed registry error; the HTTP MCP boundary retains its existing redaction.
 node --test test/hab-*.test.js
 ```
 
-The 31 tests cover naming, immutable/permanent reservations, concurrent enrollment
+The 44 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
 from independent workers, idempotent restart, explicit activation, separate admin
 authority, principal tuple separation, binding rotation/revocation, CAS epochs,
 operation/kind/block policy, escaped grants, rollback, private/schema/key guards,
-capacity and durable emergency stop. Three native loopback HTTP cases connect
-registered mock Grok/dot/Hermes labels to private durable journals, send/reply/ACK,
-check foreign receipt refusal and deny cached resolution after stop. A second
+capacity and durable emergency stop. Four native loopback HTTP cases connect
+registered mock Grok/dot/Hermes labels to MCP lookup and private durable journals,
+send/reply/ACK, recover lost acceptance after journal/client restart without
+re-resolution, check foreign receipt refusal, deny cached resolution after stop
+and retry a lost lookup without creating a message. A second
 registry connection is unable to revoke in the Relay authorization/commit gap.
+Catalog/contract/client tests also cover separation from standalone Relay,
+malformed/foreign arguments, revoked/missing context, unknown/blocked targets,
+redacted failures, JSON/SSE, byte/concurrency limits and stalled audit admission.
 
 This is local mock evidence, **not real product identity verification or completed
-G1/full initial release**. MCP address-resolution exposure, human enrollment
-workflow, per-individual fairness/quotas, managed attachments, automatic-reply
+G1/full initial release**. Human enrollment workflow,
+per-individual fairness/quotas, managed attachments, automatic-reply
 budgets, operational activation and complete failure/restore coverage remain.
 No real product is enrolled or contacted. New credential issuance, public routes,
 paid contracts, background activation and real connections require their separate

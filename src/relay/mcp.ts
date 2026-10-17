@@ -64,6 +64,57 @@ export interface RelayMcpGate {
   check(): void;
   begin(): Promise<(success: boolean) => Promise<void>>;
 }
+/** Shared optional transport boundary. Operations stay synchronous after verified context resolution. */
+export async function executeRelayMcpOperation(
+  resolveContext: RelayContextResolver,
+  gate: RelayMcpGate | undefined,
+  operation: (context: unknown) => unknown,
+) {
+  let finish: ((success: boolean) => Promise<void>) | undefined;
+  try {
+    gate?.check();
+    finish = await gate?.begin();
+    let context: unknown;
+    try {
+      context = await resolveContext();
+    } catch {
+      throw new RelayError("forbidden");
+    }
+    if (context === null || context === undefined || context === false)
+      throw new RelayError("forbidden");
+    gate?.check();
+    const value = operation(context);
+    if (value && typeof value === "object" && "then" in value) {
+      void Promise.resolve(value).catch(() => {});
+      throw new RelayError("relay_operation_failed");
+    }
+    const output = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    await finish?.(true);
+    gate?.check();
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(output) }],
+      structuredContent: output,
+    };
+  } catch (error) {
+    try {
+      await finish?.(false);
+    } catch {
+      /* A service may already have committed; never repeat it here. */
+    }
+    const code =
+      (error instanceof RelayError || error instanceof ContractError) &&
+      isRelayMcpError(error.code)
+        ? error.code
+        : "relay_operation_failed";
+    return {
+      isError: true,
+      content: [
+        { type: "text" as const, text: JSON.stringify({ error: code }) },
+      ],
+      structuredContent: { error: code },
+    };
+  }
+}
 export function createRelayMcpServer(
   service: RelayOperations,
   resolveContext: RelayContextResolver = () => null,
@@ -84,69 +135,22 @@ export function createRelayMcpServer(
           idempotentHint: tool !== "relay_poll",
         },
       },
-      async (input: unknown) => {
-        let finish: ((success: boolean) => Promise<void>) | undefined;
-        try {
-          gate?.check();
-          finish = await gate?.begin();
-          let context: unknown;
-          try {
-            context = await resolveContext();
-          } catch {
-            throw new RelayError("forbidden");
-          }
-          if (context === null || context === undefined || context === false)
-            throw new RelayError("forbidden");
-          gate?.check();
-          let value: unknown;
+      (input: unknown) =>
+        executeRelayMcpOperation(resolveContext, gate, (context) => {
           switch (tool) {
             case "relay_submit":
-              value = service.submit(context, input);
-              break;
+              return service.submit(context, input);
             case "relay_status":
-              value = service.status(
+              return service.status(
                 context,
                 relayMcpSchemas.relay_status.parse(input).message_id,
               );
-              break;
             case "relay_poll":
-              value = { delivery: service.poll(context) };
-              break;
+              return { delivery: service.poll(context) };
             case "relay_ack":
-              value = service.ack(context, input);
-              break;
+              return service.ack(context, input);
           }
-          // Results have a single JSON representation for text and structured clients.
-          const output = JSON.parse(JSON.stringify(value)) as Record<
-            string,
-            unknown
-          >;
-          await finish?.(true);
-          gate?.check();
-          return {
-            content: [{ type: "text" as const, text: JSON.stringify(output) }],
-            structuredContent: output,
-          };
-        } catch (error) {
-          try {
-            await finish?.(false);
-          } catch {
-            // The service may already have committed: return no success, never repeat it here.
-          }
-          const code =
-            (error instanceof RelayError || error instanceof ContractError) &&
-            isRelayMcpError(error.code)
-              ? error.code
-              : "relay_operation_failed";
-          return {
-            isError: true,
-            content: [
-              { type: "text" as const, text: JSON.stringify({ error: code }) },
-            ],
-            structuredContent: { error: code },
-          };
-        }
-      },
+        }),
     );
   }
   return server;
