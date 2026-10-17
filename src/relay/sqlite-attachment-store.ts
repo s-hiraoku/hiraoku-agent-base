@@ -5,7 +5,14 @@ import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { RelayError } from "./service.ts";
 import { RECORD_RETENTION_MS, comparisonMaterial } from "./contract.ts";
 import type { ContractLimits, Submission } from "./contract.ts";
-import type { Acceptance, Receipt } from "./service.ts";
+import type { Acceptance, Receipt, ReceiveAuthorization } from "./service.ts";
+import { parseAttachmentRead } from "./attachment-read.ts";
+import type {
+  AttachmentReadRequest,
+  AttachmentReadGrant,
+  AttachmentChunk,
+  AttachmentChunkStore,
+} from "./attachment-read.ts";
 import { parseAttachmentMessage } from "./attachment-bindings.ts";
 import type {
   AttachmentBindingStore,
@@ -117,10 +124,13 @@ const knownErrors = new Set([
   "upload_bound",
   "invalid_attachment_message",
   "attachment_binding_unavailable",
+  "invalid_attachment_read",
+  "attachment_read_not_found",
+  "attachment_integrity_failed",
 ]);
 
 export class SQLiteAttachmentStore
-  implements AttachmentUploadStore, AttachmentBindingStore
+  implements AttachmentUploadStore, AttachmentBindingStore, AttachmentChunkStore
 {
   readonly #db: DatabaseSync;
   readonly #options: AttachmentStoreOptions;
@@ -909,6 +919,141 @@ export class SQLiteAttachmentStore
     } catch {
       throw new RelayError("attachment_binding_unavailable");
     }
+  }
+  /** Return at most one authenticated chunk under the live Relay read guard. */
+  read(
+    input: AttachmentReadRequest,
+    grant: AttachmentReadGrant,
+    limits: ContractLimits,
+    authorize: ReceiveAuthorization,
+  ): AttachmentChunk {
+    const request = parseAttachmentRead(input);
+    return this.#tx(() => {
+      grant.assertCurrent();
+      const now = this.#now();
+      const identity = () => {
+        try {
+          const id = authorize({
+            sender_id: grant.sender_id,
+            kind: grant.message.kind,
+          });
+          if (id && typeof id === "object" && "then" in id) {
+            void Promise.resolve(id).catch(() => {});
+            throw Error();
+          }
+          return uploadIdentifier(id);
+        } catch {
+          throw new RelayError("forbidden");
+        }
+      };
+      const receiver = identity();
+      if (
+        grant.sender_id !== request.sender_id ||
+        grant.message.message_id !== request.message_id ||
+        grant.message.recipient_id !== receiver ||
+        Date.parse(grant.message.expires_at) <= now ||
+        grant.receipt.sender_id !== grant.sender_id ||
+        grant.receipt.recipient_id !== receiver ||
+        grant.receipt.message_id !== request.message_id ||
+        grant.receipt.expires_at !== grant.message.expires_at ||
+        !["pending", "leased"].includes(grant.receipt.state)
+      )
+        throw new RelayError("attachment_read_not_found");
+      const binding = this.#bindingRow(grant.sender_id, request.message_id);
+      const confirmed =
+        binding.receipt === null
+          ? null
+          : (JSON.parse(binding.receipt) as Receipt);
+      if (
+        !confirmed ||
+        confirmed.receipt_id !== grant.receipt.receipt_id ||
+        confirmed.accepted_at !== grant.receipt.accepted_at
+      )
+        throw new RelayError("attachment_read_not_found");
+      this.checkPrepared(
+        {
+          sender_id: grant.sender_id,
+          message: grant.message,
+          comparison_material: comparisonMaterial(
+            grant.sender_id,
+            grant.message,
+            limits,
+          ),
+        },
+        limits,
+      );
+      const part = grant.message.body.parts.find(
+        (p) =>
+          p.type === "attachment" && p.attachment_id === request.attachment_id,
+      );
+      if (!part || part.type !== "attachment")
+        throw new RelayError("attachment_read_not_found");
+      const ref = this.#db
+        .prepare(
+          "SELECT 1 FROM attachment_refs WHERE attachment_id=? AND owner_id=? AND message_id=?",
+        )
+        .get(request.attachment_id, grant.sender_id, request.message_id);
+      if (!ref) throw new RelayError("attachment_read_not_found");
+      const row = this.#row(request.attachment_id),
+        intent = this.#intent(row);
+      const { type: _type, attachment_id: _id, ...descriptor } = part;
+      void _type;
+      void _id;
+      if (
+        row.owner_id !== grant.sender_id ||
+        intent.message_id !== request.message_id ||
+        intent.recipient_id !== receiver ||
+        intent.kind !== grant.message.kind ||
+        intent.first_sent_at !== grant.message.first_sent_at ||
+        intent.expires_at !== grant.message.expires_at ||
+        JSON.stringify(intent.attachment) !== JSON.stringify(descriptor)
+      )
+        throw new RelayError("attachment_integrity_failed");
+      if (
+        request.offset > row.size_bytes ||
+        (request.offset !== row.size_bytes &&
+          request.offset % row.chunk_bytes !== 0)
+      )
+        throw new RelayError("invalid_attachment_read");
+      let data = new Uint8Array();
+      if (request.offset < row.size_bytes) {
+        const chunk = this.#db
+          .prepare(
+            "SELECT fingerprint,length(data) bytes,substr(data,1,?) data FROM attachment_chunks WHERE attachment_id=? AND offset=?",
+          )
+          .get(row.chunk_bytes + 1, request.attachment_id, request.offset);
+        if (
+          !chunk ||
+          !(chunk.data instanceof Uint8Array) ||
+          chunk.bytes !== chunk.data.byteLength ||
+          chunk.data.byteLength !==
+            Math.min(row.chunk_bytes, row.size_bytes - request.offset) ||
+          chunk.fingerprint !== this.#hash("chunk-v1", chunk.data)
+        )
+          throw new RelayError("attachment_integrity_failed");
+        data = Uint8Array.from(chunk.data);
+      }
+      this.#guards.push(() => {
+        grant.assertCurrent();
+        if (identity() !== receiver) throw new RelayError("forbidden");
+        if (Date.parse(grant.message.expires_at) <= this.#now())
+          throw new RelayError("attachment_read_not_found");
+      });
+      return {
+        version: 1,
+        sender_id: grant.sender_id,
+        recipient_id: receiver,
+        message_id: request.message_id,
+        attachment_id: request.attachment_id,
+        expires_at: grant.message.expires_at,
+        ...descriptor,
+        offset: request.offset,
+        next_offset: request.offset + data.byteLength,
+        chunk_bytes: row.chunk_bytes,
+        eof: request.offset + data.byteLength === row.size_bytes,
+        data,
+      };
+    });
   }
   close() {
     this.#ready = false;

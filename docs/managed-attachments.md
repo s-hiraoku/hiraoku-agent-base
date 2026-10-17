@@ -2,7 +2,7 @@
 
 [README](../README.md) · [正式仕様](hab-relay-spec.md) · [Relay実装](../src/relay/README.md)
 
-uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、**受信bytes取得・ACK前のdurable保存・削除outbox・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
+uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。**HAB取得guard・ACK前のdurable保存・削除outbox・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
 
 ## 契約
 
@@ -50,8 +50,22 @@ hostは専用Relay storeへ同期`AttachmentAdmission.check`を明示注入す�
 
 添付受付を有効にしたstoreでも、pollは添付を含むmessageをskipし、ACKは`attachment_delivery_unavailable`で拒否する。metadataだけを受領済みにしないための暫定境界であり、配送機能の完成ではない。scanは既存の有限上限内であり、多数の保留添付がある場合の公平性は未検証である。hostはpolicy guardを取得して各DB操作完了まで保持する必要がある。[HabAttachmentAcceptance](../src/hab/attachment-acceptance.ts)がこのcoordinatorをregistryの同期guardで包む。registry → upload prepare → Relay acceptance → upload confirmの順で、registry lockだけを全体に保持する。submit権限だけで元受付のexact retryを照合でき、公開statusには別のstatus権限が必要である。scoped decisionはcallback外へ持ち出せず、別接続の停止・失効は処理の前後へ直列化される。ただし他DBのcommitをregistry rollbackで巻き戻すことはできない。認証contextが受付後に期限切れとなれば、保存した予約・元receiptを維持し、新しい検証済みcontextで照合する。
 
+## 受信者認可付きchunk取得
+
+[attachment-read.ts](../src/relay/attachment-read.ts)の`AttachmentReadService`は取得専用の任意host APIである。呼出し入力は`version:1,sender_id,message_id,attachment_id,offset`だけを許可し、receiver、取得URL、path、自由なrange長、受付証明は受け付けない。sender IDは検索用であり認証ではない。現在の受信主体とpoll権限はhostで検証したcontextから決め、保存済みsender／kindに対する現在ポリシーも確認する。未注入・例外・非同期decisionは拒否する。
+
+固定のRelay storeが自身のtransaction内で、受信者にscopeした元受付、pending／leased状態、残っている本文、元期限、本文全体のfingerprintと添付所属を確認する。upload storeは確定済みbindingのreceipt identity、message全体のfingerprint、順序付きfinalized参照とmanifestを再確認する。未参照upload、prepareだけの予約、confirm未完了の受付からbytesは取得できない。Relay callback中だけ有効なguardは持ち出せず、保存済みproofを後から再利用できない。
+
+取得は固定chunk境界のoffsetから1chunkだけを返す。末尾だけ短くなり、全長offsetでは空のEOF、空ファイルではoffset 0の空EOFとなる。chunk上限はhostの保存policy（最大1 MiB）であり、callerは指定できない。DBからの読み出しもchunk長＋1に制限し、長さと鍵付きchunk fingerprintを確認してcopyする。異offset・破損・欠落は固定エラーとし、黙って欠落したbytesを返さない。EOFはclientがそれ以前の全bytesを保存・検証した証明ではない。
+
+同じoffsetのretryは同じbytes・manifest・元期限を返し、serverの進捗や期限を更新しない。clientは元message／添付IDと次offsetをdurable保存してから再開する必要があるが、そのreceiver実装は後続である。finalize時の全体SHA検証に加え、receiverも全体byte長・SHAを確認してから保存完了と扱う。
+
+lock順はRelay → upload DBであり、両方のguard完了後にchunkを返す。取得中のterminal化はRelay write guardで直列化し、ACK済み・期限切れ・隔離・本文削除後は拒否する。送信者の権限や添付IDの所持だけでは取得できない。chunk取得後も権限と期限を再確認し、途中失効／期限到来なら呼出し元へbytesを返さない。HAB registryと組み立てる場合はregistry guardを最初に取得する必要があり、その専用wrapperは後続である。guardなしの外部認可cacheはこの保証を持たない。
+
+このAPIはlease発行・配送ACK・受信保存・削除を行わず、取得のための新規credential、公開URL、MCP toolやrouteも作らない。default Relayは添付admission未注入なら取得も拒否する。通常pollは添付messageを引き続き保留し、ACKも拒否する。取得APIの成功を配送完了や実エージェント接続の成功とは扱わない。
+
 ## 検証と次の層
 
 `node --test test/relay-attachments.test.js`の25件でbinary／空ファイル、strict schema、外国体拒否、現在権限、再開・冪等、digest／chunk破損、rollback、容量予約、期限・30日GC、private file／schema／key、競合・再入を検証する。期限とretentionは専用一時DBだけをagingし、実時間を待つ試験ではない。実ファイルやcredentialは使わない。
 
-HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。参照確定の18件と受付の12件では、実SQLiteの原子的pin、cancel競合、migration、期限・順序付きGC、受付前後の障害、両DBのreopen、応答消失、容量不足、再照合、配送／ACK拒否を追加検証した。独立DBのreopen試験はbackup restoreや電源断の耐久性試験ではない。HAB受付guardの14件では別接続によるprepare／Relay commit／confirm間の失効競合、submitとstatusの分離、停止・block・binding失効、持ち出したdecision、実際の短いcontext期限切れと再照合も確認した。次は認証付き取得、receiverのdurable保存とACK連携、削除outbox、MCP転送、backup整合を実装する。受付単体の成功を添付配送や本番3者接続の完了とは扱わない。
+HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。参照確定の18件と受付の12件では、実SQLiteの原子的pin、cancel競合、migration、期限・順序付きGC、受付前後の障害、両DBのreopen、応答消失、容量不足、再照合、配送／ACK拒否を追加検証した。独立DBのreopen試験はbackup restoreや電源断の耐久性試験ではない。HAB受付guardの14件では別接続によるprepare／Relay commit／confirm間の失効競合、submitとstatusの分離、停止・block・binding失効、持ち出したdecision、実際の短いcontext期限切れと再照合も確認した。受信chunk取得の21件でbinary再構成、空／EOF、再開・reopen、外国体／所属違い、未確定拒否、ACK・期限・隔離後拒否、破損／過大BLOB、持ち出したguard、競合・取得中失効／期限到来を追加検証した。次はHAB取得guard、receiverのdurable保存とACK連携、削除outbox、MCP転送、backup整合を実装する。受付単体の成功を添付配送や本番3者接続の完了とは扱わない。
