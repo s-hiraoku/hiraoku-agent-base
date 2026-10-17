@@ -37,3 +37,11 @@ export type {
   ReceiverStore,
   InboxEntry,
 } from "./receiver.ts";
+export { DurableSender } from "./sender.ts";
+export type {
+  SenderTransport,
+  SenderStore,
+  SendJob,
+  OutboxRecord,
+  OutboxState,
+} from "./sender.ts";
