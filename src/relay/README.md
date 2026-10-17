@@ -3,7 +3,7 @@
 Import from `./index.ts`. This module owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.
 It validates a version-1 caller submission and supplies stable comparison material.
-Service and SQLite delivery are described in the later implementation steps; nothing is exposed through HTTP or MCP.
+Service and SQLite delivery are described below. The optional MCP factory in step 9 is unmounted; no deployed HTTP endpoint is changed.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -346,3 +346,56 @@ release failure, loss/restart, stale replay, live/exhausted ACKs, unconsumed bod
 quota recovery, legacy holds, retention guards, atomic rollback and migration.
 Production MCP/agent integration, actual application storage, scheduled upkeep,
 backup expiry and managed attachment bytes remain separate work.
+
+
+## Implementation step 9: isolated MCP tool catalog
+
+Import `createRelayMcpServer` and `relayMcpSchemas` explicitly from `./mcp.ts`.
+The pure `./index.ts` does not import the SDK. This optional adapter uses the
+repository's pinned `@modelcontextprotocol/server` 2.3.1 and Zod 4; no dependency
+or deployed Task/ping catalog is changed. See the [official SDK](https://github.com/modelcontextprotocol/typescript-sdk).
+Construction starts no listener, process, network connection or model.
+
+The catalog contains exactly `relay_submit`, `relay_status`, `relay_poll` and
+`relay_ack`. Strict schemas reject caller-supplied sender/agent names and foreign
+mailbox selectors. Poll has no arguments and returns `{delivery: valueOrNull}`;
+other successful results are their service receipts. Results provide equivalent
+JSON in text content and structuredContent. Delivery acceptance/ACK is distinct
+from accepting or completing work. No maintenance, local body release, registry,
+Task, shell, webhook or arbitrary-destination tool is exposed.
+
+The host supplies a `RelayContextResolver` bound to the verified connection or
+request. It must close over the host's trusted authentication result; tool
+arguments, claimed product names, IDs and browser sessions are not credentials.
+Every invocation resolves context again and the service rechecks current local
+policy inside its transaction. Missing/throwing resolver, absent policy, unknown
+binding, revoked identity and disallowed operation fail closed. Resolver failure
+is normalized to `forbidden`; it cannot silently enable anonymous delivery.
+Concurrent clients need separate bound resolvers, never a shared mutable global
+current user. Async authentication must finish before synchronous DB authorization.
+
+Tool hints are not permission enforcement. Even status may perform expiry cleanup,
+so no tool advertises readOnlyHint. Poll is not idempotent; exact submit/status/ACK
+operations are. Core contract validation still enforces JSON depth/node/UTF-8 byte
+limits and immutable TTL, beyond the SDK's structural schema. Managed attachment
+manifests continue to fail closed. Known core failures return isError with a fixed
+allowlisted `{error: code}` in text/structured form; unexpected storage details
+become `relay_operation_failed` with no raw exception/body. SDK structural schema
+or unknown-tool rejection follows SDK protocol errors instead of entering storage.
+
+`node --test test/relay-mcp.test.js` uses the SDK's Request/Response handler in
+process, synthetic principal contexts and temporary SQLite stores. It tests
+2026-07-28 request routing and legacy JSON-RPC/SSE, strict four-tool catalog,
+scoped identities, revoked/missing auth, per-operation denial, concurrent poll,
+stale leases, exact ACK retry, durable receive before ACK and redacted failures.
+No actual HTTP socket, credential verifier or real agent is used by this fixture.
+Its single-result SSE decoder is test-only, not a production client transport.
+
+This factory is deliberately unmounted. A later HTTP host must authenticate
+before protocol admission, bind a resolver per request/connection, constrain
+Host/Origin/path/method, pre-parse body bytes/deadline, rate/concurrency/response
+bounds, disable unsupported listeners and preserve the existing audit boundary.
+Do not expose a raw SDK handler as a ready production endpoint. No OAuth scopes,
+credentials, public/no-auth fallback or plugin registration are provisioned here.
+A durable MCP client transport, real registry binding, managed attachments and
+production agent connections remain later work.
