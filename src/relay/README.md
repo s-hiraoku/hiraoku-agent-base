@@ -17,10 +17,13 @@ adding HAB or Task dependencies to it.
 
 The optional [managed upload contract and SQLite chunk backend](../../docs/managed-attachments.md)
 implement resumable owner-scoped uploads and digest-checked finalize separately
-from message storage. Existing acceptance/outbox/inbox still reject attachment
-references. Message binding, authenticated download, durable receiver bytes and
-ACK/deletion coupling remain later work; the pure Relay entry and MCP catalogs
-are unchanged.
+from message storage. Optional durable per-message bindings and an acceptance-only
+coordinator now protect finalized bytes before Relay commit and reconcile the original
+receipt after failure/reopen. A host must explicitly supply prepared-reference admission;
+default acceptance/outbox/inbox still reject attachments. Even when admission is enabled,
+poll withholds attached messages and ACK refuses them. Authenticated download, durable
+receiver bytes, ACK/deletion coupling and HAB acceptance guard composition remain later
+work; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -81,8 +84,9 @@ Thread participants and reciprocal reply references are checked in the same
 transaction. Pure contract parsing remains independent of SQLite/crypto modules.
 
 This is an incremental internal API, not production delivery. Managed attachments
-are refused with `attachment_store_unavailable` until finalize/integrity/ownership
-checks exist. Poll/lease/ACK is implemented in step 3 below. Receiver inbox, registry enrollment, background
+are refused with `attachment_store_unavailable` by default. The optional host-only
+attachment coordinator described above enables acceptance after durable prepare; it does
+not enable delivery. Poll/lease/ACK is implemented in step 3 below. Receiver inbox, registry enrollment, background
 expiry maintenance, 30-day tombstone collection and standalone setup are next
 steps. Current records are conservatively retained (with a hard record-count
 limit); the complete retention acceptance gate has not passed. Expiry cleanup

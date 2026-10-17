@@ -1,8 +1,8 @@
-# 管理添付：独立upload基盤
+# 管理添付：独立upload・message参照確定と受付
 
 [README](../README.md) · [正式仕様](hab-relay-spec.md) · [Relay実装](../src/relay/README.md)
 
-第1段階はbegin・status・chunk再送・finalize・cancel・期限回収・30日receipt回収である。HAB名、Task、製品SDKに依存しない。**messageの添付受付、受信bytes取得、ACK前のdurable添付保存、message連動削除outbox、HTTP/MCP転送は後続**とし、既存Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。finalizedはuploadの完全性を示し、message受付・受領・実行を示さない。
+uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、**受信bytes取得・ACK前のdurable保存・削除outbox・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
 
 ## 契約
 
@@ -22,13 +22,13 @@ storeはtransaction内でownerを解決し、既存uploadならowner scopeで取
 
 状態は`uploading → finalized`、またはterminalな`cancelled / expired / rejected`である。finalizeはchunkの連続性、長さ、鍵付きfingerprint、全体SHA-256を再検証する。未完了は`upload_incomplete`として再開でき、digest不一致・保存破損は`rejected`をcommitしbytesを解放する。呼出しが返っただけで成功とせず、`state`と固定`reason`を確認する。
 
-cancelと期限切れはpartial／finalizedのbytesを削除する。ID・owner・元intent・期限は変更できず、terminalを再開しない。upload期限は`min(begin時刻＋明示upload_ttl_ms,元message期限)`で固定する。status／finalize／cancelと有限maintenanceで期限回収する。daemonは起動せず、idle時の保守は後続hostが組み込む。
+未参照uploadのcancelと期限切れはpartial／finalizedのbytesを削除する。messageへ予約済みの添付はcancelを拒否し、元message期限まで保護する。ID・owner・元intent・期限は変更できず、terminalを再開しない。upload期限は`min(begin時刻＋明示upload_ttl_ms,元message期限)`で固定する。status／finalize／cancelと有限maintenanceで期限回収する。daemonは起動せず、idle時の保守は後続hostが組み込む。
 
 ## Backendと容量
 
-[sqlite-attachment-store.ts](../src/relay/sqlite-attachment-store.ts)はmanifestとchunk BLOBをRelay message DBとは別の専用schema 1へ保存する。message SQL行やMCP envelopeへ大きなbytesを埋め込まない。chunkとprogress、finalize、cancel／期限回収はupload DB内の同一transactionでcommitする。Relay DBとの分散transactionや、将来の外部blob backendとの原子性は仮定しない。
+[sqlite-attachment-store.ts](../src/relay/sqlite-attachment-store.ts)はmanifestとchunk BLOBをRelay message DBとは別の専用schema 2へ保存する。message SQL行やMCP envelopeへ大きなbytesを埋め込まない。chunkとprogress、finalize、cancel／期限回収はupload DB内の同一transactionでcommitする。Relay DBとの分散transactionや、将来の外部blob backendとの原子性は仮定しない。
 
-新規ファイルは0600とし、symlink・緩い権限・未知schema・鍵不一致・chunk policy変更を拒否する。migrateは明示操作である。private HMAC keyはhost供給で、発行・取得・保管先選択は行わない。親、journal／sidecar、backupもhostが保護する。SQLite secure_deleteを有効にするが、backup等の複製消去は別の運用責務である。
+新規ファイルは0600とし、symlink・緩い権限・未知schema・鍵不一致・chunk policy変更を拒否する。migrateは明示操作であり、schema 1から2へのtransactional migrationは既存chunkと鍵・chunk policyを保持する。private HMAC keyはhost供給で、発行・取得・保管先選択は行わない。親、journal／sidecar、backupもhostが保護する。SQLite secure_deleteを有効にするが、backup等の複製消去は別の運用責務である。
 
 hostは添付bytes、chunk bytes、record数、open upload数と予約bytesの全体／owner別上限、upload TTL、clock skew、DB busy timeoutを明示する。beginで全宣言bytesを予約し、partialとfinalized orphanもquotaを消費する。cancel／期限回収／rejectがbytes枠を解放する。
 
@@ -36,8 +36,22 @@ hostは添付bytes、chunk bytes、record数、open upload数と予約bytesの�
 
 terminal receiptは`max(terminal時刻,upload期限,元message期限)＋30日`まで保持する。maintenanceは期限切れとreceipt回収を共通の有限batchで進める。回収後の古い要求は期限切れ、同じIDの未来期限への付替えは不正要求になる。容量不足は新規beginを拒否し、既存exact retryや保守のための新規record枠は要求しない。
 
+## message参照と別DB間の受付
+
+[attachment-bindings.ts](../src/relay/attachment-bindings.ts)は独立した予約port、[attachment-acceptance.ts](../src/relay/attachment-acceptance.ts)は受付専用coordinatorである。新規添付messageは時刻拘束された`rm1` IDと、重複しない1–64個の添付参照を要求する。元owner、message ID、宛先、kind、時刻、media type・byte長・digest・filenameがfinalized uploadと全て一致しなければ拒否する。
+
+`prepare`は全添付の検証と順序付き参照の保存を、upload DBの同じtransactionで行う。一部だけpinされる状態は作らない。本文・thread・返信参照・parts順序を含むmessage全体の鍵付きfingerprintを保存し、本文の別コピーは保存しない。同じIDのexact retryは同じ予約を返し、内容変更を拒否する。予約数も有限のrecord上限を持つ。
+
+hostは専用Relay storeへ同期`AttachmentAdmission.check`を明示注入する。coordinatorは検証済みcontextから現在のsubmit主体を決め、`prepare → Relay commit → confirm`の順に実行する。Relay transaction内のcheckは保存済み予約とmessage全体、順序付きfinalized参照を再確認する。confirmのreceiptは固定のRelay storeが返したものだけを使い、呼出し引数から「受付済みの証拠」を受け付けない。省略・非同期admissionは拒否する。既定constructor、純粋entry、MCP catalog、既存outbox/inboxは変更しない。
+
+これは分散transactionではない。prepare後にRelay受付が失敗しても予約を取り消さず、同じ元intentで再試行できる。Relay commit後にconfirmや応答が失われても、両DBをreopenして元のreceiptへ再照合する。新しいIDで再送したり、期限を延長したりしない。受付前後が不明な予約を早期解除するAPIは設けず、元messageの1時間期限まで保持する。失効中の再照合も拒否し、現在権限が回復した後のexact retryで照合する。一般のstatusは通常のstatus認可を要求する。
+
+参照済み添付は短いorphan upload期限で削除せず、元message期限を有効期限とする。status／finalize／maintenanceで期限後にbytesを回収し、receipt・参照tombstoneは30日保持する。metadata回収は参照を先に外し、保護対象のuploadを先に消さない有限batchで行う。idle時の削除はhostの明示maintenanceが必要であり、daemonは起動しない。通常の添付cancelは生きた予約を解除できない。
+
+添付受付を有効にしたstoreでも、pollは添付を含むmessageをskipし、ACKは`attachment_delivery_unavailable`で拒否する。metadataだけを受領済みにしないための暫定境界であり、配送機能の完成ではない。scanは既存の有限上限内であり、多数の保留添付がある場合の公平性は未検証である。hostはpolicy guardを取得して各DB操作完了まで保持する必要がある。HAB upload guardは実装済みだが、この受付coordinatorとHAB registryのguard組立ては後続である。
+
 ## 検証と次の層
 
 `node --test test/relay-attachments.test.js`の25件でbinary／空ファイル、strict schema、外国体拒否、現在権限、再開・冪等、digest／chunk破損、rollback、容量予約、期限・30日GC、private file／schema／key、競合・再入を検証する。期限とretentionは専用一時DBだけをagingし、実時間を待つ試験ではない。実ファイルやcredentialは使わない。
 
-HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。次は、messageとの参照確定・孤立回収、認証付き取得、receiverのdurable保存とACK連携、削除outbox、MCP転送、backup整合を実装する。upload単体の成功を添付配送や本番3者接続の完了とは扱わない。
+HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。参照確定の18件と受付の12件では、実SQLiteの原子的pin、cancel競合、migration、期限・順序付きGC、受付前後の障害、両DBのreopen、応答消失、容量不足、再照合、配送／ACK拒否を追加検証した。独立DBのreopen試験はbackup restoreや電源断の耐久性試験ではない。次はHAB受付guard、認証付き取得、receiverのdurable保存とACK連携、削除outbox、MCP転送、backup整合を実装する。受付単体の成功を添付配送や本番3者接続の完了とは扱わない。
