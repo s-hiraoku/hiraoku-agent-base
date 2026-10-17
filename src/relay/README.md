@@ -3,7 +3,7 @@
 Import from `./index.ts`. This module owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.
 It validates a version-1 caller submission and supplies stable comparison material.
-Service and SQLite delivery are described below. The optional MCP factory and HTTP adapters in steps 9–10 are unmounted from the existing runtime; no deployed endpoint is changed.
+Service and SQLite delivery are described below. The optional MCP factory, HTTP adapters and client in steps 9–11 are unmounted from the existing runtime; no deployed endpoint is changed.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -482,3 +482,97 @@ unchanged and pass with the optional gate. All data/keys are synthetic; no real
 Auth0, service token, Hermes/model or existing route is used. Durable MCP client
 transport, registry/real binding, managed attachments, runtime activation and
 production connections remain separate milestones.
+
+## Implementation step 11: durable MCP client transport
+
+Import `RelayMcpClient` explicitly from `./mcp-client.ts`. It implements the pure
+`SenderTransport` and `ReceiverTransport` ports and can be injected into the
+existing `DurableSender` and `DurableReceiver`. The pure `./index.ts` still imports
+no HTTP, SDK, Zod, SQLite or product modules. Construction makes no connection,
+opens no database, provisions no credentials and starts no background loop.
+The existing Task MCP clients and runtime are unchanged.
+
+This is a narrow implementation of the fixed Relay tools over the official
+[2026-07-28 Streamable HTTP contract](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http),
+verified against the repository's pinned server SDK 2.3.1. It uses native fetch
+and the existing Zod 4 dependency; no package/lockfile is changed. It is not a
+general-purpose MCP client: no catalog discovery, version fallback, protocol
+sessions, subscription, sampling, elicitation, MRTR, Task or arbitrary tool API
+is provided. Every request supplies matching version/method/tool metadata,
+advertises JSON and SSE, and accepts only a complete fixed-contract response.
+
+The host supplies all policy: canonical fixed resource URL, expected immutable
+individual, request/response byte caps, whole-exchange deadline, active-request
+cap, SSE event/line budgets and JSON depth/node budgets, plus `ContractLimits`.
+Policy is copied/frozen and all numeric limits are finite/positive with hard
+implementation ceilings. Nonlocal endpoints require HTTPS; HTTP is limited to
+literal loopback/localhost. No tool argument can choose another endpoint. Fetch
+uses redirect-error, credentials-omit, no-store and identity encoding; redirected
+or foreign final URLs, compressed responses and unsupported content types fail.
+Host DNS, TLS, proxy and socket policy remain the host's responsibility.
+
+An injected `RelayCredentialProvider` receives only the fixed resource and an
+AbortSignal and returns the existing full Bearer authorization header. A missing
+or malformed provider value denies before network dispatch. No environment-token
+lookup, credential cache, OAuth discovery/issuance, refresh flow, cookie or
+anonymous fallback is installed. A trusted custom fetch port must honor the
+redirect and abort policy. Neither provider errors, response bodies, metadata,
+headers nor credentials are logged or attached as error causes by this module.
+
+The expected `agent_id` is a local result-binding check, never proof of identity
+and never a sender/mailbox selector on the wire. The server still resolves the
+principal and current permissions. Submit/status receipts must name the expected
+sender, poll deliveries the expected recipient, and ACK receipts that recipient.
+A discrepancy returns `forbidden`, so the durable sender quarantines rather
+than automatically replaying under corrected credentials. Detection may occur
+**after server commit under the credential's actual principal**. The host must
+stop and reconcile the original ID under the relevant bindings before changing
+credentials or manufacturing a replacement. A mismatch does not prove nondelivery.
+Registry enrollment and real credential-to-individual binding remain unimplemented.
+
+Requests are privately validated/snapshotted before awaiting credentials. The
+deadline covers provider wait, fetch, body reading and protocol parsing; a late
+provider cannot initiate fetch. Byte limits are enforced before JSON parsing,
+including streamed input with no Content-Length. UTF-8 is fatal, framing length
+must match, and both outer and text-result JSON trees have explicit budgets.
+The buffered SSE parser supports comments, folded data lines, CR/LF/CRLF and
+fragmented UTF-8. It requires EOF and exactly one final response, rejects extra
+responses and unsolicited notifications/requests, and never reconnects using
+SSE id/retry fields. The profile requests no progress/logging notifications.
+Unknown control fields, incomplete/input-required results, mismatched RPC IDs,
+text/structured disagreement and invalid delivery/receipt contracts fail closed.
+Bounded result metadata is ignored and grants no authority or execution rights.
+
+Cancellation includes input cleanup. If a credential, fetch or cleanup provider
+ignores cancellation, the caller receives its timeout but the admission slot
+remains occupied until that work settles. A permanently hung provider can exhaust
+capacity; supply bounded, cancellable providers. Limits are per client instance,
+not a shared process/fleet quota. Synchronous JS parsing/validation cannot be
+forcibly interrupted; explicit byte/tree limits bound its input. Timeout or an
+invalid response can follow a commit and always leaves the outcome uncertain.
+
+There is exactly one network attempt per operation. HTTP failures (including
+401/403), protocol errors, malformed responses and unknown/raw errors normalize
+to `relay_transport_failed`. Only a matching complete isError result with
+equivalent text/structured `{error: allowlistedCode}` retains a semantic Relay
+error; the server and client share a private allowlist. Missing local credentials
+or an individual mismatch return `forbidden`. The durable journals own finite
+retry/backoff, immutable IDs, receipt validation and restart recovery. No HTTP
+failure triggers token issuance, identity switching or an automatic new message.
+
+Reproduce the 29 new tests (including six temporary native HTTP cases):
+
+```sh
+node --test test/relay-mcp-client.test.js test/relay-mcp-client-http.test.js
+```
+
+Native HTTP tests inject submit loss before sending and after acceptance, and
+ACK-response loss after commit. They reopen the private outbox/inbox and create
+new clients, replay exactly the same message/ACK, recover original receipts and
+confirm one server message/inbox record. Additional cases cover lost-poll lease
+fencing, current revocation, wrong credential binding, opaque HTTP failures and
+native redirect refusal. Synthetic keys, temporary databases and new loopback
+ports are used exclusively. This is not a product integration or registered
+three-agent end-to-end acceptance. Registry/address resolution, managed bytes,
+application history, scheduling, runtime activation and production connections
+remain separate work.

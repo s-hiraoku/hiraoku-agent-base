@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { ContractError } from "./contract.ts";
 import { RelayError } from "./service.ts";
+import { isRelayMcpError } from "./mcp-errors.ts";
 import type { RelayService } from "./service.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
@@ -56,21 +57,6 @@ const descriptions = {
   relay_ack:
     "Confirm a durably saved delivery using its exact journaled ACK request. This removes the server body and does not execute work.",
 };
-const publicErrors = new Set([
-  "forbidden",
-  "invalid_contract",
-  "unsupported_version",
-  "capacity_exceeded",
-  "idempotency_conflict",
-  "invalid_reference",
-  "attachment_store_unavailable",
-  "expired_before_acceptance",
-  "clock_skew",
-  "not_found",
-  "invalid_ack",
-  "ack_idempotency_conflict",
-  "invalid_request",
-]);
 /** Supplied by a trusted host per connection/request; never derived from tool arguments. */
 export type RelayContextResolver = () => unknown | Promise<unknown>;
 /** Optional transport admission/audit guard; it cannot grant identity or permissions. */
@@ -149,7 +135,7 @@ export function createRelayMcpServer(
           }
           const code =
             (error instanceof RelayError || error instanceof ContractError) &&
-            publicErrors.has(error.code)
+            isRelayMcpError(error.code)
               ? error.code
               : "relay_operation_failed";
           return {

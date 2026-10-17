@@ -14,7 +14,7 @@
 
 「必須」「禁止」は採用した設計の実装要件を示す。「推奨初期値」は未合意の設定案であり、実装開始時の確認と負荷試験が必要。「未検証」は実サービスで証明していないことを示す。追加予定の型・table・API・ファイル名は、明記のない限り**計画であり未実装**である。
 
-実装状況：独立契約・認可port・SQLite配送store・送受信journal・明示的保守と、MCP 4 tool factory・独立HTTP adapterをローカルの模擬認証／一時loopback通信で検証済み。実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。実個体registry/認証binding、管理添付、本番HTTP MCP公開・3者接続は未完了であり、入力検証や模擬配送の成功を本番接続成功とは扱わない。
+実装状況：独立契約・認可port・SQLite配送store・送受信journal・明示的保守と、MCP 4 tool factory・独立HTTP adapter・永続journalへ接続するMCPクライアントをローカルの模擬認証／一時loopback通信で検証済み。送信・ACKの応答消失後にclient／journalを再起動し、同じ要求で復旧する試験を含む。実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。実個体registry/認証binding、管理添付、本番HTTP MCP公開・3者接続は未完了であり、入力検証や模擬配送の成功を本番接続成功とは扱わない。
 
 ## 1. 目的と非目標
 
