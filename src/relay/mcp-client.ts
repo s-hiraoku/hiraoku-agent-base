@@ -86,7 +86,6 @@ const resultSchema = z.strictObject({
   structuredContent: z.record(z.string(), z.unknown()),
   isError: z.boolean().optional(),
 });
-type Tool = "relay_submit" | "relay_status" | "relay_poll" | "relay_ack";
 
 /** All parsed trees are bounded before schema validation, equality or body processing. */
 function boundedJson(
@@ -281,7 +280,16 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     this.#authorization = options.authorization ?? (() => "");
     this.#fetch = options.fetch ?? globalThis.fetch;
   }
-  async #call(tool: Tool, args: unknown): Promise<unknown> {
+  /** Host subclasses bind additional fixed operations; never expose this as an arbitrary-call tool. */
+  protected requestTool(
+    tool: string,
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (!/^[a-z][a-z0-9_]{0,63}$(?![\s\S])/.test(tool))
+      return Promise.reject(new RelayError("invalid_request"));
+    return this.#call(tool, args);
+  }
+  async #call(tool: string, args: unknown): Promise<unknown> {
     if (this.#active >= this.#policy.max_active_requests)
       throw new RelayError("relay_client_busy");
     if (this.#sequence === Number.MAX_SAFE_INTEGER)
@@ -341,7 +349,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     }
   }
   async #perform(
-    tool: Tool,
+    tool: string,
     rpcId: number,
     body: string,
     signal: AbortSignal,

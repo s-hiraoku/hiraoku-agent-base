@@ -3,11 +3,12 @@ import { test } from "node:test";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { RelayMcpClient } from "../src/relay/mcp-client.ts";
+import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { HabHttpGateway } from "../src/hab/http.ts";
 import { createRelayNodeHandler } from "../src/relay/http-node.ts";
 import { HabRelayService } from "../src/hab/relay.ts";
 import { fixture, code, operations } from "./hab-registry-fixtures.js";
@@ -21,9 +22,11 @@ import {
 
 async function setup(t, f, hab = f.hab) {
   let handle;
+  const tools = [];
   const server = createServer(
     { maxHeaderSize: 8192, requestTimeout: 3000, headersTimeout: 3000 },
     (req, res) => {
+      tools.push(req.headers["mcp-name"]);
       void handle(req, res);
     },
   );
@@ -32,7 +35,7 @@ async function setup(t, f, hab = f.hab) {
   await once(server, "listening");
   const url = `http://127.0.0.1:${server.address().port}/mcp`;
   handle = createRelayNodeHandler(
-    new RelayHttpGateway(
+    new HabHttpGateway(
       hab,
       { ...policy, resource_url: url },
       f.audit,
@@ -43,8 +46,8 @@ async function setup(t, f, hab = f.hab) {
     server.closeAllConnections();
     await new Promise((r) => server.close(r));
   });
-  const clients = (name, agent) =>
-    new RelayMcpClient({
+  const clients = (name, agent, fetch = globalThis.fetch) =>
+    new HabMcpClient({
       policy: {
         resource_url: url,
         agent_id: agent.agent_id,
@@ -59,8 +62,9 @@ async function setup(t, f, hab = f.hab) {
       },
       limits,
       authorization: () => `Bearer fixture-${name}`,
+      fetch,
     });
-  const stores = [];
+  const stores = new Set();
   const outbox = (name, agent) => {
     const s = new SQLiteOutbox(join(f.dir, `outbox-${name}.sqlite`), {
       agent_id: agent.agent_id,
@@ -77,7 +81,7 @@ async function setup(t, f, hab = f.hab) {
       status_retry_ms: 86400000,
     });
     s.migrate();
-    stores.push(s);
+    stores.add(s);
     return s;
   };
   const inbox = (name, agent) => {
@@ -94,17 +98,27 @@ async function setup(t, f, hab = f.hab) {
       max_attempts: 5,
     });
     s.migrate();
-    stores.push(s);
+    stores.add(s);
     return s;
   };
   t.after(() => {
     for (const s of stores) s.close();
   });
-  return { url, clients, outbox, inbox };
+  return {
+    url,
+    clients,
+    outbox,
+    inbox,
+    tools,
+    close(store) {
+      store.close();
+      stores.delete(store);
+    },
+  };
 }
 
 test(
-  "enrolled mock Grok/dot/Hermes individuals use resolved immutable IDs, durable journals and real HTTP MCP",
+  "mock three-individual HTTP round trip resolves over MCP and retries durable send after restart without resolving again",
   { timeout: 10000 },
   async (t) => {
     const f = fixture(t),
@@ -126,12 +140,48 @@ test(
     const ca = net.clients("a", a),
       cb = net.clients("b", b),
       cc = net.clients("c", c);
-    const sender = new DurableSender(net.outbox("a", a), ca),
+    const stored = net.outbox("a", a),
       receiver = new DurableReceiver(net.inbox("b", b), cb);
-    const resolved = hab.resolve(f.contexts.a, b.address),
+    let lost = false;
+    let sender = new DurableSender(
+      stored,
+      net.clients("a", a, async (url, init) => {
+        const response = await globalThis.fetch(url, init);
+        if (init.headers["Mcp-Name"] === "relay_submit" && !lost) {
+          lost = true;
+          await response.arrayBuffer();
+          throw Error("synthetic lost acceptance");
+        }
+        return response;
+      }),
+    );
+    const resolved = await ca.resolve(b.address),
       m = { ...message(), recipient_id: resolved.recipient_id };
     sender.enqueue(m);
+    await assert.rejects(sender.sendOnce(), code("sender_transport_failed"));
+    assert.equal(f.count(), 1);
+    const receipt = hab.status(f.contexts.a, m.message_id);
+    assert.equal(
+      net.tools.filter((tool) => tool === "relay_resolve").length,
+      1,
+    );
+    net.close(stored);
+    const raw = new DatabaseSync(join(f.dir, "outbox-a.sqlite"));
+    try {
+      raw.exec("UPDATE relay_outbox SET next_retry_at=0");
+    } finally {
+      raw.close();
+    }
+    sender = new DurableSender(net.outbox("a", a), net.clients("a", a));
     await sender.sendOnce();
+    assert.equal(
+      net.tools.filter((tool) => tool === "relay_resolve").length,
+      1,
+    );
+    assert.equal(
+      sender.get(m.message_id).receipt.receipt_id,
+      receipt.receipt_id,
+    );
     assert.equal(sender.get(m.message_id).state, "accepted");
     assert.equal(sender.get(m.message_id).receipt.recipient_id, b.agent_id);
     await receiver.receiveOnce();
@@ -141,7 +191,7 @@ test(
     await assert.rejects(cc.status(m.message_id), code("not_found"));
     const reply = {
       ...message("2".repeat(32)),
-      recipient_id: hab.resolve(f.contexts.b, a.address).recipient_id,
+      recipient_id: (await cb.resolve(a.address)).recipient_id,
       kind: "answer",
       thread_id: m.thread_id,
       in_reply_to: { sender_id: a.agent_id, message_id: m.message_id },
@@ -154,7 +204,7 @@ test(
     assert.deepEqual(receiving.inbox()[0].message, reply);
     const notice = {
       ...message("3".repeat(32)),
-      recipient_id: hab.resolve(f.contexts.c, a.address).recipient_id,
+      recipient_id: (await cc.resolve(a.address)).recipient_id,
       thread_id: "thread-ca",
       kind: "notice",
     };
@@ -171,6 +221,7 @@ test(
     assert.deepEqual(listed.result.tools.map((tool) => tool.name).sort(), [
       "relay_ack",
       "relay_poll",
+      "relay_resolve",
       "relay_status",
       "relay_submit",
     ]);
@@ -181,15 +232,12 @@ test(
   "cached address resolution never bypasses a later stop or silently redirects a stored outbox",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
-    f.enroll("a");
-    const b = f.enroll("b"),
+    const f = fixture(t),
+      a = f.enroll("a"),
+      b = f.enroll("b"),
       net = await setup(t, f);
-    const a = f.registry.inspect(
-      f.admin,
-      f.registry.resolve(f.contexts.b, "a@grok-bot.hab").recipient_id,
-    );
-    const target = f.hab.resolve(f.contexts.a, b.address),
+    const ca = net.clients("a", a);
+    const target = await ca.resolve(b.address),
       m = { ...message(), recipient_id: target.recipient_id };
     const sender = new DurableSender(net.outbox("a", a), net.clients("a", a));
     sender.enqueue(m);
@@ -224,7 +272,7 @@ test(
     await sender.sendOnce();
     assert.equal(f.count(), 0);
     assert.equal(
-      f.hab.resolve(f.contexts.a, b.address).recipient_id,
+      (await ca.resolve(b.address)).recipient_id,
       target.recipient_id,
     );
   },
@@ -248,6 +296,45 @@ test(
       net.clients("a", a).submit({ ...message(), recipient_id: b.agent_id }),
       code("forbidden"),
     );
+    await assert.rejects(
+      net.clients("a", a).resolve(b.address),
+      code("forbidden"),
+    );
     assert.equal(f.count(), 0);
+  },
+);
+
+test(
+  "lost directory response creates no message and a caller retry resolves the same reserved ID",
+  { timeout: 10000 },
+  async (t) => {
+    const f = fixture(t),
+      a = f.enroll("a"),
+      b = f.enroll("b"),
+      net = await setup(t, f);
+    let calls = 0;
+    const ca = net.clients("a", a, async (url, init) => {
+      calls++;
+      const response = await globalThis.fetch(url, init);
+      if (calls === 1) {
+        await response.arrayBuffer();
+        throw Error("synthetic lost directory response");
+      }
+      return response;
+    });
+    await assert.rejects(ca.resolve(b.address), code("relay_transport_failed"));
+    assert.equal(calls, 1);
+    assert.equal(f.count(), 0);
+    assert.deepEqual(await ca.resolve(b.address), {
+      recipient_id: b.agent_id,
+      address: b.address,
+      normalization_version: 1,
+    });
+    assert.equal(calls, 2);
+    assert.equal(f.count(), 0);
+    assert.equal(
+      f.registryRaw.prepare("SELECT count(*) n FROM hab_agents").get().n,
+      2,
+    );
   },
 );

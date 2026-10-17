@@ -6,7 +6,8 @@ It validates a version-1 caller submission and supplies stable comparison materi
 Service and SQLite delivery are described below. The optional MCP factory, HTTP adapters and client in steps 9–11 are unmounted from the existing runtime; no deployed endpoint is changed.
 HAB-only enrollment/address policy and coordinated authorization are implemented
 separately in [the HAB integration](../hab/README.md). The core imports none of it;
-real product binding, MCP address-resolution exposure and enrollment UI remain pending.
+the optional HAB catalog adds address resolution while this catalog remains four
+delivery tools. Real product binding and enrollment UI remain pending.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -579,6 +580,6 @@ native redirect refusal. Synthetic keys, temporary databases and new loopback
 ports are used exclusively. This is not a product integration or registered
 three-agent end-to-end acceptance. The separate HAB tests now cover a registered
 mock three-individual HTTP path; local registry/address policy is described in
-the HAB integration above. MCP address-resolution exposure, managed bytes,
+the HAB integration above, including optional MCP lookup. Managed bytes,
 application history, scheduling, runtime activation and production connections
 remain separate work.

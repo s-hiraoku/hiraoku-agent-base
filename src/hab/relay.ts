@@ -8,7 +8,8 @@ import type {
 } from "../relay/service.ts";
 import type { ContractLimits } from "../relay/contract.ts";
 import type { SQLiteHabRegistry } from "./sqlite-registry.ts";
-export class HabRelayService implements RelayOperations {
+import type { HabDirectory } from "./directory.ts";
+export class HabRelayService implements RelayOperations, HabDirectory {
   readonly #registry: SQLiteHabRegistry;
   readonly #store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>;
   readonly #limits: ContractLimits;
