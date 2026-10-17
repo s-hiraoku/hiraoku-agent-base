@@ -36,6 +36,8 @@ export type {
   ReceiverTransport,
   ReceiverStore,
   InboxEntry,
+  InboxLifecycleStore,
+  InboxMaintenanceResult,
 } from "./receiver.ts";
 export { DurableSender } from "./sender.ts";
 export type {

@@ -12,6 +12,18 @@ export interface InboxEntry {
   received_at: string;
   receipt_confirmed: boolean;
 }
+export interface InboxMaintenanceResult {
+  expired_acks: number;
+  purged_acks: number;
+  purged_messages: number;
+  safety_held: number;
+}
+/** Local application/admin port; independent of the network's receive/ACK port. */
+export interface InboxLifecycleStore {
+  /** Caller has already saved the body durably using (sender_id,message_id) as its dedup key. */
+  releaseBody(senderId: string, messageId: string): boolean;
+  maintain(limit: number): InboxMaintenanceResult;
+}
 export interface ReceiverStore {
   save(delivery: Delivery): void;
   claimAck(): AckRequest | null;
