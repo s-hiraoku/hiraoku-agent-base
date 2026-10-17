@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { ContractError } from "./contract.ts";
 import { RelayError } from "./service.ts";
+import { isRelayMcpError } from "./mcp-errors.ts";
 import type { RelayService } from "./service.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
@@ -56,26 +57,17 @@ const descriptions = {
   relay_ack:
     "Confirm a durably saved delivery using its exact journaled ACK request. This removes the server body and does not execute work.",
 };
-const publicErrors = new Set([
-  "forbidden",
-  "invalid_contract",
-  "unsupported_version",
-  "capacity_exceeded",
-  "idempotency_conflict",
-  "invalid_reference",
-  "attachment_store_unavailable",
-  "expired_before_acceptance",
-  "clock_skew",
-  "not_found",
-  "invalid_ack",
-  "ack_idempotency_conflict",
-  "invalid_request",
-]);
 /** Supplied by a trusted host per connection/request; never derived from tool arguments. */
 export type RelayContextResolver = () => unknown | Promise<unknown>;
+/** Optional transport admission/audit guard; it cannot grant identity or permissions. */
+export interface RelayMcpGate {
+  check(): void;
+  begin(): Promise<(success: boolean) => Promise<void>>;
+}
 export function createRelayMcpServer(
   service: RelayService,
   resolveContext: RelayContextResolver = () => null,
+  gate?: RelayMcpGate,
 ): McpServer {
   const server = new McpServer({ name: "hab-relay", version: "0.1.0" });
   server.server.registerCapabilities({ tools: { listChanged: false } });
@@ -93,7 +85,10 @@ export function createRelayMcpServer(
         },
       },
       async (input: unknown) => {
+        let finish: ((success: boolean) => Promise<void>) | undefined;
         try {
+          gate?.check();
+          finish = await gate?.begin();
           let context: unknown;
           try {
             context = await resolveContext();
@@ -102,6 +97,7 @@ export function createRelayMcpServer(
           }
           if (context === null || context === undefined || context === false)
             throw new RelayError("forbidden");
+          gate?.check();
           let value: unknown;
           switch (tool) {
             case "relay_submit":
@@ -125,14 +121,21 @@ export function createRelayMcpServer(
             string,
             unknown
           >;
+          await finish?.(true);
+          gate?.check();
           return {
             content: [{ type: "text" as const, text: JSON.stringify(output) }],
             structuredContent: output,
           };
         } catch (error) {
+          try {
+            await finish?.(false);
+          } catch {
+            // The service may already have committed: return no success, never repeat it here.
+          }
           const code =
             (error instanceof RelayError || error instanceof ContractError) &&
-            publicErrors.has(error.code)
+            isRelayMcpError(error.code)
               ? error.code
               : "relay_operation_failed";
           return {

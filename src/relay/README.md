@@ -3,7 +3,7 @@
 Import from `./index.ts`. This module owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.
 It validates a version-1 caller submission and supplies stable comparison material.
-Service and SQLite delivery are described below. The optional MCP factory in step 9 is unmounted; no deployed HTTP endpoint is changed.
+Service and SQLite delivery are described below. The optional MCP factory, HTTP adapters and client in steps 9–11 are unmounted from the existing runtime; no deployed endpoint is changed.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -399,3 +399,180 @@ Do not expose a raw SDK handler as a ready production endpoint. No OAuth scopes,
 credentials, public/no-auth fallback or plugin registration are provisioned here.
 A durable MCP client transport, real registry binding, managed attachments and
 production agent connections remain later work.
+
+
+## Implementation step 10: bounded HTTP host adapters
+
+`./http.ts` exports `RelayHttpGateway`; `./http-node.ts` exports
+`createRelayNodeHandler(gateway)`. They are explicit infrastructure imports;
+the pure Relay entry does not import either. Constructing them never starts a
+listener, installs a plugin, issues a credential or edits existing runtime config.
+The existing `src/server.ts` remains the Task server. This adapter has only been
+used with synthetic verification contexts and temporary loopback test listeners.
+
+The host supplies a mandatory private audit sink and complete `RelayHttpPolicy`:
+canonical resource URL, exact browser-Origin allowlist, request/response byte
+caps, whole-exchange timeout, active-request cap and global request window/rate.
+There are no copied Task policy defaults. Test fixture values are not approved
+production settings. Policy is copied/frozen, with implementation ceilings on
+bytes/time/counts. HTTP is permitted only for literal loopback/localhost resource
+URLs; nonlocal resources require HTTPS. A present Origin must match the allowlist;
+nonbrowser requests may omit it. No CORS cookie/session fallback is provided.
+
+Only a bounded Bearer header is given to the injected `RelayHttpVerifier`, with
+fixed resource and AbortSignal. That host verifier must actually verify issuer,
+audience, subject/client and current individual binding; merely decoding a token
+or returning a claimed agent name is insufficient. Default/missing verifier is
+all-deny (401 with a Bearer challenge). Verification failures expose no exception.
+No OAuth issuer, metadata route, scope/client registration or credential is set up
+here. Current per-operation service authorization is still mandatory after HTTP
+verification. Header/body agent names and forwarded IP/identity headers grant no
+rights. Credentials/cookies are never forwarded to the internal SDK handler.
+
+Admission bounds authentication, audit, input, protocol dispatch and response
+buffering under one deadline. Resource URL/Host/Origin/path/method checks precede
+verification; verification precedes JSON/protocol parsing. The host rejects
+compressed/non-JSON bodies, mismatched/excess Content-Length, overflow and invalid
+UTF-8/JSON. Only the existing finite MCP method allowlist is admitted: batches,
+long-lived listeners and event subscriptions never enter the SDK. Routing mirrors
+are checked, and SDK version validation remains active. Both modern 2026-07-28
+and legacy JSON-RPC/SSE exchanges are tested against the installed official SDK.
+See [Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+
+The optional `RelayMcpGate` adds pre-dispatch checks and tool-start/outcome audit;
+it grants no identity or operation rights. A timeout/abort marks the exchange
+inactive, so late verifier/audit completion cannot start a service operation.
+An ignored cancellation retains the admission slot until the provider settles,
+rather than allowing new work to bypass the cap. A permanently hung provider can
+therefore stop admission; the host must supply cancellable, bounded providers.
+Synchronous JavaScript/SQLite work already started cannot be forcibly interrupted;
+a late/failed response is uncertain, and recovery must use the original ID/ACK
+receipt instead of manufacturing a new message. No automatic network retry runs
+inside the gateway. Response overflow returns no partial success.
+
+Audit contains fixed categories and server-generated correlation IDs only; no
+credentials, body, caller labels or raw exceptions are passed to the sink.
+Audit failure before dispatch denies the operation. Failure after a service commit
+returns an error, preserving its durable receipt for exact retry. The global
+request counter saturates and uses no attacker-controlled key map. Rate/deadline
+notes use the sink's optional bounded synchronous counter. Per-individual quotas,
+shared multi-process rates, monitoring and periodic upkeep remain later work.
+
+The Node callback also checks raw origin-form path/Host before URL normalization,
+rejects duplicate framing/auth headers, bounds active responses until finish/close,
+and closes each exchange's connection. Cancelling an unread request waits until
+the refusal response flushes, preserving actual 401/413 delivery. Native aborts
+propagate to the gateway. The activating HTTP server/proxy must separately set
+header-size, header/connection timeouts, socket caps, TLS, trusted proxy policy
+and HTTP/2 admission; callback limits do not cover pre-header TCP connections.
+No listening server or launch/cron entry is included in this implementation.
+
+Reproduce from the repository root:
+
+```sh
+node --test test/relay-http.test.js test/relay-http-node.test.js
+```
+
+The latter opens new ephemeral 127.0.0.1 ports and closes them after each fixture.
+The 24 tests cover durable receive-before-ACK over actual HTTP, strict default
+rejection, raw path/Host/Origin, body/response limits, duplicate headers, protocol
+refusal, audit/storage uncertainty, rate/concurrency, stalled body/verifier/audit,
+late dispatch prevention and client disconnect. Existing MCP catalog tests remain
+unchanged and pass with the optional gate. All data/keys are synthetic; no real
+Auth0, service token, Hermes/model or existing route is used. Durable MCP client
+transport, registry/real binding, managed attachments, runtime activation and
+production connections remain separate milestones.
+
+## Implementation step 11: durable MCP client transport
+
+Import `RelayMcpClient` explicitly from `./mcp-client.ts`. It implements the pure
+`SenderTransport` and `ReceiverTransport` ports and can be injected into the
+existing `DurableSender` and `DurableReceiver`. The pure `./index.ts` still imports
+no HTTP, SDK, Zod, SQLite or product modules. Construction makes no connection,
+opens no database, provisions no credentials and starts no background loop.
+The existing Task MCP clients and runtime are unchanged.
+
+This is a narrow implementation of the fixed Relay tools over the official
+[2026-07-28 Streamable HTTP contract](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http),
+verified against the repository's pinned server SDK 2.3.1. It uses native fetch
+and the existing Zod 4 dependency; no package/lockfile is changed. It is not a
+general-purpose MCP client: no catalog discovery, version fallback, protocol
+sessions, subscription, sampling, elicitation, MRTR, Task or arbitrary tool API
+is provided. Every request supplies matching version/method/tool metadata,
+advertises JSON and SSE, and accepts only a complete fixed-contract response.
+
+The host supplies all policy: canonical fixed resource URL, expected immutable
+individual, request/response byte caps, whole-exchange deadline, active-request
+cap, SSE event/line budgets and JSON depth/node budgets, plus `ContractLimits`.
+Policy is copied/frozen and all numeric limits are finite/positive with hard
+implementation ceilings. Nonlocal endpoints require HTTPS; HTTP is limited to
+literal loopback/localhost. No tool argument can choose another endpoint. Fetch
+uses redirect-error, credentials-omit, no-store and identity encoding; redirected
+or foreign final URLs, compressed responses and unsupported content types fail.
+Host DNS, TLS, proxy and socket policy remain the host's responsibility.
+
+An injected `RelayCredentialProvider` receives only the fixed resource and an
+AbortSignal and returns the existing full Bearer authorization header. A missing
+or malformed provider value denies before network dispatch. No environment-token
+lookup, credential cache, OAuth discovery/issuance, refresh flow, cookie or
+anonymous fallback is installed. A trusted custom fetch port must honor the
+redirect and abort policy. Neither provider errors, response bodies, metadata,
+headers nor credentials are logged or attached as error causes by this module.
+
+The expected `agent_id` is a local result-binding check, never proof of identity
+and never a sender/mailbox selector on the wire. The server still resolves the
+principal and current permissions. Submit/status receipts must name the expected
+sender, poll deliveries the expected recipient, and ACK receipts that recipient.
+A discrepancy returns `forbidden`, so the durable sender quarantines rather
+than automatically replaying under corrected credentials. Detection may occur
+**after server commit under the credential's actual principal**. The host must
+stop and reconcile the original ID under the relevant bindings before changing
+credentials or manufacturing a replacement. A mismatch does not prove nondelivery.
+Registry enrollment and real credential-to-individual binding remain unimplemented.
+
+Requests are privately validated/snapshotted before awaiting credentials. The
+deadline covers provider wait, fetch, body reading and protocol parsing; a late
+provider cannot initiate fetch. Byte limits are enforced before JSON parsing,
+including streamed input with no Content-Length. UTF-8 is fatal, framing length
+must match, and both outer and text-result JSON trees have explicit budgets.
+The buffered SSE parser supports comments, folded data lines, CR/LF/CRLF and
+fragmented UTF-8. It requires EOF and exactly one final response, rejects extra
+responses and unsolicited notifications/requests, and never reconnects using
+SSE id/retry fields. The profile requests no progress/logging notifications.
+Unknown control fields, incomplete/input-required results, mismatched RPC IDs,
+text/structured disagreement and invalid delivery/receipt contracts fail closed.
+Bounded result metadata is ignored and grants no authority or execution rights.
+
+Cancellation includes input cleanup. If a credential, fetch or cleanup provider
+ignores cancellation, the caller receives its timeout but the admission slot
+remains occupied until that work settles. A permanently hung provider can exhaust
+capacity; supply bounded, cancellable providers. Limits are per client instance,
+not a shared process/fleet quota. Synchronous JS parsing/validation cannot be
+forcibly interrupted; explicit byte/tree limits bound its input. Timeout or an
+invalid response can follow a commit and always leaves the outcome uncertain.
+
+There is exactly one network attempt per operation. HTTP failures (including
+401/403), protocol errors, malformed responses and unknown/raw errors normalize
+to `relay_transport_failed`. Only a matching complete isError result with
+equivalent text/structured `{error: allowlistedCode}` retains a semantic Relay
+error; the server and client share a private allowlist. Missing local credentials
+or an individual mismatch return `forbidden`. The durable journals own finite
+retry/backoff, immutable IDs, receipt validation and restart recovery. No HTTP
+failure triggers token issuance, identity switching or an automatic new message.
+
+Reproduce the 29 new tests (including six temporary native HTTP cases):
+
+```sh
+node --test test/relay-mcp-client.test.js test/relay-mcp-client-http.test.js
+```
+
+Native HTTP tests inject submit loss before sending and after acceptance, and
+ACK-response loss after commit. They reopen the private outbox/inbox and create
+new clients, replay exactly the same message/ACK, recover original receipts and
+confirm one server message/inbox record. Additional cases cover lost-poll lease
+fencing, current revocation, wrong credential binding, opaque HTTP failures and
+native redirect refusal. Synthetic keys, temporary databases and new loopback
+ports are used exclusively. This is not a product integration or registered
+three-agent end-to-end acceptance. Registry/address resolution, managed bytes,
+application history, scheduling, runtime activation and production connections
+remain separate work.
