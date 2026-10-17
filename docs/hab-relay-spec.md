@@ -220,7 +220,7 @@ threadは登録された2個体にscopeを固定する。返信先は元の送�
 
 本文、envelope、添付1個、添付個数、message総bytes、未finalize upload、個体別／全体容量、同時転送、転送時間にそれぞれ有限上限を設定する。旧16 KiB本文案は採用せず、数値はこの範囲を踏まえて別途決定する。全データを無制限に扱うという意味ではない。backup／restoreはDB manifestとblob世代を整合させ、削除済み添付の復活防止と孤立blob回収も試験する。storage backend、転送方法・上限、削除遅延、backup容量を追加設計事項とする。
 
-実装第1段階：[独立upload基盤](managed-attachments.md)でversion 1のmetadata、時刻拘束request ID、固定chunk再送、専用SQLite BLOB保存、digest finalize、容量予約、期限・30日receipt回収を実装した。これはupload単体のhost APIであり、HAB guardとの組立て、message参照確定、受信取得、ACK／削除outbox、HTTP/MCP転送は後続である。既存配送APIは添付参照を拒否したままにする。
+実装第1段階：[独立upload基盤](managed-attachments.md)でversion 1のmetadata、時刻拘束request ID、固定chunk再送、専用SQLite BLOB保存、digest finalize、容量予約、期限・30日receipt回収を実装した。これはupload単体のhost APIであり、HAB guardとの組立ても実装し、現在の個体binding・submit権限・宛先・kind・block・停止／失効とcommitをregistry → upload DBの順で保護する。message参照確定、受信取得、ACK／削除outbox、HTTP/MCP転送は後続である。既存配送APIは添付参照を拒否したままにする。
 
 ## 6. 同一性、時刻、期限
 

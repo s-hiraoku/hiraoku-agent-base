@@ -18,7 +18,7 @@ begin入力は`version:1`、`request_id`、`message_id`、`recipient_id`、`kind
 
 `UploadAuthorization`は`begin/status/chunk/finalize/cancel/maintenance`の現在主体と操作権限をhostから受け取る。未注入・失効・例外・非同期decisionは拒否する。引数の名前や未検証claimsを認証するportではない。
 
-storeはtransaction内でownerを解決し、既存uploadならowner scopeで取得後、保存済み宛先・kindを再検証する。外国体と未知IDは同じ`upload_not_found`になる。exact retryも現在認可を省略しない。停止・失効とcommitの間を保護するhostは、policyの同期guardを先に取得しupload transaction完了まで保持する。HABへの組立ては次の層で行う。maintenanceは別の明示権限である。
+storeはtransaction内でownerを解決し、既存uploadならowner scopeで取得後、保存済み宛先・kindを再検証する。外国体と未知IDは同じ`upload_not_found`になる。exact retryも現在認可を省略せず、SQLite storeはCOMMIT直前にも各decisionを再確認する。callbackは同期・副作用なしとし、複数回呼ばれる前提にする。停止・失効とcommitの間を保護するhostは、policyの同期guardを先に取得しupload transaction完了まで保持する。[HabAttachmentUploads](../src/hab/attachment-uploads.ts)がそのguardを実装し、registry → upload DBの順で取得する。maintenanceは別の明示権限である。
 
 状態は`uploading → finalized`、またはterminalな`cancelled / expired / rejected`である。finalizeはchunkの連続性、長さ、鍵付きfingerprint、全体SHA-256を再検証する。未完了は`upload_incomplete`として再開でき、digest不一致・保存破損は`rejected`をcommitしbytesを解放する。呼出しが返っただけで成功とせず、`state`と固定`reason`を確認する。
 
@@ -40,4 +40,4 @@ terminal receiptは`max(terminal時刻,upload期限,元message期限)＋30日`�
 
 `node --test test/relay-attachments.test.js`の25件でbinary／空ファイル、strict schema、外国体拒否、現在権限、再開・冪等、digest／chunk破損、rollback、容量予約、期限・30日GC、private file／schema／key、競合・再入を検証する。期限とretentionは専用一時DBだけをagingし、実時間を待つ試験ではない。実ファイルやcredentialは使わない。
 
-次はHAB registryのsubmit権限、宛先状態・kind・block・失効のguardと組み合わせる。その後、messageとの参照確定・孤立回収、認証付き取得、receiverのdurable保存とACK連携、削除outbox、MCP転送、backup整合を実装する。upload単体の成功を添付配送や本番3者接続の完了とは扱わない。
+HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。次は、messageとの参照確定・孤立回収、認証付き取得、receiverのdurable保存とACK連携、削除outbox、MCP転送、backup整合を実装する。upload単体の成功を添付配送や本番3者接続の完了とは扱わない。

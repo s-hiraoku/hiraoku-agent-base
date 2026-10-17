@@ -201,6 +201,38 @@ there is no real enrollment launcher in this change. Workflow completion means
 registry activation, not live reachability, G0, delivery success or removal of
 the global emergency-stop latch.
 
+## Optional managed upload authorization
+
+`./attachment-uploads.ts` composes `HabAttachmentUploads` with the separate
+[upload backend](../../docs/managed-attachments.md). Its begin/status/chunk/finalize/cancel
+operations require the current verified individual binding, active local state
+and submit grant. They derive the owner from that binding and check the saved
+recipient, kind allowlist and directional block. Knowing an attachment ID gives
+no foreign owner access. Exact retries also recheck policy; missing or expired
+identity, revocation, stop and the emergency latch deny.
+
+Each call holds the registry write guard before the upload transaction and
+through its COMMIT, using the same lock order as Relay: **registry → upload DB**.
+The SQLite upload store rechecks each current authorization decision immediately
+before COMMIT. Policy revocation therefore serializes with the operation, and
+an expired scoped decision cannot become a reusable upload grant. Callbacks
+must be synchronous and side-effect-free; multiple checks are intentional.
+Never acquire the upload write lock and then try to enter the registry guard.
+
+All five upload operations use submit authority, including owner status/cancel;
+receipt-only rights do not grant this port. A stopped or blocked peer denies
+those operations too; no drain exception is implied. Partial bytes remain subject
+to the separately authorized upload maintenance/expiry path. This class exposes
+no maintenance or download operation, grants no new registry rights, adds no
+MCP tool or HTTP route and starts no service. It does not enable message attachment
+acceptance, receiver download/ACK or production credential binding.
+
+The 14 additional tests cover ownership, false identity arguments, foreign IDs,
+current submit/kind policy, owner/peer stop, block, revoked or expired binding,
+emergency stop, a second registry connection attempting revocation before
+upload commit, escaped authorization and rollback on a decision changed before
+COMMIT. Only synthetic temporary databases and contexts are used.
+
 ## Optional HAB MCP/HTTP and client
 
 `./mcp.ts` provides `createHabMcpServer`: exactly the four Relay tools plus
@@ -290,7 +322,7 @@ to a fixed registry error; the HTTP MCP boundary retains its existing redaction.
 node --test test/hab-*.test.js
 ```
 
-The 94 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
+The 108 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
 from independent workers, idempotent restart, explicit activation, separate admin
 authority, principal tuple separation, binding rotation/revocation, CAS epochs,
 operation/kind/block policy, escaped grants, rollback, private/schema/key guards,

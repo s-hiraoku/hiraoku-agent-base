@@ -87,6 +87,7 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
   readonly #options: AttachmentStoreOptions;
   #ready = false;
   #inside = false;
+  #guards: Array<() => void> = [];
   constructor(path: string, options: AttachmentStoreOptions) {
     try {
       if (
@@ -167,6 +168,7 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
   #tx<T>(action: () => T): T {
     if (this.#inside) throw new RelayError("upload_busy");
     this.#inside = true;
+    this.#guards = [];
     let began = false;
     try {
       this.#db.exec("BEGIN IMMEDIATE");
@@ -176,6 +178,7 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
         void Promise.resolve(result).catch(() => {});
         throw Error();
       }
+      for (const guard of this.#guards) guard();
       this.#db.exec("COMMIT");
       return result;
     } catch (error) {
@@ -191,6 +194,7 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
       throw new RelayError("attachment_store_unavailable");
     } finally {
       this.#inside = false;
+      this.#guards = [];
     }
   }
   #key() {
@@ -258,16 +262,23 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
     authorize: UploadAuthorize,
     peer?: { recipient_id: string; kind: string },
   ): string {
-    try {
-      const result = authorize(peer);
-      if (result && typeof result === "object" && "then" in result) {
-        void Promise.resolve(result).catch(() => {});
-        throw Error();
+    const resolve = () => {
+      try {
+        const result = authorize(peer);
+        if (result && typeof result === "object" && "then" in result) {
+          void Promise.resolve(result).catch(() => {});
+          throw Error();
+        }
+        return uploadIdentifier(result);
+      } catch {
+        throw new RelayError("forbidden");
       }
-      return uploadIdentifier(result);
-    } catch {
-      throw new RelayError("forbidden");
-    }
+    };
+    const identity = resolve();
+    this.#guards.push(() => {
+      if (resolve() !== identity) throw new RelayError("forbidden");
+    });
+    return identity;
   }
   #intent(row: UploadRow) {
     const intent = parseUploadIntent(JSON.parse(row.intent), 268435456);
@@ -546,6 +557,13 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
         void Promise.resolve(result).catch(() => {});
         throw new RelayError("forbidden");
       }
+      this.#guards.push(() => {
+        const current: unknown = authorize();
+        if (current && typeof current === "object" && "then" in current) {
+          void Promise.resolve(current).catch(() => {});
+          throw new RelayError("forbidden");
+        }
+      });
       const rows = this.#db
         .prepare(
           "SELECT * FROM attachment_uploads WHERE state IN ('uploading','finalized') AND upload_expires_at<=? ORDER BY upload_expires_at,attachment_id LIMIT ?",
