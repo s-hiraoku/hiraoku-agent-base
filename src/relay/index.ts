@@ -6,8 +6,15 @@ export {
   validateLimits,
   parseSubmission,
   comparisonMaterial,
+  parseAck,
 } from "./contract.ts";
-export type { Json, Part, Submission, ContractLimits } from "./contract.ts";
+export type {
+  Json,
+  Part,
+  Submission,
+  ContractLimits,
+  AckRequest,
+} from "./contract.ts";
 
 export { RelayService, RelayError } from "./service.ts";
 export type {
@@ -16,4 +23,11 @@ export type {
   AcceptanceStore,
   Acceptance,
   ReceiptQuery,
+} from "./service.ts";
+
+export type {
+  Delivery,
+  AckReceipt,
+  ReceiveAuthorization,
+  DeliveryStore,
 } from "./service.ts";

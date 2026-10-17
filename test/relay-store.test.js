@@ -25,6 +25,11 @@ const options = {
   max_pending_per_recipient: 5,
   max_body_bytes: 100000,
   max_clock_skew_ms: 1000,
+  lease_ms: 30000,
+  max_attempts: 3,
+  retry_base_ms: 10,
+  retry_cap_ms: 100,
+  poll_scan_limit: 10,
 };
 const policy = {
   authorize(context, op, recipient) {
