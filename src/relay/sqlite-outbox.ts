@@ -5,6 +5,8 @@ import {
   comparisonMaterial,
   parseSubmission,
   validateLimits,
+  RECORD_RETENTION_MS,
+  isReplayBoundMessageId,
 } from "./contract.ts";
 import type { ContractLimits } from "./contract.ts";
 import { RelayError } from "./service.ts";
@@ -14,6 +16,7 @@ import type {
   OutboxState,
   SendJob,
   SenderStore,
+  OutboxMaintenanceResult,
 } from "./sender.ts";
 export interface OutboxOptions {
   agent_id: string;
@@ -36,6 +39,11 @@ CREATE TABLE relay_outbox(message_id TEXT PRIMARY KEY,recipient_id TEXT NOT NULL
  submit_attempts INTEGER NOT NULL DEFAULT 0,status_attempts INTEGER NOT NULL DEFAULT 0,status_only INTEGER NOT NULL DEFAULT 0,
  status_until INTEGER NOT NULL,operation TEXT CHECK(operation IN ('submit','status')),receipt TEXT,reason TEXT);
 CREATE UNIQUE INDEX relay_outbox_one_active ON relay_outbox(state) WHERE state='sending';`;
+const MIGRATION_2 = `ALTER TABLE relay_outbox ADD COLUMN terminal_at INTEGER;
+ALTER TABLE relay_outbox ADD COLUMN retain_until INTEGER;
+CREATE INDEX relay_outbox_retention ON relay_outbox(state,retain_until);
+CREATE TABLE relay_outbox_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired INTEGER NOT NULL,purged INTEGER NOT NULL);
+INSERT INTO relay_outbox_maintenance_totals VALUES(1,0,0,0);`;
 type Row = {
   message_id: string;
   recipient_id: string;
@@ -54,6 +62,8 @@ type Row = {
   operation: "submit" | "status" | null;
   receipt: string | null;
   reason: string | null;
+  terminal_at: number | null;
+  retain_until: number | null;
 };
 const identifier = (value: unknown): value is string =>
   typeof value === "string" &&
@@ -136,6 +146,11 @@ export class SQLiteOutbox implements SenderStore {
     this.#db = new DatabaseSync(path);
     try {
       this.#db.exec("PRAGMA busy_timeout=5000");
+      this.#db.function(
+        "relay_outbox_gc_safe",
+        { deterministic: true },
+        (id, expiry) => Number(isReplayBoundMessageId(id, expiry)),
+      );
     } catch (e) {
       this.#db.close();
       throw e;
@@ -179,18 +194,29 @@ export class SQLiteOutbox implements SenderStore {
           .run(this.#options.agent_id, this.#keyCheck());
       }
       const rows = this.#db.prepare("SELECT * FROM relay_outbox_meta").all();
-      if (rows.length !== 1 || rows[0].version !== 1)
+      if (rows.length !== 1 || ![1, 2].includes(Number(rows[0].version)))
         throw new RelayError("unsupported_schema");
       if (
         rows[0].agent_id !== this.#options.agent_id ||
         rows[0].key_check !== this.#keyCheck()
       )
         throw new RelayError("outbox_identity_mismatch");
+      if (rows[0].version === 1) {
+        const now = this.#clock();
+        this.#db.exec(MIGRATION_2);
+        // Local confirmation time was not recorded in v1. Start a conservative
+        // retention window at this explicit upgrade, without changing receipts.
+        this.#db
+          .prepare(
+            "UPDATE relay_outbox SET terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE state IN ('accepted','expired_unknown')",
+          )
+          .run(now, now, RECORD_RETENTION_MS);
+        this.#db.exec("UPDATE relay_outbox_meta SET version=2");
+      }
     });
     this.#ready = true;
   }
-  #now() {
-    if (!this.#ready) throw new RelayError("schema_not_ready");
+  #clock() {
     const at = Number(
       this.#db
         .prepare("SELECT CAST(unixepoch('subsec')*1000 AS INTEGER) at")
@@ -199,22 +225,59 @@ export class SQLiteOutbox implements SenderStore {
     if (!Number.isSafeInteger(at)) throw new RelayError("invalid_clock");
     return at;
   }
+  #now() {
+    if (!this.#ready) throw new RelayError("schema_not_ready");
+    return this.#clock();
+  }
   #row(id: string) {
     return this.#db
       .prepare("SELECT * FROM relay_outbox WHERE message_id=?")
       .get(id) as Row | undefined;
   }
+  #expire(now: number, limit: number): number {
+    const rows = this.#db
+      .prepare(
+        `SELECT * FROM relay_outbox WHERE expires_at<=? AND (
+        (body IS NOT NULL AND state IN ('queued','sending','quarantined')) OR state='quarantined' OR
+        (state IN ('queued','sending') AND (status_until<=? OR status_attempts>=?)
+          AND (state='queued' OR lease_until<=?)))
+       ORDER BY expires_at,message_id LIMIT ?`,
+      )
+      .all(now, now, this.#options.max_status_attempts, now, limit) as Row[];
+    for (const row of rows) {
+      const closed =
+        row.state === "quarantined" ||
+        ((row.state === "queued" ||
+          (row.lease_until !== null && row.lease_until <= now)) &&
+          (row.status_until <= now ||
+            row.status_attempts >= this.#options.max_status_attempts));
+      if (closed) {
+        this.#db
+          .prepare(
+            "UPDATE relay_outbox SET state='expired_unknown',body=NULL,status_only=1,fence=fence+1,lease_until=NULL,operation=NULL,reason=?,terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE message_id=?",
+          )
+          .run(
+            row.state === "quarantined"
+              ? "delivery_window_closed"
+              : "status_retry_exhausted",
+            now,
+            now,
+            RECORD_RETENTION_MS,
+            row.message_id,
+          );
+      } else {
+        // An in-flight request keeps its fence and may still commit acceptance.
+        this.#db
+          .prepare(
+            "UPDATE relay_outbox SET body=NULL,status_only=1 WHERE message_id=?",
+          )
+          .run(row.message_id);
+      }
+    }
+    return rows.length;
+  }
   #cleanup(now: number) {
-    this.#db
-      .prepare(
-        "UPDATE relay_outbox SET body=NULL,status_only=1 WHERE expires_at<=? AND state IN ('queued','sending')",
-      )
-      .run(now);
-    this.#db
-      .prepare(
-        "UPDATE relay_outbox SET state='expired_unknown',body=NULL,reason='delivery_window_closed' WHERE state='quarantined' AND expires_at<=?",
-      )
-      .run(now);
+    this.#expire(now, this.#options.max_records);
   }
   enqueue(input: unknown): OutboxRecord {
     const message = parseSubmission(input, this.#options.limits);
@@ -315,11 +378,16 @@ export class SQLiteOutbox implements SenderStore {
           const expired = row.expires_at <= now;
           this.#db
             .prepare(
-              "UPDATE relay_outbox SET state=?,body=CASE WHEN ? THEN NULL ELSE body END,reason='status_retry_exhausted' WHERE message_id=?",
+              "UPDATE relay_outbox SET state=?,body=CASE WHEN ? THEN NULL ELSE body END,reason='status_retry_exhausted',terminal_at=?,retain_until=? WHERE message_id=?",
             )
             .run(
               expired ? "expired_unknown" : "quarantined",
               Number(expired),
+              expired ? now : null,
+              expired
+                ? Math.max(now, row.expires_at, row.status_until) +
+                    RECORD_RETENTION_MS
+                : null,
               row.message_id,
             );
           continue;
@@ -390,9 +458,15 @@ export class SQLiteOutbox implements SenderStore {
       };
       this.#db
         .prepare(
-          "UPDATE relay_outbox SET state='accepted',body=NULL,receipt=?,lease_until=NULL,reason=NULL WHERE message_id=?",
+          "UPDATE relay_outbox SET state='accepted',body=NULL,receipt=?,lease_until=NULL,reason=NULL,terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE message_id=?",
         )
-        .run(JSON.stringify(safe), row.message_id);
+        .run(
+          JSON.stringify(safe),
+          now,
+          now,
+          RECORD_RETENTION_MS,
+          row.message_id,
+        );
     });
   }
   defer(job: SendJob, forceStatus = false): void {
@@ -441,6 +515,47 @@ export class SQLiteOutbox implements SenderStore {
     if (job.operation !== "status")
       throw new RelayError("invalid_status_result");
     this.defer(job, true);
+  }
+  /** Explicit local administration; never transmits, schedules or replaces a message. */
+  maintain(limit: number): OutboxMaintenanceResult {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
+      throw new RelayError("invalid_request");
+    return this.#tx(() => {
+      const now = this.#now();
+      if (
+        !this.#db
+          .prepare("SELECT 1 FROM relay_outbox_maintenance_totals WHERE id=1")
+          .get()
+      )
+        throw new RelayError("maintenance_state_unavailable");
+      const expired = this.#expire(now, limit),
+        cutoff = now - RECORD_RETENTION_MS;
+      const eligible = `state IN ('accepted','expired_unknown') AND body IS NULL AND lease_until IS NULL
+        AND terminal_at<=? AND expires_at<=? AND status_until<=? AND retain_until<=?`;
+      const rows = this.#db
+        .prepare(
+          `SELECT message_id FROM relay_outbox WHERE ${eligible} AND relay_outbox_gc_safe(message_id,expires_at)=1
+         ORDER BY retain_until,message_id LIMIT ?`,
+        )
+        .all(cutoff, cutoff, cutoff, now, limit - expired);
+      for (const row of rows)
+        this.#db
+          .prepare("DELETE FROM relay_outbox WHERE message_id=?")
+          .run(row.message_id);
+      const safetyHeld = Number(
+        this.#db
+          .prepare(
+            `SELECT count(*) n FROM relay_outbox WHERE ${eligible} AND relay_outbox_gc_safe(message_id,expires_at)=0`,
+          )
+          .get(cutoff, cutoff, cutoff, now)!.n,
+      );
+      this.#db
+        .prepare(
+          "UPDATE relay_outbox_maintenance_totals SET last_at=?,expired=expired+?,purged=purged+? WHERE id=1",
+        )
+        .run(now, expired, rows.length);
+      return { expired, purged: rows.length, safety_held: safetyHeld };
+    });
   }
   close(): void {
     this.#db.close();

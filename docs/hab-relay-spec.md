@@ -369,6 +369,8 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 本文、受領済みinbox、送信outbox、dedup tombstone、ACK receipt、処理journalの保存期間を分ける。本文を消しても、期限・指紋・宛先・受付結果・terminal状態・dedup期限を保持し、同じIDの再送を新規messageとして復活させない。
 
+送信側outboxの最小記録は、元message期限、ローカルterminal時刻、元のstatus照合期限のうち最も遅い時刻から30日保持する。受付receiptを検証・保存して初めて送信本文を解放し、未確定の本文も元期限で解放する。稼働中の送信leaseを保守処理で奪わず、期限後の照合上限とlease経過がそろった場合だけfenceを更新して`expired_unknown`へ閉じる。再照会や重複enqueueで保持期限を延長しない。旧schemaにローカルterminal時刻がなければ、明示的移行時点を起点に保守的に保持する。受信済みinboxの本文をいつ解放するかは、アプリケーションへのdurableな引渡しと別途定義する。
+
 送信側retry／ACK retryの最大horizonは有限の契約として設定し、Relayと受信側のdedup保持期間がそれより先に切れないようにする。dedup削除条件は、少なくとも元message期限、terminal時刻、ACK再試行期限のうち最も遅い時刻に保持期間を加えたものとする。本文の期限切れ・削除を、dedupや処理済み印の同時削除に直結させない。
 
 契約horizonを越えたIDは無条件に新規送信として通さない。初回送信時刻を内包する`rm1.<UTC milliseconds>.<32 hex>`形式を追加し、`first_sent_at`とID中の時刻の一致、一律1時間のexpiryを検証する。producerは128 bitの新しい乱数をsuffixへ与える。同じIDで期限を書き換えられないため、tombstone削除後も元の要求は期限切れとなる。従来のopaque message IDも互換性のため受け付けるが、そのtombstoneは自動回収せず、有限容量と明示的な照合・移行の対象にする。旧形式の回収を解決済みとは扱わない。詳しい実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。

@@ -44,6 +44,7 @@ export type {
   SendJob,
   OutboxRecord,
   OutboxState,
+  OutboxMaintenanceResult,
 } from "./sender.ts";
 
 export {
