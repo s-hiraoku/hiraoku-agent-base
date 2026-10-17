@@ -203,3 +203,47 @@ Only synthetic data/new temporary databases are used. This proves the injected
 local transport path, not production MCP or a real product's durable integration.
 Attachments still fail closed pending managed-byte storage. No product SDK,
 MCP listener, real-agent call, cron or new credentials are introduced.
+
+## Implementation step 6: explicit server maintenance and replay-safe collection
+
+`RelayService.maintain(context, limit)` is an internal maintenance operation with
+its own mandatory `maintenance` authorization. It is not in the MCP catalog and
+starts no cron/daemon. SQLite samples its clock once per transaction. Each call
+has a 1–1000 unit budget shared across expired-message transitions, collected
+messages and orphan threads; queries remain bounded by configured store capacity.
+Expiry atomically clears body/lease token, updates delivery state and audits the
+transition. Logical expiry time is the original deadline, even after a long outage.
+
+Schema v3 adds terminal/retention timestamps and a fixed-size aggregate maintenance
+counter. A pending/quarantined delivery retains its data until expiry. Terminal
+metadata is retained for 30 days **after the later of original expiry, terminal
+time and the supported committed-ACK retry horizon**. The maximum ACK retry
+horizon is 30 days, matching the existing client's upper bound; an ACKed record
+can consequently remain up to roughly 60 days after ACK. This is not a new body
+retention period. Exact ACK retries and status reads never extend these dates.
+The purge rechecks the underlying dates and ACK ledger, not just its cached
+`retain_until`, and removes message, delivery, ACK and per-message audit together.
+Orphan threads are removed only after all their messages are gone. Counters retain
+no per-message identity/body. SQLite sidecars/backups still require private,
+bounded lifecycle management; logical deletion is not physical secure erase.
+
+Deleting a tombstone must not let an old ID become a new request. New producers
+can use `makeReplayBoundMessageId(firstSentAt, entropyHex)` with 128 bits of fresh
+host-generated random entropy. The format `rm1.<UTC milliseconds>.<32 hex>` binds
+an immutable ID to its original `first_sent_at`. A modified timestamp/deadline
+with the same ID is rejected; after collection the original submission is expired.
+The pure contract helper generates no randomness, credentials or IO itself.
+HAB addresses and immutable individual IDs are unrelated to this message-ID format.
+
+Existing opaque message IDs remain compatible, but their tombstones cannot be
+safely collected automatically. Maintenance returns `safety_held` for aged legacy
+IDs and preserves them rather than reopening an unsafe dedup window. They still
+consume the finite record quota. Such development databases need an explicit
+migration/reconciliation decision; do not claim their 30-day collection gate has
+passed. Malformed historical `rm1` IDs are also held. The new prefix is reserved
+and strict validation applies to newly submitted prefixed IDs.
+
+Schema upgrade is explicit, transactional and handles v1/v2 receipts. Known
+newer schema is refused by older code rather than silently downgraded. Maintenance
+has only run on synthetic temporary databases. Client inbox/outbox collection,
+application handoff, backup expiry and managed attachments remain later layers.

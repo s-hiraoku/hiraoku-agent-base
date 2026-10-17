@@ -1,6 +1,40 @@
 /** Transport-neutral Relay wire contract. No IO, identity lookup or task execution. */
 export const RELAY_VERSION = 1 as const;
 export const DELIVERY_TTL_MS = 3_600_000;
+export const RECORD_RETENTION_MS = 30 * 86_400_000;
+/** Upper bound shared with client ACK retry policy, not an automatic scheduler. */
+export const MAX_ACK_RETRY_MS = 30 * 86_400_000;
+/** Host supplies 128 bits of fresh random entropy; the contract module performs no IO. */
+export function makeReplayBoundMessageId(
+  firstSentAt: string,
+  entropyHex: string,
+): string {
+  const at = timestamp(firstSentAt);
+  if (
+    at < 0 ||
+    typeof entropyHex !== "string" ||
+    !/^[a-f0-9]{32}$/.test(entropyHex)
+  )
+    return fail();
+  return `rm1.${at}.${entropyHex}`;
+}
+export function isReplayBoundMessageId(
+  value: unknown,
+  expiresAt: unknown,
+): boolean {
+  if (
+    typeof value !== "string" ||
+    typeof expiresAt !== "number" ||
+    !Number.isSafeInteger(expiresAt)
+  )
+    return false;
+  const match = /^rm1\.(0|[1-9][0-9]{0,15})\.([a-f0-9]{32})$/.exec(value);
+  return (
+    !!match &&
+    Number.isSafeInteger(Number(match[1])) &&
+    Number(match[1]) === expiresAt - DELIVERY_TTL_MS
+  );
+}
 export type Json =
   null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Part =
@@ -199,6 +233,12 @@ export function parseSubmission(
   const sent = timestamp(v.first_sent_at);
   const expiry = timestamp(v.expires_at);
   if (expiry - sent !== DELIVERY_TTL_MS) fail();
+  if (
+    typeof v.message_id === "string" &&
+    v.message_id.startsWith("rm1.") &&
+    !isReplayBoundMessageId(v.message_id, expiry)
+  )
+    fail();
   const body = record(v.body);
   fields(body, ["parts"]);
   if (!Array.isArray(body.parts) || !body.parts.length) return fail();

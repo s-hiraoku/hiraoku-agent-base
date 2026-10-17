@@ -357,7 +357,7 @@ CREATE TABLE relay_threads(id TEXT PRIMARY KEY,a TEXT NOT NULL,b TEXT NOT NULL);
 CREATE TABLE relay_messages(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,recipient_id TEXT NOT NULL,receipt_id TEXT NOT NULL UNIQUE,thread_id TEXT NOT NULL REFERENCES relay_threads(id),fingerprint TEXT NOT NULL,accepted_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','expired')),body TEXT,body_bytes INTEGER NOT NULL CHECK(body_bytes>=0),PRIMARY KEY(sender_id,message_id));
 CREATE TABLE relay_deliveries(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,recipient_id TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','expired')),PRIMARY KEY(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages(sender_id,message_id));
 CREATE TABLE relay_delivery_audit(id INTEGER PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,at INTEGER NOT NULL,event TEXT NOT NULL CHECK(event IN ('accepted','expired')));`;
-test("explicit v1-to-v2 migration preserves accepted receipts and allows delivery; rollback leaves no partial schema", (t) => {
+test("explicit v1-to-current migration preserves accepted receipts and allows delivery; rollback leaves no partial schema", (t) => {
   const dir = mkdtempSync(join(tmpdir(), "relay-v1-")),
     path = join(dir, "old.sqlite");
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -420,7 +420,7 @@ test("explicit v1-to-v2 migration preserves accepted receipts and allows deliver
   store.migrate();
   assert.equal(
     raw.prepare("SELECT version FROM relay_schema").get().version,
-    2,
+    3,
   );
   assert.deepEqual(raw.prepare("PRAGMA foreign_key_check").all(), []);
   const service = new RelayService(store, limits, policy);

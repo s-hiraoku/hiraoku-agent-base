@@ -45,3 +45,11 @@ export type {
   OutboxRecord,
   OutboxState,
 } from "./sender.ts";
+
+export {
+  RECORD_RETENTION_MS,
+  MAX_ACK_RETRY_MS,
+  makeReplayBoundMessageId,
+  isReplayBoundMessageId,
+} from "./contract.ts";
+export type { MaintenanceResult, MaintenanceStore } from "./service.ts";
