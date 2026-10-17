@@ -15,10 +15,16 @@ import type {
   Delivery,
   AckReceipt,
   ReceiveAuthorization,
+  MaintenanceResult,
   Receipt,
   ReceiptQuery,
 } from "./service.ts";
 import type { AckRequest } from "./contract.ts";
+import {
+  RECORD_RETENTION_MS,
+  MAX_ACK_RETRY_MS,
+  isReplayBoundMessageId,
+} from "./contract.ts";
 
 export interface StoreOptions {
   fingerprint_key: Uint8Array;
@@ -33,7 +39,7 @@ export interface StoreOptions {
   retry_cap_ms: number;
   poll_scan_limit: number;
 }
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const TABLES = `
 CREATE TABLE relay_messages(
  sender_id TEXT NOT NULL, message_id TEXT NOT NULL, recipient_id TEXT NOT NULL,
@@ -63,6 +69,11 @@ CREATE TABLE relay_ack_receipts(
 const INDEXES = `CREATE INDEX IF NOT EXISTS relay_messages_pending ON relay_messages(state,recipient_id,expires_at);
 CREATE INDEX IF NOT EXISTS relay_deliveries_recipient ON relay_deliveries(recipient_id,state,next_visible_at);
 CREATE UNIQUE INDEX IF NOT EXISTS relay_one_live_lease ON relay_deliveries(recipient_id) WHERE state='leased';`;
+const MIGRATION_3 = `ALTER TABLE relay_messages ADD COLUMN terminal_at INTEGER;
+ALTER TABLE relay_messages ADD COLUMN retain_until INTEGER;
+CREATE INDEX relay_messages_retention ON relay_messages(state,retain_until);
+CREATE TABLE relay_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired INTEGER NOT NULL,purged INTEGER NOT NULL,threads INTEGER NOT NULL);
+INSERT INTO relay_maintenance_totals VALUES(1,0,0,0,0);`;
 const SCHEMA =
   `CREATE TABLE relay_schema(version INTEGER NOT NULL, fingerprint_key_check TEXT NOT NULL);
 CREATE TABLE relay_threads(id TEXT PRIMARY KEY, a TEXT NOT NULL, b TEXT NOT NULL);` +
@@ -131,6 +142,11 @@ export class SQLiteRelayStore implements DeliveryStore {
     this.#db = new DatabaseSync(path);
     try {
       this.#db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000");
+      this.#db.function(
+        "relay_gc_safe",
+        { deterministic: true },
+        (id, expires) => (isReplayBoundMessageId(id, expires) ? 1 : 0),
+      );
     } catch (e) {
       this.#db.close();
       throw e;
@@ -169,14 +185,16 @@ export class SQLiteRelayStore implements DeliveryStore {
         this.#db.exec(SCHEMA);
         this.#db
           .prepare("INSERT INTO relay_schema VALUES(?,?)")
-          .run(SCHEMA_VERSION, this.#keyCheck());
+          .run(2, this.#keyCheck());
       }
       const rows = this.#db
         .prepare("SELECT version,fingerprint_key_check FROM relay_schema")
         .all();
       if (
         rows.length !== 1 ||
-        (rows[0].version !== 1 && rows[0].version !== SCHEMA_VERSION)
+        (rows[0].version !== 1 &&
+          rows[0].version !== 2 &&
+          rows[0].version !== SCHEMA_VERSION)
       )
         throw new RelayError("unsupported_schema");
       if (rows[0].fingerprint_key_check !== this.#keyCheck())
@@ -201,6 +219,20 @@ ALTER TABLE relay_delivery_audit_v2 RENAME TO relay_delivery_audit;
 UPDATE relay_schema SET version=2;`);
         this.#db.exec(INDEXES);
       }
+      if (Number(rows[0].version) < 3) {
+        this.#db.exec(MIGRATION_3);
+        this.#db
+          .prepare(
+            "UPDATE relay_messages SET terminal_at=expires_at,retain_until=expires_at+? WHERE state='expired'",
+          )
+          .run(RECORD_RETENTION_MS);
+        this.#db
+          .prepare(
+            "UPDATE relay_messages SET terminal_at=(SELECT acked_at FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id),retain_until=max(expires_at,(SELECT acked_at+? FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id))+? WHERE state='acked'",
+          )
+          .run(MAX_ACK_RETRY_MS, RECORD_RETENTION_MS);
+        this.#db.exec("UPDATE relay_schema SET version=3");
+      }
     });
     this.#ready = true;
   }
@@ -213,23 +245,31 @@ UPDATE relay_schema SET version=2;`);
       throw new RelayError("invalid_clock");
     return row.at;
   }
-  #expire(now: number) {
-    // Capture the transition and erase body in the same transaction as state change.
-    this.#db
+  #expire(now: number, limit = this.#options.max_records): number {
+    const rows = this.#db
       .prepare(
-        "INSERT INTO relay_delivery_audit(sender_id,message_id,at,event) SELECT sender_id,message_id,?,'expired' FROM relay_messages WHERE state IN ('pending','leased','quarantined') AND expires_at<=?",
+        "SELECT sender_id,message_id,expires_at FROM relay_messages WHERE state IN ('pending','leased','quarantined') AND expires_at<=? ORDER BY expires_at,sender_id,message_id LIMIT ?",
       )
-      .run(now, now);
-    this.#db
-      .prepare(
-        "UPDATE relay_deliveries SET state='expired',token_hash=NULL,lease_until=NULL WHERE state IN ('pending','leased','quarantined') AND EXISTS(SELECT 1 FROM relay_messages m WHERE m.sender_id=relay_deliveries.sender_id AND m.message_id=relay_deliveries.message_id AND m.expires_at<=?)",
-      )
-      .run(now);
-    this.#db
-      .prepare(
-        "UPDATE relay_messages SET state='expired',body=NULL,body_bytes=0 WHERE state IN ('pending','leased','quarantined') AND expires_at<=?",
-      )
-      .run(now);
+      .all(now, limit);
+    for (const row of rows) {
+      this.#audit(
+        String(row.sender_id),
+        String(row.message_id),
+        now,
+        "expired",
+      );
+      this.#db
+        .prepare(
+          "UPDATE relay_deliveries SET state='expired',token_hash=NULL,lease_until=NULL WHERE sender_id=? AND message_id=?",
+        )
+        .run(row.sender_id!, row.message_id!);
+      this.#db
+        .prepare(
+          "UPDATE relay_messages SET state='expired',body=NULL,body_bytes=0,terminal_at=expires_at,retain_until=expires_at+? WHERE sender_id=? AND message_id=?",
+        )
+        .run(RECORD_RETENTION_MS, row.sender_id!, row.message_id!);
+    }
+    return rows.length;
   }
   accept(resolve: () => Acceptance): Receipt {
     return this.#tx(() => {
@@ -324,7 +364,7 @@ UPDATE relay_schema SET version=2;`);
       };
       this.#db
         .prepare(
-          "INSERT INTO relay_messages VALUES(?,?,?,?,?,?,?,?,'pending',?,?,?)",
+          "INSERT INTO relay_messages(sender_id,message_id,recipient_id,receipt_id,thread_id,fingerprint,accepted_at,expires_at,state,body,body_bytes,kind) VALUES(?,?,?,?,?,?,?,?,'pending',?,?,?)",
         )
         .run(
           sender,
@@ -550,11 +590,85 @@ UPDATE relay_schema SET version=2;`);
         .run(row.sender_id, row.message_id);
       this.#db
         .prepare(
-          "UPDATE relay_messages SET state='acked',body=NULL,body_bytes=0 WHERE sender_id=? AND message_id=?",
+          "UPDATE relay_messages SET state='acked',body=NULL,body_bytes=0,terminal_at=?,retain_until=max(expires_at,?)+? WHERE sender_id=? AND message_id=?",
         )
-        .run(row.sender_id, row.message_id);
+        .run(
+          now,
+          now + MAX_ACK_RETRY_MS,
+          RECORD_RETENTION_MS,
+          row.sender_id,
+          row.message_id,
+        );
       this.#audit(row.sender_id, row.message_id, now, "acked");
       return result(receiptId, now);
+    });
+  }
+  /** Bounded explicit maintenance. No daemon, external IO or application execution. */
+  maintain(authorize: () => void, limit: number): MaintenanceResult {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
+      throw new RelayError("invalid_maintenance_limit");
+    return this.#tx(() => {
+      const now = this.#now();
+      authorize();
+      if (
+        !this.#db
+          .prepare("SELECT 1 FROM relay_maintenance_totals WHERE id=1")
+          .get()
+      )
+        throw new RelayError("maintenance_state_unavailable");
+      const expired = this.#expire(now, limit);
+      const rows = this.#db
+        .prepare(
+          "SELECT sender_id,message_id FROM relay_messages WHERE state IN ('acked','expired') AND retain_until<=? AND expires_at+?<=? AND terminal_at+?<=? AND NOT EXISTS(SELECT 1 FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id AND a.acked_at+?+?>?) AND (state!='acked' OR EXISTS(SELECT 1 FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id)) AND relay_gc_safe(message_id,expires_at)=1 ORDER BY retain_until,sender_id,message_id LIMIT ?",
+        )
+        .all(
+          now,
+          RECORD_RETENTION_MS,
+          now,
+          RECORD_RETENTION_MS,
+          now,
+          MAX_ACK_RETRY_MS,
+          RECORD_RETENTION_MS,
+          now,
+          limit - expired,
+        );
+      for (const row of rows) {
+        for (const table of [
+          "relay_ack_receipts",
+          "relay_deliveries",
+          "relay_delivery_audit",
+          "relay_messages",
+        ]) {
+          this.#db
+            .prepare(`DELETE FROM ${table} WHERE sender_id=? AND message_id=?`)
+            .run(row.sender_id!, row.message_id!);
+        }
+      }
+      const threads = this.#db
+        .prepare(
+          "SELECT id FROM relay_threads WHERE NOT EXISTS(SELECT 1 FROM relay_messages m WHERE m.thread_id=relay_threads.id) ORDER BY id LIMIT ?",
+        )
+        .all(limit - expired - rows.length);
+      for (const row of threads)
+        this.#db.prepare("DELETE FROM relay_threads WHERE id=?").run(row.id!);
+      const held = Number(
+        this.#db
+          .prepare(
+            "SELECT count(*) n FROM relay_messages WHERE state IN ('acked','expired') AND retain_until<=? AND relay_gc_safe(message_id,expires_at)=0",
+          )
+          .get(now)!.n,
+      );
+      this.#db
+        .prepare(
+          "UPDATE relay_maintenance_totals SET last_at=?,expired=expired+?,purged=purged+?,threads=threads+? WHERE id=1",
+        )
+        .run(now, expired, rows.length, threads.length);
+      return {
+        expired,
+        purged: rows.length,
+        threads: threads.length,
+        safety_held: held,
+      };
     });
   }
   close(): void {

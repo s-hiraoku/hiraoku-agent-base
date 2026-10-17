@@ -21,7 +21,7 @@ export interface Receipt {
 export interface Authorization {
   authorize(
     context: unknown,
-    operation: "submit" | "status" | "poll" | "ack",
+    operation: "submit" | "status" | "poll" | "ack" | "maintenance",
     peerId?: string,
     kind?: string,
   ): { agent_id: string } | undefined;
@@ -63,12 +63,21 @@ export interface DeliveryStore extends AcceptanceStore {
   poll(authorize: ReceiveAuthorization): Delivery | null;
   ack(request: AckRequest, authorize: ReceiveAuthorization): AckReceipt;
 }
+export interface MaintenanceResult {
+  expired: number;
+  purged: number;
+  threads: number;
+  safety_held: number;
+}
+export interface MaintenanceStore {
+  maintain(authorize: () => void, limit: number): MaintenanceResult;
+}
 export class RelayService {
-  readonly #store: AcceptanceStore & Partial<DeliveryStore>;
+  readonly #store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>;
   readonly #authorization: Authorization | undefined;
   readonly #limits: ContractLimits;
   constructor(
-    store: AcceptanceStore & Partial<DeliveryStore>,
+    store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>,
     limits: ContractLimits,
     authorization?: Authorization,
   ) {
@@ -78,7 +87,7 @@ export class RelayService {
   }
   #identity(
     context: unknown,
-    op: "submit" | "status" | "poll" | "ack",
+    op: "submit" | "status" | "poll" | "ack" | "maintenance",
     recipient?: string,
     kind?: string,
   ) {
@@ -136,5 +145,14 @@ export class RelayService {
     return this.#store.ack(request, (peer) =>
       this.#identity(context, "ack", peer?.sender_id, peer?.kind),
     );
+  }
+  maintain(context: unknown, limit: number): MaintenanceResult {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
+      throw new RelayError("invalid_maintenance_limit");
+    if (!this.#store.maintain)
+      throw new RelayError("maintenance_store_unavailable");
+    return this.#store.maintain(() => {
+      this.#identity(context, "maintenance");
+    }, limit);
   }
 }

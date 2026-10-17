@@ -166,29 +166,31 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 
 共通項目は下表を必須とする。JSON例の`version:1`や具体的型は**初期wire契約案**であり、設計案の名称draft v2とは別管理し、G1で確定する。
 
-| 項目           | 意味・不変条件                                                                                             |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
-| `version`      | 対応する契約version。未知versionは明示拒否                                                                 |
-| `message_id`   | 送信個体がoutbox保存時に決める安定ID。再送で変更しない                                                     |
-| `sender_id`    | Relayが検証済みbindingから付与。クライアントのsubmit入力には含めない                                       |
-| `recipient_id` | 最初の送信前に確定する個体ID。受付後は不変                                                                 |
-| `kind`         | 質問、回答、実行依頼、引受け、実行結果などの区別。kind別schemaとACLが必要                                  |
-| `body`         | kind別の厳密schema。テキスト・管理添付参照・構造化データを並べたversioned parts。制御fieldは厳密に検証する |
-| `thread_id`    | 会話の相関ID。権限ではない。初期は固定した2個体間のみ                                                      |
-| `in_reply_to`  | rootではnull。返信は元の`sender_id`と`message_id`の組を参照する案とし、同じthread・許可された個体間か検証  |
-| `expires_at`   | 元の送信時に確定する絶対UTC期限。再送・再配送・lease更新で延長しない                                       |
+| 項目            | 意味・不変条件                                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| `version`       | 対応する契約version。未知versionは明示拒否                                                                 |
+| `message_id`    | 送信個体がoutbox保存時に決める安定ID。新producerは初回時刻に拘束したrm1形式を使い、再送で変更しない        |
+| `sender_id`     | Relayが検証済みbindingから付与。クライアントのsubmit入力には含めない                                       |
+| `recipient_id`  | 最初の送信前に確定する個体ID。受付後は不変                                                                 |
+| `kind`          | 質問、回答、実行依頼、引受け、実行結果などの区別。kind別schemaとACLが必要                                  |
+| `body`          | kind別の厳密schema。テキスト・管理添付参照・構造化データを並べたversioned parts。制御fieldは厳密に検証する |
+| `thread_id`     | 会話の相関ID。権限ではない。初期は固定した2個体間のみ                                                      |
+| `in_reply_to`   | rootではnull。返信は元の`sender_id`と`message_id`の組を参照する案とし、同じthread・許可された個体間か検証  |
+| `first_sent_at` | 初回送信前に確定するUTC時刻（ミリ秒を含むISO形式）。rm1 ID内の時刻と一致し、再送でも変えない               |
+| `expires_at`    | 元の送信時に確定する絶対UTC期限。再送・再配送・lease更新で延長しない                                       |
 
 ```json
 {
   "version": 1,
-  "message_id": "11111111-1111-4111-8111-111111111111",
+  "message_id": "rm1.1893456000000.11111111111111111111111111111111",
   "sender_id": "agent-example-a",
   "recipient_id": "agent-example-b",
   "kind": "question",
   "body": { "parts": [{ "type": "text", "text": "診断用の質問です。" }] },
   "thread_id": "22222222-2222-4222-8222-222222222222",
   "in_reply_to": null,
-  "expires_at": "2030-01-01T01:00:00Z"
+  "first_sent_at": "2030-01-01T00:00:00.000Z",
+  "expires_at": "2030-01-01T01:00:00.000Z"
 }
 ```
 
@@ -369,7 +371,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 送信側retry／ACK retryの最大horizonは有限の契約として設定し、Relayと受信側のdedup保持期間がそれより先に切れないようにする。dedup削除条件は、少なくとも元message期限、terminal時刻、ACK再試行期限のうち最も遅い時刻に保持期間を加えたものとする。本文の期限切れ・削除を、dedupや処理済み印の同時削除に直結させない。
 
-契約horizonを越えたIDは無条件に新規送信として通さない。明示したretry windowの外では`replay_window_exceeded`等の照合要求を返すため、first-created情報／受付期間の検証方式をG1で固定する。tombstoneを捨てた後まで無期限のexactly-onceやconflict判定を保証しない。
+契約horizonを越えたIDは無条件に新規送信として通さない。初回送信時刻を内包する`rm1.<UTC milliseconds>.<32 hex>`形式を追加し、`first_sent_at`とID中の時刻の一致、一律1時間のexpiryを検証する。producerは128 bitの新しい乱数をsuffixへ与える。同じIDで期限を書き換えられないため、tombstone削除後も元の要求は期限切れとなる。従来のopaque message IDも互換性のため受け付けるが、そのtombstoneは自動回収せず、有限容量と明示的な照合・移行の対象にする。旧形式の回収を解決済みとは扱わない。詳しい実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。
 
 クライアント側の送信・受信retentionも同じ契約を満たす必要がある。実製品が保持を制御できなければG0未達。本文の個人データ削除要求とdedup証拠の最小保持が両立しない場合は、削除後の再送を止める運用と保証の縮小を明示する。
 
@@ -541,7 +543,7 @@ G0の実個体能力調査は先行させるが、実際の処理・受入れは
 
 1. G0：実Grok/dot各個体の識別・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
 2. 個体専有を証明する接続binding、実サービスのOAuth callback/client方式、必要scopeと保管・失効方式。共有subjectからは推測しない。
-3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、アドレス正規化、返信参照表現、canonical fingerprint、retry horizonを越えた旧IDの拒否方式。
+3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、アドレス正規化、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
 4. 配送TTL一律1時間、ACK確定後のRelay本文削除、最小配送記録の30日保持は決定済み。その他の推奨初期値の採否、個体別最低予約枠、公平性/SLO、長期不在時のretentionと個人データ削除policy。
 5. long-poll／lease延長の要否、wake追加の要否と実receiverの能力。
 6. Task bridgeのPrincipalとlink commit/照合、追加migrationの具体schema、backup後の復旧epoch・照合手順。
