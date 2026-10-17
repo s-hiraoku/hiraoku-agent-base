@@ -311,3 +311,36 @@ export function comparisonMaterial(
     sort({ sender_id: id(senderId), ...submission } as unknown as Json),
   );
 }
+
+export interface AckRequest {
+  sender_id: string;
+  message_id: string;
+  generation: number;
+  lease_token: string;
+  request_id: string;
+}
+export function parseAck(input: unknown, limits: ContractLimits): AckRequest {
+  validateLimits(limits);
+  const v = record(json(input, limits));
+  fields(v, [
+    "sender_id",
+    "message_id",
+    "generation",
+    "lease_token",
+    "request_id",
+  ]);
+  if (
+    typeof v.lease_token !== "string" ||
+    !/^[A-Za-z0-9_-]{43}$/.test(v.lease_token)
+  )
+    return fail();
+  const result = {
+    sender_id: id(v.sender_id),
+    message_id: id(v.message_id),
+    generation: integer(v.generation, 1),
+    lease_token: v.lease_token,
+    request_id: id(v.request_id),
+  };
+  cap(bytes(JSON.stringify(result)), limits.envelope_bytes);
+  return result;
+}
