@@ -512,6 +512,8 @@ server commit、first poll、inbox commit/ACK、処理開始、引受け、Task�
 
 G0の実個体能力調査は先行させるが、実際の処理・受入れは**モデルなし → 固定Task → 実個体**の段階とする。G1成功をG3成功へ読み替えない。
 
+G1の部分的な証拠として、[登録からHTTP配送・停止・復旧までの17シナリオ](hab-relay-integration.md)を追加した。人向け登録フロー、模擬3個体のnative HTTP、専用DB／listenerのreopen、受付・ACK応答消失、不在、停止・失効・block、lease競合、本文引渡しを一連で確認する。注入方法と試験の限界を同文書に記録し、管理添付、公平性、実Adapterの返信budget、cold-start・backup restoreを含むG1全体の合格とは扱わない。
+
 ### 必須受入れ試験
 
 | 試験                   | 合格条件                                                                                                                                 |

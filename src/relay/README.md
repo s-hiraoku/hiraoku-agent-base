@@ -10,6 +10,10 @@ the optional HAB catalog adds address resolution while this catalog remains four
 delivery tools. HAB also provides a separate human enrollment workflow and
 synthetic terminal demo; production management/connection wiring and real
 product binding remain pending.
+HAB's [registration-to-delivery integration matrix](../../docs/hab-relay-integration.md)
+also covers 17 native loopback journeys with offline receipt, uncertain submit/ACK,
+stop/revocation and store/listener reopen. These tests compose this core without
+adding HAB or Task dependencies to it.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact

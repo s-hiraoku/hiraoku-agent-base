@@ -290,7 +290,7 @@ to a fixed registry error; the HTTP MCP boundary retains its existing redaction.
 node --test test/hab-*.test.js
 ```
 
-The 77 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
+The 94 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
 from independent workers, idempotent restart, explicit activation, separate admin
 authority, principal tuple separation, binding rotation/revocation, CAS epochs,
 operation/kind/block policy, escaped grants, rollback, private/schema/key guards,
@@ -308,6 +308,18 @@ bounded catalog selection, durable checkpoint/CAS/capacity, lost registry and
 journal responses, store reopen, connection substitution, current authority,
 stale activation, stop/revocation during resume, private/redacted storage,
 terminal confirmation and the synthetic pause/reopen demonstration.
+
+`npm run test:hab-integration` runs 17 additional native-HTTP journeys starting
+at human enrollment, including all six directions between three synthetic
+products and two individuals of one product. These combine offline receipt,
+server/database/client reopen, lost submit/ACK responses, inbox save failure,
+lease fencing, stop/block/revocation, explicit rotation, unchanged deadlines,
+passive body handling and durable application handoff. Stop during uncertain
+acceptance or ACK quarantines the journal without dropping the local body or
+creating a replacement message. The [integration matrix](../../docs/hab-relay-integration.md)
+records injection methods and limits: same-process reopen, synthetic identity
+ports and accelerated retry/lease state are not production cold-start, real
+identity proof, reply budgets, managed attachment or backup/restore acceptance.
 
 This is local mock evidence, **not real product identity verification or completed
 G1/full initial release**. Production management/connection wiring,
