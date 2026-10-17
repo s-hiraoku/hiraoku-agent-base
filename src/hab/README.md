@@ -110,7 +110,96 @@ address and normalization version. Unknown, inactive and blocked targets share
 in the durable outbox before sending; retries use that stored ID and never
 re-resolve or redirect it. Acceptance still checks current state, so a cached
 resolution cannot bypass a later stop. The standalone Relay catalog remains
-four tools. Human enrollment CLI/UI remains separate next work.
+four tools. The separate human management workflow below adds no MCP tool.
+
+## Human enrollment workflow
+
+`./enrollment.ts` implements the finite, host-composed `runHabEnrollment` workflow:
+
+1. Select a product from the approved management catalog, then enter only `bot_name`.
+2. Preview `<bot_name>@<agent_name>.hab` and explicitly confirm its permanent reservation.
+3. Select a host-verified exclusive connection and separately confirm its binding.
+4. Choose operation grants and explicitly confirm activation.
+
+`./enrollment-terminal.ts` renders these steps through supplied terminal IO. Each
+confirmation requires typing the exact proposed address; a generic `yes` does
+not confirm. EOF/refusal pauses. Before reservation, nothing is created. After
+reservation, pausing leaves the same permanent individual waiting for connection,
+or bound without communication rights; it never frees names or revokes an
+already confirmed binding as an implicit cleanup action. To stop/retire an
+individual, use the existing explicitly authorized management operations.
+
+The flow uses required `EnrollmentHost` ports: registry, durable checkpoint
+journal, UI, current management context and verified individual connection
+selection. There is no `--admin` flag, claims/token paste, credential issuer,
+self-registration, endpoint discovery or production configuration loader. The
+host must authenticate a separate management actor and attest individual
+connections, including their human-readable selection labels. Terminal IO
+does not establish either authority. The host also owns input buffering/size,
+idle/overall lifetime limits and a private store directory. The flow's schema
+limits are applied after that host input boundary. It has no background loop
+or automatic retry; a saved flow advances at most six stages per invocation.
+
+New management reads remain local host APIs: `catalog(context,{limit,after?})`
+has a 1–100 product page cap, keyset cursor and separate `catalog` permission;
+`inspectBinding` requires `inspect`. The flow selects from 50-item pages, with
+explicit next-page input and a finite catalog traversal limit. It requires
+current catalog authority before exposing a saved checkpoint to the UI, even
+on resume. A production policy must grant those reads separately. Product
+creation remains an administrator operation outside this flow; nothing
+automatically populates the production catalog.
+
+`inspectConnection` requires management `bind` authority and a freshly verified
+individual context. It returns only a keyed comparison digest of the existing
+versioned principal tuple. The checkpoint stores that digest, not raw claims,
+labels or credentials. `bindVerified` takes the expected digest plus another
+current host context, checks management and fresh identity under the registry
+lock, then compares the tuple before the idempotent mutation. A changed
+connection is refused even when no earlier binding committed. The digest is
+not a credential and never authorizes its holder. Missing, stale, throwing or
+asynchronous authority ports deny; rejected promises are consumed. The existing
+low-level `bind` port remains trusted-host-only and is not a terminal/MCP API.
+
+`./sqlite-enrollment-journal.ts` is a dedicated private, explicit-migration
+SQLite store (schema 1), independent of the existing schema-1 registry and Relay
+DBs. New files are 0600; symlinks, loose permissions, foreign/schema-version
+databases and malformed/foreign-field checkpoints are refused. The host must
+protect its parent, sidecars and backups. Explicit session capacity bounds
+growth; old sessions are not automatically deleted. Revision CAS rejects
+concurrent/stale writers. Neither importing the modules nor constructing the
+UI opens a listener or modifies any existing runtime.
+
+Use a stable, host-selected `flow_id` (canonical opaque ID, at most 96 characters)
+and the **same private journal, registry/key and management actor** when resuming.
+Every pending operation, confirmed selection and original expected epoch are
+saved durably **before** the registry call. Request IDs are deterministically
+`enroll:<flow_id>`, `bind:<flow_id>` and `activate:<flow_id>`. A lost registry or
+journal response is uncertain: reopen the stores and run that same flow; do not
+choose a new flow ID, connection or suffix. If binding was pending, the host
+must reverify the original exclusive connection matching the saved digest.
+Receipt replay cannot replace current authority. The flow checks live agent and
+binding state/epochs after replay, so a later stop, revocation, retirement or
+policy change requires review and is never silently resumed/re-enabled. A
+completed checkpoint is re-inspected rather than replaying activation. Review
+errors require explicit management reconciliation; no automatic repair is run.
+
+The standalone demonstration uses only synthetic temporary stores/identities:
+
+```sh
+npm run demo:hab-enrollment -- --simulate
+npm run demo:hab-enrollment -- --interactive
+```
+
+Simulation reserves and binds, pauses before activation, closes/reopens both DBs
+and explicitly simulates activation confirmation. Interactive mode requires a
+TTY and times out each question after 60 seconds. Both remove their temporary
+data on normal exit and accept no production paths, credential references or
+endpoint arguments. They do not establish real product capabilities. For a
+production host, connect the required verification, UI input and private-store
+ports explicitly after the endpoint/subject/scope/data/stop plan is approved;
+there is no real enrollment launcher in this change. Workflow completion means
+registry activation, not live reachability, G0, delivery success or removal of
+the global emergency-stop latch.
 
 ## Optional HAB MCP/HTTP and client
 
@@ -201,7 +290,7 @@ to a fixed registry error; the HTTP MCP boundary retains its existing redaction.
 node --test test/hab-*.test.js
 ```
 
-The 44 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
+The 77 HAB tests cover naming, immutable/permanent reservations, concurrent enrollment
 from independent workers, idempotent restart, explicit activation, separate admin
 authority, principal tuple separation, binding rotation/revocation, CAS epochs,
 operation/kind/block policy, escaped grants, rollback, private/schema/key guards,
@@ -214,9 +303,14 @@ registry connection is unable to revoke in the Relay authorization/commit gap.
 Catalog/contract/client tests also cover separation from standalone Relay,
 malformed/foreign arguments, revoked/missing context, unknown/blocked targets,
 redacted failures, JSON/SSE, byte/concurrency limits and stalled audit admission.
+The 33 human-management tests additionally cover separate confirmations,
+bounded catalog selection, durable checkpoint/CAS/capacity, lost registry and
+journal responses, store reopen, connection substitution, current authority,
+stale activation, stop/revocation during resume, private/redacted storage,
+terminal confirmation and the synthetic pause/reopen demonstration.
 
 This is local mock evidence, **not real product identity verification or completed
-G1/full initial release**. Human enrollment workflow,
+G1/full initial release**. Production management/connection wiring,
 per-individual fairness/quotas, managed attachments, automatic-reply
 budgets, operational activation and complete failure/restore coverage remain.
 No real product is enrolled or contacted. New credential issuance, public routes,

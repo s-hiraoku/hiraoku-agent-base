@@ -7,7 +7,9 @@ Service and SQLite delivery are described below. The optional MCP factory, HTTP 
 HAB-only enrollment/address policy and coordinated authorization are implemented
 separately in [the HAB integration](../hab/README.md). The core imports none of it;
 the optional HAB catalog adds address resolution while this catalog remains four
-delivery tools. Real product binding and enrollment UI remain pending.
+delivery tools. HAB also provides a separate human enrollment workflow and
+synthetic terminal demo; production management/connection wiring and real
+product binding remain pending.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact

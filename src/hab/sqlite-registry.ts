@@ -357,6 +357,10 @@ export class SQLiteHabRegistry {
     let decision;
     try {
       decision = this.#authority.administrator?.(context, op);
+      if (decision && typeof decision === "object" && "then" in decision) {
+        void Promise.resolve(decision).catch(() => {});
+        throw Error();
+      }
     } catch {
       throw new RegistryError("registry_forbidden");
     }
@@ -379,36 +383,42 @@ export class SQLiteHabRegistry {
     action: () => { result: T; object_id: string },
   ): T {
     this.#assertReady();
-    return this.#tx(() => {
-      const actor = this.#admin(context, op),
-        fingerprint = this.#hash("request", [op, input]);
-      const old = this.#db
-        .prepare(
-          "SELECT fingerprint,response FROM hab_admin_requests WHERE actor_hash=? AND request_id=?",
-        )
-        .get(actor, input.request_id);
-      if (old) {
-        if (old.fingerprint !== fingerprint)
-          throw new RegistryError("registry_idempotency_conflict");
-        return JSON.parse(String(old.response)) as T;
-      }
-      this.#capacity("hab_admin_requests", this.#options.max_requests);
-      this.#capacity("hab_registry_audit", this.#options.max_audit_records);
-      const current = this.#globalEpoch();
-      const { result, object_id: objectId } = action();
-      this.#db
-        .prepare("UPDATE hab_registry_meta SET epoch=? WHERE id=1")
-        .run(current + 1);
-      this.#db
-        .prepare(
-          "INSERT INTO hab_registry_audit(at,event,actor_hash,object_id,epoch) VALUES(?,?,?,?,?)",
-        )
-        .run(this.#iso(), op, actor, objectId, current + 1);
-      this.#db
-        .prepare("INSERT INTO hab_admin_requests VALUES(?,?,?,?)")
-        .run(actor, input.request_id, fingerprint, JSON.stringify(result));
-      return result;
-    });
+    return this.#tx(() => this.#mutateLocked(context, op, input, action));
+  }
+  #mutateLocked<T extends object>(
+    context: unknown,
+    op: AdminOperation,
+    input: { request_id: string },
+    action: () => { result: T; object_id: string },
+  ): T {
+    const actor = this.#admin(context, op),
+      fingerprint = this.#hash("request", [op, input]);
+    const old = this.#db
+      .prepare(
+        "SELECT fingerprint,response FROM hab_admin_requests WHERE actor_hash=? AND request_id=?",
+      )
+      .get(actor, input.request_id);
+    if (old) {
+      if (old.fingerprint !== fingerprint)
+        throw new RegistryError("registry_idempotency_conflict");
+      return JSON.parse(String(old.response)) as T;
+    }
+    this.#capacity("hab_admin_requests", this.#options.max_requests);
+    this.#capacity("hab_registry_audit", this.#options.max_audit_records);
+    const current = this.#globalEpoch();
+    const { result, object_id: objectId } = action();
+    this.#db
+      .prepare("UPDATE hab_registry_meta SET epoch=? WHERE id=1")
+      .run(current + 1);
+    this.#db
+      .prepare(
+        "INSERT INTO hab_registry_audit(at,event,actor_hash,object_id,epoch) VALUES(?,?,?,?,?)",
+      )
+      .run(this.#iso(), op, actor, objectId, current + 1);
+    this.#db
+      .prepare("INSERT INTO hab_admin_requests VALUES(?,?,?,?)")
+      .run(actor, input.request_id, fingerprint, JSON.stringify(result));
+    return result;
   }
   #agent(agentId: string): AgentRecord {
     const row = this.#db
@@ -464,6 +474,36 @@ export class SQLiteHabRegistry {
         .prepare("INSERT INTO hab_products VALUES(?,?,?)")
         .run(result.product_id, result.agent_name, result.created_at);
       return { result, object_id: result.product_id };
+    });
+  }
+  /** Bounded keyset pagination for the separately authorized management UI. */
+  catalog(
+    context: unknown,
+    value: unknown,
+  ): {
+    products: ProductRecord[];
+    next: string | null;
+  } {
+    const input = parse(
+      z.strictObject({
+        after: id.optional(),
+        limit: z.number().int().min(1).max(100),
+      }),
+      value,
+    );
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "catalog");
+      const rows = this.#db
+        .prepare(
+          "SELECT product_id,agent_name,created_at FROM hab_products WHERE product_id>? ORDER BY product_id LIMIT ?",
+        )
+        .all(input.after ?? "", input.limit + 1) as unknown as ProductRecord[];
+      const products = rows.slice(0, input.limit);
+      return {
+        products,
+        next: rows.length > input.limit ? products.at(-1)!.product_id : null,
+      };
     });
   }
   preview(context: unknown, value: unknown) {
@@ -543,25 +583,90 @@ export class SQLiteHabRegistry {
       agent_epoch: this.#agent(row.agent_id).epoch,
     };
   }
+  inspectBinding(context: unknown, bindingId: string): BindingRecord {
+    parse(id, bindingId);
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "inspect");
+      return this.#binding(bindingId);
+    });
+  }
+  /** A comparison digest, not a credential or a substitute for fresh verification. */
+  inspectConnection(
+    context: unknown,
+    individualContext: unknown,
+  ): { connection_fingerprint: string } {
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "bind");
+      return {
+        connection_fingerprint: this.#principalHash(
+          this.#verified(individualContext).principal,
+        ),
+      };
+    });
+  }
+  /** Management flow supplies an opaque host context, never pasted principal claims. */
+  bindVerified(
+    context: unknown,
+    value: unknown,
+    individualContext: unknown,
+  ): BindingRecord {
+    const input = parse(
+      z.strictObject({
+        request_id: id,
+        agent_id: id,
+        expected_epoch: epoch,
+        connection_fingerprint: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
+      }),
+      value,
+    );
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "bind");
+      const individual = this.#verified(individualContext);
+      if (
+        this.#principalHash(individual.principal) !==
+        input.connection_fingerprint
+      )
+        throw new RegistryError("registry_connection_changed");
+      // Same canonical request as the existing trusted-host bind port.
+      const prepared = {
+        request_id: input.request_id,
+        agent_id: input.agent_id,
+        expected_epoch: input.expected_epoch,
+        principal: individual.principal,
+      };
+      return this.#mutateLocked(context, "bind", prepared, () =>
+        this.#createBinding(prepared),
+      );
+    });
+  }
   bind(context: unknown, value: unknown): BindingRecord {
     const input = parse(bindingInput, value);
-    return this.#mutate(context, "bind", input, () => {
-      this.#expected(input.agent_id, input.expected_epoch);
-      const fingerprint = this.#principalHash(input.principal);
-      if (
-        this.#db
-          .prepare("SELECT 1 FROM hab_bindings WHERE fingerprint=?")
-          .get(fingerprint)
-      )
-        throw new RegistryError("registry_binding_reserved");
-      this.#capacity("hab_bindings", this.#options.max_bindings);
-      const bindingId = randomUUID();
+    return this.#mutate(context, "bind", input, () =>
+      this.#createBinding(input),
+    );
+  }
+  #createBinding(input: z.infer<typeof bindingInput>): {
+    result: BindingRecord;
+    object_id: string;
+  } {
+    this.#expected(input.agent_id, input.expected_epoch);
+    const fingerprint = this.#principalHash(input.principal);
+    if (
       this.#db
-        .prepare("INSERT INTO hab_bindings VALUES(?,?,?,'active',?,NULL)")
-        .run(bindingId, input.agent_id, fingerprint, this.#iso());
-      this.#bump(input.agent_id);
-      return { result: this.#binding(bindingId), object_id: bindingId };
-    });
+        .prepare("SELECT 1 FROM hab_bindings WHERE fingerprint=?")
+        .get(fingerprint)
+    )
+      throw new RegistryError("registry_binding_reserved");
+    this.#capacity("hab_bindings", this.#options.max_bindings);
+    const bindingId = randomUUID();
+    this.#db
+      .prepare("INSERT INTO hab_bindings VALUES(?,?,?,'active',?,NULL)")
+      .run(bindingId, input.agent_id, fingerprint, this.#iso());
+    this.#bump(input.agent_id);
+    return { result: this.#binding(bindingId), object_id: bindingId };
   }
   revoke(context: unknown, value: unknown): BindingRecord {
     const input = parse(revokeInput, value);
@@ -660,6 +765,29 @@ export class SQLiteHabRegistry {
   #principalHash(principal: IndividualPrincipal) {
     return this.#hash("principal-v1", parse(principalSchema, principal));
   }
+  #verified(context: unknown) {
+    let individual;
+    try {
+      const value = this.#authority.individual?.(context);
+      if (value && typeof value === "object" && "then" in value) {
+        void Promise.resolve(value).catch(() => {});
+        throw Error();
+      }
+      individual = verifiedSchema.parse(value);
+    } catch {
+      throw new RegistryError("registry_forbidden");
+    }
+    const expiry = Date.parse(individual.expires_at),
+      now = this.#now();
+    if (
+      !Number.isFinite(expiry) ||
+      new Date(expiry).toISOString() !== individual.expires_at ||
+      expiry <= now ||
+      expiry - now > this.#options.max_context_ms
+    )
+      throw new RegistryError("registry_forbidden");
+    return individual;
+  }
   #blocked(sender: string, recipient: string): boolean {
     return !!this.#db
       .prepare("SELECT 1 FROM hab_blocks WHERE sender_id=? AND recipient_id=?")
@@ -714,21 +842,11 @@ export class SQLiteHabRegistry {
       }
       let individual;
       try {
-        individual = verifiedSchema.parse(
-          this.#authority.individual?.(context),
-        );
+        individual = this.#verified(context);
       } catch {
         throw new RelayError("forbidden");
       }
-      const expiry = Date.parse(individual.expires_at),
-        now = this.#now();
-      if (
-        !Number.isFinite(expiry) ||
-        new Date(expiry).toISOString() !== individual.expires_at ||
-        expiry <= now ||
-        expiry - now > this.#options.max_context_ms
-      )
-        throw new RelayError("forbidden");
+      const expiry = Date.parse(individual.expires_at);
       const binding = this.#db
         .prepare(
           "SELECT * FROM hab_bindings WHERE fingerprint=? AND state='active'",
