@@ -73,9 +73,15 @@ const publicErrors = new Set([
 ]);
 /** Supplied by a trusted host per connection/request; never derived from tool arguments. */
 export type RelayContextResolver = () => unknown | Promise<unknown>;
+/** Optional transport admission/audit guard; it cannot grant identity or permissions. */
+export interface RelayMcpGate {
+  check(): void;
+  begin(): Promise<(success: boolean) => Promise<void>>;
+}
 export function createRelayMcpServer(
   service: RelayService,
   resolveContext: RelayContextResolver = () => null,
+  gate?: RelayMcpGate,
 ): McpServer {
   const server = new McpServer({ name: "hab-relay", version: "0.1.0" });
   server.server.registerCapabilities({ tools: { listChanged: false } });
@@ -93,7 +99,10 @@ export function createRelayMcpServer(
         },
       },
       async (input: unknown) => {
+        let finish: ((success: boolean) => Promise<void>) | undefined;
         try {
+          gate?.check();
+          finish = await gate?.begin();
           let context: unknown;
           try {
             context = await resolveContext();
@@ -102,6 +111,7 @@ export function createRelayMcpServer(
           }
           if (context === null || context === undefined || context === false)
             throw new RelayError("forbidden");
+          gate?.check();
           let value: unknown;
           switch (tool) {
             case "relay_submit":
@@ -125,11 +135,18 @@ export function createRelayMcpServer(
             string,
             unknown
           >;
+          await finish?.(true);
+          gate?.check();
           return {
             content: [{ type: "text" as const, text: JSON.stringify(output) }],
             structuredContent: output,
           };
         } catch (error) {
+          try {
+            await finish?.(false);
+          } catch {
+            // The service may already have committed: return no success, never repeat it here.
+          }
           const code =
             (error instanceof RelayError || error instanceof ContractError) &&
             publicErrors.has(error.code)

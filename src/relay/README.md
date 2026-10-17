@@ -3,7 +3,7 @@
 Import from `./index.ts`. This module owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.
 It validates a version-1 caller submission and supplies stable comparison material.
-Service and SQLite delivery are described below. The optional MCP factory in step 9 is unmounted; no deployed HTTP endpoint is changed.
+Service and SQLite delivery are described below. The optional MCP factory and HTTP adapters in steps 9–10 are unmounted from the existing runtime; no deployed endpoint is changed.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -399,3 +399,86 @@ Do not expose a raw SDK handler as a ready production endpoint. No OAuth scopes,
 credentials, public/no-auth fallback or plugin registration are provisioned here.
 A durable MCP client transport, real registry binding, managed attachments and
 production agent connections remain later work.
+
+
+## Implementation step 10: bounded HTTP host adapters
+
+`./http.ts` exports `RelayHttpGateway`; `./http-node.ts` exports
+`createRelayNodeHandler(gateway)`. They are explicit infrastructure imports;
+the pure Relay entry does not import either. Constructing them never starts a
+listener, installs a plugin, issues a credential or edits existing runtime config.
+The existing `src/server.ts` remains the Task server. This adapter has only been
+used with synthetic verification contexts and temporary loopback test listeners.
+
+The host supplies a mandatory private audit sink and complete `RelayHttpPolicy`:
+canonical resource URL, exact browser-Origin allowlist, request/response byte
+caps, whole-exchange timeout, active-request cap and global request window/rate.
+There are no copied Task policy defaults. Test fixture values are not approved
+production settings. Policy is copied/frozen, with implementation ceilings on
+bytes/time/counts. HTTP is permitted only for literal loopback/localhost resource
+URLs; nonlocal resources require HTTPS. A present Origin must match the allowlist;
+nonbrowser requests may omit it. No CORS cookie/session fallback is provided.
+
+Only a bounded Bearer header is given to the injected `RelayHttpVerifier`, with
+fixed resource and AbortSignal. That host verifier must actually verify issuer,
+audience, subject/client and current individual binding; merely decoding a token
+or returning a claimed agent name is insufficient. Default/missing verifier is
+all-deny (401 with a Bearer challenge). Verification failures expose no exception.
+No OAuth issuer, metadata route, scope/client registration or credential is set up
+here. Current per-operation service authorization is still mandatory after HTTP
+verification. Header/body agent names and forwarded IP/identity headers grant no
+rights. Credentials/cookies are never forwarded to the internal SDK handler.
+
+Admission bounds authentication, audit, input, protocol dispatch and response
+buffering under one deadline. Resource URL/Host/Origin/path/method checks precede
+verification; verification precedes JSON/protocol parsing. The host rejects
+compressed/non-JSON bodies, mismatched/excess Content-Length, overflow and invalid
+UTF-8/JSON. Only the existing finite MCP method allowlist is admitted: batches,
+long-lived listeners and event subscriptions never enter the SDK. Routing mirrors
+are checked, and SDK version validation remains active. Both modern 2026-07-28
+and legacy JSON-RPC/SSE exchanges are tested against the installed official SDK.
+See [Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http).
+
+The optional `RelayMcpGate` adds pre-dispatch checks and tool-start/outcome audit;
+it grants no identity or operation rights. A timeout/abort marks the exchange
+inactive, so late verifier/audit completion cannot start a service operation.
+An ignored cancellation retains the admission slot until the provider settles,
+rather than allowing new work to bypass the cap. A permanently hung provider can
+therefore stop admission; the host must supply cancellable, bounded providers.
+Synchronous JavaScript/SQLite work already started cannot be forcibly interrupted;
+a late/failed response is uncertain, and recovery must use the original ID/ACK
+receipt instead of manufacturing a new message. No automatic network retry runs
+inside the gateway. Response overflow returns no partial success.
+
+Audit contains fixed categories and server-generated correlation IDs only; no
+credentials, body, caller labels or raw exceptions are passed to the sink.
+Audit failure before dispatch denies the operation. Failure after a service commit
+returns an error, preserving its durable receipt for exact retry. The global
+request counter saturates and uses no attacker-controlled key map. Rate/deadline
+notes use the sink's optional bounded synchronous counter. Per-individual quotas,
+shared multi-process rates, monitoring and periodic upkeep remain later work.
+
+The Node callback also checks raw origin-form path/Host before URL normalization,
+rejects duplicate framing/auth headers, bounds active responses until finish/close,
+and closes each exchange's connection. Cancelling an unread request waits until
+the refusal response flushes, preserving actual 401/413 delivery. Native aborts
+propagate to the gateway. The activating HTTP server/proxy must separately set
+header-size, header/connection timeouts, socket caps, TLS, trusted proxy policy
+and HTTP/2 admission; callback limits do not cover pre-header TCP connections.
+No listening server or launch/cron entry is included in this implementation.
+
+Reproduce from the repository root:
+
+```sh
+node --test test/relay-http.test.js test/relay-http-node.test.js
+```
+
+The latter opens new ephemeral 127.0.0.1 ports and closes them after each fixture.
+The 24 tests cover durable receive-before-ACK over actual HTTP, strict default
+rejection, raw path/Host/Origin, body/response limits, duplicate headers, protocol
+refusal, audit/storage uncertainty, rate/concurrency, stalled body/verifier/audit,
+late dispatch prevention and client disconnect. Existing MCP catalog tests remain
+unchanged and pass with the optional gate. All data/keys are synthetic; no real
+Auth0, service token, Hermes/model or existing route is used. Durable MCP client
+transport, registry/real binding, managed attachments, runtime activation and
+production connections remain separate milestones.

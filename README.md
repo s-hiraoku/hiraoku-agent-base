@@ -6,7 +6,7 @@ HABは、個人文脈を持つDots（スタローン）、クラウドで働くG
 
 通信部分の**HAB Relay**は、HAB固有の登録・アドレス、Task Engine、製品別Adapterから独立した再利用可能なコンポーネントとして実装しています。[正式仕様](docs/hab-relay-spec.md)でstore-and-forward、個体認証、受信ACK、Task Engineとの境界、受入れ条件を管理し、[実装手順と検証範囲](src/relay/README.md)に現在の到達点を記録します。
 
-**現在はテキスト・構造化データの配送基盤と、未配線のMCP 4ツールを模擬接続で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 個体登録・認証binding、HTTP入口、MCPクライアント、添付bytes、運用整備などが残っています。
+**現在はテキスト・構造化データの配送基盤・MCP 4ツール・専用HTTP入口を模擬認証と一時loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 個体登録・本番認証binding、MCPクライアント、添付bytes、runtimeへの配線・運用整備などが残っています。
 
 ## 全体図
 
@@ -43,31 +43,30 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | JWT/Auth0 resource-server、OAuth discovery、Events、限定キー管理、Hermes隔離bridge         | **実装済み**。通常runtimeと専用inventory入口の認証配線をfixtureで検証。本番の主体・設定・実接続は未確認                          |
 | Relayの独立契約・SQLite受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。本文はテキスト・構造化データ。管理添付は未対応として拒否し、配送受領だけでTaskを実行しない |
 | Relayの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
-| Relay専用MCP 4ツール | **実装済み／HTTP入口へ未配線**。`relay_submit/status/poll/ack`をSDKのin-process Request/Responseで検証。検証済みcontext・認可がなければ拒否 |
+| Relay専用MCP 4ツール・HTTP adapter | **実装済み／既存runtimeへ未配線**。`relay_submit/status/poll/ack`を一時loopback HTTPでも検証。Bearer検証port・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-2026-10-17のRelay MCP層までの検証（[PR #33](https://github.com/s-hiraoku/hiraoku-agent-base/pull/33)）では、Node **498件**・Python **47件**（34件＋13件）、lint・typecheck・build・Ruffが成功しました。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+2026-10-17のRelay HTTP入口までのローカル検証では、Node **522件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## Relayの残りタスク
 
-以下は2026-10-17時点の残り**10大項目**です。項目ごとの規模は異なり、件数から完成率・納期を算出するものではありません。実装変更は通常PRに分け、依存する変更は`gh stack`で管理します。
+以下は2026-10-17時点の残り**9大項目**です。HTTP入口の実装・模擬検証を終え、MCPクライアントへ進む段階です。項目ごとの規模は異なり、件数から完成率・納期を算出するものではありません。実装変更は通常PRに分け、依存する変更は`gh stack`で管理します。
 
 | 順序 | タスク | 完了の目安 |
 | --- | --- | --- |
-| 1・次 | HTTP MCP入口 | protocol処理前の認証、Host／Origin／path／method、raw body・時間・rate・同時数・応答上限、監査と未対応listener拒否 |
-| 2・次 | MCPクライアント | 永続outbox／inboxと通信を接続し、timeout・応答消失・再起動でも同じ要求で復旧 |
-| 3 | 登録・アドレス解決・認証binding | `<bot_name>@<agent_name>.hab`の半自動登録、個体IDとの対応、確定後の変更・再利用禁止、検証済み接続とのbinding、停止・失効 |
-| 4 | 管理添付 | 画像・音声・ファイルのupload、再開・finalize、digest／所有者／宛先検証、ACK前のdurable保存、削除・孤立回収 |
-| 5 | 個体別の容量・公平性 | 個体別quotaと最低枠、混雑時の公平な配送、有限backoffを検証 |
-| 6 | Task bridge | 受領・引受け・完了を分離し、許可済み固定Taskを最大1件で連携。結果再送で仕事を再実行しない |
-| 7 | 運用・復旧 | クリーンsetup、明示migration、保守実行、backup／restore、停止・照合・復旧手順 |
-| 8 | 統合試験 | registry・HTTP通信込みの模擬3個体で、不在・失効・競合・停止・復旧・loop制御を検証 |
-| 9・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
-| 10・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
+| 1・次 | MCPクライアント | 永続outbox／inboxと通信を接続し、timeout・応答消失・再起動でも同じ要求で復旧 |
+| 2 | 登録・アドレス解決・認証binding | `<bot_name>@<agent_name>.hab`の半自動登録、個体IDとの対応、確定後の変更・再利用禁止、検証済み接続とのbinding、停止・失効 |
+| 3 | 管理添付 | 画像・音声・ファイルのupload、再開・finalize、digest／所有者／宛先検証、ACK前のdurable保存、削除・孤立回収 |
+| 4 | 個体別の容量・公平性 | 個体別quotaと最低枠、混雑時の公平な配送、有限backoffを検証 |
+| 5 | Task bridge | 受領・引受け・完了を分離し、許可済み固定Taskを最大1件で連携。結果再送で仕事を再実行しない |
+| 6 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守実行、backup／restore、停止・照合・復旧手順 |
+| 7 | 統合試験 | registry・HTTP通信込みの模擬3個体で、不在・失効・競合・停止・復旧・loop制御を検証 |
+| 8・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
+| 9・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-次の到達点は、1〜3と8の対応範囲をそろえ、**HTTP経由で模擬エージェント3個体が往復できること**です。添付を含む初版仕様の完成と、実製品での本番往復は別の到達点として確認します。実製品の読み取り調査は先行できますが、新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+次の到達点は、既存のHTTP入口に1・2・7の対応範囲をそろえ、**HTTP経由で模擬エージェント3個体が往復できること**です。添付を含む初版仕様の完成と、実製品での本番往復は別の到達点として確認します。実製品の読み取り調査は先行できますが、新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
 ## ドキュメント一覧
 
@@ -96,7 +95,7 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 `node src/server.ts` はloopback HTTP MCPを起動しますが、既定の認証は全件拒否です。Auth0・peer registry・必要なserviceを明示的に配線するまで本番Hubとして公開しません。`npm run build` はWorker版を生成します。D1/Workerは移植性の検証対象で、現在の本番方針はMac＋SQLiteです。
 
-上記のserverは既存Task用で、Relay専用MCP factoryは未配線です。Relayだけの模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
+上記のserverは既存Task用で、Relay専用HTTP adapterは別moduleとして存在し、このserverへは未配線です。Relayだけの模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
 
 通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
 

@@ -14,7 +14,7 @@
 
 「必須」「禁止」は採用した設計の実装要件を示す。「推奨初期値」は未合意の設定案であり、実装開始時の確認と負荷試験が必要。「未検証」は実サービスで証明していないことを示す。追加予定の型・table・API・ファイル名は、明記のない限り**計画であり未実装**である。
 
-実装状況：独立契約・認可port・SQLite配送store・送受信journal・明示的保守と、未配線のMCP 4 tool factoryをローカルの模擬接続で検証済み。実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。実個体registry/認証binding、管理添付、本番HTTP MCP公開・3者接続は未完了であり、入力検証や模擬配送の成功を本番接続成功とは扱わない。
+実装状況：独立契約・認可port・SQLite配送store・送受信journal・明示的保守と、MCP 4 tool factory・独立HTTP adapterをローカルの模擬認証／一時loopback通信で検証済み。実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。実個体registry/認証binding、管理添付、本番HTTP MCP公開・3者接続は未完了であり、入力検証や模擬配送の成功を本番接続成功とは扱わない。
 
 ## 1. 目的と非目標
 
@@ -405,7 +405,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 ## 15. API／MCPの追加契約案
 
-正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/relay/mcp.ts)として実装し、SDKのin-process Request/Responseで検証済みだが、既存runtime・公開HTTP APIへは未配線である。`relay_resolve/extend`は未実装。
+正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/relay/mcp.ts)として実装し、独立HTTP adapterと一時loopback Node listenerでも検証済みだが、既存runtime・公開HTTP APIへは未配線である。`relay_resolve/extend`は未実装。
 
 | 追加候補                       | 目的                                 | 認可境界                                                |
 | ------------------------------ | ------------------------------------ | ------------------------------------------------------- |
@@ -416,7 +416,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 | `relay_status`                 | 受付・配送状態と不達の取得           | 元送信者または明示した受信者・管理者に限定              |
 | `relay_extend`（必要性未決定） | inbox保存中の有限lease延長           | 現token、期限、延長上限。業務処理のために保持し続けない |
 
-MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は4 tool catalogへ含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。HTTP公開時の認証入口、Host/Origin、raw body/time/rate上限、audit、未対応listenerの拒否は後続host境界で必須とし、生のSDK handlerだけを本番入口としない。
+MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は4 tool catalogへ含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/relay/http.ts)と[Node callback](../src/relay/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
 
 HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCPより広い認可にしない。registry管理や隔離解除は通常agentのtoolに混ぜない。message ID、thread ID、agent IDが分かるだけでは操作できない。既存Taskのsubmit/claim等、診断ping、discovery-only入口は互換性を維持し、Relayを配線するまでは従来どおり拒否する。
 
