@@ -3,7 +3,14 @@ import { DatabaseSync } from "node:sqlite";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { RelayError } from "./service.ts";
-import { RECORD_RETENTION_MS } from "./contract.ts";
+import { RECORD_RETENTION_MS, comparisonMaterial } from "./contract.ts";
+import type { ContractLimits, Submission } from "./contract.ts";
+import type { Acceptance, Receipt } from "./service.ts";
+import { parseAttachmentMessage } from "./attachment-bindings.ts";
+import type {
+  AttachmentBindingStore,
+  AttachmentBindingReceipt,
+} from "./attachment-bindings.ts";
 import { parseUploadIntent, uploadIdentifier } from "./attachments.ts";
 import type {
   AttachmentUploadStore,
@@ -60,6 +67,28 @@ CREATE TRIGGER attachment_reservation_retained BEFORE DELETE ON attachment_uploa
 CREATE TRIGGER attachment_terminal BEFORE UPDATE ON attachment_uploads WHEN OLD.state IN ('cancelled','expired','rejected') BEGIN SELECT RAISE(ABORT,'terminal'); END;
 CREATE TRIGGER attachment_no_reopen BEFORE UPDATE ON attachment_uploads WHEN OLD.state='finalized' AND NEW.state='uploading' BEGIN SELECT RAISE(ABORT,'finalized'); END;
 `;
+const bindingSchema = `
+CREATE TABLE attachment_bindings(owner_id TEXT NOT NULL,message_id TEXT NOT NULL,fingerprint TEXT NOT NULL,
+ recipient_id TEXT NOT NULL,kind TEXT NOT NULL,expires_at INTEGER NOT NULL,prepared_at INTEGER NOT NULL,
+ receipt TEXT,confirmed_at INTEGER,retain_until INTEGER NOT NULL,PRIMARY KEY(owner_id,message_id));
+CREATE TABLE attachment_refs(attachment_id TEXT PRIMARY KEY REFERENCES attachment_uploads(attachment_id),
+ owner_id TEXT NOT NULL,message_id TEXT NOT NULL,ordinal INTEGER NOT NULL,
+ FOREIGN KEY(owner_id,message_id) REFERENCES attachment_bindings(owner_id,message_id),UNIQUE(owner_id,message_id,ordinal));
+CREATE INDEX attachment_binding_gc ON attachment_bindings(expires_at,retain_until);
+CREATE TRIGGER attachment_binding_immutable BEFORE UPDATE OF owner_id,message_id,fingerprint,recipient_id,kind,expires_at,prepared_at,retain_until ON attachment_bindings BEGIN SELECT RAISE(ABORT,'immutable'); END;
+`;
+type BindingRow = {
+  owner_id: string;
+  message_id: string;
+  fingerprint: string;
+  recipient_id: string;
+  kind: string;
+  expires_at: number;
+  prepared_at: number;
+  receipt: string | null;
+  confirmed_at: number | null;
+  retain_until: number;
+};
 const knownErrors = new Set([
   "forbidden",
   "invalid_upload_request",
@@ -80,9 +109,19 @@ const knownErrors = new Set([
   "attachment_key_mismatch",
   "attachment_chunk_policy_mismatch",
   "attachment_store_unavailable",
+  "attachment_reference_mismatch",
+  "attachment_not_finalized",
+  "attachment_binding_conflict",
+  "attachment_binding_not_found",
+  "attachment_receipt_mismatch",
+  "upload_bound",
+  "invalid_attachment_message",
+  "attachment_binding_unavailable",
 ]);
 
-export class SQLiteAttachmentStore implements AttachmentUploadStore {
+export class SQLiteAttachmentStore
+  implements AttachmentUploadStore, AttachmentBindingStore
+{
   readonly #db: DatabaseSync;
   readonly #options: AttachmentStoreOptions;
   #ready = false;
@@ -241,14 +280,28 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
           .run(this.#key(), this.#options.chunk_bytes);
       }
       const rows = this.#db.prepare("SELECT * FROM attachment_schema").all();
-      if (rows.length !== 1 || rows[0].id !== 1 || rows[0].version !== 1)
+      if (
+        rows.length !== 1 ||
+        rows[0].id !== 1 ||
+        ![1, 2].includes(Number(rows[0].version))
+      )
         throw new RelayError("unsupported_attachment_schema");
       if (rows[0].key_check !== this.#key())
         throw new RelayError("attachment_key_mismatch");
       if (rows[0].chunk_bytes !== this.#options.chunk_bytes)
         throw new RelayError("attachment_chunk_policy_mismatch");
+      if (rows[0].version === 1) {
+        this.#db.exec(bindingSchema);
+        this.#db.exec("UPDATE attachment_schema SET version=2 WHERE id=1");
+      }
       this.#db
         .prepare("SELECT attachment_id FROM attachment_uploads LIMIT 0")
+        .all();
+      this.#db
+        .prepare("SELECT owner_id,message_id FROM attachment_bindings LIMIT 0")
+        .all();
+      this.#db
+        .prepare("SELECT attachment_id,ordinal FROM attachment_refs LIMIT 0")
         .all();
       this.#db
         .prepare(
@@ -346,8 +399,13 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
     return this.#row(row.attachment_id);
   }
   #expire(row: UploadRow, now: number) {
+    const bound = this.#db
+      .prepare(
+        "SELECT b.expires_at FROM attachment_refs r JOIN attachment_bindings b USING(owner_id,message_id) WHERE r.attachment_id=?",
+      )
+      .get(row.attachment_id);
     return ["uploading", "finalized"].includes(row.state) &&
-      row.upload_expires_at <= now
+      Number(bound?.expires_at ?? row.upload_expires_at) <= now
       ? this.#close(row, "expired", "expired", now)
       : row;
   }
@@ -537,6 +595,13 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
     return this.#tx(() => {
       const now = this.#now(),
         row = this.#scoped(id, authorize, now);
+      if (
+        ["uploading", "finalized"].includes(row.state) &&
+        this.#db
+          .prepare("SELECT 1 FROM attachment_refs WHERE attachment_id=?")
+          .get(id)
+      )
+        throw new RelayError("upload_bound");
       return this.#receipt(
         ["uploading", "finalized"].includes(row.state)
           ? this.#close(row, "cancelled", "cancelled", now)
@@ -566,13 +631,30 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
       });
       const rows = this.#db
         .prepare(
-          "SELECT * FROM attachment_uploads WHERE state IN ('uploading','finalized') AND upload_expires_at<=? ORDER BY upload_expires_at,attachment_id LIMIT ?",
+          "SELECT u.* FROM attachment_uploads u LEFT JOIN attachment_refs r USING(attachment_id) LEFT JOIN attachment_bindings b USING(owner_id,message_id) WHERE u.state IN ('uploading','finalized') AND coalesce(b.expires_at,u.upload_expires_at)<=? ORDER BY u.upload_expires_at,u.attachment_id LIMIT ?",
         )
         .all(now, limit) as UploadRow[];
       for (const row of rows) this.#close(row, "expired", "expired", now);
+      const bindings = this.#db
+        .prepare(
+          "SELECT b.owner_id,b.message_id FROM attachment_bindings b WHERE b.retain_until<=? AND NOT EXISTS(SELECT 1 FROM attachment_refs r JOIN attachment_uploads u USING(attachment_id) WHERE r.owner_id=b.owner_id AND r.message_id=b.message_id AND (u.state IN ('uploading','finalized') OR u.retain_until IS NULL OR u.retain_until>?)) ORDER BY b.retain_until,b.owner_id,b.message_id LIMIT ?",
+        )
+        .all(now, now, limit);
+      for (const row of bindings) {
+        this.#db
+          .prepare(
+            "DELETE FROM attachment_refs WHERE owner_id=? AND message_id=?",
+          )
+          .run(row.owner_id!, row.message_id!);
+        this.#db
+          .prepare(
+            "DELETE FROM attachment_bindings WHERE owner_id=? AND message_id=?",
+          )
+          .run(row.owner_id!, row.message_id!);
+      }
       const old = this.#db
         .prepare(
-          "SELECT attachment_id FROM attachment_uploads WHERE state IN ('cancelled','expired','rejected') AND retain_until<=? AND terminal_at+?<=? AND upload_expires_at+?<=? ORDER BY retain_until,attachment_id LIMIT ?",
+          "SELECT attachment_id FROM attachment_uploads WHERE state IN ('cancelled','expired','rejected') AND retain_until<=? AND terminal_at+?<=? AND upload_expires_at+?<=? AND NOT EXISTS(SELECT 1 FROM attachment_refs r WHERE r.attachment_id=attachment_uploads.attachment_id) ORDER BY retain_until,attachment_id LIMIT ?",
         )
         .all(
           now,
@@ -588,6 +670,245 @@ export class SQLiteAttachmentStore implements AttachmentUploadStore {
           .run(row.attachment_id!);
       return { expired: rows.length, purged: old.length };
     });
+  }
+  #bindingRow(owner: string, messageId: string): BindingRow {
+    const row = this.#db
+      .prepare(
+        "SELECT * FROM attachment_bindings WHERE owner_id=? AND message_id=?",
+      )
+      .get(owner, messageId) as BindingRow | undefined;
+    if (!row) throw new RelayError("attachment_binding_not_found");
+    return row;
+  }
+  #bindingReceipt(row: BindingRow, now: number): AttachmentBindingReceipt {
+    const ids = this.#db
+      .prepare(
+        "SELECT attachment_id FROM attachment_refs WHERE owner_id=? AND message_id=? ORDER BY ordinal",
+      )
+      .all(row.owner_id, row.message_id)
+      .map((r) => String(r.attachment_id));
+    if (!ids.length || ids.length > 64)
+      throw new RelayError("attachment_binding_unavailable");
+    return {
+      owner_id: row.owner_id,
+      message_id: row.message_id,
+      recipient_id: row.recipient_id,
+      expires_at: new Date(row.expires_at).toISOString(),
+      attachment_ids: ids,
+      state:
+        row.expires_at <= now
+          ? "expired"
+          : row.receipt === null
+            ? "prepared"
+            : "accepted",
+      receipt:
+        row.receipt === null ? null : (JSON.parse(row.receipt) as Receipt),
+    };
+  }
+  prepare(
+    input: Submission,
+    limits: ContractLimits,
+    authorize: UploadAuthorize,
+  ): AttachmentBindingReceipt {
+    const message = parseAttachmentMessage(input, limits);
+    return this.#tx(() => {
+      const now = this.#now(),
+        owner = this.#identity(authorize, message),
+        material = comparisonMaterial(owner, message, limits),
+        fingerprint = this.#hash("binding-v1", material);
+      const old = this.#db
+        .prepare(
+          "SELECT * FROM attachment_bindings WHERE owner_id=? AND message_id=?",
+        )
+        .get(owner, message.message_id) as BindingRow | undefined;
+      if (old) {
+        if (old.fingerprint !== fingerprint)
+          throw new RelayError("attachment_binding_conflict");
+        return this.#bindingReceipt(old, now);
+      }
+      if (Date.parse(message.expires_at) <= now)
+        throw new RelayError("expired_before_acceptance");
+      if (
+        Date.parse(message.first_sent_at) >
+        now + this.#options.max_clock_skew_ms
+      )
+        throw new RelayError("upload_clock_skew");
+      if (
+        Number(
+          this.#db.prepare("SELECT count(*) n FROM attachment_bindings").get()!
+            .n,
+        ) >= this.#options.max_records
+      )
+        throw new RelayError("upload_capacity_exceeded");
+      const parts = message.body.parts.filter((p) => p.type === "attachment"),
+        deadlines: number[] = [];
+      for (const part of parts) {
+        const row = this.#scoped(part.attachment_id, authorize, now),
+          intent = this.#intent(row);
+        if (row.state !== "finalized")
+          throw new RelayError("attachment_not_finalized");
+        const { type: _type, attachment_id: _id, ...descriptor } = part;
+        void _type;
+        void _id;
+        if (
+          intent.message_id !== message.message_id ||
+          intent.recipient_id !== message.recipient_id ||
+          intent.kind !== message.kind ||
+          intent.first_sent_at !== message.first_sent_at ||
+          intent.expires_at !== message.expires_at ||
+          JSON.stringify(intent.attachment) !== JSON.stringify(descriptor)
+        )
+          throw new RelayError("attachment_reference_mismatch");
+        if (
+          this.#db
+            .prepare("SELECT 1 FROM attachment_refs WHERE attachment_id=?")
+            .get(part.attachment_id)
+        )
+          throw new RelayError("attachment_binding_conflict");
+        deadlines.push(row.upload_expires_at);
+      }
+      this.#db
+        .prepare(
+          "INSERT INTO attachment_bindings VALUES(?,?,?,?,?,?,?,NULL,NULL,?)",
+        )
+        .run(
+          owner,
+          message.message_id,
+          fingerprint,
+          message.recipient_id,
+          message.kind,
+          Date.parse(message.expires_at),
+          now,
+          Math.max(now, Date.parse(message.expires_at)) + RECORD_RETENTION_MS,
+        );
+      parts.forEach((part, ordinal) =>
+        this.#db
+          .prepare("INSERT INTO attachment_refs VALUES(?,?,?,?)")
+          .run(part.attachment_id, owner, message.message_id, ordinal),
+      );
+      this.#guards.push(() => {
+        if (
+          Math.min(...deadlines, Date.parse(message.expires_at)) <= this.#now()
+        )
+          throw new RelayError("upload_closed");
+      });
+      return this.#bindingReceipt(
+        this.#bindingRow(owner, message.message_id),
+        now,
+      );
+    });
+  }
+  binding(
+    messageId: string,
+    authorize: UploadAuthorize,
+  ): AttachmentBindingReceipt {
+    uploadIdentifier(messageId);
+    return this.#tx(() => {
+      const now = this.#now(),
+        owner = this.#identity(authorize),
+        row = this.#bindingRow(owner, messageId);
+      if (this.#identity(authorize, row) !== owner)
+        throw new RelayError("forbidden");
+      return this.#bindingReceipt(row, now);
+    });
+  }
+  confirm(
+    messageId: string,
+    receipt: Receipt,
+    authorize: UploadAuthorize,
+  ): AttachmentBindingReceipt {
+    uploadIdentifier(messageId);
+    return this.#tx(() => {
+      const now = this.#now(),
+        owner = this.#identity(authorize),
+        row = this.#bindingRow(owner, messageId);
+      if (this.#identity(authorize, row) !== owner)
+        throw new RelayError("forbidden");
+      if (
+        !receipt ||
+        receipt.sender_id !== owner ||
+        receipt.message_id !== messageId ||
+        receipt.recipient_id !== row.recipient_id ||
+        receipt.expires_at !== new Date(row.expires_at).toISOString() ||
+        typeof receipt.receipt_id !== "string" ||
+        !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/.test(
+          receipt.receipt_id,
+        ) ||
+        !["pending", "leased", "acked", "expired", "quarantined"].includes(
+          receipt.state,
+        ) ||
+        !Number.isFinite(Date.parse(receipt.accepted_at)) ||
+        new Date(Date.parse(receipt.accepted_at)).toISOString() !==
+          receipt.accepted_at ||
+        Date.parse(receipt.accepted_at) >= row.expires_at
+      )
+        throw new RelayError("attachment_receipt_mismatch");
+      if (row.receipt !== null) {
+        const old = JSON.parse(row.receipt) as Receipt;
+        if (
+          old.receipt_id !== receipt.receipt_id ||
+          old.accepted_at !== receipt.accepted_at
+        )
+          throw new RelayError("attachment_receipt_mismatch");
+      }
+      const saved: Receipt = {
+        sender_id: owner,
+        message_id: messageId,
+        recipient_id: row.recipient_id,
+        receipt_id: receipt.receipt_id,
+        accepted_at: receipt.accepted_at,
+        expires_at: receipt.expires_at,
+        state: receipt.state,
+      };
+      this.#db
+        .prepare(
+          "UPDATE attachment_bindings SET receipt=?,confirmed_at=coalesce(confirmed_at,?) WHERE owner_id=? AND message_id=?",
+        )
+        .run(JSON.stringify(saved), now, owner, messageId);
+      return this.#bindingReceipt(this.#bindingRow(owner, messageId), now);
+    });
+  }
+  checkPrepared(acceptance: Acceptance, limits: ContractLimits): void {
+    try {
+      const message = parseAttachmentMessage(acceptance.message, limits);
+      const material = comparisonMaterial(
+        acceptance.sender_id,
+        message,
+        limits,
+      );
+      const now = this.#now(),
+        row = this.#bindingRow(
+          acceptance.sender_id,
+          acceptance.message.message_id,
+        );
+      if (
+        row.expires_at <= now ||
+        material !== acceptance.comparison_material ||
+        row.fingerprint !== this.#hash("binding-v1", material)
+      )
+        throw Error();
+      const refs = this.#db
+        .prepare(
+          "SELECT u.attachment_id,u.state,u.received_bytes,u.size_bytes FROM attachment_refs r JOIN attachment_uploads u USING(attachment_id) WHERE r.owner_id=? AND r.message_id=? ORDER BY r.ordinal",
+        )
+        .all(row.owner_id, row.message_id);
+      const parts = acceptance.message.body.parts.filter(
+        (p) => p.type === "attachment",
+      );
+      if (
+        !parts.length ||
+        refs.length !== parts.length ||
+        refs.some(
+          (r, i) =>
+            r.attachment_id !== parts[i].attachment_id ||
+            r.state !== "finalized" ||
+            r.received_bytes !== r.size_bytes,
+        )
+      )
+        throw Error();
+    } catch {
+      throw new RelayError("attachment_binding_unavailable");
+    }
   }
   close() {
     this.#ready = false;

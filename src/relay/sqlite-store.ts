@@ -39,6 +39,10 @@ export interface StoreOptions {
   retry_cap_ms: number;
   poll_scan_limit: number;
 }
+/** Trusted host composition: validate durable prepared refs, never caller claims. */
+export interface AttachmentAdmission {
+  check(acceptance: Acceptance): void;
+}
 const SCHEMA_VERSION = 3;
 const TABLES = `
 CREATE TABLE relay_messages(
@@ -105,8 +109,19 @@ function receipt(row: Row): Receipt {
 export class SQLiteRelayStore implements DeliveryStore {
   readonly #db: DatabaseSync;
   readonly #options: StoreOptions;
+  readonly #attachments: AttachmentAdmission | undefined;
   #ready = false;
-  constructor(path: string, options: StoreOptions) {
+  constructor(
+    path: string,
+    options: StoreOptions,
+    attachments?: AttachmentAdmission,
+  ) {
+    if (attachments !== undefined && typeof attachments.check !== "function")
+      throw new RelayError("invalid_attachment_admission");
+    this.#attachments =
+      attachments === undefined
+        ? undefined
+        : Object.freeze({ check: attachments.check.bind(attachments) });
     for (const k of [
       "max_pending",
       "max_records",
@@ -274,13 +289,14 @@ UPDATE relay_schema SET version=2;`);
   accept(resolve: () => Acceptance): Receipt {
     return this.#tx(() => {
       const now = this.#now();
+      const acceptance = resolve();
       const {
         message: m,
         sender_id: sender,
         comparison_material: material,
-      } = resolve();
-      // Managed attachments are fail-closed until the finalize/ownership port is implemented.
-      if (m.body.parts.some((p) => p.type === "attachment"))
+      } = acceptance;
+      const hasAttachments = m.body.parts.some((p) => p.type === "attachment");
+      if (hasAttachments && !this.#attachments)
         throw new RelayError("attachment_store_unavailable");
       const fingerprint = createHmac("sha256", this.#options.fingerprint_key)
         .update(material)
@@ -307,6 +323,14 @@ UPDATE relay_schema SET version=2;`);
       if (sent > now + this.#options.max_clock_skew_ms)
         throw new RelayError("clock_skew");
       if (expires <= now) throw new RelayError("expired_before_acceptance");
+      if (hasAttachments) {
+        const checked: unknown = this.#attachments!.check(acceptance);
+        if (checked !== undefined) {
+          if (checked && typeof checked === "object" && "then" in checked)
+            void Promise.resolve(checked).catch(() => {});
+          throw new RelayError("attachment_binding_unavailable");
+        }
+      }
       this.#expire(now);
       const total = this.#db
         .prepare("SELECT count(*) n FROM relay_messages")
@@ -473,6 +497,13 @@ UPDATE relay_schema SET version=2;`);
           generation: number;
           attempts: number;
         };
+        // Retrieval and durable attachment ACK are not implemented; do not lease metadata alone.
+        if (
+          JSON.parse(row.body).body.parts.some(
+            (p: { type: string }) => p.type === "attachment",
+          )
+        )
+          continue;
         try {
           if (
             authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
@@ -529,6 +560,7 @@ UPDATE relay_schema SET version=2;`);
         )
         .get(request.sender_id, request.message_id, receiver) as
         | (Row & {
+            body: string | null;
             generation: number;
             token_hash: string | null;
             lease_until: number | null;
@@ -537,6 +569,13 @@ UPDATE relay_schema SET version=2;`);
       if (!row) throw new RelayError("invalid_ack");
       if (authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver)
         throw new RelayError("forbidden");
+      if (
+        row.body &&
+        JSON.parse(row.body).body.parts.some(
+          (p: { type: string }) => p.type === "attachment",
+        )
+      )
+        throw new RelayError("attachment_delivery_unavailable");
       const fingerprint = this.#hash("ack", JSON.stringify(request));
       const existing = this.#db
         .prepare(
