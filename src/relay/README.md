@@ -151,3 +151,55 @@ node --test test/relay-receiver.test.js
 
 Fixtures use new temporary databases and synthetic data/keys only. The reciprocal
 three-individual case has no product-specific logic and executes no model/tools.
+
+## Implementation step 5: sender durable outbox
+
+The pure `DurableSender` takes `SenderStore` and authenticated, bounded-time
+`SenderTransport` ports. `enqueue()` commits the detached immutable submission
+before any network call. The caller must resolve the HAB address to recipient ID
+and fix the message ID, first-send timestamp and one-hour expiry before enqueue;
+this component does not resolve names or substitute destinations. `sendOnce()`
+claims at most one job explicitly, with no daemon or scheduler.
+
+The infrastructure entry point `./sqlite-outbox.ts` provides a dedicated
+`SQLiteOutbox`. Like the inbox it requires explicit migration, a private file
+(mode 0600, no symlink/loose existing file), a fixed individual and a supplied
+private comparison key. Unknown schema/owner/key are refused. It persists the
+original payload, HMAC, recipient and deadline. Same-key content conflicts are
+rejected even after payload deletion. Record and byte caps are explicit;
+metadata collection is not implemented yet, so a full store fails closed.
+
+A transactional single-flight lease/fence coordinates concurrent sender processes.
+A timed-out lease may retry the same operation, but its old holder cannot change
+new state. Caller/transport mutation does not alter the durable payload. Temporary
+failures schedule persisted bounded exponential backoff with jitter. Refusal,
+conflict and unsupported storage quarantine instead of replacing credentials,
+identity, recipient or message ID. Submit and status have separate finite budgets.
+
+A lost acceptance response replays the exact original submission. Once the submit
+budget is consumed, or the deadline is over, the job uses status lookup only. An
+expired-before-acceptance response also forces status-only. No retry extends TTL.
+Expired queued payloads are cleared while status lookup uses metadata only. A
+status `not_found` is retried within the configured status budget/horizon because
+it alone does not settle an earlier uncertain network request. Exhaustion is
+quarantine before expiry or `expired_unknown` after expiry, never a claim that the
+recipient definitely saw nothing. No replacement message/task is generated.
+
+The receipt must match the local individual, message, recipient, expiry, valid
+state, receipt ID and UTC acceptance time before the outbox commits acceptance
+and clears its payload together. Its delivery state is a snapshot, not a live
+view or work-completion signal. A receipt-save failure keeps the durable lease
+and intent for recovery, including when the Relay has already accepted it.
+Minimal receipt/dedup records are separate from body data. Cleanup currently runs
+only on explicit operations; scheduled maintenance, 30-day record collection and
+application-side history lifecycle remain later work. Private SQLite sidecars and
+backups require the same protection as the DB; deletion is logical, not a promise
+of immediate physical erasure.
+
+`node --test test/relay-sender.test.js` includes restart, concurrent claim,
+fencing, capacity/refusal, expiry/status, local-save failure and a model-free
+sender → Relay → receiver fixture that loses both acceptance and ACK responses.
+Only synthetic data/new temporary databases are used. This proves the injected
+local transport path, not production MCP or a real product's durable integration.
+Attachments still fail closed pending managed-byte storage. No product SDK,
+MCP listener, real-agent call, cron or new credentials are introduced.
