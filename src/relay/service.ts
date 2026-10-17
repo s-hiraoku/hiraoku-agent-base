@@ -55,6 +55,13 @@ export interface AckReceipt {
   acked_at: string;
   state: "acked";
 }
+/** Public delivery surface; optional host integrations can compose this port. */
+export interface RelayOperations {
+  submit(context: unknown, input: unknown): Receipt;
+  status(context: unknown, messageId: string): Receipt;
+  poll(context: unknown): Delivery | null;
+  ack(context: unknown, input: unknown): AckReceipt;
+}
 export type ReceiveAuthorization = (peer?: {
   sender_id: string;
   kind: string;
@@ -72,7 +79,7 @@ export interface MaintenanceResult {
 export interface MaintenanceStore {
   maintain(authorize: () => void, limit: number): MaintenanceResult;
 }
-export class RelayService {
+export class RelayService implements RelayOperations {
   readonly #store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>;
   readonly #authorization: Authorization | undefined;
   readonly #limits: ContractLimits;

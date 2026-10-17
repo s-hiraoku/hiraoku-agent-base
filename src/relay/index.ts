@@ -23,6 +23,7 @@ export type {
   AcceptanceStore,
   Acceptance,
   ReceiptQuery,
+  RelayOperations,
 } from "./service.ts";
 
 export type {

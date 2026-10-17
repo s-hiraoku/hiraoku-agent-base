@@ -4,6 +4,9 @@ Import from `./index.ts`. This module owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.
 It validates a version-1 caller submission and supplies stable comparison material.
 Service and SQLite delivery are described below. The optional MCP factory, HTTP adapters and client in steps 9–11 are unmounted from the existing runtime; no deployed endpoint is changed.
+HAB-only enrollment/address policy and coordinated authorization are implemented
+separately in [the HAB integration](../hab/README.md). The core imports none of it;
+real product binding, MCP address-resolution exposure and enrollment UI remain pending.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
@@ -528,7 +531,8 @@ than automatically replaying under corrected credentials. Detection may occur
 **after server commit under the credential's actual principal**. The host must
 stop and reconcile the original ID under the relevant bindings before changing
 credentials or manufacturing a replacement. A mismatch does not prove nondelivery.
-Registry enrollment and real credential-to-individual binding remain unimplemented.
+Local HAB enrollment is now implemented in the separate integration linked above;
+real credential-to-individual binding remains unverified.
 
 Requests are privately validated/snapshotted before awaiting credentials. The
 deadline covers provider wait, fetch, body reading and protocol parsing; a late
@@ -573,6 +577,8 @@ confirm one server message/inbox record. Additional cases cover lost-poll lease
 fencing, current revocation, wrong credential binding, opaque HTTP failures and
 native redirect refusal. Synthetic keys, temporary databases and new loopback
 ports are used exclusively. This is not a product integration or registered
-three-agent end-to-end acceptance. Registry/address resolution, managed bytes,
+three-agent end-to-end acceptance. The separate HAB tests now cover a registered
+mock three-individual HTTP path; local registry/address policy is described in
+the HAB integration above. MCP address-resolution exposure, managed bytes,
 application history, scheduling, runtime activation and production connections
 remain separate work.
