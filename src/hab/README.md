@@ -268,6 +268,33 @@ emergency stop, all three inter-DB revocation gaps, escaped decisions, actual
 short-context expiry after Relay commit and same-intent recovery. These are host
 composition checks, not real product binding or production transfer evidence.
 
+## Optional managed receiver reads
+
+`./attachment-read.ts` provides `HabAttachmentRead` as a read-only host facade over
+the independent chunk service. It requires current **poll** authority for the
+verified receiver, checks the stored sender/kind and original directional block,
+and holds **registry → Relay → upload DB** guards through the bounded chunk read.
+Status rights, sender identity or knowing the attachment ID grant no download.
+Stop/revocation and reads serialize under the same registry lock.
+
+Every chunk rechecks the live message deadline/state, original fingerprint,
+confirmed per-message references, manifest and chunk integrity. Both the scoped
+registry authorization and live Relay proof expire when their callbacks exit.
+If context expires after bytes are looked up, the call refuses to return them;
+fresh verified context can retry the same saved offset without extending expiry.
+Previously returned bytes belong to the receiver and cannot be retracted by stop.
+
+Thirteen additional SQLite tests cover verified-recipient reads, authority and
+individual separation, sender/receiver stop, directional block, binding
+revocation, missing/expired identity, emergency stop, another connection attempting
+revocation at all read stages, escaped decisions/proof, context expiry after
+byte lookup and current kind policy. The shared attachment fixture also retains
+the fourteen existing acceptance tests.
+
+This class exposes only `read`. It adds no route, MCP tool, credential, lease,
+receiver journal, ACK or deletion authority. Poll still withholds attached
+messages until durable receiver storage and ACK coupling are implemented.
+
 ## Optional HAB MCP/HTTP and client
 
 `./mcp.ts` provides `createHabMcpServer`: exactly the four Relay tools plus
