@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ContractError } from "./contract.ts";
 import { RelayError } from "./service.ts";
 import { isRelayMcpError } from "./mcp-errors.ts";
-import type { RelayService } from "./service.ts";
+import type { RelayOperations } from "./service.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 const part = z.discriminatedUnion("type", [
@@ -65,7 +65,7 @@ export interface RelayMcpGate {
   begin(): Promise<(success: boolean) => Promise<void>>;
 }
 export function createRelayMcpServer(
-  service: RelayService,
+  service: RelayOperations,
   resolveContext: RelayContextResolver = () => null,
   gate?: RelayMcpGate,
 ): McpServer {

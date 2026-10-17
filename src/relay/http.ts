@@ -4,7 +4,7 @@ import type { AuditSink, AuditCategory } from "../security.ts";
 import { protocolAdmission } from "../protocol.ts";
 import { createRelayMcpServer, relayMcpSchemas } from "./mcp.ts";
 import type { RelayMcpGate } from "./mcp.ts";
-import type { RelayService } from "./service.ts";
+import type { RelayOperations } from "./service.ts";
 export interface RelayHttpPolicy {
   resource_url: string;
   allowed_origins: readonly string[];
@@ -50,14 +50,14 @@ export class RelayHttpGateway {
   get policy(): Readonly<RelayHttpPolicy> {
     return this.#policy;
   }
-  readonly #service: RelayService;
+  readonly #service: RelayOperations;
   readonly #audit: AuditSink;
   readonly #verify: RelayHttpVerifier;
   #window = 0;
   #requests = 0;
   #active = 0;
   constructor(
-    service: RelayService,
+    service: RelayOperations,
     policy: RelayHttpPolicy,
     audit: AuditSink,
     verify: RelayHttpVerifier = () => null,

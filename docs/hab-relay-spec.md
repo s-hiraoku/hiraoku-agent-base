@@ -14,7 +14,7 @@
 
 「必須」「禁止」は採用した設計の実装要件を示す。「推奨初期値」は未合意の設定案であり、実装開始時の確認と負荷試験が必要。「未検証」は実サービスで証明していないことを示す。追加予定の型・table・API・ファイル名は、明記のない限り**計画であり未実装**である。
 
-実装状況：独立契約・認可port・SQLite配送store・送受信journal・明示的保守と、MCP 4 tool factory・独立HTTP adapter・永続journalへ接続するMCPクライアントをローカルの模擬認証／一時loopback通信で検証済み。送信・ACKの応答消失後にclient／journalを再起動し、同じ要求で復旧する試験を含む。実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。実個体registry/認証binding、管理添付、本番HTTP MCP公開・3者接続は未完了であり、入力検証や模擬配送の成功を本番接続成功とは扱わない。
+実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核をローカルで実装し、登録した模擬3個体の一時HTTP往復を検証済み。送信・ACKの応答消失後にclient／journalを再起動し、同じ要求で復旧する試験も含む。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。registry管理・アドレス解決はローカルAPIであり、MCPの`relay_resolve`公開と登録導線は未実装。実個体の認証binding実証、管理添付、本番HTTP MCP公開・3者接続も未完了であり、模擬配送を本番接続成功とは扱わない。
 
 ## 1. 目的と非目標
 
@@ -115,7 +115,7 @@ lab@hermes.hab
 
 例はダミーであり、実登録を示さない。`.hab`はHAB用の論理アドレスであることを識別する表記であり、SMTP配送先や外部DNSの名前解決には使わない。`agent_name`には製品・実行環境の識別しやすい固定名を使う。Grok Botは`grok-bot`とする。他製品の上記slugは候補例であり、正式な対応表は実装時に管理する。Claude Code、Codex、Cursorなども同じ登録・通信契約の対象であり、製品別に別の配送方式を作らない。
 
-登録時にユーザーが自由に指定できるアドレス部分は`bot_name`だけとする。HABは選択した製品・実行環境の登録情報から`agent_name`を設定し、完成したアドレスを半自動で提案する。`bot_name`は識別しやすい個体名として使い、同じ製品内の個体を区別する。許容文字、長さ、大小文字・Unicodeの正規化とそのversionは実装前に固定する。
+登録時にユーザーが自由に指定できるアドレス部分は`bot_name`だけとする。HABは選択した製品・実行環境の登録情報から`agent_name`を設定し、完成したアドレスを半自動で提案する。`bot_name`は識別しやすい個体名として使い、同じ製品内の個体を区別する。実装した正規化version 1は、両要素とも小文字ASCII英数字・内部ハイフンの1〜48文字、先頭・末尾は英数字とする。大文字・Unicode・空白・ドット・underscoreは暗黙変換せず拒否する。完成形は最大101文字で、正規化versionも個体確定時に固定する。
 
 ### 4.2 半自動登録と変更不可の境界
 
@@ -139,6 +139,8 @@ Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提�
 bridgeしか識別できない接続はbridge個体として登録し、元Bot固有の認証を証明したとは言わない。利用可能な方式はG0の結果で決める。credential本体はregistryやmessageへ入れず、承認済み保管先への参照だけを設定する。
 
 認可は第4.4節の明示的な相互通信policyと、個体状態・操作権限・block等を評価する。認可実装やpolicyが未設定なら拒否するが、有効個体間のペア別allowlistは要求しない。新しい個体登録、binding、有効化・停止、ACL変更は管理操作であり、通常の会話やAdapterの自己登録で昇格できない。停止・失効・epochを各受付／取得／ACKの境界で再確認する。他個体のinbox、status、thread、返信参照を推測しても読めないようにし、存在有無を権限エラーから漏らさない。
+
+ローカル実装では管理権限portと検証済み個体portを分け、未設定は拒否する。必須のissuer／audience／subject／client_id／connection_id全体をHMACで照合し、生のclaimやcredentialはregistryへ保存しない。このdescriptorを返すhostは、実際の認証と個体専有の検証を担当する。registryのwrite guardを先に取得し、Relayの認可・commit完了まで保持する。すべての管理変更も同じguardを使い、別接続からの失効が認可とcommitの間へ割り込むことを防ぐ。callbackは同期限定で、終了後の認可objectは無効化する。直接SQL更新・別registry・迂回経路や実製品の認証実証まで保証したものではない。
 
 ### 4.4 メール型の相互送信policy
 
@@ -466,6 +468,8 @@ Adapterのcapability申告は起点にすぎず、実機の永続保存・再送
 
 個体停止、配送停止、実行停止、credential失効を分ける。停止時は新規submit/pollの受付と新leaseを止め、保存済みmessageを消さない。認証を維持したdrain用ACKを許すか、即時失効にするかは停止policyとして明示する。失効後は既存receipt再取得も権限なしには許さない。
 
+現在のHAB policyは停止・block・失効後のACKも即時拒否し、drain用例外は持たない。通常の停止／再開は同じID・アドレスと明示権限で行う。管理記録の容量上限やaudit挿入失敗とは独立した、固定1行の管理者専用`emergencyStop`を実装する。これは冪等かつ単調な全配送拒否latchで、通常の有効化では解除できず、復帰APIは未実装。DB自体への停止保存が失敗する場合はprocess／routeを停止して照合する運用が別途必要であり、この実装は既存runtimeへ未配線である。
+
 再開はDB状態・outbox/inbox・元期限を照合して行い、message IDやgenerationを初期化しない。業務run停止の不明は既存Task gateを保持し、メール配送の再開と一緒に実行slotを解放しない。経路公開とプロセス停止は別管理とし、監督の消失・状態取得失敗を成功扱いしない。
 
 backupはSQLiteの整合したsnapshot手段を使い、WALの稼働DBファイルを単純copyして済ませない。Relay、registry、ACK/dedup、Task linkとclient側journalの世代・schema versionを記録し、private権限で保存する。秘密はDB backupと無制御に混載せず、必要な鍵の復旧手順を別管理する。backup保存先や新規鍵発行は別途承認を要する。
@@ -551,7 +555,7 @@ G0の実個体能力調査は先行させるが、実際の処理・受入れは
 
 1. G0：実Grok/dot各個体の識別・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
 2. 個体専有を証明する接続binding、実サービスのOAuth callback/client方式、必要scopeと保管・失効方式。共有subjectからは推測しない。
-3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、アドレス正規化、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
+3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、将来のアドレス正規化version更新、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
 4. 配送TTL一律1時間、ACK確定後のRelay本文削除、最小配送記録の30日保持は決定済み。その他の推奨初期値の採否、個体別最低予約枠、公平性/SLO、長期不在時のretentionと個人データ削除policy。
 5. long-poll／lease延長の要否、wake追加の要否と実receiverの能力。
 6. Task bridgeのPrincipalとlink commit/照合、追加migrationの具体schema、backup後の復旧epoch・照合手順。
