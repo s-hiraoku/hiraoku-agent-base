@@ -19,7 +19,13 @@ import type {
   Receipt,
   ReceiptQuery,
 } from "./service.ts";
-import type { AckRequest } from "./contract.ts";
+import type { AckRequest, ContractLimits } from "./contract.ts";
+import { parseSubmission, comparisonMaterial } from "./contract.ts";
+import { parseAttachmentRead } from "./attachment-read.ts";
+import type {
+  AttachmentReadRequest,
+  AttachmentReadGrant,
+} from "./attachment-read.ts";
 import {
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
@@ -428,6 +434,82 @@ UPDATE relay_schema SET version=2;`);
         .get(q.sender_id, q.message_id) as Row | undefined;
       if (!row) throw new RelayError("not_found");
       return receipt(row);
+    });
+  }
+  /** Host-only receiver read guard. This does not lease, ACK or expose a public tool. */
+  withAttachmentRead<T>(
+    input: AttachmentReadRequest,
+    limits: ContractLimits,
+    authorize: ReceiveAuthorization,
+    action: (grant: AttachmentReadGrant) => T,
+  ): T {
+    const request = parseAttachmentRead(input);
+    return this.#tx(() => {
+      const receiver = authorize(),
+        now = this.#now();
+      if (!this.#attachments)
+        throw new RelayError("attachment_store_unavailable");
+      const row = this.#db
+        .prepare(
+          "SELECT * FROM relay_messages WHERE sender_id=? AND message_id=? AND recipient_id=?",
+        )
+        .get(request.sender_id, request.message_id, receiver) as
+        (Row & { body: string | null }) | undefined;
+      if (
+        !row ||
+        !row.body ||
+        row.expires_at <= now ||
+        !["pending", "leased"].includes(row.state)
+      )
+        throw new RelayError("attachment_read_not_found");
+      if (authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver)
+        throw new RelayError("forbidden");
+      const message = parseSubmission(JSON.parse(row.body), limits);
+      const material = comparisonMaterial(row.sender_id, message, limits);
+      if (
+        row.fingerprint !==
+        createHmac("sha256", this.#options.fingerprint_key)
+          .update(material)
+          .digest("hex")
+      )
+        throw new RelayError("attachment_integrity_failed");
+      if (
+        message.recipient_id !== receiver ||
+        message.message_id !== request.message_id ||
+        Date.parse(message.expires_at) !== row.expires_at ||
+        !message.body.parts.some(
+          (p) =>
+            p.type === "attachment" &&
+            p.attachment_id === request.attachment_id,
+        )
+      )
+        throw new RelayError("attachment_read_not_found");
+      let alive = true;
+      const assertCurrent = () => {
+        if (!alive || row.expires_at <= this.#now())
+          throw new RelayError("attachment_read_not_found");
+        if (
+          authorize() !== receiver ||
+          authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
+        )
+          throw new RelayError("forbidden");
+      };
+      try {
+        const result = action({
+          sender_id: row.sender_id,
+          message,
+          receipt: receipt(row),
+          assertCurrent,
+        });
+        if (result && typeof result === "object" && "then" in result) {
+          void Promise.resolve(result).catch(() => {});
+          throw new RelayError("attachment_read_failed");
+        }
+        assertCurrent();
+        return result;
+      } finally {
+        alive = false;
+      }
     });
   }
   #hash(domain: string, value: string): string {

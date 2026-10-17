@@ -21,9 +21,13 @@ from message storage. Optional durable per-message bindings and an acceptance-on
 coordinator now protect finalized bytes before Relay commit and reconcile the original
 receipt after failure/reopen. A host must explicitly supply prepared-reference admission;
 default acceptance/outbox/inbox still reject attachments. Even when admission is enabled,
-poll withholds attached messages and ACK refuses them. Authenticated download, durable
-receiver bytes, ACK/deletion coupling and HAB acceptance guard composition remain later
-work; the pure Relay entry and MCP catalogs are unchanged.
+poll withholds attached messages and ACK refuses them. The optional
+`./attachment-read.ts` host service reads one bounded integrity-checked chunk for the
+current receiver under a live Relay transaction; it rechecks message state/expiry,
+confirmed refs and current poll authority. Grants expire at callback exit and reads
+never advance delivery state. Durable receiver bytes and ACK/deletion coupling
+remain later work. HAB provides separate scoped acceptance/read guards without
+changing this core; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
