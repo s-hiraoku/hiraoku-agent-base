@@ -666,6 +666,18 @@ test("terminal enrollment: exact address confirmation and explicit operation sel
   assert.equal(output.join("").includes("Synthetic bot A"), true);
 });
 test("terminal enrollment: generic yes, EOF and terminal control input never confirm or execute", async () => {
+  // A valid one-character name must not be consumed as a cancellation shortcut.
+  for (const [answer, expected] of [
+    ["q", "q"],
+    ["", null],
+    [null, null],
+  ]) {
+    const ui = enrollmentTerminalUI({
+      write() {},
+      question: async () => answer,
+    });
+    assert.equal(await ui.botName({ agent_name: "grok-bot" }), expected);
+  }
   for (const answer of ["yes", "y", null, "wrong@grok-bot.hab"]) {
     const ui = enrollmentTerminalUI({
       write() {},

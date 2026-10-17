@@ -35,9 +35,9 @@ export function enrollmentTerminalUI(io: EnrollmentTerminal): EnrollmentUI {
     },
     async botName(product) {
       const value = await ask(
-        `<bot_name>@${product.agent_name}.hab のbot_name（小文字英数字・ハイフン、1–48文字） / q: 中断 > `,
+        `<bot_name>@${product.agent_name}.hab のbot_name（小文字英数字・ハイフン、1–48文字） / 空欄: 中断 > `,
       );
-      return value === "q" ? null : value;
+      return value === "" ? null : value;
     },
     async confirm(value) {
       if (value.kind === "reserve")
