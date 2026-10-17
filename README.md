@@ -4,6 +4,8 @@ HABは、個人文脈を持つDots（スタローン）、クラウドで働くG
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
+採用した通信設計は[HAB Relay正式仕様](docs/hab-relay-spec.md)で管理します。store-and-forward、個体認証、受信ACK、Task Engineとの接続、受入れ条件を定義しています。Relayの実装・実接続は今後の作業です。
+
 ## 全体図
 
 2026-10-10時点の**確認済み経路（本人報告）**です。既存model MCPはHAB Hubとは別サービスです。モデル一覧取得・認証なし拒否の報告は、Hub接続やmodel実行・費用枠の確認を意味しません。
