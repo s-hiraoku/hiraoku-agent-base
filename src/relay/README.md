@@ -140,8 +140,9 @@ Record, byte and journal quotas reject new saves without discarding older conten
 Attachments are refused until their durable-byte storage port is implemented.
 The inbox is a received-message record, not an execution queue. Reading it again
 is allowed and does not claim exactly-once application side effects. Application
-handoff/processing, body lifecycle and 30-day metadata collection remain later
-milestones. Sender durable outbox and production MCP transport are also pending.
+handoff/body release and metadata collection are implemented in step 8 below;
+application processing itself remains the host's responsibility. Sender durable
+outbox is in step 5; production MCP transport remains pending.
 
 Reproduce the model-free receive/restart/loss scenarios from the repository root:
 
@@ -245,8 +246,9 @@ and strict validation applies to newly submitted prefixed IDs.
 
 Schema upgrade is explicit, transactional and handles v1/v2 receipts. Known
 newer schema is refused by older code rather than silently downgraded. Maintenance
-has only run on synthetic temporary databases. Client inbox collection,
-application handoff, backup expiry and managed attachments remain later layers.
+has only run on synthetic temporary databases. Client inbox collection and the
+local handoff boundary are in step 8; backup expiry and managed attachments remain
+later layers.
 
 ## Implementation step 7: local sender maintenance
 
@@ -283,6 +285,64 @@ roll back together. Only synthetic temporary databases have been maintained.
 `node --test test/relay-outbox-maintenance.test.js` covers expiry, active/stale
 leases, uncertainty, bounded batches, safe replay after purge, quota recovery,
 legacy holds, retention guards, rollback and schema upgrade. Receiver inbox
-handoff/collection, scheduling, backup expiry, managed attachments and production
+handoff/collection are in step 8. Scheduling, backup expiry, managed attachments and production
 MCP/product integration remain separate work. In particular this API never
 deletes a receiver's unconsumed inbox body.
+
+## Implementation step 8: local inbox handoff and maintenance
+
+`InboxLifecycleStore` is a separate pure port for local application/admin access.
+`SQLiteInbox` implements it alongside the network-facing `ReceiverStore`.
+Neither `releaseBody(senderId, messageId)` nor `maintain(limit)` is a network/MCP
+tool. The host must restrict access to the private individual-bound database.
+No model, Task, scheduler, credential or product integration is started.
+
+An application first saves the message durably, deduplicated by the pair
+`(sender_id,message_id)`, then explicitly calls `releaseBody`. The first call
+atomically clears the local body and records release time; repetitions return
+false without renewing retention. `inbox()` returns only unreleased bodies.
+A crash between application save and release may cause another application
+handoff attempt, so that application dedup is mandatory. This local API trusts
+the caller's durable-save assertion; it does not verify another database's commit
+or claim exactly-once execution. Application history has its own retention policy.
+
+Release is independent of Relay ACK confirmation: the durable ACK journal survives
+and can recover a lost committed-ACK response after release/restart. Exact or
+new-generation redelivery checks the stored fingerprint and never restores a
+released body. A new ACK generation requires a live delivery deadline and lease;
+unseen expired deliveries are rejected, including after tombstone collection.
+An existing exact journal request can still recover its committed receipt after
+TTL. Wrong local ACK fingerprints cannot obsolete/quarantine another request.
+
+Maintenance shares a 1–1000 unit budget between exhausted-ACK transitions, ACK
+record purges and released-inbox purges. Exhaustion clears the temporary lease
+token, records uncertainty and preserves the inbox. Unreleased bodies are never
+automatically deleted, even after long absence; finite quotas refuse new messages
+until the application handles them. A valid late receipt can still reconcile an
+exhausted journal without restoring a body. Expiry, purge and fixed-size aggregate
+counters commit or roll back together; missing counters fail closed.
+
+ACK records are collected only after original expiry, retry horizon and local
+terminal time are each at least 30 days old, and no pending request payload remains.
+An inbox tombstone is eligible only after release, receive time, original expiry,
+maximum ACK retry horizon and latest ACK terminal time are each 30 days old, with
+no remaining ACK journal. The cached retention date is also checked; underlying
+dates remain available after ACK records are gone. Exact saves, reads, ACK receipt
+retries and release repetitions do not renew retention. Time-bound `rm1` IDs allow
+safe tombstone collection; legacy/malformed IDs remain `safety_held` and consume
+quota without starving other eligible messages. Logical deletion does not erase
+SQLite sidecars, backups or the application's independent copy.
+
+Schema v2 upgrade is explicit, transactional and owner/key checked. It verifies
+saved body/identity/fingerprint before deriving expiry; malformed data fails
+instead of being silently discarded. Old terminal ACKs conservatively begin a
+new retention window at migration because v1 lacked local terminal timestamps.
+Unreleased bodies, confirmed receipts and stable pending ACK requests are preserved.
+Reopening/migrating v2 does not renew dates. Only synthetic temporary databases
+have been migrated/maintained.
+
+`node --test test/relay-inbox-maintenance.test.js` covers application handoff,
+release failure, loss/restart, stale replay, live/exhausted ACKs, unconsumed bodies,
+quota recovery, legacy holds, retention guards, atomic rollback and migration.
+Production MCP/agent integration, actual application storage, scheduled upkeep,
+backup expiry and managed attachment bytes remain separate work.
