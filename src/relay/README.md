@@ -103,3 +103,51 @@ This migration has only run against new/dummy test databases.
 
 Background maintenance, 30-day collection, attachment storage and real MCP wiring
 remain separate milestones. No production readiness is implied by local polling.
+
+## Implementation step 4: receiver inbox and ACK journal
+
+The pure `DurableReceiver` uses injected `ReceiverStore` and `ReceiverTransport`
+ports. Calling `receiveOnce()` explicitly first recovers a due ACK, then polls at
+most one new delivery, commits its body/dedup record **and stable ACK request**,
+then ACKs. It does not start a server, scheduler, agent or model. The caller must
+provide an authenticated, bounded-time transport. The current local fixture binds
+that port directly to `RelayService`; it is not evidence of a real MCP connection.
+
+The separate infrastructure entry point `./sqlite-inbox.ts` provides `SQLiteInbox`.
+Use a dedicated database per immutable individual and call `migrate()` explicitly.
+The individual and private fingerprint-key check are persisted; reopening for
+another individual/key is refused. New disk files are mode 0600, existing loose
+files and symlinks are refused. The host must also provide a private parent
+directory and protect SQLite sidecars/backups. ACK retry temporarily stores the
+opaque lease token in this private journal; confirmed, obsolete or exhausted
+requests clear that payload. Neither application logs nor API diagnostics receive
+raw transport errors, message bodies, private keys or tokens.
+
+A response lost after server ACK commit is retried with the same journal request.
+The server returns its existing receipt even after lease expiry, and the inbox is
+not duplicated. If the ACK never committed and its lease is stale, the old request
+becomes obsolete. A new lease creates a new stable ACK request while preserving
+one inbox record for `(sender_id,message_id)`. Conflicting body or lease contents
+are refused. The server receipt is validated before local confirmation; local
+receipt confirmation and journal cleanup are transactional. Failed local saves
+send no ACK. A local process rejects overlapping `receiveOnce()` calls; multiple
+processes rely on the server's receiver lease and atomic local dedup/journal.
+
+Retry due time and attempt count are durable and bounded, with required policy
+values and no background loop. Quarantine/expiry of the ACK retry horizon leaves
+a durable received-but-unconfirmed inbox record; it does not claim non-delivery.
+Record, byte and journal quotas reject new saves without discarding older content.
+Attachments are refused until their durable-byte storage port is implemented.
+The inbox is a received-message record, not an execution queue. Reading it again
+is allowed and does not claim exactly-once application side effects. Application
+handoff/processing, body lifecycle and 30-day metadata collection remain later
+milestones. Sender durable outbox and production MCP transport are also pending.
+
+Reproduce the model-free receive/restart/loss scenarios from the repository root:
+
+```sh
+node --test test/relay-receiver.test.js
+```
+
+Fixtures use new temporary databases and synthetic data/keys only. The reciprocal
+three-individual case has no product-specific logic and executes no model/tools.
