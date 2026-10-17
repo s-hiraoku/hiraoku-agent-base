@@ -1,5 +1,5 @@
-import { comparisonMaterial, parseSubmission } from "./contract.ts";
-import type { ContractLimits, Submission } from "./contract.ts";
+import { comparisonMaterial, parseSubmission, parseAck } from "./contract.ts";
+import type { ContractLimits, Submission, AckRequest } from "./contract.ts";
 export class RelayError extends Error {
   readonly code: string;
   constructor(code: string) {
@@ -15,14 +15,14 @@ export interface Receipt {
   receipt_id: string;
   accepted_at: string;
   expires_at: string;
-  state: "pending" | "expired";
+  state: "pending" | "leased" | "acked" | "expired" | "quarantined";
 }
 /** Trusted host policy resolves identity and operation rights; no agent names supplied by callers. */
 export interface Authorization {
   authorize(
     context: unknown,
-    operation: "submit" | "status",
-    recipientId?: string,
+    operation: "submit" | "status" | "poll" | "ack",
+    peerId?: string,
     kind?: string,
   ): { agent_id: string } | undefined;
 }
@@ -40,12 +40,35 @@ export interface AcceptanceStore {
   accept(resolve: () => Acceptance): Receipt;
   status(resolve: () => ReceiptQuery): Receipt;
 }
+export interface Delivery {
+  message: Submission & { sender_id: string };
+  generation: number;
+  lease_token: string;
+  lease_until: string;
+}
+export interface AckReceipt {
+  recipient_id: string;
+  sender_id: string;
+  message_id: string;
+  request_id: string;
+  receipt_id: string;
+  acked_at: string;
+  state: "acked";
+}
+export type ReceiveAuthorization = (peer?: {
+  sender_id: string;
+  kind: string;
+}) => string;
+export interface DeliveryStore extends AcceptanceStore {
+  poll(authorize: ReceiveAuthorization): Delivery | null;
+  ack(request: AckRequest, authorize: ReceiveAuthorization): AckReceipt;
+}
 export class RelayService {
-  readonly #store: AcceptanceStore;
+  readonly #store: AcceptanceStore & Partial<DeliveryStore>;
   readonly #authorization: Authorization | undefined;
   readonly #limits: ContractLimits;
   constructor(
-    store: AcceptanceStore,
+    store: AcceptanceStore & Partial<DeliveryStore>,
     limits: ContractLimits,
     authorization?: Authorization,
   ) {
@@ -55,7 +78,7 @@ export class RelayService {
   }
   #identity(
     context: unknown,
-    op: "submit" | "status",
+    op: "submit" | "status" | "poll" | "ack",
     recipient?: string,
     kind?: string,
   ) {
@@ -100,5 +123,18 @@ export class RelayService {
       sender_id: this.#identity(context, "status"),
       message_id: messageId,
     }));
+  }
+  poll(context: unknown): Delivery | null {
+    if (!this.#store.poll) throw new RelayError("delivery_store_unavailable");
+    return this.#store.poll((peer) =>
+      this.#identity(context, "poll", peer?.sender_id, peer?.kind),
+    );
+  }
+  ack(context: unknown, input: unknown): AckReceipt {
+    const request = parseAck(input, this.#limits);
+    if (!this.#store.ack) throw new RelayError("delivery_store_unavailable");
+    return this.#store.ack(request, (peer) =>
+      this.#identity(context, "ack", peer?.sender_id, peer?.kind),
+    );
   }
 }
