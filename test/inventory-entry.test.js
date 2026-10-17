@@ -311,6 +311,10 @@ test(
       clientId: candidate.clientId,
     };
     let entry;
+    let workerReady;
+    const ready = new Promise((resolve) => {
+      workerReady = resolve;
+    });
     let releaseAck;
     const ack = new Promise((resolve) => {
       releaseAck = resolve;
@@ -344,7 +348,9 @@ test(
       });
     f.dependencies.workerFetch = async (url, init) => {
       const response = await forward(url, init);
-      if (JSON.parse(init.body).params.name === "complete") await ack;
+      const name = JSON.parse(init.body).params.name;
+      if (name === "claim" && response.status === 200) workerReady();
+      if (name === "complete") await ack;
       return response;
     };
     try {
@@ -359,6 +365,10 @@ test(
         fetch: forward,
       });
       const task = await client.submit(args);
+      // Worker enrollment intentionally fences the previous verifier. Observe its
+      // first authenticated claim before issuing more requester calls; otherwise
+      // this round-trip fixture races that handoff under parallel CI load.
+      await ready;
       const duplicates = await Promise.all([
         client.submit(args),
         client.submit(args),
