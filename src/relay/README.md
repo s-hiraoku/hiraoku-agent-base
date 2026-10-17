@@ -167,7 +167,7 @@ The infrastructure entry point `./sqlite-outbox.ts` provides a dedicated
 private comparison key. Unknown schema/owner/key are refused. It persists the
 original payload, HMAC, recipient and deadline. Same-key content conflicts are
 rejected even after payload deletion. Record and byte caps are explicit;
-metadata collection is not implemented yet, so a full store fails closed.
+metadata collection is explicit (step 7 below); a full store fails closed.
 
 A transactional single-flight lease/fence coordinates concurrent sender processes.
 A timed-out lease may retry the same operation, but its old holder cannot change
@@ -191,8 +191,8 @@ and clears its payload together. Its delivery state is a snapshot, not a live
 view or work-completion signal. A receipt-save failure keeps the durable lease
 and intent for recovery, including when the Relay has already accepted it.
 Minimal receipt/dedup records are separate from body data. Cleanup currently runs
-only on explicit operations; scheduled maintenance, 30-day record collection and
-application-side history lifecycle remain later work. Private SQLite sidecars and
+only on explicit operations; outbox record collection is in step 7, while
+scheduled maintenance and application-side history lifecycle remain later work. Private SQLite sidecars and
 backups require the same protection as the DB; deletion is logical, not a promise
 of immediate physical erasure.
 
@@ -245,5 +245,44 @@ and strict validation applies to newly submitted prefixed IDs.
 
 Schema upgrade is explicit, transactional and handles v1/v2 receipts. Known
 newer schema is refused by older code rather than silently downgraded. Maintenance
-has only run on synthetic temporary databases. Client inbox/outbox collection,
+has only run on synthetic temporary databases. Client inbox collection,
 application handoff, backup expiry and managed attachments remain later layers.
+
+## Implementation step 7: local sender maintenance
+
+`SQLiteOutbox.maintain(limit)` is an explicit local administration API, not a
+network/MCP tool. The private outbox's owner must control access to it. It sends
+no requests and starts no timer, worker or model. The 1–1000 unit budget is shared
+between expired-record transitions and metadata purges. Regular enqueue/claim
+operations also perform expiry cleanup, bounded by the configured record cap.
+
+Expired queued/in-flight payloads are cleared without creating a replacement
+message. A live sender lease retains its fence and may still confirm an already
+accepted request. Once its lease has elapsed and status attempts/horizon are
+exhausted, maintenance fences the old claim and closes the record as
+`expired_unknown`. A quarantined record keeps its body until expiry. Closed
+unknown state never asserts that the recipient definitely received nothing.
+
+Schema v2 records local terminal time and retains metadata for 30 days after the
+latest of original expiry, local terminal time and the original configured
+status-retry horizon. Exact enqueue replays, reads and maintenance do not extend
+these dates. Purge rechecks the underlying dates, requires no body/active lease,
+and only collects terminal `accepted`/`expired_unknown` records with a valid
+time-bound `rm1` ID. Original expired submissions remain rejected after collection;
+renewing their deadline with the same ID is invalid. Aged opaque/malformed IDs
+are counted as `safety_held`, remain in the finite quota, and do not prevent other
+eligible records being collected. They need an explicit reconciliation decision.
+
+Upgrade is explicit and transactional, after owner/key verification. Since v1
+did not record local terminal time, its terminal records conservatively begin
+their retention window at migration. Reopening/migrating v2 does not restart it.
+The fixed-size maintenance totals contain no per-message identity or body;
+missing totals fail closed. Transition, purge and aggregate updates commit or
+roll back together. Only synthetic temporary databases have been maintained.
+
+`node --test test/relay-outbox-maintenance.test.js` covers expiry, active/stale
+leases, uncertainty, bounded batches, safe replay after purge, quota recovery,
+legacy holds, retention guards, rollback and schema upgrade. Receiver inbox
+handoff/collection, scheduling, backup expiry, managed attachments and production
+MCP/product integration remain separate work. In particular this API never
+deletes a receiver's unconsumed inbox body.

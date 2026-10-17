@@ -14,6 +14,11 @@ export interface OutboxRecord {
   reason: string | null;
   receipt: Receipt | null;
 }
+export interface OutboxMaintenanceResult {
+  expired: number;
+  purged: number;
+  safety_held: number;
+}
 export type SendJob = { message_id: string; fence: number } & (
   { operation: "submit"; message: Submission } | { operation: "status" }
 );
