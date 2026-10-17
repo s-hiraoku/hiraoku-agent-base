@@ -22,8 +22,9 @@ coordinator now protect finalized bytes before Relay commit and reconcile the or
 receipt after failure/reopen. A host must explicitly supply prepared-reference admission;
 default acceptance/outbox/inbox still reject attachments. Even when admission is enabled,
 poll withholds attached messages and ACK refuses them. Authenticated download, durable
-receiver bytes, ACK/deletion coupling and HAB acceptance guard composition remain later
-work; the pure Relay entry and MCP catalogs are unchanged.
+receiver bytes and ACK/deletion coupling remain later work. HAB provides a separate
+scoped acceptance guard without changing this core; the pure Relay entry and MCP
+catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact

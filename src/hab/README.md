@@ -233,6 +233,41 @@ emergency stop, a second registry connection attempting revocation before
 upload commit, escaped authorization and rollback on a decision changed before
 COMMIT. Only synthetic temporary databases and contexts are used.
 
+## Optional managed attachment acceptance
+
+`./attachment-acceptance.ts` composes `HabAttachmentAcceptance` with the independent
+[durable reservation and acceptance coordinator](../../docs/managed-attachments.md).
+It exposes only submit and sender-owned status as host APIs. The host must also
+explicitly configure the Relay store's prepared-reference admission; constructing
+this class does not enable attachment delivery or mount any MCP/HTTP route.
+
+One registry write guard surrounds **registry → upload prepare → Relay acceptance
+→ upload confirm**. Each storage transaction commits separately; the registry
+guard stays held throughout. A competing stop/block/revoke serializes before or
+after the operation, including the gap between its separate DB commits. Never
+hold an upload or Relay write transaction and then enter the registry guard.
+These DBs have no shared SQL schema and no distributed rollback guarantee.
+
+Submit uses the current individual binding, submit grant, active recipient, kind
+and directional block. Exact retry may reconcile its own original receipt under
+submit authority without a status grant; the public status method requires its
+separate status grant and retains ordinary sender-only receipt visibility.
+Prepared reference identity comes from the verified host context, never a supplied
+agent name. Scoped callbacks cannot be reused after the registry action exits.
+
+If Relay fails after prepare, or context expires after Relay commit but before
+confirmation, earlier commits and pins remain durable. Fresh authorization can
+reconcile the same original ID/intent/expiry; registry rollback must not be treated
+as rollback of other DBs. Current policy still applies to every attempt. Attached
+messages remain withheld from poll/ACK pending download and durable receiver bytes.
+This class adds no maintenance, read, confirm or credential authority.
+
+Fourteen additional synthetic SQLite tests cover authority separation, foreign
+receipt/ref refusal, stop/block/kind/revocation, missing or expired identity,
+emergency stop, all three inter-DB revocation gaps, escaped decisions, actual
+short-context expiry after Relay commit and same-intent recovery. These are host
+composition checks, not real product binding or production transfer evidence.
+
 ## Optional HAB MCP/HTTP and client
 
 `./mcp.ts` provides `createHabMcpServer`: exactly the four Relay tools plus
