@@ -31,3 +31,9 @@ export type {
   ReceiveAuthorization,
   DeliveryStore,
 } from "./service.ts";
+export { DurableReceiver } from "./receiver.ts";
+export type {
+  ReceiverTransport,
+  ReceiverStore,
+  InboxEntry,
+} from "./receiver.ts";
