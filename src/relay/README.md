@@ -15,6 +15,13 @@ also covers 17 native loopback journeys with offline receipt, uncertain submit/A
 stop/revocation and store/listener reopen. These tests compose this core without
 adding HAB or Task dependencies to it.
 
+The optional [managed upload contract and SQLite chunk backend](../../docs/managed-attachments.md)
+implement resumable owner-scoped uploads and digest-checked finalize separately
+from message storage. Existing acceptance/outbox/inbox still reject attachment
+references. Message binding, authenticated download, durable receiver bytes and
+ACK/deletion coupling remain later work; the pure Relay entry and MCP catalogs
+are unchanged.
+
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
 `YYYY-MM-DDTHH:mm:ss.sssZ` form. The lifetime is exactly 3,600,000 ms. Parts are

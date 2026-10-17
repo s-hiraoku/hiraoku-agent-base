@@ -48,11 +48,12 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、変更／再利用禁止、権限分離、有効化・失効・blockを実装。HAB専用catalogの`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復。既存runtimeへは未配線 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
 | 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
+| 管理添付のupload基盤 | **独立APIを模擬検証済み**。有限chunk保存・再開・SHA-256 finalize・容量予約・期限／30日回収を実装。[仕様と残る境界](docs/managed-attachments.md)を参照。message受付・取得・ACK・MCP転送は後続で、既存配送経路は添付参照を拒否 |
 | Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-2026-10-17の登録・配送統合までのローカル検証では、Node **645件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+2026-10-17の独立upload基盤までのローカル検証では、Node **670件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## Relayの残りタスク
 
@@ -61,7 +62,7 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 順序 | タスク | 完了の目安 |
 | --- | --- | --- |
 | 1・進行中 | 登録・アドレス解決・認証binding | 核・MCP lookup・人向け管理フローは実装済み。本番管理認証・接続選択の配線と実個体のbinding実証が残る |
-| 2 | 管理添付 | 画像・音声・ファイルのupload、再開・finalize、digest／所有者／宛先検証、ACK前のdurable保存、削除・孤立回収 |
+| 2・進行中 | 管理添付 | 独立upload基盤は実装済み。HAB認可、message参照確定、認証付き取得、ACK前のdurable保存、削除outbox・孤立回収・MCP転送が残る |
 | 3 | 個体別の容量・公平性 | 個体別quotaと最低枠、混雑時の公平な配送、有限backoffを検証 |
 | 4 | Task bridge | 受領・引受け・完了を分離し、許可済み固定Taskを最大1件で連携。結果再送で仕事を再実行しない |
 | 5 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守実行、backup／restore、停止・照合・復旧手順 |
