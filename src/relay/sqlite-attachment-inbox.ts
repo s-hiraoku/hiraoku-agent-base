@@ -619,6 +619,16 @@ export class SQLiteAttachmentInbox implements AttachmentInboxStore {
       return action();
     });
   }
+  withRetained<T>(sender: string, id: string, action: () => T): T {
+    return this.#tx(() => {
+      this.#now();
+      const row = this.#row(sender, id);
+      if (row.state !== "verified")
+        throw new RelayError("attachment_inbox_unverified");
+      this.#scan(row);
+      return action();
+    });
+  }
   read(
     sender: string,
     id: string,

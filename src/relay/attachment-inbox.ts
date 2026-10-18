@@ -14,6 +14,8 @@ export interface AttachmentInboxSnapshot {
 }
 /** Local trusted-host capability, never a tool argument or remote proof. */
 export interface AttachmentInboxAdmission {
+  /** ACK reconciliation after local body handoff; the original manifest was checked at save. */
+  withRetained<T>(senderId: string, messageId: string, action: () => T): T;
   withVerified<T>(senderId: string, message: Submission, action: () => T): T;
 }
 export interface AttachmentInboxStore extends AttachmentInboxAdmission {
