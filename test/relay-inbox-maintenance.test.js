@@ -532,10 +532,10 @@ test("purge failures roll back ACK deletion, tombstone deletion and maintenance 
 function downgrade(f) {
   f.store.close();
   f.raw
-    .exec(`DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
+    .exec(`DROP TRIGGER relay_attachment_identity; DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
     ALTER TABLE relay_inbox DROP COLUMN released_at; ALTER TABLE relay_inbox DROP COLUMN expires_at;
     ALTER TABLE relay_inbox DROP COLUMN ack_retry_until; ALTER TABLE relay_inbox DROP COLUMN ack_terminal_at;
-    ALTER TABLE relay_inbox DROP COLUMN retain_until;
+    ALTER TABLE relay_inbox DROP COLUMN retain_until; ALTER TABLE relay_inbox DROP COLUMN has_attachments; ALTER TABLE relay_inbox DROP COLUMN attachment_guard;
     ALTER TABLE relay_receiver_acks DROP COLUMN terminal_at; ALTER TABLE relay_receiver_acks DROP COLUMN retain_until;
     DROP TABLE relay_inbox_maintenance_totals; UPDATE relay_inbox_meta SET version=1;`);
 }
@@ -573,7 +573,7 @@ test("v1 migration preserves body and stable pending ACK, verifies identity befo
   assert.equal(ack(f).request, pending);
   assert.equal(
     f.raw.prepare("SELECT version FROM relay_inbox_meta").get().version,
-    2,
+    3,
   );
   assert.deepEqual(f.raw.prepare("PRAGMA foreign_key_check").all(), []);
   const before = row(f, d.message.message_id);
@@ -620,7 +620,7 @@ test("invalid budgets, missing counters and unsupported schema fail closed witho
     f.raw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
     1,
   );
-  f.raw.exec("UPDATE relay_inbox_meta SET version=3");
+  f.raw.exec("UPDATE relay_inbox_meta SET version=99");
   const newer = f.open();
   code(() => newer.migrate(), "unsupported_schema");
 });

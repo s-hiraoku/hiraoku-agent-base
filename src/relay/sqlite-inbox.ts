@@ -9,7 +9,8 @@ import {
   RECORD_RETENTION_MS,
   isReplayBoundMessageId,
 } from "./contract.ts";
-import type { AckRequest, ContractLimits } from "./contract.ts";
+import type { AckRequest, ContractLimits, Submission } from "./contract.ts";
+import type { AttachmentInboxAdmission } from "./attachment-inbox.ts";
 import { RelayError } from "./service.ts";
 import type { AckReceipt, Delivery } from "./service.ts";
 import type {
@@ -50,8 +51,26 @@ const identifier = (value: unknown): value is string =>
 export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
   readonly #db: DatabaseSync;
   readonly #options: InboxOptions;
+  readonly #attachments: AttachmentInboxAdmission | undefined;
   #ready = false;
-  constructor(path: string, options: InboxOptions) {
+  constructor(
+    path: string,
+    options: InboxOptions,
+    attachments?: AttachmentInboxAdmission,
+  ) {
+    if (
+      attachments !== undefined &&
+      (typeof attachments.withVerified !== "function" ||
+        typeof attachments.withRetained !== "function")
+    )
+      throw new RelayError("invalid_inbox_options");
+    this.#attachments =
+      attachments === undefined
+        ? undefined
+        : Object.freeze({
+            withVerified: attachments.withVerified.bind(attachments),
+            withRetained: attachments.withRetained.bind(attachments),
+          });
     validateLimits(options.limits);
     if (
       typeof options.agent_id !== "string" ||
@@ -137,6 +156,36 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       ]),
     );
   }
+  #withAttachments<T>(sender: string, message: Submission, action: () => T): T {
+    if (!message.body.parts.some((p) => p.type === "attachment"))
+      return action();
+    if (!this.#attachments)
+      throw new RelayError("attachment_store_unavailable");
+    return this.#attachmentAction(
+      (cb) => this.#attachments!.withVerified(sender, message, cb),
+      action,
+    );
+  }
+  #attachmentAction<T>(run: (action: () => T) => T, action: () => T): T {
+    let open = true,
+      called = false;
+    try {
+      const result = run(() => {
+        if (!open || called)
+          throw new RelayError("attachment_inbox_unverified");
+        called = true;
+        return action();
+      });
+      if (result && typeof result === "object" && "then" in result) {
+        void Promise.resolve(result).catch(() => {});
+        throw new RelayError("attachment_inbox_unverified");
+      }
+      if (!called) throw new RelayError("attachment_inbox_unverified");
+      return result;
+    } finally {
+      open = false;
+    }
+  }
   #keyCheck() {
     return createHash("sha256")
       .update(this.#options.fingerprint_key)
@@ -164,7 +213,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           .run(this.#options.agent_id, this.#keyCheck());
       }
       const rows = this.#db.prepare("SELECT * FROM relay_inbox_meta").all();
-      if (rows.length !== 1 || ![1, 2].includes(Number(rows[0].version)))
+      if (rows.length !== 1 || ![1, 2, 3].includes(Number(rows[0].version)))
         throw new RelayError("unsupported_schema");
       if (
         rows[0].agent_id !== this.#options.agent_id ||
@@ -229,6 +278,80 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         }
         this.#db.exec("UPDATE relay_inbox_meta SET version=2");
       }
+      if (
+        Number(
+          this.#db.prepare("SELECT version FROM relay_inbox_meta").get()!
+            .version,
+        ) === 2
+      ) {
+        this.#db.exec(
+          "ALTER TABLE relay_inbox ADD COLUMN has_attachments INTEGER NOT NULL DEFAULT 0 CHECK(has_attachments IN (0,1)); ALTER TABLE relay_inbox ADD COLUMN attachment_guard TEXT NOT NULL DEFAULT ''",
+        );
+        const records = this.#db
+          .prepare(
+            "SELECT sender_id,message_id,body,fingerprint FROM relay_inbox WHERE body<>''",
+          )
+          .all();
+        if (records.length > this.#options.max_records)
+          throw new RelayError("inbox_capacity_exceeded");
+        for (const row of records) {
+          const message = parseSubmission(
+            JSON.parse(String(row.body)),
+            this.#options.limits,
+          );
+          if (
+            message.message_id !== row.message_id ||
+            message.recipient_id !== this.#options.agent_id ||
+            this.#hash(
+              comparisonMaterial(
+                String(row.sender_id),
+                message,
+                this.#options.limits,
+              ),
+            ) !== row.fingerprint
+          )
+            throw new RelayError("invalid_inbox_record");
+          this.#db
+            .prepare(
+              "UPDATE relay_inbox SET has_attachments=? WHERE sender_id=? AND message_id=?",
+            )
+            .run(
+              Number(message.body.parts.some((p) => p.type === "attachment")),
+              row.sender_id!,
+              row.message_id!,
+            );
+        }
+        for (const row of this.#db
+          .prepare(
+            "SELECT sender_id,message_id,has_attachments FROM relay_inbox",
+          )
+          .all()) {
+          this.#db
+            .prepare(
+              "UPDATE relay_inbox SET attachment_guard=? WHERE sender_id=? AND message_id=?",
+            )
+            .run(
+              this.#hash(
+                JSON.stringify([
+                  "attachment-v1",
+                  row.sender_id,
+                  row.message_id,
+                  row.has_attachments,
+                ]),
+              ),
+              row.sender_id!,
+              row.message_id!,
+            );
+        }
+        this.#db.exec(
+          "CREATE TRIGGER relay_attachment_identity BEFORE UPDATE OF has_attachments,attachment_guard ON relay_inbox BEGIN SELECT RAISE(ABORT,'immutable attachment identity');END; UPDATE relay_inbox_meta SET version=3",
+        );
+      }
+      this.#db
+        .prepare(
+          "SELECT has_attachments,attachment_guard FROM relay_inbox LIMIT 0",
+        )
+        .all();
     });
     this.#ready = true;
   }
@@ -250,8 +373,15 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
     const message = parseSubmission(wire, this.#options.limits);
     if (message.recipient_id !== this.#options.agent_id)
       throw new RelayError("foreign_delivery");
-    if (message.body.parts.some((p) => p.type === "attachment"))
-      throw new RelayError("attachment_store_unavailable");
+    this.#withAttachments(sender_id, message, () =>
+      this.#saveVerified(delivery, sender_id, message),
+    );
+  }
+  #saveVerified(
+    delivery: Delivery,
+    sender_id: string,
+    message: Submission,
+  ): void {
     const request = parseAck(
       {
         sender_id,
@@ -318,7 +448,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           throw new RelayError("inbox_capacity_exceeded");
         this.#db
           .prepare(
-            "INSERT INTO relay_inbox(sender_id,message_id,body,fingerprint,received_at,expires_at,ack_retry_until,retain_until) VALUES(?,?,?,?,?,?,?,?)",
+            "INSERT INTO relay_inbox(sender_id,message_id,body,fingerprint,received_at,expires_at,ack_retry_until,retain_until,has_attachments,attachment_guard) VALUES(?,?,?,?,?,?,?,?,?,?)",
           )
           .run(
             sender_id,
@@ -332,6 +462,15 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
               Date.parse(message.expires_at),
               now + this.#options.ack_retry_ms,
             ) + RECORD_RETENTION_MS,
+            Number(message.body.parts.some((p) => p.type === "attachment")),
+            this.#hash(
+              JSON.stringify([
+                "attachment-v1",
+                sender_id,
+                message.message_id,
+                Number(message.body.parts.some((p) => p.type === "attachment")),
+              ]),
+            ),
           );
       }
       this.#db
@@ -384,14 +523,63 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
     return rows.length;
   }
   claimAck(): AckRequest | null {
+    const now = this.#now();
+    const pending = this.#db
+      .prepare(
+        "SELECT a.request_id,a.sender_id,a.message_id,i.body,i.has_attachments,i.attachment_guard FROM relay_receiver_acks a JOIN relay_inbox i USING(sender_id,message_id) WHERE a.state='pending' AND a.next_retry_at<=? AND a.retry_until>? AND a.attempts<? ORDER BY a.next_retry_at,a.request_id LIMIT 1",
+      )
+      .get(now, now, this.#options.max_attempts);
+    if (!pending) return this.#claimVerifiedAck(null);
+    if (
+      pending.attachment_guard !==
+      this.#hash(
+        JSON.stringify([
+          "attachment-v1",
+          pending.sender_id,
+          pending.message_id,
+          pending.has_attachments,
+        ]),
+      )
+    )
+      throw new RelayError("invalid_inbox_record");
+    if (pending.has_attachments === 0)
+      return this.#claimVerifiedAck(String(pending.request_id));
+    if (String(pending.body) === "") {
+      if (!this.#attachments)
+        throw new RelayError("attachment_store_unavailable");
+      return this.#attachmentAction(
+        (cb) =>
+          this.#attachments!.withRetained(
+            String(pending.sender_id),
+            String(pending.message_id),
+            cb,
+          ),
+        () => this.#claimVerifiedAck(String(pending.request_id)),
+      );
+    }
+    let message: Submission;
+    try {
+      message = parseSubmission(
+        JSON.parse(String(pending.body)),
+        this.#options.limits,
+      );
+    } catch {
+      throw new RelayError("invalid_inbox_record");
+    }
+    return this.#withAttachments(String(pending.sender_id), message, () =>
+      this.#claimVerifiedAck(String(pending.request_id)),
+    );
+  }
+  #claimVerifiedAck(selected: string | null): AckRequest | null {
     return this.#tx(() => {
       const now = this.#now();
       this.#expireAcks(now, this.#options.max_ack_records);
+      if (selected === null) return null;
       const row = this.#db
         .prepare(
-          "SELECT * FROM relay_receiver_acks WHERE state='pending' AND next_retry_at<=? ORDER BY next_retry_at,request_id LIMIT 1",
+          "SELECT * FROM relay_receiver_acks WHERE state='pending' AND next_retry_at<=? AND request_id=?",
         )
-        .get(now);
+        .get(now, selected);
       if (!row) return null;
       const backoff = Math.min(
         this.#options.retry_cap_ms,
