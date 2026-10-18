@@ -2,7 +2,7 @@
 
 [README](../README.md) · [正式仕様](hab-relay-spec.md) · [Relay実装](../src/relay/README.md)
 
-uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。HABの取得guardも別層で組み立てた。**ACK前のdurable保存・削除outbox・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
+uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。HABの取得guardも別層で組み立てた。[受信添付journal](attachment-inbox.md)では部分保存・再開・全体SHA検証も独立して実装した。**通常inboxのACK gate・削除outbox・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
 
 ## 契約
 
@@ -58,7 +58,7 @@ hostは専用Relay storeへ同期`AttachmentAdmission.check`を明示注入す�
 
 取得は固定chunk境界のoffsetから1chunkだけを返す。末尾だけ短くなり、全長offsetでは空のEOF、空ファイルではoffset 0の空EOFとなる。chunk上限はhostの保存policy（最大1 MiB）であり、callerは指定できない。DBからの読み出しもchunk長＋1に制限し、長さと鍵付きchunk fingerprintを確認してcopyする。異offset・破損・欠落は固定エラーとし、黙って欠落したbytesを返さない。EOFはclientがそれ以前の全bytesを保存・検証した証明ではない。
 
-同じoffsetのretryは同じbytes・manifest・元期限を返し、serverの進捗や期限を更新しない。clientは元message／添付IDと次offsetをdurable保存してから再開する必要があるが、そのreceiver実装は後続である。finalize時の全体SHA検証に加え、receiverも全体byte長・SHAを確認してから保存完了と扱う。
+同じoffsetのretryは同じbytes・manifest・元期限を返し、serverの進捗や期限を更新しない。clientは元message／添付IDと次offsetをdurable保存してから再開する必要があるが、部分保存・再開・全体検証のjournalは実装したが、通常inboxとのACK連携は後続である。finalize時の全体SHA検証に加え、receiverも全体byte長・SHAを確認してから保存完了と扱う。
 
 lock順はRelay → upload DBであり、両方のguard完了後にchunkを返す。取得中のterminal化はRelay write guardで直列化し、ACK済み・期限切れ・隔離・本文削除後は拒否する。送信者の権限や添付IDの所持だけでは取得できない。chunk取得後も権限と期限を再確認し、途中失効／期限到来なら呼出し元へbytesを返さない。[HabAttachmentRead](../src/hab/attachment-read.ts)はregistry guardを最初に取得し、registry → Relay → upload DBの順でchunk取得完了まで保持する。停止・失効・blockと取得を直列化し、受信者の現在poll権限、送信者の現在状態・kindと元の送信方向のblockを確認する。status権限だけでは取得できず、read専用wrapperは保守・ACK権限を追加しない。scoped authorizationとRelay guardはどちらも処理外へ持ち出せない。guardなしの外部認可cacheはこの保証を持たない。
 

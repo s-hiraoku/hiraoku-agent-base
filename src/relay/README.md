@@ -25,8 +25,10 @@ poll withholds attached messages and ACK refuses them. The optional
 `./attachment-read.ts` host service reads one bounded integrity-checked chunk for the
 current receiver under a live Relay transaction; it rechecks message state/expiry,
 confirmed refs and current poll authority. Grants expire at callback exit and reads
-never advance delivery state. Durable receiver bytes and ACK/deletion coupling
-remain later work. HAB provides separate scoped acceptance/read guards without
+never advance delivery state. The optional [receiver attachment journal](../../docs/attachment-inbox.md) now
+durably saves bounded chunks, resumes offsets and verifies the complete SHA-256
+before a scoped readiness action. Ordinary inbox ACK composition and server
+ACK/deletion coupling remain later work. HAB provides separate scoped acceptance/read guards without
 changing this core; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
