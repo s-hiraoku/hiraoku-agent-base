@@ -45,8 +45,10 @@ response loss and authority/lease changes. An explicit optional [attachment MCP/
 adds six bounded version-1 upload/read tools; the default catalog is unchanged.
 An optional fixed client and 19 native loopback tests now cover durable receiver
 bytes, server ACK, physical cleanup, response loss and store/client restart.
-The attachment sender journal, receiver orchestration and production wiring remain
-pending; defaults still withhold attachments. HAB provides separate scoped acceptance/read guards without
+A separate [sender source/progress journal](../../docs/upload-journal.md) now
+persists original intents and bounded source chunks, seals their SHA, fences one
+active claim and verifies progress receipts. Finite transport-worker composition,
+receiver orchestration and production wiring remain pending; defaults still withhold attachments. HAB provides separate scoped acceptance/read guards without
 changing this core; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
