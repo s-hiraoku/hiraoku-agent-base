@@ -14,7 +14,7 @@
 
 「必須」「禁止」は採用した設計の実装要件を示す。「推奨初期値」は未合意の設定案であり、実装開始時の確認と負荷試験が必要。「未検証」は実サービスで証明していないことを示す。追加予定の型・table・API・ファイル名は、明記のない限り**計画であり未実装**である。
 
-実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、管理添付、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
+実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、管理添付の転送・運用、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
 ## 1. 目的と非目標
 
@@ -220,7 +220,7 @@ threadは登録された2個体にscopeを固定する。返信先は元の送�
 
 本文、envelope、添付1個、添付個数、message総bytes、未finalize upload、個体別／全体容量、同時転送、転送時間にそれぞれ有限上限を設定する。旧16 KiB本文案は採用せず、数値はこの範囲を踏まえて別途決定する。全データを無制限に扱うという意味ではない。backup／restoreはDB manifestとblob世代を整合させ、削除済み添付の復活防止と孤立blob回収も試験する。storage backend、転送方法・上限、削除遅延、backup容量を追加設計事項とする。
 
-実装範囲：[独立upload・参照確定基盤](managed-attachments.md)でversion 1のmetadata、時刻拘束request ID、固定chunk再送、専用SQLite BLOB保存、digest finalize、容量予約、期限・30日receipt回収を実装した。これはupload単体のhost APIであり、HAB guardとの組立ても実装し、現在の個体binding・submit権限・宛先・kind・block・停止／失効とcommitをregistry → upload DBの順で保護する。さらに、finalized添付の原子的なmessage参照予約、Relay commit前のadmission検査、元receiptによる別DB間の受付再照合を任意のhost組立てとして実装した。prepare後の失敗・commit後の応答消失・両DBのreopenで同じ要求を回復し、期限を延長しない。HAB受付guardも別層で組み立て、registry lockをprepareからRelay commit・confirmまで保持する。受信者の現在poll権限と生きた元受付・確定参照を検証する有限chunk取得も独立host APIで実装した。HAB取得guardもregistry → Relay → upload DBの順で組み立てた。専用の受信添付journalでも部分保存・再開・全体SHA検証と同期readiness guardを実装した。通常inboxのsave／ACK claim前の検証gateと、本文handoff後も保持添付を再確認するschema 3 migrationも実装した。serverの添付ACK／削除outbox・配送有効化、HTTP/MCP転送は後続である。既定の受付APIは添付参照を拒否し、任意受付でもpoll／ACKは未有効のままにする。
+実装範囲：[独立upload・参照確定基盤](managed-attachments.md)でversion 1のmetadata、時刻拘束request ID、固定chunk再送、専用SQLite BLOB保存、digest finalize、容量予約、期限・30日receipt回収を実装した。これはupload単体のhost APIであり、HAB guardとの組立ても実装し、現在の個体binding・submit権限・宛先・kind・block・停止／失効とcommitをregistry → upload DBの順で保護する。さらに、finalized添付の原子的なmessage参照予約、Relay commit前のadmission検査、元receiptによる別DB間の受付再照合を任意のhost組立てとして実装した。prepare後の失敗・commit後の応答消失・両DBのreopenで同じ要求を回復し、期限を延長しない。HAB受付guardも別層で組み立て、registry lockをprepareからRelay commit・confirmまで保持する。受信者の現在poll権限と生きた元受付・確定参照を検証する有限chunk取得も独立host APIで実装した。HAB取得guardもregistry → Relay → upload DBの順で組み立てた。専用の受信添付journalでも部分保存・再開・全体SHA検証と同期readiness guardを実装した。通常inboxのsave／ACK claim前の検証gateと、本文handoff後も保持添付を再確認するschema 3 migrationも実装した。Relay schema 4では元参照とterminal時の削除outboxを原子的に保存し、lease・fencing・再照合と未完了時のGC保護も実装した。[単発削除workerと明示配送policy](attachment-deletion.md)も追加し、任意host組立てで実Relay lease、受信bytesの保存・検証、実server ACKと物理削除をin-processで確認した。ACK確定直後に通常取得を拒否し、別DBの削除失敗や応答消失は同じ元jobへ再照合する。既定の受付APIは添付参照を拒否し、admissionだけの構成ではpoll／ACKも未有効のままにする。HTTP/MCP添付転送、孤立回収の運用、整合backupと本番配線は後続である。
 
 ## 6. 同一性、時刻、期限
 

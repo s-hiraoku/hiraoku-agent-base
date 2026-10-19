@@ -259,7 +259,9 @@ If Relay fails after prepare, or context expires after Relay commit but before
 confirmation, earlier commits and pins remain durable. Fresh authorization can
 reconcile the same original ID/intent/expiry; registry rollback must not be treated
 as rollback of other DBs. Current policy still applies to every attempt. Attached
-messages remain withheld from poll/ACK pending download and durable receiver bytes.
+messages remain withheld from poll/ACK unless the host separately supplies the
+explicit Relay delivery policy and verified receiver-byte admission described in
+[attachment delivery and deletion](../../docs/attachment-deletion.md).
 This class adds no maintenance, read, confirm or credential authority.
 
 Fourteen additional synthetic SQLite tests cover authority separation, foreign
@@ -292,8 +294,11 @@ byte lookup and current kind policy. The shared attachment fixture also retains
 the fourteen existing acceptance tests.
 
 This class exposes only `read`. It adds no route, MCP tool, credential, lease,
-receiver journal, ACK or deletion authority. Poll still withholds attached
-messages until durable receiver storage and ACK coupling are implemented.
+receiver journal, ACK or deletion authority. An explicit Relay host composition now
+supports attachment poll/ACK and terminal cleanup, while defaults still withhold
+attachments. Twenty additional in-process tests combine actual HAB leases and ACKs,
+durable receiver bytes, stopped/blocked peers and the separately authorized deletion
+worker. They do not expose attachment HTTP/MCP routes or prove real product binding.
 
 ## Optional HAB MCP/HTTP and client
 
