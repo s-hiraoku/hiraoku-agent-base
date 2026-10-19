@@ -10,7 +10,7 @@ Relay schema 4は、元messageに固定した順序付き添付IDと、terminal�
 
 poll／初回ACKは元本文のfingerprint、順序付き参照、finalized状態、confirm済みの元receipt identityを再確認する。prepare後やRelay commit後にconfirmが失われたmessageはleaseせず、送信側の同じIDによる再照合を待つ。現在の受信権限・保存済みsender／kind・元期限・leaseも確認する。HAB経由では既存のregistry guardと停止・失効・blockを維持する。
 
-受信側は`AttachmentStager`で有限chunkをdurable保存し、全体SHAを検証する。`SQLiteInbox`へ同じ受信個体の添付journalを第3引数として注入し、saveとACK claimの直前に全bytesを再確認する。ACKは受領の記録であり、内容の実行は行わない。これらはhost APIであり、HTTP/MCPの添付転送と既存runtimeへの配線は別途必要である。
+受信側は`AttachmentStager`で有限chunkをdurable保存し、全体SHAを検証する。`SQLiteInbox`へ同じ受信個体の添付journalを第3引数として注入し、saveとACK claimの直前に全bytesを再確認する。ACKは受領の記録であり、内容の実行は行わない。これらに[任意MCP／HTTP転送境界](attachment-transport.md)を組み立てられる。固定client転送と既存runtimeへの配線は別途必要である。
 
 ## terminalと同時に保存するもの
 
