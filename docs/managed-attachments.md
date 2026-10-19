@@ -2,7 +2,7 @@
 
 [README](../README.md) · [正式仕様](hab-relay-spec.md) · [Relay実装](../src/relay/README.md)
 
-uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。HABの取得guardも別層で組み立てた。[受信添付journal](attachment-inbox.md)では部分保存・再開・全体SHA検証も独立して実装した。通常inboxのACK前検証も組み立てた。[terminalと同時commitする削除outboxと単発worker](attachment-deletion.md)も実装した。第4引数の明示host portへ確定bindingの検査を接続するとserver添付poll／ACKを利用でき、受信保存から物理削除までin-processで確認した。admissionだけの構成は引き続き添付をleaseせず、ACKも拒否する。**HTTP/MCP添付転送と本番配線は後続**である。finalized、message受付、受領、実行はそれぞれ別の状態である。
+uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。HABの取得guardも別層で組み立てた。[受信添付journal](attachment-inbox.md)では部分保存・再開・全体SHA検証も独立して実装した。通常inboxのACK前検証も組み立てた。[terminalと同時commitする削除outboxと単発worker](attachment-deletion.md)も実装した。第4引数の明示host portへ確定bindingの検査を接続するとserver添付poll／ACKを利用でき、受信保存から物理削除までin-processで確認した。admissionだけの構成は引き続き添付をleaseせず、ACKも拒否する。[任意MCP／HTTP転送境界](attachment-transport.md)も追加した。固定clientとnative HTTPのdurable受信・ACK復旧も検証した。**添付送信journalと本番配線は後続**である。finalized、message受付、受領、実行はそれぞれ別の状態である。
 
 ## 契約
 
@@ -12,7 +12,7 @@ begin入力は`version:1`、`request_id`、`message_id`、`recipient_id`、`kind
 
 `makeUploadRequestId(first_sent_at,fresh128BitEntropyHex)`は`au1.<epochミリ秒>.<32桁hex>`を作る。時刻を元期限と照合し、receipt回収後も同じIDを未来期限へ付け替えられない。helperは乱数を生成せず、hostが新しいentropyを供給し外部送信前にintentをdurable保存する。これはcredentialではない。
 
-`put(context,attachment_id,offset,Uint8Array)`はoffset順に固定chunk長を受け取り、末尾だけ残byte長を許可する。statusの`next_offset`と`chunk_bytes`から再開する。同じoffset・bytesは冪等で、異内容、gap、overlap、不正長を拒否する。bytesは上限確認後にcopyする。空ファイルはchunkなしで空SHAを検証する。HTTPのchunk表現や公開MCP toolはまだ追加しない。
+`put(context,attachment_id,offset,Uint8Array)`はoffset順に固定chunk長を受け取り、末尾だけ残byte長を許可する。statusの`next_offset`と`chunk_bytes`から再開する。同じoffset・bytesは冪等で、異内容、gap、overlap、不正長を拒否する。bytesは上限確認後にcopyする。空ファイルはchunkなしで空SHAを検証する。任意のMCP／HTTP境界ではversion 1のcanonical base64で1chunkずつ転送する。既定catalogは変更しない。
 
 ## 認可と状態
 
@@ -68,4 +68,4 @@ lock順はRelay → upload DBであり、両方のguard完了後にchunkを返�
 
 `node --test test/relay-attachments.test.js`の25件でbinary／空ファイル、strict schema、外国体拒否、現在権限、再開・冪等、digest／chunk破損、rollback、容量予約、期限・30日GC、private file／schema／key、競合・再入を検証する。期限とretentionは専用一時DBだけをagingし、実時間を待つ試験ではない。実ファイルやcredentialは使わない。
 
-HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。参照確定の18件と受付の12件では、実SQLiteの原子的pin、cancel競合、migration、期限・順序付きGC、受付前後の障害、両DBのreopen、応答消失、容量不足、再照合、配送／ACK拒否を追加検証した。独立DBのreopen試験はbackup restoreや電源断の耐久性試験ではない。HAB受付guardの14件では別接続によるprepare／Relay commit／confirm間の失効競合、submitとstatusの分離、停止・block・binding失効、持ち出したdecision、実際の短いcontext期限切れと再照合も確認した。受信chunk取得の21件でbinary再構成、空／EOF、再開・reopen、外国体／所属違い、未確定拒否、ACK・期限・隔離後拒否、破損／過大BLOB、持ち出したguard、競合・取得中失効／期限到来を追加検証した。HAB取得guardの13件で権限分離、停止・block・binding失効、取得中の別接続失効競合、持出し、context期限切れ後の同offset再開も検証した。受信添付journalの17件とstaging／local ACK gateの16件も追加した。さらに削除outboxの18件と[配送・workerの20件](attachment-deletion.md#検証範囲)で、terminalと削除依頼の原子的commit、実Relay lease・ACK、受信者のdurable保存、物理削除と障害後の照合を確認した。残るのはHTTP/MCP添付転送、孤立回収の運用、backup整合と本番配線である。host APIの模擬往復を本番3者接続の完了とは扱わない。
+HAB guardとの組立ても別層で実装し、submit権限、宛先状態・kind・block・失効とcommit時の現在判定を14件で追加検証した。通常upload portに保守権限や新規MCP toolは追加しない。参照確定の18件と受付の12件では、実SQLiteの原子的pin、cancel競合、migration、期限・順序付きGC、受付前後の障害、両DBのreopen、応答消失、容量不足、再照合、配送／ACK拒否を追加検証した。独立DBのreopen試験はbackup restoreや電源断の耐久性試験ではない。HAB受付guardの14件では別接続によるprepare／Relay commit／confirm間の失効競合、submitとstatusの分離、停止・block・binding失効、持ち出したdecision、実際の短いcontext期限切れと再照合も確認した。受信chunk取得の21件でbinary再構成、空／EOF、再開・reopen、外国体／所属違い、未確定拒否、ACK・期限・隔離後拒否、破損／過大BLOB、持ち出したguard、競合・取得中失効／期限到来を追加検証した。HAB取得guardの13件で権限分離、停止・block・binding失効、取得中の別接続失効競合、持出し、context期限切れ後の同offset再開も検証した。受信添付journalの17件とstaging／local ACK gateの16件も追加した。さらに削除outboxの18件と[配送・workerの20件](attachment-deletion.md#検証範囲)で、terminalと削除依頼の原子的commit、実Relay lease・ACK、受信者のdurable保存、物理削除と障害後の照合を確認した。任意MCP／HTTPサーバー境界の18件も追加した。固定clientとnative HTTPの19件も追加した。残るのは添付送信journal・受信orchestration、孤立回収の運用、backup整合と本番配線である。host APIの模擬往復を本番3者接続の完了とは扱わない。

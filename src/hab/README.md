@@ -427,3 +427,21 @@ budgets, operational activation and complete failure/restore coverage remain.
 No real product is enrolled or contacted. New credential issuance, public routes,
 paid contracts, background activation and real connections require their separate
 approved endpoint/scope/data/stop plan; this module grants none of those actions.
+
+## Optional attachment MCP catalog
+
+The explicit `HabAttachmentHttpGateway` adds six owner-upload/receiver-read tools
+to the HAB catalog (11 total), retaining the verified context, registry guards,
+audit and HTTP byte/concurrency/rate/deadline limits. Default factories retain
+five tools. Upload admission, confirmed delivery policy and acceptance coordinator
+are separate host injections. See [the version-1 wire contract](../../docs/attachment-transport.md)
+for canonical bounded base64, uncertainty recovery and the 18 gateway/SDK tests.
+No maintenance or credential tool, runtime route or real-agent connection is added.
+
+The optional `HabAttachmentMcpClient` extends the attachment client with directory
+resolution while sharing the same admission and credential provider. Nineteen
+native temporary-loopback tests cover mixed parts, two files, durable receiver
+save before ACK, uncertain upload/ACK responses and restart. The sender intent
+is explicitly saved by the fixture; an attachment sender journal and receiver
+orchestration are still separate work. Production credentials and product
+bindings remain unverified.

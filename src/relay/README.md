@@ -41,8 +41,12 @@ terminal binding under the live fenced proof. Partial failures roll back all own
 bytes; retries reconcile a lost blob/queue completion without distributed transactions.
 ACK immediately closes download access before physical deletion. Twenty in-process
 HAB tests cover actual leases, durable local bytes, server ACK and cleanup, including
-response loss and authority/lease changes. HTTP/MCP attachment transfer and production
-wiring remain pending; defaults still withhold attachments. HAB provides separate scoped acceptance/read guards without
+response loss and authority/lease changes. An explicit optional [attachment MCP/HTTP catalog](../../docs/attachment-transport.md)
+adds six bounded version-1 upload/read tools; the default catalog is unchanged.
+An optional fixed client and 19 native loopback tests now cover durable receiver
+bytes, server ACK, physical cleanup, response loss and store/client restart.
+The attachment sender journal, receiver orchestration and production wiring remain
+pending; defaults still withhold attachments. HAB provides separate scoped acceptance/read guards without
 changing this core; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
