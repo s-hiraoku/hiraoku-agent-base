@@ -5,6 +5,10 @@ import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { RelayError } from "./service.ts";
 import { RECORD_RETENTION_MS, comparisonMaterial } from "./contract.ts";
 import type { ContractLimits, Submission } from "./contract.ts";
+import type {
+  AttachmentDeletionGrant,
+  BoundAttachmentDeletion,
+} from "./attachment-deletion.ts";
 import type { Acceptance, Receipt, ReceiveAuthorization } from "./service.ts";
 import { parseAttachmentRead } from "./attachment-read.ts";
 import type {
@@ -124,13 +128,19 @@ const knownErrors = new Set([
   "upload_bound",
   "invalid_attachment_message",
   "attachment_binding_unavailable",
+  "attachment_deletion_conflict",
+  "stale_attachment_deletion",
   "invalid_attachment_read",
   "attachment_read_not_found",
   "attachment_integrity_failed",
 ]);
 
 export class SQLiteAttachmentStore
-  implements AttachmentUploadStore, AttachmentBindingStore, AttachmentChunkStore
+  implements
+    AttachmentUploadStore,
+    AttachmentBindingStore,
+    AttachmentChunkStore,
+    BoundAttachmentDeletion
 {
   readonly #db: DatabaseSync;
   readonly #options: AttachmentStoreOptions;
@@ -1054,6 +1064,123 @@ export class SQLiteAttachmentStore
         data,
       };
     });
+  }
+  /** Terminal proof must originate from the fixed Relay queue while its guard is held. */
+  deleteBound(grant: AttachmentDeletionGrant): { deleted: number } {
+    return this.#tx(() => {
+      grant.assertCurrent();
+      const now = this.#now(),
+        r = grant.receipt;
+      if (
+        !["acked", "expired"].includes(grant.reason) ||
+        r.state !== grant.reason ||
+        !grant.attachment_ids.length ||
+        grant.attachment_ids.length > 64 ||
+        new Set(grant.attachment_ids).size !== grant.attachment_ids.length
+      )
+        throw new RelayError("attachment_deletion_conflict");
+      const binding = this.#db
+        .prepare(
+          "SELECT * FROM attachment_bindings WHERE owner_id=? AND message_id=?",
+        )
+        .get(r.sender_id, r.message_id) as BindingRow | undefined;
+      if (!binding) {
+        for (const id of grant.attachment_ids) {
+          const row = this.#db
+            .prepare("SELECT * FROM attachment_uploads WHERE attachment_id=?")
+            .get(id) as UploadRow | undefined;
+          if (!row) continue;
+          const intent = this.#intent(row);
+          if (
+            row.owner_id !== r.sender_id ||
+            intent.message_id !== r.message_id ||
+            intent.recipient_id !== r.recipient_id ||
+            intent.expires_at !== r.expires_at ||
+            row.state === "uploading" ||
+            row.state === "finalized"
+          )
+            throw new RelayError("attachment_deletion_conflict");
+          this.#db
+            .prepare("DELETE FROM attachment_chunks WHERE attachment_id=?")
+            .run(id);
+        }
+        this.#guards.push(() => grant.assertCurrent());
+        return { deleted: 0 };
+      }
+      const snapshot = this.#bindingReceipt(binding, now),
+        old =
+          binding.receipt === null
+            ? null
+            : (JSON.parse(binding.receipt) as Receipt);
+      if (
+        binding.recipient_id !== r.recipient_id ||
+        new Date(binding.expires_at).toISOString() !== r.expires_at ||
+        JSON.stringify(snapshot.attachment_ids) !==
+          JSON.stringify(grant.attachment_ids) ||
+        (old &&
+          (old.receipt_id !== r.receipt_id ||
+            old.accepted_at !== r.accepted_at))
+      )
+        throw new RelayError("attachment_deletion_conflict");
+      let deleted = 0;
+      for (const id of grant.attachment_ids) {
+        const row = this.#row(id),
+          intent = this.#intent(row);
+        if (
+          row.owner_id !== r.sender_id ||
+          intent.message_id !== r.message_id ||
+          intent.recipient_id !== r.recipient_id ||
+          intent.expires_at !== r.expires_at
+        )
+          throw new RelayError("attachment_deletion_conflict");
+        if (row.state === "uploading" || row.state === "finalized") {
+          this.#close(
+            row,
+            grant.reason === "acked" ? "cancelled" : "expired",
+            grant.reason === "acked" ? "cancelled" : "expired",
+            now,
+          );
+          deleted++;
+        } else {
+          this.#db
+            .prepare("DELETE FROM attachment_chunks WHERE attachment_id=?")
+            .run(id);
+        }
+      }
+      this.#db
+        .prepare(
+          "UPDATE attachment_bindings SET receipt=?,confirmed_at=coalesce(confirmed_at,?) WHERE owner_id=? AND message_id=?",
+        )
+        .run(JSON.stringify(r), now, r.sender_id, r.message_id);
+      this.#guards.push(() => grant.assertCurrent());
+      return { deleted };
+    });
+  }
+  checkDeliverable(
+    acceptance: Acceptance,
+    serverReceipt: Receipt,
+    limits: ContractLimits,
+  ): void {
+    this.checkPrepared(acceptance, limits);
+    const binding = this.#bindingRow(
+      acceptance.sender_id,
+      acceptance.message.message_id,
+    );
+    const confirmed =
+      binding.receipt === null
+        ? null
+        : (JSON.parse(binding.receipt) as Receipt);
+    if (
+      !confirmed ||
+      confirmed.receipt_id !== serverReceipt.receipt_id ||
+      confirmed.accepted_at !== serverReceipt.accepted_at ||
+      serverReceipt.sender_id !== binding.owner_id ||
+      serverReceipt.message_id !== binding.message_id ||
+      serverReceipt.recipient_id !== binding.recipient_id ||
+      serverReceipt.expires_at !== new Date(binding.expires_at).toISOString() ||
+      !["pending", "leased"].includes(serverReceipt.state)
+    )
+      throw new RelayError("attachment_binding_unavailable");
   }
   close() {
     this.#ready = false;

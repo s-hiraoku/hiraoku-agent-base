@@ -19,6 +19,7 @@ import type {
   Receipt,
   ReceiptQuery,
 } from "./service.ts";
+import type { AttachmentDeliveryPolicy } from "./attachment-delivery.ts";
 import type { AckRequest, ContractLimits } from "./contract.ts";
 import type {
   AttachmentDeletionPayload,
@@ -146,12 +147,26 @@ export class SQLiteRelayStore
   readonly #db: DatabaseSync;
   readonly #options: StoreOptions;
   readonly #attachments: AttachmentAdmission | undefined;
+  readonly #attachmentDelivery: AttachmentDeliveryPolicy | undefined;
   #ready = false;
   constructor(
     path: string,
     options: StoreOptions,
     attachments?: AttachmentAdmission,
+    attachmentDelivery?: AttachmentDeliveryPolicy,
   ) {
+    if (attachmentDelivery !== undefined) {
+      if (!attachments || typeof attachmentDelivery.check !== "function")
+        throw new RelayError("invalid_attachment_delivery_policy");
+      validateLimits(attachmentDelivery.limits);
+    }
+    this.#attachmentDelivery =
+      attachmentDelivery === undefined
+        ? undefined
+        : Object.freeze({
+            limits: Object.freeze({ ...attachmentDelivery.limits }),
+            check: attachmentDelivery.check.bind(attachmentDelivery),
+          });
     if (attachments !== undefined && typeof attachments.check !== "function")
       throw new RelayError("invalid_attachment_admission");
     this.#attachments =
@@ -223,6 +238,7 @@ export class SQLiteRelayStore
   }
   /** Caller must explicitly authorize schema application to a dedicated Relay database. */
   migrate(attachmentLimits?: ContractLimits): void {
+    attachmentLimits ??= this.#attachmentDelivery?.limits;
     if (attachmentLimits) validateLimits(attachmentLimits);
     this.#ready = false;
     this.#tx(() => {
@@ -661,13 +677,10 @@ UPDATE relay_schema SET version=2;`);
           generation: number;
           attempts: number;
         };
-        // Retrieval and durable attachment ACK are not implemented; do not lease metadata alone.
-        if (
-          JSON.parse(row.body).body.parts.some(
-            (p: { type: string }) => p.type === "attachment",
-          )
-        )
-          continue;
+        const hasAttachments = JSON.parse(row.body).body.parts.some(
+          (p: { type: string }) => p.type === "attachment",
+        );
+        if (hasAttachments && !this.#attachmentDelivery) continue;
         try {
           if (
             authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
@@ -676,6 +689,15 @@ UPDATE relay_schema SET version=2;`);
         } catch (e) {
           if (e instanceof RelayError && e.code === "forbidden") continue;
           throw e;
+        }
+        if (hasAttachments) {
+          this.#checkAttachmentDelivery(row);
+          if (
+            authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
+          )
+            throw new RelayError("forbidden");
+          if (row.expires_at <= this.#now())
+            throw new RelayError("expired_before_acceptance");
         }
         const token = Buffer.from(randomBytes(32)).toString("base64url"),
           generation = row.generation + 1;
@@ -733,12 +755,16 @@ UPDATE relay_schema SET version=2;`);
       if (!row) throw new RelayError("invalid_ack");
       if (authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver)
         throw new RelayError("forbidden");
+      const hasAttachments = this.#attachmentRefs(row) !== null;
       if (
         row.body &&
         JSON.parse(row.body).body.parts.some(
           (p: { type: string }) => p.type === "attachment",
-        )
+        ) &&
+        !hasAttachments
       )
+        throw new RelayError("attachment_reference_mismatch");
+      if (hasAttachments && !this.#attachmentDelivery)
         throw new RelayError("attachment_delivery_unavailable");
       const fingerprint = this.#hash("ack", JSON.stringify(request));
       const existing = this.#db
@@ -774,6 +800,15 @@ UPDATE relay_schema SET version=2;`);
         row.expires_at <= now
       )
         throw new RelayError("invalid_ack");
+      if (hasAttachments) {
+        this.#checkAttachmentDelivery(row);
+        if (
+          authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
+        )
+          throw new RelayError("forbidden");
+        if (row.expires_at <= this.#now() || row.lease_until <= this.#now())
+          throw new RelayError("invalid_ack");
+      }
       this.#enqueueAttachmentDeletion(row, "acked", now);
       const receiptId = randomUUID();
       this.#db
@@ -876,6 +911,35 @@ UPDATE relay_schema SET version=2;`);
         safety_held: held,
       };
     });
+  }
+  #checkAttachmentDelivery(row: Row & { body: string | null }): void {
+    if (!this.#attachmentDelivery || !row.body)
+      throw new RelayError("attachment_delivery_unavailable");
+    const limits = this.#attachmentDelivery.limits,
+      message = parseSubmission(JSON.parse(row.body), limits),
+      material = comparisonMaterial(row.sender_id, message, limits);
+    if (
+      row.fingerprint !==
+        createHmac("sha256", this.#options.fingerprint_key)
+          .update(material)
+          .digest("hex") ||
+      JSON.stringify(this.#attachmentRefs(row)) !==
+        JSON.stringify(
+          message.body.parts
+            .filter((p) => p.type === "attachment")
+            .map((p) => p.attachment_id),
+        )
+    )
+      throw new RelayError("attachment_reference_mismatch");
+    const result: unknown = this.#attachmentDelivery.check(
+      { message, sender_id: row.sender_id, comparison_material: material },
+      receipt(row),
+    );
+    if (result !== undefined) {
+      if (result && typeof result === "object" && "then" in result)
+        void Promise.resolve(result).catch(() => {});
+      throw new RelayError("attachment_delivery_unavailable");
+    }
   }
   #saveAttachmentRefs(row: Row, ids: string[]): void {
     if (

@@ -20,8 +20,10 @@ implement resumable owner-scoped uploads and digest-checked finalize separately
 from message storage. Optional durable per-message bindings and an acceptance-only
 coordinator now protect finalized bytes before Relay commit and reconcile the original
 receipt after failure/reopen. A host must explicitly supply prepared-reference admission;
-default acceptance/outbox/inbox still reject attachments. Even when admission is enabled,
-poll withholds attached messages and ACK refuses them. The optional
+default acceptance/outbox/inbox still reject attachments. Admission alone does not enable
+poll or ACK: the host must additionally supply a fourth `AttachmentDeliveryPolicy`
+constructor argument, connecting its finite limits and synchronous check to the fixed
+blob store's `checkDeliverable`. Only then can confirmed attachments be leased and ACKed. The optional
 `./attachment-read.ts` host service reads one bounded integrity-checked chunk for the
 current receiver under a live Relay transaction; it rechecks message state/expiry,
 confirmed refs and current poll authority. Grants expire at callback exit and reads
@@ -33,8 +35,14 @@ and released-text ACK replay; a keyed metadata tag retains attachment verificati
 after body handoff. The optional stager fetches at most one chunk per invocation.
 Relay schema 4 now persists minimal attachment references and a fenced
 [terminal deletion outbox](../../docs/attachment-deletion.md) in the same DB.
-Unfinished deletion blocks receipt GC. Physical deletion and explicit attachment
-poll/ACK activation remain later work; defaults still withhold them. HAB provides separate scoped acceptance/read guards without
+Unfinished deletion blocks receipt GC. A host-invoked `AttachmentDeletionWorker`
+claims at most one job, checks separate maintenance authority and deletes the exact
+terminal binding under the live fenced proof. Partial failures roll back all owned
+bytes; retries reconcile a lost blob/queue completion without distributed transactions.
+ACK immediately closes download access before physical deletion. Twenty in-process
+HAB tests cover actual leases, durable local bytes, server ACK and cleanup, including
+response loss and authority/lease changes. HTTP/MCP attachment transfer and production
+wiring remain pending; defaults still withhold attachments. HAB provides separate scoped acceptance/read guards without
 changing this core; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,

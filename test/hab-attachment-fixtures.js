@@ -10,8 +10,10 @@ import {
 } from "./hab-registry-fixtures.js";
 import { options, intent, payload } from "./relay-attachment-fixtures.js";
 import { limits } from "./relay-http-fixtures.js";
+import { makeUploadRequestId } from "../src/relay/attachments.ts";
+import { makeReplayBoundMessageId } from "../src/relay/contract.ts";
 
-export function fixture(t, enrollC = true) {
+export function fixture(t, enrollC = true, delivery = false) {
   const f = registryFixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
@@ -37,6 +39,13 @@ export function fixture(t, enrollC = true) {
       poll_scan_limit: 10,
     },
     { check: (acceptance) => blob.checkPrepared(acceptance, limits) },
+    delivery
+      ? {
+          limits,
+          check: (acceptance, receipt) =>
+            blob.checkDeliverable(acceptance, receipt, limits),
+        }
+      : undefined,
   );
   relay.migrate();
   const raw = new DatabaseSync(join(f.dir, "attachment-relay.sqlite")),
@@ -50,9 +59,13 @@ export function fixture(t, enrollC = true) {
   const uploads = new HabAttachmentUploads(f.registry, blob, options);
   const api = (store = relay, bindings = blob) =>
     new HabAttachmentAcceptance(f.registry, store, bindings, limits);
-  const upload = () => {
-    const v = intent(payload, { recipient_id: b.agent_id }),
-      r = uploads.begin(f.contexts.a, v);
+  const upload = (patch = {}) => {
+    const v = intent(payload, { ...patch, recipient_id: b.agent_id });
+    if (patch.first_sent_at) {
+      v.message_id = makeReplayBoundMessageId(v.first_sent_at, "f".repeat(32));
+      v.request_id = makeUploadRequestId(v.first_sent_at, "e".repeat(32));
+    }
+    const r = uploads.begin(f.contexts.a, v);
     for (let i = 0; i < payload.length; i += options.chunk_bytes)
       uploads.put(
         f.contexts.a,
