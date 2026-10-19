@@ -42,4 +42,22 @@ hostはmessage／sourceのdurable引渡しを照合してからreleaseする。r
 
 新規28件でsource再開とcopy、SHA／BLOB破損、原子的進捗、owner／鍵／schema、lease競合とreopen／fencing、実upload backendとのbegin→put→finalize、偽receipt拒否、local commit失敗、有限backoff／隔離、async・再入、quota、空ファイル、期限と30日GCを確認する。長期保持は署名し直した専用DBのhistorical fixtureで模擬し、実時間の30日待機や電源断試験ではない。
 
-この段階は保存・claim・照合のhost APIである。固定clientに接続する1回1通信のworker、message送信outboxへの引渡し、受信orchestration、既存runtimeと実製品への接続は後続である。通常のoutbox／Receiverと既定MCP catalogは変更せず、既存Hermes・認証・cronを起動／変更しない。
+保存・claim・照合のhost APIに、以下の1回1通信workerも追加した。message送信outboxへの引渡し、受信orchestration、既存runtimeと実製品への接続は後続である。通常のoutbox／Receiverと既定MCP catalogは変更せず、既存Hermes・認証・cronを起動／変更しない。
+
+## 1回1通信の送信worker
+
+[AttachmentUploadSender](../src/relay/upload-sender.ts)は固定transportとjournal、有限timeoutを明示注入し、workOnceで最大1つのbegin／put／finalizeだけを行う。新規listener、timer loop、credential発行、接続先探索、model実行を起動しない。1つのworker instanceの並行呼出しを拒否し、複数process間はjournalの原子的leaseで調停する。port未接続・不正job・非同期のlocal claim／accept／failは拒否する。
+
+固定transportには既存AttachmentMcpClient等を接続する。serverのowner・宛先・操作権限は毎回の検証済みcontextから決まり、journalのagent_idやjobの名前を認証として使わない。jobは元intentと固定attachment ID／offset／最大1chunkだけを持ち、任意shell、URL、file path、自由tool名を渡せない。
+
+通信待機の期限はworker timeout、現在lease、元message期限の最も早い時刻までとする。timeoutをtransportの停止成功と扱わず、そのinstanceは元transportがsettleするまでslotを保持する。遅い返答はlocal進捗へ書き戻さない。別processの再開ではfencingと元ID／offset／bytesの冪等性で照合する。SQLite／hash等の同期処理は途中preemptできず、sourceとchunkの有限量、DB wait、完了前の期限再確認でも制限する。
+
+transport失敗では同じphaseを有限backoffへ戻す。認証拒否、receipt不正、server上のconflictは固定codeで隔離し、sourceを保持する。deferredは後の成功や再送可能性を約束せず、隔離・上限も含めてjournal.statusで確認する。idleはclaimできる仕事がないという意味で、全件成功ではない。通信側／local側のcommitが不明でfailも照合できなければupload_sender_uncertainとし、現在journalとleaseから再開する。
+
+finalizedはupload完了のみで、message受付・配送・仕事実行の完了ではない。workerはmessageを自動submitせず、sourceを自動releaseしない。message outboxへのdurable引渡し・送信receipt照合と、受信orchestrationは引き続き別の層である。
+
+## native HTTPでのworker検証
+
+新規20件は既存の一時localhost handler、HAB認可、固定clientと実upload DBへjournal／workerを組み合わせる。1回1操作、sourceからupload→手動message送信→durable受信／ACK→server物理削除、begin／chunk／finalize応答消失、journal reopen、local進捗write失敗／commit応答消失、遅い旧worker、process間lease、元期限、credentialなし、偽receipt、server chunk conflict、async local port、進捗なし上限、空file、source破損とclosed状態を確認する。
+
+node --test test/relay-upload-journal.test.js test/relay-upload-worker.test.js で保存境界28件とworker20件の計48件を再現できる。privateな一時DBと模擬認証を使い、実エージェント・model・実OAuth／新規資格情報や常駐処理は起動しない。実個体の保証開始点、本番route、cold-start、整合backup／restoreは未確認である。

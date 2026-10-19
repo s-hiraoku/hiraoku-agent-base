@@ -53,7 +53,7 @@ upload応答は所有者、要求したattachment ID、beginの元intent全体�
 
 受信hostは`poll → stageOnce → verified → SQLiteInbox.save → claimAck → client.ack → confirmAck`を明示的・有限に進める。staging中にleaseが切れた場合は現在のdeliveryを取り直し、古いleaseでACKしない。部分保存の再開は既存journalの元IDとoffsetを使う。ACK応答不明はbody／ACK journalとverifiedな添付bytesを保持し、同じACKを照合する。server物理削除後もlocal bytesを自動で捨てない。
 
-このclientはtransportであり、送信upload intentやsource bytesの汎用永続journalは作らない。通常の送信outboxと`Receiver.receiveOnce`は引き続き添付を拒否する。独立した[添付sender journal](upload-journal.md)で元intent／source bytes／進捗の保存・検証とleaseを追加した。固定clientへの有限workerと受信orchestration、message引渡し・lease再取得の組立ては次の層である。テストではダミーintentを送信前に一時privateファイルへ保存し、受信側は実際の永続添付inbox／本文／ACK journalを使用する。
+このclientはtransportであり、送信upload intentやsource bytesの汎用永続journalは作らない。通常の送信outboxと`Receiver.receiveOnce`は引き続き添付を拒否する。独立した[添付sender journal](upload-journal.md)で元intent／source bytes／進捗の保存・検証とleaseを追加した。固定clientへ1回1通信で接続する有限workerも追加した。message outboxへの引渡しと受信orchestration、lease再取得の組立ては次の層である。テストではダミーintentを送信前に一時privateファイルへ保存し、受信側は実際の永続添付inbox／本文／ACK journalを使用する。
 
 ## native HTTPの検証
 
