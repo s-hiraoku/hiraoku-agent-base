@@ -2,7 +2,7 @@
 
 [README](../README.md) · [正式仕様](hab-relay-spec.md) · [Relay実装](../src/relay/README.md)
 
-uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。HABの取得guardも別層で組み立てた。[受信添付journal](attachment-inbox.md)では部分保存・再開・全体SHA検証も独立して実装した。通常inboxのACK前検証も組み立てた。**server ACK／削除outbox・添付配送・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
+uploadとmessageの参照確定・受付再照合を、HAB名・Task・製品SDKに依存しないhost APIとして実装した。既定Relay／outbox／inboxは添付参照を引き続き`attachment_store_unavailable`で拒否する。明示した任意の組立てだけが添付messageを受付でき、受信者認可付きの有限chunk取得も独立host APIとして追加した。HABの取得guardも別層で組み立てた。[受信添付journal](attachment-inbox.md)では部分保存・再開・全体SHA検証も独立して実装した。通常inboxのACK前検証も組み立てた。[terminalと同時commitする削除outbox](attachment-deletion.md)も実装した。**物理削除worker・server添付ACK／配送有効化・HTTP/MCP転送は後続**である。添付を含む行はpollがleaseせず、ACKも拒否する。finalized、message受付、受領、実行はそれぞれ別の状態である。
 
 ## 契約
 

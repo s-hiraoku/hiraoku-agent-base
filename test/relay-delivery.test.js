@@ -420,7 +420,7 @@ test("explicit v1-to-current migration preserves accepted receipts and allows de
   store.migrate();
   assert.equal(
     raw.prepare("SELECT version FROM relay_schema").get().version,
-    3,
+    4,
   );
   assert.deepEqual(raw.prepare("PRAGMA foreign_key_check").all(), []);
   const service = new RelayService(store, limits, policy);

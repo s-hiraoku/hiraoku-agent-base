@@ -31,7 +31,10 @@ before a scoped readiness action. An explicit third constructor argument now gat
 claim on verified retained bytes. Its schema-3 migration preserves v1/v2 journals
 and released-text ACK replay; a keyed metadata tag retains attachment verification
 after body handoff. The optional stager fetches at most one chunk per invocation.
-Server attachment poll/ACK and deletion coupling remain withheld and later work. HAB provides separate scoped acceptance/read guards without
+Relay schema 4 now persists minimal attachment references and a fenced
+[terminal deletion outbox](../../docs/attachment-deletion.md) in the same DB.
+Unfinished deletion blocks receipt GC. Physical deletion and explicit attachment
+poll/ACK activation remain later work; defaults still withhold them. HAB provides separate scoped acceptance/read guards without
 changing this core; the pure Relay entry and MCP catalogs are unchanged.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
