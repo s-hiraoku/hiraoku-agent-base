@@ -4,7 +4,7 @@
 
 専用の[SQLiteAttachmentInbox](../src/relay/sqlite-attachment-inbox.ts)が受信者ごとの有限chunkを保存する。serverのupload DB、Relay message DB、通常の本文／ACK inboxとは別schema 1であり、既存DBを暗黙に移行しない。HAB名・Task・製品SDK・network・model実行には依存しない。
 
-この段階は保存と検証のhost APIである。通常inboxへのACK gateと、取得transportから1chunkずつ保存するstagingも任意host組立てとして実装した。[明示的なserver側host組立て](attachment-deletion.md)では添付poll／ACKと削除outbox・単発workerも利用できる。既定経路では添付を拒否し、任意の[MCP／HTTPサーバー境界](attachment-transport.md)も追加した。固定client転送と本番接続は後続である。
+この段階は保存と検証のhost APIである。通常inboxへのACK gateと、取得transportから1chunkずつ保存するstagingも任意host組立てとして実装した。[明示的なserver側host組立て](attachment-deletion.md)では添付poll／ACKと削除outbox・単発workerも利用できる。既定経路では添付を拒否し、任意の[MCP／HTTPサーバー境界](attachment-transport.md)も追加した。固定client転送も模擬検証した。添付送信journalと本番接続は後続である。
 
 ## 保存と検証
 

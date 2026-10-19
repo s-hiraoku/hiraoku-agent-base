@@ -437,3 +437,11 @@ five tools. Upload admission, confirmed delivery policy and acceptance coordinat
 are separate host injections. See [the version-1 wire contract](../../docs/attachment-transport.md)
 for canonical bounded base64, uncertainty recovery and the 18 gateway/SDK tests.
 No maintenance or credential tool, runtime route or real-agent connection is added.
+
+The optional `HabAttachmentMcpClient` extends the attachment client with directory
+resolution while sharing the same admission and credential provider. Nineteen
+native temporary-loopback tests cover mixed parts, two files, durable receiver
+save before ACK, uncertain upload/ACK responses and restart. The sender intent
+is explicitly saved by the fixture; an attachment sender journal and receiver
+orchestration are still separate work. Production credentials and product
+bindings remain unverified.
