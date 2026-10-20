@@ -637,3 +637,5 @@ remain separate work.
 [サーバー添付の有限保守cycle](../../docs/attachment-maintenance.md)は保守専用認可で、Relay期限回収→削除1job→孤立upload回収を順に実行し、部分commitを明示します。scheduler・runtimeの起動や受信済みbytesの自動解放は追加しません。
 
 [配送DBのsnapshot／停止復元](../../docs/sqlite-snapshot-bundle.md)はprofile全DBのwriter lockとHMAC付きmanifestを使い、既存DBを置換しない新規offline directoryへ復元します。registry・認証・設定・鍵を巻き戻さず、runtimeの接続を自動再開しません。
+
+[Message個体別容量と最低予約枠](../../docs/relay-agent-capacity.md)は任意のagent_capacity設定で有効にします。verified senderと現在の保存量から受付transaction内で判定し、元のreceipt照合と既存retentionを維持します。

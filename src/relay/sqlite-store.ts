@@ -8,6 +8,11 @@ import {
   randomInt,
   timingSafeEqual,
 } from "node:crypto";
+import { agentCapacityPolicy, assertAgentCapacity } from "./agent-capacity.ts";
+import type {
+  AgentCapacityPolicy,
+  SenderCapacityUsage,
+} from "./agent-capacity.ts";
 import { RelayError } from "./service.ts";
 import type {
   Acceptance,
@@ -53,6 +58,7 @@ export interface StoreOptions {
   retry_base_ms: number;
   retry_cap_ms: number;
   poll_scan_limit: number;
+  agent_capacity?: AgentCapacityPolicy;
 }
 /** Trusted host composition: validate durable prepared refs, never caller claims. */
 export interface AttachmentAdmission {
@@ -203,6 +209,10 @@ export class SQLiteRelayStore
       throw new RelayError("invalid_store_options");
     this.#options = {
       ...options,
+      agent_capacity:
+        options.agent_capacity === undefined
+          ? undefined
+          : agentCapacityPolicy(options.agent_capacity, options),
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
     };
     this.#db = new DatabaseSync(path);
@@ -447,6 +457,26 @@ UPDATE relay_schema SET version=2;`);
         Number(usage.bytes) + size > this.#options.max_body_bytes
       )
         throw new RelayError("capacity_exceeded");
+      if (this.#options.agent_capacity) {
+        const senders = this.#db
+          .prepare(
+            "SELECT sender_id,count(*) records,sum(CASE WHEN state IN ('pending','leased','quarantined') THEN 1 ELSE 0 END) pending,coalesce(sum(CASE WHEN state IN ('pending','leased','quarantined') THEN body_bytes ELSE 0 END),0) body_bytes FROM relay_messages GROUP BY sender_id",
+          )
+          .all() as unknown as SenderCapacityUsage[];
+        const recipient = this.#db
+          .prepare(
+            "SELECT count(*) records,coalesce(sum(CASE WHEN state IN ('pending','leased','quarantined') THEN body_bytes ELSE 0 END),0) body_bytes FROM relay_messages WHERE recipient_id=?",
+          )
+          .get(m.recipient_id) as { records: number; body_bytes: number };
+        assertAgentCapacity(
+          this.#options.agent_capacity,
+          this.#options,
+          sender,
+          size,
+          senders,
+          recipient,
+        );
+      }
       const [a, b] = [sender, m.recipient_id].sort();
       const thread = this.#db
         .prepare("SELECT a,b FROM relay_threads WHERE id=?")
