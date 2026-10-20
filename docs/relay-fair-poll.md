@@ -28,6 +28,6 @@ ACK／元期限によるterminal更新では、live queueがなくなったsende
 
 `node --test test/relay-fair-poll.test.js` は25シナリオです。backlog間の巡回、scan1、kind別の拒否と復帰、再起動、有限候補数、添付保留、権限失効、single-flight、backoff／隔離、HMAC、ACK／lease audit rollback、migration、空inbox、TTL回収、遅いSQL、native writer競合、起動時のschema lock待機、既定FIFOを確認します。snapshot側にも旧schema4互換とschema5位置保持の2件を追加しました。
 
-[Message個体別容量・最低枠](relay-agent-capacity.md)と組み合わせられます。blob側の最低予約、個体別の送信rate・writer admission、本番のpolicy値・監視・接続、実Adapterの処理公平性は残っています。
+[Message個体別容量・最低枠](relay-agent-capacity.md)と[添付blobの最低予約](attachment-capacity.md)と組み合わせられます。個体別の送信rate・writer admission、本番のpolicy値・監視・接続、実Adapterの処理公平性は残っています。
 
 接続時のbusy timeoutは初期化PRAGMAより前に設定し、別connectionが短時間schema lockを保持していても最大5秒待ちます。待機は有限で、pollのlease・原子性・single-flightの条件は変わりません。
