@@ -1,4 +1,6 @@
 /** Explicit bounded HTTP host adapter. Construction starts no listener or credentials. */
+import { WriterAdmission, WriterAdmissionError } from "./writer-admission.ts";
+import type { WriterOperation } from "./writer-admission.ts";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import type { AuditSink, AuditCategory } from "../security.ts";
 import { protocolAdmission } from "../protocol.ts";
@@ -55,6 +57,15 @@ export class RelayHttpGateway {
   readonly #service: RelayOperations;
   readonly #audit: AuditSink;
   readonly #verify: RelayHttpVerifier;
+  readonly #admission: WriterAdmission | undefined;
+  protected get writerOperations(): Readonly<Record<string, WriterOperation>> {
+    return {
+      relay_submit: "submit",
+      relay_status: "status",
+      relay_poll: "poll",
+      relay_ack: "ack",
+    };
+  }
   /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
   protected get toolSchemas(): Record<string, z.ZodType> {
     return relayMcpSchemas;
@@ -70,6 +81,7 @@ export class RelayHttpGateway {
     policy: RelayHttpPolicy,
     audit: AuditSink,
     verify: RelayHttpVerifier = () => null,
+    admission?: WriterAdmission,
   ) {
     try {
       const u = origin(policy.resource_url);
@@ -98,7 +110,8 @@ export class RelayHttpGateway {
         policy.requests_per_window > 1000000 ||
         policy.window_ms > 3600000 ||
         typeof audit?.record !== "function" ||
-        typeof verify !== "function"
+        typeof verify !== "function" ||
+        (admission !== undefined && !(admission instanceof WriterAdmission))
       )
         throw Error();
     } catch {
@@ -111,6 +124,7 @@ export class RelayHttpGateway {
     this.#service = service;
     this.#audit = audit;
     this.#verify = verify;
+    this.#admission = admission;
   }
   async fetch(request: Request): Promise<Response> {
     const correlation = crypto.randomUUID(),
@@ -155,7 +169,9 @@ export class RelayHttpGateway {
     let pendingTools = 0,
       workFinished = false,
       released = false;
+    let writerDrained: (() => void) | undefined;
     const releaseAdmission = () => {
+      if (pendingTools === 0) writerDrained?.();
       if (workFinished && pendingTools === 0 && !released) {
         released = true;
         this.#active--;
@@ -320,54 +336,106 @@ export class RelayHttpGateway {
         )
           throw new HttpFailure(400, "transport_error");
         check();
-        handler = createMcpHandler(() =>
-          this.createServer(() => {
+        const dispatch = async () => {
+          check();
+          try {
+            handler = createMcpHandler(() =>
+              this.createServer(() => {
+                check();
+                return context;
+              }, gate),
+            );
+            // Forward only MCP framing, never cookies, credentials, host audit IDs or forwarded identities.
+            const safeHeaders = new Headers();
+            for (const name of [
+              "content-type",
+              "accept",
+              "mcp-method",
+              "mcp-name",
+              "mcp-protocol-version",
+            ])
+              if (request.headers.has(name))
+                safeHeaders.set(name, request.headers.get(name)!);
+            const sdk = await handler.fetch(
+              new Request(this.policy.resource_url, {
+                method: "POST",
+                headers: safeHeaders,
+                body: bytes,
+                signal: abort.signal,
+              }),
+            );
             check();
-            return context;
-          }, gate),
-        );
-        // Forward only MCP framing, never cookies, credentials, host audit IDs or forwarded identities.
-        const safeHeaders = new Headers();
-        for (const name of [
-          "content-type",
-          "accept",
-          "mcp-method",
-          "mcp-name",
-          "mcp-protocol-version",
-        ])
-          if (request.headers.has(name))
-            safeHeaders.set(name, request.headers.get(name)!);
-        const sdk = await handler.fetch(
-          new Request(this.policy.resource_url, {
-            method: "POST",
-            headers: safeHeaders,
-            body: bytes,
-            signal: abort.signal,
-          }),
-        );
-        check();
-        const result = await read(
-          sdk.body,
-          this.policy.max_response_bytes,
-          abort.signal,
-          check,
-          503,
-        );
-        check();
-        const responseHeaders = new Headers(headers);
-        if (sdk.headers.has("content-type"))
-          responseHeaders.set("Content-Type", sdk.headers.get("content-type")!);
-        if (sdk.status >= 400) await record("transport_error");
-        return new Response(result.byteLength ? result : null, {
-          status: sdk.status,
-          headers: responseHeaders,
-        });
+            const result = await read(
+              sdk.body,
+              this.policy.max_response_bytes,
+              abort.signal,
+              check,
+              503,
+            );
+            check();
+            const responseHeaders = new Headers(headers);
+            if (sdk.headers.has("content-type"))
+              responseHeaders.set(
+                "Content-Type",
+                sdk.headers.get("content-type")!,
+              );
+            if (sdk.status >= 400) await record("transport_error");
+            return new Response(result.byteLength ? result : null, {
+              status: sdk.status,
+              headers: responseHeaders,
+            });
+          } finally {
+            if (this.#admission) {
+              const current = handler;
+              handler = undefined;
+              try {
+                await current?.close();
+              } finally {
+                if (pendingTools > 0)
+                  await new Promise<void>((resolve) => {
+                    writerDrained = resolve;
+                  });
+              }
+            }
+          }
+        };
+        const method = request.headers.get("mcp-method") ?? envelope.method;
+        if (this.#admission && method === "tools/call") {
+          const name = params?.name;
+          const operation =
+            typeof name === "string" &&
+            Object.hasOwn(this.toolSchemas, name) &&
+            Object.hasOwn(this.writerOperations, name)
+              ? this.writerOperations[name]
+              : undefined;
+          if (!operation) throw new HttpFailure(405, "resource_rejected");
+          return await this.#admission.run(
+            context,
+            operation,
+            abort.signal,
+            dispatch,
+          );
+        }
+        return await dispatch();
       } catch (error) {
         if (abort.signal.aborted) return empty(cancelStatus);
         const failure =
           error instanceof HttpFailure
             ? error
-            : new HttpFailure(503, "transport_error");
+            : error instanceof WriterAdmissionError
+              ? new HttpFailure(
+                  error.code === "writer_forbidden"
+                    ? 403
+                    : error.code === "writer_rate_limited"
+                      ? 429
+                      : 503,
+                  error.code === "writer_forbidden"
+                    ? "access_denied"
+                    : error.code === "writer_rate_limited"
+                      ? "rate_limited"
+                      : "resource_rejected",
+                )
+              : new HttpFailure(503, "transport_error");
         try {
           await record(failure.category);
         } catch {
