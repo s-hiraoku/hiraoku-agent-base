@@ -848,7 +848,17 @@ UPDATE relay_schema SET version=2;`);
       throw new RelayError("invalid_maintenance_limit");
     return this.#tx(() => {
       const now = this.#now();
-      authorize();
+      const check = () => {
+        try {
+          const result: unknown = authorize();
+          if (result && typeof result === "object" && "then" in result)
+            void Promise.resolve(result).catch(() => {});
+          if (result !== undefined) throw Error();
+        } catch {
+          throw new RelayError("forbidden");
+        }
+      };
+      check();
       if (
         !this.#db
           .prepare("SELECT 1 FROM relay_maintenance_totals WHERE id=1")
@@ -904,6 +914,7 @@ UPDATE relay_schema SET version=2;`);
           "UPDATE relay_maintenance_totals SET last_at=?,expired=expired+?,purged=purged+?,threads=threads+? WHERE id=1",
         )
         .run(now, expired, rows.length, threads.length);
+      check();
       return {
         expired,
         purged: rows.length,
