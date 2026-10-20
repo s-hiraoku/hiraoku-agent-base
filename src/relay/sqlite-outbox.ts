@@ -8,6 +8,7 @@ import {
   RECORD_RETENTION_MS,
   isReplayBoundMessageId,
 } from "./contract.ts";
+import type { AttachmentOutboxAdmission } from "./attachment-outbox.ts";
 import type { ContractLimits } from "./contract.ts";
 import { RelayError } from "./service.ts";
 import type { Receipt } from "./service.ts";
@@ -92,7 +93,24 @@ export class SQLiteOutbox implements SenderStore {
   readonly #db: DatabaseSync;
   readonly #options: OutboxOptions;
   #ready = false;
-  constructor(path: string, options: OutboxOptions) {
+  #inside = false;
+  readonly #attachments?: AttachmentOutboxAdmission;
+  constructor(
+    path: string,
+    options: OutboxOptions,
+    attachments?: AttachmentOutboxAdmission,
+  ) {
+    if (attachments) {
+      if (
+        typeof attachments.withReady !== "function" ||
+        typeof attachments.withClaim !== "function"
+      )
+        throw new RelayError("invalid_outbox_admission");
+      this.#attachments = Object.freeze({
+        withReady: attachments.withReady.bind(attachments),
+        withClaim: attachments.withClaim.bind(attachments),
+      });
+    }
     validateLimits(options.limits);
     if (
       !identifier(options.agent_id) ||
@@ -145,7 +163,9 @@ export class SQLiteOutbox implements SenderStore {
     }
     this.#db = new DatabaseSync(path);
     try {
-      this.#db.exec("PRAGMA busy_timeout=5000");
+      this.#db.exec(
+        "PRAGMA busy_timeout=5000;PRAGMA synchronous=FULL;PRAGMA secure_delete=ON",
+      );
       this.#db.function(
         "relay_outbox_gc_safe",
         { deterministic: true },
@@ -157,14 +177,56 @@ export class SQLiteOutbox implements SenderStore {
     }
   }
   #tx<T>(fn: () => T): T {
-    this.#db.exec("BEGIN IMMEDIATE");
+    if (this.#inside) throw new RelayError("outbox_busy");
+    this.#inside = true;
+    let began = false;
     try {
+      this.#db.exec("BEGIN IMMEDIATE");
+      began = true;
       const out = fn();
+      if (out && typeof out === "object" && "then" in out) {
+        void Promise.resolve(out).catch(() => {});
+        throw new RelayError("outbox_busy");
+      }
       this.#db.exec("COMMIT");
       return out;
     } catch (e) {
-      this.#db.exec("ROLLBACK");
+      if (began) this.#db.exec("ROLLBACK");
       throw e;
+    } finally {
+      this.#inside = false;
+    }
+  }
+  #admit<T>(action: (run: () => T) => T, run: () => T): T {
+    let live = true,
+      called = false,
+      failed = false;
+    let failure: unknown;
+    try {
+      const result = action(() => {
+        if (!live || called) throw new RelayError("invalid_outbox_admission");
+        called = true;
+        try {
+          return run();
+        } catch (e) {
+          failed = true;
+          failure = e;
+          throw e;
+        }
+      });
+      if (
+        !called ||
+        (result && typeof result === "object" && "then" in result)
+      ) {
+        if (result && typeof result === "object" && "then" in result)
+          void Promise.resolve(result).catch(() => {});
+        throw new RelayError("invalid_outbox_admission");
+      }
+      return result;
+    } catch (e) {
+      throw failed ? failure : e;
+    } finally {
+      live = false;
     }
   }
   #keyCheck() {
@@ -281,7 +343,8 @@ export class SQLiteOutbox implements SenderStore {
   }
   enqueue(input: unknown): OutboxRecord {
     const message = parseSubmission(input, this.#options.limits);
-    if (message.body.parts.some((p) => p.type === "attachment"))
+    const attached = message.body.parts.some((p) => p.type === "attachment");
+    if (attached && !this.#attachments)
       throw new RelayError("attachment_store_unavailable");
     const fingerprint = createHmac("sha256", this.#options.fingerprint_key)
       .update(
@@ -292,49 +355,70 @@ export class SQLiteOutbox implements SenderStore {
         ),
       )
       .digest("hex");
-    return this.#tx(() => {
-      const now = this.#now();
-      this.#cleanup(now);
-      const existing = this.#row(message.message_id);
-      if (existing) {
-        if (existing.fingerprint !== fingerprint)
-          throw new RelayError("outbox_content_conflict");
-        return view(existing);
-      }
-      const expires = Date.parse(message.expires_at);
-      if (expires <= now) throw new RelayError("expired_before_enqueue");
-      if (
-        Date.parse(message.first_sent_at) >
-        now + this.#options.max_clock_skew_ms
-      )
-        throw new RelayError("clock_skew");
-      const body = JSON.stringify(message),
-        usage = this.#db
-          .prepare(
-            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_outbox",
-          )
-          .get()!;
-      if (
-        Number(usage.n) >= this.#options.max_records ||
-        Number(usage.bytes) + Buffer.byteLength(body) >
-          this.#options.max_body_bytes
-      )
-        throw new RelayError("outbox_capacity_exceeded");
-      this.#db
-        .prepare(
-          "INSERT INTO relay_outbox(message_id,recipient_id,expires_at,first_sent_at,fingerprint,body,state,status_until) VALUES(?,?,?,?,?,?,'queued',?)",
+    const enqueue = () =>
+      this.#tx(() => {
+        const now = this.#now();
+        this.#cleanup(now);
+        const existing = this.#row(message.message_id);
+        if (existing) {
+          if (existing.fingerprint !== fingerprint)
+            throw new RelayError("outbox_content_conflict");
+          return view(existing);
+        }
+        const expires = Date.parse(message.expires_at);
+        if (expires <= now) throw new RelayError("expired_before_enqueue");
+        if (
+          Date.parse(message.first_sent_at) >
+          now + this.#options.max_clock_skew_ms
         )
-        .run(
-          message.message_id,
-          message.recipient_id,
-          expires,
-          Date.parse(message.first_sent_at),
-          fingerprint,
-          body,
-          expires + this.#options.status_retry_ms,
-        );
-      return view(this.#row(message.message_id)!);
+          throw new RelayError("clock_skew");
+        const body = JSON.stringify(message),
+          usage = this.#db
+            .prepare(
+              "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_outbox",
+            )
+            .get()!;
+        if (
+          Number(usage.n) >= this.#options.max_records ||
+          Number(usage.bytes) + Buffer.byteLength(body) >
+            this.#options.max_body_bytes
+        )
+          throw new RelayError("outbox_capacity_exceeded");
+        this.#db
+          .prepare(
+            "INSERT INTO relay_outbox(message_id,recipient_id,expires_at,first_sent_at,fingerprint,body,state,status_until) VALUES(?,?,?,?,?,?,'queued',?)",
+          )
+          .run(
+            message.message_id,
+            message.recipient_id,
+            expires,
+            Date.parse(message.first_sent_at),
+            fingerprint,
+            body,
+            expires + this.#options.status_retry_ms,
+          );
+        return view(this.#row(message.message_id)!);
+      });
+    if (!attached) return enqueue();
+    // Exact retries do not create work and remain valid after explicit source release.
+    const existing = this.#tx(() => {
+      this.#now();
+      const row = this.#row(message.message_id);
+      if (row && row.fingerprint !== fingerprint)
+        throw new RelayError("outbox_content_conflict");
+      return row ? view(row) : null;
     });
+    if (existing) return existing;
+    return this.#admit(
+      (run) =>
+        this.#attachments!.withReady(
+          this.#options.agent_id,
+          message,
+          this.#options.limits,
+          run,
+        ),
+      enqueue,
+    );
   }
   get(messageId: string): OutboxRecord {
     if (!identifier(messageId)) throw new RelayError("invalid_request");
@@ -344,6 +428,27 @@ export class SQLiteOutbox implements SenderStore {
     return view(row);
   }
   claim(): SendJob | null {
+    if (!this.#attachments) return this.#claim();
+    let check:
+      ((message: import("./contract.ts").Submission) => void) | undefined;
+    return this.#admit(
+      (run) =>
+        this.#attachments!.withClaim(
+          this.#options.agent_id,
+          this.#options.limits,
+          (verified) => {
+            if (typeof verified !== "function")
+              throw new RelayError("invalid_outbox_admission");
+            check = verified;
+            return run();
+          },
+        ),
+      () => this.#claim(check),
+    );
+  }
+  #claim(
+    check?: (message: import("./contract.ts").Submission) => void,
+  ): SendJob | null {
     return this.#tx(() => {
       const now = this.#now();
       this.#cleanup(now);
@@ -392,6 +497,39 @@ export class SQLiteOutbox implements SenderStore {
             );
           continue;
         }
+        const message =
+          operation === "submit"
+            ? parseSubmission(JSON.parse(row.body!), this.#options.limits)
+            : null;
+        if (message) {
+          const fingerprint = createHmac(
+            "sha256",
+            this.#options.fingerprint_key,
+          )
+            .update(
+              comparisonMaterial(
+                this.#options.agent_id,
+                message,
+                this.#options.limits,
+              ),
+            )
+            .digest("hex");
+          if (
+            fingerprint !== row.fingerprint ||
+            message.message_id !== row.message_id ||
+            message.recipient_id !== row.recipient_id ||
+            Date.parse(message.expires_at) !== row.expires_at
+          )
+            throw new RelayError("outbox_integrity");
+          if (message.body.parts.some((p) => p.type === "attachment")) {
+            if (!check) continue;
+            const result: unknown = check(message);
+            if (result && typeof result === "object" && "then" in result) {
+              void Promise.resolve(result).catch(() => {});
+              throw new RelayError("invalid_outbox_admission");
+            }
+          }
+        }
         const column =
           operation === "submit" ? "submit_attempts" : "status_attempts";
         this.#db
@@ -407,7 +545,7 @@ export class SQLiteOutbox implements SenderStore {
           };
         return {
           message_id: row.message_id,
-          message: parseSubmission(JSON.parse(row.body!), this.#options.limits),
+          message: message!,
           fence: row.fence + 1,
           operation,
         };

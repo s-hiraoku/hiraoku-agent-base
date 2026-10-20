@@ -42,7 +42,7 @@ hostはmessage／sourceのdurable引渡しを照合してからreleaseする。r
 
 新規28件でsource再開とcopy、SHA／BLOB破損、原子的進捗、owner／鍵／schema、lease競合とreopen／fencing、実upload backendとのbegin→put→finalize、偽receipt拒否、local commit失敗、有限backoff／隔離、async・再入、quota、空ファイル、期限と30日GCを確認する。長期保持は署名し直した専用DBのhistorical fixtureで模擬し、実時間の30日待機や電源断試験ではない。
 
-保存・claim・照合のhost APIに、以下の1回1通信workerも追加した。message送信outboxへの引渡し、受信orchestration、既存runtimeと実製品への接続は後続である。通常のoutbox／Receiverと既定MCP catalogは変更せず、既存Hermes・認証・cronを起動／変更しない。
+保存・claim・照合のhost APIに、以下の1回1通信workerも追加した。message送信outboxへの引渡しと受信orchestrationは任意の別層として追加済みで、既存runtimeと実製品への接続は後続である。通常のoutbox／Receiverと既定MCP catalogは変更せず、既存Hermes・認証・cronを起動／変更しない。
 
 ## 1回1通信の送信worker
 
@@ -61,3 +61,7 @@ finalizedはupload完了のみで、message受付・配送・仕事実行の完�
 新規20件は既存の一時localhost handler、HAB認可、固定clientと実upload DBへjournal／workerを組み合わせる。1回1操作、sourceからupload→手動message送信→durable受信／ACK→server物理削除、begin／chunk／finalize応答消失、journal reopen、local進捗write失敗／commit応答消失、遅い旧worker、process間lease、元期限、credentialなし、偽receipt、server chunk conflict、async local port、進捗なし上限、空file、source破損とclosed状態を確認する。
 
 node --test test/relay-upload-journal.test.js test/relay-upload-worker.test.js で保存境界28件とworker20件の計48件を再現できる。privateな一時DBと模擬認証を使い、実エージェント・model・実OAuth／新規資格情報や常駐処理は起動しない。実個体の保証開始点、本番route、cold-start、整合backup／restoreは未確認である。
+
+後段の[添付message outbox連携](attachment-outbox.md)は任意の第3引数で有効化できます。新規enqueue前はsourceを全検証し、durable handoff後の明示releaseと同じIDでの復旧を区別します。
+
+[有限受信workerと永続checkpoint](attachment-receiver.md)は全deliveryを保存してから添付を取得し、検証済みbytesとinbox保存後にのみACKします。

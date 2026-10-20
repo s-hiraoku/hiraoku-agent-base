@@ -629,3 +629,7 @@ mock three-individual HTTP path; local registry/address policy is described in
 the HAB integration above, including optional MCP lookup. Managed bytes,
 application history, scheduling, runtime activation and production connections
 remain separate work.
+
+任意構成の[添付message outbox連携](../../docs/attachment-outbox.md)を追加しました。完了したsourceを同期gateで照合してenqueueし、既存DurableSenderで同じIDを再送します。sourceの自動解放・runtimeの有効化は行いません。
+
+[受信checkpoint／worker](../../docs/attachment-receiver.md)を任意構成として追加しました。全文・leaseとchunkを永続化し、1呼出し最大1 RPCで途中再開・inbox保存・ACK照合を行います。元のTTL・既定runtimeは変更しません。

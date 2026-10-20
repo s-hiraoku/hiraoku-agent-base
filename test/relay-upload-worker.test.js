@@ -163,15 +163,15 @@ test("upload worker: a lost local commit result never overwrites committed progr
 test("upload worker: timeout keeps its own slot until the old transport settles and discards the late receipt", async (t) => {
   const f = await fixture(t),
     v = f.source(),
-    a = f.client();
+    receipt = f.uploads.begin(f.contexts.a, v);
   let release;
   const port = f.transport({
     async beginUpload(input) {
-      const r = await a.beginUpload(input);
+      assert.equal(input.request_id, v.request_id);
       await new Promise((resolve) => {
         release = resolve;
       });
-      return r;
+      return receipt;
     },
   });
   const old = f.worker(f.journal, port, { timeout_ms: 30 });
@@ -214,26 +214,29 @@ test("upload worker: another process cannot claim while a live operation holds t
 });
 test("upload worker: original expiry bounds waiting and fences an in-flight late response", async (t) => {
   const f = await fixture(t),
-    first = new Date(Date.now() - 3600000 + 300).toISOString(),
+    first = new Date(Date.now() - 3600000 + 1500).toISOString(),
     v = f.beginInput();
   v.first_sent_at = first;
   v.expires_at = new Date(Date.parse(first) + 3600000).toISOString();
   v.request_id = makeUploadRequestId(first, "e".repeat(32));
   v.message_id = makeReplayBoundMessageId(first, "e".repeat(32));
   f.source(v);
-  const a = f.client();
+  // Produce the receipt synchronously; only the returned transport promise is delayed.
+  // HTTP setup latency must not decide whether this expiry test enters the operation.
+  const receipt = f.uploads.begin(f.contexts.a, v);
   let release;
   const port = f.transport({
     async beginUpload(input) {
-      const r = await a.beginUpload(input);
+      assert.equal(input.request_id, v.request_id);
       await new Promise((resolve) => {
         release = resolve;
       });
-      return r;
+      return receipt;
     },
   });
   const w = f.worker(f.journal, port, { timeout_ms: 2000 });
   await assert.rejects(() => w.workOnce(), code("upload_sender_uncertain"));
+  assert.equal(typeof release, "function");
   release();
   await setImmediate();
   await setImmediate();
