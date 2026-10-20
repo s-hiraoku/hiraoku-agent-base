@@ -53,7 +53,7 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-2026-10-21のmessage個体別容量・公平pollまでのローカル検証では、Node **1049件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+2026-10-21のmessage個体別容量・公平pollまでのローカル検証では、Node **1050件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## Relayの残りタスク
 
@@ -70,7 +70,7 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 7・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
 | 8・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-次は**blob側の最低予約枠と、個体別rate／writer受付**です。[公平pollと永続scan位置](docs/relay-fair-poll.md)を実装し、24シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[配送DBのsnapshot／停止復元](docs/sqlite-snapshot-bundle.md)を実装し、26シナリオで一括lock・WAL・改ざん拒否・3 profileの復元・schema4/5互換を確認しました。[サーバー添付の有限保守cycle](docs/attachment-maintenance.md)を実装し、16シナリオで専用認可・孤立upload回収・部分失敗を確認しました。[受信checkpoint／worker](docs/attachment-receiver.md)を実装し、29シナリオで途中再開・lease更新・ACK復旧を確認しました。添付messageの[送信outbox連携](docs/attachment-outbox.md)は実装し、21シナリオを追加検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)、[添付MCP転送37件](docs/attachment-transport.md)、[送信journal／worker48件](docs/upload-journal.md)を模擬検証済みです。孤立回収の運用、整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+次は**blob側の最低予約枠と、個体別rate／writer受付**です。[公平pollと永続scan位置](docs/relay-fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[配送DBのsnapshot／停止復元](docs/sqlite-snapshot-bundle.md)を実装し、26シナリオで一括lock・WAL・改ざん拒否・3 profileの復元・schema4/5互換を確認しました。[サーバー添付の有限保守cycle](docs/attachment-maintenance.md)を実装し、16シナリオで専用認可・孤立upload回収・部分失敗を確認しました。[受信checkpoint／worker](docs/attachment-receiver.md)を実装し、29シナリオで途中再開・lease更新・ACK復旧を確認しました。添付messageの[送信outbox連携](docs/attachment-outbox.md)は実装し、21シナリオを追加検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)、[添付MCP転送37件](docs/attachment-transport.md)、[送信journal／worker48件](docs/upload-journal.md)を模擬検証済みです。孤立回収の運用、整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
 ## ドキュメント一覧
 

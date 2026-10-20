@@ -389,14 +389,16 @@ test("fair poll: native competing workers still lease only one receiver delivery
       const w = new Worker(
         `
       const { parentPort, workerData: d } = require("node:worker_threads");
+      let stage = "import";
       (async () => {
         const { SQLiteRelayStore } = await import(d.source);
         const { RelayService } = await import(d.service);
+        stage = "open";
         const s = new SQLiteRelayStore(d.path,d.options);
-        try { s.migrate(); const api = new RelayService(s,d.limits,{authorize:()=>({agent_id:"sink"})});
+        try { stage = "migrate"; s.migrate(); stage = "poll"; const api = new RelayService(s,d.limits,{authorize:()=>({agent_id:"sink"})});
           parentPort.postMessage(api.poll(null)?.message.sender_id ?? null); }
         finally { s.close(); }
-      })().catch(() => parentPort.postMessage("worker_failed"));
+      })().catch(e => parentPort.postMessage({ state: "worker_failed", stage, code: e.code ?? "unknown", sqlite: e.errcode ?? null }));
     `,
         {
           eval: true,
@@ -414,6 +416,10 @@ test("fair poll: native competing workers still lease only one receiver delivery
       w.once("error", reject);
     });
   const results = await Promise.all([run(), run()]);
+  assert.ok(
+    results.every((v) => v === "a" || v === null),
+    JSON.stringify(results),
+  );
   assert.equal(results.filter((v) => v === "a").length, 1);
   assert.equal(results.filter((v) => v === null).length, 1);
   assert.equal(
@@ -471,4 +477,51 @@ test("fair poll: delayed lease SQL cannot commit an expired text delivery lease 
     f.raw.prepare("SELECT sum(attempts) n FROM relay_deliveries").get().n,
     0,
   );
+});
+test("fair poll: connection startup waits through a short competing native schema lock", async (t) => {
+  const f = fixture(t),
+    source = new URL("../src/relay/sqlite-store.ts", import.meta.url).href;
+  let ready, result;
+  const imported = new Promise((resolve) => {
+    ready = resolve;
+  });
+  const completed = new Promise((resolve) => {
+    result = resolve;
+  });
+  const w = new Worker(
+    `
+    const { parentPort, workerData: d } = require("node:worker_threads");
+    import(d.source).then(({ SQLiteRelayStore }) => {
+      parentPort.once("message", () => {
+        let s;
+        try { s = new SQLiteRelayStore(d.path, d.options); parentPort.postMessage({ state: "opened" }); }
+        catch (e) { parentPort.postMessage({ state: "failed", code: e.code ?? "unknown", sqlite: e.errcode ?? null }); }
+        finally { s?.close(); }
+      });
+      parentPort.postMessage({ state: "ready" });
+    }).catch(() => parentPort.postMessage({ state: "failed", code: "import" }));
+  `,
+    { eval: true, workerData: { source, path: f.path, options: f.options } },
+  );
+  t.after(() => w.terminate());
+  w.on("message", (message) => {
+    ready();
+    if (message.state !== "ready") result(message);
+  });
+  w.on("error", (error) => {
+    ready();
+    result({ state: "failed", code: error.code ?? "worker" });
+  });
+  await imported;
+  f.raw.exec("BEGIN EXCLUSIVE");
+  const released = new Promise((resolve) =>
+    setTimeout(() => {
+      f.raw.exec("ROLLBACK");
+      resolve();
+    }, 150),
+  );
+  w.postMessage("open");
+  const outcome = await completed;
+  await released;
+  assert.deepEqual(outcome, { state: "opened" });
 });

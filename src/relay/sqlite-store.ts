@@ -241,10 +241,11 @@ export class SQLiteRelayStore
           : agentCapacityPolicy(options.agent_capacity, options),
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
     };
-    this.#db = new DatabaseSync(path);
+    // Apply the finite busy wait before initialization PRAGMAs can read a locked schema.
+    this.#db = new DatabaseSync(path, { timeout: 5000 });
     try {
       this.#db.exec(
-        "PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON; PRAGMA busy_timeout=5000",
+        "PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON",
       );
       this.#db.function(
         "relay_gc_safe",
