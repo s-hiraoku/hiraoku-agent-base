@@ -1,0 +1,63 @@
+# 添付送信journal
+
+[README](../README.md) · [添付MCP転送](attachment-transport.md) · [管理添付](managed-attachments.md)
+
+## 保存点と責務
+
+[SQLiteUploadJournal](../src/relay/sqlite-upload-journal.ts)は、ネットワーク送信前の元UploadIntentとsource bytes、server側attachment ID／offset／receiptを専用SQLite schema 1へ保存する。HAB名、Task、製品SDK、network、credential providerには依存せず、既存のDBやprofileを開かない。[host-only契約](../src/relay/upload-journal.ts)は公開MCP toolを追加しない。clientに渡す固定接続先と検証済みserver主体は別の境界である。
+
+hostは不変個体ID、private fingerprint key、固定chunk長、添付・record・予約bytes・clock skew・DB wait・lease・attempt／backoffの有限上限を明示する。agent_idはこのlocal保存の所有者確認用であり、引数の名前でserver認証を行わない。新規ファイルは0600、symlink・緩い権限・未知schema・owner／鍵／chunk policyの不一致を拒否する。専用DBへのmigrateは明示操作である。親directory、sidecar、backupと鍵の保護はhostが担う。
+
+## sourceの準備
+
+prepareは元intentをcanonical化し、owner・作成時刻と鍵付きfingerprintへ固定する。時刻拘束request ID、宛先、message ID、kind、元1時間期限、media type・SHA・byte長・表示filenameを変更できない。owner／token／URL／path等の余剰fieldを受け付けない。同じ要求のexact retryは元状態を返し、record数や期限を増やさない。
+
+宣言された全source bytesをprepare時に予約し、partialでもquotaへ算入する。putSourceは固定chunk境界、offset、長さ、同じoffsetのbytesを確認し、BLOBとprogressを1transactionで保存する。callerのbufferをcopyし、chunkごとの鍵付きfingerprintを持つ。元のfile pathへ後から読み直しに行くAPIはなく、表示filenameをpathにしない。
+
+sealは全chunkの連続性、個数、byte長、鍵付きfingerprintと全体SHAを再計算し、完全なsourceだけをqueuedにする。未完了は再開可能、digest／保存破損はquarantinedとして不正sourceを削除し、送信しない。空ファイルも空SHAを検証する。sealed sourceは変更できず、exact chunk retryだけを許す。chunkは最大1 MiB、添付最大256 MiB・最大1024 chunksで、本番推奨値ではない。
+
+## 原子的claimとreceipt照合
+
+claimはqueuedなsourceから1件だけを原子的にleaseする。生きたrunning recordをDB全体で1件に限定し、process／DB reopen後もleaseを守る。期限後の再claimはfenceを増やし、古い世代のaccept／failは新しい進捗を更新できない。leaseは保存処理中も期限を確認し、ネットワーク中にDB transactionを保持しない。
+
+jobはbegin、put、finalizeのいずれか1操作と、元intent、固定server ID／offset、必要なら1chunkだけを持つ。beginとfinalize前に全source、putでは現在chunkの整合性を確認する。元sourceのverified状態と進捗・lease・receiptも鍵付きguardで保護し、DB上のstateをfinalizedへ書き換えても検証を迂回できない。未知のauthorityや呼出し先をjob引数から決定しない。
+
+acceptはserver receiptのstrict schema、現在lease、ownerと元intent全体、固定attachment ID、単調なoffset、実際のchunk長を照合してから、receiptと次phase／progressを同じtransactionで保存する。応答後にlocal commitが失敗した場合は同じID／offset／bytesで照合し、全体の分散transactionを仮定しない。finalizedでもsourceは自動削除しない。
+
+## 有限retryと隔離
+
+transport失敗は有限backoffへ移す。各phaseで進捗が進まないattemptを数え、上限でquarantinedにする。beginからput、putのoffset前進など、実際に進んだ場合だけ現在phaseのattemptをresetする。uploadingのままのfinalize応答を繰り返してもretry上限を回避できない。phase数とchunk数も有限であり、自動loopやdaemonは起動しない。
+
+forbidden、invalid_receipt、remote_conflictは即時隔離し、serverがcancelled／expired／rejectedならremote_closedとして隔離する。任意の例外文・token・ログをreasonへ保存せず、固定codeのみを使う。隔離済みsourceのexact prepareで再有効化しない。claim可能な仕事がないことは、全仕事の成功を意味しない。
+
+## 引渡しと回収
+
+withFinalizedは元期限内のfinalizedなreceiptと全sourceを再検証し、local DB guard中だけ同期handoff actionを実行する。非同期actionと再入を拒否する。receiptそのものをserver上の現在認可・生きたmessage bindingの代用にしない。後続message outboxへの保存とjournalのreleaseは別commitであり、同じ元IDによる照合が必要になる。
+
+hostはmessage／sourceのdurable引渡しを照合してからreleaseする。releaseはlocal sourceだけを削除し、server cancelではない。running中は拒否し、releasedを再開しない。finalizedや通信不明で隔離したsourceは元期限後も明示releaseまで保持するため、hostは容量と保守状態を確認する必要がある。
+
+未完了のpreparing／queued／running sourceは元期限でexpiredとし、bytesを削除する。maintenanceは期限回収とterminal metadata GCに共通1–100件のbudgetを使う。source解放済みmetadataは元期限とterminal時刻の遅い方から30日保持し、読取・exact retryでは延長しない。sourceを保持している隔離recordはGCしない。secure_deleteとsynchronous FULLを明示するが、整合backup／restoreや複製消去の実証は別の運用責務である。
+
+## 検証と後続
+
+新規28件でsource再開とcopy、SHA／BLOB破損、原子的進捗、owner／鍵／schema、lease競合とreopen／fencing、実upload backendとのbegin→put→finalize、偽receipt拒否、local commit失敗、有限backoff／隔離、async・再入、quota、空ファイル、期限と30日GCを確認する。長期保持は署名し直した専用DBのhistorical fixtureで模擬し、実時間の30日待機や電源断試験ではない。
+
+保存・claim・照合のhost APIに、以下の1回1通信workerも追加した。message送信outboxへの引渡し、受信orchestration、既存runtimeと実製品への接続は後続である。通常のoutbox／Receiverと既定MCP catalogは変更せず、既存Hermes・認証・cronを起動／変更しない。
+
+## 1回1通信の送信worker
+
+[AttachmentUploadSender](../src/relay/upload-sender.ts)は固定transportとjournal、有限timeoutを明示注入し、workOnceで最大1つのbegin／put／finalizeだけを行う。新規listener、timer loop、credential発行、接続先探索、model実行を起動しない。1つのworker instanceの並行呼出しを拒否し、複数process間はjournalの原子的leaseで調停する。port未接続・不正job・非同期のlocal claim／accept／failは拒否する。
+
+固定transportには既存AttachmentMcpClient等を接続する。serverのowner・宛先・操作権限は毎回の検証済みcontextから決まり、journalのagent_idやjobの名前を認証として使わない。jobは元intentと固定attachment ID／offset／最大1chunkだけを持ち、任意shell、URL、file path、自由tool名を渡せない。
+
+通信待機の期限はworker timeout、現在lease、元message期限の最も早い時刻までとする。timeoutをtransportの停止成功と扱わず、そのinstanceは元transportがsettleするまでslotを保持する。遅い返答はlocal進捗へ書き戻さない。別processの再開ではfencingと元ID／offset／bytesの冪等性で照合する。SQLite／hash等の同期処理は途中preemptできず、sourceとchunkの有限量、DB wait、完了前の期限再確認でも制限する。
+
+transport失敗では同じphaseを有限backoffへ戻す。認証拒否、receipt不正、server上のconflictは固定codeで隔離し、sourceを保持する。deferredは後の成功や再送可能性を約束せず、隔離・上限も含めてjournal.statusで確認する。idleはclaimできる仕事がないという意味で、全件成功ではない。通信側／local側のcommitが不明でfailも照合できなければupload_sender_uncertainとし、現在journalとleaseから再開する。
+
+finalizedはupload完了のみで、message受付・配送・仕事実行の完了ではない。workerはmessageを自動submitせず、sourceを自動releaseしない。message outboxへのdurable引渡し・送信receipt照合と、受信orchestrationは引き続き別の層である。
+
+## native HTTPでのworker検証
+
+新規20件は既存の一時localhost handler、HAB認可、固定clientと実upload DBへjournal／workerを組み合わせる。1回1操作、sourceからupload→手動message送信→durable受信／ACK→server物理削除、begin／chunk／finalize応答消失、journal reopen、local進捗write失敗／commit応答消失、遅い旧worker、process間lease、元期限、credentialなし、偽receipt、server chunk conflict、async local port、進捗なし上限、空file、source破損とclosed状態を確認する。
+
+node --test test/relay-upload-journal.test.js test/relay-upload-worker.test.js で保存境界28件とworker20件の計48件を再現できる。privateな一時DBと模擬認証を使い、実エージェント・model・実OAuth／新規資格情報や常駐処理は起動しない。実個体の保証開始点、本番route、cold-start、整合backup／restoreは未確認である。
