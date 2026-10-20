@@ -61,3 +61,5 @@ finalizedはupload完了のみで、message受付・配送・仕事実行の完�
 新規20件は既存の一時localhost handler、HAB認可、固定clientと実upload DBへjournal／workerを組み合わせる。1回1操作、sourceからupload→手動message送信→durable受信／ACK→server物理削除、begin／chunk／finalize応答消失、journal reopen、local進捗write失敗／commit応答消失、遅い旧worker、process間lease、元期限、credentialなし、偽receipt、server chunk conflict、async local port、進捗なし上限、空file、source破損とclosed状態を確認する。
 
 node --test test/relay-upload-journal.test.js test/relay-upload-worker.test.js で保存境界28件とworker20件の計48件を再現できる。privateな一時DBと模擬認証を使い、実エージェント・model・実OAuth／新規資格情報や常駐処理は起動しない。実個体の保証開始点、本番route、cold-start、整合backup／restoreは未確認である。
+
+後段の[添付message outbox連携](attachment-outbox.md)は任意の第3引数で有効化できます。新規enqueue前はsourceを全検証し、durable handoff後の明示releaseと同じIDでの復旧を区別します。

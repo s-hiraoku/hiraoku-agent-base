@@ -4,6 +4,9 @@ import { createHash, createHmac } from "node:crypto";
 import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { RelayError } from "./service.ts";
 import { RECORD_RETENTION_MS } from "./contract.ts";
+import type { ContractLimits, Submission } from "./contract.ts";
+import { parseAttachmentMessage } from "./attachment-bindings.ts";
+import type { AttachmentOutboxAdmission } from "./attachment-outbox.ts";
 import { parseUploadIntent, uploadIdentifier } from "./attachments.ts";
 import type { UploadIntent, UploadReceipt } from "./attachments.ts";
 import {
@@ -94,7 +97,7 @@ const errors = new Set([
   "upload_journal_unavailable",
 ]);
 export class SQLiteUploadJournal
-  implements UploadJournalStore, UploadJournalSources
+  implements UploadJournalStore, UploadJournalSources, AttachmentOutboxAdmission
 {
   readonly #db: DatabaseSync;
   readonly #options: UploadJournalOptions;
@@ -832,6 +835,96 @@ export class SQLiteUploadJournal
           throw new RelayError("upload_journal_closed");
       });
       return action(receipt);
+    });
+  }
+  #checkMessage(
+    message: Submission,
+    limits: ContractLimits,
+    source: boolean,
+  ): void {
+    this.#check();
+    const input = parseAttachmentMessage(message, limits);
+    for (const part of input.body.parts) {
+      if (part.type !== "attachment") continue;
+      const rows = this.#db
+        .prepare("SELECT * FROM upload_journal_entries WHERE remote_id=?")
+        .all(part.attachment_id) as Row[];
+      if (rows.length !== 1) throw new RelayError("upload_journal_not_found");
+      const r = rows[0],
+        intent = this.#intent(r);
+      if (
+        (source
+          ? r.state !== "finalized" || r.source_retained !== 1
+          : !["finalized", "released"].includes(r.state)) ||
+        r.receipt === null ||
+        r.expires_at <= this.#now()
+      )
+        throw new RelayError("upload_journal_closed");
+      const receipt = parseWireUploadReceipt(
+        JSON.parse(r.receipt),
+        this.#options,
+      );
+      if (
+        receipt.state !== "finalized" ||
+        receipt.owner_id !== this.#options.agent_id ||
+        receipt.attachment_id !== part.attachment_id ||
+        intent.message_id !== input.message_id ||
+        intent.recipient_id !== input.recipient_id ||
+        intent.kind !== input.kind ||
+        intent.first_sent_at !== input.first_sent_at ||
+        intent.expires_at !== input.expires_at ||
+        intent.attachment.media_type !== part.media_type ||
+        intent.attachment.size_bytes !== part.size_bytes ||
+        intent.attachment.sha256 !== part.sha256 ||
+        intent.attachment.filename !== part.filename ||
+        JSON.stringify(receipt.attachment) !==
+          JSON.stringify(intent.attachment) ||
+        receipt.message_id !== intent.message_id ||
+        receipt.recipient_id !== intent.recipient_id ||
+        receipt.kind !== intent.kind ||
+        receipt.first_sent_at !== intent.first_sent_at ||
+        receipt.expires_at !== intent.expires_at ||
+        receipt.request_id !== intent.request_id
+      )
+        throw new RelayError("upload_journal_conflict");
+      if (source) this.#verify(r);
+      this.#checks.push(() => {
+        if (r.expires_at <= this.#now())
+          throw new RelayError("upload_journal_closed");
+      });
+    }
+  }
+  withReady<T>(
+    ownerId: string,
+    message: Submission,
+    limits: ContractLimits,
+    action: () => T,
+  ): T {
+    return this.#tx(() => {
+      if (ownerId !== this.#options.agent_id)
+        throw new RelayError("upload_journal_identity_mismatch");
+      this.#checkMessage(message, limits, true);
+      return action();
+    });
+  }
+  withClaim<T>(
+    ownerId: string,
+    limits: ContractLimits,
+    action: (check: (message: Submission) => void) => T,
+  ): T {
+    return this.#tx(() => {
+      this.#check();
+      if (ownerId !== this.#options.agent_id)
+        throw new RelayError("upload_journal_identity_mismatch");
+      let live = true;
+      try {
+        return action((message) => {
+          if (!live) throw new RelayError("upload_journal_busy");
+          this.#checkMessage(message, limits, false);
+        });
+      } finally {
+        live = false;
+      }
     });
   }
   release(requestId: string): boolean {

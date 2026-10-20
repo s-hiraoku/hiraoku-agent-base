@@ -48,12 +48,12 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、変更／再利用禁止、権限分離、有効化・失効・blockを実装。HAB専用catalogの`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復。既存runtimeへは未配線 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
 | 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
-| 管理添付の保存・配送・削除 | **任意構成で実装済み／模擬検証済み**。source永続化・SHA検証・有限送信worker・認可付きMCP転送・durable受信・ACK・物理削除を実装。応答消失・再起動後も同じID／bytesで照合。[転送](docs/attachment-transport.md)と[送信journal／worker](docs/upload-journal.md)を参照。既定経路は添付を拒否。message outbox連携・受信orchestrationと本番配線が残る |
+| 管理添付の保存・配送・削除 | **任意構成で実装済み／模擬検証済み**。source永続化・SHA検証・有限送信worker・認可付きMCP転送・durable受信・ACK・物理削除を実装。応答消失・再起動後も同じID／bytesで照合。[転送](docs/attachment-transport.md)と[送信journal／worker](docs/upload-journal.md)、[message outbox連携](docs/attachment-outbox.md)を参照。既定経路は添付を拒否。受信orchestrationと本番配線が残る |
 | Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-2026-10-20の添付送信journal／workerまでのローカル検証では、Node **918件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+2026-10-20の添付添付outbox連携までのローカル検証では、Node **939件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## Relayの残りタスク
 
@@ -62,7 +62,7 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 順序 | タスク | 完了の目安 |
 | --- | --- | --- |
 | 1・進行中 | 登録・アドレス解決・認証binding | 核・MCP lookup・人向け管理フローは実装済み。本番管理認証・接続選択の配線と実個体のbinding実証が残る |
-| 2・進行中 | 管理添付 | source保存・有限送信workerからMCP転送・durable受信・ACK・削除まで模擬確認済み。message outbox連携・受信orchestration、孤立回収の運用、整合backupが残る |
+| 2・進行中 | 管理添付 | source保存・有限送信workerからMCP転送・durable受信・ACK・削除まで模擬確認済み。受信orchestration、孤立回収の運用、整合backupが残る |
 | 3 | 個体別の容量・公平性 | 個体別quotaと最低枠、混雑時の公平な配送、有限backoffを検証 |
 | 4 | Task bridge | 受領・引受け・完了を分離し、許可済み固定Taskを最大1件で連携。結果再送で仕事を再実行しない |
 | 5 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守実行、backup／restore、停止・照合・復旧手順 |
@@ -70,7 +70,7 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 | 7・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
 | 8・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-次は**添付messageの送信outbox連携と受信処理の有限な組立て**です。[登録・復旧17シナリオ](docs/hab-relay-integration.md)、[添付MCP転送37件](docs/attachment-transport.md)、[送信journal／worker48件](docs/upload-journal.md)を模擬検証済みです。孤立回収の運用、整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+次は**受信処理の永続checkpointと有限な組立て**です。添付messageの[送信outbox連携](docs/attachment-outbox.md)は実装し、21シナリオを追加検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)、[添付MCP転送37件](docs/attachment-transport.md)、[送信journal／worker48件](docs/upload-journal.md)を模擬検証済みです。孤立回収の運用、整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
 ## ドキュメント一覧
 
