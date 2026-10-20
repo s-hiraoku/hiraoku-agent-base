@@ -1,3 +1,5 @@
+import { attachmentWriterOperations } from "../relay/attachment-http.ts";
+import type { WriterAdmission } from "../relay/writer-admission.ts";
 /** Explicit optional HAB attachment catalog; no listener or production activation. */
 import { HabHttpGateway } from "./http.ts";
 import { createHabMcpServer, habMcpSchemas } from "./mcp.ts";
@@ -23,11 +25,15 @@ export class HabAttachmentHttpGateway extends HabHttpGateway {
     policy: RelayHttpPolicy,
     audit: AuditSink,
     verify: RelayHttpVerifier = () => null,
+    admission?: WriterAdmission,
   ) {
-    super(service, policy, audit, verify);
+    super(service, policy, audit, verify, admission);
     this.#service = service;
     this.#attachments = attachments;
     this.#wire = attachmentWirePolicy(wire);
+  }
+  protected override get writerOperations() {
+    return { ...super.writerOperations, ...attachmentWriterOperations };
   }
   protected override get toolSchemas() {
     return { ...habMcpSchemas, ...attachmentMcpSchemas(this.#wire) };

@@ -1,3 +1,4 @@
+import type { WriterAdmission } from "../relay/writer-admission.ts";
 /** Explicit HAB HTTP composition; constructing starts no listener or connection. */
 import { RelayHttpGateway } from "../relay/http.ts";
 import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
@@ -13,11 +14,15 @@ export class HabHttpGateway extends RelayHttpGateway {
     policy: RelayHttpPolicy,
     audit: AuditSink,
     verify: RelayHttpVerifier = () => null,
+    admission?: WriterAdmission,
   ) {
     if (typeof service?.resolve !== "function")
       throw new RelayError("invalid_hab_mcp_service");
-    super(service, policy, audit, verify);
+    super(service, policy, audit, verify, admission);
     this.#hab = service;
+  }
+  protected override get writerOperations() {
+    return { ...super.writerOperations, relay_resolve: "resolve" as const };
   }
   protected override get toolSchemas() {
     return habMcpSchemas;

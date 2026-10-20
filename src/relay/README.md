@@ -643,3 +643,5 @@ remain separate work.
 [公平pollと永続scan](../../docs/relay-fair-poll.md)は任意のfair_poll設定で有効にします。schema5のHMAC付き位置でsenderごと1候補を巡回し、lease・auditと原子的に進行します。snapshotはschema4/5を検証・停止復元し、runtimeの接続を自動再開しません。
 
 [添付blobの個体別容量・最低予約枠](../../docs/attachment-capacity.md)は任意のowner_capacity設定で有効にします。verified ownerごとのupload・binding保持記録、live宣言bytes・件数を受付transaction内で集計し、未使用最低枠を保護します。schema2・元receipt・既定runtimeを維持します。
+
+[検証済み個体のrateと公平writer受付](../../docs/writer-admission.md)の独立coreを追加しました。1プロセスで共有する任意構成で、単調token bucketと有限queueを使います。Relay／HAB／添付HTTPへも任意配線しました。認証済みcontextと現在の個体bindingで判定し、timeout後も未完了tool監査がsettleするまでslotを保持します。既定runtimeは有効化しません。

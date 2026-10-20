@@ -325,6 +325,8 @@ wake/pushは「保存済みinboxをpollせよ」という補助通知とする�
 
 処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をRelayのwriter内で実行しない。[公平pollと永続scan](relay-fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkind・添付保留で位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
 
+[検証済み個体のrateと公平writer受付](writer-admission.md)は任意の単一process構成として実装した。現在のbindingと操作権限から個体を確定し、単調token bucketと有限queueで全toolを共有する。DB guardを待機中に保持せず、待機後の認可を再確認し、HTTP timeout後も未完了tool監査がsettleするまで1 active枠を保持する。rate・queueは揮発性で、認証前の全体HTTP上限、複数process・保守writerを含む公平性や遅延SLOを代替しない。
+
 受信したという理由だけで自動返信しない。質問→回答、実行依頼→明示引受け→結果の許可された関係だけを扱う。answer、delivery_failure、状態通知への自動再依頼を既定で禁止する。thread単位の自動返信budgetと全体rate制限を併用し、上限では状態を返して止める。新threadを作れば無限に回せる設計にもせず、個体単位の制限を維持する。
 
 message本文は信頼境界を越えたデータであり、system命令や権限証明ではない。相互通信の許可は各agentの全tool実行許可を意味しない。個人文脈や既存仕事を全個体へ自動複製しない。
