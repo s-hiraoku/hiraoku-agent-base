@@ -723,3 +723,82 @@ test("snapshot: blob commit before deletion completion restores and reconciles t
     blobs.close();
   }
 });
+test("snapshot: legacy Relay schema4 snapshot remains verifiable and restores before explicit schema5 upgrade", async (t) => {
+  const f = fixture(t),
+    m = f.send(),
+    receipt = f.api().status(f.contexts.a, m.message_id);
+  f.raw.exec(
+    "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;UPDATE relay_schema SET version=4",
+  );
+  await f.b.create(f.context, "schema-four");
+  const manifest = JSON.parse(
+    readFileSync(join(f.snapshot("schema-four"), "manifest.json"), "utf8"),
+  );
+  assert.equal(
+    manifest.files.find((r) => r.role === "relay").schema_version,
+    4,
+  );
+  assert.equal((await f.b.verify(f.context, "schema-four")).verified, true);
+  await f.b.restore(f.context, "schema-four", "old");
+  const path = join(f.restored("old"), "relay.sqlite"),
+    raw = new DatabaseSync(path);
+  const relay = new SQLiteRelayStore(path, relayOptions);
+  try {
+    assert.equal(
+      raw.prepare("SELECT version FROM relay_schema").get().version,
+      4,
+    );
+    relay.migrate();
+    assert.equal(
+      raw.prepare("SELECT version FROM relay_schema").get().version,
+      5,
+    );
+    assert.equal(
+      relay.status(() => ({
+        sender_id: f.a.agent_id,
+        message_id: m.message_id,
+      })).receipt_id,
+      receipt.receipt_id,
+    );
+  } finally {
+    relay.close();
+    raw.close();
+  }
+});
+test("snapshot: schema5 server snapshot retains the authenticated fairness positions and live lease", async (t) => {
+  const f = fixture(t);
+  const message = f.send();
+  const relay = new SQLiteRelayStore(
+    f.options.sources[0].path,
+    { ...relayOptions, fair_poll: true },
+    { check: (a) => f.blob.checkPrepared(a, limits) },
+    { limits, check: (a, r) => f.blob.checkDeliverable(a, r, limits) },
+  );
+  try {
+    relay.migrate();
+    const delivery = relay.poll(() => message.recipient_id);
+    await f.b.create(f.context, "fair-position");
+    await f.b.restore(f.context, "fair-position", "trial");
+    const raw = new DatabaseSync(join(f.restored("trial"), "relay.sqlite"), {
+      readOnly: true,
+    });
+    try {
+      assert.deepEqual(
+        raw.prepare("SELECT * FROM relay_poll_cursors").get(),
+        f.raw.prepare("SELECT * FROM relay_poll_cursors").get(),
+      );
+      assert.deepEqual(
+        raw.prepare("SELECT * FROM relay_poll_senders").get(),
+        f.raw.prepare("SELECT * FROM relay_poll_senders").get(),
+      );
+      assert.equal(
+        raw.prepare("SELECT generation FROM relay_deliveries").get().generation,
+        delivery.generation,
+      );
+    } finally {
+      raw.close();
+    }
+  } finally {
+    relay.close();
+  }
+});

@@ -267,7 +267,7 @@ test("attachment deletion queue: schema 3 attachment migration requires explicit
     original = f.service.submit("a", m);
   f.close(f.store);
   f.raw.exec(
-    "DROP TABLE relay_attachment_deletions;DROP TABLE relay_message_attachments;UPDATE relay_schema SET version=3",
+    "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;DROP TABLE relay_attachment_deletions;DROP TABLE relay_message_attachments;UPDATE relay_schema SET version=3",
   );
   const s = f.open();
   assert.throws(
@@ -286,7 +286,7 @@ test("attachment deletion queue: schema 3 attachment migration requires explicit
   );
   assert.equal(
     f.raw.prepare("SELECT version FROM relay_schema").get().version,
-    4,
+    5,
   );
 });
 test("attachment deletion queue: old attachment body corruption cannot migrate to a trusted manifest", (t) => {
@@ -295,7 +295,7 @@ test("attachment deletion queue: old attachment body corruption cannot migrate t
   f.service.submit("a", m);
   f.close(f.store);
   f.raw.exec(
-    "DROP TABLE relay_attachment_deletions;DROP TABLE relay_message_attachments;UPDATE relay_schema SET version=3",
+    "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;DROP TABLE relay_attachment_deletions;DROP TABLE relay_message_attachments;UPDATE relay_schema SET version=3",
   );
   const changed = structuredClone(m);
   changed.body.parts[1].attachment_id = "changed-file";

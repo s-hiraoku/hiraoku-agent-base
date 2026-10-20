@@ -8,7 +8,7 @@ profileは次の固定した一組です。部分集合、未知role、異なる
 
 | profile | DB（取得lock順） |
 | --- | --- |
-| server | Relay schema 4 → upload／binding schema 2 |
+| server | Relay schema 4／5 → upload／binding schema 2 |
 | sender | source upload journal schema 1 → message outbox schema 2 |
 | receiver | 全delivery checkpoint schema 1 → attachment inbox schema 1 → body／ACK inbox schema 3 |
 
@@ -38,8 +38,10 @@ writer lockが保証するのは取得時点の対象DBの静止です。実行�
 
 ## 検証と次の受入れ
 
-`node --test test/relay-snapshot-bundle.test.js` の24シナリオで、server／sender／receiverの一括復元、WAL、source／未送信本文／部分受信の保持、blob commit後・削除完了前の同じfenced job照合、全writer lock、busyと解放、改ざん、権限の分離・失効・主体変更、inode差替え、schema／owner、容量／期限、重複操作、private permissionsと上書き拒否を確認します。停止復元したserverの同じ受付receiptを照合し、現在のregistryによる停止も有効なことを確認します。
+`node --test test/relay-snapshot-bundle.test.js` の26シナリオで、server／sender／receiverの一括復元、WAL、source／未送信本文／部分受信の保持、blob commit後・削除完了前の同じfenced job照合、全writer lock、busyと解放、改ざん、権限の分離・失効・主体変更、inode差替え、schema／owner、容量／期限、重複操作、private permissionsと上書き拒否を確認します。停止復元したserverの同じ受付receiptを照合し、現在のregistryによる停止も有効なことを確認します。
 
 これはlocal合成DBでのrehearsalです。実runtimeの静止・昇格、current registryと鍵の復旧、古いremote状態との照合、世代管理・保存期限・ディスク故障／電源断、外部backup先、本番エージェント接続は未検証です。自動常駐・本番配線・権限拡大の根拠にはしません。
 
 実装確認に使った一次資料: [Node v24.x SQLite backup API](https://github.com/nodejs/node/blob/v24.x/doc/api/sqlite.md)、[SQLite Online Backup API](https://www.sqlite.org/backup.html)。APIは実機でもwriter lock保持中のreadonly接続による合成snapshotで確認しました。
+
+Schema 5の公平poll位置も一括保存します。旧schema4の署名付きbundleは検証・停止復元でき、hostの明示migrateまで旧schemaを保持します。[公平pollの復旧境界](relay-fair-poll.md)も参照してください。
