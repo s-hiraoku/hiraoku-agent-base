@@ -19,4 +19,4 @@ source DB → outbox DBの順に同期guardを保持します。callbackのPromi
 
 `node --test test/relay-attachment-outbox.test.js` は21シナリオです。native loopback MCPで送信→受信保存→ACK→サーバーbytes削除を確認し、失われたsubmit応答、再起動、宛先・manifest変更、複数添付、source／本文破損、容量不足、guard逸脱、期限後statusを検証します。
 
-受信の有限orchestration、本番binding、実Adapterの再送契機、整合backup・運用回収は別の境界です。配送ACKはTask実行・内容の受諾を意味しません。
+[受信の有限orchestration](attachment-receiver.md)は別の任意構成として追加しています。本番binding、実Adapterの再送契機、整合backup・運用回収は引き続き別の境界です。配送ACKはTask実行・内容の受諾を意味しません。
