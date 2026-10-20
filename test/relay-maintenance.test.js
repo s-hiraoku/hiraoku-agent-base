@@ -360,7 +360,7 @@ test("v2 metadata migration is explicit, preserves receipts, and rolls back part
   const f = fixture(t),
     m = historical(f, { age: 61, state: "acked" });
   f.db.exec(
-    "DROP TABLE relay_attachment_deletions; DROP TABLE relay_message_attachments; DROP INDEX relay_messages_retention; ALTER TABLE relay_messages DROP COLUMN terminal_at; ALTER TABLE relay_messages DROP COLUMN retain_until; DROP TABLE relay_maintenance_totals; UPDATE relay_schema SET version=2;",
+    "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;DROP TABLE relay_attachment_deletions; DROP TABLE relay_message_attachments; DROP INDEX relay_messages_retention; ALTER TABLE relay_messages DROP COLUMN terminal_at; ALTER TABLE relay_messages DROP COLUMN retain_until; DROP TABLE relay_maintenance_totals; UPDATE relay_schema SET version=2;",
   );
   f.db.exec(
     "CREATE TRIGGER fail_upgrade BEFORE UPDATE ON relay_schema BEGIN SELECT RAISE(ABORT,'upgrade failure'); END",
@@ -383,7 +383,7 @@ test("v2 metadata migration is explicit, preserves receipts, and rolls back part
   upgraded.migrate();
   assert.equal(
     f.db.prepare("SELECT version FROM relay_schema").get().version,
-    4,
+    5,
   );
   assert.equal(
     new RelayService(upgraded, limits, policy).status("a", m.message_id)

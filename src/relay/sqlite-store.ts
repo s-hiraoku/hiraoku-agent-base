@@ -59,12 +59,33 @@ export interface StoreOptions {
   retry_cap_ms: number;
   poll_scan_limit: number;
   agent_capacity?: AgentCapacityPolicy;
+  fair_poll?: boolean;
 }
 /** Trusted host composition: validate durable prepared refs, never caller claims. */
 export interface AttachmentAdmission {
   check(acceptance: Acceptance): void;
 }
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
+const MIGRATION_5 = `
+CREATE TABLE relay_poll_cursors(recipient_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,updated_at INTEGER NOT NULL,fingerprint TEXT NOT NULL);
+CREATE TABLE relay_poll_senders(recipient_id TEXT NOT NULL,sender_id TEXT NOT NULL,accepted_at INTEGER NOT NULL,message_id TEXT NOT NULL,updated_at INTEGER NOT NULL,fingerprint TEXT NOT NULL,PRIMARY KEY(recipient_id,sender_id));
+CREATE INDEX IF NOT EXISTS relay_messages_recipient_sender ON relay_messages(recipient_id,sender_id,state,accepted_at,message_id);
+CREATE TRIGGER relay_poll_positions_terminal AFTER UPDATE OF state ON relay_messages WHEN NEW.state IN ('acked','expired') BEGIN
+DELETE FROM relay_poll_senders WHERE recipient_id=NEW.recipient_id AND sender_id=NEW.sender_id AND NOT EXISTS(SELECT 1 FROM relay_messages WHERE recipient_id=NEW.recipient_id AND sender_id=NEW.sender_id AND state IN ('pending','leased','quarantined'));
+DELETE FROM relay_poll_cursors WHERE recipient_id=NEW.recipient_id AND NOT EXISTS(SELECT 1 FROM relay_messages WHERE recipient_id=NEW.recipient_id AND state IN ('pending','leased','quarantined'));
+END;
+`;
+type PollPosition = {
+  recipient_id: string;
+  sender_id: string;
+  updated_at: number;
+  fingerprint: string;
+};
+type SenderPosition = PollPosition & {
+  accepted_at: number;
+  message_id: string;
+};
+
 const MIGRATION_4 = `
 CREATE TABLE relay_message_attachments(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,refs TEXT NOT NULL,fingerprint TEXT NOT NULL,PRIMARY KEY(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages);
 CREATE TABLE relay_attachment_deletions(job_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,payload TEXT NOT NULL,fingerprint TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','leased','done','parked')),generation INTEGER NOT NULL DEFAULT 0,token_hash TEXT,lease_until INTEGER,attempts INTEGER NOT NULL DEFAULT 0,next_retry_at INTEGER NOT NULL DEFAULT 0,last_error TEXT,created_at INTEGER NOT NULL,UNIQUE(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages);
@@ -161,6 +182,11 @@ export class SQLiteRelayStore
     attachments?: AttachmentAdmission,
     attachmentDelivery?: AttachmentDeliveryPolicy,
   ) {
+    if (
+      options.fair_poll !== undefined &&
+      typeof options.fair_poll !== "boolean"
+    )
+      throw new RelayError("invalid_store_options");
     if (attachmentDelivery !== undefined) {
       if (!attachments || typeof attachmentDelivery.check !== "function")
         throw new RelayError("invalid_attachment_delivery_policy");
@@ -275,6 +301,7 @@ export class SQLiteRelayStore
         (rows[0].version !== 1 &&
           rows[0].version !== 2 &&
           rows[0].version !== 3 &&
+          rows[0].version !== 4 &&
           rows[0].version !== SCHEMA_VERSION)
       )
         throw new RelayError("unsupported_schema");
@@ -351,6 +378,28 @@ UPDATE relay_schema SET version=2;`);
         }
         this.#db.exec("UPDATE relay_schema SET version=4");
       }
+      if (Number(rows[0].version) < 5) {
+        this.#db.exec(MIGRATION_5);
+        this.#db.exec("UPDATE relay_schema SET version=5");
+      }
+      this.#db
+        .prepare(
+          "SELECT recipient_id,sender_id,updated_at,fingerprint FROM relay_poll_cursors LIMIT 0",
+        )
+        .all();
+      this.#db
+        .prepare(
+          "SELECT recipient_id,sender_id,accepted_at,message_id,updated_at,fingerprint FROM relay_poll_senders LIMIT 0",
+        )
+        .all();
+      if (
+        !this.#db
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type='trigger' AND name='relay_poll_positions_terminal'",
+          )
+          .get()
+      )
+        throw new RelayError("poll_cursor_schema_unavailable");
       this.#db
         .prepare("SELECT job_id FROM relay_attachment_deletions LIMIT 0")
         .all();
@@ -681,6 +730,122 @@ UPDATE relay_schema SET version=2;`);
       );
     }
   }
+  #pollHash(row: PollPosition) {
+    return this.#hash(
+      "poll-position-v1",
+      JSON.stringify([row.recipient_id, row.sender_id, row.updated_at]),
+    );
+  }
+  #senderHash(row: SenderPosition) {
+    return this.#hash(
+      "poll-sender-v1",
+      JSON.stringify([
+        row.recipient_id,
+        row.sender_id,
+        row.accepted_at,
+        row.message_id,
+        row.updated_at,
+      ]),
+    );
+  }
+  #positionValid(row: PollPosition): boolean {
+    return (
+      typeof row.recipient_id === "string" &&
+      /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(row.recipient_id) &&
+      typeof row.sender_id === "string" &&
+      /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(row.sender_id) &&
+      Number.isSafeInteger(row.updated_at) &&
+      row.updated_at >= 0
+    );
+  }
+  #fairPollRows(receiver: string, now: number) {
+    const cursor = this.#db
+      .prepare("SELECT * FROM relay_poll_cursors WHERE recipient_id=?")
+      .get(receiver) as PollPosition | undefined;
+    if (
+      cursor &&
+      (!this.#positionValid(cursor) ||
+        cursor.fingerprint !== this.#pollHash(cursor))
+    )
+      throw new RelayError("poll_cursor_integrity");
+    const senders = this.#db
+      .prepare(
+        "SELECT DISTINCT m.sender_id FROM relay_messages m JOIN relay_deliveries d USING(sender_id,message_id) WHERE m.recipient_id=? AND d.state='pending' AND d.next_visible_at<=? AND m.expires_at>? ORDER BY CASE WHEN ? IS NULL OR m.sender_id>? THEN 0 ELSE 1 END,m.sender_id LIMIT ?",
+      )
+      .all(
+        receiver,
+        now,
+        now,
+        cursor?.sender_id ?? null,
+        cursor?.sender_id ?? null,
+        this.#options.poll_scan_limit,
+      );
+    const rows = [];
+    for (const { sender_id } of senders) {
+      const position = this.#db
+        .prepare(
+          "SELECT * FROM relay_poll_senders WHERE recipient_id=? AND sender_id=?",
+        )
+        .get(receiver, sender_id!) as SenderPosition | undefined;
+      if (
+        position &&
+        (!this.#positionValid(position) ||
+          !Number.isSafeInteger(position.accepted_at) ||
+          position.accepted_at < 0 ||
+          typeof position.message_id !== "string" ||
+          !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(position.message_id) ||
+          position.fingerprint !== this.#senderHash(position))
+      )
+        throw new RelayError("poll_cursor_integrity");
+      const row = this.#db
+        .prepare(
+          "SELECT m.*,d.generation,d.attempts FROM relay_messages m JOIN relay_deliveries d USING(sender_id,message_id) WHERE m.recipient_id=? AND m.sender_id=? AND d.state='pending' AND d.next_visible_at<=? AND m.expires_at>? ORDER BY CASE WHEN ? IS NULL OR m.accepted_at>? OR (m.accepted_at=? AND m.message_id>?) THEN 0 ELSE 1 END,m.accepted_at,m.message_id LIMIT 1",
+        )
+        .get(
+          receiver,
+          sender_id!,
+          now,
+          now,
+          position?.accepted_at ?? null,
+          position?.accepted_at ?? null,
+          position?.accepted_at ?? null,
+          position?.message_id ?? null,
+        );
+      if (row) rows.push(row);
+    }
+    return rows;
+  }
+  #advancePoll(receiver: string, row: Row) {
+    const now = this.#now();
+    const cursor: PollPosition = {
+      recipient_id: receiver,
+      sender_id: row.sender_id,
+      updated_at: now,
+      fingerprint: "",
+    };
+    const position: SenderPosition = {
+      ...cursor,
+      accepted_at: row.accepted_at,
+      message_id: row.message_id,
+    };
+    this.#db
+      .prepare(
+        "INSERT INTO relay_poll_cursors VALUES(?,?,?,?) ON CONFLICT(recipient_id) DO UPDATE SET sender_id=excluded.sender_id,updated_at=excluded.updated_at,fingerprint=excluded.fingerprint",
+      )
+      .run(receiver, row.sender_id, now, this.#pollHash(cursor));
+    this.#db
+      .prepare(
+        "INSERT INTO relay_poll_senders VALUES(?,?,?,?,?,?) ON CONFLICT(recipient_id,sender_id) DO UPDATE SET accepted_at=excluded.accepted_at,message_id=excluded.message_id,updated_at=excluded.updated_at,fingerprint=excluded.fingerprint",
+      )
+      .run(
+        receiver,
+        row.sender_id,
+        row.accepted_at,
+        row.message_id,
+        now,
+        this.#senderHash(position),
+      );
+  }
   poll(authorize: ReceiveAuthorization): Delivery | null {
     return this.#tx(() => {
       const now = this.#now(),
@@ -696,17 +861,20 @@ UPDATE relay_schema SET version=2;`);
           .get(receiver)
       )
         return null;
-      const rows = this.#db
-        .prepare(
-          "SELECT m.*,d.generation,d.attempts FROM relay_messages m JOIN relay_deliveries d USING(sender_id,message_id) WHERE m.recipient_id=? AND d.state='pending' AND d.next_visible_at<=? AND m.expires_at>? ORDER BY m.accepted_at,m.sender_id,m.message_id LIMIT ?",
-        )
-        .all(receiver, now, now, this.#options.poll_scan_limit);
+      const rows = this.#options.fair_poll
+        ? this.#fairPollRows(receiver, now)
+        : this.#db
+            .prepare(
+              "SELECT m.*,d.generation,d.attempts FROM relay_messages m JOIN relay_deliveries d USING(sender_id,message_id) WHERE m.recipient_id=? AND d.state='pending' AND d.next_visible_at<=? AND m.expires_at>? ORDER BY m.accepted_at,m.sender_id,m.message_id LIMIT ?",
+            )
+            .all(receiver, now, now, this.#options.poll_scan_limit);
       for (const raw of rows) {
         const row = raw as unknown as Row & {
           body: string;
           generation: number;
           attempts: number;
         };
+        if (this.#options.fair_poll) this.#advancePoll(receiver, row);
         const hasAttachments = JSON.parse(row.body).body.parts.some(
           (p: { type: string }) => p.type === "attachment",
         );
@@ -721,13 +889,28 @@ UPDATE relay_schema SET version=2;`);
           throw e;
         }
         if (hasAttachments) {
-          this.#checkAttachmentDelivery(row);
-          if (
-            authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
-          )
-            throw new RelayError("forbidden");
-          if (row.expires_at <= this.#now())
-            throw new RelayError("expired_before_acceptance");
+          try {
+            this.#checkAttachmentDelivery(row);
+            if (
+              authorize({ sender_id: row.sender_id, kind: row.kind }) !==
+              receiver
+            )
+              throw new RelayError("forbidden");
+            if (row.expires_at <= this.#now())
+              throw new RelayError("expired_before_acceptance");
+          } catch (e) {
+            if (
+              this.#options.fair_poll &&
+              e instanceof RelayError &&
+              [
+                "attachment_binding_unavailable",
+                "attachment_delivery_unavailable",
+                "forbidden",
+              ].includes(e.code)
+            )
+              continue;
+            throw e;
+          }
         }
         const token = Buffer.from(randomBytes(32)).toString("base64url"),
           generation = row.generation + 1;
@@ -756,6 +939,15 @@ UPDATE relay_schema SET version=2;`);
           )
           .run(row.sender_id, row.message_id);
         this.#audit(row.sender_id, row.message_id, now, "leased");
+        if (this.#options.fair_poll) {
+          if (
+            authorize() !== receiver ||
+            authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
+          )
+            throw new RelayError("forbidden");
+          if (until <= this.#now())
+            throw new RelayError("expired_before_acceptance");
+        }
         return {
           message: { ...JSON.parse(row.body), sender_id: row.sender_id },
           generation,
@@ -763,6 +955,8 @@ UPDATE relay_schema SET version=2;`);
           lease_until: new Date(until).toISOString(),
         };
       }
+      if (this.#options.fair_poll && authorize() !== receiver)
+        throw new RelayError("forbidden");
       return null;
     });
   }

@@ -28,7 +28,7 @@ const profiles = {
 type Profile = keyof typeof profiles;
 type Role = (typeof profiles)[Profile][number];
 const schemas: Record<Role, { table: string; version: number; key: string }> = {
-  relay: { table: "relay_schema", version: 4, key: "fingerprint_key_check" },
+  relay: { table: "relay_schema", version: 5, key: "fingerprint_key_check" },
   uploads: { table: "attachment_schema", version: 2, key: "key_check" },
   upload_journal: {
     table: "upload_journal_meta",
@@ -51,6 +51,8 @@ const schemas: Record<Role, { table: string; version: number; key: string }> = {
 const tables: Record<Role, string[]> = {
   relay: [
     "relay_schema",
+    "relay_poll_cursors",
+    "relay_poll_senders",
     "relay_message_attachments",
     "relay_attachment_deletions",
     "relay_threads",
@@ -91,6 +93,8 @@ const tables: Record<Role, string[]> = {
     "relay_inbox_maintenance_totals",
   ],
 };
+const schemaSupported = (role: Role, version: unknown) =>
+  version === schemas[role].version || (role === "relay" && version === 4);
 type Operation = "create" | "verify" | "restore";
 export interface SnapshotAuthorization {
   authorize(
@@ -272,18 +276,25 @@ export class SQLiteSnapshotBundle {
       )
       .all()
       .map((r) => String(r.name));
-    if (actual.join(",") !== [...tables[role]].sort().join(","))
-      throw new RelayError("snapshot_schema_mismatch");
     const spec = schemas[role],
       rows = db.prepare("SELECT * FROM " + spec.table + " LIMIT 2").all();
     if (
       rows.length !== 1 ||
-      rows[0].version !== spec.version ||
+      !schemaSupported(role, rows[0].version) ||
       typeof rows[0][spec.key] !== "string" ||
       !/^[a-f0-9]{64}$/.test(String(rows[0][spec.key])) ||
       (this.#options.profile !== "server" &&
         rows[0].agent_id !== this.#options.owner_id)
     )
+      throw new RelayError("snapshot_schema_mismatch");
+    const expected =
+      role === "relay" && rows[0].version === 4
+        ? tables[role].filter(
+            (name) =>
+              !["relay_poll_cursors", "relay_poll_senders"].includes(name),
+          )
+        : tables[role];
+    if (actual.join(",") !== [...expected].sort().join(","))
       throw new RelayError("snapshot_schema_mismatch");
     if (
       db.prepare("PRAGMA integrity_check(1)").get()?.integrity_check !== "ok" ||
@@ -299,7 +310,7 @@ export class SQLiteSnapshotBundle {
       size > this.#options.max_database_bytes
     )
       throw new RelayError("snapshot_capacity");
-    return spec.version;
+    return Number(rows[0].version);
   }
   #read(
     path: string,
@@ -565,7 +576,7 @@ export class SQLiteSnapshotBundle {
             "file,role,schema_version,sha256,size_bytes" ||
           record.role !== role ||
           record.file !== role + ".sqlite" ||
-          record.schema_version !== schemas[role].version ||
+          !schemaSupported(role, record.schema_version) ||
           !Number.isSafeInteger(record.size_bytes) ||
           record.size_bytes < 1 ||
           record.size_bytes > this.#options.max_database_bytes ||
@@ -605,7 +616,8 @@ export class SQLiteSnapshotBundle {
         throw new RelayError("snapshot_integrity_failed");
       const db = new DatabaseSync(dbPath, { readOnly: true });
       try {
-        this.#schema(db, record.role);
+        if (this.#schema(db, record.role) !== record.schema_version)
+          throw new RelayError("snapshot_integrity_failed");
       } finally {
         db.close();
       }
@@ -650,7 +662,8 @@ export class SQLiteSnapshotBundle {
             throw new RelayError("snapshot_integrity_failed");
           const db = new DatabaseSync(output, { readOnly: true });
           try {
-            this.#schema(db, record.role);
+            if (this.#schema(db, record.role) !== record.schema_version)
+              throw new RelayError("snapshot_integrity_failed");
           } finally {
             db.close();
           }
