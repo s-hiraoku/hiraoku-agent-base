@@ -641,3 +641,5 @@ remain separate work.
 [Message個体別容量と最低予約枠](../../docs/relay-agent-capacity.md)は任意のagent_capacity設定で有効にします。verified senderと現在の保存量から受付transaction内で判定し、元のreceipt照合と既存retentionを維持します。
 
 [公平pollと永続scan](../../docs/relay-fair-poll.md)は任意のfair_poll設定で有効にします。schema5のHMAC付き位置でsenderごと1候補を巡回し、lease・auditと原子的に進行します。snapshotはschema4/5を検証・停止復元し、runtimeの接続を自動再開しません。
+
+[添付blobの個体別容量・最低予約枠](../../docs/attachment-capacity.md)は任意のowner_capacity設定で有効にします。verified ownerごとのupload・binding保持記録、live宣言bytes・件数を受付transaction内で集計し、未使用最低枠を保護します。schema2・元receipt・既定runtimeを維持します。

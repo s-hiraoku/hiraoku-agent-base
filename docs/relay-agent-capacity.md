@@ -28,4 +28,4 @@ pending・bytes・recordは独立した条件です。count枠があっても本
 
 `node --test test/relay-agent-capacity.test.js` の15シナリオで、件数／bytes／metadataの枠、ACK・元TTL、lease／隔離、exact replay、policy縮小・copy、認証分離、audit rollback、native worker同士の受付競合を確認します。
 
-これはmessage受付の保存容量です。upload blob側の最低予約枠、個体別の送信rate、公平なwriter admission、[配送順・有限scanの進行](relay-fair-poll.md)は別の任意policyとして実装しました。遅延SLOは別の境界です。既存のblob全体／owner別容量制限も、message最低枠だけで全体の公平性を証明したとは扱いません。
+これはmessage受付の保存容量です。[添付blob側の最低予約枠](attachment-capacity.md)と[配送順・有限scanの進行](relay-fair-poll.md)も別の任意policyとして実装しました。個体別の送信rate、公平なwriter admission、遅延SLOは残っています。message最低枠だけで全体の公平性を証明したとは扱いません。

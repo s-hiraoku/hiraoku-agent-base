@@ -321,6 +321,8 @@ wake/pushは「保存済みinboxをpollせよ」という補助通知とする�
 
 個体別に送信rate、保有message数・bytes、同時poll・lease、処理待ち数を制限する。全体容量上限と個体別quotaは別にし、1個体が他個体の枠をすべて消費しない予約／公平な受付を設ける。[message個体別容量](relay-agent-capacity.md)は任意のhost設定として実装し、verified senderごとのpending・本文bytes・保持record上限と、保護対象の未使用最低枠を受付transactionで検証する。予約は認証・宛先容量・blob容量を代替しない。
 
+[添付blobの最低予約枠](attachment-capacity.md)も任意host設定として実装した。verified ownerのlive upload件数・宣言bytes・全upload記録と、独立したbinding記録を同じwrite transactionで判定し、保護対象の未使用枠を他ownerが消費できないようにする。terminalでlive量を解放しても重複防止記録は既存retentionまで保持し、満杯でもexact replayを先に照合する。追加schemaや認証権限は作らず、すべてのwriterで同じpolicyを使う。
+
 処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をRelayのwriter内で実行しない。[公平pollと永続scan](relay-fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkind・添付保留で位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
 
 受信したという理由だけで自動返信しない。質問→回答、実行依頼→明示引受け→結果の許可された関係だけを扱う。answer、delivery_failure、状態通知への自動再依頼を既定で禁止する。thread単位の自動返信budgetと全体rate制限を併用し、上限では状態を返して止める。新threadを作れば無限に回せる設計にもせず、個体単位の制限を維持する。
@@ -411,7 +413,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 | 本文retention       | **ACK確定時に本文削除。未受領は1時間の期限切れで削除対象（採用済み）** | 読取・照合と個人データ最小化の調整。期限で配送を再開しない               |
 | dedup / ACK receipt | **`max(expires_at, terminal_at, ack_retry_until)`後30日（採用済み）**  | 上記再試行horizonより長くし、本文削除後も再実行を抑止                    |
 
-容量不足は明示的なbackpressureとして返し、受付済み本文を黙って捨てない。保護対象の個体別最低予約枠、fairness指標、busy timeout、実際の処理時間・遅延目標は未決定。表の値だけで公平性やSLO達成を証明しない。
+容量不足は明示的なbackpressureとして返し、受付済み本文を黙って捨てない。本番の保護対象と個体別最低予約量、fairness指標、busy timeout、実際の処理時間・遅延目標は未決定。表の値だけで公平性やSLO達成を証明しない。
 
 ## 15. API／MCPの追加契約案
 

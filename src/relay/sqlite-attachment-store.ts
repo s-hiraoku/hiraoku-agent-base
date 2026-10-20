@@ -1,5 +1,15 @@
 /** Optional chunk-BLOB backend in a dedicated private DB, separate from Relay message SQL. */
 import { DatabaseSync } from "node:sqlite";
+import {
+  attachmentCapacityPolicy,
+  assertUploadCapacity,
+  assertBindingCapacity,
+} from "./attachment-capacity.ts";
+import type {
+  AttachmentCapacityPolicy,
+  UploadCapacityUsage,
+  BindingCapacityUsage,
+} from "./attachment-capacity.ts";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { RelayError } from "./service.ts";
@@ -43,6 +53,7 @@ export interface AttachmentStoreOptions {
   upload_ttl_ms: number;
   max_clock_skew_ms: number;
   busy_timeout_ms: number;
+  owner_capacity?: AttachmentCapacityPolicy;
 }
 type UploadRow = {
   attachment_id: string;
@@ -197,6 +208,10 @@ export class SQLiteAttachmentStore
     }
     this.#options = {
       ...options,
+      owner_capacity:
+        options.owner_capacity === undefined
+          ? undefined
+          : attachmentCapacityPolicy(options.owner_capacity, options),
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
     };
     let db: DatabaseSync | undefined;
@@ -214,9 +229,9 @@ export class SQLiteAttachmentStore
           closeSync(fd);
         }
       }
-      db = new DatabaseSync(path);
+      db = new DatabaseSync(path, { timeout: options.busy_timeout_ms });
       db.exec(
-        `PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON; PRAGMA busy_timeout=${options.busy_timeout_ms}`,
+        `PRAGMA busy_timeout=${options.busy_timeout_ms}; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON`,
       );
       this.#db = db;
     } catch {
@@ -443,6 +458,22 @@ export class SQLiteAttachmentStore
     return this.#expire(row, now);
   }
   #capacity(owner: string, size: number) {
+    if (this.#options.owner_capacity) {
+      const usage = this.#db
+        .prepare(
+          "SELECT owner_id,count(*) records,sum(CASE WHEN state IN ('uploading','finalized') THEN 1 ELSE 0 END) open_uploads,sum(CASE WHEN state IN ('uploading','finalized') THEN size_bytes ELSE 0 END) live_bytes FROM attachment_uploads GROUP BY owner_id",
+        )
+        .all() as unknown as UploadCapacityUsage[];
+      assertUploadCapacity(
+        this.#options.owner_capacity,
+        this.#options,
+        owner,
+        size,
+        usage,
+      );
+      return;
+    }
+
     if (
       Number(
         this.#db.prepare("SELECT count(*) n FROM attachment_uploads").get()!.n,
@@ -491,6 +522,15 @@ export class SQLiteAttachmentStore
       )
         throw new RelayError("upload_clock_skew");
       this.#capacity(owner, intent.attachment.size_bytes);
+      this.#guards.push(() => {
+        if (
+          Math.min(
+            now + this.#options.upload_ttl_ms,
+            Date.parse(intent.expires_at),
+          ) <= this.#now()
+        )
+          throw new RelayError("expired_before_acceptance");
+      });
       const id = randomUUID();
       this.#db
         .prepare(
@@ -760,6 +800,19 @@ export class SQLiteAttachmentStore
         ) >= this.#options.max_records
       )
         throw new RelayError("upload_capacity_exceeded");
+      if (this.#options.owner_capacity) {
+        const usage = this.#db
+          .prepare(
+            "SELECT owner_id,count(*) bindings FROM attachment_bindings GROUP BY owner_id",
+          )
+          .all() as unknown as BindingCapacityUsage[];
+        assertBindingCapacity(
+          this.#options.owner_capacity,
+          this.#options,
+          owner,
+          usage,
+        );
+      }
       const parts = message.body.parts.filter((p) => p.type === "attachment"),
         deadlines: number[] = [];
       for (const part of parts) {
