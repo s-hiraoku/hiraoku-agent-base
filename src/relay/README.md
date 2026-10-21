@@ -645,3 +645,5 @@ remain separate work.
 [添付blobの個体別容量・最低予約枠](../../docs/attachment-capacity.md)は任意のowner_capacity設定で有効にします。verified ownerごとのupload・binding保持記録、live宣言bytes・件数を受付transaction内で集計し、未使用最低枠を保護します。schema2・元receipt・既定runtimeを維持します。
 
 [検証済み個体のrateと公平writer受付](../../docs/writer-admission.md)の独立coreを追加しました。1プロセスで共有する任意構成で、単調token bucketと有限queueを使います。Relay／HAB／添付HTTPへも任意配線しました。認証済みcontextと現在の個体bindingで判定し、timeout後も未完了tool監査がsettleするまでslotを保持します。既定runtimeは有効化しません。
+
+[Task bridgeの明示引受け・永続link](../../docs/task-bridge.md)はRelay coreの外の任意integrationです。inboxのローカルwithEntryは検証済み本文を同期handoffするだけで、受領・ACKからTaskを作りません。返信outbox・実製品配線は別の段階です。

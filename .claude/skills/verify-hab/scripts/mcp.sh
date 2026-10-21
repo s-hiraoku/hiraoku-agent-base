@@ -32,7 +32,7 @@ base="$run/evidence/$n-$agent-${tool//\//_}"
 printf '%s\n' "$body" > "$base.req"
 curl -sS -X POST "$url" -o "$base.body" -D "$base.headers" -w '%{http_code}' \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -H 'MCP-Protocol-Version: 2026-07-28' "${hdr[@]}" "${auth[@]}" --data-binary "$body" > "$base.status"
+  -H 'MCP-Protocol-Version: 2026-07-28' "${hdr[@]}" ${auth[@]+"${auth[@]}"} --data-binary "$body" > "$base.status"
 { echo "HTTP $(cat "$base.status")"; cat "$base.body"; echo; } > "$base.res"
 rm -f "$base.body" "$base.status"
 cat "$base.res"

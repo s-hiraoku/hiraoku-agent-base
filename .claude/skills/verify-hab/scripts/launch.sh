@@ -9,7 +9,7 @@ if [ -f "$run/instance/stack.pid" ] && kill -0 "$(cat "$run/instance/stack.pid")
   echo "already_running pid=$(cat "$run/instance/stack.pid")" >&2; exit 4
 fi
 log="$run/evidence/stack.log"; echo "--- launch $(date -u +%FT%TZ)" >> "$log"
-start=$(wc -l < "$log")
+start=$(wc -l < "$log" | tr -d '[:space:]')
 nohup node "$here/stack.mjs" "$run" ${2:-} >> "$log" 2>&1 < /dev/null &
 for _ in $(seq 1 60); do
   if tail -n +"$start" "$log" | grep -q '^HAB_VERIFY_READY '; then exec "$here/doctor.sh" "$run"; fi
