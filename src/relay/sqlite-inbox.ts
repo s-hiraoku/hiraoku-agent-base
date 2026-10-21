@@ -680,6 +680,51 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       this.#ackTerminal(request.sender_id, request.message_id, now);
     });
   }
+  /** Local durable handoff. No execution, network ACK or body release is implied. */
+  withEntry<T>(
+    senderId: string,
+    messageId: string,
+    action: (entry: InboxEntry) => T,
+  ): T {
+    if (
+      !identifier(senderId) ||
+      !identifier(messageId) ||
+      typeof action !== "function"
+    )
+      throw new RelayError("invalid_request");
+    return this.#tx(() => {
+      this.#now();
+      const row = this.#db
+        .prepare(
+          "SELECT body,fingerprint,received_at,receipt_confirmed FROM relay_inbox WHERE sender_id=? AND message_id=? AND released_at IS NULL",
+        )
+        .get(senderId, messageId);
+      if (!row) throw new RelayError("not_found");
+      const message = parseSubmission(
+        JSON.parse(String(row.body)),
+        this.#options.limits,
+      );
+      if (
+        message.message_id !== messageId ||
+        message.recipient_id !== this.#options.agent_id ||
+        this.#hash(
+          comparisonMaterial(senderId, message, this.#options.limits),
+        ) !== row.fingerprint
+      )
+        throw new RelayError("inbox_content_conflict");
+      const result = action({
+        sender_id: senderId,
+        message,
+        received_at: new Date(Number(row.received_at)).toISOString(),
+        receipt_confirmed: row.receipt_confirmed === 1,
+      });
+      if (result && typeof result === "object" && "then" in result) {
+        void Promise.resolve(result).catch(() => {});
+        throw new RelayError("invalid_request");
+      }
+      return result;
+    });
+  }
   inbox(): InboxEntry[] {
     this.#now();
     return this.#db
