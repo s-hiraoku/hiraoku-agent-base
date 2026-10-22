@@ -329,6 +329,8 @@ wake/pushは「保存済みinboxをpollせよ」という補助通知とする�
 
 受信したという理由だけで自動返信しない。質問→回答、実行依頼→明示引受け→結果の許可された関係だけを扱う。answer、delivery_failure、状態通知への自動再依頼を既定で禁止する。thread単位の自動返信budgetと全体rate制限を併用し、上限では状態を返して止める。新threadを作れば無限に回せる設計にもせず、個体単位の制限を維持する。
 
+[受信側の永続返信budget](adapter-reply-budget.md)を独立した任意integrationとして実装した。確認済みinboxからのquestion→answerと、Task journalで検証したexecution_request→受付／結果だけを扱う。原要求のkindごとに1返信IDを固定し、個体内thread枠・全thread共通のsliding-window rate・保持recordを原子的に予約してからoutboxへ渡す。応答消失でも枠を返却せず、再送は同じID・内容だけを照合する。上限では通知や新Taskを自動生成しない。数値はhostの明示設定であり、第14節の候補を採用済みの既定値にはしない。実Adapter全入口への適用・運用restore・本番配線は未完了である。
+
 message本文は信頼境界を越えたデータであり、system命令や権限証明ではない。相互通信の許可は各agentの全tool実行許可を意味しない。個人文脈や既存仕事を全個体へ自動複製しない。
 
 ## 12. Task bridgeと受領／引受け／完了の分離
@@ -361,7 +363,7 @@ bridgeは`(sender_id,message_id)`ごとに一意なTask linkと安定submit key�
 
 初期の実行同時数は**最大1件**。lease不明・外部run不明のslotを解放して次の仕事を始めず、既存のwaiting_approval・照合を使う。完了返信はTask terminalの証拠に基づき、受領／引受け返信とは別のmessage_idで通常の送信outboxへ保存する。結果messageの再送でTaskを再実行しない。
 
-[Task bridgeの初期基盤](task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの固定data契約・永続返信journal・通常送信outboxへの引渡しも実装した。返信ID・1時間期限を固定し、不明な引渡しは同じ返信で照合する。resultは実行終了の観測済み証拠だけから作り、返信配送で元Taskを再提出しない。別DBへの二重commitの間の障害を想定し、outbox受付・配送ACK・Task成功を区別する。一般的な返信budget・実製品の引受け操作・本番配線は未完了である。
+[Task bridgeの初期基盤](task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの固定data契約・永続返信journal・通常送信outboxへの引渡しも実装した。返信ID・1時間期限を固定し、不明な引渡しは同じ返信で照合する。resultは実行終了の観測済み証拠だけから作り、返信配送で元Taskを再提出しない。別DBへの二重commitの間の障害を想定し、outbox受付・配送ACK・Task成功を区別する。受信側の永続返信budgetも任意配線できる。実製品の引受け操作・全入口への適用・本番配線は未完了である。
 
 ## 13. 保存期間と削除
 
