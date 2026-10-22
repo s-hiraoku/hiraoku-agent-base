@@ -176,7 +176,7 @@ export class SQLiteOutbox implements SenderStore {
       throw e;
     }
   }
-  #tx<T>(fn: () => T): T {
+  #tx<T>(fn: () => T, guard: () => void = () => {}): T {
     if (this.#inside) throw new RelayError("outbox_busy");
     this.#inside = true;
     let began = false;
@@ -187,6 +187,11 @@ export class SQLiteOutbox implements SenderStore {
       if (out && typeof out === "object" && "then" in out) {
         void Promise.resolve(out).catch(() => {});
         throw new RelayError("outbox_busy");
+      }
+      const checked: unknown = guard();
+      if (checked && typeof checked === "object" && "then" in checked) {
+        void Promise.resolve(checked).catch(() => {});
+        throw new RelayError("invalid_outbox_admission");
       }
       this.#db.exec("COMMIT");
       return out;
@@ -341,7 +346,17 @@ export class SQLiteOutbox implements SenderStore {
   #cleanup(now: number) {
     this.#expire(now, this.#options.max_records);
   }
+  /** Host-bound identity, independent of wire arguments. */
+  get agentId() {
+    return this.#options.agent_id;
+  }
   enqueue(input: unknown): OutboxRecord {
+    return this.enqueueGuarded(input, () => {});
+  }
+  /** Recheck a synchronous local authorization inside the durable commit. */
+  enqueueGuarded(input: unknown, guard: () => void): OutboxRecord {
+    if (typeof guard !== "function")
+      throw new RelayError("invalid_outbox_admission");
     const message = parseSubmission(input, this.#options.limits);
     const attached = message.body.parts.some((p) => p.type === "attachment");
     if (attached && !this.#attachments)
@@ -398,7 +413,7 @@ export class SQLiteOutbox implements SenderStore {
             expires + this.#options.status_retry_ms,
           );
         return view(this.#row(message.message_id)!);
-      });
+      }, guard);
     if (!attached) return enqueue();
     // Exact retries do not create work and remain valid after explicit source release.
     const existing = this.#tx(() => {
@@ -407,7 +422,7 @@ export class SQLiteOutbox implements SenderStore {
       if (row && row.fingerprint !== fingerprint)
         throw new RelayError("outbox_content_conflict");
       return row ? view(row) : null;
-    });
+    }, guard);
     if (existing) return existing;
     return this.#admit(
       (run) =>

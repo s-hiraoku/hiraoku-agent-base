@@ -117,7 +117,7 @@ export function executionRequest(
     throw new TaskBridgeError("bridge_invalid_request");
   }
 }
-export type BridgeOperation = "accept" | "submit" | "observe";
+export type BridgeOperation = "accept" | "submit" | "observe" | "reply";
 export type BridgeAuthorization = (
   context: unknown,
   operation: BridgeOperation,

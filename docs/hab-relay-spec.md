@@ -361,7 +361,7 @@ bridgeは`(sender_id,message_id)`ごとに一意なTask linkと安定submit key�
 
 初期の実行同時数は**最大1件**。lease不明・外部run不明のslotを解放して次の仕事を始めず、既存のwaiting_approval・照合を使う。完了返信はTask terminalの証拠に基づき、受領／引受け返信とは別のmessage_idで通常の送信outboxへ保存する。結果messageの再送でTaskを再実行しない。
 
-[Task bridgeの初期基盤](task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの送信outbox、返信budget・実製品の引受け操作・本番配線は未完了である。
+[Task bridgeの初期基盤](task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの固定data契約・永続返信journal・通常送信outboxへの引渡しも実装した。返信ID・1時間期限を固定し、不明な引渡しは同じ返信で照合する。resultは実行終了の観測済み証拠だけから作り、返信配送で元Taskを再提出しない。別DBへの二重commitの間の障害を想定し、outbox受付・配送ACK・Task成功を区別する。一般的な返信budget・実製品の引受け操作・本番配線は未完了である。
 
 ## 13. 保存期間と削除
 

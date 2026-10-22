@@ -1,10 +1,6 @@
 /** Explicit local calls only. One Task RPC per step; never claims or runs work. */
-import {
-  TaskBridgeError,
-  keySchema,
-  identifier,
-  bindingSchema,
-} from "./contract.ts";
+import { bridgeGuard } from "./authority.ts";
+import { TaskBridgeError, keySchema, bindingSchema } from "./contract.ts";
 import type {
   SourceKey,
   BridgeInbox,
@@ -44,30 +40,15 @@ export class TaskBridge {
     this.#authorize = authorize;
   }
   #guard(context: unknown, operation: BridgeOperation, key: SourceKey) {
-    const resolve = () => {
-      try {
-        const value = this.#authorize(
-          context,
-          operation,
-          Object.freeze({ ...key }),
-        );
-        if (value && typeof value === "object" && "then" in value)
-          void Promise.resolve(value).catch(() => {});
-        if (!value || value.receiver_id !== this.#journal.receiverId)
-          throw Error();
-        return identifier.parse(value.actor_id);
-      } catch {
-        throw new TaskBridgeError("bridge_forbidden");
-      }
-    };
-    const actor = resolve();
-    return {
-      actor,
-      check: () => {
-        if (resolve() !== actor) throw new TaskBridgeError("bridge_forbidden");
-      },
-    };
+    return bridgeGuard(
+      this.#authorize,
+      context,
+      operation,
+      key,
+      this.#journal.receiverId,
+    );
   }
+
   accept(context: unknown, source: SourceKey) {
     const key = keySchema.parse(source),
       guard = this.#guard(context, "accept", key);

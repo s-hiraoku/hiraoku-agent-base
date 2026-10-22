@@ -1,10 +1,24 @@
-/** Private integration journal. New schema1; never joins or migrates Relay/Task tables. */
+/** Private integration journal. Schema2 replies; never joins or migrates Relay/Task tables. */
 import { DatabaseSync } from "node:sqlite";
 import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { createHmac, createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { comparisonMaterial, validateLimits } from "../relay/contract.ts";
-import type { ContractLimits } from "../relay/contract.ts";
+import {
+  comparisonMaterial,
+  validateLimits,
+  parseSubmission,
+  makeReplayBoundMessageId,
+  isReplayBoundMessageId,
+} from "../relay/contract.ts";
+import { RelayError } from "../relay/service.ts";
+import type { OutboxRecord } from "../relay/sender.ts";
+import {
+  replyKindSchema,
+  replyRecordSchema,
+  replyMessage,
+} from "./reply-contract.ts";
+import type { BridgeReply, ReplyKind } from "./reply-contract.ts";
+import type { Submission, ContractLimits } from "../relay/contract.ts";
 import type { InboxEntry } from "../relay/receiver.ts";
 import {
   TaskBridgeError,
@@ -68,6 +82,14 @@ CREATE TABLE task_bridge_links(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,
 CREATE UNIQUE INDEX task_bridge_one_unresolved ON task_bridge_links((1)) WHERE state IN ('submitting','uncertain','waiting_approval');
 CREATE TRIGGER task_bridge_identity BEFORE UPDATE OF sender_id,message_id,request_key ON task_bridge_links BEGIN SELECT RAISE(ABORT,'immutable'); END;
 CREATE TABLE task_bridge_audit(id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,event TEXT NOT NULL,fence INTEGER NOT NULL,at INTEGER NOT NULL,fingerprint TEXT NOT NULL);
+`;
+const replySchema = `
+CREATE TABLE task_bridge_replies(
+ sender_id TEXT NOT NULL,message_id TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('execution_accepted','execution_result')),
+ reply_id TEXT NOT NULL UNIQUE,state TEXT NOT NULL CHECK(state IN ('prepared','enqueued','expired')),
+ data TEXT NOT NULL CHECK(json_valid(data)),fingerprint TEXT NOT NULL,
+ PRIMARY KEY(sender_id,message_id,kind),FOREIGN KEY(sender_id,message_id) REFERENCES task_bridge_links(sender_id,message_id));
+CREATE TRIGGER task_bridge_reply_identity BEFORE UPDATE OF sender_id,message_id,kind,reply_id ON task_bridge_replies BEGIN SELECT RAISE(ABORT,'immutable'); END;
 `;
 export class SQLiteTaskBridgeJournal {
   readonly #db: DatabaseSync;
@@ -216,7 +238,11 @@ export class SQLiteTaskBridgeJournal {
           );
       }
       const meta = this.#db.prepare("SELECT * FROM task_bridge_meta").all();
-      if (meta.length !== 1 || meta[0].version !== 1 || meta[0].id !== 1)
+      if (
+        meta.length !== 1 ||
+        ![1, 2].includes(Number(meta[0].version)) ||
+        meta[0].id !== 1
+      )
         throw new TaskBridgeError("unsupported_bridge_schema");
       if (
         meta[0].binding_check !== this.#bindingCheck() ||
@@ -243,6 +269,23 @@ export class SQLiteTaskBridgeJournal {
             .get(name)
         )
           throw new TaskBridgeError("unsupported_bridge_schema");
+      if (meta[0].version === 1) {
+        this.#db.exec(replySchema);
+        this.#db.exec("UPDATE task_bridge_meta SET version=2 WHERE id=1");
+      }
+      this.#db
+        .prepare(
+          "SELECT sender_id,message_id,kind,reply_id,state,data,fingerprint FROM task_bridge_replies LIMIT 0",
+        )
+        .all();
+      if (
+        !this.#db
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE name='task_bridge_reply_identity'",
+          )
+          .get()
+      )
+        throw new TaskBridgeError("unsupported_bridge_schema");
     });
     this.#ready = true;
   }
@@ -511,6 +554,187 @@ export class SQLiteTaskBridgeJournal {
         this.#audit(data, "observed");
       }
       return data;
+    }, guard);
+  }
+  #readReply(key: SourceKey, kind: ReplyKind): BridgeReply | null {
+    const row = this.#db
+      .prepare(
+        "SELECT * FROM task_bridge_replies WHERE sender_id=? AND message_id=? AND kind=?",
+      )
+      .get(key.sender_id, key.message_id, kind);
+    if (!row) return null;
+    try {
+      if (
+        typeof row.data !== "string" ||
+        row.data.length > 16384 ||
+        this.#hash("reply-v1", row.data) !== row.fingerprint
+      )
+        throw Error();
+      const record = replyRecordSchema.parse(JSON.parse(row.data));
+      const link = this.#read(key);
+      const task = taskEvidence(record.task, this.binding, link.request_key);
+      const message = parseSubmission(record.message, this.#options.limits);
+      if (
+        record.kind !== kind ||
+        row.kind !== kind ||
+        row.state !== record.state ||
+        row.reply_id !== message.message_id ||
+        !link.task ||
+        task.fence > link.task.fence ||
+        (kind === "execution_result" &&
+          JSON.stringify(task) !== JSON.stringify(link.task)) ||
+        !isReplayBoundMessageId(
+          message.message_id,
+          Date.parse(message.expires_at),
+        ) ||
+        JSON.stringify(message) !==
+          JSON.stringify(
+            replyMessage(
+              link,
+              kind,
+              task,
+              message.message_id,
+              message.first_sent_at,
+              this.#options.limits,
+            ),
+          )
+      )
+        throw Error();
+      return { ...record, task, message };
+    } catch {
+      throw new TaskBridgeError("bridge_integrity_failed");
+    }
+  }
+  #writeReply(key: SourceKey, reply: BridgeReply, insert = false) {
+    const text = JSON.stringify(reply);
+    if (insert)
+      this.#db
+        .prepare("INSERT INTO task_bridge_replies VALUES(?,?,?,?,?,?,?)")
+        .run(
+          key.sender_id,
+          key.message_id,
+          reply.kind,
+          reply.message.message_id,
+          reply.state,
+          text,
+          this.#hash("reply-v1", text),
+        );
+    else
+      this.#db
+        .prepare(
+          "UPDATE task_bridge_replies SET state=?,data=?,fingerprint=? WHERE sender_id=? AND message_id=? AND kind=?",
+        )
+        .run(
+          reply.state,
+          text,
+          this.#hash("reply-v1", text),
+          key.sender_id,
+          key.message_id,
+          reply.kind,
+        );
+  }
+  /** Private inspection; application entry points must check current authority. */
+  getReply(input: SourceKey, kind: ReplyKind): BridgeReply | null {
+    const key = keySchema.parse(input);
+    replyKindSchema.parse(kind);
+    return this.#tx(() => {
+      this.#now();
+      return this.#readReply(key, kind);
+    });
+  }
+  prepareReply(
+    input: SourceKey,
+    kind: ReplyKind,
+    guard: () => void,
+  ): BridgeReply {
+    const key = keySchema.parse(input);
+    replyKindSchema.parse(kind);
+    return this.#tx(() => {
+      const now = this.#now(),
+        link = this.#read(key);
+      const existing = this.#readReply(key, kind);
+      if (existing) return existing;
+      if (link.state !== "linked" || !link.task)
+        throw new TaskBridgeError("bridge_not_linked");
+      const first = new Date(now).toISOString();
+      const reply: BridgeReply = {
+        kind,
+        state: "prepared",
+        task: link.task,
+        message: replyMessage(
+          link,
+          kind,
+          link.task,
+          makeReplayBoundMessageId(first, randomUUID().replaceAll("-", "")),
+          first,
+          this.#options.limits,
+        ),
+      };
+      this.#writeReply(key, reply, true);
+      this.#audit(link, kind + "_prepared");
+      return reply;
+    }, guard);
+  }
+  /** Outbox commits first; a lost journal commit is recovered with the exact saved message. */
+  handoffReply(
+    input: SourceKey,
+    kind: ReplyKind,
+    enqueue: (message: Submission, guard: () => void) => OutboxRecord,
+    guard: () => void,
+  ): BridgeReply {
+    const key = keySchema.parse(input);
+    replyKindSchema.parse(kind);
+    if (typeof enqueue !== "function")
+      throw new TaskBridgeError("invalid_bridge_composition");
+    return this.#tx(() => {
+      const now = this.#now(),
+        link = this.#read(key);
+      const reply = this.#readReply(key, kind);
+      if (!reply) throw new TaskBridgeError("bridge_reply_not_prepared");
+      if (reply.state !== "prepared") return reply;
+      if (Date.parse(reply.message.expires_at) <= now) {
+        reply.state = "expired";
+        this.#writeReply(key, reply);
+        this.#audit(link, kind + "_expired");
+        return reply;
+      }
+      // Reserve finite audit space before attempting a separate durable write.
+      this.#audit(link, kind + "_enqueued");
+      guard();
+      let record;
+      try {
+        record = enqueue(structuredClone(reply.message), guard);
+      } catch (error) {
+        if (error instanceof TaskBridgeError) throw error;
+        if (error instanceof RelayError)
+          throw new TaskBridgeError(
+            error.code === "outbox_capacity_exceeded"
+              ? "bridge_outbox_capacity_exceeded"
+              : "bridge_outbox_unavailable",
+          );
+        throw error;
+      }
+      if (record && typeof record === "object" && "then" in record) {
+        void Promise.resolve(record).catch(() => {});
+        throw new TaskBridgeError("bridge_invalid_outbox_record");
+      }
+      if (
+        !record ||
+        record.message_id !== reply.message.message_id ||
+        record.recipient_id !== reply.message.recipient_id ||
+        record.expires_at !== reply.message.expires_at ||
+        ![
+          "queued",
+          "sending",
+          "accepted",
+          "quarantined",
+          "expired_unknown",
+        ].includes(record.state)
+      )
+        throw new TaskBridgeError("bridge_invalid_outbox_record");
+      reply.state = "enqueued";
+      this.#writeReply(key, reply);
+      return reply;
     }, guard);
   }
   close() {
