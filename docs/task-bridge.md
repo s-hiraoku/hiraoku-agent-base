@@ -71,7 +71,7 @@ sourceごとの一意key `(sender_id,message_id)` と、Task owner scope用の `
 
 期限到達時には再enqueueせずexpiredを保存します。既にoutboxへ入ったか不明な場合、その記録の照合・期限処理は通常のoutboxが担当します。journalでenqueuedになった返信は、outboxのGCや単独restoreで記録が消えていても自動再作成しません。独立DBの復元は別途静止・照合が必要です。
 
-1 source当たり2つの固定返信枠と有限audit容量を持ち、容量を確保できなければ新しいoutbox書込みを行いません。返信を受けただけで新Taskを作る処理はありません。これとは別に、実Adapterの一般的なthread単位の返信budget・実行契機・監視は後続です。配送順序は保証せず、受信側はkindとsource参照で結果を解釈します。
+1 source当たり2つの固定返信枠と有限audit容量を持ち、容量を確保できなければ新しいoutbox書込みを行いません。返信を受けただけで新Taskを作る処理はありません。[独立した永続返信budget](adapter-reply-budget.md)をTaskRepliesの第4引数へ明示配線すると、answerと共通のthread枠・個体rate・保持件数も予約します。上限では元Taskを再実行せず、preparedの返信を保持します。実製品の実行契機・監視は後続です。配送順序は保証せず、受信側はkindとsource参照で結果を解釈します。
 
 ## 保存と障害
 
@@ -89,4 +89,4 @@ link／audit件数と試行回数はhostの有限設定です。満杯では既�
 
 `node --test test/task-bridge-replies.test.js` の32シナリオで、固定返信schema、未完了の拒否、Task証拠の明示観測、別権限・別outbox拒否、応答消失・再起動・二重commitの間の障害、outbox本文消去後の再照合、容量、期限、native writer競合、模擬Relayの実配送・ACKを検証します。配送応答が消えても同じ返信IDを再送し、元Taskは1件のままです。時計とDBの障害注入はunit試験に限定し、MCPのユーザー経路の証拠と混同しません。
 
-**実Adapterの一般的な返信budget、実製品からの引受け操作、本番binding／credential、restore運用は未完了です。** Task bridgeと返信はローカルの任意APIとして模擬検証した段階です。3者本番接続や既定MCPからのTask返信操作を完了したものではありません。
+**実Adapterの全入口へのbudget適用、実製品からの引受け操作、本番binding／credential、restore運用は未完了です。** Task bridgeと返信はローカルの任意APIとして模擬検証した段階です。3者本番接続や既定MCPからのTask返信操作を完了したものではありません。

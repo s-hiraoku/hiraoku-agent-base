@@ -1,4 +1,5 @@
 /** Private integration journal. Schema2 replies; never joins or migrates Relay/Task tables. */
+import { ReplyBudgetError } from "../adapter-policy/contract.ts";
 import { DatabaseSync } from "node:sqlite";
 import { openSync, fstatSync, closeSync, constants } from "node:fs";
 import { createHmac, createHash, randomUUID } from "node:crypto";
@@ -706,6 +707,19 @@ export class SQLiteTaskBridgeJournal {
         record = enqueue(structuredClone(reply.message), guard);
       } catch (error) {
         if (error instanceof TaskBridgeError) throw error;
+        if (error instanceof ReplyBudgetError)
+          throw new TaskBridgeError(
+            [
+              "reply_thread_exhausted",
+              "reply_rate_exhausted",
+              "reply_budget_capacity_exceeded",
+              "reply_budget_conflict",
+              "reply_forbidden",
+              "reply_budget_clock_regressed",
+            ].includes(error.code)
+              ? error.code
+              : "bridge_reply_budget_unavailable",
+          );
         if (error instanceof RelayError)
           throw new TaskBridgeError(
             error.code === "outbox_capacity_exceeded"
