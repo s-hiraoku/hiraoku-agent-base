@@ -9,14 +9,25 @@ import type {
   BridgeOperation,
 } from "./contract.ts";
 import type { SQLiteTaskBridgeJournal } from "./sqlite-journal.ts";
+export type TaskBridgeJournal = Pick<
+  SQLiteTaskBridgeJournal,
+  | "receiverId"
+  | "binding"
+  | "prepare"
+  | "begin"
+  | "get"
+  | "confirm"
+  | "uncertain"
+  | "observe"
+>;
 export class TaskBridge {
-  readonly #journal: SQLiteTaskBridgeJournal;
+  readonly #journal: TaskBridgeJournal;
   readonly #inbox: BridgeInbox;
   readonly #tasks: BridgeTasks;
   readonly #authorize: BridgeAuthorization;
   #running = false;
   constructor(
-    journal: SQLiteTaskBridgeJournal,
+    journal: TaskBridgeJournal,
     inbox: BridgeInbox,
     tasks: BridgeTasks,
     authorize: BridgeAuthorization = () => undefined,

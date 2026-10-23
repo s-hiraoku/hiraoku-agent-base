@@ -280,6 +280,13 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     this.#authorization = options.authorization ?? (() => "");
     this.#fetch = options.fetch ?? globalThis.fetch;
   }
+  get agentId() {
+    return this.#policy.agent_id;
+  }
+  /** Includes underlying work still settling after a caller-visible timeout. */
+  get activeRequests() {
+    return this.#active;
+  }
   /** Host subclasses bind additional fixed operations; never expose this as an arbitrary-call tool. */
   protected requestTool(
     tool: string,

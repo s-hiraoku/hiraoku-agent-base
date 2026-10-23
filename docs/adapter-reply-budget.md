@@ -61,4 +61,6 @@ InboxAnswersは返信envelopeを生成・保存するproducerの代わりでは�
 
 既存の模擬MCP経路も `verify-hab` で別途回帰確認しました。recv-ackは `009-b-relay_ack.res`、send-statusは `011-a-relay_status.res`、独立したDB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みです。raw evidenceは一時領域のみで、公開repoへ入れません。この確認は既存Relayの回帰試験であり、未配線のbudget APIをMCPから操作した証拠ではありません。
 
+[有限Adapter host](adapter-host.md)では、確認済みsourceの明示回答とTask返信に同じbudgetを組み立て、停止・通信前後・commitのguardも適用します。
+
 実製品のmodel判断・callback・poll/wakeへの配線、自動処理の全入口への適用、実個体binding、運用restore・容量監視、本番E2Eは未実施です。ローカルの任意APIの実装を、三者の本番接続完了と混同しません。
