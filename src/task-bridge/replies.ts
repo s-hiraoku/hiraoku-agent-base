@@ -11,13 +11,17 @@ export interface BridgeReplyOutbox {
   readonly agentId: string;
   enqueueGuarded(input: unknown, guard: () => void): OutboxRecord;
 }
+export type TaskReplyJournal = Pick<
+  SQLiteTaskBridgeJournal,
+  "receiverId" | "prepareReply" | "handoffReply"
+>;
 export class TaskReplies {
-  readonly #journal: SQLiteTaskBridgeJournal;
+  readonly #journal: TaskReplyJournal;
   readonly #enqueue: BridgeReplyOutbox["enqueueGuarded"];
   readonly #authorize: BridgeAuthorization;
   readonly #admit?: ReplyAdmission["withReply"];
   constructor(
-    journal: SQLiteTaskBridgeJournal,
+    journal: TaskReplyJournal,
     outbox: BridgeReplyOutbox,
     authorize: BridgeAuthorization = () => undefined,
     admission?: ReplyAdmission,

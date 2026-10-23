@@ -647,3 +647,5 @@ remain separate work.
 [検証済み個体のrateと公平writer受付](../../docs/writer-admission.md)の独立coreを追加しました。1プロセスで共有する任意構成で、単調token bucketと有限queueを使います。Relay／HAB／添付HTTPへも任意配線しました。認証済みcontextと現在の個体bindingで判定し、timeout後も未完了tool監査がsettleするまでslotを保持します。既定runtimeは有効化しません。
 
 [Task bridgeの明示引受け・永続link](../../docs/task-bridge.md)はRelay coreの外の任意integrationです。inboxのローカルwithEntryは検証済み本文を同期handoffするだけで、受領・ACKからTaskを作りません。受付／結果の永続返信outbox連携も任意のローカルAPIとして実装しています。[受信側の永続返信budget](../../docs/adapter-reply-budget.md)はcore外の別部品です。実製品配線は未完了です。
+
+[有限Adapter host](../../docs/adapter-host.md)はcore外で送受信・返信budget・Task bridgeを明示命令として組み立てます。SQLiteInboxのagentIdと固定clientのagentId／activeRequestsはローカル構成・未完了数の確認用であり、wire上の認証ではありません。既定runtimeは変更しません。

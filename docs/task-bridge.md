@@ -89,4 +89,6 @@ link／audit件数と試行回数はhostの有限設定です。満杯では既�
 
 `node --test test/task-bridge-replies.test.js` の32シナリオで、固定返信schema、未完了の拒否、Task証拠の明示観測、別権限・別outbox拒否、応答消失・再起動・二重commitの間の障害、outbox本文消去後の再照合、容量、期限、native writer競合、模擬Relayの実配送・ACKを検証します。配送応答が消えても同じ返信IDを再送し、元Taskは1件のままです。時計とDBの障害注入はunit試験に限定し、MCPのユーザー経路の証拠と混同しません。
 
+[有限Adapter host](adapter-host.md)は、ACKからの自動引受けを行わず、accept・submit・observe・返信準備／引渡しを別命令として組み立てます。停止後の古いTask応答ではjournalを先へ進めず、元keyで照合します。
+
 **実Adapterの全入口へのbudget適用、実製品からの引受け操作、本番binding／credential、restore運用は未完了です。** Task bridgeと返信はローカルの任意APIとして模擬検証した段階です。3者本番接続や既定MCPからのTask返信操作を完了したものではありません。

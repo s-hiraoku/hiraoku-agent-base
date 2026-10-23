@@ -365,6 +365,8 @@ bridgeは`(sender_id,message_id)`ごとに一意なTask linkと安定submit key�
 
 [Task bridgeの初期基盤](task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの固定data契約・永続返信journal・通常送信outboxへの引渡しも実装した。返信ID・1時間期限を固定し、不明な引渡しは同じ返信で照合する。resultは実行終了の観測済み証拠だけから作り、返信配送で元Taskを再提出しない。別DBへの二重commitの間の障害を想定し、outbox受付・配送ACK・Task成功を区別する。受信側の永続返信budgetも任意配線できる。実製品の引受け操作・全入口への適用・本番配線は未完了である。
 
+[有限Adapter host](adapter-host.md)も任意のローカルAPIとして実装した。受信・明示引受け・Task受付／観測・返信・送信を別命令とし、永続paused／epochと現在の操作権限でguardする。停止後の遅いRPCを次の保存へ進めず、元ACK／返信ID／Task keyで照合する。timeout後の未完了client／fetchはsettleまでinstanceの枠を保持する。常駐loop・Task worker・実製品の起動、分散single-flight、質問返信producerの永続intent、運用restore・本番配線は未実施である。
+
 ## 13. 保存期間と削除
 
 ### 13.1 決定済みの配送期限：一律1時間

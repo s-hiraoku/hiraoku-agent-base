@@ -191,6 +191,9 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       .update(this.#options.fingerprint_key)
       .digest("hex");
   }
+  get agentId() {
+    return this.#options.agent_id;
+  }
   migrate(): void {
     this.#ready = false;
     this.#tx(() => {
