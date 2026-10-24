@@ -17,7 +17,7 @@ export function deferred() {
   });
   return { promise, resolve };
 }
-export function hostFixture(t, patch = {}) {
+export function hostFixture(t, patch = {}, { outboxLeaseMs = 50 } = {}) {
   const f = fixture(t, { lease_ms: 50 });
   const outbox = new SQLiteOutbox(join(f.dir, "host-outbox.sqlite"), {
     agent_id: "b",
@@ -26,7 +26,7 @@ export function hostFixture(t, patch = {}) {
     max_records: 50,
     max_body_bytes: 1000000,
     max_clock_skew_ms: 1000,
-    lease_ms: 50,
+    lease_ms: outboxLeaseMs,
     retry_base_ms: 1,
     retry_cap_ms: 10,
     max_submit_attempts: 3,

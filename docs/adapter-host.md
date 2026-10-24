@@ -8,6 +8,7 @@
 
 | stepOnceのop | 動作・1命令の上限 |
 | --- | --- |
+| message_enqueue | 新規question／notice／execution_requestを自分のdurable outboxへ1件保存。HTTPやTask操作はしない |
 | receive | 既存ACKの照合→poll→保存後ACK。最大3 MCP RPC |
 | send | 既存outboxのsubmitまたはstatusを最大1 RPC |
 | inbox | 自分の未release inboxのID・kind・ACK確認有無を診断表示。本文を返さず、実行の証明には使わない |
@@ -19,6 +20,10 @@
 | task_observe | 保存済みTask IDへgetを最大1 RPC |
 | task_reply_prepare | 既存journalへ受付／結果の固定返信を保存 |
 | task_reply_enqueue | 保存済みTask返信を共通budget経由でoutboxへ引渡し |
+
+新規メッセージは `message_enqueue` へ既存Relay version 1のenvelopeを渡します。独立した同名操作の認可、現在のpause／epochと任意ownerを確認し、outbox commit内でも再確認します。senderや接続先URLは命令から指定できません。ID・本文・期限はcallerが確定したものを保存し、同じ内容の再投入は元のreceiptへ照合します。内容を変えた同IDは上書きしません。完了応答が失われても新ID・新期限は生成せず、元のenvelopeで照合します。結果は本文を含まないoutbox metadataで、queuedは配達成功を意味しません。実送信には別のsend命令が必要です。
+
+`in_reply_to` を持つenvelopeやanswer／execution_accepted／execution_resultはこの入口で拒否します。返信は元sourceに固定された既存answer／Task返信intentと共通budgetを通します。execution_requestもこの段階では配送するデータに留まり、Task引受け・submitは受信側の別操作です。既定の添付拒否、outboxの容量・期限・重複制御は変えません。この追加はローカルhost APIだけで、MCP catalog・製品設定・常駐loopを自動変更しません。実接続の構成側はmessage_enqueueの権限を明示してください。
 
 受信・ACK・一覧取得からTaskを作りません。Taskのclaim／heartbeat／complete／cancelやHermes実行は提供しません。Task Engineへの接続には、別途検証済みPrincipalを使う既存BridgeTasks portが必要です。hostの認可やHAB名からTask Principalを作りません。
 
