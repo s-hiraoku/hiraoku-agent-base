@@ -10,6 +10,7 @@ import { DurableSender } from "../relay/sender.ts";
 import { DurableReceiver } from "../relay/receiver.ts";
 import type { SenderTransport } from "../relay/sender.ts";
 import type { ReceiverTransport } from "../relay/receiver.ts";
+import { parseSubmission } from "../relay/contract.ts";
 import type { ContractLimits } from "../relay/contract.ts";
 import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
 import type { SQLiteOutbox } from "../relay/sqlite-outbox.ts";
@@ -22,6 +23,7 @@ import { HostError } from "./sqlite-control.ts";
 import type { SQLiteHostControl } from "./sqlite-control.ts";
 const kind = z.enum(["execution_accepted", "execution_result"]);
 export const hostCommand = z.discriminatedUnion("op", [
+  z.strictObject({ op: z.literal("message_enqueue"), message: z.unknown() }),
   z.strictObject({ op: z.literal("receive") }),
   z.strictObject({ op: z.literal("send") }),
   z.strictObject({ op: z.literal("inbox") }),
@@ -410,6 +412,17 @@ export class AdapterHostCycle {
           await sender.sendOnce();
           value = null;
         }
+      } else if (command.op === "message_enqueue") {
+        value = atomic(() => {
+          const message = parseSubmission(command.message, this.#limits);
+          // Replies must retain their source, intent and common reply-budget boundary.
+          if (
+            message.in_reply_to !== null ||
+            !["question", "notice", "execution_request"].includes(message.kind)
+          )
+            throw new HostError("host_initial_message_required");
+          return this.#outbox.enqueueGuarded(message, check);
+        });
       } else if (command.op === "inbox") {
         value = atomic(() =>
           this.#inbox.inbox().map((entry) => ({
@@ -568,6 +581,7 @@ export class AdapterHostCycle {
           "answer_intent_clock_regressed",
           "answer_intent_source_horizon_closed",
           "answer_intent_outbox_unavailable",
+          "host_initial_message_required",
           "host_task_unconfigured",
           "invalid_host_composition",
           "host_busy",

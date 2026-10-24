@@ -106,3 +106,5 @@ Miniflareが固定していたUndiciは[修正版7.30.1](https://github.com/node
 | G1全体・運用 | 管理添付の実runtime適用、全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |
 
 この一覧の未確定値を推測して接続・credential発行・課金・公開へ進めません。現在の完了は、ローカルMVPの再現手順・模擬往復・失敗復旧と、その検証済みコードです。
+
+新規question／notice／execution_requestの投入も、共通hostの明示的な `message_enqueue` を通します。デモからoutboxへ直接投入せず、認可・停止・所有権を確認した保存と、別のsend命令によるHTTP送信を分けて検証します。返信は従来のsource別intent／budgetを使います。
