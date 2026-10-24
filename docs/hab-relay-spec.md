@@ -528,6 +528,8 @@ G0の実個体能力調査は先行させるが、実際の処理・受入れは
 
 G1の部分的な証拠として、[登録からHTTP配送・停止・復旧までの17シナリオ](hab-relay-integration.md)を追加した。人向け登録フロー、模擬3個体のnative HTTP、専用DB／listenerのreopen、受付・ACK応答消失、不在、停止・失効・block、lease競合、本文引渡しを一連で確認する。注入方法と試験の限界を同文書に記録し、管理添付、公平性、実Adapterの返信budget、cold-start・backup restoreを含むG1全体の合格とは扱わない。
 
+[ローカルMVPの有限起動手順](local-mvp.md)では、同じ製品の2個体を含む模擬3個体で15段階を再現できる。送信／ACK応答消失、全DB・listenerのclose／reopen、質問返信intentの再開、running固定Taskのgate維持と結果配送を確認する。これはテキストMVPの合格条件であり、実個体のG0／G3、管理添付や全hostの整合backup／restoreを含むG1全体の昇格条件を置き換えない。
+
 ### 必須受入れ試験
 
 | 試験                   | 合格条件                                                                                                                                 |

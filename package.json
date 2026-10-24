@@ -11,10 +11,12 @@
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
     "test": "npm run build && node --test test/*.test.js",
     "check": "tsc --noEmit",
-    "lint": "eslint src db test",
+    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/lib/local-mvp.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",
-    "schema:generate": "drizzle-kit generate"
+    "schema:generate": "drizzle-kit generate",
+    "demo:hab-mvp": "node scripts/hab-mvp-demo.mjs",
+    "test:hab-mvp": "node --test test/local-mvp.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.1.1",
@@ -23,7 +25,7 @@
     "drizzle-orm": "^0.45.3",
     "ipaddr.js": "^2.5.0",
     "standardwebhooks": "^1.1.1",
-    "zod": "^4.0.0"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261004.1",
@@ -39,6 +41,9 @@
   "overrides": {
     "@esbuild-kit/core-utils": {
       "esbuild": "$esbuild"
+    },
+    "miniflare": {
+      "undici": "7.30.1"
     }
   }
 }
