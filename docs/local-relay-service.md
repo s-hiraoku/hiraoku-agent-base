@@ -15,7 +15,11 @@ npm run relay:local -- --config /ABSOLUTE/PRIVATE/service.local.json
 
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all
-limits explicitly. The existing canonical state directory must be 0700. Config,
+limits explicitly. `store.agent_capacity` is required: each verified sender gets
+its own pending/record budget ([details](relay-agent-capacity.md)), and
+`max_records_per_sender` / `max_pending_per_sender` must be smaller than the
+store-wide `max_records` / `max_pending`, so one sender cannot fill the retained
+record pool that every other agent relies on. The existing canonical state directory must be 0700. Config,
 keys and individual mappings must be canonical owner-only 0600 files ending in
 `.local.json`, outside Git. Hardlinked config/keys/mappings are rejected. A missing
 credential file refuses startup. An explicitly empty credential array starts

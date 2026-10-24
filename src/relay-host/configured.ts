@@ -43,19 +43,43 @@ const schema = z.strictObject({
     busy_timeout_ms: positive,
     allowed_kinds: z.array(z.string()).min(1),
   }),
-  store: z.strictObject({
-    max_pending: positive,
-    max_records: positive,
-    max_pending_per_recipient: positive,
-    max_body_bytes: positive,
-    max_clock_skew_ms: z.number().int().nonnegative(),
-    lease_ms: positive,
-    max_attempts: positive,
-    retry_base_ms: positive,
-    retry_cap_ms: positive,
-    poll_scan_limit: positive,
-    fair_poll: z.boolean().optional(),
-  }),
+  store: z
+    .strictObject({
+      max_pending: positive,
+      max_records: positive,
+      max_pending_per_recipient: positive,
+      max_body_bytes: positive,
+      max_clock_skew_ms: z.number().int().nonnegative(),
+      lease_ms: positive,
+      max_attempts: positive,
+      retry_base_ms: positive,
+      retry_cap_ms: positive,
+      poll_scan_limit: positive,
+      fair_poll: z.boolean().optional(),
+      // Required: without a per-sender budget one enrolled sender can fill the retained-record pool for every agent.
+      agent_capacity: z.strictObject({
+        max_pending_per_sender: positive,
+        max_body_bytes_per_sender: positive,
+        max_records_per_sender: positive,
+        max_body_bytes_per_recipient: positive,
+        max_records_per_recipient: positive,
+        reservations: z
+          .array(
+            z.strictObject({
+              sender_id: z.string(),
+              pending: positive,
+              body_bytes: positive,
+              records: positive,
+            }),
+          )
+          .max(256),
+      }),
+    })
+    .refine(
+      (store) =>
+        store.agent_capacity.max_records_per_sender < store.max_records &&
+        store.agent_capacity.max_pending_per_sender < store.max_pending,
+    ),
   http: z.strictObject({
     max_request_bytes: positive,
     max_response_bytes: positive,
@@ -67,7 +91,8 @@ const schema = z.strictObject({
 });
 function read(path: string) {
   // Preserve the existing bounded/canonical/private file reader and additionally reject hardlinks.
-  if (!isAbsolute(path) || lstatSync(path).nlink !== 1) throw Error("local_relay_config_rejected");
+  if (!isAbsolute(path) || lstatSync(path).nlink !== 1)
+    throw Error("local_relay_config_rejected");
   return readRuntimeConfig(path);
 }
 export async function startConfiguredLocalRelay(configPath: string) {

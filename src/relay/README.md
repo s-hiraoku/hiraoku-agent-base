@@ -63,6 +63,10 @@ JSON keys, strings and part ordering are preserved; object key order alone does
 not affect comparison. Unknown wire versions/control fields/part types fail
 explicitly. New wire features require a versioned contract change.
 
+Thread IDs are scoped to the sorted agent pair: another pair using the same
+thread ID neither blocks it nor learns that it is in use. Threads stored before
+this scoping keep their bare ID and remain usable by their own pair only.
+
 Every call requires explicit, finite positive `ContractLimits`. Test fixture
 numbers are not approved production capacity defaults. Raw request byte limits
 must also be enforced by the future transport before parsing untrusted JSON.
@@ -638,7 +642,7 @@ remain separate work.
 
 [配送DBのsnapshot／停止復元](../../docs/sqlite-snapshot-bundle.md)はprofile全DBのwriter lockとHMAC付きmanifestを使い、既存DBを置換しない新規offline directoryへ復元します。registry・認証・設定・鍵を巻き戻さず、runtimeの接続を自動再開しません。
 
-[Message個体別容量と最低予約枠](../../docs/relay-agent-capacity.md)は任意のagent_capacity設定で有効にします。verified senderと現在の保存量から受付transaction内で判定し、元のreceipt照合と既存retentionを維持します。
+[Message個体別容量と最低予約枠](../../docs/relay-agent-capacity.md)はagent_capacity設定で有効にします。`npm run relay:local`の構成済みhostでは必須で、送信者別上限は全体上限より小さくする必要があります。verified senderと現在の保存量から受付transaction内で判定し、元のreceipt照合と既存retentionを維持します。
 
 [公平pollと永続scan](../../docs/relay-fair-poll.md)は任意のfair_poll設定で有効にします。schema5のHMAC付き位置でsenderごと1候補を巡回し、lease・auditと原子的に進行します。snapshotはschema4/5を検証・停止復元し、runtimeの接続を自動再開しません。
 
