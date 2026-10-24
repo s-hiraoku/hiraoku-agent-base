@@ -1,0 +1,27 @@
+# Adapter hostの単一owner
+
+[有限host](adapter-host.md) · [質問返信intent](answer-intents.md)
+
+`SQLiteHostOwner`は、同じ個体のhostを一つだけ動かすための任意のローカル部品です。個体ごとに一つの専用SQLiteファイルを共有し、明示migrate・認可付きacquireの後に、ownerを一つのAdapterHostCycleへattachします。実個体・credential・listenerを起動しません。
+
+## 保持と停止
+
+専用DBの`BEGIN EXCLUSIVE`をプロセスの稼働期間中保持します。返信・inbox・outbox・controlのDBではありません。network待ちの間もこの専用lockを保持する一方、業務DBのtransactionを保持して待機することはありません。Node 24から使える[isTransaction](https://nodejs.org/api/sqlite.html#databaseistransaction)も確認し、transaction・binding・ファイル同一性を確認できない場合は失敗として扱います。
+
+他のconnection／processは同じownerを取得できません。TTL・heartbeat切れによる自動takeoverは提供しません。遅いcredentialやtimeout後の未完了workがあるownerを、新hostが時間だけを根拠に追い出すことを防ぎます。プロセスが異常終了するとOS／SQLiteのlockが解放されます。保存済みcontrolや配送lease、Task実行gateをresetする処理ではありません。
+
+hostは各命令の入口・同期保存・RPC前後・実fetch開始でownerも検証します。owner喪失後の遅い応答を保存・ACKしません。statusはheld／lost／unconfiguredを示し、管理権限によるpauseはowner喪失後も利用できます。
+
+明示解放は別権限の`releaseOwner(context)`を使います。pausedかつrunning=false、draining=0が必要です。timeoutを返しても裏の通信が残る間は解放を拒否します。解放後のhostは使用できず、新しいowner handleとhostを明示的に作ります。raw owner.closeはcomposition rootの終了処理だけに使い、稼働中の安全な引継ぎAPIにはしません。
+
+## 保存境界と限界
+
+0600の通常ファイル、単一hardlink、固定inode、個体・秘密keyのHMAC binding、専用schemaを検証します。WAL・memory・symlink・未知schema・違うkeyや個体を拒否します。新規ファイル以外へ検査用の余分なfdをopen/closeせず、同一processのPOSIX lockを誤って外さないようにします。同一processで失敗した競合接続を閉じた後にも、別processがownerを取得できないことを試験します。
+
+全hostが同じ個体・同じowner DBを使う構成が前提です。別pathへの複製、稼働中のファイル置換・削除、SQLite lockが保証されない共有filesystem、raw DB改変や別入口からの迂回を許可する仕組みではありません。専用DBをbackup対象にして古いlock状態を復元する必要はなく、プロセス停止後に同じbindingで開き直します。業務DBの整合restoreは別の手順です。
+
+旧hostのowner未設定モードは互換性のため残ります。ローカルMVPのcompositionでは必須にします。実接続を開始する際は全入口への適用を確認します。process終了後も既に送ったRPCが相手でcommitする可能性があるため、元ID・lease・fencingによる配送照合を続けます。owner取得だけを根拠に新IDや新Taskを作りません。
+
+## 検証
+
+`node --test test/adapter-owner.test.js`の13件で、明示取得・一つのhostへのattach、権限・停止・通信中の解放拒否、timeout後の保持、喪失後の保存拒否、binding・schema・permission・WAL拒否、native子プロセスの強制終了と再取得を確認します。固定ダミーデータと新規一時DBだけを使います。
