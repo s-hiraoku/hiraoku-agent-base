@@ -11,12 +11,13 @@
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
     "test": "npm run build && node --test test/*.test.js",
     "check": "tsc --noEmit",
-    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/lib/local-mvp.mjs",
+    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/lib/local-mvp.mjs scripts/hab-relay.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",
     "schema:generate": "drizzle-kit generate",
     "demo:hab-mvp": "node scripts/hab-mvp-demo.mjs",
-    "test:hab-mvp": "node --test test/local-mvp.test.js"
+    "test:hab-mvp": "node --test test/local-mvp.test.js",
+    "relay:local": "node scripts/hab-relay.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.1.1",

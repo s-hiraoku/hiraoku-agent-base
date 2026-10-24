@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "directory": "/ABSOLUTE/PRIVATE/HAB/state/relay",
+  "port": 8792,
+  "keys_file": "/ABSOLUTE/PRIVATE/HAB/config/store-keys.local.json",
+  "credentials_file": "/ABSOLUTE/PRIVATE/HAB/config/individuals.local.json",
+  "audit_directory": "/ABSOLUTE/PRIVATE/HAB/logs/security",
+  "audit_max_bytes": 262144,
+  "limits": {
+    "envelope_bytes": 32768,
+    "text_bytes": 16000,
+    "data_bytes": 16000,
+    "attachment_bytes": 1000,
+    "total_attachment_bytes": 1000,
+    "parts": 8,
+    "attachments": 3,
+    "json_depth": 20,
+    "json_nodes": 1000
+  },
+  "registry": {
+    "max_products": 10,
+    "max_agents": 20,
+    "max_bindings": 40,
+    "max_requests": 200,
+    "max_blocks": 20,
+    "max_audit_records": 200,
+    "max_context_ms": 30000,
+    "busy_timeout_ms": 100,
+    "allowed_kinds": [
+      "question",
+      "answer",
+      "notice",
+      "execution_request",
+      "execution_accepted",
+      "execution_result"
+    ]
+  },
+  "store": {
+    "max_pending": 20,
+    "max_records": 100,
+    "max_pending_per_recipient": 10,
+    "max_body_bytes": 100000,
+    "max_clock_skew_ms": 1000,
+    "lease_ms": 30000,
+    "max_attempts": 3,
+    "retry_base_ms": 1000,
+    "retry_cap_ms": 60000,
+    "poll_scan_limit": 20,
+    "fair_poll": true
+  },
+  "http": {
+    "max_request_bytes": 65536,
+    "max_response_bytes": 131072,
+    "timeout_ms": 2000,
+    "max_active_requests": 4,
+    "requests_per_window": 120,
+    "window_ms": 60000
+  }
+}
