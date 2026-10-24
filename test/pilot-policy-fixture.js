@@ -13,8 +13,29 @@ import { createHash } from "node:crypto";
 import process from "node:process";
 import { PilotInspector, measureCodeTree } from "../src/pilot-inspector.ts";
 import { HERMES_COMMIT } from "../src/hermes-runs.ts";
+import { hermesFixture } from "./hermes-fixture.js";
 export async function policyFixture(endpoint) {
   const root = await realpath(await mkdtemp(join(tmpdir(), "hub-inspector-")));
+  try {
+    return await buildPolicy(root, endpoint);
+  } catch (error) {
+    // A failed build must not leave the read-only source tree behind.
+    await chmod(join(root, "source"), 0o700).catch(() => {});
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+/** Closes the Hermes stub when the policy cannot be built, so the test fails instead of hanging. */
+export async function pilotFixtures() {
+  const fixture = await hermesFixture(true);
+  try {
+    return { fixture, policy: await policyFixture(fixture.options.endpoint) };
+  } catch (error) {
+    await fixture.close();
+    throw error;
+  }
+}
+async function buildPolicy(root, endpoint) {
   const profileRoot = join(root, "profile"),
     sourceRoot = join(root, "source"),
     wrapperPath = join(root, "reviewed-guard.py");

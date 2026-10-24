@@ -28,6 +28,7 @@ import {
   INVENTORY_ONE_SHOT_KEY,
   InventoryMCPClient,
 } from "../src/mcp-worker-client.ts";
+import { skipAsRoot } from "./non-root.js";
 const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fixture() {
@@ -184,7 +185,8 @@ const args = {
   task_type: "shift_log_inventory",
   request_key: INVENTORY_ONE_SHOT_KEY,
 };
-test("default preparation failure precedes Hub database, token callback, key and listener", async () => {
+test("default preparation failure precedes Hub database, token callback, key and listener", async (t) => {
+  if (skipAsRoot(t)) return;
   const f = await fixture();
   try {
     writeFileSync(join(f.profile, "config.yaml"), "dummy configuration drift", {
@@ -222,7 +224,8 @@ test("default preparation failure precedes Hub database, token callback, key and
   }
 });
 
-test("manual active CLI rejects preparation before accessing token stdin", async () => {
+test("manual active CLI rejects preparation before accessing token stdin", async (t) => {
+  if (skipAsRoot(t)) return;
   const f = await fixture();
   const descriptor = Object.getOwnPropertyDescriptor(process, "stdin");
   const previous = process.env.HAB_INVENTORY_CONFIG;

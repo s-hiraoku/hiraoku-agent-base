@@ -5,8 +5,10 @@ import { syncBuiltinESMExports } from "node:module";
 import { join } from "node:path";
 import { inventoryPolicyFixture } from "./inventory-policy-fixture.js";
 import { InventoryInspector } from "../src/inventory-inspector.ts";
+import { skipAsRoot } from "./non-root.js";
 
-test("real read-only preparation checks do not read runtime markers or produce live evidence", async () => {
+test("real read-only preparation checks do not read runtime markers or produce live evidence", async (t) => {
+  if (skipAsRoot(t)) return;
   const f = await inventoryPolicyFixture("http://127.0.0.1:8645/");
   try {
     await fs.mkdir(join(f.policy.profileRoot, "empty-workdir"), {
@@ -35,7 +37,8 @@ test("real read-only preparation checks do not read runtime markers or produce l
   }
 });
 
-test("preparation retains EPERM rejection rather than accepting it as denied writes", async () => {
+test("preparation retains EPERM rejection rather than accepting it as denied writes", async (t) => {
+  if (skipAsRoot(t)) return;
   const f = await inventoryPolicyFixture("http://127.0.0.1:8645/");
   try {
     await fs.mkdir(join(f.policy.profileRoot, "empty-workdir"), {
@@ -56,7 +59,8 @@ test("preparation retains EPERM rejection rather than accepting it as denied wri
   }
 });
 
-test("preparation rejects config drift and nonempty private cwd", async () => {
+test("preparation rejects config drift and nonempty private cwd", async (t) => {
+  if (skipAsRoot(t)) return;
   const f = await inventoryPolicyFixture("http://127.0.0.1:8645/");
   try {
     const cwd = join(f.policy.profileRoot, "empty-workdir");

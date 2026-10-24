@@ -6,8 +6,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { PilotInspector, measureCodeTree } from "../src/pilot-inspector.ts";
 import { policyFixture } from "./pilot-policy-fixture.js";
+import { skipAsRoot } from "./non-root.js";
 
-test("system policy requires root ownership and denies effective-user write including ACL grants", async () => {
+test("system policy requires root ownership and denies effective-user write including ACL grants", async (t) => {
+  if (skipAsRoot(t)) return;
   const root = await fs.realpath(
     await fs.mkdtemp(join(tmpdir(), "hub-system-fixture-")),
   );
@@ -80,7 +82,8 @@ test("system policy requires root ownership and denies effective-user write incl
   }
 });
 
-test("policy binds system alias targets to measured system roots and bounds total declared scan size", async () => {
+test("policy binds system alias targets to measured system roots and bounds total declared scan size", async (t) => {
+  if (skipAsRoot(t)) return;
   const fixture = await policyFixture("http://127.0.0.1:10001/");
   try {
     const p = fixture.policy;
@@ -131,7 +134,8 @@ test("policy binds system alias targets to measured system roots and bounds tota
   }
 });
 
-test("default trees reject ACL write and only explicitly reviewed package resources bypass the name gate", async () => {
+test("default trees reject ACL write and only explicitly reviewed package resources bypass the name gate", async (t) => {
+  if (skipAsRoot(t)) return;
   const root = await fs.realpath(
     await fs.mkdtemp(join(tmpdir(), "hub-resource-fixture-")),
   );
@@ -176,7 +180,8 @@ test("default trees reject ACL write and only explicitly reviewed package resour
   }
 });
 
-test("only declared disabled system site-packages can be omitted; aliases cannot reintroduce them", async () => {
+test("only declared disabled system site-packages can be omitted; aliases cannot reintroduce them", async (t) => {
+  if (skipAsRoot(t)) return;
   const fixture = await policyFixture("http://127.0.0.1:10001/");
   const lib = join(fixture.root, "lib");
   const global = join(lib, "python3.11", "site-packages");
@@ -245,7 +250,8 @@ test("only declared disabled system site-packages can be omitted; aliases cannot
   }
 });
 
-test("process interpreter must be an exact separately measured system runtime", async () => {
+test("process interpreter must be an exact separately measured system runtime", async (t) => {
+  if (skipAsRoot(t)) return;
   const fixture = await policyFixture("http://127.0.0.1:10001/");
   try {
     const p = fixture.policy;
