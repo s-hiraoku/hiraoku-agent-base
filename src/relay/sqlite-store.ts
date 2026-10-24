@@ -528,11 +528,19 @@ UPDATE relay_schema SET version=2;`);
         );
       }
       const [a, b] = [sender, m.recipient_id].sort();
-      const thread = this.#db
-        .prepare("SELECT a,b FROM relay_threads WHERE id=?")
-        .get(m.thread_id);
-      if (thread && (thread.a !== a || thread.b !== b))
-        throw new RelayError("invalid_reference");
+      // Thread names are scoped to the sorted agent pair; another pair's use of the same name is never consulted.
+      // Rows written before pair scoping keep their bare id; they are reused only by their own pair.
+      const legacy = this.#db
+        .prepare("SELECT 1 FROM relay_threads WHERE id=? AND a=? AND b=?")
+        .get(m.thread_id, a, b);
+      const threadKey = legacy
+        ? m.thread_id
+        : JSON.stringify([a, b, m.thread_id]);
+      const thread =
+        legacy ??
+        this.#db
+          .prepare("SELECT 1 FROM relay_threads WHERE id=? AND a=? AND b=?")
+          .get(threadKey, a, b);
       if (m.in_reply_to) {
         const parent = this.#db
           .prepare(
@@ -543,20 +551,20 @@ UPDATE relay_schema SET version=2;`);
           !parent ||
           parent.sender_id !== m.recipient_id ||
           parent.recipient_id !== sender ||
-          parent.thread_id !== m.thread_id
+          parent.thread_id !== threadKey
         )
           throw new RelayError("invalid_reference");
       }
       if (!thread)
         this.#db
           .prepare("INSERT INTO relay_threads VALUES(?,?,?)")
-          .run(m.thread_id, a, b);
+          .run(threadKey, a, b);
       const row: Row = {
         sender_id: sender,
         message_id: m.message_id,
         recipient_id: m.recipient_id,
         receipt_id: randomUUID(),
-        thread_id: m.thread_id,
+        thread_id: threadKey,
         fingerprint,
         accepted_at: now,
         expires_at: expires,
@@ -572,7 +580,7 @@ UPDATE relay_schema SET version=2;`);
           m.message_id,
           m.recipient_id,
           row.receipt_id,
-          m.thread_id,
+          threadKey,
           fingerprint,
           now,
           expires,

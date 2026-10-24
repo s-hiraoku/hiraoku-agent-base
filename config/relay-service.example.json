@@ -46,7 +46,15 @@
     "retry_base_ms": 1000,
     "retry_cap_ms": 60000,
     "poll_scan_limit": 20,
-    "fair_poll": true
+    "fair_poll": true,
+    "agent_capacity": {
+      "max_pending_per_sender": 10,
+      "max_body_bytes_per_sender": 50000,
+      "max_records_per_sender": 25,
+      "max_body_bytes_per_recipient": 50000,
+      "max_records_per_recipient": 50,
+      "reservations": []
+    }
   },
   "http": {
     "max_request_bytes": 65536,

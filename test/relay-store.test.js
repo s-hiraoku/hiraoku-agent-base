@@ -236,18 +236,90 @@ test("capacity rejection does not discard an accepted message and duplicate retr
     "capacity_exceeded",
   );
 });
-test("reciprocal replies use the same pair; foreign threads and forged reply references fail", (t) => {
+test("reciprocal replies use the same pair; forged reply references fail", (t) => {
   const f = fixture(t),
     m = message();
   f.service.submit("connection-a", m);
   const reply = message("answer", "agent-a");
   reply.in_reply_to = { sender_id: "agent-a", message_id: m.message_id };
   assert.equal(f.service.submit("connection-b", reply).sender_id, "agent-b");
-  const foreign = message("foreign", "agent-c");
-  code(() => f.service.submit("connection-a", foreign), "invalid_reference");
+  // The same thread name with another peer is that pair's own thread, not a reference into agent-a/agent-b.
+  const other = message("other-pair", "agent-c");
+  assert.equal(f.service.submit("connection-a", other).state, "pending");
+  const crossed = message("crossed", "agent-c");
+  crossed.in_reply_to = { sender_id: "agent-b", message_id: reply.message_id };
+  code(() => f.service.submit("connection-a", crossed), "invalid_reference");
   const missing = message("missing");
   missing.in_reply_to = { sender_id: "agent-b", message_id: "absent" };
   code(() => f.service.submit("connection-a", missing), "invalid_reference");
+});
+test("thread names are scoped per agent pair: a third agent cannot squat or probe another pair's thread", (t) => {
+  const f = fixture(t);
+  const agents = {
+    "connection-a": "agent-a",
+    "connection-b": "agent-b",
+    "connection-c": "agent-c",
+  };
+  const service = new RelayService(f.store, limits, {
+    authorize: (context) =>
+      agents[context] ? { agent_id: agents[context] } : undefined,
+  });
+  const on = (key, recipient, thread) => ({
+    ...message(key, recipient),
+    thread_id: thread,
+  });
+  // Squat: agent-c claims "plan" with agent-b first; agent-a and agent-b can still use "plan".
+  assert.equal(
+    service.submit("connection-c", on("c-1", "agent-b", "plan")).state,
+    "pending",
+  );
+  const first = on("a-1", "agent-b", "plan");
+  assert.equal(service.submit("connection-a", first).state, "pending");
+  const reply = on("b-1", "agent-a", "plan");
+  reply.in_reply_to = { sender_id: "agent-a", message_id: first.message_id };
+  assert.equal(service.submit("connection-b", reply).state, "pending");
+  // Probe: a name used by agent-a/agent-b answers exactly like an unused name.
+  assert.equal(
+    service.submit("connection-c", on("c-2", "agent-a", "plan")).state,
+    "pending",
+  );
+  assert.equal(
+    service.submit("connection-c", on("c-3", "agent-a", "never-used")).state,
+    "pending",
+  );
+  // A reply cannot be threaded onto another pair's conversation.
+  const stolen = on("c-4", "agent-a", "plan");
+  stolen.in_reply_to = { sender_id: "agent-a", message_id: first.message_id };
+  code(() => service.submit("connection-c", stolen), "invalid_reference");
+});
+test("threads stored before pair scoping keep working for their own pair only", (t) => {
+  const f = fixture(t);
+  const first = message("legacy-1");
+  f.service.submit("connection-a", first);
+  const db = new DatabaseSync(f.path);
+  t.after(() => db.close());
+  // Rewrite the stored key back to the pre-scoping bare id, as an older store would have written it.
+  db.exec("PRAGMA foreign_keys=OFF");
+  db.exec("UPDATE relay_threads SET id='thread-1'");
+  db.exec("UPDATE relay_messages SET thread_id='thread-1'");
+  const reply = message("legacy-2", "agent-a");
+  reply.in_reply_to = { sender_id: "agent-a", message_id: first.message_id };
+  assert.equal(f.service.submit("connection-b", reply).state, "pending");
+  assert.equal(db.prepare("SELECT count(*) n FROM relay_threads").get().n, 1);
+  assert.equal(
+    db
+      .prepare(
+        "SELECT thread_id FROM relay_messages WHERE message_id='legacy-2'",
+      )
+      .get().thread_id,
+    "thread-1",
+  );
+  // Another pair reusing the bare name gets its own scoped thread.
+  assert.equal(
+    f.service.submit("connection-a", message("legacy-3", "agent-c")).state,
+    "pending",
+  );
+  assert.equal(db.prepare("SELECT count(*) n FROM relay_threads").get().n, 2);
 });
 test("unimplemented attachment storage fails closed rather than issuing a false acceptance", (t) => {
   const f = fixture(t),
