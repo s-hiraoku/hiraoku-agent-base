@@ -70,10 +70,18 @@ without one, hard record bounds eventually refuse new acceptance.
 ## Dots and Hermes are separate connection gates
 
 A successful CLI start/401 check is local Relay infrastructure evidence, not an
-agent-to-agent roundtrip. The finite mock tests do not call any model. A probe ↔
-real Hermes trial requires the separately approved fixed wrapper, fresh independent
-Inspector, effective-tools/personal-context isolation and $0 additional-cost
-verification. Inventory code that reads files is not a substitute.
+agent-to-agent roundtrip. The finite mock tests do not call any model. The primary
+connection is each agent's own standard MCP client calling the five Relay tools;
+HAB does not require or invoke an external agent execution API. Receive timing and
+responses belong to the receiving agent. See the [common MCP connection procedure](common-mcp-connection.md).
+
+The older Runs/inventory execution trial is a separate optional path. Its fixed
+wrapper, independent Inspector, effective-tool/personal-context isolation and cost
+checks do not become prerequisites for a model-free native MCP transport check.
+A transport check still does not prove a model chose tools or that two real agents
+exchanged a message. Any model-assisted trial must separately confirm its permitted
+tools, personal-context handling and account/cost conditions. Inventory code that
+reads files is not a substitute for either connection proof.
 
 For real Dots, first identify its actual MCP execution environment. The currently
 observed HAB MVP Requester tools are the older six Task operations, not the five
