@@ -1,6 +1,6 @@
 # 有限Adapter host：受信・返信・停止・照合
 
-[README](../README.md) · [返信budget](adapter-reply-budget.md) · [Task bridge](task-bridge.md)
+[README](../README.md) · [返信budget](adapter-reply-budget.md) · [質問返信intent](answer-intents.md) · [Task bridge](task-bridge.md)
 
 `src/adapter-host/` は既存のdurable inbox／outbox、返信budget、任意のTask bridgeを組み立てるローカルAPIです。1命令ずつ明示的に動かし、scheduler、常駐loop、model、Task worker、listenerを起動しません。既定runtime・MCP catalog・実製品へは未配線です。
 
@@ -11,7 +11,9 @@
 | receive | 既存ACKの照合→poll→保存後ACK。最大3 MCP RPC |
 | send | 既存outboxのsubmitまたはstatusを最大1 RPC |
 | inbox | 自分の未release inboxのID・kind・ACK確認有無を診断表示。本文を返さず、実行の証明には使わない |
-| answer | 確認済みsourceと確定済みの返信envelopeを検証し、共通budgetを予約してoutboxへ保存 |
+| answer | intent未設定の従来入口。確認済みsourceと確定済みenvelopeを共通budget経由でoutboxへ保存 |
+| answer_prepare／answer_enqueue | 任意の質問返信journalへ先に保存／同ID・本文・期限でoutboxへ引渡し |
+| answer_inspect／answer_pending／answer_maintain | 任意journalの照合／有限ページ一覧／期限処理・30日GC |
 | task_accept | ACK確認済みの固定execution_requestを明示引受け。Task submitはしない |
 | task_submit | 元keyで固定Taskを最大1 RPC受付。reconcile:trueは同keyの明示照合 |
 | task_observe | 保存済みTask IDへgetを最大1 RPC |
@@ -30,7 +32,7 @@ hostは同じ個体にbindingしたcontrol、SQLiteInbox、SQLiteOutbox、SQLite
 
 network clientはreceive／send命令の中で構築し、その命令専用のguarded fetchを使います。factoryはIOを始めず、固定resource・固定個体・現在の認証providerを持つRelayMcpClient等を組み立てるだけです。実認証の検証・tokenの取得は既存client／接続portの責務です。この実装はcredentialの発行・読取り・コピーや接続先の自動探索を行いません。
 
-回答envelopeのproducerは別責務です。answer命令の呼出し側はID・本文・first_sent_at・expires_atを初回より前に確定・保持し、再起動後も同じenvelopeを渡します。budgetだけから失った回答本文を復元できるとは扱いません。Task返信は既存Task journalがその永続化を担当します。
+質問返信producerは[独立した永続intent](answer-intents.md)を任意指定できます。設定時は新しいanswer_*操作を使い、従来answerを拒否します。未設定の場合、回答envelopeのproducerは呼出し側の責務です。answer命令の呼出し側はID・本文・first_sent_at・expires_atを初回より前に確定・保持し、再起動後も同じenvelopeを渡します。budgetだけから失った回答本文を復元できるとは扱いません。Task返信は既存Task journalがその永続化を担当します。
 
 ## 永続停止と世代
 
@@ -58,7 +60,7 @@ audit上限はhostの明示設定です。resumeで最後の1枠を消費でき�
 
 pauseの永続化に失敗したら成功とは返さず、そのcontrol instanceを使用停止します。明示migrate・照合まで再使用しません。失敗したpauseが他processにも永続化されたと推測してはいけません。
 
-control・inbox・outbox・budget・Task journal／Task DBのcommitは単一transactionではありません。途中失敗でも既存のdurable証拠を保ちます。新controlは既存snapshot profileへ自動追加せず、DB単独restoreからの自動再開も行いません。古いsnapshot全体への巻戻しはHMACだけでは検出できないため、全host・未完了通信・Task実行を静止し、整合する世代と元IDを照合する復旧手順が必要です。
+control・inbox・outbox・budget・任意の質問返信journal・Task journal／Task DBのcommitは単一transactionではありません。途中失敗でも既存のdurable証拠を保ちます。新controlは既存snapshot profileへ自動追加せず、DB単独restoreからの自動再開も行いません。古いsnapshot全体への巻戻しはHMACだけでは検出できないため、全host・未完了通信・Task実行を静止し、整合する世代と元IDを照合する復旧手順が必要です。
 
 ## ローカル再現
 
@@ -74,4 +76,4 @@ node --test --test-name-pattern="real loopback HTTP MCP" test/adapter-host.test.
 
 既存HAB MCPは `verify-hab` でも別途回帰確認しました。recv-ackは `009-b-relay_ack.res`、send-statusは `011-a-relay_status.res`、独立DB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みで、raw evidenceは一時領域のみです。この確認は既存Relayの回帰試験であり、新hostを既定MCPや実製品へ配線した証明ではありません。
 
-実製品の接続・常駐起動、認証binding、質問返信producerの永続intent、単一owner管理、全入口への適用、整合restore・運用監視・本番E2Eは未完了です。
+実製品の接続・常駐起動、認証binding、単一owner管理、全入口への適用、整合restore・運用監視・本番E2Eは未完了です。

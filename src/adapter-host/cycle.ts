@@ -1,5 +1,7 @@
 /** Explicit one-command host. No scheduler, registration, model, worker or background task. */
 import { z } from "zod";
+import { AnswerIntents } from "../answer-intents/answers.ts";
+import type { SQLiteAnswerJournal } from "../answer-intents/sqlite-journal.ts";
 import { id, sourceKey } from "../adapter-policy/contract.ts";
 import { InboxAnswers } from "../adapter-policy/inbox-answers.ts";
 import type { SQLiteReplyBudget } from "../adapter-policy/sqlite-reply-budget.ts";
@@ -26,6 +28,22 @@ export const hostCommand = z.discriminatedUnion("op", [
     op: z.literal("answer"),
     source: sourceKey,
     message: z.unknown(),
+  }),
+  z.strictObject({
+    op: z.literal("answer_prepare"),
+    source: sourceKey,
+    body: z.unknown(),
+  }),
+  z.strictObject({ op: z.literal("answer_enqueue"), source: sourceKey }),
+  z.strictObject({ op: z.literal("answer_inspect"), source: sourceKey }),
+  z.strictObject({
+    op: z.literal("answer_pending"),
+    limit: z.number().int().min(1).max(1000),
+    after: id.nullable().optional(),
+  }),
+  z.strictObject({
+    op: z.literal("answer_maintain"),
+    limit: z.number().int().min(1).max(1000),
   }),
   z.strictObject({ op: z.literal("task_accept"), source: sourceKey }),
   z.strictObject({
@@ -68,6 +86,7 @@ export interface AdapterHostOptions {
   network?: typeof globalThis.fetch;
   authorization?: HostAuthorization;
   task?: { journal: SQLiteTaskBridgeJournal; tasks: BridgeTasks };
+  answer_intents?: SQLiteAnswerJournal;
 }
 export interface HostStepResult {
   op: HostCommand["op"];
@@ -85,6 +104,7 @@ export class AdapterHostCycle {
   readonly #network: typeof globalThis.fetch;
   readonly #authorize: HostAuthorization;
   readonly #task?: NonNullable<AdapterHostOptions["task"]>;
+  readonly #answers?: SQLiteAnswerJournal;
   #running = false;
   #draining: HostTransport[] = [];
   #networkPending = new Set<Promise<Response>>();
@@ -96,6 +116,7 @@ export class AdapterHostCycle {
       !outbox ||
       !budget ||
       [
+        options.answer_intents?.agentId ?? control.agentId,
         inbox.agentId,
         outbox.agentId,
         budget.agentId,
@@ -108,6 +129,7 @@ export class AdapterHostCycle {
         typeof options.authorization !== "function")
     )
       throw new HostError("invalid_host_composition");
+    this.#answers = options.answer_intents;
     this.#control = control;
     this.#inbox = inbox;
     this.#outbox = outbox;
@@ -367,7 +389,56 @@ export class AdapterHostCycle {
             receipt_confirmed: entry.receipt_confirmed,
           })),
         );
+      } else if (
+        command.op === "answer_prepare" ||
+        command.op === "answer_enqueue" ||
+        command.op === "answer_inspect" ||
+        command.op === "answer_pending" ||
+        command.op === "answer_maintain"
+      ) {
+        if (!this.#answers)
+          throw new HostError("host_answer_intents_unconfigured");
+        const answers = new AnswerIntents(
+          this.#answers,
+          this.#inbox,
+          this.#outbox,
+          this.#budget,
+          this.#limits,
+          (ctx, op, key) => {
+            check();
+            if (
+              ctx !== token ||
+              command.op !== "answer_" + op ||
+              (source === null
+                ? key !== null
+                : !key ||
+                  source.sender_id !== key.sender_id ||
+                  source.message_id !== key.message_id)
+            )
+              throw new HostError("host_forbidden");
+            return { agent_id: this.#control.agentId, actor_id: guard.actor };
+          },
+        );
+        value = atomic(() => {
+          switch (command.op) {
+            case "answer_prepare":
+              return answers.prepare(token, command.source, command.body);
+            case "answer_enqueue":
+              return answers.enqueueOnce(token, command.source);
+            case "answer_inspect":
+              return answers.inspect(token, command.source);
+            case "answer_pending":
+              return answers.pending(
+                token,
+                command.limit,
+                command.after ?? null,
+              );
+            case "answer_maintain":
+              return answers.maintain(token, command.limit);
+          }
+        });
       } else if (command.op === "answer") {
+        if (this.#answers) throw new HostError("host_answer_intents_required");
         const answers = new InboxAnswers(
           this.#budget,
           this.#inbox,
@@ -459,6 +530,14 @@ export class AdapterHostCycle {
         error instanceof Error &&
         "code" in error &&
         [
+          "host_answer_intents_unconfigured",
+          "host_answer_intents_required",
+          "answer_intent_conflict",
+          "answer_intent_not_found",
+          "answer_intent_capacity_exceeded",
+          "answer_intent_clock_regressed",
+          "answer_intent_source_horizon_closed",
+          "answer_intent_outbox_unavailable",
           "host_task_unconfigured",
           "invalid_host_composition",
           "host_busy",
