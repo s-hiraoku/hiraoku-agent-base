@@ -124,6 +124,6 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 固定1件の次段階は、[positive getとworker主体確認](docs/fixed-readback-worker-identity.md)を参照してください。fixtureの成功結果はHermesの実行成功とは区別します。
 
-共通Relayの明示的なローカル起動関数と、未実施の資格情報・Hermes疎通の承認条件は[ローカルRelayホスト](docs/local-relay-host.md)を参照してください。実サービスの常駐起動・資格情報設定・本番接続は未実施です。
+共通Relayの起動関数と接続の承認条件は[ローカルRelayホスト](docs/local-relay-host.md)を参照してください。loopback・全拒否設定での常駐起動と401/403拒否を確認済みです。実個体の認証・binding、Hermes/Dotsとの往復は未検証です。停止・再起動は[ユーザーLaunchAgent手順](docs/local-relay-launchagent.md)にまとめています。
 
 承認後の非公開設定を明示して起動する共通CLIは[ローカルRelayサービス](docs/local-relay-service.md)を参照してください。コードの検証と実エージェント接続の結果は区別します。

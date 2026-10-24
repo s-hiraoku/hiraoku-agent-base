@@ -62,7 +62,8 @@ cannot be reliably zeroized.
 The CLI emits only `{state:"ready",url}` and `{state:"stopped"}`. SIGTERM/SIGINT
 closes the owned listener and databases; reopening the same state retains receipts.
 A supervisor must pin an independently tested release and use an explicit private
-config path. No existing service, keychain, MCP setting, profile or user job is
+config path. The opt-in [user LaunchAgent runbook](local-relay-launchagent.md)
+records installation, rejection checks, stop and restart. No existing service, keychain, MCP setting, profile or user job is
 modified by the CLI. A future production maintenance schedule is still explicit;
 without one, hard record bounds eventually refuse new acceptance.
 
