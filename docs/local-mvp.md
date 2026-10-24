@@ -88,6 +88,12 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 MVPの5テストは、上記CLIそのものの15段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。既存の独立Relay、D1／Task、添付・公平性・snapshot等の回帰も続けます。補助的なRelay MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
 
+## 新規導入時の依存確認
+
+2026-10-24のクリーン導入で既存lockfileの脆弱性通知を確認し、Zodを4.6.7、body-parserを2.4.0、fast-uriを3.1.9、ip-addressを10.7.4へ更新しました。[Zodの上限検証修正](https://github.com/colinhacks/zod/commit/a0ebf970f2d752e5f58527cd2942ff48be4f46bd)、[body-parserの修正対象](https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828)を確認しています。
+
+Miniflareが固定していたUndiciは[修正版7.30.1](https://github.com/nodejs/undici/releases/tag/v7.30.1)へ依存overrideを限定し、Miniflare自体やSDKのmajor versionを変更していません。D1を含む全回帰を再実行し、このlockfileのnpm auditは開発依存を含め0件でした。依存監査は実個体接続の受入れやplatform全体の安全性の証明には使いません。
+
 ## 未検証ゲートと実接続の条件
 
 | 対象 | 次に確認／承認が必要な内容 |

@@ -226,6 +226,7 @@ test("Adapter host: timed-out credential work retains admission until the provid
   await sleep(10);
   assert.equal(f.state.tools.length, 0);
   f.state.credential = () => "Bearer fixture-b";
+  f.state.timeout_ms = 1000;
   assert.equal((await f.step({ op: "receive" })).state, "done");
 });
 test("Adapter host: stopped credential resolution cannot start a late network request after resume", async (t) => {
