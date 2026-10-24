@@ -1,5 +1,6 @@
 /** Explicit one-command host. No scheduler, registration, model, worker or background task. */
 import { z } from "zod";
+import type { SQLiteHostOwner, HostOwnership } from "./sqlite-owner.ts";
 import { AnswerIntents } from "../answer-intents/answers.ts";
 import type { SQLiteAnswerJournal } from "../answer-intents/sqlite-journal.ts";
 import { id, sourceKey } from "../adapter-policy/contract.ts";
@@ -64,7 +65,8 @@ export const hostCommand = z.discriminatedUnion("op", [
   }),
 ]);
 export type HostCommand = z.infer<typeof hostCommand>;
-export type HostOperation = HostCommand["op"] | "control" | "status";
+export type HostOperation =
+  HostCommand["op"] | "control" | "status" | "release_owner";
 export type HostAuthorization = (
   context: unknown,
   operation: HostOperation,
@@ -87,6 +89,7 @@ export interface AdapterHostOptions {
   authorization?: HostAuthorization;
   task?: { journal: SQLiteTaskBridgeJournal; tasks: BridgeTasks };
   answer_intents?: SQLiteAnswerJournal;
+  owner?: SQLiteHostOwner;
 }
 export interface HostStepResult {
   op: HostCommand["op"];
@@ -105,6 +108,7 @@ export class AdapterHostCycle {
   readonly #authorize: HostAuthorization;
   readonly #task?: NonNullable<AdapterHostOptions["task"]>;
   readonly #answers?: SQLiteAnswerJournal;
+  readonly #ownership?: HostOwnership;
   #running = false;
   #draining: HostTransport[] = [];
   #networkPending = new Set<Promise<Response>>();
@@ -116,6 +120,7 @@ export class AdapterHostCycle {
       !outbox ||
       !budget ||
       [
+        options.owner?.agentId ?? control.agentId,
         options.answer_intents?.agentId ?? control.agentId,
         inbox.agentId,
         outbox.agentId,
@@ -153,6 +158,7 @@ export class AdapterHostCycle {
         throw new HostError("invalid_host_composition");
       }
     }
+    if (options.owner) this.#ownership = options.owner.attach();
   }
   #decision(
     context: unknown,
@@ -204,7 +210,21 @@ export class AdapterHostCycle {
     const guard = this.#guard(context, "status", null),
       state = this.#control.snapshot();
     guard.check();
-    return { ...state, running: this.#running, draining: this.#pending() };
+    let owner: "unconfigured" | "held" | "lost" = "unconfigured";
+    if (this.#ownership) {
+      try {
+        this.#ownership.check();
+        owner = "held";
+      } catch {
+        owner = "lost";
+      }
+    }
+    return {
+      ...state,
+      running: this.#running,
+      draining: this.#pending(),
+      owner,
+    };
   }
   setPaused(context: unknown, paused: boolean, expectedEpoch: number) {
     const guard = this.#guard(context, "control", null);
@@ -214,6 +234,15 @@ export class AdapterHostCycle {
       guard.actor,
       guard.check,
     );
+  }
+  releaseOwner(context: unknown) {
+    const guard = this.#guard(context, "release_owner", null);
+    if (this.#running || this.#pending()) throw new HostError("host_busy");
+    if (!this.#ownership) throw new HostError("host_owner_unconfigured");
+    if (!this.#control.snapshot().paused)
+      throw new HostError("host_must_pause");
+    guard.check();
+    this.#ownership.release();
   }
   async stepOnce(
     context: unknown,
@@ -233,6 +262,7 @@ export class AdapterHostCycle {
     const authority = () => {
       if (!live) throw new HostError("host_session_closed");
       guard.check();
+      this.#ownership?.check();
     };
     const check = () => {
       authority();

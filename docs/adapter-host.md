@@ -50,7 +50,7 @@ statusとsetPausedはそれぞれ現在の権限を必要とします。setPause
 
 client／network providerは実際の未完了数を報告し、AbortSignalと有限timeoutを守る必要があります。未知・壊れたactive数はidleと扱いません。強制的なslot解除や自動client再生成で未完了workを隠しません。Task portもPromiseを早期成功させて裏の仕事を放置しない契約が必要です。
 
-running／drainingはinstance内の状態です。個体ごとの単一ownerとして構成する必要があり、複数hostの同時起動を防ぐ起動lock／owner leaseはまだ提供しません。複数connectionのcontrol変更はSQLiteのCASで競合を防ぎ、既存outbox・ACK・Taskのlease／fencing・実行並列1も維持しますが、host全体の分散single-flightを実装したとは扱いません。
+running／drainingはinstance内の状態です。任意の[単一owner管理](adapter-owner.md)を追加し、専用SQLiteのprocess-lifetime lockを取得した一つのhostへattachできます。未設定の互換モードでは複数hostを防ぎません。複数connectionのcontrol変更はSQLiteのCASで競合を防ぎ、既存outbox・ACK・Taskのlease／fencing・実行並列1も維持しますが、host全体の分散single-flightを実装したとは扱いません。
 
 ## 保存と運用
 
@@ -76,4 +76,4 @@ node --test --test-name-pattern="real loopback HTTP MCP" test/adapter-host.test.
 
 既存HAB MCPは `verify-hab` でも別途回帰確認しました。recv-ackは `009-b-relay_ack.res`、send-statusは `011-a-relay_status.res`、独立DB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みで、raw evidenceは一時領域のみです。この確認は既存Relayの回帰試験であり、新hostを既定MCPや実製品へ配線した証明ではありません。
 
-実製品の接続・常駐起動、認証binding、単一owner管理、全入口への適用、整合restore・運用監視・本番E2Eは未完了です。
+実製品の接続・常駐起動、認証binding、全入口へのowner適用、整合restore・運用監視・本番E2Eは未完了です。
