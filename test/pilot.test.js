@@ -8,8 +8,8 @@ import { HermesRuns, PILOT_OUTPUT } from "../src/hermes-runs.ts";
 import { Adapter } from "../src/adapter.ts";
 import { Journal } from "../src/journal.ts";
 import { Hub, worker, owner, submit, RESPONSE } from "./fixtures.js";
-import { hermesFixture } from "./hermes-fixture.js";
-import { policyFixture } from "./pilot-policy-fixture.js";
+import { policyFixture, pilotFixtures } from "./pilot-policy-fixture.js";
+import { skipAsRoot } from "./non-root.js";
 async function changeCode(policy, name, text) {
   await fs.chmod(policy.policy.sourceRoot, 0o700);
   const path = join(policy.policy.sourceRoot, name);
@@ -26,9 +26,9 @@ const opts = (fixture, policy, extra = {}) => ({
   now: policy.now,
   ...extra,
 });
-test("fixed pilot mock API roundtrip uses only fixed body, no toolsets route, exact result conversion", async () => {
-  const fixture = await hermesFixture(true);
-  const policy = await policyFixture(fixture.options.endpoint);
+test("fixed pilot mock API roundtrip uses only fixed body, no toolsets route, exact result conversion", async (t) => {
+  if (skipAsRoot(t)) return;
+  const { fixture, policy } = await pilotFixtures();
   const h = new Hub();
   const receipt = new Journal(join(policy.root, "receipt.db"));
   try {
@@ -53,7 +53,8 @@ test("fixed pilot mock API roundtrip uses only fixed body, no toolsets route, ex
     await policy.cleanup();
   }
 });
-test("inspector never reads credential contents and returns short-lived bound evidence", async () => {
+test("inspector never reads credential contents and returns short-lived bound evidence", async (t) => {
+  if (skipAsRoot(t)) return;
   const policy = await policyFixture("http://127.0.0.1:10001/");
   const original = fs.readFile;
   let keyReads = 0;
@@ -87,7 +88,8 @@ for (const defect of [
   "wrong-commit",
   "changed-process",
 ])
-  test(`independent inspector rejects ${defect}`, async () => {
+  test(`independent inspector rejects ${defect}`, async (t) => {
+    if (skipAsRoot(t)) return;
     const policy = await policyFixture("http://127.0.0.1:10001/");
     let probes = 0;
     try {
@@ -114,7 +116,8 @@ for (const defect of [
     }
   });
 for (const file of ["config.yaml", ".env", "idempotency.db"])
-  test(`inspector rejects changed ${file} without admission`, async () => {
+  test(`inspector rejects changed ${file} without admission`, async (t) => {
+    if (skipAsRoot(t)) return;
     const policy = await policyFixture("http://127.0.0.1:10001/");
     try {
       if (file === "idempotency.db") {
@@ -144,9 +147,9 @@ for (const defect of [
   "sessions",
   "404",
 ])
-  test(`pilot capability ${defect} never substitutes 404 as tools zero`, async () => {
-    const fixture = await hermesFixture(true);
-    const policy = await policyFixture(fixture.options.endpoint);
+  test(`pilot capability ${defect} never substitutes 404 as tools zero`, async (t) => {
+    if (skipAsRoot(t)) return;
+    const { fixture, policy } = await pilotFixtures();
     let admissions = 0;
     try {
       await assert.rejects(
@@ -183,9 +186,9 @@ for (const defect of [
       await policy.cleanup();
     }
   });
-test("pilot rejects nonexact output; terminal uncertainty preserves receipt and slot", async () => {
-  const fixture = await hermesFixture(true);
-  const policy = await policyFixture(fixture.options.endpoint);
+test("pilot rejects nonexact output; terminal uncertainty preserves receipt and slot", async (t) => {
+  if (skipAsRoot(t)) return;
+  const { fixture, policy } = await pilotFixtures();
   const h = new Hub();
   const receipt = new Journal(join(policy.root, "receipt.db"));
   try {
@@ -221,9 +224,9 @@ test("pilot rejects nonexact output; terminal uncertainty preserves receipt and 
     await policy.cleanup();
   }
 });
-test("old standard contract unknown receipt cannot be replayed through fixed pilot", async () => {
-  const fixture = await hermesFixture(true);
-  const policy = await policyFixture(fixture.options.endpoint);
+test("old standard contract unknown receipt cannot be replayed through fixed pilot", async (t) => {
+  if (skipAsRoot(t)) return;
+  const { fixture, policy } = await pilotFixtures();
   const h = new Hub();
   const receipt = new Journal(join(policy.root, "receipt.db"));
   try {
@@ -263,7 +266,8 @@ test("old standard contract unknown receipt cannot be replayed through fixed pil
     await policy.cleanup();
   }
 });
-test("inspector refuses source loaded while modified even when current hash/git status are restored", async () => {
+test("inspector refuses source loaded while modified even when current hash/git status are restored", async (t) => {
+  if (skipAsRoot(t)) return;
   const { setTimeout: wait } = await import("node:timers/promises");
   const { measureCodeTree } = await import("../src/pilot-inspector.ts");
   const policy = await policyFixture("http://127.0.0.1:10001/");
@@ -282,7 +286,8 @@ test("inspector refuses source loaded while modified even when current hash/git 
   }
 });
 for (const name of ["ignored.py", "ignored.pyc", "startup.pth"])
-  test(`unlisted importable ${name} cannot escape inspector`, async () => {
+  test(`unlisted importable ${name} cannot escape inspector`, async (t) => {
+    if (skipAsRoot(t)) return;
     const policy = await policyFixture("http://127.0.0.1:10001/");
     try {
       await changeCode(policy, name, "unreviewed code");
@@ -291,9 +296,9 @@ for (const name of ["ignored.py", "ignored.pyc", "startup.pth"])
       await policy.cleanup();
     }
   });
-test("known pilot admission reconciles by ID after journal reopen; lost ACK reuses one fixed admission", async () => {
-  const fixture = await hermesFixture(true);
-  const policy = await policyFixture(fixture.options.endpoint);
+test("known pilot admission reconciles by ID after journal reopen; lost ACK reuses one fixed admission", async (t) => {
+  if (skipAsRoot(t)) return;
+  const { fixture, policy } = await pilotFixtures();
   const h = new Hub();
   let receipt = new Journal(join(policy.root, "receipt.db"));
   let lost = false;
@@ -357,7 +362,8 @@ test("known pilot admission reconciles by ID after journal reopen; lost ACK reus
   }
 });
 for (const name of ["dependency.egg", "dependency.whl", "dependency.custom"])
-  test(`all-file code manifest covers nonstandard archive ${name}`, async () => {
+  test(`all-file code manifest covers nonstandard archive ${name}`, async (t) => {
+    if (skipAsRoot(t)) return;
     const { measureCodeTree } = await import("../src/pilot-inspector.ts");
     const policy = await policyFixture("http://127.0.0.1:10001/");
     try {

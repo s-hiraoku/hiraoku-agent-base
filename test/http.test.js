@@ -7,14 +7,17 @@ import { Hub, RESPONSE } from "./fixtures.js";
 import { handler } from "../src/mcp.ts";
 import { Adapter } from "../src/adapter.ts";
 import { HermesRuns } from "../src/hermes-runs.ts";
-import { policyFixture } from "./pilot-policy-fixture.js";
+import { pilotFixtures } from "./pilot-policy-fixture.js";
 import { hermesFixture } from "./hermes-fixture.js";
 import { MCPHubClient } from "../src/client.ts";
+import { skipAsRoot } from "./non-root.js";
 for (const pilot of [false, true])
-  test(`official MCP client HTTP fixed roundtrip: ${pilot ? "constrained pilot" : "standard"}`, async () => {
+  test(`official MCP client HTTP fixed roundtrip: ${pilot ? "constrained pilot" : "standard"}`, async (t) => {
+    if (pilot && skipAsRoot(t)) return;
     const hub = new Hub();
-    const hermes = await hermesFixture(pilot);
-    const policy = pilot ? await policyFixture(hermes.options.endpoint) : null;
+    const { fixture: hermes, policy } = pilot
+      ? await pilotFixtures()
+      : { fixture: await hermesFixture(false), policy: null };
     const owner = {
       subject: "dummy-owner",
       operations: ["submit", "get", "cancel"],

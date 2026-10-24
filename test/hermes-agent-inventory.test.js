@@ -12,6 +12,7 @@ import { Hub, journal } from "./fixtures.js";
 import { inventoryOwner, inventoryWorker } from "./inventory-suite.js";
 import { inventoryPolicyFixture } from "./inventory-policy-fixture.js";
 import { INVENTORY_REQUEST } from "../src/task-contract.ts";
+import { skipAsRoot } from "./non-root.js";
 const endpoint = "http://127.0.0.1:8645/";
 const policy = {
   contract: "hermes-agent-inventory-v1",
@@ -105,7 +106,8 @@ const connect = (p, api) =>
     now: p.now,
     fetch: api.fetch,
   });
-test("Hub → inspector-bound inventory Runs → no-socket API stub → Python one-tool Agent mock → evidence → Hub get", async () => {
+test("Hub → inspector-bound inventory Runs → no-socket API stub → Python one-tool Agent mock → evidence → Hub get", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint),
     api = apiStub(),
     hub = new Hub();
@@ -133,7 +135,8 @@ test("Hub → inspector-bound inventory Runs → no-socket API stub → Python o
     await p.cleanup();
   }
 });
-test("lost admission ACK/reconnect retains original contract and does not invoke Agent twice", async () => {
+test("lost admission ACK/reconnect retains original contract and does not invoke Agent twice", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint),
     api = apiStub(),
     hub = new Hub(),
@@ -162,7 +165,8 @@ test("lost admission ACK/reconnect retains original contract and does not invoke
     await p.cleanup();
   }
 });
-test("Agent missing tool evidence never completes Hub and keeps receipt for reconciliation", async () => {
+test("Agent missing tool evidence never completes Hub and keeps receipt for reconciliation", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint),
     api = apiStub("skip"),
     hub = new Hub(),
@@ -190,7 +194,8 @@ test("Agent missing tool evidence never completes Hub and keeps receipt for reco
     await p.cleanup();
   }
 });
-test("inspector rejects startup manifest/model/tool/budget drift; never reads any credentials", async () => {
+test("inspector rejects startup manifest/model/tool/budget drift; never reads any credentials", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint);
   const original = fs.readFile;
   const replacement = mock.method(fs, "readFile", async (path, ...args) => {
@@ -217,7 +222,8 @@ test("inspector rejects startup manifest/model/tool/budget drift; never reads an
     await p.cleanup();
   }
 });
-test("wrong capabilities and changed pinned credential scope block admission", async () => {
+test("wrong capabilities and changed pinned credential scope block admission", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint),
     api = apiStub();
   try {
@@ -235,7 +241,8 @@ test("wrong capabilities and changed pinned credential scope block admission", a
     await p.cleanup();
   }
 });
-test("reviewed wrong manifest still fails semantic policy; marker symlinks/oversize are refused before open", async () => {
+test("reviewed wrong manifest still fails semantic policy; marker symlinks/oversize are refused before open", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint);
   const { createHash } = await import("node:crypto");
   try {

@@ -99,6 +99,8 @@ Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です�
 
 Node 24以上で実行します。fixtureは実エージェントや本番callbackへ接続しません。
 
+試験は非rootユーザーで実行してください。rootは書込み拒否をすり抜けるため、コード改ざん検査やpilot／inventory inspectorの権限系試験は検証できず、root実行時は理由付きでskipされます（Dockerなどのroot CIでは非rootユーザーに切り替えます）。
+
 ```sh
 npm ci
 npm run lint

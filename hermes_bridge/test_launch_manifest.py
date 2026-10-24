@@ -5,6 +5,7 @@ import unittest
 import subprocess
 import sys
 import errno
+import os
 from unittest.mock import patch
 from pathlib import Path
 from hermes_bridge.serve_inventory import (
@@ -16,7 +17,15 @@ from hermes_bridge.serve_inventory import (
 )
 
 
+# Write-denial checks rely on file permissions, which root bypasses.
+requires_non_root = unittest.skipIf(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    "requires a non-root user: root bypasses file write denial",
+)
+
+
 class LaunchTests(unittest.TestCase):
+    @requires_non_root
     def test_immutable_code_hash_and_drift_refusal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -115,6 +124,7 @@ class LaunchTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_manifest({**manifest, **defect}, **kwargs)
 
+    @requires_non_root
     def test_fixed_dependencies_reject_pth_editable_and_direct_url_loaders(self):
         for name in (
             "inject.pth",

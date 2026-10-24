@@ -10,6 +10,7 @@ import {
   measureCodeTree,
 } from "../src/inventory-inspector.ts";
 import { inventoryPolicyFixture } from "./inventory-policy-fixture.js";
+import { skipAsRoot } from "./non-root.js";
 const endpoint = "http://127.0.0.1:8645/";
 function pythonAccepts(manifest) {
   const code = `import importlib.util,json,sys
@@ -29,7 +30,8 @@ except (ValueError,TypeError,KeyError):
     }).trim() === "accepted"
   );
 }
-test("TS inspector and Python guard agree on isolated fixed-dependency contract", async () => {
+test("TS inspector and Python guard agree on isolated fixed-dependency contract", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint);
   try {
     const lib = join(p.root, "lib");
@@ -100,7 +102,8 @@ test("TS inspector and Python guard agree on isolated fixed-dependency contract"
     await p.cleanup();
   }
 });
-test("inventory process must use -I -S, never merely -I", async () => {
+test("inventory process must use -I -S, never merely -I", async (t) => {
+  if (skipAsRoot(t)) return;
   const p = await inventoryPolicyFixture(endpoint);
   try {
     assert.ok(await p.inspector.inspect());
@@ -110,7 +113,8 @@ test("inventory process must use -I -S, never merely -I", async () => {
     await p.cleanup();
   }
 });
-test("fixed dependency trees reject executable loaders including nested metadata", async () => {
+test("fixed dependency trees reject executable loaders including nested metadata", async (t) => {
+  if (skipAsRoot(t)) return;
   for (const name of [
     "inject.pth",
     "inject.egg-link",
