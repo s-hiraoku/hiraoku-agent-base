@@ -1,3 +1,4 @@
+import { RELAY_OAUTH_SCOPES } from "../relay/oauth-resource.ts";
 import type { WriterAdmission } from "../relay/writer-admission.ts";
 /** Explicit HAB HTTP composition; constructing starts no listener or connection. */
 import { RelayHttpGateway } from "../relay/http.ts";
@@ -31,6 +32,11 @@ export class HabHttpGateway extends RelayHttpGateway {
     resolve: RelayContextResolver,
     gate: RelayMcpGate,
   ) {
-    return createHabMcpServer(this.#hab, resolve, gate);
+    return createHabMcpServer(
+      this.#hab,
+      resolve,
+      gate,
+      this.oauth ? RELAY_OAUTH_SCOPES : undefined,
+    );
   }
 }

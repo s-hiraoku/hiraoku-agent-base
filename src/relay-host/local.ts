@@ -1,4 +1,5 @@
 /** Explicit local composition. Import performs no IO, authentication or scheduling. */
+import type { Server } from "node:http";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import {
@@ -31,7 +32,19 @@ export interface LocalRelayOptions {
   limits: ContractLimits;
   registry: RegistryOptions;
   store: StoreOptions;
-  http: Omit<RelayHttpPolicy, "resource_url" | "allowed_origins">;
+  http: Omit<
+    RelayHttpPolicy,
+    "resource_url" | "allowed_origins" | "oauth_issuer"
+  >;
+  /** Separate loopback ingress behind approved TLS; same owner, Registry and queue. */
+  ingress?: {
+    port: number;
+    resource_url: string;
+    issuer: string;
+    allowed_origins: readonly string[];
+    authority: RegistryAuthority;
+    verify: RelayHttpVerifier;
+  };
   /** Independently verified individual mapping; no model-supplied agent name. */
   authority: RegistryAuthority;
   verify: RelayHttpVerifier;
@@ -83,6 +96,16 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     typeof options.audit?.record !== "function"
   )
     throw Error("invalid_local_relay_options");
+  const ingress = options.ingress;
+  if (
+    ingress &&
+    (!Number.isSafeInteger(ingress.port) ||
+      (ingress.port !== 0 && (ingress.port < 1024 || ingress.port > 65535)) ||
+      (ingress.port !== 0 && ingress.port === options.port) ||
+      typeof ingress.authority?.individual !== "function" ||
+      typeof ingress.verify !== "function")
+  )
+    throw Error("invalid_local_relay_ingress");
   privatePath(options.directory, true);
   validateLimits(options.limits);
   const registryOptions = options.registry,
@@ -91,31 +114,36 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     registry: SQLiteHabRegistry | undefined,
     store: SQLiteRelayStore | undefined,
     handler: ReturnType<typeof createRelayNodeHandler> | undefined,
+    ingressHandler: ReturnType<typeof createRelayNodeHandler> | undefined,
+    ingressServer: Server | undefined,
     stopping = false;
   const pending = new Set<Promise<void>>();
-  const server = createServer(
-    {
-      maxHeaderSize: 8192,
-      requestTimeout: options.http.timeout_ms,
-      headersTimeout: options.http.timeout_ms,
-    },
-    (req, res) => {
-      if (stopping || !handler) {
-        res.writeHead(503, {
-          "Cache-Control": "no-store",
-          Connection: "close",
-        });
-        res.end();
-        return;
-      }
-      const work = handler(req, res);
-      pending.add(work);
-      void work.then(
-        () => pending.delete(work),
-        () => pending.delete(work),
-      );
-    },
-  );
+  const makeServer = (current: () => typeof handler) =>
+    createServer(
+      {
+        maxHeaderSize: 8192,
+        requestTimeout: options.http.timeout_ms,
+        headersTimeout: options.http.timeout_ms,
+      },
+      (req, res) => {
+        const selected = current();
+        if (stopping || !selected) {
+          res.writeHead(503, {
+            "Cache-Control": "no-store",
+            Connection: "close",
+          });
+          res.end();
+          return;
+        }
+        const work = selected(req, res);
+        pending.add(work);
+        void work.then(
+          () => pending.delete(work),
+          () => pending.delete(work),
+        );
+      },
+    );
+  const server = makeServer(() => handler);
   server.maxConnections = options.http.max_active_requests;
   let closing: Promise<void> | undefined;
   const close = () => {
@@ -123,15 +151,20 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     stopping = true;
     closing = (async () => {
       try {
-        if (server.listening) {
-          const closed = new Promise<void>((resolve, reject) => {
-            server.close((error) => (error ? reject(error) : resolve()));
+        const closing = [server, ingressServer]
+          .filter((value): value is Server => !!value)
+          .map(async (listener) => {
+            if (!listener.listening) return;
+            const closed = new Promise<void>((resolve, reject) => {
+              listener.close((error) => (error ? reject(error) : resolve()));
+            });
+            listener.closeAllConnections();
+            await closed;
           });
-          // Closing responses aborts gateway work; late verifiers cannot dispatch.
-          server.closeAllConnections();
-          await closed;
-        }
+        const results = await Promise.allSettled(closing);
         await Promise.allSettled([...pending]);
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure?.status === "rejected") throw failure.reason;
       } finally {
         try {
           store?.close();
@@ -170,7 +203,10 @@ export async function startLocalRelay(options: LocalRelayOptions) {
         individual: (context) => {
           ownership.check();
           if (stopping) return undefined;
-          return options.authority.individual!(context);
+          return (
+            options.authority.individual!(context) ??
+            ingress?.authority.individual?.(context)
+          );
         },
       },
     );
@@ -193,6 +229,25 @@ export async function startLocalRelay(options: LocalRelayOptions) {
       options.audit,
       options.verify,
     );
+    let ingressGateway: HabHttpGateway | undefined;
+    if (ingress) {
+      ingressGateway = new HabHttpGateway(
+        service,
+        {
+          ...options.http,
+          resource_url: ingress.resource_url,
+          oauth_issuer: ingress.issuer,
+          allowed_origins: ingress.allowed_origins,
+        },
+        options.audit,
+        async (input) => {
+          ownership.check();
+          const context = await ingress.verify(input);
+          ownership.check();
+          return stopping ? null : context;
+        },
+      );
+    }
     server.listen(options.port, "127.0.0.1");
     await once(server, "listening");
     const address = server.address();
@@ -214,7 +269,32 @@ export async function startLocalRelay(options: LocalRelayOptions) {
       },
     );
     handler = createRelayNodeHandler(gateway);
-    return Object.freeze({ url: gateway.policy.resource_url, close });
+    let ingressPort: number | undefined;
+    if (ingress && ingressGateway) {
+      ingressHandler = createRelayNodeHandler(ingressGateway);
+      ingressServer = makeServer(() => ingressHandler);
+      ingressServer.maxConnections = options.http.max_active_requests;
+      ingressServer.listen(ingress.port, "127.0.0.1");
+      await once(ingressServer, "listening");
+      const remoteAddress = ingressServer.address();
+      if (
+        !remoteAddress ||
+        typeof remoteAddress === "string" ||
+        remoteAddress.address !== "127.0.0.1"
+      )
+        throw Error("local_relay_ingress_rejected");
+      ingressPort = remoteAddress.port;
+    }
+    return Object.freeze({
+      url: gateway.policy.resource_url,
+      close,
+      ...(ingressGateway
+        ? {
+            ingress_url: ingressGateway.policy.resource_url,
+            ingress_port: ingressPort,
+          }
+        : {}),
+    });
   } catch (error) {
     await close();
     throw error;

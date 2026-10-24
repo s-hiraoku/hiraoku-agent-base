@@ -17,8 +17,8 @@ const body = () => ({
   parts: [{ type: "text", text: "synthetic durable answer" }],
 });
 const yes = () => {};
-function fixture(t, patch = {}) {
-  const f = hostFixture(t),
+function fixture(t, patch = {}, timing = {}) {
+  const f = hostFixture(t, {}, timing),
     path = join(f.dir, "answer-intents.sqlite"),
     stores = new Set();
   const options = {
@@ -640,7 +640,8 @@ test("Answer intents: two SQLite connections converge on one ID and one outbox m
   assert.equal(f.queued().length, 1);
 });
 test("Answer intents: real loopback HTTP MCP receive-restart-answer-send-ACK uses the saved ID", async (t) => {
-  const f = fixture(t);
+  // This success-path test includes real HTTP; retain the short defaults for fault/expiry tests.
+  const f = fixture(t, {}, { outboxLeaseMs: 5000 });
   const server = createServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");

@@ -13,7 +13,13 @@ export async function main(args = process.argv.slice(2)) {
     host = await startConfiguredLocalRelay(args[1]);
     if (!abort.signal.aborted) {
       process.stdout.write(
-        JSON.stringify({ state: "ready", url: host.url }) + "\n",
+        JSON.stringify({
+          state: "ready",
+          url: host.url,
+          ...(host.ingress_url
+            ? { ingress_url: host.ingress_url, ingress_port: host.ingress_port }
+            : {}),
+        }) + "\n",
       );
       await new Promise((resolve) => {
         if (abort.signal.aborted) resolve();

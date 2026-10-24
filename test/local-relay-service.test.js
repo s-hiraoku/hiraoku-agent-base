@@ -1,4 +1,6 @@
 import test from "node:test";
+import { request as httpRequest } from "node:http";
+import { oauthFixture, resource, issuer } from "./relay-oauth-fixtures.js";
 import process from "node:process";
 import assert from "node:assert/strict";
 import {
@@ -180,4 +182,89 @@ test("CLI uses private state across SIGTERM/restart and closes its owned port", 
     assert.equal(errors, "");
     await assert.rejects(list(info.url));
   }
+});
+
+function ingressList(host) {
+  return new Promise((resolve, reject) => {
+    const q = httpRequest(
+      {
+        hostname: "127.0.0.1",
+        port: host.ingress_port,
+        path: "/hab/mcp",
+        method: "POST",
+        headers: {
+          Host: "relay.example",
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+      },
+      (r) => {
+        r.resume();
+        r.on("end", () => resolve(r));
+      },
+    );
+    q.on("error", reject);
+    q.end(JSON.stringify(envelope()));
+  });
+}
+test("explicit disabled OAuth file starts an all-deny second ingress, separate from local auth", async (t) => {
+  const f = fixture(t),
+    path = f.write("oauth.local.json", {
+      version: 1,
+      enabled: false,
+      issuer,
+      resource,
+      keys: [],
+      connections: [],
+    });
+  f.config.ingress = {
+    port: 0,
+    resource_url: resource,
+    oauth_file: path,
+    allowed_origins: ["https://relay.example"],
+  };
+  f.write("service.local.json", f.config);
+  const host = await startConfiguredLocalRelay(f.configPath);
+  t.after(() => host.close());
+  assert.equal(host.ingress_url, resource);
+  const rejected = await ingressList(host);
+  assert.equal(rejected.statusCode, 401);
+  assert.match(rejected.headers["www-authenticate"], /resource_metadata=/);
+  assert.equal((await list(host.url)).status, 401);
+});
+test("missing, permissive, invalid or mismatched OAuth config never creates a fallback ingress", async (t) => {
+  const f = fixture(t),
+    auth = await oauthFixture(),
+    path = f.write("oauth.local.json", auth.getConfig());
+  f.config.ingress = {
+    port: 0,
+    resource_url: resource,
+    oauth_file: path,
+    allowed_origins: [],
+  };
+  f.write("service.local.json", f.config);
+  chmodSync(path, 0o644);
+  await assert.rejects(
+    startConfiguredLocalRelay(f.configPath),
+    /local_relay_start_rejected/,
+  );
+  chmodSync(path, 0o600);
+  f.config.ingress.resource_url = "https://other.example/hab/mcp";
+  f.write("service.local.json", f.config);
+  await assert.rejects(
+    startConfiguredLocalRelay(f.configPath),
+    /local_relay_start_rejected/,
+  );
+  f.config.ingress.resource_url = resource;
+  f.config.ingress.oauth_file = join(f.dir, "absent.local.json");
+  f.write("service.local.json", f.config);
+  await assert.rejects(
+    startConfiguredLocalRelay(f.configPath),
+    /local_relay_start_rejected/,
+  );
+  delete f.config.ingress;
+  f.write("service.local.json", f.config);
+  const host = await startConfiguredLocalRelay(f.configPath);
+  t.after(() => host.close());
+  assert.equal((await list(host.url)).status, 401);
 });

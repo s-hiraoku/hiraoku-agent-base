@@ -5,6 +5,7 @@ import { z } from "zod";
 import { readRuntimeConfig } from "../runtime-config.ts";
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
+import { PinnedRelayOAuthAuthority } from "./oauth-auth.ts";
 import { startLocalRelay } from "./local.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const absolute = z.string().refine(isAbsolute);
@@ -17,6 +18,14 @@ const schema = z.strictObject({
   version: z.literal(1),
   directory: absolute,
   port: z.number().int().min(0).max(65535),
+  ingress: z
+    .strictObject({
+      port: z.number().int().min(0).max(65535),
+      resource_url: z.string(),
+      oauth_file: absolute,
+      allowed_origins: z.array(z.string()).max(8),
+    })
+    .optional(),
   keys_file: absolute,
   credentials_file: absolute,
   audit_directory: absolute,
@@ -67,7 +76,8 @@ const schema = z.strictObject({
 });
 function read(path: string) {
   // Preserve the existing bounded/canonical/private file reader and additionally reject hardlinks.
-  if (!isAbsolute(path) || lstatSync(path).nlink !== 1) throw Error("local_relay_config_rejected");
+  if (!isAbsolute(path) || lstatSync(path).nlink !== 1)
+    throw Error("local_relay_config_rejected");
   return readRuntimeConfig(path);
 }
 export async function startConfiguredLocalRelay(configPath: string) {
@@ -75,6 +85,13 @@ export async function startConfiguredLocalRelay(configPath: string) {
     const config = schema.parse(read(configPath)),
       secrets = keys.parse(read(config.keys_file));
     const auth = new LocalBearerAuthority(() => read(config.credentials_file));
+    const remote = config.ingress
+      ? await PinnedRelayOAuthAuthority.create(() =>
+          read(config.ingress!.oauth_file),
+        )
+      : undefined;
+    if (remote && remote.resource.resource !== config.ingress!.resource_url)
+      throw Error("local_relay_resource_mismatch");
     let sink: LocalAudit | undefined;
     const host = await startLocalRelay({
       directory: config.directory,
@@ -89,6 +106,18 @@ export async function startConfiguredLocalRelay(configPath: string) {
         fingerprint_key: Buffer.from(secrets.relay_fingerprint_key, "hex"),
       },
       http: config.http,
+      ...(config.ingress && remote
+        ? {
+            ingress: {
+              port: config.ingress.port,
+              resource_url: config.ingress.resource_url,
+              issuer: remote.resource.issuer,
+              allowed_origins: config.ingress.allowed_origins,
+              authority: remote.authority,
+              verify: remote.verify,
+            },
+          }
+        : {}),
       authority: auth.authority,
       verify: auth.verify,
       audit: {
