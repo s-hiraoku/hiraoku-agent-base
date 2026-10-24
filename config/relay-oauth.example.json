@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "enabled": false,
+  "issuer": "https://example-tenant.jp.auth0.com/",
+  "resource": "https://relay.example/hab/mcp",
+  "keys": [],
+  "connections": []
+}

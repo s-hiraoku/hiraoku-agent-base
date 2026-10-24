@@ -101,3 +101,12 @@ save-before-ACK owner and reply outbox. A real Dots ↔ HAB ↔ real Hermes resu
 be reported separately from a local probe's preparation test. These requirements
 use the common connection contract and Adapter boundary, not product-specific
 delivery code.
+
+## Optional OAuth ingress
+
+An explicit `ingress` may add a second IPv4 loopback listener behind approved TLS,
+sharing the same Registry, queue and owner. It exposes the same five tools with
+OAuth consent metadata. The [OAuth ingress procedure](relay-oauth-ingress.md)
+describes pinned public keys, finite individual connections, private configuration,
+exact metadata routing and the limited save-before-ACK gate. This code does not
+publish a route, register a client, issue a token or start an agent.

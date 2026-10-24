@@ -8,9 +8,12 @@ import { createRelayMcpServer, relayMcpSchemas } from "./mcp.ts";
 import type { RelayMcpGate } from "./mcp.ts";
 import type { RelayContextResolver } from "./mcp.ts";
 import type { z } from "zod";
+import { RelayOAuthResource, RELAY_OAUTH_SCOPES } from "./oauth-resource.ts";
 import type { RelayOperations } from "./service.ts";
 export interface RelayHttpPolicy {
   resource_url: string;
+  /** Explicit opt-in, fixed issuer discovery and tool consent metadata. */
+  oauth_issuer?: string;
   allowed_origins: readonly string[];
   max_request_bytes: number;
   max_response_bytes: number;
@@ -51,6 +54,7 @@ function origin(value: string): URL {
 }
 export class RelayHttpGateway {
   readonly #policy: Readonly<RelayHttpPolicy>;
+  readonly oauth: RelayOAuthResource | undefined;
   get policy(): Readonly<RelayHttpPolicy> {
     return this.#policy;
   }
@@ -71,7 +75,12 @@ export class RelayHttpGateway {
     return relayMcpSchemas;
   }
   protected createServer(resolve: RelayContextResolver, gate: RelayMcpGate) {
-    return createRelayMcpServer(this.#service, resolve, gate);
+    return createRelayMcpServer(
+      this.#service,
+      resolve,
+      gate,
+      this.oauth ? RELAY_OAUTH_SCOPES : undefined,
+    );
   }
   #window = 0;
   #requests = 0;
@@ -117,6 +126,10 @@ export class RelayHttpGateway {
     } catch {
       throw Error("invalid_relay_http_policy");
     }
+    this.oauth =
+      policy.oauth_issuer === undefined
+        ? undefined
+        : new RelayOAuthResource(policy.oauth_issuer, policy.resource_url);
     this.#policy = Object.freeze({
       ...policy,
       allowed_origins: Object.freeze([...policy.allowed_origins]),
@@ -139,7 +152,9 @@ export class RelayHttpGateway {
         status,
         headers: {
           ...headers,
-          ...(status === 401 ? { "WWW-Authenticate": "Bearer" } : {}),
+          ...(status === 401
+            ? { "WWW-Authenticate": this.oauth?.challenge() ?? "Bearer" }
+            : {}),
         },
       });
     if (start - this.#window >= this.policy.window_ms) {
@@ -254,6 +269,15 @@ export class RelayHttpGateway {
           !this.policy.allowed_origins.includes(requestedOrigin)
         )
           throw new HttpFailure(403, "access_denied");
+        if (
+          this.oauth &&
+          u.pathname === this.oauth.metadataPath &&
+          !u.search &&
+          !u.hash
+        ) {
+          const metadata = this.oauth.response(u.pathname, request.method);
+          if (metadata) return metadata;
+        }
         if (u.href !== resource.href || request.method !== "POST")
           throw new HttpFailure(405, "resource_rejected");
         const authorization = request.headers.get("authorization");

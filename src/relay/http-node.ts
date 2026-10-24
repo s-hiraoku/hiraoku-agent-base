@@ -65,7 +65,10 @@ export function createRelayNodeHandler(gateway: RelayHttpGateway) {
         reject(400);
         return;
       }
-      if (req.url !== resource.pathname) {
+      if (
+        req.url !== resource.pathname &&
+        req.url !== gateway.oauth?.metadataPath
+      ) {
         // Check the raw target before URL normalization can hide a path alias.
         reject(405);
         return;

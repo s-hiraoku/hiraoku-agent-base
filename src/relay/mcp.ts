@@ -119,6 +119,7 @@ export function createRelayMcpServer(
   service: RelayOperations,
   resolveContext: RelayContextResolver = () => null,
   gate?: RelayMcpGate,
+  oauthScopes?: readonly string[],
 ): McpServer {
   const server = new McpServer({ name: "hab-relay", version: "0.1.0" });
   server.server.registerCapabilities({ tools: { listChanged: false } });
@@ -129,6 +130,13 @@ export function createRelayMcpServer(
       {
         description: descriptions[tool],
         inputSchema: schema,
+        ...(oauthScopes
+          ? {
+              _meta: {
+                securitySchemes: [{ type: "oauth2", scopes: [...oauthScopes] }],
+              },
+            }
+          : {}),
         // Even status may expire old records. These are hints, never authorization.
         annotations: {
           readOnlyHint: false,
