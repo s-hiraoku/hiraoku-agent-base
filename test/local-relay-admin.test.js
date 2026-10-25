@@ -299,8 +299,9 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
     kind: "answer",
     in_reply_to: { sender_id: a.agentId, message_id: sent.message_id },
   };
-  b.sender.enqueue(reply);
+  assert.equal(b.sender.enqueue(reply).state, "queued");
   await b.sender.sendOnce();
+  assert.equal(b.outbox.get(reply.message_id).state, "accepted");
   await a.receiver.receiveOnce();
   assert.deepEqual(a.savedBeforeAck, [reply]);
   assert.equal(a.receiver.inbox()[0].receipt_confirmed, true);
