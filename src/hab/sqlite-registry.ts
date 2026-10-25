@@ -172,7 +172,7 @@ export class SQLiteHabRegistry {
   #schemaVersion: number | undefined;
   readonly #selections = new WeakMap<
     object,
-    { context: unknown; address: string }
+    { context: unknown; address: string; expected_agent_id?: string }
   >();
   #inside = false;
   constructor(
@@ -1148,12 +1148,21 @@ export class SQLiteHabRegistry {
     });
   }
   /** Selection is untrusted until withRelay verifies its group membership under the registry lock. */
-  selectAddress(context: unknown, address: string): unknown {
+  selectAddress(
+    context: unknown,
+    address: string,
+    expectedAgentId?: string,
+  ): unknown {
     const canonical = parseHabAddress(address).address;
+    if (expectedAgentId !== undefined) parse(id, expectedAgentId);
     if (context && typeof context === "object" && this.#selections.has(context))
       throw new RelayError("forbidden");
     const selected = Object.freeze({});
-    this.#selections.set(selected, { context, address: canonical });
+    this.#selections.set(selected, {
+      context,
+      address: canonical,
+      expected_agent_id: expectedAgentId,
+    });
     return selected;
   }
   groupAuthorizations(context: unknown, value: unknown) {
@@ -1278,6 +1287,11 @@ export class SQLiteHabRegistry {
         if (members.length !== 1) throw new RelayError("forbidden");
         local = this.#peer(String(members[0].agent_id));
       }
+      if (
+        selected?.expected_agent_id !== undefined &&
+        selected.expected_agent_id !== local.agent_id
+      )
+        throw new RelayError("forbidden");
       const policyEpoch = this.#globalEpoch();
       if (
         !local.operations.includes(operation) ||

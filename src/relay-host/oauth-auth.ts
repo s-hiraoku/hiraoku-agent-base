@@ -25,8 +25,8 @@ const timestamp = z
   .refine(
     (v) => Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v,
   );
-// Operator must separately establish this client/connection's individual exclusivity.
-// A shared owner's OAuth subject/client alone cannot distinguish different agents.
+// Operator binds this verified connection to a registry individual or authentication group.
+// A shared owner/client proves a shared trust boundary, not which Bot selected an address.
 const connection = z
   .strictObject({
     subject: claim,

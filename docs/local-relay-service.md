@@ -114,3 +114,18 @@ OAuth consent metadata. The [OAuth ingress procedure](relay-oauth-ingress.md)
 describes pinned public keys, finite individual connections, private configuration,
 exact metadata routing and the limited save-before-ACK gate. This code does not
 publish a route, register a client, issue a token or start an agent.
+
+
+## 認証グループの明示opt-in
+
+Registryの`authentication_groups`は任意のbooleanです。省略またはfalseは従来の
+1対1 bindingを使い、trueの場合だけ起動時の明示migrationがRegistryをv1からv2へ
+移行して認証グループを有効にします。既存ID・アドレス・bindingは維持します。
+この設定を既存サービスへ適用する前に、対象release、停止・backup／復旧手順と
+管理者によるグループ登録・所属・権限を確認してください。v2を旧runtimeで開くために
+versionを書き換えることは禁止します。`store.agent_capacity`等の現在の必須設定も
+releaseと照合し、不足時に制限を省いて起動しません。
+
+新規空DBで有効化しても、グループや資格情報は自動登録せず全拒否のままです。
+実際の短命tokenの発行・保管と、refresh／継続アクセスの許可は別操作です。
+[共通の名義選択と実装範囲](relay-auth-groups.md)を参照してください。

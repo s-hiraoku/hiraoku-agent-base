@@ -458,14 +458,14 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
   }
   async submit(message: Submission): Promise<Receipt> {
     const input = parseSubmission(message, this.#limits);
-    const value = await this.#call("relay_submit", input);
+    const value = await this.requestTool("relay_submit", { ...input });
     return this.#receipt(value, input.message_id, input);
   }
   async status(messageId: string): Promise<Receipt> {
     if (!id.safeParse(messageId).success)
       throw new RelayError("invalid_request");
     return this.#receipt(
-      await this.#call("relay_status", { message_id: messageId }),
+      await this.requestTool("relay_status", { message_id: messageId }),
       messageId,
     );
   }
@@ -486,7 +486,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     return r;
   }
   async poll(): Promise<Delivery | null> {
-    const value = await this.#call("relay_poll", {});
+    const value = await this.requestTool("relay_poll", {});
     try {
       const d = pollSchema.parse(value).delivery;
       if (d === null) return null;
@@ -522,7 +522,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
   }
   async ack(request: AckRequest): Promise<AckReceipt> {
     const input = parseAck(request, this.#limits);
-    const value = await this.#call("relay_ack", input);
+    const value = await this.requestTool("relay_ack", { ...input });
     const parsed = ackReceiptSchema.safeParse(value);
     if (parsed.success && parsed.data.recipient_id !== this.#policy.agent_id)
       throw new RelayError("forbidden");
