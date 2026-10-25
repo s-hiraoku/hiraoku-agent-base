@@ -17,8 +17,15 @@ export function deferred() {
   });
   return { promise, resolve };
 }
-export function hostFixture(t, patch = {}, { outboxLeaseMs = 50 } = {}) {
-  const f = fixture(t, { lease_ms: 50 });
+// Short enough for expiry tests, long enough that one loopback MCP round trip on a
+// loaded single-core CI runner does not lose the lease mid-step.
+export const HOST_LEASE_MS = 400;
+export function hostFixture(
+  t,
+  patch = {},
+  { outboxLeaseMs = HOST_LEASE_MS } = {},
+) {
+  const f = fixture(t, { lease_ms: HOST_LEASE_MS });
   const outbox = new SQLiteOutbox(join(f.dir, "host-outbox.sqlite"), {
     agent_id: "b",
     fingerprint_key: new Uint8Array(32).fill(62),
