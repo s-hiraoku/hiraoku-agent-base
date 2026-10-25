@@ -4,7 +4,7 @@
 
 2026-10-25 JSTに採用した設計判断。**認証は参加グループ単位、Botの切り分けはアドレス単位**とする。グループは本人が承認する接続の信頼範囲であり、製品全体や全利用者を表さない。製品名による認証・配送分岐は設けない。
 
-**現行実装への適用は未完了。** 現在のRegistry／MCPは検証済み接続と個体を1対1にbindingし、OAuth入口は最大15分の試験用許可窓を使う。本書は複数アドレス選択や自動更新を実装済みとするものではなく、認証・公開・サービス設定も変更しない。
+**Registryの認証グループ・所属・認可を実装済み、MCPへの配線は未完了。** 従来の1対1 bindingは維持し、明示的な`authentication_groups: true`と`migrate()`で追加schemaを有効にする。通常のサービス設定はまだこの選択を受け付けず、OAuth入口は最大15分の試験用許可窓のままである。実接続・常用token更新・稼働設定変更は行っていない。
 
 ## 認証とアドレスの役割
 
@@ -72,4 +72,10 @@ HAB参加台帳には承認、状態、権限、所属と認証bindingを保存�
 - グループ失効とアドレス単位の停止を個別に検証し、処理中の変更も認可とcommitの間で取りこぼさない。
 - 監査でグループと名義を区別し、Bot本人性を過大に表示しない。MCP登録だけで受信起動・永続保存・自動返信を保証しない。
 
-残作業はグループと所属の管理・認可、versionedなアドレス選択、クライアントの固定名義、停止／失効と監査、既存1対1接続の互換試験。今回の設計判断ではcode、DB schema、稼働設定、OAuth grant、公開経路を変更しない。
+Registryの管理portは`createGroup / bindGroupVerified / addGroupMember / setGroupAccess / revokeGroupBinding`。いずれも別管理権限・要求idempotency・epochを検証し、配送MCPからは公開しない。`selectAddress`は不透明な選択contextを作るだけで、`withRelay`が認証・所属を共有write guard内で検証する。`groupAuthorizations`は管理者用のbounded読取りで、認証グループと選択名義を分けた認可記録を返す。配送receiptやBot本人性の証明ではない。認可記録は`max_audit_records`で上限を設け、保存不可なら配送を開始しない。監査記録の回収・運用手順は後続で整備する。
+
+追加schema自身は`hab_auth_group_meta` version 1で管理し、明示opt-in migrationでRegistry本体をversion 1から2へ上げる。旧runtimeがグループ制約を無視してDBを開くことを防ぐ。version 2から1への書換えによるrollbackは禁止し、移行前backupを停止状態で復元する。グループ数と所属数は`max_agents`、legacyとgroupの合計binding数は`max_bindings`で制限する。既存credentialを暗黙にグループへ付け替えず、予約済みfingerprintを別主体へ再利用しない。機能を無効にして再起動しても所属と予約は残り、グループ個体への操作は拒否する。既存DBのbackup／restoreへ追加tableを含める検証は別途必要。
+
+`node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-authorization.test.js`で、一時DB・合成主体による共有名義、外部拒否、停止・失効、再起動、idempotency、監査失敗と1対1回帰を確認する。実OAuth更新の試験ではない。
+
+残作業はversionedなMCPアドレス選択、クライアントの固定名義、サービス設定への明示配線、グループschemaのbackup／restoreと監査保守、実製品での受入れ、常用token更新。既存サービス・本番DB・認証grant・公開経路は変更していない。

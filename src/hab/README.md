@@ -445,3 +445,36 @@ save before ACK, uncertain upload/ACK responses and restart. The sender intent
 is explicitly saved by the fixture; an attachment sender journal and receiver
 orchestration are still separate work. Production credentials and product
 bindings remain unverified.
+
+
+## Optional shared authentication groups
+
+The default remains one verified connection per legacy individual. Explicitly setting
+`RegistryOptions.authentication_groups: true` and calling `migrate()` adds the group
+schema and upgrades registry version 1 to 2. Existing individual IDs, addresses and
+bindings are preserved. Older runtimes reject version 2; an already-open pre-upgrade
+instance also fails closed after the schema changes. Do not rewrite the version for
+rollback; restore a pre-migration backup while the service is stopped.
+
+A separately authorized administrator creates a group, binds a freshly verified
+connection, attaches registered addresses, and grants group/address operations.
+`selectAddress(context, address)` creates an opaque selection; `withRelay` checks
+its verified group's membership under the same write guard used for Relay commit.
+Group members may use one another's names. Foreign-group names, inactive members,
+ambiguous omitted selection and stale/revoked credentials are denied. A single-member
+group and existing one-to-one bindings can omit selection.
+
+Group and address permissions intersect. Group stop or final binding revocation
+stops every member; stopping one address leaves its siblings usable. Group identity
+and selected address are recorded separately in bounded authorization records,
+without raw claims or credentials. This is authorization provenance, not proof of
+which Bot ran or a substitute for delivery receipts.
+
+See [the adopted design and current limits](../../docs/relay-auth-groups.md).
+The standard MCP selector, normal service configuration, OAuth refresh and live
+connections are not wired by this registry extension. Tests use synthetic verified
+contexts and temporary databases only:
+
+```sh
+node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-authorization.test.js
+```

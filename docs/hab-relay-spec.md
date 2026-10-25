@@ -16,7 +16,7 @@
 
 実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、管理添付の転送・運用、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
-**2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。現行の接続と個体の1対1実装、15分の試験用OAuth入口からの移行は未実装であり、認証設定・公開・自動更新を有効化したとは扱わない。
+**2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可はopt-inで実装済みだが、MCP／通常サービスへの配線と15分の試験用OAuth入口からの移行は未実装であり、認証設定・公開・自動更新を有効化したとは扱わない。
 
 ## 1. 目的と非目標
 
@@ -140,7 +140,7 @@ Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提�
 
 **認証は参加グループ単位、Botの切り分けはアドレス単位**とする。本人が承認した検証済み接続をグループにbindingし、一つまたは複数の登録済み個体を所属させる。グループは特定利用者の承認済み信頼範囲であり、同じ製品の全利用者を意味しない。製品名による認証・配送分岐は設けない。詳細とフローは[認証グループ設計](relay-auth-groups.md)を参照する。
 
-呼出元は送信名義または自分側の受信箱アドレスを選ぶ。serverは認証済みグループの所属・有効状態・操作権限を検証してagent_idを確定し、Relay coreへ渡す。未登録・別グループの選択や曖昧な省略は拒否する。確定envelopeのsender_idはserverが付与し、未検証の任意sender_idを信用しない。現行の厳格なMCP入力は未変更であり、具体的なアドレス選択wire形式と1対1接続との互換性は後続で実装する。
+呼出元は送信名義または自分側の受信箱アドレスを選ぶ。serverは認証済みグループの所属・有効状態・操作権限を検証してagent_idを確定し、Relay coreへ渡す。未登録・別グループの選択や曖昧な省略は拒否する。確定envelopeのsender_idはserverが付与し、未検証の任意sender_idを信用しない。Registryには所属選択の不透明contextを作る`selectAddress`を実装した。現行の厳格なMCP入力は未変更であり、具体的なアドレス選択wire形式と1対1接続との互換性は後続で実装する。
 
 同じグループの資格情報を共有するBot間では、所属アドレスの名義使用・受信箱アクセスを厳密に隔離しない。共有OAuth subjectから個別Botの本人性を証明したとは言わず、専有の証明も受入れ条件にしない。グループ外の名義使用・受信箱閲覧は拒否する。公開client ID、自己申告のgroup ID、会話名、アドレスだけでは認証できない。
 
@@ -148,7 +148,7 @@ Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提�
 
 監査には認証済みグループと選択した個体名義を分けて記録する。credential本体やaccess／refresh tokenを参加台帳、message、監査に置かない。参加承認の有効期間は短期アクセストークンの期限と分離し、許可済みの更新はクライアントが担当する。更新でグループや権限を拡大せず、失効・更新不可時は停止する。この常用方式は現行の15分試験入口へ適用済みではない。
 
-**現行実装との差：** ローカル実装は管理権限portと検証済み個体portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACによる1対1照合と個体専有を前提としており、複数アドレスの所属・選択は未実装。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
+**実装状況：** ローカル実装は管理権限portと検証済み接続portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACによる従来の1対1照合を維持し、opt-inでグループbinding・所属選択・認可・停止・監査を追加した。MCP入力と通常サービスへの配線は未変更。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
 
 ### 4.4 メール型の相互送信policy
 
@@ -470,7 +470,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 
 命名・列型は実装前の設計事項だが、少なくとも次の永続関係と一意制約が必要となる。
 
-- registry：`relay_agents`、`relay_addresses`、`relay_auth_bindings`、`relay_acl`。追加決定の認証グループ・所属もHAB側が所有し、具体schemaとmigrationは未実装。agent_idと確定アドレスは不変・再利用禁止。agent_name、bot_name、登録要求のidempotency、接続待ち／有効／停止／廃止、予約tombstone、失効と版を保持。
+- registry：`relay_agents`、`relay_addresses`、`relay_auth_bindings`、`relay_acl`。認証グループ・所属もHAB側が所有し、追加schemaと明示的なRegistry version 1→2 migrationをopt-inで実装済み。agent_idと確定アドレスは不変・再利用禁止。agent_name、bot_name、登録要求のidempotency、接続待ち／有効／停止／廃止、予約tombstone、失効と版を保持。
 - message：`relay_messages`。確定envelope、受付時刻、期限、immutable fingerprint。`(sender_id,message_id)`一意。
 - delivery：`relay_deliveries`。message/recipient対応、状態、回数、next_visible_at、generation/token検証値、lease。初期はmessageあたり1 recipient。
 - receipt/dedup：`relay_ack_receipts`とmessage tombstone。確定ACK retry、同一要求conflict、本文削除後の重複拒否を保持。
@@ -582,7 +582,7 @@ G1の部分的な証拠として、[登録からHTTP配送・停止・復旧ま�
 ## 22. 未決定・未検証事項
 
 1. G0：実Grok/dotのグループbinding・所属アドレス選択・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
-2. 認証グループと所属アドレスの管理・選択・監査の実装、実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
+2. Registryの認証グループ・所属選択・停止・監査はopt-inで実装済み。MCP／通常サービスへの配線、実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
 3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、将来のアドレス正規化version更新、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
 4. 配送TTL一律1時間、ACK確定後のRelay本文削除、最小配送記録の30日保持は決定済み。その他の推奨初期値の採否、個体別最低予約枠、公平性/SLO、長期不在時のretentionと個人データ削除policy。
 5. long-poll／lease延長の要否、wake追加の要否と実receiverの能力。

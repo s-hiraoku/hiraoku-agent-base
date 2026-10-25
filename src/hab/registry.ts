@@ -35,7 +35,7 @@ export interface AgentRecord {
   operations: AgentOperation[];
   created_at: string;
 }
-/** Non-secret claims attested by the host; no field is accepted from MCP arguments. */
+/** Non-secret connection claims attested by the host, never by MCP arguments. */
 export interface IndividualPrincipal {
   issuer: string;
   audience: string;
@@ -65,6 +65,11 @@ export type AdminOperation =
   | "revoke"
   | "access"
   | "block"
+  | "group_create"
+  | "group_bind"
+  | "group_member"
+  | "group_access"
+  | "group_revoke"
   | "emergency_stop";
 export interface RegistryAuthority {
   /** Separate host-owned management authority. Default is deny. Synchronous/current. */
@@ -72,7 +77,7 @@ export interface RegistryAuthority {
     context: unknown,
     operation: AdminOperation,
   ): { actor_id: string } | undefined;
-  /** Host has actually authenticated a specific individual, not just its owner. */
+  /** Authenticated connection; the registry binds it to a legacy individual or group. */
   individual?(context: unknown): VerifiedIndividual | undefined;
 }
 const slugExpression = "[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?";
