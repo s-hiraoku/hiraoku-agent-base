@@ -162,6 +162,25 @@ type AgentRow = Omit<AgentRecord, "operations" | "normalization_version"> & {
   normalization_version: number;
 };
 type BindingRow = Omit<BindingRecord, "agent_epoch"> & { fingerprint: string };
+export interface RegistryOverview {
+  authentication_groups: boolean;
+  stopped: boolean;
+  products: ProductRecord[];
+  agents: (AgentRecord & {
+    active_binding_ids: string[];
+    group_id: string | null;
+  })[];
+  groups: (AuthenticationGroup & {
+    active_binding_ids: string[];
+    member_ids: string[];
+  })[];
+}
+export interface PrincipalReservation {
+  kind: "agent" | "group";
+  binding_id: string;
+  owner_id: string;
+  state: "active" | "revoked";
+}
 
 export class SQLiteHabRegistry {
   readonly #db: DatabaseSync;
@@ -1299,10 +1318,13 @@ export class SQLiteHabRegistry {
       )
         throw new RelayError("forbidden");
       if (group) {
-        this.#capacity(
-          "hab_auth_group_authorizations",
-          this.#options.max_audit_records,
-        );
+        // Bounded retention, not a lifetime quota: keep the newest records so routine
+        // polling cannot exhaust the table and permanently deny every group member.
+        this.#db
+          .prepare(
+            "DELETE FROM hab_auth_group_authorizations WHERE id<=(SELECT id FROM hab_auth_group_authorizations ORDER BY id DESC LIMIT 1 OFFSET ?)",
+          )
+          .run(this.#options.max_audit_records - 1);
         this.#db
           .prepare(
             "INSERT INTO hab_auth_group_authorizations(at,group_id,agent_id,operation) VALUES(?,?,?,?)",
@@ -1364,6 +1386,114 @@ export class SQLiteHabRegistry {
         address: canonicalAddress,
         normalization_version: 1,
       };
+    });
+  }
+  /**
+   * Bounded management snapshot for the operator CLI: names, states, epochs and
+   * binding ids only. No fingerprints, principals or credentials leave the registry.
+   */
+  overview(context: unknown): RegistryOverview {
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "inspect");
+      const products = this.#db
+        .prepare(
+          "SELECT product_id,agent_name,created_at FROM hab_products ORDER BY agent_name LIMIT 1000",
+        )
+        .all() as unknown as ProductRecord[];
+      const agentIds = this.#db
+        .prepare("SELECT agent_id FROM hab_agents ORDER BY address LIMIT 1000")
+        .all()
+        .map((row) => String(row.agent_id));
+      const activeBindings = this.#db.prepare(
+        "SELECT binding_id FROM hab_bindings WHERE agent_id=? AND state='active' ORDER BY binding_id",
+      );
+      const memberOf = this.#groupsPresent
+        ? this.#db.prepare(
+            "SELECT group_id FROM hab_auth_group_members WHERE agent_id=?",
+          )
+        : undefined;
+      const agents = agentIds.map((agentId) => {
+        const agent = this.#agent(agentId);
+        const group = memberOf?.get(agentId);
+        return {
+          ...agent,
+          active_binding_ids: activeBindings
+            .all(agentId)
+            .map((row) => String(row.binding_id)),
+          group_id: group ? String(group.group_id) : null,
+        };
+      });
+      const groups = this.#groupsPresent
+        ? this.#db
+            .prepare(
+              "SELECT group_id FROM hab_auth_groups ORDER BY created_at,group_id LIMIT 1000",
+            )
+            .all()
+            .map((row) => {
+              const group = this.#group(String(row.group_id));
+              return {
+                ...group,
+                active_binding_ids: this.#db
+                  .prepare(
+                    "SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=? AND state='active' ORDER BY binding_id",
+                  )
+                  .all(group.group_id)
+                  .map((value) => String(value.binding_id)),
+                member_ids: this.#db
+                  .prepare(
+                    "SELECT agent_id FROM hab_auth_group_members WHERE group_id=? ORDER BY agent_id",
+                  )
+                  .all(group.group_id)
+                  .map((value) => String(value.agent_id)),
+              };
+            })
+        : [];
+      return {
+        authentication_groups: this.#groupsPresent,
+        stopped: this.#stopRecord().stopped === 1,
+        products,
+        agents,
+        groups,
+      };
+    });
+  }
+  /** Where an operator-attested principal is reserved, if anywhere. Comparison happens inside. */
+  findPrincipal(
+    context: unknown,
+    principal: IndividualPrincipal,
+  ): PrincipalReservation | null {
+    const fingerprint = this.#principalHash(principal);
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "inspect");
+      const legacy = this.#db
+        .prepare(
+          "SELECT binding_id,agent_id,state FROM hab_bindings WHERE fingerprint=?",
+        )
+        .get(fingerprint);
+      if (legacy)
+        return {
+          kind: "agent" as const,
+          binding_id: String(legacy.binding_id),
+          owner_id: String(legacy.agent_id),
+          state: legacy.state as "active" | "revoked",
+        };
+      const shared = this.#groupsPresent
+        ? this.#db
+            .prepare(
+              "SELECT binding_id,group_id,state FROM hab_auth_group_bindings WHERE fingerprint=?",
+            )
+            .get(fingerprint)
+        : undefined;
+      return shared
+        ? {
+            kind: "group" as const,
+            binding_id: String(shared.binding_id),
+            owner_id: String(shared.group_id),
+            state: shared.state as "active" | "revoked",
+          }
+        : null;
     });
   }
   close(): void {

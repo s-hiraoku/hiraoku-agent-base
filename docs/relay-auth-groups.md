@@ -89,7 +89,7 @@ HAB参加台帳には承認、状態、権限、所属と認証bindingを保存�
 - グループ失効とアドレス単位の停止を個別に検証し、処理中の変更も認可とcommitの間で取りこぼさない。
 - 監査でグループと名義を区別し、Bot本人性を過大に表示しない。MCP登録だけで受信起動・永続保存・自動返信を保証しない。
 
-Registryの管理portは`createGroup / bindGroupVerified / addGroupMember / setGroupAccess / revokeGroupBinding`。いずれも別管理権限・要求idempotency・epochを検証し、配送MCPからは公開しない。`selectAddress`は不透明な選択contextを作るだけで、`withRelay`が認証・所属を共有write guard内で検証する。`groupAuthorizations`は管理者用のbounded読取りで、認証グループと選択名義を分けた認可記録を返す。配送receiptやBot本人性の証明ではない。認可記録は`max_audit_records`で上限を設け、保存不可なら配送を開始しない。監査記録の回収・運用手順は後続で整備する。
+Registryの管理portは`createGroup / bindGroupVerified / addGroupMember / setGroupAccess / revokeGroupBinding`。いずれも別管理権限・要求idempotency・epochを検証し、配送MCPからは公開しない。`selectAddress`は不透明な選択contextを作るだけで、`withRelay`が認証・所属を共有write guard内で検証する。`groupAuthorizations`は管理者用のbounded読取りで、認証グループと選択名義を分けた認可記録を返す。配送receiptやBot本人性の証明ではない。認可記録は`max_audit_records`件を上限とする保持期間で、上限に達すると古いものから同じtransaction内で削除し、最新の記録を残す（通常のpollで上限に達して全配送が拒否される状態にしない）。記録の書込み自体に失敗した場合は配送を開始しない。長期保管が必要なら上限に達する前に`groupAuthorizations`で読み出す。
 
 追加schema自身は`hab_auth_group_meta` version 1で管理し、明示opt-in migrationでRegistry本体をversion 1から2へ上げる。旧runtimeがグループ制約を無視してDBを開くことを防ぐ。version 2から1への書換えによるrollbackは禁止し、移行前backupを停止状態で復元する。グループ数と所属数は`max_agents`、legacyとgroupの合計binding数は`max_bindings`で制限する。既存credentialを暗黙にグループへ付け替えず、予約済みfingerprintを別主体へ再利用しない。機能を無効にして再起動しても所属と予約は残り、グループ個体への操作は拒否する。既存DBのbackup／restoreへ追加tableを含める検証は別途必要。
 

@@ -36,3 +36,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Access control](./access-control.md) covers missing and unknown bearer tokens.
 - [Restart durability](./restart-durability.md) covers a pending message surviving a stack stop and reopen.
 - [Enrollment terminal](./enrollment-terminal.md) covers the human registration flow from product choice to an active address.
+- [Configured Relay and operator CLI](./configured-relay.md) covers the shipped `relay:local` start refusal reasons, `relay:admin` connect/status/disconnect, a roundtrip through the shipped Relay and the exact-Host rule. It has its own launcher (`configured.sh`), not `launch.sh`.

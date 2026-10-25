@@ -63,13 +63,60 @@ or accepted database state to revoke one client. Mapping snapshots/secret copies
 retained by external caller code are outside this component; JavaScript strings
 cannot be reliably zeroized.
 
-The CLI emits only `{state:"ready",url}` and `{state:"stopped"}`. SIGTERM/SIGINT
+The CLI emits only `{state:"ready",url}` and `{state:"stopped"}`. A refused start
+prints one line, `local_relay_start_rejected reason=<code>[ fields=<config paths>]`,
+for example `reason=config_invalid fields=store.agent_capacity`. Codes are fixed
+(`config_required`, `config_file_rejected`, `config_invalid`, `keys_file_rejected`,
+`keys_invalid`, `credentials_invalid`, `oauth_invalid`, `oauth_resource_mismatch`,
+`port_in_use`, `state_in_use`, `local_relay_private_path_required`,
+`registry_key_mismatch`, `fingerprint_key_mismatch`, `audit_unavailable`, …); the
+line never contains values, file paths or secrets. SIGTERM/SIGINT
 closes the owned listener and databases; reopening the same state retains receipts.
 A supervisor must pin an independently tested release and use an explicit private
 config path. The opt-in [user LaunchAgent runbook](local-relay-launchagent.md)
 records installation, rejection checks, stop and restart. No existing service, keychain, MCP setting, profile or user job is
 modified by the CLI. A future production maintenance schedule is still explicit;
 without one, hard record bounds eventually refuse new acceptance.
+
+## Operator management CLI
+
+Registering addresses and binding connections is a separate operator step. The
+management CLI uses the same private config and keys, opens only the registry the
+Relay already created, and calls the Registry's administrator port. It works while
+the Relay is running; it never creates the schema, upgrades v1→v2, issues tokens or
+prints a bearer/digest.
+
+```sh
+npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
+npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json connect \
+  --address hermes@hermes.hab --connection-id <connection_id in the mapping>
+npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect \
+  --address hermes@hermes.hab
+```
+
+- `connect` registers the product and address when missing, binds the mapped
+  principal (selected by `connection_id`), and grants `--operations` (default: all
+  five). With `registry.authentication_groups: true` it creates or reuses that
+  connection's group, so connecting a second address with the same connection id
+  shares the authentication. Every step reads the current epoch and skips work
+  already done, so a rerun after a partial failure converges.
+- `disconnect` revokes every live binding that authenticates the address using the
+  current epochs. It does not need the token mapping, so cleanup order does not
+  matter, and a rerun reports `already_disconnected`. For a group it revokes the
+  group binding and lists every affected address.
+- `status` lists addresses, groups and each mapped credential's remaining lifetime,
+  audience and binding, plus `problems` such as `credential_expired`,
+  `credential_audience_mismatch`, `credential_unbound`, `credential_revoked` and
+  `address_unbound`. These explain most 401/`forbidden` results.
+
+A revoked connection descriptor stays reserved permanently. To reconnect after a
+trial, issue a new token with a new `connection_id` and run `connect` again
+(`credential_revoked_use_new_connection_id` otherwise). Failures print
+`relay_admin_rejected <code>` with exit 1 (usage errors exit 2).
+
+Clients must use the exact resource URL `http://127.0.0.1:<port>/mcp`. The Relay
+rejects any other `Host` (including `localhost`) with 403, and the bearer's
+audience must equal this URL.
 
 ## Dots and Hermes are separate connection gates
 

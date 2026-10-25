@@ -1,9 +1,12 @@
 /** Operator-selected local service. No defaults, credential generation, enrollment or worker. */
 import { pathToFileURL } from "node:url";
-import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
+import {
+  startConfiguredLocalRelay,
+  LocalRelayStartError,
+} from "../src/relay-host/configured.ts";
 export async function main(args = process.argv.slice(2)) {
   if (args.length !== 2 || args[0] !== "--config")
-    throw Error("local_relay_config_required");
+    throw new LocalRelayStartError("config_required");
   const abort = new AbortController();
   const stop = () => abort.abort();
   process.once("SIGTERM", stop);
@@ -37,8 +40,13 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  main().catch(() => {
-    process.stderr.write("local_relay_start_rejected\n");
+  main().catch((error) => {
+    // Fixed reason codes and config field paths only; never values or file paths.
+    const reason =
+      error instanceof LocalRelayStartError
+        ? ` reason=${error.reason}${error.fields.length ? ` fields=${error.fields.join(",")}` : ""}`
+        : "";
+    process.stderr.write(`local_relay_start_rejected${reason}\n`);
     process.exitCode = 1;
   });
 }
