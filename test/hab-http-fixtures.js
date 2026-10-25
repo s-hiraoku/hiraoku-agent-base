@@ -44,8 +44,9 @@ export async function setup(t, f, hab = f.hab) {
   };
   await start();
   t.after(stop);
-  const clients = (name, agent, fetch = globalThis.fetch) =>
+  const clients = (name, agent, fetch = globalThis.fetch, as_address) =>
     new HabMcpClient({
+      as_address,
       policy: {
         resource_url: url,
         agent_id: agent.agent_id,

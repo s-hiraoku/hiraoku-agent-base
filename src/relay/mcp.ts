@@ -115,11 +115,21 @@ export async function executeRelayMcpOperation(
     };
   }
 }
+/** Trusted transport composition only; a preparation hook cannot bypass service authorization. */
+export interface RelayMcpToolBinding {
+  schemas: Readonly<Record<keyof typeof relayMcpSchemas, z.ZodType>>;
+  prepare(
+    context: unknown,
+    tool: keyof typeof relayMcpSchemas,
+    input: unknown,
+  ): { context: unknown; input: unknown };
+}
 export function createRelayMcpServer(
   service: RelayOperations,
   resolveContext: RelayContextResolver = () => null,
   gate?: RelayMcpGate,
   oauthScopes?: readonly string[],
+  binding?: RelayMcpToolBinding,
 ): McpServer {
   const server = new McpServer({ name: "hab-relay", version: "0.1.0" });
   server.server.registerCapabilities({ tools: { listChanged: false } });
@@ -129,7 +139,7 @@ export function createRelayMcpServer(
       tool,
       {
         description: descriptions[tool],
-        inputSchema: schema,
+        inputSchema: binding?.schemas[tool] ?? schema,
         ...(oauthScopes
           ? {
               _meta: {
@@ -144,19 +154,24 @@ export function createRelayMcpServer(
         },
       },
       (input: unknown) =>
-        executeRelayMcpOperation(resolveContext, gate, (context) => {
+        executeRelayMcpOperation(resolveContext, gate, (verified) => {
+          const { context, input: prepared } = binding?.prepare(
+            verified,
+            tool,
+            input,
+          ) ?? { context: verified, input };
           switch (tool) {
             case "relay_submit":
-              return service.submit(context, input);
+              return service.submit(context, prepared);
             case "relay_status":
               return service.status(
                 context,
-                relayMcpSchemas.relay_status.parse(input).message_id,
+                relayMcpSchemas.relay_status.parse(prepared).message_id,
               );
             case "relay_poll":
               return { delivery: service.poll(context) };
             case "relay_ack":
-              return service.ack(context, input);
+              return service.ack(context, prepared);
           }
         }),
     );

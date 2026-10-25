@@ -18,6 +18,7 @@ import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
 import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
 import { limits, policy, envelope } from "./relay-http-fixtures.js";
 import { options } from "./hab-registry-fixtures.js";
@@ -95,6 +96,38 @@ function list(url, token) {
     body: JSON.stringify(envelope()),
   });
 }
+test("explicit group configuration creates registry v2 and stays deny-all across restart", async (t) => {
+  const f = fixture(t);
+  f.config.registry.authentication_groups = true;
+  f.write("service.local.json", f.config);
+  const first = await startConfiguredLocalRelay(f.configPath);
+  try {
+    assert.equal((await list(first.url)).status, 401);
+  } finally {
+    await first.close();
+  }
+  const raw = new DatabaseSync(join(f.config.directory, "registry.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    assert.equal(
+      raw.prepare("SELECT version FROM hab_registry_meta").get().version,
+      2,
+    );
+    assert.equal(
+      raw.prepare("SELECT count(*) n FROM hab_auth_groups").get().n,
+      0,
+    );
+  } finally {
+    raw.close();
+  }
+  const next = await startConfiguredLocalRelay(f.configPath);
+  try {
+    assert.equal((await list(next.url)).status, 401);
+  } finally {
+    await next.close();
+  }
+});
 test("private explicit config starts deny-all; digest binding authenticates only until file revocation", async (t) => {
   const f = fixture(t),
     host = await startConfiguredLocalRelay(f.configPath);

@@ -16,7 +16,7 @@
 
 実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、管理添付の転送・運用、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
-**2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可はopt-inで実装済みだが、MCP／通常サービスへの配線と15分の試験用OAuth入口からの移行は未実装であり、認証設定・公開・自動更新を有効化したとは扱わない。
+**2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可をopt-inで実装し、MCPの名義選択v1と通常サービスのopt-in配線も実装した。15分の試験用OAuth入口から常用方式への移行と実製品の受入れは未検証であり、認証設定・公開・自動更新を有効化したとは扱わない。
 
 ## 1. 目的と非目標
 
@@ -140,7 +140,7 @@ Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提�
 
 **認証は参加グループ単位、Botの切り分けはアドレス単位**とする。本人が承認した検証済み接続をグループにbindingし、一つまたは複数の登録済み個体を所属させる。グループは特定利用者の承認済み信頼範囲であり、同じ製品の全利用者を意味しない。製品名による認証・配送分岐は設けない。詳細とフローは[認証グループ設計](relay-auth-groups.md)を参照する。
 
-呼出元は送信名義または自分側の受信箱アドレスを選ぶ。serverは認証済みグループの所属・有効状態・操作権限を検証してagent_idを確定し、Relay coreへ渡す。未登録・別グループの選択や曖昧な省略は拒否する。確定envelopeのsender_idはserverが付与し、未検証の任意sender_idを信用しない。Registryには所属選択の不透明contextを作る`selectAddress`を実装した。現行の厳格なMCP入力は未変更であり、具体的なアドレス選択wire形式と1対1接続との互換性は後続で実装する。
+呼出元は送信名義または自分側の受信箱アドレスを選ぶ。serverは認証済みグループの所属・有効状態・操作権限を検証してagent_idを確定し、Relay coreへ渡す。未登録・別グループの選択や曖昧な省略は拒否する。確定envelopeのsender_idはserverが付与し、未検証の任意sender_idを信用しない。Registryには所属選択の不透明contextを作る`selectAddress`を実装した。HABの全5操作は任意の`as_address`と、それに対応する`expected_agent_id`による一致確認に対応する。従来の単一名義入力も維持し、未知fieldは拒否する。wire契約と再送時の固定は[名義選択v1](relay-auth-groups.md#共通mcpの名義選択v1)を参照する。
 
 同じグループの資格情報を共有するBot間では、所属アドレスの名義使用・受信箱アクセスを厳密に隔離しない。共有OAuth subjectから個別Botの本人性を証明したとは言わず、専有の証明も受入れ条件にしない。グループ外の名義使用・受信箱閲覧は拒否する。公開client ID、自己申告のgroup ID、会話名、アドレスだけでは認証できない。
 
@@ -148,7 +148,7 @@ Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提�
 
 監査には認証済みグループと選択した個体名義を分けて記録する。credential本体やaccess／refresh tokenを参加台帳、message、監査に置かない。参加承認の有効期間は短期アクセストークンの期限と分離し、許可済みの更新はクライアントが担当する。更新でグループや権限を拡大せず、失効・更新不可時は停止する。この常用方式は現行の15分試験入口へ適用済みではない。
 
-**実装状況：** ローカル実装は管理権限portと検証済み接続portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACによる従来の1対1照合を維持し、opt-inでグループbinding・所属選択・認可・停止・監査を追加した。MCP入力と通常サービスへの配線は未変更。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
+**実装状況：** ローカル実装は管理権限portと検証済み接続portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACによる従来の1対1照合を維持し、opt-inでグループbinding・所属選択・認可・停止・監査を追加した。MCPの基本5操作と通常サービスの明示opt-inにも配線済み。稼働設定や実認証は未変更。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
 
 ### 4.4 メール型の相互送信policy
 
@@ -204,7 +204,7 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 }
 ```
 
-例はRelayから取得する確定済みenvelopeであり、実個体・実設定ではない。送信入力にsender_idを足しても認証主体やグループを選べない。所属アドレス選択の新wire形式は未実装である。取得結果へは配送用`delivery_id`、lease情報、受付時刻などを別のwrapperで付け、共通message本文と混ぜない。
+例はRelayから取得する確定済みenvelopeであり、実個体・実設定ではない。送信入力にsender_idを足しても認証主体やグループを選べない。所属アドレス選択fieldは確定envelopeには含めず、HABの認可境界だけで解釈する。取得結果へは配送用`delivery_id`、lease情報、受付時刻などを別のwrapperで付け、共通message本文と混ぜない。
 
 初期kind案は`question`、`answer`、`execution_request`、`execution_accepted`、`execution_result`、`delivery_failure`。正確な列挙・body schemaは実装前に固定する。実行依頼のbodyは、許可したtask_typeと限定引数を表し、自由文をshellや汎用Task入力へ変換しない。配送受領はACK APIで表し、仕事の引受け／完了とは別である。
 
@@ -431,7 +431,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/relay/mcp.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。いずれも既存runtime・公開HTTP APIへは未配線であり、`relay_extend`は未実装。
 
-`relay_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address}`のみで、sender・agent・mailbox・URL等の追加引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
+`relay_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address, as_address?, expected_agent_id?}`とする。相手側の`address`と自分側の名義を分け、期待IDは`as_address`との一致確認だけに使う。sender・group・mailbox・URL等の未知引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
 
 | 追加候補                       | 目的                                 | 認可境界                                                |
 | ------------------------------ | ------------------------------------ | ------------------------------------------------------- |
@@ -582,7 +582,7 @@ G1の部分的な証拠として、[登録からHTTP配送・停止・復旧ま�
 ## 22. 未決定・未検証事項
 
 1. G0：実Grok/dotのグループbinding・所属アドレス選択・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
-2. Registryの認証グループ・所属選択・停止・監査はopt-inで実装済み。MCP／通常サービスへの配線、実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
+2. Registryの認証グループ・所属選択・停止・監査はopt-inで実装済み。基本5操作のMCP配線と通常サービスの明示opt-inも実装した。添付toolの複数名義、実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
 3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、将来のアドレス正規化version更新、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
 4. 配送TTL一律1時間、ACK確定後のRelay本文削除、最小配送記録の30日保持は決定済み。その他の推奨初期値の採否、個体別最低予約枠、公平性/SLO、長期不在時のretentionと個人データ削除policy。
 5. long-poll／lease延長の要否、wake追加の要否と実receiverの能力。

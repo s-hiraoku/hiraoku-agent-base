@@ -74,6 +74,16 @@ export class RelayHttpGateway {
   protected get toolSchemas(): Record<string, z.ZodType> {
     return relayMcpSchemas;
   }
+  /** Trusted host may narrow admission to an already authenticated local name. */
+  protected writerContext(
+    context: unknown,
+    _tool: string,
+    _input: unknown,
+  ): unknown {
+    void _tool;
+    void _input;
+    return context;
+  }
   protected createServer(resolve: RelayContextResolver, gate: RelayMcpGate) {
     return createRelayMcpServer(
       this.#service,
@@ -434,7 +444,7 @@ export class RelayHttpGateway {
               : undefined;
           if (!operation) throw new HttpFailure(405, "resource_rejected");
           return await this.#admission.run(
-            context,
+            this.writerContext(context, String(name), params?.arguments ?? {}),
             operation,
             abort.signal,
             dispatch,

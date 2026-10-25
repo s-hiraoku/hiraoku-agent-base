@@ -5,7 +5,11 @@ import { RelayHttpGateway } from "../relay/http.ts";
 import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
 import type { AuditSink } from "../security.ts";
 import type { RelayContextResolver, RelayMcpGate } from "../relay/mcp.ts";
-import { createHabMcpServer, habMcpSchemas } from "./mcp.ts";
+import {
+  createHabMcpServer,
+  habMcpSchemas,
+  prepareHabInvocation,
+} from "./mcp.ts";
 import type { HabMcpService } from "./mcp.ts";
 import { RelayError } from "../relay/service.ts";
 export class HabHttpGateway extends RelayHttpGateway {
@@ -27,6 +31,15 @@ export class HabHttpGateway extends RelayHttpGateway {
   }
   protected override get toolSchemas() {
     return habMcpSchemas;
+  }
+  protected override writerContext(
+    context: unknown,
+    tool: string,
+    input: unknown,
+  ) {
+    return Object.hasOwn(habMcpSchemas, tool)
+      ? prepareHabInvocation(this.#hab, context, tool, input).context
+      : super.writerContext(context, tool, input);
   }
   protected override createServer(
     resolve: RelayContextResolver,

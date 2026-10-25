@@ -471,8 +471,13 @@ without raw claims or credentials. This is authorization provenance, not proof o
 which Bot ran or a substitute for delivery receipts.
 
 See [the adopted design and current limits](../../docs/relay-auth-groups.md).
-The standard MCP selector, normal service configuration, OAuth refresh and live
-connections are not wired by this registry extension. Tests use synthetic verified
+The five basic HAB MCP tools accept optional `as_address` and a paired
+`expected_agent_id` consistency check. The selector is removed before core dispatch;
+foreign group names and mismatched immutable IDs are rejected before delivery.
+`HabMcpClient` fixes both values across submit, status, poll and ACK recovery.
+The normal service config accepts the explicit group opt-in, but no live config,
+credential or OAuth refresh policy is changed. Multi-address attachment tool
+selection and real-agent acceptance remain pending. Tests use synthetic verified
 contexts and temporary databases only:
 
 ```sh

@@ -42,6 +42,7 @@ const schema = z.strictObject({
     json_nodes: positive,
   }),
   registry: z.strictObject({
+    authentication_groups: z.boolean().optional(),
     max_products: positive,
     max_agents: positive,
     max_bindings: positive,

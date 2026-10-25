@@ -4,7 +4,7 @@
 
 2026-10-25 JSTに採用した設計判断。**認証は参加グループ単位、Botの切り分けはアドレス単位**とする。グループは本人が承認する接続の信頼範囲であり、製品全体や全利用者を表さない。製品名による認証・配送分岐は設けない。
 
-**Registryの認証グループ・所属・認可を実装済み、MCPへの配線は未完了。** 従来の1対1 bindingは維持し、明示的な`authentication_groups: true`と`migrate()`で追加schemaを有効にする。通常のサービス設定はまだこの選択を受け付けず、OAuth入口は最大15分の試験用許可窓のままである。実接続・常用token更新・稼働設定変更は行っていない。
+**Registryと共通MCPの名義選択v1を実装済み。** 従来の1対1 bindingは維持し、明示的な`authentication_groups: true`と`migrate()`で追加schemaを有効にする。通常サービスの設定readerもこのopt-inを受け付けるが、稼働設定への適用は行っていない。OAuth入口は最大15分の試験用許可窓のままであり、実接続・常用token更新は別途検証する。
 
 ## 認証とアドレスの役割
 
@@ -28,7 +28,24 @@
 
 アドレスの選択は**認証済みグループ内での名義選択**であり、認証・権限付与ではない。確定済みmessageの`sender_id`は引き続きserverが付与する。送信outboxには選択した自分側個体と元の宛先・messageを固定し、再送で別名義へ変更しない。受信storeとACK状態も選択した個体ごとに分離し、他の受信箱へACKを付け替えない。
 
-現在の厳格なMCP schemaへ未定義のsender／group引数を追加しても、この設計は有効にならない。アドレス選択の具体的なwire形式は、既存1対1接続との互換性・version・全5操作の認可を揃えて別途実装する。製品ごとのtoolや配送APIは作らない。
+### 共通MCPの名義選択v1
+
+HABの全5操作に任意の`as_address`を追加した。既存の引数は維持し、`relay_resolve`では相手側を`address`、自分側を`as_address`で区別する。
+
+```json
+{
+  "as_address": "research@grok-bot.hab",
+  "address": "lab@hermes.hab"
+}
+```
+
+`relay_submit / relay_status / relay_poll / relay_ack`にも同じ自分側選択を付ける。`expected_agent_id`は`as_address`と組み合わせる任意の一致確認であり、認証ではない。指定した場合、選択された所属アドレスの不変IDとの不一致を配送前に拒否する。`expected_agent_id`だけを送ることは認めない。未知の`group_id`やsubmitの任意`sender_id`等は従来どおり拒否する。
+
+`HabMcpClient`は設定した`as_address`と既存の`policy.agent_id`を全操作へ固定して送り、status／ACKの復旧にも同じ名義を使う。再起動後に設定のアドレスを取り違えても、期待個体IDとの一致確認が先に拒否し、別名義での重複送信を防ぐ。ネイティブMCPクライアントから直接呼ぶ場合も同じ引数を使い、自分の名義を送信intentへ固定する。
+
+選択fieldはHABのtransport／認可層で解釈・検証し、message envelopeや再利用するRelay coreの契約へ混ぜない。単独のRelay MCPは従来の4操作・入力schemaを維持する。serverが選択能力を提供しない場合や旧serverがfieldを拒否した場合、選択を削って再送するfallbackは行わない。製品ごとのtoolや配送APIは作らない。
+
+現在の名義選択はHABの基本5操作が対象。任意の添付upload／download toolへの複数名義の配線は未対応で、共有グループの曖昧な主体を許可しない。従来の単一名義による添付操作は維持する。
 
 ## 許容する共有範囲と停止
 
@@ -78,4 +95,6 @@ Registryの管理portは`createGroup / bindGroupVerified / addGroupMember / setG
 
 `node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-authorization.test.js`で、一時DB・合成主体による共有名義、外部拒否、停止・失効、再起動、idempotency、監査失敗と1対1回帰を確認する。実OAuth更新の試験ではない。
 
-残作業はversionedなMCPアドレス選択、クライアントの固定名義、サービス設定への明示配線、グループschemaのbackup／restoreと監査保守、実製品での受入れ、常用token更新。既存サービス・本番DB・認証grant・公開経路は変更していない。
+`node --test test/hab-address-selection.test.js test/local-relay-service.test.js`では、全5操作の名義選択・グループ外拒否・期待ID不一致の配送前拒否、writer受付、ネイティブHTTPによる永続送信・返信・保存後ACK、受付応答消失後のRegistry／listener再起動と同じ名義での復旧、明示opt-inでの全拒否起動を確認する。これは合成認証による試験であり、実Codex／Hermes等との往復を証明しない。
+
+残作業は添付toolへの名義選択拡張、グループschemaのbackup／restoreと監査保守、実製品での受入れ、常用token更新。既存サービス・本番DB・認証grant・公開経路は変更していない。
