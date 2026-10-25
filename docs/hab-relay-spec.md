@@ -5,7 +5,7 @@
 | 項目           | 内容                                                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | 採用設計       | **HAB Relay draft v2 + store-and-forward**。draft v2は採用した設計案の名称であり、稼働済みのprotocol versionを表さない |
-| 採用判断       | 2026-10-17 JST。正式な設計として保存する判断                                                                           |
+| 採用判断       | 2026-10-17 JST。2026-10-25 JSTに認証グループとアドレスの分離を追加採用                                                                           |
 | 実装照合基準   | `main` `70c438bb6f3f4ab8b201536e437cdb641eeee4d6`                                                                      |
 | この文書の対象 | 通信部分のHAB Relay、周辺Adapter、既存Task Engineとの境界と受入れ条件                                                  |
 | 承認の境界     | 設計採用は、実装・migration適用・実個体接続・サービス起動・公開・credential発行・権限変更の承認を兼ねない              |
@@ -16,6 +16,8 @@
 
 実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、管理添付の転送・運用、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
+**2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。現行の接続と個体の1対1実装、15分の試験用OAuth入口からの移行は未実装であり、認証設定・公開・自動更新を有効化したとは扱わない。
+
 ## 1. 目的と非目標
 
 HAB全体の名称は **Hiraoku Agent Base**、通信部分の名称は **HAB Relay** とする。目的は、**拡張性・導入容易性・シンプルさ・安定性**の4つであり、順位は付けない。
@@ -24,7 +26,7 @@ HAB全体の名称は **Hiraoku Agent Base**、通信部分の名称は **HAB Re
 
 初期構成は**単一Nodeサービス + SQLite**とする。同じプロセス内でもRelay、Task Engine、Adapter、認証・認可をコード上の責務として分ける。全agentの判断を中央に移すものではない。Dots、Grok Bot、Hermesなどの既存の担当・job・判断を尊重し、同じcron/jobを重複作成しない。
 
-初期は1メッセージにつき1送信個体・1受信個体の1対1とする。broadcast、group、任意URL転送、任意shell、本文からの自動実行は初期対象外。質問・回答を送るだけならTaskは不要である。
+初期は1メッセージにつき1送信個体・1受信個体の1対1とする。broadcast、グループ一括配送、任意URL転送、任意shell、本文からの自動実行は初期対象外。質問・回答を送るだけならTaskは不要である。
 
 ## 2. 先行実証ゲート G0
 
@@ -32,13 +34,13 @@ HAB全体の名称は **Hiraoku Agent Base**、通信部分の名称は **HAB Re
 
 | 確認点           | 必要な証拠                                                               | 利用できない場合                                                        |
 | ---------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| 個体識別         | 接続の検証済み情報を個体へ結び付け、同じ所有者の別個体を偽装できない試験 | 共有subjectだけで代用しない。接続単位を識別できる別方式の設計判断が必要 |
+| 認証グループと名義 | 検証済み接続を承認済みグループへbindingし、所属アドレスを選択でき、グループ外の名義・受信箱を拒否する試験 | 接続主体を検証できなければ拒否。同じグループ内のBot本人性は要求しない |
 | 送信側outbox     | 送信前の永続保存、再起動後の同じID・同じ内容の再送                       | bridge到着後からの保証に限定し、agent起点の保証とは呼ばない             |
 | 再送契機         | 応答消失・一時停止・復旧後に、誰がいつ再送するかを実行可能な形で示す     | 永続outboxがあっても再送契機がなければ自動回復を保証しない              |
 | 受信側inboxとACK | 永続受領・dedup保存後のACK、再起動後の取得                               | 一時的な会話contextや画面表示を永続inboxと扱わない                      |
 | poll／wake       | 対応API、呼出主体、有限timeout、権限、wake後のpollの可否                 | wakeは省略可。poll自体が利用不能なら接続設計を見直す                    |
 
-**外部bridgeに届く前に発生した送信失敗を、そのbridgeが保証するとは言わない。** 原agent側の永続outboxまたは同等の証明がなければ、「bridgeが受け取った後」の保証のみである。個体専用credentialを必要とする場合も、この仕様書だけで発行しない。
+**外部bridgeに届く前に発生した送信失敗を、そのbridgeが保証するとは言わない。** 原agent側の永続outboxまたは同等の証明がなければ、「bridgeが受け取った後」の保証のみである。グループの新規credentialや継続更新を必要とする場合も、この仕様書だけで発行・有効化しない。
 
 G0はモデルなしのRelay核実装とは並行調査できるが、実個体対応の工数確約・本番接続受入れより先に完了させる。提供APIがなければ、単なる作業日数の追加ではなく、利用方法・bridge・対象製品を再選定する判断に戻る。
 
@@ -64,7 +66,7 @@ flowchart LR
 | Relay       | message/delivery保存、宛先検証、lease、ACK、再配送、期限・不達状態 | 本文の命令実行、Taskの自動claim、個体の判断代行  |
 | Task Engine | 許可された固定Taskの受付・claim・heartbeat・complete・cancel・照合 | 会話mailboxの代用、配送ACKを仕事完了と解釈       |
 | Adapter     | 共通契約への変換、永続outbox/inbox、再送、受領後の個体への橋渡し   | 自称agent名での認証、未保存ACK、到着前の送信保証 |
-| 認証・認可  | 検証済み接続→agent_id、操作・宛先・kindの許可、停止と失効          | 本文・アドレス・製品名による権限付与             |
+| 認証・認可  | 検証済み接続→グループ→所属agent_id、操作・宛先・kindの許可、停止と失効          | 本文・アドレス・製品名による権限付与             |
 | Task bridge | 実行依頼の明示的引受けとTaskの一意な関連付け、結果の返信化         | 普通の質問・回答・受領ACKからの無条件Task生成    |
 
 サービス内の直接呼出しでも、これらの境界を省略しない。wakeやpushに失敗しても、保存済みmessageとinboxを正本として回復できる構成にする。
@@ -86,7 +88,7 @@ flowchart LR
 
 Relayへ渡す送受信者はopaqueな個体IDとし、coreは`agent_name`、`bot_name`、`.hab`を解析しない。第4章のアドレス命名・登録はHAB側のpolicyである。別の利用先は独自のアドレス方式を使え、アドレスを表示しない利用も可能にする。`kind`ごとの業務的意味や本文の命令解釈は利用側が所有し、coreはversioned envelope、許可されたschema／サイズと配送上の不変条件を検証する。
 
-認証・認可は省略可能な便宜機能にしない。HAB側の検証済み接続を、必須の認可interface経由でcoreへ渡す。coreはsubmit／poll／ACK／statusの各境界で許可と停止・失効を確認し、認可実装の未注入・不明主体・判定失敗は拒否する。policy側の即時失効と受付の整合性を保つversion／epoch契約を定義し、分離のためにstaleな許可を無期限cacheしない。raw credentialや自己申告senderをcoreの業務引数にしない。
+認証・認可は省略可能な便宜機能にしない。HAB側の検証済み接続を、必須の認可interface経由でcoreへ渡す。coreはsubmit／poll／ACK／statusの各境界で許可と停止・失効を確認し、認可実装の未注入・不明主体・判定失敗は拒否する。policy側の即時失効と受付の整合性を保つversion／epoch契約を定義し、分離のためにstaleな許可を無期限cacheしない。raw credentialや未検証の自己申告senderをcoreの業務引数にしない。グループ内のアドレス選択・所属検査は外側の認可境界が担当し、coreへは確定済み個体IDを渡す。
 
 storage、認可／宛先検証、clock、ID／lease token生成、redacted auditと任意wake出力は狭いinterfaceとして定義する。transaction内のmessage＋delivery＋receipt／audit保存は一つのRelay storage境界が所有し、interface分割を理由に原子性を壊さない。wakeや外部通知はcommit済みoutboxから実行する。時刻は一操作内で一つの正本を使い、テスト用clockと本番DB時刻の関係も契約化する。
 
@@ -98,7 +100,7 @@ Relayのmigration・schema version・設定namespaceはTask Engineから分離�
 
 ### 4.1 Registry
 
-各個体に、HABが不変で再利用しない`agent_id`を自動発行して登録する。`agent_id`は個体の内部識別子であり、製品・実行環境を表す`agent_name`とは別の属性である。同じ製品の複数個体は同じ`agent_name`を共有し、別の`agent_id`、inbox、ACL、停止状態を持つ。IDは認証秘密ではない。
+各個体に、HABが不変で再利用しない`agent_id`を自動発行して登録する。`agent_id`は個体の内部識別子であり、製品・実行環境を表す`agent_name`とは別の属性である。同じ製品の複数個体は同じ`agent_name`を共有し、別の`agent_id`、inbox、操作権限、停止状態を持つ。認証グループは製品名とは独立し、1件または複数件の個体を管理する。グループ内のBot間では認証を共有でき、個体は独立した認証主体を意味しない。IDは認証秘密ではない。
 
 HABの論理アドレスは、次の形式とする。
 
@@ -122,37 +124,39 @@ lab@hermes.hab
 1. 本人が製品・実行環境を選択し、`bot_name`を指定する。同じ製品の追加個体では既存の製品情報・接続手順を再利用する。
 2. HABが`<bot_name>@<agent_name>.hab`を提示する。確定前は`bot_name`を編集できる。既存・廃止済みアドレスとの重複は拒否し、無断で連番を付けて確定しない。
 3. 本人の確定操作で、固定`agent_id`の発行とアドレスの予約を原子的に行う。登録操作自体の再試行で複数個体を作らないよう、登録要求のidempotencyを持たせる。
-4. 登録直後は「接続待ち」とし、認証済みMCP接続を個体へbindingする。本人が有効化すると、第4.4節のHAB内相互通信policyを適用する。ペアごとの送信許可設定は要求しない。アドレス作成だけで送受信権限を与えない。
+4. 登録直後は「接続待ち」とし、認証済みMCP接続をグループへbindingして個体をその所属アドレスへ登録する。本人が有効化すると、第4.4節のHAB内相互通信policyを適用する。ペアごとの送信許可設定は要求しない。アドレス作成だけで送受信権限を与えない。
 
 **登録確定後は`bot_name`、`agent_name`、完成したHABアドレス、`agent_id`を変更できない。** 別名alias、役割アドレス、転送先変更は初期登録仕様に含めない。別アドレスが必要なら別個体として新規登録し、旧個体は停止・廃止する。廃止してもIDとアドレスの再割当てを禁止し、必要な予約tombstoneを保持する。表示専用ラベルや説明はアドレスと分離し、その変更で配送先を変更しない。
 
-実装済みの[人向け管理フロー](../src/hab/enrollment.ts)は通常のMCP toolから独立し、別管理権限で承認済み製品をbounded pageから選ぶ。確定・接続binding・有効化をそれぞれ確認し、途中中断で予約を解放しない。接続確認で保存するのは個体記述子の鍵付き比較digestだけで、binding時にhostの現在の検証済みcontextと一致することを再確認する。digest単体を認証には使わず、claimsやtokenの貼付けで自己登録できない。
+**現行の1対1 binding実装について：** 実装済みの[人向け管理フロー](../src/hab/enrollment.ts)は通常のMCP toolから独立し、別管理権限で承認済み製品をbounded pageから選ぶ。確定・接続binding・有効化をそれぞれ確認し、途中中断で予約を解放しない。接続確認で保存するのは個体記述子の鍵付き比較digestだけで、binding時にhostの現在の検証済みcontextと一致することを再確認する。digest単体を認証には使わず、claimsやtokenの貼付けで自己登録できない。
 
 専用private checkpointへ各操作前の要求・選択・epochを原子的に保存し、同じflow ID／registry／key／管理主体で再開する。registry応答・checkpoint応答の消失でも元のrequest IDを再利用し、別名や別個体へ自動変更しない。過去の応答は現在の権限や状態を証明しないため、再開時に現在の個体・binding・epochを照合し、停止・失効・後続変更があれば要確認とする。本番管理認証、製品ごとの接続選択・入力上限の配線は別途必要であり、模擬デモの成功を実個体登録と同一視しない。
 
 送信側はアドレスを解決し、**最初のmessage送信前にrecipient_idをoutboxへ確定保存**する。Relay受付はそのIDと現在の許可を検証する。未解決の送信intentを先に永続化することはできるが、ID確定前のmessageは送信しない。再送時にアドレスを再解決せず、過去の配送先や保存済みoutboxを別個体へ付け替えない。宛先を変える意図がある場合は、元の送信状態を照合したうえで明示的な新messageとして扱う。
 
-Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提とする。製品固有の取得タイミング、自動起動、再試行、個体別認証bindingの実能力は実装段階で検証する。接続成功やdurable配送を確認済みとは表現しない。
+Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提とする。製品固有の取得タイミング、自動起動、再試行、認証グループbinding・所属アドレス選択の実能力は実装段階で検証する。接続成功やdurable配送を確認済みとは表現しない。
 
-### 4.3 検証済み接続と個体識別
+### 4.3 検証済み接続、認証グループとアドレス選択
 
-認証済み接続とregistryのbindingから**serverがsender_idを確定**する。submitにsender_idを任意指定する機能は作らず、受信操作のagent_idも接続から確定する。
+**認証は参加グループ単位、Botの切り分けはアドレス単位**とする。本人が承認した検証済み接続をグループにbindingし、一つまたは複数の登録済み個体を所属させる。グループは特定利用者の承認済み信頼範囲であり、同じ製品の全利用者を意味しない。製品名による認証・配送分岐は設けない。詳細とフローは[認証グループ設計](relay-auth-groups.md)を参照する。
 
-同一所有者のOAuth subjectだけで、Grok Botやdotの各個体を識別できると仮定しない。issuer/audience/subject/clientと、必要なら検証済みの接続識別子を組み合わせる。別client IDであっても、それが個体専有であることはG0で確認する。自己申告名、会話名、任意header、引数のagent_idは証明にならない。
+呼出元は送信名義または自分側の受信箱アドレスを選ぶ。serverは認証済みグループの所属・有効状態・操作権限を検証してagent_idを確定し、Relay coreへ渡す。未登録・別グループの選択や曖昧な省略は拒否する。確定envelopeのsender_idはserverが付与し、未検証の任意sender_idを信用しない。現行の厳格なMCP入力は未変更であり、具体的なアドレス選択wire形式と1対1接続との互換性は後続で実装する。
 
-bridgeしか識別できない接続はbridge個体として登録し、元Bot固有の認証を証明したとは言わない。利用可能な方式はG0の結果で決める。credential本体はregistryやmessageへ入れず、承認済み保管先への参照だけを設定する。
+同じグループの資格情報を共有するBot間では、所属アドレスの名義使用・受信箱アクセスを厳密に隔離しない。共有OAuth subjectから個別Botの本人性を証明したとは言わず、専有の証明も受入れ条件にしない。グループ外の名義使用・受信箱閲覧は拒否する。公開client ID、自己申告のgroup ID、会話名、アドレスだけでは認証できない。
 
-認可は第4.4節の明示的な相互通信policyと、個体状態・操作権限・block等を評価する。認可実装やpolicyが未設定なら拒否するが、有効個体間のペア別allowlistは要求しない。新しい個体登録、binding、有効化・停止、ACL変更は管理操作であり、通常の会話やAdapterの自己登録で昇格できない。停止・失効・epochを各受付／取得／ACKの境界で再確認する。他個体のinbox、status、thread、返信参照を推測しても読めないようにし、存在有無を権限エラーから漏らさない。
+認可は第4.4節の相互通信policyと、グループ状態・所属・個体状態・操作権限・blockを評価する。通常送信の宛先は相手側の個体であり、同じグループに属する必要はない。有効個体間のペア別allowlistは要求しない。グループ登録・所属変更・binding・有効化・停止・権限変更は別管理操作とし、会話やAdapterの自己登録で昇格できない。停止・失効・epochを各操作とcommitの境界で再確認し、他グループのinbox／status／thread等の存在を権限エラーから漏らさない。
 
-ローカル実装では管理権限portと検証済み個体portを分け、未設定は拒否する。必須のissuer／audience／subject／client_id／connection_id全体をHMACで照合し、生のclaimやcredentialはregistryへ保存しない。このdescriptorを返すhostは、実際の認証と個体専有の検証を担当する。registryのwrite guardを先に取得し、Relayの認可・commit完了まで保持する。すべての管理変更も同じguardを使い、別接続からの失効が認可とcommitの間へ割り込むことを防ぐ。callbackは同期限定で、終了後の認可objectは無効化する。直接SQL更新・別registry・迂回経路や実製品の認証実証まで保証したものではない。
+監査には認証済みグループと選択した個体名義を分けて記録する。credential本体やaccess／refresh tokenを参加台帳、message、監査に置かない。参加承認の有効期間は短期アクセストークンの期限と分離し、許可済みの更新はクライアントが担当する。更新でグループや権限を拡大せず、失効・更新不可時は停止する。この常用方式は現行の15分試験入口へ適用済みではない。
+
+**現行実装との差：** ローカル実装は管理権限portと検証済み個体portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACによる1対1照合と個体専有を前提としており、複数アドレスの所属・選択は未実装。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
 
 ### 4.4 メール型の相互送信policy
 
 HAB内の有効な登録エージェント同士は、宛先アドレスを指定してメッセージを送信できる。個体ペアごとの事前許可や受信側の引受け承認を、配送受付の前提にしない。これはHAB integrationが提供する明示的な標準policyであり、再利用するRelay coreへHAB固有の許可をhardcodeしない。
 
-送信には認証済みの有効な個体bindingと送信操作の権限を必要とし、実在する登録宛先、対応kind/schema、サイズ・容量・送信頻度を検証する。未登録・接続未認証・停止／失効した送信者、停止・廃止した宛先、明示block、未知kind、不正schemaは拒否する。受信側が一時的にofflineであることは登録停止と区別し、有効な宛先への配送は期限まで保存する。blockや停止後の保存済み配送はpolicyを再確認し、黙って削除せず、保留・隔離・期限切れ等を追跡可能にする。
+送信には認証済みの有効なグループbinding、選択した所属個体と送信操作の権限を必要とし、実在する登録宛先、対応kind/schema、サイズ・容量・送信頻度を検証する。未登録・接続未認証・停止／失効した送信者、停止・廃止した宛先、明示block、未知kind、不正schemaは拒否する。受信側が一時的にofflineであることは登録停止と区別し、有効な宛先への配送は期限まで保存する。blockや停止後の保存済み配送はpolicyを再確認し、黙って削除せず、保留・隔離・期限切れ等を追跡可能にする。
 
-**送信可能であることは、相手の受信箱の閲覧権限、管理権限、実行権限を意味しない。** `execution_request`も依頼の配送であり、配送受付・受領ACK・実行引受け・実行完了を別々に扱う。kindや本文で権限を追加できない。初期はHAB内の1対1通信を対象とし、外部HABとの連携や匿名送信は含めない。
+**送信可能であることは、グループ外の受信箱の閲覧権限、管理権限、実行権限を意味しない。** 同一グループ内では第4.3節の共有範囲を適用する。 `execution_request`も依頼の配送であり、配送受付・受領ACK・実行引受け・実行完了を別々に扱う。kindや本文で権限を追加できない。初期はHAB内の1対1通信を対象とし、外部HABとの連携や匿名送信は含めない。
 
 ### 4.5 受信側ガードレールと実行境界
 
@@ -160,7 +164,7 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 
 | 責務                       | 強制する境界                                                                                                                                                                               |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| HAB／RelayとMCP tool実装   | 差出人を認証bindingから確定し、本人のinboxだけを取得・ACK可能にする。block、停止・失効、schema、サイズ、rate／容量を検証する                                                               |
+| HAB／RelayとMCP tool実装   | 差出人を認証済みグループの所属から確定し、所属する有効個体のinboxだけを取得・ACK可能にする。block、停止・失効、schema、サイズ、rate／容量を検証する                                                               |
 | 受信agent／Product adapter | 本文を外部由来の信頼しない入力として扱い、引受け・拒否・返信を判断する。本文中の命令をsystem instructionや認証済み管理操作として扱わず、既存ルール・credential・送信者identityを変更しない |
 | Task bridge／実行tool      | 明示的な引受けと独立した実行policyを確認する。許可task・tool・引数・データ範囲・宛先・承認条件・並列数を強制し、受信やACKだけでshell、個人データ、外部操作への権限を増やさない             |
 
@@ -176,7 +180,7 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
 | `version`       | 対応する契約version。未知versionは明示拒否                                                                 |
 | `message_id`    | 送信個体がoutbox保存時に決める安定ID。新producerは初回時刻に拘束したrm1形式を使い、再送で変更しない        |
-| `sender_id`     | Relayが検証済みbindingから付与。クライアントのsubmit入力には含めない                                       |
+| `sender_id`     | Relayが認証済みグループと所属名義の検証後に付与。任意の未検証sender_idを入力として信用しない                                       |
 | `recipient_id`  | 最初の送信前に確定する個体ID。受付後は不変                                                                 |
 | `kind`          | 質問、回答、実行依頼、引受け、実行結果などの区別。kind別schemaとACLが必要                                  |
 | `body`          | kind別の厳密schema。テキスト・管理添付参照・構造化データを並べたversioned parts。制御fieldは厳密に検証する |
@@ -200,7 +204,7 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 }
 ```
 
-例はRelayから取得する確定済みenvelopeであり、実個体・実設定ではない。送信入力にsender_idを足しても認証主体を選べない。取得結果へは配送用`delivery_id`、lease情報、受付時刻などを別のwrapperで付け、共通message本文と混ぜない。
+例はRelayから取得する確定済みenvelopeであり、実個体・実設定ではない。送信入力にsender_idを足しても認証主体やグループを選べない。所属アドレス選択の新wire形式は未実装である。取得結果へは配送用`delivery_id`、lease情報、受付時刻などを別のwrapperで付け、共通message本文と混ぜない。
 
 初期kind案は`question`、`answer`、`execution_request`、`execution_accepted`、`execution_result`、`delivery_failure`。正確な列挙・body schemaは実装前に固定する。実行依頼のbodyは、許可したtask_typeと限定引数を表し、自由文をshellや汎用Task入力へ変換しない。配送受領はACK APIで表し、仕事の引受け／完了とは別である。
 
@@ -311,7 +315,7 @@ ACK不明で期限切れになったdeliveryは、受信側にすでに保存さ
 
 ## 10. Poll、long-poll、wake
 
-初期の基準はpoll/ack。poll、status、ACKはそれぞれ認証・認可し、他個体のmailboxをID指定で読ませない。batch量・同時lease・接続時間・rateを制限し、切断時はleaseによって回復する。
+初期の基準はpoll/ack。poll、status、ACKはそれぞれ認証・認可し、選択した所属個体以外のmailboxへ操作を付け替えない。別グループのmailboxはID指定でも読ませない。batch量・同時lease・接続時間・rateを制限し、切断時はleaseによって回復する。
 
 long-pollは候補とする。有限timeout、個体別・全体の同時数制限、shutdown時の中断を必須にし、空の保持接続がSQLite transactionや単一writerを占有しない実装にする。導入不能な製品には通常pollを残す。
 
@@ -452,7 +456,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Task契約・状態       | [types.ts](../src/types.ts)、[task-contract.ts](../src/task-contract.ts)、[store.ts](../src/store.ts)                                              | 現行2 task_type・hermes固定とclaim/lease/fenceを維持。会話配送の型をTaskへ押し込まない                             |
 | 実行Adapter・journal | [adapter.ts](../src/adapter.ts)、[journal.ts](../src/journal.ts)、[worker-loop.ts](../src/worker-loop.ts)、[hermes-runs.ts](../src/hermes-runs.ts) | 既存receipt/run照合を維持。`sender-outbox.ts`・`receiver-inbox.ts`等を新設し、配送journalを実行receiptと分離       |
-| 認証・停止・認可     | [auth.ts](../src/auth.ts)、[oauth.ts](../src/oauth.ts)、[authorization.ts](../src/authorization.ts)                                                | `relay-registry.ts`／個体binding・ACL層を追加。既存検証、epoch・停止を弱めず、同一subjectの別個体を追加で区別      |
+| 認証・停止・認可     | [auth.ts](../src/auth.ts)、[oauth.ts](../src/oauth.ts)、[authorization.ts](../src/authorization.ts)                                                | `relay-registry.ts`／個体binding・ACL層を追加。検証済み接続をグループへbindingし所属アドレスを選択。グループ外拒否、epoch・停止を維持      |
 | Relay契約・store     | 汎用Relayは未実装。[ping.ts](../src/ping.ts)は固定ping/pong専用                                                                                    | `relay-contract.ts`・`relay-store.ts`を追加。ping制約を外して汎用会話へ転用しない                                  |
 | client・task bridge  | [client.ts](../src/client.ts)、[mcp-worker-client.ts](../src/mcp-worker-client.ts)はTask用                                                         | `relay-client.ts`・Adapter共通契約・`relay-task-bridge.ts`を追加。Task受付とmessage受領を別操作にする              |
 | SQLite / schema      | [sqlite.ts](../src/sqlite.ts)、[db/schema.ts](../db/schema.ts)、[drizzle](../drizzle/)                                                             | 追加型schemaとversioned migrationを設計。既存migrationを編集・実行しない。Relay SQLは初期SQLite専用                |
@@ -466,7 +470,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 
 命名・列型は実装前の設計事項だが、少なくとも次の永続関係と一意制約が必要となる。
 
-- registry：`relay_agents`、`relay_addresses`、`relay_auth_bindings`、`relay_acl`。agent_idと確定アドレスは不変・再利用禁止。agent_name、bot_name、登録要求のidempotency、接続待ち／有効／停止／廃止、予約tombstone、失効と版を保持。
+- registry：`relay_agents`、`relay_addresses`、`relay_auth_bindings`、`relay_acl`。追加決定の認証グループ・所属もHAB側が所有し、具体schemaとmigrationは未実装。agent_idと確定アドレスは不変・再利用禁止。agent_name、bot_name、登録要求のidempotency、接続待ち／有効／停止／廃止、予約tombstone、失効と版を保持。
 - message：`relay_messages`。確定envelope、受付時刻、期限、immutable fingerprint。`(sender_id,message_id)`一意。
 - delivery：`relay_deliveries`。message/recipient対応、状態、回数、next_visible_at、generation/token検証値、lease。初期はmessageあたり1 recipient。
 - receipt/dedup：`relay_ack_receipts`とmessage tombstone。確定ACK retry、同一要求conflict、本文削除後の重複拒否を保持。
@@ -486,7 +490,7 @@ Adapterのcapability申告は起点にすぎず、実機の永続保存・再送
 
 ## 18. 停止・再開・backupとrollback
 
-個体停止、配送停止、実行停止、credential失効を分ける。停止時は新規submit/pollの受付と新leaseを止め、保存済みmessageを消さない。認証を維持したdrain用ACKを許すか、即時失効にするかは停止policyとして明示する。失効後は既存receipt再取得も権限なしには許さない。
+グループ停止、個体停止、配送停止、実行停止、credential失効を分ける。グループ停止・binding失効は所属個体の全操作を止め、個体単位の停止は他の有効アドレスへ自動波及させない。停止時は新規submit/pollの受付と新leaseを止め、保存済みmessageを消さない。認証を維持したdrain用ACKを許すか、即時失効にするかは停止policyとして明示する。失効後は既存receipt再取得も権限なしには許さない。
 
 現在のHAB policyは停止・block・失効後のACKも即時拒否し、drain用例外は持たない。通常の停止／再開は同じID・アドレスと明示権限で行う。管理記録の容量上限やaudit挿入失敗とは独立した、固定1行の管理者専用`emergencyStop`を実装する。これは冪等かつ単調な全配送拒否latchで、通常の有効化では解除できず、復帰APIは未実装。DB自体への停止保存が失敗する場合はprocess／routeを停止して照合する運用が別途必要であり、この実装は既存runtimeへ未配線である。
 
@@ -500,7 +504,7 @@ migrationは既存API・tableと共存する追加型を基本とする。旧ver
 
 ## 19. 運用観測とセキュリティ
 
-相関ID、個体の不透明ID、状態、試行数、lease世代、時刻、固定理由code、byte数など必要最小限を通常ログへ記録する。本文、credential、Bearer、cookie、lease token、生のCLI出力、個人メール・予定・記憶・会話を通常ログへ出さない。監査が使えないときに新規受付を続けるかはfail-closedを基本とし、停止・回収操作自体は監査失敗で妨げない。
+相関ID、認証グループと選択した個体の不透明ID、状態、試行数、lease世代、時刻、固定理由code、byte数など必要最小限を通常ログへ記録する。本文、credential、Bearer、cookie、lease token、生のCLI出力、個人メール・予定・記憶・会話を通常ログへ出さない。監査が使えないときに新規受付を続けるかはfail-closedを基本とし、停止・回収操作自体は監査失敗で妨げない。
 
 server commit、first poll、inbox commit/ACK、処理開始、引受け、Task完了、結果message受付・受領を別の時刻として扱う。少なくとも次の遅延を分離する。
 
@@ -519,7 +523,7 @@ server commit、first poll、inbox commit/ACK、処理開始、引受け、Task�
 
 | ゲート        | 内容                                                          | 昇格条件                                                       |
 | ------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
-| G0 実個体能力 | 先行して個体binding、outbox、再送契機、inbox、poll/wakeを調査 | 製品・個体ごとの証拠と保証開始点を記録。不可なら設計判断に戻る |
+| G0 実個体能力 | 先行してグループbinding・所属選択、outbox、再送契機、inbox、poll/wakeを調査 | 製品・個体ごとの証拠と保証開始点を記録。不可なら設計判断に戻る |
 | G1 モデルなし | fake agent 3個体、registry/認可、store-and-forward、障害注入  | 下表の通信・保存・認可・復旧条件を満たす                       |
 | G2 固定Task   | 許可済み固定TaskとTask bridge。最大1件                        | 配送受領と引受け／完了を分離し、実行再送・照合を確認           |
 | G3 実個体     | G0を満たした実Grok/dot/Hermesへ段階接続                       | 個体別の接続・公開・credential・費用等の承認とE2E証拠          |
@@ -535,7 +539,7 @@ G1の部分的な証拠として、[登録からHTTP配送・停止・復旧ま�
 | 試験                   | 合格条件                                                                                                                                 |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | 3個体の相互通信        | 同じ製品の2個体を含む計3個体で、有効個体同士がペア別許可設定なしで質問・回答できる                                                       |
-| なりすまし・inbox・ACL | 別個体のsender指定、inbox参照、無許可宛先／kind、thread／返信参照が拒否される                                                            |
+| なりすまし・inbox・ACL | 別グループのsender指定・inbox参照、無許可宛先／kind、thread／返信参照を拒否。同一グループの所属名義選択は許可し、停止した名義は拒否する                                                            |
 | 不在と復旧             | 受信停止中に蓄積し、復旧後に元ID・元期限で取得できる                                                                                     |
 | commit後・応答前停止   | Relay commit後に停止しても同じ送信IDでreceiptが回復し、追加deliveryが生まれない                                                          |
 | inbox保存とACK消失     | 保存前停止ではACKされず、保存後・ACK応答消失では再配送でも処理が重複しない                                                               |
@@ -577,8 +581,8 @@ G1の部分的な証拠として、[登録からHTTP配送・停止・復旧ま�
 
 ## 22. 未決定・未検証事項
 
-1. G0：実Grok/dot各個体の識別・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
-2. 個体専有を証明する接続binding、実サービスのOAuth callback/client方式、必要scopeと保管・失効方式。共有subjectからは推測しない。
+1. G0：実Grok/dotのグループbinding・所属アドレス選択・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
+2. 認証グループと所属アドレスの管理・選択・監査の実装、実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
 3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、将来のアドレス正規化version更新、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
 4. 配送TTL一律1時間、ACK確定後のRelay本文削除、最小配送記録の30日保持は決定済み。その他の推奨初期値の採否、個体別最低予約枠、公平性/SLO、長期不在時のretentionと個人データ削除policy。
 5. long-poll／lease延長の要否、wake追加の要否と実receiverの能力。
