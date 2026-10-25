@@ -31,7 +31,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 ## Features
 
 - [Resolve an address](./resolve-address.md) covers `relay_resolve` success, unknown address and malformed address.
-- [Send a message](./send-message.md) covers `relay_submit`, idempotent replay, conflicting replay, disallowed kind and sender-only `relay_status`.
+- [Send a message](./send-message.md) covers `relay_submit`, idempotent replay, conflicting replay, disallowed kind, sender-only `relay_status` and per-pair thread names.
 - [Receive and acknowledge](./receive-ack.md) covers `relay_poll` leasing, empty poll, lease expiry redelivery and `relay_ack` including wrong-token and wrong-agent refusal.
 - [Access control](./access-control.md) covers missing and unknown bearer tokens.
 - [Restart durability](./restart-durability.md) covers a pending message surviving a stack stop and reopen.

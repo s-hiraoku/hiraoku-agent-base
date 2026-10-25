@@ -22,11 +22,18 @@ const snapshot = {
   bindings: registry
     .prepare("SELECT agent_id, state FROM hab_bindings ORDER BY agent_id")
     .all(),
+  // Stored thread keys are pair-scoped JSON [a, b, thread_id]; legacy rows keep the bare id.
   messages: relay
     .prepare(
       "SELECT sender_id, message_id, recipient_id, thread_id FROM relay_messages ORDER BY message_id",
     )
-    .all(),
+    .all()
+    .map((m) => ({
+      ...m,
+      thread_id: m.thread_id.startsWith("[")
+        ? JSON.parse(m.thread_id)[2]
+        : m.thread_id,
+    })),
   deliveries: relay
     .prepare(
       "SELECT message_id, recipient_id, state, generation FROM relay_deliveries ORDER BY message_id",

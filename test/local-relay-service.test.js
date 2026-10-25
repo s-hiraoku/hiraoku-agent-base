@@ -67,6 +67,14 @@ function fixture(t) {
       retry_base_ms: 10,
       retry_cap_ms: 100,
       poll_scan_limit: 20,
+      agent_capacity: {
+        max_pending_per_sender: 10,
+        max_body_bytes_per_sender: 50000,
+        max_records_per_sender: 25,
+        max_body_bytes_per_recipient: 50000,
+        max_records_per_recipient: 50,
+        reservations: [],
+      },
     },
     http,
   };
@@ -133,6 +141,46 @@ test("missing credentials, malformed config or permissive key file never starts 
     startConfiguredLocalRelay(f.configPath),
     /local_relay_start_rejected/,
   );
+});
+test("configured store requires a per-sender capacity smaller than the shared pool", async (t) => {
+  const f = fixture(t);
+  const store = { ...f.config.store };
+  delete store.agent_capacity;
+  for (const variant of [
+    store,
+    {
+      ...f.config.store,
+      agent_capacity: {
+        ...f.config.store.agent_capacity,
+        max_records_per_sender: f.config.store.max_records,
+      },
+    },
+    {
+      ...f.config.store,
+      agent_capacity: {
+        ...f.config.store.agent_capacity,
+        max_pending_per_sender: f.config.store.max_pending,
+      },
+    },
+  ]) {
+    f.write("service.local.json", { ...f.config, store: variant });
+    await assert.rejects(
+      startConfiguredLocalRelay(f.configPath),
+      /local_relay_start_rejected/,
+    );
+    assert.deepEqual(readdirSync(join(f.dir, "state")), []);
+  }
+  f.write("service.local.json", f.config);
+  const host = await startConfiguredLocalRelay(f.configPath);
+  await host.close();
+});
+test("example relay config enables the per-sender capacity policy", () => {
+  const example = JSON.parse(
+    readFileSync(resolve("config/relay-service.example.json"), "utf8"),
+  );
+  const capacity = example.store.agent_capacity;
+  assert.ok(capacity.max_records_per_sender < example.store.max_records);
+  assert.ok(capacity.max_pending_per_sender < example.store.max_pending);
 });
 test("CLI requires explicit config and prints no config contents", async () => {
   const child = spawn(process.execPath, [cli], {
