@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
@@ -11,8 +11,12 @@ import {
   relayAdminConnect,
   relayAdminDisconnect,
 } from "../src/relay-host/admin.ts";
-import { envelope, message } from "./relay-http-fixtures.js";
-import { fixture } from "./local-relay-service-fixtures.js";
+import { HabMcpClient } from "../src/hab/mcp-client.ts";
+import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
+import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { envelope, message, limits } from "./relay-http-fixtures.js";
+import { fixture, list } from "./local-relay-service-fixtures.js";
 
 const cli = resolve("scripts/hab-relay-admin.mjs");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
@@ -180,6 +184,151 @@ test("disconnect revokes with current epochs, is rerunnable and needs no token m
     ["connection_bound", "address_access_granted"],
   );
   assert.equal((await f.call(tokens.x, "relay_poll")).delivery, null);
+});
+
+test("configured groups complete a durable reply roundtrip and revoke both connections", async (t) => {
+  const f = await started(t, { authentication_groups: true });
+  const participants = [
+    ["sender@client-a.hab", "c"],
+    ["receiver@client-b.hab", "h"],
+  ].map(([address, name]) => {
+    const connected = relayAdminConnect(f.configPath, {
+      address,
+      connection_id: `conn-${name}`,
+    });
+    const agentId = connected.address.agent_id;
+    const client = new HabMcpClient({
+      as_address: address,
+      policy: {
+        resource_url: f.host.url,
+        agent_id: agentId,
+        max_request_bytes: 65536,
+        max_response_bytes: 131072,
+        timeout_ms: 2500,
+        max_active_requests: 1,
+        max_sse_events: 16,
+        max_sse_lines: 128,
+        max_json_depth: 64,
+        max_json_nodes: 10000,
+      },
+      limits,
+      authorization: () => `Bearer ${tokens[name]}`,
+    });
+    const outbox = new SQLiteOutbox(join(f.dir, `outbox-${name}.sqlite`), {
+      agent_id: agentId,
+      fingerprint_key: new Uint8Array(32).fill(71),
+      limits,
+      max_records: 10,
+      max_body_bytes: 100000,
+      max_clock_skew_ms: 1000,
+      lease_ms: 30000,
+      retry_base_ms: 1000,
+      retry_cap_ms: 60000,
+      max_submit_attempts: 3,
+      max_status_attempts: 3,
+      status_retry_ms: 86400000,
+    });
+    outbox.migrate();
+    t.after(() => outbox.close());
+    const inboxPath = join(f.dir, `inbox-${name}.sqlite`);
+    const openInbox = () => {
+      const store = new SQLiteInbox(inboxPath, {
+        agent_id: agentId,
+        fingerprint_key: new Uint8Array(32).fill(72),
+        limits,
+        max_records: 10,
+        max_body_bytes: 100000,
+        max_ack_records: 30,
+        ack_retry_ms: 86400000,
+        retry_base_ms: 1000,
+        retry_cap_ms: 60000,
+        max_attempts: 5,
+      });
+      store.migrate();
+      return store;
+    };
+    const inbox = openInbox();
+    t.after(() => inbox.close());
+    const savedBeforeAck = [];
+    const receiver = new DurableReceiver(inbox, {
+      poll: () => client.poll(),
+      ack: async (request) => {
+        // A separate connection must see the committed body before network ACK.
+        const reader = openInbox();
+        try {
+          const saved = reader
+            .inbox()
+            .find(
+              (entry) =>
+                entry.sender_id === request.sender_id &&
+                entry.message.message_id === request.message_id,
+            );
+          assert.ok(saved);
+          assert.equal(saved.receipt_confirmed, false);
+          savedBeforeAck.push(saved.message);
+        } finally {
+          reader.close();
+        }
+        return client.ack(request);
+      },
+    });
+    return {
+      address,
+      name,
+      agentId,
+      client,
+      outbox,
+      receiver,
+      savedBeforeAck,
+      sender: new DurableSender(outbox, client),
+    };
+  });
+  const [a, b] = participants;
+  assert.equal((await a.client.resolve(b.address)).recipient_id, b.agentId);
+  const sent = { ...message(), recipient_id: b.agentId };
+  assert.equal(a.sender.enqueue(sent).state, "queued");
+  await a.sender.sendOnce();
+  assert.equal(a.outbox.get(sent.message_id).state, "accepted");
+  await b.receiver.receiveOnce();
+  assert.deepEqual(b.savedBeforeAck, [sent]);
+  assert.equal(b.receiver.inbox()[0].receipt_confirmed, true);
+
+  const reply = {
+    ...message("2".repeat(32)),
+    recipient_id: a.agentId,
+    kind: "answer",
+    in_reply_to: { sender_id: a.agentId, message_id: sent.message_id },
+  };
+  b.sender.enqueue(reply);
+  await b.sender.sendOnce();
+  await a.receiver.receiveOnce();
+  assert.deepEqual(a.savedBeforeAck, [reply]);
+  assert.equal(a.receiver.inbox()[0].receipt_confirmed, true);
+  assert.equal((await a.client.status(sent.message_id)).state, "acked");
+  assert.equal((await b.client.status(reply.message_id)).state, "acked");
+  assert.deepEqual(a.receiver.inbox()[0].message.in_reply_to, {
+    sender_id: a.agentId,
+    message_id: sent.message_id,
+  });
+
+  f.write("credentials.local.json", { version: 1, credentials: [] });
+  for (const participant of participants) {
+    const response = await list(f.host.url, tokens[participant.name]);
+    assert.equal(response.status, 401);
+    await response.body?.cancel();
+    assert.equal(
+      relayAdminDisconnect(f.configPath, participant.address).revoked_bindings,
+      1,
+    );
+  }
+  const status = relayAdminStatus(f.configPath);
+  assert.ok(
+    status.groups.every(
+      (group) => group.state === "stopped" && group.active_bindings === 0,
+    ),
+  );
+  assert.equal(status.groups.length, 2);
+  assert.equal(status.credentials.length, 0);
 });
 
 test("connect rejects unknown, mismatched-audience and foreign-bound connections", async (t) => {

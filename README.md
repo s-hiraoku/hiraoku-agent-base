@@ -6,9 +6,11 @@ HABは、個人文脈を持つDots（スタローン）、クラウドで働くG
 
 通信部分の**HAB Relay**は、HAB固有の登録・アドレス、Task Engine、製品別Adapterから独立した再利用可能なコンポーネントとして実装しています。[正式仕様](docs/hab-relay-spec.md)でstore-and-forward、個体認証、受信ACK、Task Engineとの境界、受入れ条件を管理し、[実装手順と検証範囲](src/relay/README.md)に現在の到達点を記録します。
 
-**現在はテキスト・構造化データの配送基盤、MCP送受信・アドレス解決、人向けの登録フローを模擬認証と一時DB／loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 実個体の認証binding、本番管理入口、添付bytes、runtimeへの配線・運用整備などが残っています。
+**現在はテキスト・構造化データの配送基盤、MCP送受信・アドレス解決、人向けの登録フローを模擬認証と一時DB／loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 本番の認証binding・管理入口、添付bytes、runtimeへの配線・運用整備などが残っています。
 
-2026-10-25に、**認証は参加グループ単位、Botの切り分けはアドレス単位**とする[認証設計](docs/relay-auth-groups.md)を採用しました。1認証主体に複数アドレスを紐付けられる共通契約とし、グループ外の名義使用・受信箱操作を拒否します。Registryのグループ・所属・認可・停止・監査を合成主体で検証済みです。共通MCPの基本5操作で`as_address`による名義選択と、通常サービスの明示opt-inに対応しています。実製品での受入れ・常用token更新は未完了です。
+2026-10-25、**実Codexと実Hermes（双方`gpt-6.1-sol`）の共通MCPによる固定文・返信・双方の保存後ACK**をMac内で確認しました。試験認証の失効・秘密と追加設定の除去・試験Relay停止も確認済みです。[有限試験の手順と限界](docs/finite-mcp-trial.md)に、hostの時刻・ID生成と保存の補助、使用CLI、操作承認、回帰検証を記録しています。実Dots接続と常駐・自律運用は別の未完了項目です。
+
+2026-10-25に、**認証は参加グループ単位、Botの切り分けはアドレス単位**とする[認証設計](docs/relay-auth-groups.md)を採用しました。1認証主体に複数アドレスを紐付けられる共通契約とし、グループ外の名義使用・受信箱操作を拒否します。Registryのグループ・所属・認可・停止・監査を合成主体で検証済みです。共通MCPの基本5操作で`as_address`による名義選択と、通常サービスの明示opt-inに対応しています。常用構成での受入れ・token更新は未完了です。
 
 ## ローカルMVPを確認する
 
@@ -43,7 +45,7 @@ flowchart LR
 
 [PNG fallback](docs/diagrams/hab-current.png) · [HABの目標構成・通信方向・認証責任](docs/hab-topology.md)
 
-Hub・Hermesの限定接続は準備段階、Dots/ChatGPT MCPは未検証です。目標構成は詳細文書で確認済み経路から分けて示します。
+上図は2026-10-10時点の別MCP経路です。その後のCodex／HermesのRelay有限往復は[試験記録](docs/finite-mcp-trial.md)を参照してください。DotsのRelay MCP接続は未検証です。目標構成は詳細文書で確認済み経路から分けて示します。
 
 ## 現在可能なこと
 
