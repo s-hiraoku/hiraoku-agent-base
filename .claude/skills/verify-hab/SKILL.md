@@ -11,7 +11,7 @@ HAB is a personal agent hub. Its user-facing surfaces today are:
 2. **Enrollment terminal** (`npm run demo:hab-enrollment -- --interactive`). A human picks a product, reserves `<bot>@<product>.hab`, binds and activates it.
 3. **Hub server** (`node src/server.ts`, fixed `127.0.0.1:8787`). Without an operator config it denies everything; only the deny-all boundary is drivable locally.
 
-The repo has no standalone Relay launcher yet (README: "既存runtimeへ未配線"). `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `SQLiteRelayStore`, `runHabEnrollment`, `HabRelayService`, `HabHttpGateway`, `createRelayNodeHandler`) exactly as `test/hab-journey-fixtures.js` does, enrolls three agents through the real enrollment workflow, and listens on a loopback port. Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
+The repo now ships a configured Relay CLI (`npm run relay:local`) and an operator CLI (`npm run relay:admin`); drive those with `configured.sh` per [features/configured-relay.md](features/configured-relay.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `SQLiteRelayStore`, `runHabEnrollment`, `HabRelayService`, `HabHttpGateway`, `createRelayNodeHandler`) exactly as `test/hab-journey-fixtures.js` does, enrolls three agents through the real enrollment workflow, and listens on a loopback port. Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
 
 All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 24 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`. `tmux` is needed only for the enrollment terminal.
 
@@ -103,6 +103,7 @@ It kills only the pid in `stack.pid`, and only if that pid's command line is `st
 | `inspect.mjs`    | `node $S/inspect.mjs <run-dir> [label]`                                  | read-only DB snapshot, saved as evidence       |
 | `cleanup.sh`     | `$S/cleanup.sh <run-dir> [--stop-only]`                                  | stop what this run started, keep evidence      |
 | `stack.mjs`      | (via `launch.sh`) `node $S/stack.mjs <run-dir> [port]`                   | the scaffolding host itself                    |
+| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| stop`        | shipped Relay + operator CLI, same state.json  |
 
 ## Other surfaces
 

@@ -33,6 +33,8 @@ const schema = z.strictObject({
   version: z.literal(1),
   credentials: z.array(credential).max(100),
 });
+/** The private mapping format, shared with the operator CLI's read-only checks. */
+export const localCredentialsSchema = schema;
 
 /** Each verification and operation reloads trusted config, so removal and expiry fence in-flight contexts. */
 export class LocalBearerAuthority {

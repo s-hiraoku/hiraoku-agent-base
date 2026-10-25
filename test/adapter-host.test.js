@@ -5,7 +5,11 @@ import { chmodSync, statSync, symlinkSync } from "node:fs";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { Worker } from "node:worker_threads";
-import { hostFixture, deferred } from "./adapter-host-fixtures.js";
+import {
+  hostFixture,
+  deferred,
+  HOST_LEASE_MS,
+} from "./adapter-host-fixtures.js";
 import { code, worker, RESPONSE } from "./task-bridge-fixtures.js";
 import { createRelayNodeHandler } from "../src/relay/http-node.ts";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -188,7 +192,7 @@ test("Adapter host: a stop after remote submit retains sending lease and same re
   );
   f.state.afterNetwork = null;
   f.resume();
-  await sleep(65);
+  await sleep(HOST_LEASE_MS + 50);
   assert.equal((await f.step({ op: "send" })).state, "done");
   assert.equal(f.queued().length, 1);
   assert.equal(f.queued()[0].message_id, message.message_id);
@@ -403,7 +407,7 @@ test("Adapter host: Task RPC stop keeps unknown submission for same-key restart 
   assert.equal((await pending).reason, "host_epoch_changed");
   assert.equal(f.journal.get(key).state, "submitting");
   assert.equal(f.count(), 1);
-  await sleep(65);
+  await sleep(HOST_LEASE_MS + 50);
   const result = await f.step({
     op: "task_submit",
     source: key,

@@ -105,61 +105,151 @@ function read(path: string) {
     throw Error("local_relay_config_rejected");
   return readRuntimeConfig(path);
 }
+/**
+ * Startup refusal with a fixed reason code and, for schema failures, the offending
+ * config field paths. Never carries file contents, paths, secrets or values.
+ */
+export class LocalRelayStartError extends Error {
+  readonly reason: string;
+  readonly fields: readonly string[];
+  constructor(reason: string, fields: readonly string[] = []) {
+    super("local_relay_start_rejected");
+    this.name = "LocalRelayStartError";
+    this.reason = reason;
+    this.fields = Object.freeze([...fields]);
+  }
+}
+function stage<T>(reason: string, action: () => T): T {
+  try {
+    return action();
+  } catch (error) {
+    if (error instanceof LocalRelayStartError) throw error;
+    if (error instanceof z.ZodError)
+      throw new LocalRelayStartError(
+        reason,
+        [
+          ...new Set(
+            error.issues.map((issue) => issue.path.join(".") || "(root)"),
+          ),
+        ].slice(0, 16),
+      );
+    throw new LocalRelayStartError(reason);
+  }
+}
+// Fixed codes from the composed classes that are safe and useful to surface.
+const hostReasons = new Set([
+  "local_relay_private_path_required",
+  "invalid_local_relay_options",
+  "invalid_local_relay_ingress",
+  "registry_key_mismatch",
+  "unsupported_registry_schema",
+  "unknown_registry_schema",
+  "insecure_registry_file",
+  "fingerprint_key_mismatch",
+  "unknown_schema",
+  "unsupported_schema",
+  "unsupported_host_owner_schema",
+  "unknown_host_owner_schema",
+]);
+function hostReason(error: unknown): string {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  if (code === "EADDRINUSE") return "port_in_use";
+  // Another Relay process already owns this state directory.
+  if ((error as Error | undefined)?.message === "host_owner_busy")
+    return "state_in_use";
+  if (code === "EACCES") return "port_or_file_access_denied";
+  if (code === "ENOENT") return "state_path_missing";
+  for (const value of [code, (error as Error | undefined)?.message])
+    if (typeof value === "string" && hostReasons.has(value)) return value;
+  return "host_start_failed";
+}
+/** Validates the operator config and returns it with decoded keys; throws LocalRelayStartError. */
+export function readLocalRelayConfig(configPath: string) {
+  const config = stage("config_invalid", () =>
+    schema.parse(stage("config_file_rejected", () => read(configPath))),
+  );
+  const secrets = stage("keys_invalid", () =>
+    keys.parse(stage("keys_file_rejected", () => read(config.keys_file))),
+  );
+  return {
+    config,
+    registry_fingerprint_key: Buffer.from(
+      secrets.registry_fingerprint_key,
+      "hex",
+    ),
+    relay_fingerprint_key: Buffer.from(secrets.relay_fingerprint_key, "hex"),
+    readCredentials: () => read(config.credentials_file),
+  };
+}
 export async function startConfiguredLocalRelay(configPath: string) {
   try {
-    const config = schema.parse(read(configPath)),
-      secrets = keys.parse(read(config.keys_file));
-    const auth = new LocalBearerAuthority(() => read(config.credentials_file));
-    const remote = config.ingress
-      ? await PinnedRelayOAuthAuthority.create(() =>
-          read(config.ingress!.oauth_file),
-        )
-      : undefined;
+    const { config, readCredentials, ...secrets } =
+      readLocalRelayConfig(configPath);
+    const auth = stage(
+      "credentials_invalid",
+      () => new LocalBearerAuthority(readCredentials),
+    );
+    let remote: PinnedRelayOAuthAuthority | undefined;
+    try {
+      remote = config.ingress
+        ? await PinnedRelayOAuthAuthority.create(() =>
+            read(config.ingress!.oauth_file),
+          )
+        : undefined;
+    } catch {
+      throw new LocalRelayStartError("oauth_invalid");
+    }
     if (remote && remote.resource.resource !== config.ingress!.resource_url)
-      throw Error("local_relay_resource_mismatch");
+      throw new LocalRelayStartError("oauth_resource_mismatch");
     let sink: LocalAudit | undefined;
-    const host = await startLocalRelay({
-      directory: config.directory,
-      port: config.port,
-      limits: config.limits,
-      registry: {
-        ...config.registry,
-        fingerprint_key: Buffer.from(secrets.registry_fingerprint_key, "hex"),
-      },
-      store: {
-        ...config.store,
-        fingerprint_key: Buffer.from(secrets.relay_fingerprint_key, "hex"),
-      },
-      http: config.http,
-      ...(config.ingress && remote
-        ? {
-            ingress: {
-              port: config.ingress.port,
-              resource_url: config.ingress.resource_url,
-              issuer: remote.resource.issuer,
-              allowed_origins: config.ingress.allowed_origins,
-              authority: remote.authority,
-              verify: remote.verify,
-            },
-          }
-        : {}),
-      authority: auth.authority,
-      verify: auth.verify,
-      audit: {
-        record: (category, correlation) => {
-          if (!sink) throw Error("local_relay_audit_unavailable");
-          sink.record(category, correlation);
+    let host: Awaited<ReturnType<typeof startLocalRelay>>;
+    try {
+      host = await startLocalRelay({
+        directory: config.directory,
+        port: config.port,
+        limits: config.limits,
+        registry: {
+          ...config.registry,
+          fingerprint_key: secrets.registry_fingerprint_key,
         },
-      },
-    });
+        store: {
+          ...config.store,
+          fingerprint_key: secrets.relay_fingerprint_key,
+        },
+        http: config.http,
+        ...(config.ingress && remote
+          ? {
+              ingress: {
+                port: config.ingress.port,
+                resource_url: config.ingress.resource_url,
+                issuer: remote.resource.issuer,
+                allowed_origins: config.ingress.allowed_origins,
+                authority: remote.authority,
+                verify: remote.verify,
+              },
+            }
+          : {}),
+        authority: auth.authority,
+        verify: auth.verify,
+        audit: {
+          record: (category, correlation) => {
+            if (!sink) throw Error("local_relay_audit_unavailable");
+            sink.record(category, correlation);
+          },
+        },
+      });
+    } catch (error) {
+      throw new LocalRelayStartError(hostReason(error));
+    }
     try {
       sink = new LocalAudit(config.audit_directory, config.audit_max_bytes);
       return host;
-    } catch (error) {
+    } catch {
       await host.close();
-      throw error;
+      throw new LocalRelayStartError("audit_unavailable");
     }
-  } catch {
-    throw Error("local_relay_start_rejected");
+  } catch (error) {
+    if (error instanceof LocalRelayStartError) throw error;
+    throw new LocalRelayStartError("start_failed");
   }
 }

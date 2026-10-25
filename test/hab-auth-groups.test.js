@@ -557,3 +557,17 @@ test("scoped group authorization cannot escape, change address or permit a concu
   });
   assert.equal(saved.authorize(selected, "poll"), undefined);
 });
+
+test("group authorization records keep the newest entries instead of exhausting delivery", (t) => {
+  const f = shared(t, { max_audit_records: 30 });
+  for (let i = 0; i < 45; i++)
+    assert.equal(f.hab.poll(f.select(f.first)), null);
+  const rows = f.registry.groupAuthorizations(f.admin, {
+    group_id: f.group.group_id,
+    after_id: 0,
+    limit: 100,
+  });
+  assert.equal(rows.length, 30);
+  assert.equal(rows.at(-1).id, 45);
+  assert.equal(rows[0].id, 16);
+});

@@ -30,7 +30,10 @@ HABはメッセージを預かる通信基盤です。各エージェントが�
 
 ローカルサービスのbearerは[個体verifier](local-relay-service.md#individual-verifier)
 の形式で最大15分です。認証ファイルの更新とRegistryの登録・binding・権限付与は
-別々の操作です。未接続は全拒否のままにします。権限は`resolve / submit / status /
+別々の操作です。Registryの登録・binding・権限付与・失効は
+`npm run relay:admin`（[管理CLI](local-relay-service.md#operator-management-cli)）で
+行い、試験ごとの自作スクリプトでRegistry APIを呼ぶ必要はありません。未接続は全拒否のままにします。
+MCPのURLは`http://127.0.0.1:<port>/mcp`と完全一致させます。`localhost`はHost不一致で403です。権限は`resolve / submit / status /
 poll / ack`だけで、Task管理や任意実行の権限には広げません。送信者と受信権限は
 検証済み主体から決まり、ツール引数のエージェント名では決まりません。
 

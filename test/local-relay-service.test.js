@@ -3,99 +3,16 @@ import { request as httpRequest } from "node:http";
 import { oauthFixture, resource, issuer } from "./relay-oauth-fixtures.js";
 import process from "node:process";
 import assert from "node:assert/strict";
-import {
-  mkdtempSync,
-  realpathSync,
-  mkdirSync,
-  writeFileSync,
-  chmodSync,
-  rmSync,
-  readFileSync,
-  readdirSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
-import { limits, policy, envelope } from "./relay-http-fixtures.js";
-import { options } from "./hab-registry-fixtures.js";
+import { envelope } from "./relay-http-fixtures.js";
+import { fixture, list } from "./local-relay-service-fixtures.js";
 const cli = resolve("scripts/hab-relay.mjs");
-function fixture(t) {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), "local-relay-service-")));
-  chmodSync(dir, 0o700);
-  for (const sub of ["state", "audit"])
-    mkdirSync(join(dir, sub), { mode: 0o700 });
-  const write = (name, value) => {
-    const path = join(dir, name);
-    writeFileSync(path, JSON.stringify(value), { mode: 0o600 });
-    return path;
-  };
-  const registry = { ...options };
-  delete registry.fingerprint_key;
-  const http = { ...policy };
-  delete http.resource_url;
-  delete http.allowed_origins;
-  const keyPath = write("keys.local.json", {
-    version: 1,
-    registry_fingerprint_key: "11".repeat(32),
-    relay_fingerprint_key: "22".repeat(32),
-  });
-  const credentialsPath = write("credentials.local.json", {
-    version: 1,
-    credentials: [],
-  });
-  const config = {
-    version: 1,
-    directory: join(dir, "state"),
-    port: 0,
-    keys_file: keyPath,
-    credentials_file: credentialsPath,
-    audit_directory: join(dir, "audit"),
-    audit_max_bytes: 262144,
-    limits,
-    registry,
-    store: {
-      max_pending: 20,
-      max_records: 100,
-      max_pending_per_recipient: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      max_attempts: 3,
-      retry_base_ms: 10,
-      retry_cap_ms: 100,
-      poll_scan_limit: 20,
-      agent_capacity: {
-        max_pending_per_sender: 10,
-        max_body_bytes_per_sender: 50000,
-        max_records_per_sender: 25,
-        max_body_bytes_per_recipient: 50000,
-        max_records_per_recipient: 50,
-        reservations: [],
-      },
-    },
-    http,
-  };
-  const configPath = write("service.local.json", config);
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  return { dir, write, config, configPath, keyPath, credentialsPath };
-}
-function list(url, token) {
-  return globalThis.fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      "mcp-method": "tools/list",
-      "mcp-protocol-version": "2026-07-28",
-      ...(token ? { authorization: "Bearer " + token } : {}),
-    },
-    body: JSON.stringify(envelope()),
-  });
-}
 test("explicit group configuration creates registry v2 and stays deny-all across restart", async (t) => {
   const f = fixture(t);
   f.config.registry.authentication_groups = true;
@@ -207,6 +124,65 @@ test("configured store requires a per-sender capacity smaller than the shared po
   const host = await startConfiguredLocalRelay(f.configPath);
   await host.close();
 });
+test("startup refusal names a fixed reason and config fields, never values", async (t) => {
+  const f = fixture(t);
+  const store = { ...f.config.store };
+  delete store.agent_capacity;
+  f.write("service.local.json", { ...f.config, store });
+  await assert.rejects(startConfiguredLocalRelay(f.configPath), (error) => {
+    assert.equal(error.message, "local_relay_start_rejected");
+    assert.equal(error.reason, "config_invalid");
+    assert.deepEqual(error.fields, ["store.agent_capacity"]);
+    return true;
+  });
+  f.write("service.local.json", f.config);
+  chmodSync(f.keyPath, 0o644);
+  await assert.rejects(startConfiguredLocalRelay(f.configPath), {
+    reason: "keys_file_rejected",
+  });
+  chmodSync(f.keyPath, 0o600);
+  f.write("credentials.local.json", { version: 99 });
+  await assert.rejects(startConfiguredLocalRelay(f.configPath), {
+    reason: "credentials_invalid",
+  });
+  f.write("credentials.local.json", { version: 1, credentials: [] });
+  const host = await startConfiguredLocalRelay(f.configPath);
+  try {
+    // The same state directory is owned by the running host.
+    await assert.rejects(startConfiguredLocalRelay(f.configPath), {
+      reason: "state_in_use",
+    });
+  } finally {
+    await host.close();
+  }
+  const blocker = await startConfiguredLocalRelay(f.configPath);
+  t.after(() => blocker.close());
+  const other = fixture(t);
+  other.config.port = Number(new URL(blocker.url).port);
+  other.write("service.local.json", other.config);
+  await assert.rejects(startConfiguredLocalRelay(other.configPath), {
+    reason: "port_in_use",
+  });
+});
+test("CLI prints the refusal reason and offending fields only", async (t) => {
+  const f = fixture(t);
+  const store = { ...f.config.store };
+  delete store.agent_capacity;
+  f.write("service.local.json", { ...f.config, store });
+  const child = spawn(process.execPath, [cli, "--config", f.configPath], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let output = "";
+  child.stderr.on("data", (data) => {
+    output += data;
+  });
+  const [code] = await once(child, "exit");
+  assert.equal(code, 1);
+  assert.equal(
+    output,
+    "local_relay_start_rejected reason=config_invalid fields=store.agent_capacity\n",
+  );
+});
 test("example relay config enables the per-sender capacity policy", () => {
   const example = JSON.parse(
     readFileSync(resolve("config/relay-service.example.json"), "utf8"),
@@ -225,7 +201,7 @@ test("CLI requires explicit config and prints no config contents", async () => {
   });
   const [code] = await once(child, "exit");
   assert.equal(code, 1);
-  assert.equal(output, "local_relay_start_rejected\n");
+  assert.equal(output, "local_relay_start_rejected reason=config_required\n");
 });
 test("CLI uses private state across SIGTERM/restart and closes its owned port", async (t) => {
   const f = fixture(t);
