@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { readLocalRelayConfig, LocalRelayStartError } from "./configured.ts";
 import { localCredentialsSchema } from "./local-auth.ts";
+import { parseRelayOAuthConfig } from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
@@ -92,7 +93,37 @@ function open(configPath: string) {
       throw new RelayAdminError("credentials_file_rejected");
     }
     if (!parsed.success) throw new RelayAdminError("credentials_invalid");
-    return parsed.data.credentials;
+    const records: {
+      principal: IndividualPrincipal;
+      issued_at: string;
+      expires_at: string;
+    }[] = [...parsed.data.credentials];
+    if (config.ingress) {
+      let remote;
+      try {
+        remote = parseRelayOAuthConfig(loaded.readOAuth());
+      } catch {
+        throw new RelayAdminError("oauth_invalid");
+      }
+      if (remote.resource !== config.ingress.resource_url)
+        throw new RelayAdminError("oauth_resource_mismatch");
+      if (remote.enabled) {
+        for (const connection of remote.connections) {
+          records.push({
+            principal: {
+              issuer: remote.issuer,
+              audience: remote.resource,
+              subject: connection.subject,
+              client_id: connection.client_id,
+              connection_id: connection.connection_id,
+            },
+            issued_at: connection.issued_at,
+            expires_at: connection.expires_at,
+          });
+        }
+      }
+    }
+    return records;
   };
   return { registry, resources, credentials, groups: version === 2 };
 }

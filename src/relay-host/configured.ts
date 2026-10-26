@@ -179,11 +179,13 @@ export function readLocalRelayConfig(configPath: string) {
     ),
     relay_fingerprint_key: Buffer.from(secrets.relay_fingerprint_key, "hex"),
     readCredentials: () => read(config.credentials_file),
+    readOAuth: () =>
+      config.ingress ? read(config.ingress.oauth_file) : undefined,
   };
 }
 export async function startConfiguredLocalRelay(configPath: string) {
   try {
-    const { config, readCredentials, ...secrets } =
+    const { config, readCredentials, readOAuth, ...secrets } =
       readLocalRelayConfig(configPath);
     const auth = stage(
       "credentials_invalid",
@@ -192,9 +194,7 @@ export async function startConfiguredLocalRelay(configPath: string) {
     let remote: PinnedRelayOAuthAuthority | undefined;
     try {
       remote = config.ingress
-        ? await PinnedRelayOAuthAuthority.create(() =>
-            read(config.ingress!.oauth_file),
-          )
+        ? await PinnedRelayOAuthAuthority.create(readOAuth)
         : undefined;
     } catch {
       throw new LocalRelayStartError("oauth_invalid");
