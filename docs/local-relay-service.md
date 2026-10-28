@@ -95,11 +95,16 @@ npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect 
 ```
 
 - `connect` registers the product and address when missing, binds the mapped
-  principal (selected by `connection_id`), and grants `--operations` (default: all
+  principal (selected by `connection_id`) from the local mapping or enabled OAuth
+  ingress connections, and grants `--operations` (default: all
   five). With `registry.authentication_groups: true` it creates or reuses that
   connection's group, so connecting a second address with the same connection id
   shares the authentication. Every step reads the current epoch and skips work
   already done, so a rerun after a partial failure converges.
+  OAuth descriptors come from the operator-approved private ingress config; this
+  command does not perform login, consent, token issuance or JWT verification.
+  Disabled OAuth connections are unavailable for binding. Conflicting principals
+  with the same connection ID across inputs refuse with `credential_ambiguous`.
 - `disconnect` revokes every live binding that authenticates the address using the
   current epochs. It does not need the token mapping, so cleanup order does not
   matter, and a rerun reports `already_disconnected`. For a group it revokes the

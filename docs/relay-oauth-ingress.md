@@ -11,9 +11,14 @@
 今後はグループ内で共有する認証に複数アドレスを紐付けられる設計とし、Botごとの
 資格情報の専有は要求しません。別グループの名義使用・受信箱操作は拒否します。
 
-**以下は現在の1対1 binding実装による有限試験の手順です。** 個体専有の前提と15分の
-許可窓は現行実装に残っています。所属アドレス選択・参加承認とtoken期限の分離は
-未実装で、文書の更新だけでallowlistを広げたりrefreshを有効化したりはしません。
+`registry.authentication_groups: true`を明示すると、OAuth接続もRegistryの認証
+グループへbindingでき、`as_address`と`expected_agent_id`で所属する宛先を選べます。
+グループ内は共有信頼境界であり、Botごとの専有認証は要求しません。
+グループ外の名義使用・受信・ACKは拒否します。
+
+**以下の資格情報は有限試験用です。** OAuthの接続許可窓・token寿命は現行verifierで
+最大15分です。永続参加承認に基づく更新は未実装で、文書更新やグループ有効化だけで
+許可窓を延長したりrefreshを有効化したりはしません。
 
 ## 明示的な設定
 
@@ -58,12 +63,31 @@ MCP操作はすべて拒否します。欠損・不正設定を匿名接続へ�
 - `subject`とclientは実OAuth結果から検証し、専用接続の`connection_id`へ対応させます。
   clientごとの接続は一意とし、同一subject/clientの二重登録を拒否します。
   JWT・MCP引数のagent名やconnection名を採用しません。
-  **同じ所有者・同じOAuth clientを共有する別Dotは、このJWTだけでは区別できません。**
-  専用client/接続が対象個体に排他的であるホスト側証拠を確認するまで、許可一覧は空または
-  無効のままにします。設定上のconnection名だけで仕様G0を達成済みとしません。
-- 検証済み接続をRegistryの個体へ別途bindingし、必要な操作を有効にします。
+  **同じ所有者・同じOAuth clientを共有する別Botは、このJWTだけでは区別しません。**
+  その接続を共通の認証グループへbindingし、承認した宛先だけ所属させます。
+  同じグループのBotを互いに隔離したい場合は別の信頼境界が必要ですが、共有を
+  選んだグループ内に独立したBot証明を追加要求しません。
+- 検証済み接続をRegistryの個体または認証グループへ別途bindingし、必要な操作を有効にします。
   tokenだけでは未登録のメールボックスを利用できません。OAuthユーザーの識別と、
-  特定エージェント専用接続の証明を混同しません。
+  そのグループに許可する宛先の承認を混同しません。
+
+### 公式管理CLIとの接続
+
+`relay:admin connect/status`はローカルBearer mappingと、設定済みのOAuthファイルの
+有効化されたOAuthファイルの`connections`を同じ管理契約で扱います。JWTをローカルBearerファイルへコピー
+する必要はありません。指定した`connection_id`が両入口で異なる主体に一致する場合は
+`credential_ambiguous`で拒否します。無効なOAuth設定、resource不一致も拒否します。
+
+このファイルのdescriptorは、操作者が検証済みの`subject/client_id`だけを事前承認して
+記載する管理入力です。CLIの成功はOAuth login・同意・token発行の成功を証明しません。
+署名・issuer・audience・scope・期限は通信時のverifierが引き続き検証します。
+OAuth設定を削除・無効化した後でも`disconnect`は既存Registryから失効でき、
+整合鍵は失効を確認するまで保持します。
+
+グループ有効化ではRegistryがv2へ移行します。既存DBと鍵を保持し、停止中の整合
+backupと復元手順を用意してから承認済みのreleaseへ切り替えます。旧runtimeへ
+バイナリだけを戻してv2を開かせません。[Dots / Hermes接続準備](dots-hermes-connection-plan.md)
+でクラウド接続・Mac側更新・モデル試験の承認を分けます。
 
 全MCP操作に`relay:resolve relay:submit relay:status relay:poll relay:ack`の5 scopeを
 要求します。これは今回の小さい接続権限の単位です。Task権限を含みません。

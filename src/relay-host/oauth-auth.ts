@@ -59,6 +59,26 @@ const schema = z
   })
   .refine((value) => !value.enabled || value.keys.length > 0);
 type Config = z.infer<typeof schema>;
+/** Shared structural validation for the verifier and trusted operator management. */
+export function parseRelayOAuthConfig(input: unknown): Config {
+  const config = schema.parse(input);
+  new RelayOAuthResource(config.issuer, config.resource);
+  const kids = new Set<string>(),
+    clients = new Set<string>(),
+    connections = new Set<string>();
+  for (const key of config.keys) {
+    if (kids.has(key.kid)) throw Error("invalid_relay_oauth_config");
+    kids.add(key.kid);
+  }
+  for (const connection of config.connections) {
+    const client = JSON.stringify([connection.subject, connection.client_id]);
+    if (clients.has(client) || connections.has(connection.connection_id))
+      throw Error("invalid_relay_oauth_config");
+    clients.add(client);
+    connections.add(connection.connection_id);
+  }
+  return config;
+}
 function bytes(s: string) {
   const value = Buffer.from(s, "base64url");
   if (value.toString("base64url") !== s) throw Error();
@@ -120,22 +140,7 @@ export class PinnedRelayOAuthAuthority {
     const now = this.#now();
     if (!Number.isSafeInteger(now) || now < this.#last) throw Error();
     this.#last = now;
-    const config = schema.parse(this.#load());
-    new RelayOAuthResource(config.issuer, config.resource);
-    const kids = new Set<string>(),
-      clients = new Set<string>(),
-      connections = new Set<string>();
-    for (const key of config.keys) {
-      if (kids.has(key.kid)) throw Error();
-      kids.add(key.kid);
-    }
-    for (const c of config.connections) {
-      const client = JSON.stringify([c.subject, c.client_id]);
-      if (clients.has(client) || connections.has(c.connection_id))
-        throw Error();
-      clients.add(client);
-      connections.add(c.connection_id);
-    }
+    const config = parseRelayOAuthConfig(this.#load());
     return {
       config,
       now,

@@ -4,6 +4,7 @@ import process from "node:process";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { request } from "node:http";
 import { createHash } from "node:crypto";
 import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
 import {
@@ -15,15 +16,24 @@ import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { envelope, message, limits } from "./relay-http-fixtures.js";
+import { envelope, message, limits, decode } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
+import { oauthFixture } from "./relay-oauth-fixtures.js";
 
 const cli = resolve("scripts/hab-relay-admin.mjs");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
 
-async function started(t, patch = {}) {
+async function started(t, patch = {}, oauthConfig) {
   const f = fixture(t);
   Object.assign(f.config.registry, patch);
+  if (oauthConfig) {
+    f.config.ingress = {
+      port: 0,
+      resource_url: oauthConfig.resource,
+      oauth_file: f.write("remote-auth.local.json", oauthConfig),
+      allowed_origins: [],
+    };
+  }
   f.write("service.local.json", f.config);
   const host = await startConfiguredLocalRelay(f.configPath);
   t.after(() => host.close());
@@ -377,6 +387,236 @@ test("connect rejects unknown, mismatched-audience and foreign-bound connections
       (p) => p.code === "credential_audience_mismatch",
     ),
   );
+});
+
+test("admin binds OAuth mappings to a shared group without a local bearer copy", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(
+    t,
+    { authentication_groups: true },
+    oauth.getConfig(),
+  );
+  const connectionId = oauth.record.connection_id;
+  const local = relayAdminConnect(f.configPath, {
+    address: "receiver@local.hab",
+    connection_id: "conn-h",
+  });
+  const first = relayAdminConnect(f.configPath, {
+    address: "first@remote.hab",
+    connection_id: connectionId,
+  });
+  const second = relayAdminConnect(f.configPath, {
+    address: "second@remote.hab",
+    connection_id: connectionId,
+  });
+  assert.equal(first.address.group_id, second.address.group_id);
+  const status = relayAdminStatus(f.configPath);
+  const remote = status.credentials.find(
+    (record) => record.connection_id === connectionId,
+  );
+  assert.deepEqual(remote.addresses.sort(), [
+    first.address.address,
+    second.address.address,
+  ]);
+  assert.equal(remote.binding.kind, "group");
+  assert.ok(
+    !status.problems.some((problem) => problem.subject === connectionId),
+  );
+  const jwt = await oauth.token();
+  assert.ok(!JSON.stringify(status).includes(jwt));
+  const call = async (tool, args, expectedStatus = 200) => {
+    const response = await new Promise((resolve, reject) => {
+      const req = request(
+        {
+          hostname: "127.0.0.1",
+          port: f.host.ingress_port,
+          path: "/hab/mcp",
+          method: "POST",
+          headers: {
+            Host: "relay.example",
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+            "MCP-Protocol-Version": "2026-07-28",
+            "Mcp-Method": "tools/call",
+            "Mcp-Name": tool,
+          },
+        },
+        (res) => {
+          const chunks = [];
+          res.on("data", (chunk) => chunks.push(chunk));
+          res.on("end", () =>
+            resolve(
+              new Response(Buffer.concat(chunks), {
+                status: res.statusCode,
+                headers: { "content-type": res.headers["content-type"] },
+              }),
+            ),
+          );
+          res.on("error", reject);
+        },
+      );
+      req.on("error", reject);
+      req.setTimeout(2500, () => req.destroy(Error("synthetic_proxy_timeout")));
+      req.end(
+        JSON.stringify(envelope("tools/call", { name: tool, arguments: args })),
+      );
+    });
+    assert.equal(response.status, expectedStatus);
+    if (expectedStatus !== 200) {
+      await response.body?.cancel();
+      return null;
+    }
+    return (await decode(response)).result.structuredContent;
+  };
+  const selection = {
+    as_address: second.address.address,
+    expected_agent_id: second.address.agent_id,
+  };
+  assert.equal(
+    (
+      await call("relay_resolve", {
+        ...selection,
+        address: local.address.address,
+      })
+    ).recipient_id,
+    local.address.agent_id,
+  );
+  assert.equal(
+    (
+      await call("relay_poll", {
+        as_address: local.address.address,
+        expected_agent_id: local.address.agent_id,
+      })
+    ).error,
+    "forbidden",
+  );
+  const sent = { ...message(), recipient_id: local.address.agent_id };
+  assert.equal(
+    (await call("relay_submit", { ...selection, ...sent })).sender_id,
+    second.address.agent_id,
+  );
+  const received = (
+    await f.call(tokens.h, "relay_poll", {
+      as_address: local.address.address,
+      expected_agent_id: local.address.agent_id,
+    })
+  ).delivery;
+  assert.equal(received.message.sender_id, second.address.agent_id);
+  assert.equal(received.message.message_id, sent.message_id);
+  const ack = {
+    sender_id: received.message.sender_id,
+    message_id: sent.message_id,
+    generation: received.generation,
+    lease_token: received.lease_token,
+    request_id: "local-ack",
+  };
+  assert.equal(
+    (await call("relay_ack", { ...selection, ...ack })).error,
+    "invalid_ack",
+  );
+  const localSelection = {
+    as_address: local.address.address,
+    expected_agent_id: local.address.agent_id,
+  };
+  assert.equal(
+    (await call("relay_ack", { ...localSelection, ...ack })).error,
+    "forbidden",
+  );
+  assert.equal(
+    (await f.call(tokens.h, "relay_ack", { ...localSelection, ...ack })).state,
+    "acked",
+  );
+  const reply = {
+    ...message("2".repeat(32)),
+    recipient_id: second.address.agent_id,
+    kind: "answer",
+    in_reply_to: {
+      sender_id: second.address.agent_id,
+      message_id: sent.message_id,
+    },
+  };
+  await f.call(tokens.h, "relay_submit", { ...localSelection, ...reply });
+  const returned = (await call("relay_poll", selection)).delivery;
+  assert.deepEqual(returned.message.in_reply_to, reply.in_reply_to);
+  assert.equal(
+    (
+      await call("relay_ack", {
+        ...selection,
+        sender_id: local.address.agent_id,
+        message_id: reply.message_id,
+        generation: returned.generation,
+        lease_token: returned.lease_token,
+        request_id: "remote-ack",
+      })
+    ).state,
+    "acked",
+  );
+  assert.equal(
+    (await call("relay_status", { ...selection, message_id: sent.message_id }))
+      .state,
+    "acked",
+  );
+  assert.equal(
+    (
+      await f.call(tokens.h, "relay_status", {
+        ...localSelection,
+        message_id: reply.message_id,
+      })
+    ).state,
+    "acked",
+  );
+
+  // Removing the OAuth mapping must not prevent revoking its Registry binding.
+  f.write("remote-auth.local.json", {
+    ...oauth.getConfig(),
+    enabled: false,
+    connections: [],
+  });
+  await call("relay_poll", selection, 401);
+  const revoked = relayAdminDisconnect(f.configPath, first.address.address);
+  assert.equal(revoked.revoked_bindings, 1);
+  assert.deepEqual(revoked.affected_addresses.sort(), [
+    first.address.address,
+    second.address.address,
+  ]);
+  f.write("remote-auth.local.json", oauth.getConfig());
+  assert.equal((await call("relay_poll", selection)).error, "forbidden");
+  assert.ok(
+    relayAdminStatus(f.configPath).problems.some(
+      (p) => p.code === "credential_revoked" && p.subject === connectionId,
+    ),
+  );
+});
+
+test("admin refuses disabled, mismatched and ambiguous OAuth connection registration", async (t) => {
+  const oauth = await oauthFixture(true);
+  const original = oauth.getConfig();
+  const f = await started(t, { authentication_groups: true }, original);
+  const connect = (connection_id = oauth.record.connection_id) =>
+    relayAdminConnect(f.configPath, {
+      address: "first@remote.hab",
+      connection_id,
+    });
+  f.write("remote-auth.local.json", { ...original, enabled: false });
+  assert.throws(connect, { code: "credential_not_found" });
+  f.write("remote-auth.local.json", {
+    ...original,
+    resource: "https://other.example/hab/mcp",
+  });
+  assert.throws(connect, { code: "oauth_resource_mismatch" });
+  f.write("remote-auth.local.json", {
+    ...original,
+    connections: [...original.connections, original.connections[0]],
+  });
+  assert.throws(connect, { code: "oauth_invalid" });
+  f.write("remote-auth.local.json", {
+    ...original,
+    connections: [{ ...oauth.record, connection_id: "conn-h" }],
+  });
+  assert.throws(() => connect("conn-h"), { code: "credential_ambiguous" });
+  f.write("remote-auth.local.json", original);
+  assert.equal(relayAdminStatus(f.configPath).addresses.length, 0);
 });
 
 test("group mode shares one connection between addresses; disconnect reports every member", async (t) => {
