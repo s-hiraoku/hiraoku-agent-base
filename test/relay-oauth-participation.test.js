@@ -204,12 +204,70 @@ test("observed revocation followed by config restoration cannot resurrect an old
   assert.ok(await f.verify(jwt));
 });
 
-test("persistent verification rejects a stale result when participation changes during signature verification", async () => {
+test("signature verification cannot publish an in-flight context after observed revocation and restoration", async (t) => {
   const f = await persistentFixture();
   const jwt = await f.token();
+  const original = structuredClone(f.getConfig());
+  const previous = await f.verify(jwt);
+  const verify = crypto.subtle.verify.bind(crypto.subtle);
+  let entered, release;
+  const inside = new Promise((resolve) => {
+    entered = resolve;
+  });
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  t.after(() => release());
+  t.mock.method(crypto.subtle, "verify", async (...args) => {
+    entered();
+    await gate;
+    return verify(...args);
+  });
   const pending = f.verify(jwt);
-  f.setConfig({ ...f.getConfig(), enabled: false });
+  await Promise.race([
+    inside,
+    pending.then(() => {
+      throw Error("signature_verification_not_reached");
+    }),
+  ]);
+  f.getConfig().connections[0].state = "revoked";
+  assert.equal(f.auth.authority.individual(previous), undefined);
+  f.setConfig(original);
+  release();
   assert.equal(await pending, null);
+});
+
+test("human approval extension preserves the principal; a new approval start rejects older still-live tokens", async () => {
+  const f = await persistentFixture();
+  const first = await f.verify(await f.token());
+  const principal = f.auth.authority.individual(first).principal;
+  const extended = structuredClone(f.getConfig());
+  extended.connections[0].approved_until = new Date(
+    f.start + 365 * 86400000,
+  ).toISOString();
+  f.setConfig(extended);
+  assert.equal(f.auth.authority.individual(first), undefined);
+  f.setNow(f.start + 1200000);
+  const oldToken = await f.token({
+    iat: f.start / 1000 + 1000,
+    exp: f.start / 1000 + 1600,
+  });
+  const beforeReapproval = await f.verify(oldToken);
+  assert.deepEqual(
+    f.auth.authority.individual(beforeReapproval).principal,
+    principal,
+  );
+  const reapproved = structuredClone(extended);
+  reapproved.connections[0].approved_at = new Date(
+    f.start + 1100000,
+  ).toISOString();
+  f.setConfig(reapproved);
+  assert.equal(f.auth.authority.individual(beforeReapproval), undefined);
+  assert.equal(await f.verify(oldToken), null);
+  const fresh = await f.verify(
+    await f.token({ iat: f.start / 1000 + 1200, exp: f.start / 1000 + 1800 }),
+  );
+  assert.deepEqual(f.auth.authority.individual(fresh).principal, principal);
 });
 
 test("pinned key rotation invalidates old contexts and signatures while accepting the new issuer key", async () => {

@@ -185,11 +185,12 @@ export function relayAdminStatus(configPath: string, now = Date.now()) {
                 .filter((agent) => agent.group_id === reservation.owner_id)
                 .map((agent) => agent.address)
             : [];
-      const expiresIn = Math.floor(
-        (Date.parse(record.expires_at) - now) / 1000,
-      );
+      const remainingMs = Date.parse(record.expires_at) - now;
+      const expiresIn = record.participation
+        ? Math.max(0, Math.ceil(remainingMs / 1000))
+        : Math.floor(remainingMs / 1000);
       const subject = record.principal.connection_id;
-      if (expiresIn <= 0)
+      if (record.participation ? remainingMs <= 0 : expiresIn <= 0)
         problems.push({
           code: record.participation
             ? "participation_expired"

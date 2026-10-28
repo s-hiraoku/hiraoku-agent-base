@@ -470,3 +470,30 @@ test("shipped admin CLI reports persistent participation and refuses a revoked c
   assert.equal(denied.status, 1);
   assert.equal(denied.stderr, "relay_admin_rejected participation_revoked\n");
 });
+
+test("participation status uses the same exact expiry boundary as admission", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  const f = await setup(t, oauth);
+  const end = Date.parse(oauth.participation.approved_until);
+  for (const [offset, expired, remaining] of [
+    [-1000, false, 1],
+    [-999, false, 1],
+    [-1, false, 1],
+    [0, true, 0],
+    [1, true, 0],
+  ]) {
+    const status = relayAdminStatus(f.configPath, end + offset);
+    const entry = status.credentials.find(
+      (c) => c.connection_id === oauth.record.connection_id,
+    );
+    assert.equal(entry.participation.expires_in_seconds, remaining);
+    assert.equal(
+      status.problems.some(
+        (p) =>
+          p.subject === oauth.record.connection_id &&
+          p.code === "participation_expired",
+      ),
+      expired,
+    );
+  }
+});

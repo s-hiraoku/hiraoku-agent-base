@@ -25,7 +25,7 @@ Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクラ
     "client_id": "verified-public-client",
     "connection_id": "approved-connection",
     "approved_at": "2030-01-01T00:00:00.000Z",
-    "approved_until": "2030-01-31T00:00:00.000Z",
+    "approved_until": "2031-01-01T00:00:00.000Z",
     "state": "active"
   }]
 }
@@ -37,13 +37,26 @@ Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクラ
 
 | 対象 | コードの契約 | 本番値の選択 |
 | --- | --- | --- |
-| 参加承認 | 明示した`approved_at <= now < approved_until`だけ有効。有限で終了が開始より後 | 初期案は30日。1日・7日・365日なども設定可能で、30日が強制上限ではない。実値は別途承認 |
+| 参加承認 | 明示した`approved_at <= now < approved_until`だけ有効。有限で終了が開始より後 | 常用案は365日。1日・7日・30日なども設定可能で、365日が強制上限ではない。実値は別途承認 |
 | access token | 署名・issuer・単一audience・主体/client・5scope・iat/nbf/expを検証 | 既存600秒を推奨。設定値は1〜900秒で、900秒超や無期限は拒否 |
-| refresh token | Relayは受け取らず、hostとissuerが保管・回転・更新を担当 | 初期案は回転あり・絶対30日・未更新7日。issuer/client/hostの実対応と具体承認が必要 |
+| refresh token | Relayは受け取らず、hostとissuerが保管・回転・更新を担当 | 常用案は回転あり・絶対365日・未更新30日。issuer/client/hostの実対応と具体承認が必要 |
 
-表は推奨案と設定能力の区別です。設定例やテストの30日を、ユーザーが本番期間として
+表は推奨案と設定能力の区別です。設定例やテストの日数を、ユーザーが本番期間として
 承認したとは扱いません。参加期間終了後も接続設定は残ります。人間が再承認しない限り
 利用を拒否し、refreshで参加期間を自動延長しません。
+
+参加承認を30日にすれば30日後に常用も停止します。日々の手作業を避ける常用案は
+365日とし、通常はhostのAT/RT更新に任せ、年1回の参加再承認とOAuth再認可をまとめます。
+30日以上使わなかったhostはRT idle期限により次の利用時に再loginが必要です。
+365日/30日は未承認の提案であり、issuerのプランやhostの能力によって実効性も確認します。
+
+操作者は`relay:admin status`の参加終了を確認し、期限前に人間の承認を得てprivate設定の
+`approved_until`を新しい終了日時へ更新します。権限・主体が同じ有効参加の更新なら、
+`approved_at / connection_id`を維持でき、アドレスやbindingを作り直しません。
+新しい承認開始日時を設定した場合、それより前の`iat`を持つATは拒否するため、
+hostが新ATを取得してから再開します。取消済みbindingはこの方法で復活せず、新IDで再参加します。
+issuerのRT family絶対期限は通常の回転で延長されないため、期限前後に人間がOAuthを
+再認可して新RTをhostへ保存します。通知・年次承認の自動化はこの変更に含みません。
 
 参加期間中は、開始15分後を過ぎても新しい短命ATを同じ接続/グループへ解決します。
 旧ATは期限切れで拒否します。参加終了直前のATが参加終了を越えていても、context期限を
@@ -71,6 +84,11 @@ Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクラ
 3. 対象hostの接続とissuerのRT/grantも取り消す。RT取消だけでは発行済みATの即時拒否を保証しない。
 4. 設定・DB・失効予約・監査を保持する。失効済みconnection IDで再bindingしない。
    再参加は人間の承認後に新IDを発行・bindingする。無関係な接続/秘密/サービスは削除しない。
+
+Registryの予約は`issuer / resource / subject / client / connection_id`全体のfingerprintで、
+ID文字列だけのグローバル予約ではありません。主体を変える再参加でも新IDを使います。
+不正/読取り不能の設定はその間全拒否しますが、ファイル破損を恒久失効の代わりにしません。
+正式な取消は有効な`state:revoked`とRegistry失効で行います。
 
 ## 保存・再起動・移行
 
