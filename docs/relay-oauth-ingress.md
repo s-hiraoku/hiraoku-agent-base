@@ -55,11 +55,14 @@ MCP操作はすべて拒否します。欠損・不正設定を匿名接続へ�
   runtimeはJWKSを取得・自動更新しません。鍵が変わった場合はfail-closedで止め、
   operatorが正しい公開鍵を確認して非公開設定を更新します。
 - `connections`は`subject / client_id / connection_id / issued_at / expires_at`。
-  この接続の有効期間も最大15分です。timestampはcanonical UTC ISO形式を使い、
+  `version:1`の接続有効期間も最大15分です。timestampはcanonical UTC ISO形式を使い、
   JWTの秒単位`iat`と整合させるため、試験開始・終了は秒境界で設定します。
   tokenの`iat`から`exp`までが許可窓内に収まる必要があります。例えば許可窓15分・
   token TTL5分とし、両側の準備完了後に窓を開きます。窓の終了直前に発行したtokenは
   残り時間を超えるため拒否されます。自動延長はしません。
+- 常用は明示的な`version:2 / mode:persistent`で参加期間と短命ATを分離します。
+  `approved_at / approved_until / state`とAT上限を設定し、参加終了でcontextも止めます。
+  [常用MCP接続](persistent-mcp-auth.md)に設定・期限・移行・host側更新の責務を記載します。
 - `subject`とclientは実OAuth結果から検証し、専用接続の`connection_id`へ対応させます。
   clientごとの接続は一意とし、同一subject/clientの二重登録を拒否します。
   JWT・MCP引数のagent名やconnection名を採用しません。
@@ -90,9 +93,10 @@ backupと復元手順を用意してから承認済みのreleaseへ切り替え�
 でクラウド接続・Mac側更新・モデル試験の承認を分けます。
 
 全MCP操作に`relay:resolve relay:submit relay:status relay:poll relay:ack`の5 scopeを
-要求します。これは今回の小さい接続権限の単位です。Task権限を含みません。
+要求します。これは接続権限の単位です。Task権限を含みません。
 `iss / aud / sub / azp（またはclient_id）/ iat / exp / nbf / scope`と署名を検証し、
-JWTの有効期間を最大15分に制限します。`aud`は固定resourceの文字列を要求します。
+JWTの有効期間を最大15分に制限します。v2はさらに明示したAT上限で制限します。
+`aud`は固定resourceの文字列を要求します。
 userinfo等を含む配列audienceを受け入れる対応はこの入口には含めません。
 
 設定の無効化・接続削除・変更・期限切れは、認証済みopaque contextの操作前再検証でも

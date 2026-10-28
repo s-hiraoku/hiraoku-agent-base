@@ -9,7 +9,10 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { readLocalRelayConfig, LocalRelayStartError } from "./configured.ts";
 import { localCredentialsSchema } from "./local-auth.ts";
-import { parseRelayOAuthConfig } from "./oauth-auth.ts";
+import {
+  parseRelayOAuthConfig,
+  relayOAuthConnectionWindow,
+} from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
@@ -33,6 +36,15 @@ export interface ConnectInput {
   operations?: readonly string[];
 }
 type Agent = RegistryOverview["agents"][number];
+type ManagedCredential = {
+  principal: IndividualPrincipal;
+  issued_at: string;
+  expires_at: string;
+  participation?: {
+    state: "active" | "revoked";
+    max_access_token_lifetime_seconds: number;
+  };
+};
 
 const operator = Object.freeze({});
 const request = () => `relay-admin-${randomUUID()}`;
@@ -93,11 +105,7 @@ function open(configPath: string) {
       throw new RelayAdminError("credentials_file_rejected");
     }
     if (!parsed.success) throw new RelayAdminError("credentials_invalid");
-    const records: {
-      principal: IndividualPrincipal;
-      issued_at: string;
-      expires_at: string;
-    }[] = [...parsed.data.credentials];
+    const records: ManagedCredential[] = [...parsed.data.credentials];
     if (config.ingress) {
       let remote;
       try {
@@ -109,6 +117,7 @@ function open(configPath: string) {
         throw new RelayAdminError("oauth_resource_mismatch");
       if (remote.enabled) {
         for (const connection of remote.connections) {
+          const window = relayOAuthConnectionWindow(connection);
           records.push({
             principal: {
               issuer: remote.issuer,
@@ -117,8 +126,17 @@ function open(configPath: string) {
               client_id: connection.client_id,
               connection_id: connection.connection_id,
             },
-            issued_at: connection.issued_at,
-            expires_at: connection.expires_at,
+            issued_at: window.starts_at,
+            expires_at: window.ends_at,
+            ...(remote.version === 2
+              ? {
+                  participation: {
+                    state: window.state,
+                    max_access_token_lifetime_seconds:
+                      remote.max_access_token_lifetime_seconds,
+                  },
+                }
+              : {}),
           });
         }
       }
@@ -172,7 +190,18 @@ export function relayAdminStatus(configPath: string, now = Date.now()) {
       );
       const subject = record.principal.connection_id;
       if (expiresIn <= 0)
-        problems.push({ code: "credential_expired", subject });
+        problems.push({
+          code: record.participation
+            ? "participation_expired"
+            : "credential_expired",
+          subject,
+        });
+      if (record.participation) {
+        if (record.participation.state === "revoked")
+          problems.push({ code: "participation_revoked", subject });
+        if (Date.parse(record.issued_at) > now)
+          problems.push({ code: "participation_not_yet_active", subject });
+      }
       if (resources.length && !resources.includes(record.principal.audience))
         problems.push({ code: "credential_audience_mismatch", subject });
       if (!reservation) problems.push({ code: "credential_unbound", subject });
@@ -180,7 +209,18 @@ export function relayAdminStatus(configPath: string, now = Date.now()) {
         problems.push({ code: "credential_revoked", subject });
       return {
         connection_id: subject,
-        expires_in_seconds: expiresIn,
+        ...(record.participation
+          ? {
+              participation: {
+                state: record.participation.state,
+                approved_at: record.issued_at,
+                approved_until: record.expires_at,
+                expires_in_seconds: expiresIn,
+              },
+              max_access_token_lifetime_seconds:
+                record.participation.max_access_token_lifetime_seconds,
+            }
+          : { expires_in_seconds: expiresIn }),
         audience: record.principal.audience,
         binding: reservation
           ? { kind: reservation.kind, state: reservation.state }
@@ -223,7 +263,7 @@ export function relayAdminStatus(configPath: string, now = Date.now()) {
 }
 
 function principalFor(
-  records: { principal: IndividualPrincipal }[],
+  records: ManagedCredential[],
   connectionId: string,
   resources: string[],
 ): IndividualPrincipal {
@@ -235,6 +275,18 @@ function principalFor(
   if (matches.size === 0) throw new RelayAdminError("credential_not_found");
   if (matches.size > 1) throw new RelayAdminError("credential_ambiguous");
   const [principal] = matches.values();
+  // Only the v2 participation policy changes enrollment behavior; v1 stays compatible.
+  const now = Date.now();
+  for (const record of records.filter(
+    (r) => r.principal.connection_id === connectionId && r.participation,
+  )) {
+    if (record.participation!.state !== "active")
+      throw new RelayAdminError("participation_revoked");
+    if (Date.parse(record.issued_at) > now)
+      throw new RelayAdminError("participation_not_yet_active");
+    if (Date.parse(record.expires_at) <= now)
+      throw new RelayAdminError("participation_expired");
+  }
   if (resources.length && !resources.includes(principal.audience))
     throw new RelayAdminError("credential_audience_mismatch");
   return principal;

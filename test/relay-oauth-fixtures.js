@@ -95,3 +95,24 @@ export async function oauthFixture(realtime = false) {
     },
   };
 }
+
+export async function persistentOAuthFixture(realtime = false) {
+  const f = await oauthFixture(realtime);
+  const { issued_at, subject, client_id, connection_id } = f.record;
+  const participation = {
+    subject,
+    client_id,
+    connection_id,
+    approved_at: issued_at,
+    approved_until: new Date(f.start + 30 * 86400000).toISOString(),
+    state: "active",
+  };
+  f.setConfig({
+    ...f.getConfig(),
+    version: 2,
+    mode: "persistent",
+    max_access_token_lifetime_seconds: 600,
+    connections: [participation],
+  });
+  return { ...f, participation };
+}

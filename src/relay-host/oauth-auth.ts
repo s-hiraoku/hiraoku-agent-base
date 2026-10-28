@@ -40,6 +40,16 @@ const connection = z
       Date.parse(v.expires_at) > Date.parse(v.issued_at) &&
       Date.parse(v.expires_at) - Date.parse(v.issued_at) <= 900000,
   );
+const participation = z
+  .strictObject({
+    subject: claim,
+    client_id: claim,
+    connection_id: claim,
+    approved_at: timestamp,
+    approved_until: timestamp,
+    state: z.enum(["active", "revoked"]),
+  })
+  .refine((v) => Date.parse(v.approved_until) > Date.parse(v.approved_at));
 const jwk = z.strictObject({
   kty: z.literal("RSA"),
   alg: z.literal("RS256"),
@@ -48,17 +58,45 @@ const jwk = z.strictObject({
   n: b64,
   e: b64,
 });
+const common = {
+  enabled: z.boolean(),
+  issuer: claim,
+  resource: claim,
+  keys: z.array(jwk).max(5),
+};
 const schema = z
-  .strictObject({
-    version: z.literal(1),
-    enabled: z.boolean(),
-    issuer: claim,
-    resource: claim,
-    keys: z.array(jwk).max(5),
-    connections: z.array(connection).max(100),
-  })
+  .discriminatedUnion("version", [
+    z.strictObject({
+      ...common,
+      version: z.literal(1),
+      connections: z.array(connection).max(100),
+    }),
+    z.strictObject({
+      ...common,
+      version: z.literal(2),
+      mode: z.literal("persistent"),
+      max_access_token_lifetime_seconds: z.number().int().min(1).max(900),
+      connections: z.array(participation).max(100),
+    }),
+  ])
   .refine((value) => !value.enabled || value.keys.length > 0);
 type Config = z.infer<typeof schema>;
+/** Normalizes operator permission dates, never an access/refresh token lifetime. */
+export function relayOAuthConnectionWindow(
+  entry: Config["connections"][number],
+) {
+  return "approved_at" in entry
+    ? {
+        starts_at: entry.approved_at,
+        ends_at: entry.approved_until,
+        state: entry.state,
+      }
+    : {
+        starts_at: entry.issued_at,
+        ends_at: entry.expires_at,
+        state: "active" as const,
+      };
+}
 /** Shared structural validation for the verifier and trusted operator management. */
 export function parseRelayOAuthConfig(input: unknown): Config {
   const config = schema.parse(input);
@@ -111,12 +149,15 @@ export class PinnedRelayOAuthAuthority {
   readonly #load: () => unknown;
   readonly #now: () => number;
   #last = -Infinity;
+  #observedMaterial = "";
+  #revision = 0n;
   #keysMaterial = "";
   #keys = new Map<string, CryptoKey>();
   readonly #contexts = new WeakMap<
     object,
     {
       material: string;
+      revision: bigint;
       principal: IndividualPrincipal;
       expires: number;
     }
@@ -141,12 +182,18 @@ export class PinnedRelayOAuthAuthority {
     if (!Number.isSafeInteger(now) || now < this.#last) throw Error();
     this.#last = now;
     const config = parseRelayOAuthConfig(this.#load());
+    const material = createHash("sha256")
+      .update(JSON.stringify(config))
+      .digest("hex");
+    if (material !== this.#observedMaterial) {
+      this.#observedMaterial = material;
+      this.#revision++;
+    }
     return {
       config,
       now,
-      material: createHash("sha256")
-        .update(JSON.stringify(config))
-        .digest("hex"),
+      material,
+      revision: this.#revision,
     };
   }
   async #importKeys(snapshot: { config: Config; material: string }) {
@@ -211,20 +258,30 @@ export class PinnedRelayOAuthAuthority {
         (x) => x.subject === value.sub && x.client_id === clientId,
       );
       if (!binding) return null;
+      const window = relayOAuthConnectionWindow(binding),
+        approved = Date.parse(window.starts_at),
+        approvedUntil = Date.parse(window.ends_at),
+        maxTokenLifetime =
+          c.version === 2 ? c.max_access_token_lifetime_seconds * 1000 : 900000;
       const issued = value.iat * 1000,
         expires = value.exp * 1000;
       if (
+        window.state !== "active" ||
+        snapshot.now < approved ||
+        snapshot.now >= approvedUntil ||
         !Number.isSafeInteger(issued) ||
         !Number.isSafeInteger(expires) ||
         issued > snapshot.now ||
         expires <= snapshot.now ||
         expires <= issued ||
-        expires - issued > 900000 ||
+        expires - issued > maxTokenLifetime ||
         (value.nbf !== undefined && value.nbf * 1000 > snapshot.now) ||
-        issued < Date.parse(binding.issued_at) ||
-        expires > Date.parse(binding.expires_at)
+        issued < approved ||
+        (c.version === 1 && expires > approvedUntil)
       )
         return null;
+      // A valid final token may outlive participation; its authority never does.
+      const contextExpires = Math.min(expires, approvedUntil);
       await this.#importKeys(snapshot);
       const key = this.#keys.get(h.kid);
       if (
@@ -241,13 +298,15 @@ export class PinnedRelayOAuthAuthority {
       if (
         signal.aborted ||
         current.material !== snapshot.material ||
-        current.now >= expires
+        current.revision !== snapshot.revision ||
+        current.now >= contextExpires
       )
         return null;
       const context = Object.freeze({});
       this.#contexts.set(context, {
         material: snapshot.material,
-        expires,
+        revision: snapshot.revision,
+        expires: contextExpires,
         principal: {
           issuer: c.issuer,
           audience: resource,
@@ -271,6 +330,7 @@ export class PinnedRelayOAuthAuthority {
           !saved ||
           !current.config.enabled ||
           saved.material !== current.material ||
+          saved.revision !== current.revision ||
           current.now >= saved.expires
         )
           return undefined;

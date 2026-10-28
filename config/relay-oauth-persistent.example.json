@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "mode": "persistent",
+  "enabled": false,
+  "issuer": "https://example-tenant.jp.auth0.com/",
+  "resource": "https://relay.example/hab/mcp",
+  "max_access_token_lifetime_seconds": 600,
+  "keys": [],
+  "connections": []
+}

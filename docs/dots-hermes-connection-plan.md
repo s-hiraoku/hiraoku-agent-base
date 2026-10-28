@@ -1,8 +1,9 @@
 # Dots / Hermesの共通MCP接続準備
 
 目標は、このDotsの会話環境でHABの5操作を使い、Hermesと継続して送受信できる状態です。
-最初の受入れは実Dots → 共通Relay → 実Hermes → Dots返信の有限な往復とし、
-その後に継続接続の受入れへ進みます。有限試験だけで全体完了にはしません。
+本番の接続設定を保存し、最初の受入れで実Dots → 共通Relay → 実Hermes → Dots返信を確認して、
+継続接続の受入れへ進みます。往復確認後に本番接続やgrantを自動削除しません。
+一度の往復だけで全体完了にはしません。
 [Codex / Hermes試験](finite-mcp-trial.md)は参考になる既存実績ですが、このペアの成功を
 証明しません。HABがHermesの実行APIを起動する構成や旧Task MCPへ置き換えません。
 
@@ -49,17 +50,18 @@ OAuth callbackやsubjectを推測せず、実画面と検証済みOAuth結果か
 5. 実Dotsが5操作を呼べること、Hermesの実効ツールと隔離を確認してから、
    固定envelopeを送る。受信hostは完全なenvelopeとACK要求を保存・別読取りで照合し、
    保存後だけACKする。逆方向も同じ手順で返信し、ID・`in_reply_to`と双方のACKを照合する。
-6. 有限試験の終了時は、承認範囲のmapping/grant無効化・401・binding失効を確認し、
-   試験だけの秘密と設定を除去する。以前からあるplugin、他のMCP、DBや保管鍵を
-   無断で削除しない。残すRelayの状態も記録する。
+6. 常用の接続・grant・設定・DB・保管鍵は維持し、受入れ結果と残る未検証範囲を記録する。
+   一時的な試験専用secretがあれば本番設定と区別する。失効/停止は操作者の明示要求や
+   インシデント時に行い、[常用認証手順](persistent-mcp-auth.md)で対象と影響を確認する。
 
 ## 今回の接続と次段階の境界
 
 この手順書と模擬検証は実Dots / Hermesの往復成功を主張しません。
 常駐受信・hostの自動inbox/outbox連携・再起動復旧・参加承認に基づく短命token更新は、
-このペアの有限往復後の受入れです。現行OAuth verifierの接続窓は最大15分であり、
-Auth0のrefreshを有効化するだけでは継続接続になりません。
+このペアの往復後の受入れです。OAuth v1の接続窓は最大15分です。明示的なv2常用モードは
+参加承認と短命ATを分離しますが、実hostのrefresh・常駐受信はそれぞれ確認が必要です。
+Auth0のrefreshを有効化するだけではすべての受入れは完了しません。
 参加承認と短命token更新の分離は[Issue #108](https://github.com/s-hiraoku/hiraoku-agent-base/issues/108)
 で管理し、pluginの実接続は[Issue #98](https://github.com/s-hiraoku/hiraoku-agent-base/issues/98)
 と照合します。
-その仕様を選ぶ前に、試験のための恒久権限や製品専用配送を追加しません。
+設定可能な期間と推奨値・実際の承認値を区別し、製品専用配送を追加しません。
