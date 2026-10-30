@@ -4,6 +4,9 @@
 
 `src/adapter-host/` は既存のdurable inbox／outbox、返信budget、任意のTask bridgeを組み立てるローカルAPIです。1命令ずつ明示的に動かし、scheduler、常駐loop、model、Task worker、listenerを起動しません。既定runtime・MCP catalog・実製品へは未配線です。
 
+明示構成したhostの受信だけを反復する場合は、任意の[共通受信supervisor](receive-supervisor.md)を使えます。
+これは自動resume・認証設定・常駐登録・モデル起動を行わず、既存の保存後ACKとownerを維持します。
+
 ## 操作と責務
 
 | stepOnceのop | 動作・1命令の上限 |
