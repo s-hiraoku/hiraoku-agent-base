@@ -10,8 +10,11 @@ import type { RelayOperations } from "../relay/service.ts";
 import { RelayError } from "../relay/service.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabDirectory } from "./directory.ts";
+import { habDiscoverySchema } from "./discovery.ts";
+import type { HabDiscoveryService } from "./discovery.ts";
 import { HAB_ADDRESS_PATTERN } from "./registry.ts";
 export type HabMcpService = RelayOperations &
+  HabDiscoveryService &
   HabDirectory & {
     selectAddress?(
       context: unknown,
@@ -121,5 +124,29 @@ export function createHabMcpServer(
         );
       }),
   );
+  if (service.discoveryEnabled === true) {
+    if (typeof service.discover !== "function")
+      throw new RelayError("invalid_hab_mcp_service");
+    server.registerTool(
+      "hab_discover",
+      {
+        description:
+          "Read your authenticated HAB connection, group-scoped issued addresses and assignments, or exact candidate availability. A selected name is not proof of the running session/bot. Unknown host assignment/presence stays unknown. Availability does not reserve or authorize registration.",
+        inputSchema: habDiscoverySchema,
+        annotations: { readOnlyHint: true, idempotentHint: true },
+        ...(oauthScopes
+          ? {
+              _meta: {
+                securitySchemes: [{ type: "oauth2", scopes: [...oauthScopes] }],
+              },
+            }
+          : {}),
+      },
+      (input: unknown) =>
+        executeRelayMcpOperation(resolveContext, gate, (context) =>
+          service.discover!(context, input),
+        ),
+    );
+  }
   return server;
 }

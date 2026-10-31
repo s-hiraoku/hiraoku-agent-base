@@ -1,3 +1,5 @@
+import type { HabHostIdentity } from "./discovery.ts";
+
 /** HAB naming/administration contract. Relay core never imports this module. */
 export const ADDRESS_NORMALIZATION_VERSION = 1 as const;
 export class RegistryError extends Error {
@@ -77,6 +79,8 @@ export interface RegistryAuthority {
     context: unknown,
     operation: AdminOperation,
   ): { actor_id: string } | undefined;
+  /** Optional current host attestation for this exact verified connection. Never inferred from names. */
+  hostIdentity?(context: unknown): HabHostIdentity | undefined;
   /** Authenticated connection; the registry binds it to a legacy individual or group. */
   individual?(context: unknown): VerifiedIndividual | undefined;
 }

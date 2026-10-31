@@ -200,6 +200,13 @@ export async function startLocalRelay(options: LocalRelayOptions) {
       join(options.directory, "registry.sqlite"),
       registryOptions,
       {
+        hostIdentity: (context) => {
+          ownership.check();
+          if (stopping) return undefined;
+          return options.authority.individual!(context)
+            ? options.authority.hostIdentity?.(context)
+            : ingress?.authority.hostIdentity?.(context);
+        },
         individual: (context) => {
           ownership.check();
           if (stopping) return undefined;

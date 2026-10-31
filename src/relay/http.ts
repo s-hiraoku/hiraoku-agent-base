@@ -70,6 +70,10 @@ export class RelayHttpGateway {
       relay_ack: "ack",
     };
   }
+  /** Host-owned read catalog still uses HTTP authentication, audit and request bounds. */
+  protected get readOperations(): ReadonlySet<string> {
+    return new Set();
+  }
   /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
   protected get toolSchemas(): Record<string, z.ZodType> {
     return relayMcpSchemas;
@@ -434,7 +438,14 @@ export class RelayHttpGateway {
           }
         };
         const method = request.headers.get("mcp-method") ?? envelope.method;
-        if (this.#admission && method === "tools/call") {
+        if (
+          this.#admission &&
+          method === "tools/call" &&
+          !(
+            typeof params?.name === "string" &&
+            this.readOperations.has(params.name)
+          )
+        ) {
           const name = params?.name;
           const operation =
             typeof name === "string" &&

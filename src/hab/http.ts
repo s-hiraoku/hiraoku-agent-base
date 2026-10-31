@@ -11,6 +11,7 @@ import {
   prepareHabInvocation,
 } from "./mcp.ts";
 import type { HabMcpService } from "./mcp.ts";
+import { habDiscoverySchema } from "./discovery.ts";
 import { RelayError } from "../relay/service.ts";
 export class HabHttpGateway extends RelayHttpGateway {
   readonly #hab: HabMcpService;
@@ -30,7 +31,14 @@ export class HabHttpGateway extends RelayHttpGateway {
     return { ...super.writerOperations, relay_resolve: "resolve" as const };
   }
   protected override get toolSchemas() {
-    return habMcpSchemas;
+    return this.#hab.discoveryEnabled === true
+      ? { ...habMcpSchemas, hab_discover: habDiscoverySchema }
+      : habMcpSchemas;
+  }
+  protected override get readOperations(): ReadonlySet<string> {
+    return this.#hab.discoveryEnabled === true
+      ? new Set(["hab_discover"])
+      : super.readOperations;
   }
   protected override writerContext(
     context: unknown,

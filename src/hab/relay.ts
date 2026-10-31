@@ -51,6 +51,12 @@ export class HabRelayService implements RelayOperations, HabDirectory {
       ),
     );
   }
+  get discoveryEnabled() {
+    return this.#registry.discoveryEnabled;
+  }
+  discover(context: unknown, input: unknown) {
+    return this.#registry.discover(context, input);
+  }
   selectAddress(context: unknown, address: string, expectedAgentId?: string) {
     return this.#registry.selectAddress(context, address, expectedAgentId);
   }

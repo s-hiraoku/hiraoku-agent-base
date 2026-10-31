@@ -9,7 +9,10 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
+import {
+  readLocalRelayConfig,
+  startConfiguredLocalRelay,
+} from "../src/relay-host/configured.ts";
 import { envelope } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
 const cli = resolve("scripts/hab-relay.mjs");
@@ -324,4 +327,32 @@ test("missing, permissive, invalid or mismatched OAuth config never creates a fa
   const host = await startConfiguredLocalRelay(f.configPath);
   t.after(() => host.close());
   assert.equal((await list(host.url)).status, 401);
+});
+
+test("configured discovery policy is explicit, bounded, and does not create registrations", (t) => {
+  const f = fixture(t);
+  assert.equal(
+    readLocalRelayConfig(f.configPath).config.registry.discovery,
+    undefined,
+  );
+  f.config.registry.discovery = { availability_namespaces: ["hermes"] };
+  f.write("service.local.json", f.config);
+  assert.deepEqual(
+    readLocalRelayConfig(f.configPath).config.registry.discovery,
+    { availability_namespaces: ["hermes"] },
+  );
+  for (const invalid of [
+    { availability_namespaces: ["Hermes"] },
+    { availability_namespaces: ["hermes\n"] },
+    { availability_namespaces: Array(101).fill("hermes") },
+    { availability_namespaces: ["hermes"], grant: true },
+  ]) {
+    f.config.registry.discovery = invalid;
+    f.write("service.local.json", f.config);
+    assert.throws(
+      () => readLocalRelayConfig(f.configPath),
+      /local_relay_start_rejected/,
+    );
+  }
+  assert.deepEqual(readdirSync(join(f.dir, "state")), []);
 });
