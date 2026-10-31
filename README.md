@@ -137,3 +137,6 @@ python3 -B -m unittest scripts.test_inventory_token_input
 承認後の非公開設定を明示して起動する共通CLIと、アドレス登録・接続・失効を行う管理CLI（`npm run relay:admin`）は[ローカルRelayサービス](docs/local-relay-service.md)を参照してください。コードの検証と実エージェント接続の結果は区別します。各エージェント自身のMCPクライアントによる[共通接続手順](docs/common-mcp-connection.md)では、個体認証、受信の起動、保存後のACK、実エージェント往復の完了条件を分けています。外部実行APIは必須ではありません。
 
 OAuthを使う共通MCP公開入口は[接続手順](docs/relay-oauth-ingress.md)を参照してください。任意の第2loopback入口とローカルMCPは同じRegistry・キューを使い、既定は全拒否です。公開経路・OAuth登録・実Dots往復は別途検証します。
+
+自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
+任意の[エージェント照会契約](docs/mcp-agent-discovery.md)を明示的に有効化します。

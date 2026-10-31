@@ -308,3 +308,74 @@ test("changing the persisted integrity key refuses restart without overwriting s
     "pending",
   );
 });
+
+test("opt-in discovery identifies a host owner over a real socket and keeps the ordinary five operations working", async (t) => {
+  const f = fixture(t);
+  const owner = {
+    agent_id: f.agents.a.agent_id,
+    address: f.agents.a.address,
+    owner_kind: "session",
+    owner_reference: "stable-owner-before-and-after-profile-rename",
+    binding_generation: 1,
+    observed_at: new Date(Date.now() - 100).toISOString(),
+    expires_at: new Date(Date.now() + 10000).toISOString(),
+  };
+  const host = await f.start({
+    registry: {
+      ...f.options.registry,
+      discovery: { availability_namespaces: ["synthetic"] },
+    },
+    authority: { ...f.options.authority, hostIdentity: () => owner },
+  });
+  const call = async (args, token = "Bearer synthetic-a") => {
+    const response = await globalThis.fetch(host.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        authorization: token,
+        "mcp-method": "tools/call",
+        "mcp-name": "hab_discover",
+        "mcp-protocol-version": "2026-07-28",
+      },
+      body: JSON.stringify(
+        envelope("tools/call", { name: "hab_discover", arguments: args }),
+      ),
+    });
+    return {
+      status: response.status,
+      body: response.status === 200 ? await response.json() : null,
+    };
+  };
+  const self = await call({ action: "whoami" });
+  assert.equal(self.status, 200);
+  assert.equal(
+    self.body.result.structuredContent.host_identity.agent_id,
+    f.agents.a.agent_id,
+  );
+  assert.equal(
+    self.body.result.structuredContent.host_identity.owner_reference,
+    owner.owner_reference,
+  );
+  const directory = await call({ action: "directory" });
+  assert.deepEqual(
+    directory.body.result.structuredContent.agents.map((a) => a.agent_id),
+    [f.agents.a.agent_id],
+  );
+  assert.equal(
+    (await call({ action: "check_address", address: "new@synthetic.hab" })).body
+      .result.structuredContent.availability,
+    "available",
+  );
+  assert.equal(
+    (await call({ action: "whoami" }, "Bearer invalid")).status,
+    401,
+  );
+  const tools = await (await list(host.url, "Bearer synthetic-a")).json();
+  assert.equal(tools.result.tools.length, 6);
+  // The existing client deliberately verifies and uses only its original five methods.
+  assert.equal(
+    (await f.client(host, "a").resolve(f.agents.b.address)).recipient_id,
+    f.agents.b.agent_id,
+  );
+});

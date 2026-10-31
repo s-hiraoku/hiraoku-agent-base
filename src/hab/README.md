@@ -483,3 +483,10 @@ contexts and temporary databases only:
 ```sh
 node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-authorization.test.js
 ```
+
+### Optional MCP agent discovery
+
+`RegistryOptions.discovery` explicitly enables `hab_discover` in addition to the
+existing five tools. See [the discovery contract](../../docs/mcp-agent-discovery.md)
+for group-scoped reads, candidate occupancy policy, live paging and the optional
+trusted host-identity port. Registration and presence remain separate.

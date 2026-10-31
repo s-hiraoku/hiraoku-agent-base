@@ -2,6 +2,7 @@
 import { lstatSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { z } from "zod";
+import { habDiscoveryPolicySchema } from "../hab/discovery.ts";
 import { readRuntimeConfig } from "../runtime-config.ts";
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
@@ -43,6 +44,7 @@ const schema = z.strictObject({
   }),
   registry: z.strictObject({
     authentication_groups: z.boolean().optional(),
+    discovery: habDiscoveryPolicySchema.optional(),
     max_products: positive,
     max_agents: positive,
     max_bindings: positive,

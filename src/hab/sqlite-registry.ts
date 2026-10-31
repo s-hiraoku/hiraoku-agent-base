@@ -1,9 +1,20 @@
 /** Explicit private HAB infrastructure. No credential verifier, listener or automatic enrollment. */
 import { DatabaseSync } from "node:sqlite";
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
 import { z } from "zod";
 import { RelayError } from "../relay/service.ts";
+import {
+  habDiscoverySchema,
+  habHostIdentitySchema,
+  habDiscoveryPolicySchema,
+} from "./discovery.ts";
+import type { HabDiscoveryPolicy, HabHostIdentity } from "./discovery.ts";
 import { AUTH_GROUP_SCHEMA } from "./auth-groups.ts";
 import type { AuthenticationGroup, GroupBinding } from "./auth-groups.ts";
 import { ContractError } from "../relay/contract.ts";
@@ -28,6 +39,8 @@ import type {
 export interface RegistryOptions {
   /** Explicit opt-in to the additive group schema; never inferred from claims. */
   authentication_groups?: boolean;
+  /** Explicit read-only catalog and candidate occupancy policy. Omitted preserves five MCP tools. */
+  discovery?: HabDiscoveryPolicy;
   fingerprint_key: Uint8Array;
   max_products: number;
   max_agents: number;
@@ -205,6 +218,9 @@ export class SQLiteHabRegistry {
         typeof options.authentication_groups !== "boolean"
       )
         throw Error();
+      if (options.discovery !== undefined) {
+        parse(habDiscoveryPolicySchema, options.discovery);
+      }
       if (
         !(options.fingerprint_key instanceof Uint8Array) ||
         options.fingerprint_key.byteLength < 32 ||
@@ -241,6 +257,8 @@ export class SQLiteHabRegistry {
       if (
         (authority.administrator !== undefined &&
           typeof authority.administrator !== "function") ||
+        (authority.hostIdentity !== undefined &&
+          typeof authority.hostIdentity !== "function") ||
         (authority.individual !== undefined &&
           typeof authority.individual !== "function")
       )
@@ -252,6 +270,15 @@ export class SQLiteHabRegistry {
       ...options,
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
       allowed_kinds: Object.freeze([...options.allowed_kinds]),
+      ...(options.discovery
+        ? {
+            discovery: Object.freeze({
+              availability_namespaces: Object.freeze([
+                ...options.discovery.availability_namespaces,
+              ]),
+            }),
+          }
+        : {}),
     };
     this.#authority = Object.freeze({ ...authority });
     if (path !== ":memory:") {
@@ -1385,6 +1412,312 @@ export class SQLiteHabRegistry {
         recipient_id: String(row.agent_id),
         address: canonicalAddress,
         normalization_version: 1,
+      };
+    });
+  }
+  get discoveryEnabled(): boolean {
+    return this.#options.discovery !== undefined;
+  }
+  /** Authenticates discovery without selecting a sender or writing authorization history. */
+  #discoveryScope(context: unknown) {
+    if (!this.discoveryEnabled || this.#stopRecord().stopped !== 0)
+      throw new RelayError("forbidden");
+    const selected =
+      context && typeof context === "object"
+        ? this.#selections.get(context)
+        : undefined;
+    const root = selected ? selected.context : context;
+    let verified;
+    try {
+      verified = this.#verified(root);
+    } catch {
+      throw new RelayError("forbidden");
+    }
+    const fingerprint = this.#principalHash(verified.principal);
+    const binding = this.#db
+      .prepare(
+        "SELECT agent_id,binding_id FROM hab_bindings WHERE fingerprint=? AND state='active'",
+      )
+      .get(fingerprint);
+    if (binding) {
+      const agent = this.#peer(String(binding.agent_id));
+      if (
+        !agent.operations.includes("resolve") ||
+        !agent.operations.includes("submit")
+      )
+        throw new RelayError("forbidden");
+      return {
+        root,
+        fingerprint,
+        selected,
+        kind: "individual_connection" as const,
+        scope_id: agent.agent_id,
+        binding_id: String(binding.binding_id),
+        group: undefined,
+        agent,
+        operations: agent.operations,
+      };
+    }
+    if (!this.#groupsPresent || this.#options.authentication_groups !== true)
+      throw new RelayError("forbidden");
+    const bindingGroup = this.#db
+      .prepare(
+        "SELECT group_id,binding_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
+      )
+      .get(fingerprint);
+    if (!bindingGroup) throw new RelayError("forbidden");
+    const group = this.#group(String(bindingGroup.group_id));
+    if (
+      group.state !== "active" ||
+      !group.operations.includes("resolve") ||
+      !group.operations.includes("submit")
+    )
+      throw new RelayError("forbidden");
+    return {
+      root,
+      fingerprint,
+      selected,
+      kind: "authentication_group" as const,
+      scope_id: group.group_id,
+      binding_id: String(bindingGroup.binding_id),
+      group,
+      agent: undefined,
+      operations: group.operations,
+    };
+  }
+  /** Read-only snapshot. No registration, reservation, grant, lease, or history update. */
+  discover(context: unknown, value: unknown) {
+    const parsed = habDiscoverySchema.safeParse(value);
+    if (!parsed.success) throw new RelayError("invalid_request");
+    const input = parsed.data;
+    this.#assertReady();
+    return this.#tx(() => {
+      const scope = this.#discoveryScope(context);
+      const observedAt = this.#iso();
+      const snapshot = this.#hash("discovery-snapshot-v1", [
+        scope.kind,
+        scope.scope_id,
+        scope.fingerprint,
+        scope.binding_id,
+        scope.group?.epoch ?? scope.agent!.epoch,
+      ]);
+      const base = {
+        version: 1 as const,
+        source: "hab_registry" as const,
+        observed_at: observedAt,
+        snapshot,
+      };
+      const owns = (agentId: string) =>
+        scope.agent
+          ? scope.agent.agent_id === agentId
+          : !!this.#db
+              .prepare(
+                "SELECT 1 FROM hab_auth_group_members WHERE group_id=? AND agent_id=?",
+              )
+              .get(scope.scope_id, agentId);
+      // The namespace policy reveals no names or IDs outside this connection's directory.
+      if (input.action === "check_address") {
+        const candidate = parseHabAddress(input.address);
+        const row = this.#db
+          .prepare("SELECT agent_id FROM hab_agents WHERE address=?")
+          .get(candidate.address);
+        const permitted =
+          this.#options.discovery!.availability_namespaces.includes(
+            candidate.agent_name,
+          );
+        const visible = row !== undefined && owns(String(row.agent_id));
+        return {
+          ...base,
+          address: candidate.address,
+          availability:
+            visible || permitted
+              ? row
+                ? "unavailable"
+                : "available"
+              : "unknown",
+          reason:
+            visible || permitted
+              ? row
+                ? "issued_address_reserved"
+                : "not_issued"
+              : "outside_availability_scope",
+          reservation_created: false,
+          registration_permission: "not_evaluated",
+          registration_capacity: "not_evaluated",
+        };
+      }
+      let host: HabHostIdentity | undefined;
+      let hostReason = "not_attested";
+      try {
+        const value = this.#authority.hostIdentity?.(scope.root);
+        if (value && typeof value === "object" && "then" in value) {
+          void Promise.resolve(value).catch(() => {});
+          throw Error();
+        }
+        if (value !== undefined) {
+          const attested = habHostIdentitySchema.parse(value);
+          const at = Date.parse(attested.observed_at),
+            until = Date.parse(attested.expires_at),
+            now = Date.parse(observedAt);
+          if (
+            !Number.isFinite(at) ||
+            !Number.isFinite(until) ||
+            new Date(at).toISOString() !== attested.observed_at ||
+            new Date(until).toISOString() !== attested.expires_at ||
+            at > now ||
+            until <= at ||
+            until - at > this.#options.max_context_ms
+          )
+            throw Error();
+          // Even a stale attestation must not smuggle another group's identity.
+          if (
+            !owns(attested.agent_id) ||
+            this.#agent(attested.agent_id).address !== attested.address
+          )
+            throw Error();
+          if (until <= now) hostReason = "stale_attestation";
+          else host = attested;
+        }
+      } catch {
+        throw new RelayError("forbidden");
+      }
+      const entry = (agent: AgentRecord) => ({
+        agent_id: agent.agent_id,
+        address: agent.address,
+        agent_name: agent.agent_name,
+        bot_name: agent.bot_name,
+        registration_state: agent.state,
+        address_status: "issued_reserved" as const,
+        authorized_operations: agent.operations.filter((op) =>
+          scope.operations.includes(op),
+        ),
+        authentication_assignment: {
+          kind: scope.kind,
+          id: scope.scope_id,
+          binding_state: "active" as const,
+        },
+        host_assignment:
+          host?.agent_id === agent.agent_id
+            ? {
+                state: "attested" as const,
+                source: "host" as const,
+                owner_kind: host.owner_kind,
+                owner_reference: host.owner_reference,
+                binding_generation: host.binding_generation,
+                observed_at: host.observed_at,
+                expires_at: host.expires_at,
+              }
+            : {
+                state: "unknown" as const,
+                source: "host" as const,
+                reason: hostReason,
+              },
+        presence: {
+          state: "unknown" as const,
+          reason: "not_observed" as const,
+          observed_at: null,
+        },
+      });
+      const membersSql = scope.agent
+        ? "SELECT agent_id FROM hab_agents WHERE agent_id=?"
+        : "SELECT agent_id FROM hab_auth_group_members WHERE group_id=?";
+      if (input.action === "whoami") {
+        const requestedAddress = input.as_address ?? scope.selected?.address;
+        const expected =
+          input.expected_agent_id ?? scope.selected?.expected_agent_id;
+        if (expected !== undefined && requestedAddress === undefined)
+          throw new RelayError("invalid_request");
+        const members = this.#db
+          .prepare(membersSql + " ORDER BY agent_id LIMIT 2")
+          .all(scope.scope_id);
+        let selected: AgentRecord | undefined;
+        if (requestedAddress !== undefined) {
+          const row = this.#db
+            .prepare("SELECT agent_id FROM hab_agents WHERE address=?")
+            .get(requestedAddress);
+          if (!row || !owns(String(row.agent_id)))
+            throw new RelayError("forbidden");
+          selected = this.#agent(String(row.agent_id));
+          if (expected !== undefined && selected.agent_id !== expected)
+            throw new RelayError("forbidden");
+        } else if (members.length === 1)
+          selected = this.#agent(String(members[0].agent_id));
+        return {
+          ...base,
+          connection: {
+            kind: scope.kind,
+            id: scope.scope_id,
+            binding_id: scope.binding_id,
+          },
+          selected_identity: selected ? entry(selected) : null,
+          selection_basis:
+            requestedAddress !== undefined
+              ? "requested_group_name"
+              : selected
+                ? "single_registered_name"
+                : "ambiguous_or_unassigned",
+          identity_verification:
+            host && selected
+              ? host.agent_id === selected.agent_id
+                ? "matched"
+                : "mismatch"
+              : host
+                ? "unselected"
+                : "unknown",
+          host_identity: host
+            ? { state: "attested", ...host, source: "host" }
+            : { state: "unknown", reason: hostReason, source: "host" },
+        };
+      }
+      // Cursor is an owned immutable ID plus an opaque MAC, bound to principal, scope, filter and snapshot.
+      const prefix = input.address_prefix ?? "";
+      const mac = (after: string) =>
+        this.#hash("discovery-cursor-v1", [
+          snapshot,
+          prefix,
+          input.state ?? null,
+          input.limit,
+          after,
+        ]);
+      let after = "";
+      if (input.cursor !== undefined) {
+        const parts = input.cursor.split("~");
+        if (
+          parts.length !== 2 ||
+          !id.safeParse(parts[0]).success ||
+          !/^[a-f0-9]{64}$(?![\s\S])/.test(parts[1]) ||
+          !timingSafeEqual(
+            Buffer.from(parts[1], "hex"),
+            Buffer.from(mac(parts[0]), "hex"),
+          )
+        )
+          throw new RelayError("invalid_reference");
+        after = parts[0];
+      }
+      const rows = this.#db
+        .prepare(
+          `SELECT a.agent_id FROM ${scope.agent ? "hab_agents a" : "hab_auth_group_members m JOIN hab_agents a USING(agent_id)"}
+        WHERE ${scope.agent ? "a.agent_id" : "m.group_id"}=? AND a.agent_id>? AND substr(a.address,1,?)=? AND (? IS NULL OR a.state=?) ORDER BY a.agent_id LIMIT ?`,
+        )
+        .all(
+          scope.scope_id,
+          after,
+          prefix.length,
+          prefix,
+          input.state ?? null,
+          input.state ?? null,
+          input.limit + 1,
+        );
+      const agents = rows
+        .slice(0, input.limit)
+        .map((row) => entry(this.#agent(String(row.agent_id))));
+      const last = agents.at(-1)?.agent_id;
+      return {
+        ...base,
+        page_consistency: "live_keyset",
+        agents,
+        next_cursor:
+          rows.length > input.limit && last ? `${last}~${mac(last)}` : null,
       };
     });
   }

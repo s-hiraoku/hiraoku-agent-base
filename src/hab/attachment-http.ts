@@ -2,7 +2,7 @@ import { attachmentWriterOperations } from "../relay/attachment-http.ts";
 import type { WriterAdmission } from "../relay/writer-admission.ts";
 /** Explicit optional HAB attachment catalog; no listener or production activation. */
 import { HabHttpGateway } from "./http.ts";
-import { createHabMcpServer, habMcpSchemas } from "./mcp.ts";
+import { createHabMcpServer } from "./mcp.ts";
 import type { HabMcpService } from "./mcp.ts";
 import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
 import type { RelayContextResolver, RelayMcpGate } from "../relay/mcp.ts";
@@ -36,7 +36,7 @@ export class HabAttachmentHttpGateway extends HabHttpGateway {
     return { ...super.writerOperations, ...attachmentWriterOperations };
   }
   protected override get toolSchemas() {
-    return { ...habMcpSchemas, ...attachmentMcpSchemas(this.#wire) };
+    return { ...super.toolSchemas, ...attachmentMcpSchemas(this.#wire) };
   }
   protected override createServer(
     resolve: RelayContextResolver,
