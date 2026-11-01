@@ -44,6 +44,7 @@ const schema = z.strictObject({
   }),
   registry: z.strictObject({
     authentication_groups: z.boolean().optional(),
+    agent_rename: z.boolean().optional(),
     discovery: habDiscoveryPolicySchema.optional(),
     max_products: positive,
     max_agents: positive,

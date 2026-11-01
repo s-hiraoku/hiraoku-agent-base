@@ -4,6 +4,7 @@ import {
   relayAdminStatus,
   relayAdminConnect,
   relayAdminDisconnect,
+  relayAdminRename,
   relayAdminErrorCode,
   RelayAdminError,
 } from "../src/relay-host/admin.ts";
@@ -11,7 +12,8 @@ import {
 const usage = `usage:
   hab-relay-admin --config <service.local.json> status
   hab-relay-admin --config <service.local.json> connect --address <bot@agent.hab> --connection-id <id> [--operations resolve,submit,status,poll,ack]
-  hab-relay-admin --config <service.local.json> disconnect --address <bot@agent.hab>`;
+  hab-relay-admin --config <service.local.json> disconnect --address <bot@agent.hab>
+  hab-relay-admin --config <service.local.json> rename --agent-id <id> --expected-address <old@agent.hab> --bot-name <new> --expected-epoch <epoch> --request-id <journaled-id>`;
 
 function parse(args) {
   if (args[0] !== "--config" || !args[1] || !args[2])
@@ -22,7 +24,16 @@ function parse(args) {
     const key = rest[i],
       value = rest[i + 1];
     if (
-      !["--address", "--connection-id", "--operations"].includes(key) ||
+      ![
+        "--address",
+        "--connection-id",
+        "--operations",
+        "--agent-id",
+        "--expected-address",
+        "--bot-name",
+        "--expected-epoch",
+        "--request-id",
+      ].includes(key) ||
       value === undefined ||
       Object.hasOwn(options, key)
     )
@@ -37,9 +48,28 @@ export function main(args = process.argv.slice(2)) {
   if (command === "status" && !Object.keys(options).length)
     return relayAdminStatus(config);
   if (
+    command === "rename" &&
+    Object.keys(options).length === 5 &&
+    options["--agent-id"] &&
+    options["--expected-address"] &&
+    options["--bot-name"] &&
+    options["--expected-epoch"] &&
+    options["--request-id"]
+  )
+    return relayAdminRename(config, {
+      agent_id: options["--agent-id"],
+      expected_address: options["--expected-address"],
+      bot_name: options["--bot-name"],
+      expected_epoch: Number(options["--expected-epoch"]),
+      request_id: options["--request-id"],
+    });
+  if (
     command === "connect" &&
     options["--address"] &&
-    options["--connection-id"]
+    options["--connection-id"] &&
+    Object.keys(options).every((key) =>
+      ["--address", "--connection-id", "--operations"].includes(key),
+    )
   )
     return relayAdminConnect(config, {
       address: options["--address"],

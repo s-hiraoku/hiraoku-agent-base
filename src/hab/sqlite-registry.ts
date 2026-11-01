@@ -16,6 +16,7 @@ import {
 } from "./discovery.ts";
 import type { HabDiscoveryPolicy, HabHostIdentity } from "./discovery.ts";
 import { AUTH_GROUP_SCHEMA } from "./auth-groups.ts";
+import { AGENT_NAME_SCHEMA } from "./agent-names.ts";
 import type { AuthenticationGroup, GroupBinding } from "./auth-groups.ts";
 import { ContractError } from "../relay/contract.ts";
 import type { Authorization } from "../relay/service.ts";
@@ -25,6 +26,7 @@ import {
   habAddress,
   parseHabAddress,
   relayOperations,
+  HAB_ADDRESS_PATTERN,
 } from "./registry.ts";
 import type {
   AgentOperation,
@@ -39,6 +41,8 @@ import type {
 export interface RegistryOptions {
   /** Explicit opt-in to the additive group schema; never inferred from claims. */
   authentication_groups?: boolean;
+  /** Explicit v2→v3 opt-in. Old names stay reserved; no forwarding aliases. */
+  agent_rename?: boolean;
   /** Explicit read-only catalog and candidate occupancy policy. Omitted preserves five MCP tools. */
   discovery?: HabDiscoveryPolicy;
   fingerprint_key: Uint8Array;
@@ -83,6 +87,13 @@ const productInput = z.strictObject({ request_id: id, agent_name: slug });
 const enrollInput = z.strictObject({
   request_id: id,
   product_id: id,
+  bot_name: slug,
+});
+const renameInput = z.strictObject({
+  request_id: id,
+  agent_id: id,
+  expected_epoch: epoch,
+  expected_address: z.string().max(101).regex(new RegExp(HAB_ADDRESS_PATTERN)),
   bot_name: slug,
 });
 const bindingInput = z.strictObject({
@@ -201,6 +212,7 @@ export class SQLiteHabRegistry {
   readonly #authority: RegistryAuthority;
   #ready = false;
   #groupsPresent = false;
+  #namesPresent = false;
   #schemaVersion: number | undefined;
   readonly #selections = new WeakMap<
     object,
@@ -213,6 +225,13 @@ export class SQLiteHabRegistry {
     authority: RegistryAuthority = {},
   ) {
     try {
+      if (
+        (options.agent_rename !== undefined &&
+          typeof options.agent_rename !== "boolean") ||
+        (options.agent_rename === true &&
+          options.authentication_groups !== true)
+      )
+        throw Error();
       if (
         options.authentication_groups !== undefined &&
         typeof options.authentication_groups !== "boolean"
@@ -412,6 +431,7 @@ export class SQLiteHabRegistry {
   migrate(): void {
     this.#ready = false;
     this.#groupsPresent = false;
+    this.#namesPresent = false;
     this.#schemaVersion = undefined;
     const version = this.#tx(() => {
       if (
@@ -433,7 +453,7 @@ export class SQLiteHabRegistry {
           .run(this.#keyCheck());
       }
       const rows = this.#db.prepare("SELECT * FROM hab_registry_meta").all();
-      if (rows.length !== 1 || ![1, 2].includes(Number(rows[0].version)))
+      if (rows.length !== 1 || ![1, 2, 3].includes(Number(rows[0].version)))
         throw new RegistryError("unsupported_registry_schema");
       if (rows[0].key_check !== this.#keyCheck())
         throw new RegistryError("registry_key_mismatch");
@@ -442,7 +462,7 @@ export class SQLiteHabRegistry {
       let groupMeta = this.#db
         .prepare("SELECT 1 FROM sqlite_master WHERE name='hab_auth_group_meta'")
         .get();
-      if ((rows[0].version === 2) !== Boolean(groupMeta))
+      if (Number(rows[0].version) >= 2 !== Boolean(groupMeta))
         throw new RegistryError("unsupported_registry_schema");
       if (!groupMeta && this.#options.authentication_groups === true) {
         this.#db.exec(AUTH_GROUP_SCHEMA);
@@ -459,7 +479,37 @@ export class SQLiteHabRegistry {
           throw new RegistryError("unsupported_registry_group_schema");
         this.#groupsPresent = true;
       }
-      return groupMeta ? 2 : 1;
+      const namesMeta = this.#db
+        .prepare("SELECT 1 FROM sqlite_master WHERE name='hab_agent_name_meta'")
+        .get();
+      if ((rows[0].version === 3) !== Boolean(namesMeta))
+        throw new RegistryError("unsupported_registry_schema");
+      if (!namesMeta && this.#options.agent_rename === true) {
+        this.#db.exec(AGENT_NAME_SCHEMA);
+        this.#db
+          .prepare("UPDATE hab_registry_meta SET version=3 WHERE id=1")
+          .run();
+        this.#namesPresent = true;
+      } else if (namesMeta) {
+        const meta = this.#db
+          .prepare("SELECT * FROM hab_agent_name_meta")
+          .all();
+        if (meta.length !== 1 || meta[0].id !== 1 || meta[0].version !== 1)
+          throw new RegistryError("unsupported_registry_name_schema");
+        for (const name of [
+          "hab_address_reservations",
+          "hab_agent_name_events",
+          "hab_agents_current",
+        ])
+          if (
+            !this.#db
+              .prepare("SELECT 1 FROM sqlite_master WHERE name=?")
+              .get(name)
+          )
+            throw new RegistryError("unsupported_registry_name_schema");
+        this.#namesPresent = true;
+      }
+      return this.#namesPresent ? 3 : groupMeta ? 2 : 1;
     });
     this.#schemaVersion = version;
     this.#ready = true;
@@ -531,9 +581,19 @@ export class SQLiteHabRegistry {
       .run(actor, input.request_id, fingerprint, JSON.stringify(result));
     return result;
   }
+  #agentTable(): "hab_agents" | "hab_agents_current" {
+    return this.#namesPresent ? "hab_agents_current" : "hab_agents";
+  }
+  #reservedAddress(address: string) {
+    return this.#db
+      .prepare(
+        `SELECT agent_id FROM ${this.#namesPresent ? "hab_address_reservations" : "hab_agents"} WHERE address=?`,
+      )
+      .get(address);
+  }
   #agent(agentId: string): AgentRecord {
     const row = this.#db
-      .prepare("SELECT * FROM hab_agents WHERE agent_id=?")
+      .prepare(`SELECT * FROM ${this.#agentTable()} WHERE agent_id=?`)
       .get(agentId) as AgentRow | undefined;
     if (!row) throw new RegistryError("registry_not_found");
     const operations = parse(rights, JSON.parse(row.operations));
@@ -635,9 +695,7 @@ export class SQLiteHabRegistry {
         agent_name: String(product.agent_name),
         address,
         normalization_version: 1 as const,
-        available: !this.#db
-          .prepare("SELECT 1 FROM hab_agents WHERE address=?")
-          .get(address),
+        available: !this.#reservedAddress(address),
       };
     });
   }
@@ -649,11 +707,7 @@ export class SQLiteHabRegistry {
         .get(input.product_id);
       if (!product) throw new RegistryError("registry_not_found");
       const address = habAddress(input.bot_name, product.agent_name);
-      if (
-        this.#db
-          .prepare("SELECT 1 FROM hab_agents WHERE address=?")
-          .get(address)
-      )
+      if (this.#reservedAddress(address))
         throw new RegistryError("registry_name_reserved");
       this.#capacity("hab_agents", this.#options.max_agents);
       const agentId = randomUUID();
@@ -669,7 +723,56 @@ export class SQLiteHabRegistry {
           address,
           this.#iso(),
         );
+      if (this.#namesPresent)
+        this.#db
+          .prepare("INSERT INTO hab_address_reservations VALUES(?,?,?,?)")
+          .run(address, agentId, input.bot_name, this.#iso());
       return { result: this.#agent(agentId), object_id: agentId };
+    });
+  }
+  /** Operator-only canonical-name change. Identity, credentials and transport data never move. */
+  renameAgent(context: unknown, value: unknown): AgentRecord {
+    const input = parse(renameInput, value);
+    return this.#mutate(context, "rename", input, () => {
+      if (this.#options.agent_rename !== true || !this.#namesPresent)
+        throw new RegistryError("registry_rename_disabled");
+      const current = this.#expected(input.agent_id, input.expected_epoch);
+      if (current.address !== input.expected_address)
+        throw new RegistryError("registry_stale_address");
+      const address = habAddress(input.bot_name, current.agent_name);
+      if (address === current.address)
+        throw new RegistryError("registry_name_unchanged");
+      const reservation = this.#reservedAddress(address);
+      if (reservation && reservation.agent_id !== current.agent_id)
+        throw new RegistryError("registry_name_reserved");
+      const member = this.#db
+        .prepare("SELECT group_id FROM hab_auth_group_members WHERE agent_id=?")
+        .get(current.agent_id);
+      if (member) {
+        const group = this.#group(String(member.group_id));
+        this.#expectedGroup(group.group_id, group.epoch);
+      }
+      this.#capacity("hab_agent_name_events", this.#options.max_requests);
+      if (!reservation) {
+        this.#capacity(
+          "hab_address_reservations",
+          this.#options.max_agents + this.#options.max_requests,
+        );
+        this.#db
+          .prepare("INSERT INTO hab_address_reservations VALUES(?,?,?,?)")
+          .run(address, current.agent_id, input.bot_name, this.#iso());
+      }
+      this.#db
+        .prepare(
+          "INSERT INTO hab_agent_name_events(agent_id,address,previous_address,at) VALUES(?,?,?,?)",
+        )
+        .run(current.agent_id, address, current.address, this.#iso());
+      this.#bump(current.agent_id);
+      if (member) this.#bumpGroup(String(member.group_id));
+      return {
+        result: this.#agent(current.agent_id),
+        object_id: current.agent_id,
+      };
     });
   }
   inspect(context: unknown, agentId: string): AgentRecord {
@@ -1322,7 +1425,7 @@ export class SQLiteHabRegistry {
         const members = selected
           ? this.#db
               .prepare(
-                "SELECT m.agent_id FROM hab_auth_group_members m JOIN hab_agents a USING(agent_id) WHERE m.group_id=? AND a.address=?",
+                `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.address=?`,
               )
               .all(group.group_id, selected.address)
           : this.#db
@@ -1402,7 +1505,7 @@ export class SQLiteHabRegistry {
     return this.withRelay(context, "resolve", (_authorization, senderId) => {
       const row = this.#db
         .prepare(
-          "SELECT agent_id FROM hab_agents WHERE address=? AND state='active'",
+          `SELECT agent_id FROM ${this.#agentTable()} WHERE address=? AND state='active'`,
         )
         .get(canonicalAddress);
       if (!row || this.#blocked(senderId, String(row.agent_id)))
@@ -1518,9 +1621,7 @@ export class SQLiteHabRegistry {
       // The namespace policy reveals no names or IDs outside this connection's directory.
       if (input.action === "check_address") {
         const candidate = parseHabAddress(input.address);
-        const row = this.#db
-          .prepare("SELECT agent_id FROM hab_agents WHERE address=?")
-          .get(candidate.address);
+        const row = this.#reservedAddress(candidate.address);
         const permitted =
           this.#options.discovery!.availability_namespaces.includes(
             candidate.agent_name,
@@ -1570,12 +1671,17 @@ export class SQLiteHabRegistry {
           )
             throw Error();
           // Even a stale attestation must not smuggle another group's identity.
-          if (
-            !owns(attested.agent_id) ||
-            this.#agent(attested.agent_id).address !== attested.address
-          )
-            throw Error();
-          if (until <= now) hostReason = "stale_attestation";
+          if (!owns(attested.agent_id)) throw Error();
+          const currentAddress = this.#agent(attested.agent_id).address;
+          if (currentAddress !== attested.address) {
+            if (
+              !this.#namesPresent ||
+              this.#reservedAddress(attested.address)?.agent_id !==
+                attested.agent_id
+            )
+              throw Error();
+            hostReason = "stale_address_attestation";
+          } else if (until <= now) hostReason = "stale_attestation";
           else host = attested;
         }
       } catch {
@@ -1633,7 +1739,9 @@ export class SQLiteHabRegistry {
         let selected: AgentRecord | undefined;
         if (requestedAddress !== undefined) {
           const row = this.#db
-            .prepare("SELECT agent_id FROM hab_agents WHERE address=?")
+            .prepare(
+              `SELECT agent_id FROM ${this.#agentTable()} WHERE address=?`,
+            )
             .get(requestedAddress);
           if (!row || !owns(String(row.agent_id)))
             throw new RelayError("forbidden");
@@ -1696,7 +1804,7 @@ export class SQLiteHabRegistry {
       }
       const rows = this.#db
         .prepare(
-          `SELECT a.agent_id FROM ${scope.agent ? "hab_agents a" : "hab_auth_group_members m JOIN hab_agents a USING(agent_id)"}
+          `SELECT a.agent_id FROM ${scope.agent ? `${this.#agentTable()} a` : `hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id)`}
         WHERE ${scope.agent ? "a.agent_id" : "m.group_id"}=? AND a.agent_id>? AND substr(a.address,1,?)=? AND (? IS NULL OR a.state=?) ORDER BY a.agent_id LIMIT ?`,
         )
         .all(
@@ -1735,7 +1843,9 @@ export class SQLiteHabRegistry {
         )
         .all() as unknown as ProductRecord[];
       const agentIds = this.#db
-        .prepare("SELECT agent_id FROM hab_agents ORDER BY address LIMIT 1000")
+        .prepare(
+          `SELECT agent_id FROM ${this.#agentTable()} ORDER BY address LIMIT 1000`,
+        )
         .all()
         .map((row) => String(row.agent_id));
       const activeBindings = this.#db.prepare(
