@@ -8,6 +8,7 @@ import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedRelayOAuthAuthority } from "./oauth-auth.ts";
 import { startLocalRelay } from "./local.ts";
+import type { LocalRelayServiceFactory } from "./local.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const absolute = z.string().refine(isAbsolute);
 const keys = z.strictObject({
@@ -186,7 +187,10 @@ export function readLocalRelayConfig(configPath: string) {
       config.ingress ? read(config.ingress.oauth_file) : undefined,
   };
 }
-export async function startConfiguredLocalRelay(configPath: string) {
+export async function startConfiguredLocalRelay(
+  configPath: string,
+  serviceFactory?: LocalRelayServiceFactory,
+) {
   try {
     const { config, readCredentials, readOAuth, ...secrets } =
       readLocalRelayConfig(configPath);
@@ -240,6 +244,7 @@ export async function startConfiguredLocalRelay(configPath: string) {
             sink.record(category, correlation);
           },
         },
+        ...(serviceFactory ? { service_factory: serviceFactory } : {}),
       });
     } catch (error) {
       throw new LocalRelayStartError(hostReason(error));

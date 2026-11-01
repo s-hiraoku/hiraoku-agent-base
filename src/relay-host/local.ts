@@ -15,6 +15,7 @@ import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { RegistryOptions } from "../hab/sqlite-registry.ts";
 import type { RegistryAuthority } from "../hab/registry.ts";
 import { HabRelayService } from "../hab/relay.ts";
+import type { HabMcpService } from "../hab/mcp.ts";
 import { HabHttpGateway } from "../hab/http.ts";
 import { SQLiteRelayStore } from "../relay/sqlite-store.ts";
 import type { StoreOptions } from "../relay/sqlite-store.ts";
@@ -49,7 +50,20 @@ export interface LocalRelayOptions {
   authority: RegistryAuthority;
   verify: RelayHttpVerifier;
   audit: AuditSink;
+  service_factory?: LocalRelayServiceFactory;
 }
+
+export interface LocalRelayServiceDependencies {
+  registry: SQLiteHabRegistry;
+  store: SQLiteRelayStore;
+  limits: ContractLimits;
+  store_options: StoreOptions;
+  directory: string;
+  assertOwner(): void;
+}
+export type LocalRelayServiceFactory = (
+  dependencies: LocalRelayServiceDependencies,
+) => Promise<{ service: HabMcpService; close(): Promise<void> }>;
 
 function privatePath(path: string, directory: boolean) {
   const s = lstatSync(path);
@@ -93,7 +107,9 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     (options.port !== 0 && (options.port < 1024 || options.port > 65535)) ||
     typeof options.authority?.individual !== "function" ||
     typeof options.verify !== "function" ||
-    typeof options.audit?.record !== "function"
+    typeof options.audit?.record !== "function" ||
+    (options.service_factory !== undefined &&
+      typeof options.service_factory !== "function")
   )
     throw Error("invalid_local_relay_options");
   const ingress = options.ingress;
@@ -116,6 +132,7 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     handler: ReturnType<typeof createRelayNodeHandler> | undefined,
     ingressHandler: ReturnType<typeof createRelayNodeHandler> | undefined,
     ingressServer: Server | undefined,
+    serviceClose: (() => Promise<void>) | undefined,
     stopping = false;
   const pending = new Set<Promise<void>>();
   const makeServer = (current: () => typeof handler) =>
@@ -167,12 +184,16 @@ export async function startLocalRelay(options: LocalRelayOptions) {
         if (failure?.status === "rejected") throw failure.reason;
       } finally {
         try {
-          store?.close();
+          await serviceClose?.();
         } finally {
           try {
-            registry?.close();
+            store?.close();
           } finally {
-            owner?.close();
+            try {
+              registry?.close();
+            } finally {
+              owner?.close();
+            }
           }
         }
       }
@@ -224,7 +245,26 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     );
     store.migrate();
     // Validate all HTTP limits before opening a socket; a temporary port is only framing.
-    const service = new HabRelayService(registry, store, options.limits);
+    let service: HabMcpService = new HabRelayService(
+      registry,
+      store,
+      options.limits,
+    );
+    if (options.service_factory) {
+      const extension = await options.service_factory({
+        registry,
+        store,
+        limits: options.limits,
+        store_options: storeOptions,
+        directory: options.directory,
+        assertOwner: () => {
+          ownership.check();
+          if (stopping) throw Error("local_relay_stopping");
+        },
+      });
+      serviceClose = extension.close.bind(extension);
+      service = extension.service;
+    }
     const policy = (port: number) => ({
       ...options.http,
       resource_url: `http://127.0.0.1:${port}/mcp`,

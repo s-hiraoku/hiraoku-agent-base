@@ -2,6 +2,14 @@ import { DatabaseSync } from "node:sqlite";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
 import { RelayError } from "../../../src/relay/service.ts";
+import {
+  agentCapacityPolicy,
+  assertAgentCapacity,
+} from "../../../src/relay/agent-capacity.ts";
+import type {
+  AgentCapacityPolicy,
+  SenderCapacityUsage,
+} from "../../../src/relay/agent-capacity.ts";
 import type {
   Receipt,
   Delivery,
@@ -15,6 +23,12 @@ import {
 } from "../../../src/relay/contract.ts";
 
 export interface JournalOptions {
+  fair_poll?: boolean;
+  poll_scan_limit?: number;
+  route_epoch?: number;
+  prefetch_per_recipient?: number;
+  migrate_journal?: boolean;
+  agent_capacity?: AgentCapacityPolicy;
   fingerprint_key: Uint8Array;
   max_records: number;
   max_pending: number;
@@ -39,6 +53,9 @@ export interface Row {
   subject: string;
   state: "staging" | Receipt["state"];
   outbox: string | null;
+  candidate: string | null;
+  route_epoch: number;
+  scan_order: number;
   body_bytes: number;
   sequence: number | null;
   generation: number;
@@ -59,7 +76,7 @@ CREATE TABLE IF NOT EXISTS nats_messages(
  receipt_id TEXT NOT NULL UNIQUE,accepted_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,
  kind TEXT NOT NULL,thread_key TEXT NOT NULL,fingerprint TEXT NOT NULL,subject TEXT NOT NULL UNIQUE,
  state TEXT NOT NULL CHECK(state IN ('staging','pending','leased','acked','expired','quarantined')),
- outbox TEXT,body_bytes INTEGER NOT NULL,sequence INTEGER,
+ outbox TEXT,candidate TEXT,route_epoch INTEGER NOT NULL DEFAULT 1,scan_order INTEGER NOT NULL DEFAULT 0,body_bytes INTEGER NOT NULL,sequence INTEGER,
  generation INTEGER NOT NULL DEFAULT 0,token_hash TEXT,lease_until INTEGER NOT NULL DEFAULT 0,
  next_visible_at INTEGER NOT NULL DEFAULT 0,ack_request_id TEXT,
  ack_fingerprint TEXT,ack_receipt_id TEXT,acked_at INTEGER,retain_until INTEGER,
@@ -68,6 +85,9 @@ CREATE TABLE IF NOT EXISTS nats_messages(
 CREATE UNIQUE INDEX IF NOT EXISTS nats_one_live_lease ON nats_messages(recipient_id) WHERE state='leased';
 CREATE INDEX IF NOT EXISTS nats_terminal ON nats_messages(state,cleaned,retain_until);
 CREATE TABLE IF NOT EXISTS nats_pulls(recipient_id TEXT PRIMARY KEY,token TEXT NOT NULL,until INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS nats_routing(id INTEGER PRIMARY KEY CHECK(id=1),epoch INTEGER NOT NULL,digest TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS nats_poll_turns(recipient_id TEXT PRIMARY KEY,owner TEXT NOT NULL CHECK(owner IN ('sqlite','jetstream')),updated_at INTEGER NOT NULL,last_sender_id TEXT);
+CREATE INDEX IF NOT EXISTS nats_cached_candidates ON nats_messages(recipient_id,accepted_at) WHERE candidate IS NOT NULL AND state IN ('pending','leased');
 `;
 
 export class NatsJournal {
@@ -98,8 +118,40 @@ export class NatsJournal {
       options.max_attempts > 1000
     )
       throw new RelayError("invalid_store_options");
+    if (
+      options.prefetch_per_recipient !== undefined &&
+      (!Number.isSafeInteger(options.prefetch_per_recipient) ||
+        options.prefetch_per_recipient < 1 ||
+        options.prefetch_per_recipient > options.max_pending_per_recipient)
+    )
+      throw new RelayError("invalid_store_options");
+    if (
+      (options.route_epoch !== undefined &&
+        (!Number.isSafeInteger(options.route_epoch) ||
+          options.route_epoch < 1)) ||
+      (options.migrate_journal !== undefined &&
+        typeof options.migrate_journal !== "boolean")
+    )
+      throw new RelayError("invalid_store_options");
+    if (
+      (options.fair_poll !== undefined &&
+        typeof options.fair_poll !== "boolean") ||
+      (options.poll_scan_limit !== undefined &&
+        (!Number.isSafeInteger(options.poll_scan_limit) ||
+          options.poll_scan_limit < 1))
+    )
+      throw new RelayError("invalid_store_options");
     this.#options = {
       ...options,
+      fair_poll: options.fair_poll ?? false,
+      poll_scan_limit:
+        options.poll_scan_limit ?? options.prefetch_per_recipient ?? 1,
+      route_epoch: options.route_epoch ?? 1,
+      prefetch_per_recipient: options.prefetch_per_recipient ?? 1,
+      agent_capacity:
+        options.agent_capacity === undefined
+          ? undefined
+          : agentCapacityPolicy(options.agent_capacity, options),
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
     };
     if (path === ":memory:") throw new RelayError("durable_journal_required");
@@ -117,36 +169,77 @@ export class NatsJournal {
     }
     this.#db = new DatabaseSync(path, { timeout: 5000 });
     try {
-      const tables = this.#db
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-        )
-        .all()
-        .map((row) => String(row.name))
-        .sort();
-      const expected = ["nats_messages", "nats_meta", "nats_pulls"];
       const check = this.hash("key", "nats-journal-v1:" + binding);
-      if (tables.length) {
-        if (JSON.stringify(tables) !== JSON.stringify(expected))
-          throw new RelayError("unknown_journal_schema");
-        const meta = this.#db.prepare("SELECT * FROM nats_meta").all();
-        if (
-          meta.length !== 1 ||
-          meta[0].version !== 1 ||
-          meta[0].key_check !== check
-        )
-          throw new RelayError("journal_key_or_version_mismatch");
-      }
+      const inspect = () => {
+        const tables = this.#db
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+          )
+          .all()
+          .map((row) => String(row.name))
+          .sort();
+        const previous = ["nats_messages", "nats_meta", "nats_pulls"];
+        const expected = [
+          "nats_messages",
+          "nats_meta",
+          "nats_poll_turns",
+          "nats_pulls",
+          "nats_routing",
+        ];
+        let version = 0;
+        if (tables.length) {
+          if (!tables.includes("nats_meta"))
+            throw new RelayError("unknown_journal_schema");
+          const meta = this.#db.prepare("SELECT * FROM nats_meta").all();
+          if (meta.length !== 1 || meta[0].key_check !== check)
+            throw new RelayError("journal_key_or_version_mismatch");
+          version = Number(meta[0].version);
+          if (![1, 2, 3].includes(version))
+            throw new RelayError("journal_key_or_version_mismatch");
+          if (
+            JSON.stringify(tables) !==
+            JSON.stringify(version === 1 ? previous : expected)
+          )
+            throw new RelayError("unknown_journal_schema");
+          if (
+            version === 3 &&
+            !this.#db
+              .prepare("PRAGMA table_info(nats_messages)")
+              .all()
+              .some((row) => row.name === "scan_order")
+          )
+            throw new RelayError("unknown_journal_schema");
+          if (version < 3 && options.migrate_journal !== true)
+            throw new RelayError("journal_migration_required");
+          if (
+            version === 3 &&
+            !this.#db
+              .prepare("PRAGMA table_info(nats_poll_turns)")
+              .all()
+              .some((row) => row.name === "last_sender_id")
+          )
+            throw new RelayError("unknown_journal_schema");
+        }
+        return version;
+      };
+      inspect();
       this.#db.exec(
         "PRAGMA busy_timeout=5000; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON",
       );
       this.#tx(() => {
+        const version = inspect();
+        if (version === 1) {
+          this.#db.exec(
+            "ALTER TABLE nats_messages ADD COLUMN candidate TEXT; ALTER TABLE nats_messages ADD COLUMN route_epoch INTEGER NOT NULL DEFAULT 1; ALTER TABLE nats_messages ADD COLUMN scan_order INTEGER NOT NULL DEFAULT 0; UPDATE nats_meta SET version=3",
+          );
+        }
+        if (version === 2)
+          this.#db.exec(
+            "ALTER TABLE nats_poll_turns ADD COLUMN last_sender_id TEXT; ALTER TABLE nats_messages ADD COLUMN scan_order INTEGER NOT NULL DEFAULT 0; UPDATE nats_meta SET version=3",
+          );
         this.#db.exec(schema);
-        const meta = this.#db.prepare("SELECT * FROM nats_meta").get();
-        if (!meta)
-          this.#db.prepare("INSERT INTO nats_meta VALUES(1,?)").run(check);
-        else if (meta.version !== 1 || meta.key_check !== check)
-          throw new RelayError("journal_key_or_version_mismatch");
+        if (version === 0)
+          this.#db.prepare("INSERT INTO nats_meta VALUES(3,?)").run(check);
       });
     } catch (error) {
       this.#db.close();
@@ -198,14 +291,14 @@ export class NatsJournal {
   #refresh(now: number) {
     this.#db
       .prepare(
-        "UPDATE nats_messages SET state='expired',outbox=NULL,body_bytes=0,token_hash=NULL,retain_until=expires_at+? WHERE state IN ('staging','pending','leased','quarantined') AND expires_at<=?",
+        "UPDATE nats_messages SET state='expired',outbox=NULL,candidate=NULL,body_bytes=0,token_hash=NULL,retain_until=expires_at+? WHERE state IN ('staging','pending','leased','quarantined') AND expires_at<=?",
       )
       .run(RECORD_RETENTION_MS, now);
     this.#db
       .prepare(
-        "UPDATE nats_messages SET state=CASE WHEN generation>=? THEN 'quarantined' ELSE 'pending' END,token_hash=NULL WHERE state='leased' AND lease_until<=?",
+        "UPDATE nats_messages SET state=CASE WHEN generation>=? THEN 'quarantined' ELSE 'pending' END,candidate=CASE WHEN generation>=? THEN NULL ELSE candidate END,token_hash=NULL WHERE state='leased' AND lease_until<=?",
       )
-      .run(this.#options.max_attempts, now);
+      .run(this.#options.max_attempts, this.#options.max_attempts, now);
   }
   stage(
     sender: string,
@@ -225,6 +318,11 @@ export class NatsJournal {
           throw new RelayError("idempotency_conflict");
         return existing;
       }
+      const routing = this.#db
+        .prepare("SELECT epoch FROM nats_routing WHERE id=1")
+        .get();
+      if (routing && routing.epoch !== this.#options.route_epoch)
+        throw new RelayError("routing_epoch_rejected");
       const expires = Date.parse(message.expires_at);
       if (
         Date.parse(message.first_sent_at) >
@@ -246,6 +344,29 @@ export class NatsJournal {
         Number(usage.bytes) + size > this.#options.max_body_bytes
       )
         throw new RelayError("capacity_exceeded");
+      if (this.#options.agent_capacity) {
+        const senders = this.#db
+          .prepare(
+            "SELECT sender_id,count(*) records,sum(CASE WHEN state IN ('staging','pending','leased','quarantined') THEN 1 ELSE 0 END) pending,coalesce(sum(body_bytes),0) body_bytes FROM nats_messages GROUP BY sender_id",
+          )
+          .all() as unknown as SenderCapacityUsage[];
+        const recipient = this.#db
+          .prepare(
+            "SELECT count(*) records,coalesce(sum(body_bytes),0) body_bytes FROM nats_messages WHERE recipient_id=?",
+          )
+          .get(message.recipient_id) as unknown as {
+          records: number;
+          body_bytes: number;
+        };
+        assertAgentCapacity(
+          this.#options.agent_capacity,
+          this.#options,
+          sender,
+          size,
+          senders,
+          recipient,
+        );
+      }
       const thread = JSON.stringify([
         [sender, message.recipient_id].sort(),
         message.thread_id,
@@ -265,7 +386,7 @@ export class NatsJournal {
       }
       this.#db
         .prepare(
-          "INSERT INTO nats_messages(sender_id,message_id,recipient_id,receipt_id,accepted_at,expires_at,kind,thread_key,fingerprint,subject,state,outbox,body_bytes) VALUES(?,?,?,?,?,?,?,?,?,?,'staging',?,?)",
+          "INSERT INTO nats_messages(sender_id,message_id,recipient_id,receipt_id,accepted_at,expires_at,kind,thread_key,fingerprint,subject,state,outbox,body_bytes,route_epoch) VALUES(?,?,?,?,?,?,?,?,?,?,'staging',?,?,?)",
         )
         .run(
           sender,
@@ -280,6 +401,7 @@ export class NatsJournal {
           subject,
           outbox,
           size,
+          this.#options.route_epoch!,
         );
       return this.row(sender, message.message_id)!;
     });
@@ -295,13 +417,210 @@ export class NatsJournal {
       return this.row(sender, message)!;
     });
   }
-  status(sender: string, message: string): Receipt {
+  status(
+    sender: string,
+    message: string,
+    authorize: () => void = () => {},
+  ): Receipt {
     return this.#tx(() => {
+      authorize();
       this.#refresh(Date.now());
       const row = this.row(sender, message);
       if (!row) throw new RelayError("not_found");
       return this.receipt(row);
     });
+  }
+  lookupReceipt(sender: string, message: string): Receipt | null {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      const row = this.row(sender, message);
+      return row ? this.receipt(row) : null;
+    });
+  }
+  hasActiveLease(recipient: string): boolean {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      return !!this.#db
+        .prepare(
+          "SELECT 1 FROM nats_messages WHERE recipient_id=? AND state='leased'",
+        )
+        .get(recipient);
+    });
+  }
+  configureRouting(epoch: number, digest: string): void {
+    if (
+      !Number.isSafeInteger(epoch) ||
+      epoch < 1 ||
+      epoch !== this.#options.route_epoch ||
+      !/^[a-f0-9]{64}$/.test(digest)
+    )
+      throw new RelayError("routing_epoch_rejected");
+    this.#tx(() => {
+      const existing = this.#db
+        .prepare("SELECT epoch,digest FROM nats_routing WHERE id=1")
+        .get();
+      if (
+        existing &&
+        (Number(existing.epoch) > epoch ||
+          (existing.epoch === epoch && existing.digest !== digest))
+      )
+        throw new RelayError("routing_epoch_rejected");
+      if (existing && existing.epoch === epoch) return;
+      this.#db
+        .prepare("INSERT OR REPLACE INTO nats_routing VALUES(1,?,?)")
+        .run(epoch, digest);
+    });
+  }
+  pollTurn(recipient: string): "sqlite" | "jetstream" {
+    const row = this.#db
+      .prepare("SELECT owner FROM nats_poll_turns WHERE recipient_id=?")
+      .get(recipient);
+    return row?.owner === "jetstream" ? "jetstream" : "sqlite";
+  }
+  recordPollTurn(recipient: string, owner: "sqlite" | "jetstream"): void {
+    this.#tx(() => {
+      this.#db
+        .prepare(
+          "INSERT INTO nats_poll_turns(recipient_id,owner,updated_at) VALUES(?,?,?) ON CONFLICT(recipient_id) DO UPDATE SET owner=excluded.owner,updated_at=excluded.updated_at",
+        )
+        .run(recipient, owner, Date.now());
+      this.#db
+        .prepare(
+          "DELETE FROM nats_poll_turns WHERE recipient_id IN (SELECT recipient_id FROM nats_poll_turns ORDER BY updated_at DESC,recipient_id LIMIT -1 OFFSET ?)",
+        )
+        .run(this.#options.max_records);
+    });
+  }
+  prefetchRecipients(limit: number): string[] {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      return this.#db
+        .prepare(
+          "SELECT DISTINCT recipient_id FROM nats_messages m WHERE state='pending' AND sequence IS NOT NULL AND candidate IS NULL AND next_visible_at<=? AND NOT EXISTS(SELECT 1 FROM nats_messages l WHERE l.recipient_id=m.recipient_id AND l.state='leased') AND (SELECT count(*) FROM nats_messages c WHERE c.recipient_id=m.recipient_id AND c.candidate IS NOT NULL AND c.state IN ('pending','leased'))<? ORDER BY recipient_id LIMIT ?",
+        )
+        .all(Date.now(), this.#options.prefetch_per_recipient!, limit)
+        .map((row) => String(row.recipient_id));
+    });
+  }
+  nextUncached(recipient: string): Row | null {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      return (
+        (this.#db
+          .prepare(
+            "SELECT * FROM nats_messages WHERE recipient_id=? AND state='pending' AND sequence IS NOT NULL AND candidate IS NULL AND next_visible_at<=? ORDER BY accepted_at,sender_id,message_id LIMIT 1",
+          )
+          .get(recipient, Date.now()) as unknown as Row | undefined) ?? null
+      );
+    });
+  }
+  prefetchCapacity(recipient: string): number {
+    const cached = this.#db
+      .prepare(
+        "SELECT count(*) n FROM nats_messages WHERE recipient_id=? AND candidate IS NOT NULL AND state IN ('pending','leased')",
+      )
+      .get(recipient)!;
+    const pending = this.#db
+      .prepare(
+        "SELECT count(*) n FROM nats_messages WHERE recipient_id=? AND state='pending' AND sequence IS NOT NULL AND candidate IS NULL AND next_visible_at<=? AND expires_at>?",
+      )
+      .get(recipient, Date.now(), Date.now())!;
+    return Math.min(
+      Number(pending.n),
+      Math.max(0, this.#options.prefetch_per_recipient! - Number(cached.n)),
+    );
+  }
+  cacheCandidate(
+    sender: string,
+    message: string,
+    sequence: number,
+    candidate: string,
+  ): boolean {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      const row = this.row(sender, message);
+      if (
+        !row ||
+        row.state !== "pending" ||
+        row.sequence !== sequence ||
+        Buffer.byteLength(candidate) > row.body_bytes
+      )
+        return false;
+      if (row.candidate !== null) return row.candidate === candidate;
+      if (this.prefetchCapacity(row.recipient_id) === 0) return false;
+      this.#db
+        .prepare(
+          "UPDATE nats_messages SET candidate=? WHERE sender_id=? AND message_id=?",
+        )
+        .run(candidate, sender, message);
+      return true;
+    });
+  }
+  cachedCandidates(recipient: string): Row[] {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      if (this.#options.fair_poll) {
+        const previous =
+          this.#db
+            .prepare(
+              "SELECT last_sender_id FROM nats_poll_turns WHERE recipient_id=?",
+            )
+            .get(recipient)?.last_sender_id ?? null;
+        return this.#db
+          .prepare(
+            "SELECT * FROM nats_messages WHERE recipient_id=? AND state='pending' AND candidate IS NOT NULL AND next_visible_at<=? ORDER BY CASE WHEN ? IS NULL OR sender_id>? THEN 0 ELSE 1 END,sender_id,scan_order,accepted_at,message_id LIMIT ?",
+          )
+          .all(
+            recipient,
+            Date.now(),
+            previous,
+            previous,
+            this.#options.poll_scan_limit!,
+          ) as unknown as Row[];
+      }
+      return this.#db
+        .prepare(
+          "SELECT * FROM nats_messages WHERE recipient_id=? AND state='pending' AND candidate IS NOT NULL AND next_visible_at<=? ORDER BY accepted_at,sender_id,message_id LIMIT ?",
+        )
+        .all(
+          recipient,
+          Date.now(),
+          this.#options.poll_scan_limit!,
+        ) as unknown as Row[];
+    });
+  }
+  notePollCandidate(recipient: string, sender: string, message: string): void {
+    if (!this.#options.fair_poll) return;
+    this.#tx(() => {
+      this.#db
+        .prepare(
+          "UPDATE nats_messages SET scan_order=(SELECT coalesce(max(scan_order),0)+1 FROM nats_messages WHERE recipient_id=?) WHERE recipient_id=? AND sender_id=? AND message_id=?",
+        )
+        .run(recipient, recipient, sender, message);
+      this.#db
+        .prepare(
+          "INSERT INTO nats_poll_turns(recipient_id,owner,updated_at,last_sender_id) VALUES(?,'sqlite',?,?) ON CONFLICT(recipient_id) DO UPDATE SET last_sender_id=excluded.last_sender_id,updated_at=excluded.updated_at",
+        )
+        .run(recipient, Date.now(), sender);
+      this.#db
+        .prepare(
+          "DELETE FROM nats_poll_turns WHERE recipient_id IN (SELECT recipient_id FROM nats_poll_turns ORDER BY updated_at DESC,recipient_id LIMIT -1 OFFSET ?)",
+        )
+        .run(this.#options.max_records);
+    });
+  }
+  lookupAckRequest(
+    recipient: string,
+    requestId: string,
+  ): { sender_id: string; message_id: string } | null {
+    return (
+      (this.#db
+        .prepare(
+          "SELECT sender_id,message_id FROM nats_messages WHERE recipient_id=? AND ack_request_id=? AND state='acked'",
+        )
+        .get(recipient, requestId) as
+        { sender_id: string; message_id: string } | undefined) ?? null
+    );
   }
   claimPull(recipient: string, timeout: number): string | null {
     return this.#tx(() => {
@@ -412,7 +731,7 @@ export class NatsJournal {
         throw new RelayError("invalid_ack");
       this.#db
         .prepare(
-          "UPDATE nats_messages SET state='acked',outbox=NULL,body_bytes=0,token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=?",
+          "UPDATE nats_messages SET state='acked',outbox=NULL,candidate=NULL,body_bytes=0,token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=?",
         )
         .run(
           request.request_id,
@@ -458,7 +777,7 @@ export class NatsJournal {
   cleaned(row: Row): void {
     this.#db
       .prepare(
-        "UPDATE nats_messages SET cleaned=1,outbox=NULL,body_bytes=0 WHERE sender_id=? AND message_id=? AND state IN ('acked','expired')",
+        "UPDATE nats_messages SET cleaned=1,outbox=NULL,candidate=NULL,body_bytes=0 WHERE sender_id=? AND message_id=? AND state IN ('acked','expired')",
       )
       .run(row.sender_id, row.message_id);
   }
@@ -479,6 +798,26 @@ export class NatsJournal {
       pending_cleanup: count("state IN ('acked','expired') AND cleaned=0"),
       quarantined: count("state='quarantined'"),
     };
+  }
+  capacityUsage(recipientId: string) {
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      const senders = this.#db
+        .prepare(
+          "SELECT sender_id,count(*) records,sum(CASE WHEN state IN ('staging','pending','leased','quarantined') THEN 1 ELSE 0 END) pending,coalesce(sum(body_bytes),0) body_bytes FROM nats_messages GROUP BY sender_id",
+        )
+        .all() as unknown as SenderCapacityUsage[];
+      const recipient = this.#db
+        .prepare(
+          "SELECT count(*) records,coalesce(sum(CASE WHEN state IN ('staging','pending','leased','quarantined') THEN 1 ELSE 0 END),0) pending,coalesce(sum(body_bytes),0) body_bytes FROM nats_messages WHERE recipient_id=?",
+        )
+        .get(recipientId) as {
+        records: number;
+        pending: number;
+        body_bytes: number;
+      };
+      return { senders, recipient };
+    });
   }
   collect(limit: number): { purged: number; safety_held: number } {
     return this.#tx(() => {

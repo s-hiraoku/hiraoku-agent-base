@@ -855,6 +855,18 @@ UPDATE relay_schema SET version=2;`);
         this.#senderHash(position),
       );
   }
+  hasActiveLease(recipientId: string): boolean {
+    return this.#tx(() => {
+      const now = this.#now();
+      this.#expire(now);
+      this.#requeue(now);
+      return !!this.#db
+        .prepare(
+          "SELECT 1 FROM relay_deliveries WHERE recipient_id=? AND state='leased'",
+        )
+        .get(recipientId);
+    });
+  }
   poll(authorize: ReceiveAuthorization): Delivery | null {
     return this.#tx(() => {
       const now = this.#now(),
