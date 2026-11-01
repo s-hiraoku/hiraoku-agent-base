@@ -5,7 +5,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,10 +17,26 @@ jobs:
       - name: Check npm version
         run: test "$(npm --version)" = 11.6.2
       - run: npm ci
+      - run: npm ci --prefix packages/relay-nats --ignore-scripts
+      - run: npm run check --prefix packages/relay-nats
+      - run: mkdir -m 700 -p .runtime
+      - run: node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
       - run: node docs/diagrams/render-mermaid.mjs --check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:delivery-lab -- --full
+      - run: node node_modules/eslint/bin/eslint.js scripts/ci-nats.mjs scripts/lib/p7-worker.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts
+      - name: Check CI input refusals
+        run: node --test --test-timeout=30000 test/ci-nats/arguments.test.js
+      - name: Run verified NATS checks
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {spawnSync} from 'node:child_process';
+          const {binary}=JSON.parse(readFileSync('.runtime/nats-install.json','utf8'));
+          const result=spawnSync(process.execPath,['scripts/ci-nats.mjs','--stage','p4','--nats-server',binary],{stdio:'inherit'});
+          process.exit(result.status ?? 1);
+          JS
       - run: python3 -m unittest discover -s hermes_bridge -p 'test_*.py'
       - run: python3 -B -m unittest scripts.test_inventory_token_input
       - run: python3 -m pip install ruff==0.15.11
@@ -41,3 +57,5 @@ jobs:
             .lab/run-*/sources.json
             .lab/run-*/*.tap
             .lab/run-*/build.log
+            .runtime/ci-nats-*/report.json
+            .runtime/ci-nats-*/*.tap
