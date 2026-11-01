@@ -642,7 +642,8 @@ test(
   async () => {
     const root = realpathSync(mkdtempSync(join(tmpdir(), "hab-bootstrap-")));
     const path = join(root, "bootstrap.local.json"),
-      receipt = join(root, "effect-counts.json");
+      receipt = join(root, "effect-counts.json"),
+      ready = join(root, "owned-listener.json");
     const config = bootstrapConfig();
     writeFileSync(path, JSON.stringify(config), { mode: 0o600 });
     const child = spawn(
@@ -658,6 +659,7 @@ test(
           PATH: process.env.PATH,
           HAB_INVENTORY_CONFIG: path,
           HAB_BOOTSTRAP_TEST_RECEIPT: receipt,
+          HAB_BOOTSTRAP_TEST_READY: ready,
         },
         stdio: "ignore",
         shell: false,
@@ -668,17 +670,33 @@ test(
       child.once("exit", (code, signal) => resolve({ code, signal }));
     });
     try {
-      let metadata;
+      let owned;
       for (let i = 0; i < 60; i++) {
         try {
-          metadata = await bootstrapRequest(
-            "/.well-known/oauth-protected-resource/hab/mcp",
-          );
+          owned = JSON.parse(readFileSync(ready, "utf8"));
           break;
         } catch {
+          assert.equal(
+            child.exitCode,
+            null,
+            "owned bootstrap exited before binding",
+          );
+          assert.equal(
+            child.signalCode,
+            null,
+            "owned bootstrap stopped before binding",
+          );
           await pause(25);
         }
       }
+      assert.deepEqual(owned, {
+        pid: child.pid,
+        host: "127.0.0.1",
+        port: 8789,
+      });
+      const metadata = await bootstrapRequest(
+        "/.well-known/oauth-protected-resource/hab/mcp",
+      );
       assert.equal(metadata?.status, 200);
       assert.deepEqual(JSON.parse(metadata.body), {
         resource: config.oauth.resource,
@@ -823,6 +841,7 @@ test(
       assert.deepEqual(readdirSync(root).sort(), [
         "bootstrap.local.json",
         "effect-counts.json",
+        "owned-listener.json",
       ]);
     } finally {
       if (child.exitCode === null && child.signalCode === null) {

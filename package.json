@@ -11,14 +11,15 @@
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
     "test": "npm run build && node --test test/*.test.js",
     "check": "tsc --noEmit",
-    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/lib/local-mvp.mjs scripts/hab-relay.mjs scripts/hab-relay-admin.mjs",
+    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/lib/local-mvp.mjs scripts/hab-relay.mjs scripts/hab-relay-admin.mjs scripts/delivery-lab.mjs scripts/lib/delivery-lab.mjs scripts/lib/nats-input.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",
     "schema:generate": "drizzle-kit generate",
     "demo:hab-mvp": "node scripts/hab-mvp-demo.mjs",
     "test:hab-mvp": "node --test test/local-mvp.test.js",
     "relay:local": "node scripts/hab-relay.mjs",
-    "relay:admin": "node scripts/hab-relay-admin.mjs"
+    "relay:admin": "node scripts/hab-relay-admin.mjs",
+    "test:delivery-lab": "node scripts/delivery-lab.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.1.1",
@@ -47,5 +48,6 @@
     "miniflare": {
       "undici": "7.30.1"
     }
-  }
+  },
+  "packageManager": "npm@11.6.2"
 }
