@@ -126,7 +126,7 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 登録からHTTP配送・停止・復旧までの一連の模擬検証は`npm run test:hab-integration`で再現できます。[試験matrix](docs/hab-relay-integration.md)には、17件の結果と障害注入の方法、本番接続に進む前の未確認範囲を記録しています。
 
-配送置換の[隔離テスト環境](docs/testing/delivery-lab.md)は `npm run test:delivery-lab` で実行できます。保存後ACK、応答消失、容量制限、強制終了からの復旧を合成主体で確認し、未実装A2A/JetStreamは移行合格にしません。
+配送置換の[現行の隔離テスト](docs/testing/p7-lab.md)は `npm run test:p7 -- --nats-server /absolute/path/to/official/nats-server --full` で実行します。A2Aから実JetStream配送、明示引受け後のTaskと結果、バックアップ復元、改名、切り戻し、障害復旧を合成主体で検証します。[公開とCIの範囲](docs/testing/publication.md)に、固定依存の準備と残る移設ゲートを記載しています。
 
 通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
 
@@ -144,5 +144,7 @@ OAuthを使う共通MCP公開入口は[接続手順](docs/relay-oauth-ingress.md
 
 自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
 任意の[エージェント照会契約](docs/mcp-agent-discovery.md)を明示的に有効化します。
+
+The historical [exact-f19 native A2A lab](docs/testing/a2a-native-acceptance.md) retains its original source guard. Use the composite P7 runner for the current A2A/JetStream tree; the historical runner intentionally rejects these newer component bytes.
 
 同じ個体IDを保持する改名は、[明示opt-inのRegistry v3試作](docs/agent-address-rename.md)として設計・ローカル検証中です。旧名の予約・転送・クライアント参照更新と採用判断を分け、本番に適用済みとは扱いません。

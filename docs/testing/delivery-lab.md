@@ -1,5 +1,9 @@
 # 配送置き換えの隔離テスト
 
+これは初期baselineとexact-f19専用runnerの記録です。現行の複合実装では、この固定runnerは意図的に拒否します。[P7実行手順](p7-lab.md)と[公開・CIの範囲](publication.md)を使用してください。
+
+For the exact-f19 A2A integration branch, see [native A2A acceptance](a2a-native-acceptance.md). It adds mandatory protocol groups and reclassifies the original A2A engine placeholders. Historical counts below describe the original lab baseline.
+
 現行Relayと将来の配送adapterを同じ契約で評価する。コードbaselineは `d83ad6e`、公開仕様PR114取り込み後のmainは `8322093`。[製品仕様](../hab-product-spec.md)のA-10とA-11を中心に検証する。実製品接続や本番の動作保証ではない。LLM、Auth0、実credential、本番設定は使わない。
 
 ## 起動と証拠
