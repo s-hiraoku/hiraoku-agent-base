@@ -7,6 +7,8 @@ import {
   realpathSync,
   openSync,
   closeSync,
+  fsyncSync,
+  writeFileSync,
   constants,
 } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -24,6 +26,7 @@ import type { ContractLimits } from "../relay/contract.ts";
 import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
 import { createRelayNodeHandler } from "../relay/http-node.ts";
 import type { AuditSink } from "../security.ts";
+import { readRuntimeConfig } from "../runtime-config.ts";
 
 export interface LocalRelayOptions {
   /** Existing canonical, owner-only directory dedicated to this host. */
@@ -61,9 +64,69 @@ export interface LocalRelayServiceDependencies {
   directory: string;
   assertOwner(): void;
 }
-export type LocalRelayServiceFactory = (
+export type LocalRelayServiceFactory = ((
   dependencies: LocalRelayServiceDependencies,
-) => Promise<{ service: HabMcpService; close(): Promise<void> }>;
+) => Promise<{ service: HabMcpService; close(): Promise<void> }>) & {
+  readonly extension_id: string;
+  preflight?(directory: string): undefined;
+};
+
+function requireExtension(
+  directory: string,
+  factory?: LocalRelayServiceFactory,
+) {
+  const path = join(directory, "service-extension.local.json");
+  let existing = false;
+  try {
+    privatePath(path, false);
+    if (lstatSync(path).size > 1024)
+      throw Error("local_relay_extension_rejected");
+    const marker = readRuntimeConfig(path);
+    if (
+      !marker ||
+      typeof marker !== "object" ||
+      Array.isArray(marker) ||
+      !("version" in marker) ||
+      marker.version !== 1 ||
+      !("extension_id" in marker) ||
+      typeof marker.extension_id !== "string" ||
+      Object.keys(marker).sort().join(",") !== "extension_id,version"
+    )
+      throw Error("local_relay_extension_rejected");
+    if (!factory) throw Error("local_relay_extension_required");
+    if (marker.extension_id !== factory.extension_id)
+      throw Error("local_relay_extension_mismatch");
+    existing = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (factory && !existing) {
+    const fd = openSync(
+      path,
+      constants.O_CREAT |
+        constants.O_EXCL |
+        constants.O_WRONLY |
+        constants.O_NOFOLLOW,
+      0o600,
+    );
+    try {
+      writeFileSync(
+        fd,
+        JSON.stringify({ version: 1, extension_id: factory.extension_id }) +
+          "\n",
+      );
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    const directoryFd = openSync(directory, constants.O_RDONLY);
+    try {
+      fsyncSync(directoryFd);
+    } finally {
+      closeSync(directoryFd);
+    }
+  }
+}
 
 function privatePath(path: string, directory: boolean) {
   const s = lstatSync(path);
@@ -109,7 +172,13 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     typeof options.verify !== "function" ||
     typeof options.audit?.record !== "function" ||
     (options.service_factory !== undefined &&
-      typeof options.service_factory !== "function")
+      (typeof options.service_factory !== "function" ||
+        typeof options.service_factory.extension_id !== "string" ||
+        (options.service_factory.preflight !== undefined &&
+          typeof options.service_factory.preflight !== "function") ||
+        !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(
+          options.service_factory.extension_id,
+        )))
   )
     throw Error("invalid_local_relay_options");
   const ingress = options.ingress;
@@ -124,6 +193,14 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     throw Error("invalid_local_relay_ingress");
   privatePath(options.directory, true);
   validateLimits(options.limits);
+  const preflight: unknown = options.service_factory?.preflight?.(
+    options.directory,
+  );
+  if (preflight !== undefined) {
+    if (preflight && typeof preflight === "object" && "then" in preflight)
+      void Promise.resolve(preflight).catch(() => {});
+    throw Error("invalid_local_relay_options");
+  }
   const registryOptions = options.registry,
     storeOptions = options.store;
   let owner: SQLiteHostOwner | undefined,
@@ -215,6 +292,7 @@ export async function startLocalRelay(options: LocalRelayOptions) {
     owner.migrate();
     owner.acquire(() => {});
     const ownership = owner.attach();
+    requireExtension(options.directory, options.service_factory);
     for (const file of ["registry.sqlite", "relay.sqlite"])
       prepareFile(join(options.directory, file));
     registry = new SQLiteHabRegistry(

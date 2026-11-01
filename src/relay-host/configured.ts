@@ -143,6 +143,10 @@ function stage<T>(reason: string, action: () => T): T {
 // Fixed codes from the composed classes that are safe and useful to surface.
 const hostReasons = new Set([
   "local_relay_private_path_required",
+  "local_relay_extension_required",
+  "local_relay_extension_mismatch",
+  "local_relay_extension_rejected",
+  "local_relay_extension_storage_unavailable",
   "invalid_local_relay_options",
   "invalid_local_relay_ingress",
   "registry_key_mismatch",

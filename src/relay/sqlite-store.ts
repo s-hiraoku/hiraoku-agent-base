@@ -867,6 +867,39 @@ UPDATE relay_schema SET version=2;`);
         .get(recipientId);
     });
   }
+  lookupAckRequest(
+    recipient: string,
+    requestId: string,
+  ): { sender_id: string; message_id: string } | null {
+    return (
+      (this.#db
+        .prepare(
+          "SELECT sender_id,message_id FROM relay_ack_receipts WHERE recipient_id=? AND request_id=?",
+        )
+        .get(recipient, requestId) as
+        { sender_id: string; message_id: string } | undefined) ?? null
+    );
+  }
+  capacityUsage(recipientId: string) {
+    return this.#tx(() => {
+      this.#expire(this.#now());
+      const senders = this.#db
+        .prepare(
+          "SELECT sender_id,count(*) records,sum(CASE WHEN state IN ('pending','leased','quarantined') THEN 1 ELSE 0 END) pending,coalesce(sum(body_bytes),0) body_bytes FROM relay_messages GROUP BY sender_id",
+        )
+        .all() as unknown as SenderCapacityUsage[];
+      const recipient = this.#db
+        .prepare(
+          "SELECT count(*) records,coalesce(sum(CASE WHEN state IN ('pending','leased','quarantined') THEN 1 ELSE 0 END),0) pending,coalesce(sum(body_bytes),0) body_bytes FROM relay_messages WHERE recipient_id=?",
+        )
+        .get(recipientId) as {
+        records: number;
+        pending: number;
+        body_bytes: number;
+      };
+      return { senders, recipient };
+    });
+  }
   poll(authorize: ReceiveAuthorization): Delivery | null {
     return this.#tx(() => {
       const now = this.#now(),
