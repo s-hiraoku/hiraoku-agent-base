@@ -2,6 +2,8 @@
 
 [READMEへ](../README.md) · [ADR](hab-decisions.md) · [役割と機能](hab-roles.md)
 
+現在の製品要件と、A2A・NATS JetStreamを将来候補として再評価する範囲は[HAB製品仕様](hab-product-spec.md)を参照してください。以下の比較と初期版の判断は記録時点のものです。
+
 ## 比較の扱い
 
 2026-10-10に各projectの公開READMEと一次資料を確認しました。以下は作者が説明する機能と、HABで参考にする観点です。実installation・security audit・本番検証はしていません。導入済み、認可の強さ、運用成熟度や無追加料金を保証しません。異なる目的のprojectを総合順位で評価せず、差分を設計へ戻します。
