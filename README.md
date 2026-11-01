@@ -144,3 +144,5 @@ OAuthを使う共通MCP公開入口は[接続手順](docs/relay-oauth-ingress.md
 
 自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
 任意の[エージェント照会契約](docs/mcp-agent-discovery.md)を明示的に有効化します。
+
+同じ個体IDを保持する改名は、[明示opt-inのRegistry v3試作](docs/agent-address-rename.md)として設計・ローカル検証中です。旧名の予約・転送・クライアント参照更新と採用判断を分け、本番に適用済みとは扱いません。

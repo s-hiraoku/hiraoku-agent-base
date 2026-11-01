@@ -20,6 +20,7 @@ import { SQLiteAttachmentStore } from "../src/relay/sqlite-attachment-store.ts";
 import { options as uploadOptions, code } from "./relay-attachment-fixtures.js";
 import { HabAttachmentAcceptance } from "../src/hab/attachment-acceptance.ts";
 import { limits } from "./relay-http-fixtures.js";
+import { HabRelayService as RenamedHabRelayService } from "../src/hab/relay.ts";
 const relayOptions = {
   fingerprint_key: new Uint8Array(32).fill(94),
   max_pending: 10,
@@ -800,5 +801,69 @@ test("snapshot: schema5 server snapshot retains the authenticated fairness posit
     }
   } finally {
     relay.close();
+  }
+});
+
+test("snapshot: pre-rename pending delivery restores against current v3 authority without restoring Registry", async (t) => {
+  const f = fixture(t),
+    m = f.send();
+  const accepted = f.api().status(f.contexts.a, m.message_id);
+  await f.b.create(f.context, "before-rename");
+  const registry = f.open({ authentication_groups: true, agent_rename: true });
+  registry.migrate();
+  const before = registry.inspect(f.admin, m.recipient_id);
+  const renamed = registry.renameAgent(f.admin, {
+    request_id: "rename-before-restore",
+    agent_id: before.agent_id,
+    expected_epoch: before.epoch,
+    expected_address: before.address,
+    bot_name: "restored-receiver",
+  });
+  await f.b.restore(f.context, "before-rename", "after-rename");
+  const blobs = new SQLiteAttachmentStore(
+    join(f.restored("after-rename"), "uploads.sqlite"),
+    uploadOptions,
+  );
+  const relay = new SQLiteRelayStore(
+    join(f.restored("after-rename"), "relay.sqlite"),
+    relayOptions,
+    { check: (a) => blobs.checkPrepared(a, limits) },
+    {
+      limits,
+      check: (a, receipt) => blobs.checkDeliverable(a, receipt, limits),
+    },
+  );
+  try {
+    blobs.migrate();
+    relay.migrate();
+    const api = new HabAttachmentAcceptance(registry, relay, blobs, limits);
+    assert.equal(api.submit(f.contexts.a, m).receipt_id, accepted.receipt_id);
+    const hab = new RenamedHabRelayService(registry, relay, limits);
+    const selected = registry.selectAddress(
+      f.contexts.b,
+      renamed.address,
+      renamed.agent_id,
+    );
+    const delivery = hab.poll(selected);
+    assert.equal(delivery.message.recipient_id, before.agent_id);
+    hab.ack(selected, {
+      sender_id: delivery.message.sender_id,
+      message_id: delivery.message.message_id,
+      generation: delivery.generation,
+      lease_token: delivery.lease_token,
+      request_id: "restored-ack",
+    });
+    assert.equal(hab.status(f.contexts.a, m.message_id).state, "acked");
+    assert.equal(
+      registry.inspect(f.admin, before.agent_id).address,
+      renamed.address,
+    );
+    assert.throws(
+      () => hab.resolve(f.contexts.a, before.address),
+      code("forbidden"),
+    );
+  } finally {
+    relay.close();
+    blobs.close();
   }
 });

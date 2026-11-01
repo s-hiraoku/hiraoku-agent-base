@@ -35,6 +35,13 @@ export interface ConnectInput {
   connection_id: string;
   operations?: readonly string[];
 }
+export interface RenameInput {
+  request_id: string;
+  agent_id: string;
+  expected_epoch: number;
+  expected_address: string;
+  bot_name: string;
+}
 type Agent = RegistryOverview["agents"][number];
 type ManagedCredential = {
   principal: IndividualPrincipal;
@@ -62,7 +69,7 @@ function open(configPath: string) {
   }
   const { config } = loaded;
   const path = join(config.directory, "registry.sqlite");
-  // Schema creation and the v1→v2 group upgrade belong to the Relay start, never here.
+  // Schema upgrades belong to the explicitly configured Relay start, never an admin command.
   if (!existsSync(path)) throw new RelayAdminError("relay_not_initialized");
   let version: unknown;
   try {
@@ -77,7 +84,12 @@ function open(configPath: string) {
   } catch {
     throw new RelayAdminError("relay_not_initialized");
   }
-  if (version === 1 && config.registry.authentication_groups === true)
+  if (
+    (version === 1 && config.registry.authentication_groups === true) ||
+    (typeof version === "number" &&
+      version < 3 &&
+      config.registry.agent_rename === true)
+  )
     throw new RelayAdminError("registry_upgrade_pending");
   const registry = new SQLiteHabRegistry(
     path,
@@ -143,7 +155,26 @@ function open(configPath: string) {
     }
     return records;
   };
-  return { registry, resources, credentials, groups: version === 2 };
+  return {
+    registry,
+    resources,
+    credentials,
+    groups: version === 2 || version === 3,
+  };
+}
+
+/** Explicit operator action, with caller-journaled request ID and optimistic concurrency. */
+export function relayAdminRename(configPath: string, input: RenameInput) {
+  const { registry } = open(configPath);
+  try {
+    return {
+      agent: registry.renameAgent(operator, input),
+      previous_address: input.expected_address,
+      forwarding_alias: false,
+    };
+  } finally {
+    registry.close();
+  }
 }
 
 function withRegistry<T>(
@@ -163,6 +194,7 @@ function summary(agent: Agent) {
     address: agent.address,
     agent_id: agent.agent_id,
     state: agent.state,
+    epoch: agent.epoch,
     operations: agent.operations,
     active_bindings: agent.active_binding_ids.length,
     group_id: agent.group_id,

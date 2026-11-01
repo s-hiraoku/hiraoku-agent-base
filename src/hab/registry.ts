@@ -63,6 +63,7 @@ export type AdminOperation =
   | "inspect"
   | "product"
   | "enroll"
+  | "rename"
   | "bind"
   | "revoke"
   | "access"

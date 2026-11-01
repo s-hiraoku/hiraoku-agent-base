@@ -11,6 +11,7 @@ import {
   relayAdminStatus,
   relayAdminConnect,
   relayAdminDisconnect,
+  relayAdminRename,
 } from "../src/relay-host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
@@ -19,6 +20,8 @@ import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 import { envelope, message, limits, decode } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
 import { oauthFixture } from "./relay-oauth-fixtures.js";
+import { DatabaseSync } from "node:sqlite";
+import { main as runRelayAdmin } from "../scripts/hab-relay-admin.mjs";
 
 const cli = resolve("scripts/hab-relay-admin.mjs");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
@@ -695,4 +698,111 @@ test("CLI prints JSON results and fixed refusal codes without secrets", async (t
   const usage = await run("status", "--address", "codex@codex.hab");
   assert.equal(usage.code, 2);
   assert.match(usage.stderr, /^relay_admin_rejected usage\n/);
+});
+
+test("admin status cannot implicitly upgrade a v2 registry for rename", async (t) => {
+  const f = await started(t, { authentication_groups: true });
+  f.config.registry.agent_rename = true;
+  f.write("service.local.json", f.config);
+  assert.throws(() => relayAdminStatus(f.configPath), {
+    code: "registry_upgrade_pending",
+  });
+  const raw = new DatabaseSync(join(f.config.directory, "registry.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    assert.equal(
+      raw.prepare("SELECT version FROM hab_registry_meta").get().version,
+      2,
+    );
+  } finally {
+    raw.close();
+  }
+});
+
+test("journaled admin rename CLI keeps the credential and exposes the current name through MCP", async (t) => {
+  const f = await started(t, {
+    authentication_groups: true,
+    agent_rename: true,
+    discovery: { availability_namespaces: ["hermes"] },
+  });
+  const before = relayAdminConnect(f.configPath, {
+    address: "old@hermes.hab",
+    connection_id: "conn-h",
+  }).address;
+  const input = {
+    request_id: "journaled-rename",
+    agent_id: before.agent_id,
+    expected_epoch: before.epoch,
+    expected_address: before.address,
+    bot_name: "new",
+  };
+  const args = [
+    cli,
+    "--config",
+    f.configPath,
+    "rename",
+    "--agent-id",
+    input.agent_id,
+    "--expected-address",
+    input.expected_address,
+    "--bot-name",
+    input.bot_name,
+    "--expected-epoch",
+    String(input.expected_epoch),
+    "--request-id",
+    input.request_id,
+  ];
+  const child = spawn(process.execPath, args, {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let text = "",
+    errors = "";
+  child.stdout.on("data", (b) => (text += b));
+  child.stderr.on("data", (b) => (errors += b));
+  const [exit] = await once(child, "exit");
+  assert.equal(exit, 0, errors);
+  const result = JSON.parse(text);
+  assert.equal(result.agent.agent_id, before.agent_id);
+  assert.equal(result.agent.address, "new@hermes.hab");
+  assert.equal(result.forwarding_alias, false);
+  assert.deepEqual(relayAdminRename(f.configPath, input), result);
+  const who = await f.call(tokens.h, "hab_discover", {
+    action: "whoami",
+    as_address: result.agent.address,
+    expected_agent_id: before.agent_id,
+  });
+  assert.equal(who.selected_identity.agent_id, before.agent_id);
+  assert.equal(who.selected_identity.address, "new@hermes.hab");
+  assert.equal(
+    relayAdminStatus(f.configPath).addresses.find(
+      (a) => a.agent_id === before.agent_id,
+    ).address,
+    "new@hermes.hab",
+  );
+});
+
+test("connect rejects rename-only flags before opening or changing a registry", () => {
+  for (const flag of [
+    "--agent-id",
+    "--expected-address",
+    "--expected-epoch",
+    "--request-id",
+    "--bot-name",
+  ])
+    assert.throws(
+      () =>
+        runRelayAdmin([
+          "--config",
+          "/nonexistent/synthetic.json",
+          "connect",
+          "--address",
+          "old@hermes.hab",
+          "--connection-id",
+          "fixture",
+          flag,
+          "ignored",
+        ]),
+      { code: "usage" },
+    );
 });
