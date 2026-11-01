@@ -48,6 +48,7 @@ export interface JetStreamRelayOptions extends JournalOptions {
   request_timeout_ms: number;
   limits: ContractLimits;
   authorization: Authorization;
+  reconnect?: boolean;
 }
 export interface AsyncRelayOperations {
   submit(context: unknown, input: unknown): Promise<Receipt>;
@@ -73,13 +74,87 @@ function safeError(error: unknown): Error {
     : new RelayError("broker_unavailable");
 }
 
+async function openBroker(
+  options: JetStreamRelayOptions,
+  journal: NatsJournal,
+  allowCreate: boolean,
+) {
+  let nc: NatsConnection | undefined;
+  try {
+    nc = await connect({
+      servers: options.server,
+      user: options.user,
+      pass: options.password,
+      timeout: options.request_timeout_ms,
+      reconnect: false,
+      maxReconnectAttempts: 0,
+      waitOnFirstConnect: false,
+      ignoreClusterUpdates: true,
+    });
+    if (nc.info?.version !== "2.15.2")
+      throw new RelayError("unsupported_broker_version");
+    const manager = await jetstreamManager(nc, {
+      timeout: options.request_timeout_ms,
+    });
+    const config = {
+      name: options.stream,
+      subjects: [options.subject_prefix + ".>"],
+      retention: RetentionPolicy.Limits,
+      storage: StorageType.File,
+      num_replicas: 1,
+      discard: DiscardPolicy.New,
+      discard_new_per_subject: true,
+      max_msgs_per_subject: 1,
+      max_msgs: options.max_pending,
+      max_bytes: options.broker_max_bytes,
+      max_msg_size: options.broker_max_message_bytes,
+      max_consumers: options.max_consumers,
+      max_age: nanos(DELIVERY_TTL_MS),
+      duplicate_window: nanos(120_000),
+      allow_msg_ttl: true,
+    } satisfies Partial<StreamConfig>;
+    let actual;
+    try {
+      actual = (await manager.streams.info(options.stream)).config;
+    } catch (error) {
+      if (apiCode(error) !== 10059) throw error;
+      if (!allowCreate || journal.hasLivePublished())
+        throw new RelayError("broker_store_missing");
+      try {
+        actual = (await manager.streams.add(config)).config;
+      } catch (creationError) {
+        // Another process may have created the same stream while this request was in flight.
+        try {
+          actual = (await manager.streams.info(options.stream)).config;
+        } catch {
+          throw creationError;
+        }
+      }
+    }
+    for (const [key, value] of Object.entries(config)) {
+      if (
+        JSON.stringify(actual[key as keyof StreamConfig]) !==
+        JSON.stringify(value)
+      )
+        throw new RelayError("broker_configuration_mismatch");
+    }
+    return { nc, manager };
+  } catch (error) {
+    await nc?.close();
+    throw error;
+  }
+}
+
 export class JetStreamRelay implements AsyncRelayOperations {
   readonly #options: JetStreamRelayOptions;
   readonly #journal: NatsJournal;
-  readonly #nc: NatsConnection;
-  readonly #js: JetStreamClient;
-  readonly #manager: JetStreamManager;
+  #nc: NatsConnection;
+  #js: JetStreamClient;
+  #manager: JetStreamManager;
   readonly #deliveries = new Map<string, JsMsg>();
+  #pumping: Promise<void> | undefined;
+  #connecting: Promise<void> | undefined;
+  #closing: Promise<void> | undefined;
   private constructor(
     options: JetStreamRelayOptions,
     journal: NatsJournal,
@@ -121,7 +196,9 @@ export class JetStreamRelay implements AsyncRelayOperations {
       !options.user ||
       !options.password ||
       !options.authorization ||
-      options.request_timeout_ms > 30_000
+      options.request_timeout_ms > 30_000 ||
+      (options.reconnect !== undefined &&
+        typeof options.reconnect !== "boolean")
     )
       throw new RelayError("invalid_broker_options");
     const journal = new NatsJournal(
@@ -131,60 +208,9 @@ export class JetStreamRelay implements AsyncRelayOperations {
     );
     let nc: NatsConnection | undefined;
     try {
-      nc = await connect({
-        servers: options.server,
-        user: options.user,
-        pass: options.password,
-        timeout: options.request_timeout_ms,
-        reconnect: false,
-      });
-      if (nc.info?.version !== "2.15.2")
-        throw new RelayError("unsupported_broker_version");
-      const manager = await jetstreamManager(nc, {
-        timeout: options.request_timeout_ms,
-      });
-      const config = {
-        name: options.stream,
-        subjects: [options.subject_prefix + ".>"],
-        retention: RetentionPolicy.Limits,
-        storage: StorageType.File,
-        num_replicas: 1,
-        discard: DiscardPolicy.New,
-        discard_new_per_subject: true,
-        max_msgs_per_subject: 1,
-        max_msgs: options.max_pending,
-        max_bytes: options.broker_max_bytes,
-        max_msg_size: options.broker_max_message_bytes,
-        max_consumers: options.max_consumers,
-        max_age: nanos(DELIVERY_TTL_MS),
-        duplicate_window: nanos(120_000),
-        allow_msg_ttl: true,
-      } satisfies Partial<StreamConfig>;
-      let actual;
-      try {
-        actual = (await manager.streams.info(options.stream)).config;
-      } catch (error) {
-        if (apiCode(error) !== 10059) throw error;
-        if (journal.hasLivePublished())
-          throw new RelayError("broker_store_missing");
-        try {
-          actual = (await manager.streams.add(config)).config;
-        } catch (creationError) {
-          // Another process may have created the same stream while this request was in flight.
-          try {
-            actual = (await manager.streams.info(options.stream)).config;
-          } catch {
-            throw creationError;
-          }
-        }
-      }
-      for (const [key, value] of Object.entries(config)) {
-        if (
-          JSON.stringify(actual[key as keyof StreamConfig]) !==
-          JSON.stringify(value)
-        )
-          throw new RelayError("broker_configuration_mismatch");
-      }
+      const broker = await openBroker(options, journal, true);
+      nc = broker.nc;
+      const manager = broker.manager;
       const backend = new JetStreamRelay(options, journal, nc, manager);
       await backend.maintainInternal(100);
       return backend;
@@ -199,15 +225,11 @@ export class JetStreamRelay implements AsyncRelayOperations {
     operation: "submit" | "status" | "poll" | "ack" | "maintenance",
     peer?: string,
     kind?: string,
+    authorization = this.#options.authorization,
   ): string {
     let decision;
     try {
-      decision = this.#options.authorization.authorize(
-        context,
-        operation,
-        peer,
-        kind,
-      );
+      decision = authorization.authorize(context, operation, peer, kind);
     } catch {
       throw new RelayError("forbidden");
     }
@@ -293,6 +315,17 @@ export class JetStreamRelay implements AsyncRelayOperations {
     return result;
   }
   admit(context: unknown, input: unknown): Receipt {
+    return this.admitWithAuthorization(
+      context,
+      input,
+      this.#options.authorization,
+    );
+  }
+  admitWithAuthorization(
+    context: unknown,
+    input: unknown,
+    authorization: Authorization,
+  ): Receipt {
     const message = parseSubmission(input, this.#options.limits);
     if (message.body.parts.some((part) => part.type === "attachment"))
       throw new RelayError("attachment_store_unavailable");
@@ -301,6 +334,7 @@ export class JetStreamRelay implements AsyncRelayOperations {
       "submit",
       message.recipient_id,
       message.kind,
+      authorization,
     );
     const authorize = () => {
       if (
@@ -309,6 +343,7 @@ export class JetStreamRelay implements AsyncRelayOperations {
           "submit",
           message.recipient_id,
           message.kind,
+          authorization,
         ) !== sender
       )
         throw new RelayError("forbidden");
@@ -334,9 +369,54 @@ export class JetStreamRelay implements AsyncRelayOperations {
     }
   }
   async status(context: unknown, messageId: string): Promise<Receipt> {
-    if (!id(messageId)) throw new RelayError("invalid_request");
-    return this.#journal.status(this.#identity(context, "status"), messageId);
+    return this.statusWithAuthorization(
+      context,
+      messageId,
+      this.#options.authorization,
+    );
   }
+  statusWithAuthorization(
+    context: unknown,
+    messageId: string,
+    authorization: Authorization,
+  ): Receipt {
+    if (!id(messageId)) throw new RelayError("invalid_request");
+    const sender = this.#identity(
+      context,
+      "status",
+      undefined,
+      undefined,
+      authorization,
+    );
+    return this.#journal.status(sender, messageId, () => {
+      if (
+        this.#identity(
+          context,
+          "status",
+          undefined,
+          undefined,
+          authorization,
+        ) !== sender
+      )
+        throw new RelayError("forbidden");
+    });
+  }
+  lookupReceipt(senderId: string, messageId: string): Receipt | null {
+    return this.#journal.lookupReceipt(senderId, messageId);
+  }
+  hasActiveLease(recipientId: string): boolean {
+    return this.#journal.hasActiveLease(recipientId);
+  }
+  configureRouting(epoch: number, policyDigest: string): void {
+    this.#journal.configureRouting(epoch, policyDigest);
+  }
+  pollTurn(recipient: string): "sqlite" | "jetstream" {
+    return this.#journal.pollTurn(recipient);
+  }
+  recordPollTurn(recipient: string, owner: "sqlite" | "jetstream"): void {
+    this.#journal.recordPollTurn(recipient, owner);
+  }
+
   async #consumer(recipient: string) {
     const name = "mailbox_" + hash(recipient);
     const config = {
@@ -346,7 +426,7 @@ export class JetStreamRelay implements AsyncRelayOperations {
       deliver_policy: DeliverPolicy.All,
       replay_policy: ReplayPolicy.Instant,
       ack_wait: nanos(this.#options.lease_ms),
-      max_ack_pending: 1,
+      max_ack_pending: this.#options.prefetch_per_recipient ?? 1,
       max_deliver: -1,
       max_waiting: 16,
       max_batch: 1,
@@ -393,6 +473,193 @@ export class JetStreamRelay implements AsyncRelayOperations {
     )
       throw new RelayError("broker_integrity_failed");
     return { sender: body.sender_id, message, row };
+  }
+  #cachedMessage(row: Row) {
+    try {
+      const envelope = JSON.parse(row.candidate!);
+      if (
+        !envelope ||
+        envelope.sender_id !== row.sender_id ||
+        Object.keys(envelope).sort().join(",") !== "message,sender_id"
+      )
+        throw new RelayError("journal_integrity_failed");
+      const message = parseSubmission(envelope.message, this.#options.limits);
+      if (
+        message.message_id !== row.message_id ||
+        message.recipient_id !== row.recipient_id ||
+        message.kind !== row.kind ||
+        Date.parse(message.expires_at) !== row.expires_at ||
+        row.fingerprint !==
+          this.#journal.hash(
+            "submission",
+            comparisonMaterial(row.sender_id, message, this.#options.limits),
+          )
+      )
+        throw new RelayError("journal_integrity_failed");
+      return message;
+    } catch {
+      throw new RelayError("journal_integrity_failed");
+    }
+  }
+  pollWithAuthorization(
+    context: unknown,
+    authorization: Authorization,
+  ): Delivery | null {
+    const recipient = this.#identity(
+      context,
+      "poll",
+      undefined,
+      undefined,
+      authorization,
+    );
+    const current = () => {
+      if (
+        this.#identity(context, "poll", undefined, undefined, authorization) !==
+        recipient
+      )
+        throw new RelayError("forbidden");
+    };
+    if (this.#journal.hasActiveLease(recipient)) {
+      current();
+      return null;
+    }
+    for (const row of this.#journal.cachedCandidates(recipient)) {
+      current();
+      this.#journal.notePollCandidate(recipient, row.sender_id, row.message_id);
+      const message = this.#cachedMessage(row);
+      try {
+        const delivery = this.#journal.lease(
+          row.sender_id,
+          message,
+          row.sequence!,
+          () => {
+            current();
+            if (
+              this.#identity(
+                context,
+                "poll",
+                row.sender_id,
+                message.kind,
+                authorization,
+              ) !== recipient
+            )
+              throw new RelayError("forbidden");
+          },
+        );
+        if (delivery) return delivery;
+      } catch (error) {
+        if (!(error instanceof RelayError) || error.code !== "forbidden")
+          throw error;
+        current();
+      }
+    }
+    current();
+    return null;
+  }
+  async #prefetch(recipient: string): Promise<boolean> {
+    if (this.#journal.prefetchCapacity(recipient) === 0) return false;
+    const pull = this.#journal.claimPull(
+      recipient,
+      this.#options.request_timeout_ms * 5 + 2000,
+    );
+    if (!pull) return false;
+    try {
+      const current = this.#journal.nextUncached(recipient);
+      if (!current) return false;
+      const stored = await this.#stored(current.subject);
+      if (
+        !stored ||
+        stored.seq !== current.sequence ||
+        stored.subject !== current.subject ||
+        stored.data.byteLength > this.#options.broker_max_message_bytes
+      )
+        throw new RelayError("broker_integrity_failed");
+      const candidate = Buffer.from(stored.data).toString("utf8");
+      this.#cachedMessage({ ...current, candidate });
+      return this.#journal.cacheCandidate(
+        current.sender_id,
+        current.message_id,
+        stored.seq,
+        candidate,
+      );
+    } finally {
+      this.#journal.releasePull(recipient, pull);
+    }
+  }
+  async #replaceBroker(): Promise<void> {
+    if (this.#closing) throw new RelayError("broker_unavailable");
+    if (this.#connecting) return this.#connecting;
+    const work = (async () => {
+      this.#deliveries.clear();
+      await this.#nc.close();
+      const broker = await openBroker(this.#options, this.#journal, false);
+      if (this.#closing) {
+        await broker.nc.close();
+        throw new RelayError("broker_unavailable");
+      }
+      this.#nc = broker.nc;
+      this.#manager = broker.manager;
+      this.#js = jetstream(broker.nc, {
+        timeout: this.#options.request_timeout_ms,
+      });
+    })();
+    this.#connecting = work;
+    try {
+      await work;
+    } finally {
+      if (this.#connecting === work) this.#connecting = undefined;
+    }
+  }
+  async reconnectBroker(): Promise<void> {
+    if (this.#options.reconnect !== true)
+      throw new RelayError("broker_reconnect_disabled");
+    if (this.#pumping) throw new RelayError("broker_pump_busy");
+    try {
+      await this.#replaceBroker();
+    } catch (error) {
+      throw safeError(error);
+    }
+  }
+  async pumpOnce(limit = 100): Promise<void> {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
+      throw new RelayError("invalid_maintenance_limit");
+    if (this.#closing) throw new RelayError("broker_unavailable");
+    if (this.#pumping) return this.#pumping;
+    const work = (async () => {
+      try {
+        if (this.#options.reconnect === true && this.#nc.isClosed())
+          await this.#replaceBroker();
+        const maintenance = await this.maintainInternal(limit);
+        let remaining = limit;
+        for (const recipient of this.#journal.prefetchRecipients(limit)) {
+          while (
+            remaining > 0 &&
+            this.#journal.prefetchCapacity(recipient) > 0
+          ) {
+            remaining--;
+            if (!(await this.#prefetch(recipient))) break;
+          }
+          if (remaining === 0) break;
+        }
+        if (maintenance.publication_blocked)
+          throw new RelayError("capacity_exceeded");
+      } catch (error) {
+        if (
+          this.#options.reconnect === true &&
+          (!(error instanceof RelayError) ||
+            error.code === "broker_unavailable" ||
+            error.code === "broker_cleanup_pending")
+        )
+          await this.#nc.close();
+        throw safeError(error);
+      }
+    })();
+    this.#pumping = work;
+    try {
+      await work;
+    } finally {
+      if (this.#pumping === work) this.#pumping = undefined;
+    }
   }
   async poll(context: unknown): Promise<Delivery | null> {
     const recipient = this.#identity(context, "poll");
@@ -476,29 +743,66 @@ export class JetStreamRelay implements AsyncRelayOperations {
     this.#journal.cleaned(row);
     this.#deliveries.delete(row.subject);
   }
-  async ack(context: unknown, input: unknown): Promise<AckReceipt> {
+  ackWithAuthorization(
+    context: unknown,
+    input: unknown,
+    authorization: Authorization,
+  ): AckReceipt {
     const request = parseAck(input, this.#options.limits);
-    const recipient = this.#identity(context, "ack");
+    const recipient = this.#identity(
+      context,
+      "ack",
+      undefined,
+      undefined,
+      authorization,
+    );
     const row = this.#journal.acknowledge(recipient, request, (current) => {
       if (
-        this.#identity(context, "ack", current.sender_id, current.kind) !==
-        recipient
+        this.#identity(
+          context,
+          "ack",
+          current.sender_id,
+          current.kind,
+          authorization,
+        ) !== recipient
       )
         throw new RelayError("forbidden");
     });
+    return this.#journal.ackReceipt(row);
+  }
+  async ack(context: unknown, input: unknown): Promise<AckReceipt> {
+    const receipt = this.ackWithAuthorization(
+      context,
+      input,
+      this.#options.authorization,
+    );
+    const row = this.#journal.row(receipt.sender_id, receipt.message_id)!;
     try {
       await this.#cleanup(row);
     } catch {
-      // The saved receipt is authoritative; durable cleanup remains visible to maintenance.
-      return this.#journal.ackReceipt(row);
+      return receipt;
     }
-    return this.#journal.ackReceipt(row);
+    return receipt;
   }
   private async maintainInternal(limit: number) {
     for (const row of this.#journal.pendingCleanup(limit))
       await this.#cleanup(row);
-    for (const row of this.#journal.staging(limit)) await this.#publish(row);
-    return this.#journal.collect(limit);
+    let publicationBlocked = false;
+    for (const row of this.#journal.staging(limit)) {
+      try {
+        await this.#publish(row);
+      } catch (error) {
+        if (!(
+          error instanceof RelayError && error.code === "capacity_exceeded"
+        ))
+          throw error;
+        publicationBlocked = true;
+      }
+    }
+    return {
+      ...this.#journal.collect(limit),
+      publication_blocked: publicationBlocked,
+    };
   }
   async publishPending(limit = 100): Promise<void> {
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
@@ -523,8 +827,24 @@ export class JetStreamRelay implements AsyncRelayOperations {
     this.#identity(context, "maintenance");
     return this.#journal.diagnostics();
   }
-  async close(): Promise<void> {
-    await this.#nc.close();
-    this.#journal.close();
+  get prefetchWindow(): number {
+    return this.#options.prefetch_per_recipient ?? 1;
+  }
+  lookupAckRequest(recipient: string, requestId: string) {
+    return this.#journal.lookupAckRequest(recipient, requestId);
+  }
+  capacityUsage(recipientId: string) {
+    return this.#journal.capacityUsage(recipientId);
+  }
+  close(): Promise<void> {
+    if (this.#closing) return this.#closing;
+    this.#closing = (async () => {
+      await this.#pumping?.catch(() => undefined);
+      await this.#connecting?.catch(() => undefined);
+      this.#deliveries.clear();
+      await this.#nc.close();
+      this.#journal.close();
+    })();
+    return this.#closing;
   }
 }
