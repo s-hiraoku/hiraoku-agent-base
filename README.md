@@ -126,6 +126,8 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 登録からHTTP配送・停止・復旧までの一連の模擬検証は`npm run test:hab-integration`で再現できます。[試験matrix](docs/hab-relay-integration.md)には、17件の結果と障害注入の方法、本番接続に進む前の未確認範囲を記録しています。
 
+配送置換の[隔離テスト環境](docs/testing/delivery-lab.md)は `npm run test:delivery-lab` で実行できます。保存後ACK、応答消失、容量制限、強制終了からの復旧を合成主体で確認し、未実装A2A/JetStreamは移行合格にしません。
+
 通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
 
 ## 技術文書

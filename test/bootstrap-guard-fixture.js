@@ -6,6 +6,24 @@ import childProcess from "node:child_process";
 import process from "node:process";
 import { writeFileSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
+import { Server } from "node:net";
+const listen = Server.prototype.listen;
+Server.prototype.listen = function (...args) {
+  if (process.env.HAB_BOOTSTRAP_TEST_READY)
+    this.once("listening", () => {
+      const address = this.address();
+      writeFileSync(
+        process.env.HAB_BOOTSTRAP_TEST_READY,
+        JSON.stringify({
+          pid: process.pid,
+          host: address.address,
+          port: address.port,
+        }),
+        { mode: 0o600 },
+      );
+    });
+  return listen.apply(this, args);
+};
 const counts = { sqlite: 0, randomBytes: 0, spawn: 0, outboundFetch: 0 };
 const refuse = (name) => () => {
   counts[name]++;
