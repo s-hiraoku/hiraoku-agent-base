@@ -39,8 +39,12 @@ export function ackRequest(delivery, request_id = "ack-1") {
     request_id,
   };
 }
-export async function fixture(t, patch = {}) {
-  if (!process.env.HAB_NATS_SERVER)
+export async function fixture(
+  t,
+  patch = {},
+  serverBinary = process.env.HAB_NATS_SERVER,
+) {
+  if (!serverBinary)
     throw Error(
       "HAB_NATS_SERVER must point to the pinned nats-server 2.15.2 binary",
     );
@@ -96,7 +100,7 @@ export async function fixture(t, patch = {}) {
     ...patch,
   };
   async function start() {
-    broker = spawn(process.env.HAB_NATS_SERVER, ["-c", config], {
+    broker = spawn(serverBinary, ["-c", config], {
       stdio: ["ignore", "ignore", "pipe"],
     });
     broker.stderr.on("data", (data) => {

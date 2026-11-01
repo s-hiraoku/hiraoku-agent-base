@@ -34,7 +34,7 @@ jobs:
           import {readFileSync} from 'node:fs';
           import {spawnSync} from 'node:child_process';
           const {binary}=JSON.parse(readFileSync('.runtime/nats-install.json','utf8'));
-          const result=spawnSync(process.execPath,['scripts/ci-nats.mjs','--stage','p5','--nats-server',binary],{stdio:'inherit'});
+          const result=spawnSync(process.execPath,['scripts/ci-nats.mjs','--stage','p6','--nats-server',binary],{stdio:'inherit'});
           process.exit(result.status ?? 1);
           JS
       - run: python3 -m unittest discover -s hermes_bridge -p 'test_*.py'
