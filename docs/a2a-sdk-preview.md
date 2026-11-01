@@ -41,7 +41,7 @@ A queued engine Task maps to A2A `SUBMITTED`. Running maps to `WORKING`. Confirm
 
 This preview supports one adapter instance per database. It has no multi-host writer coordination, storage retention job, or production capacity policy. List pages use the SDK's current persisted ordering; updates observed during pagination can change that ordering.
 
-P2 must connect the HAB Registry and group policy, preserve Message-to-Relay rm1 correlation and original expiry, and reject a conflicting replay. P3 must prove the route through Relay, durable inbox storage ACK, explicit TaskBridge acceptance, and the result path. Those are separate gates. This preview's direct TaskPort proof does not complete either gate, the JetStream migration, or the product GUI.
+The separate [HAB Relay preview](a2a-relay-preview.md) implements P2/P3 with Registry group policy, original Relay correlation, durable storage ACK, explicit TaskBridge acceptance and the result path. This document describes only the direct P1 TaskPort proof. JetStream integration, production hosting and the product GUI remain separate gates.
 
 ## Fixed dependencies
 
