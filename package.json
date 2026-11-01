@@ -20,7 +20,9 @@
     "relay:local": "node scripts/hab-relay.mjs",
     "relay:admin": "node scripts/hab-relay-admin.mjs",
     "test:delivery-lab": "node scripts/delivery-lab.mjs",
-    "test:a2a": "node --test test/a2a-adapter.test.js test/a2a-sdk-store.test.js"
+    "test:a2a": "node --test test/a2a-adapter.test.js test/a2a-sdk-store.test.js",
+    "test:a2a-relay": "node --test test/a2a-hab-unit*.test.js test/a2a-relay-e2e.test.js test/a2a-submission-receipts.test.js",
+    "proof:a2a-relay": "node scripts/prove-a2a-relay.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.1.1",

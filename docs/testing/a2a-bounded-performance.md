@@ -1,0 +1,21 @@
+# Bounded A2A Relay characterization
+
+The intended claim is a characterization of the fixed local P1-P3 route. Five runs complete five validated tasks each at concurrency one. Each run includes one lost-submit-response recovery. The reported rate describes this harness on a shared host. The measurement provides no production SLO, capacity, adoption, or comparative performance conclusion.
+
+`node scripts/measure-a2a-relay.mjs --output <new-directory>` requires a new private output directory. The workload has no size flag. Missing, duplicate, or unknown arguments fail before the script creates output state. Only this process uses the output directory as `TMPDIR`.
+
+The official A2A client discovers the local AgentCard before measurement. Each task traverses real HAB authorization, Relay HTTP, durable outboxes and inboxes, explicit recipient acceptance, TaskBridge, the real TaskService, and a canonical Artifact returned by `GetTask`. A synthetic operator accepts immediately. A fixed worker returns the fixture's exact `RESPONSE`. There is no human or LLM wait.
+
+The first task loses the response after Relay accepts its envelope. The harness counts this rejection as an expected fault. It reopens all owned stores, makes the existing retry due, and repeats the same A2A request. Assertions compare the original receipt, envelope bytes, message ID, expiry, and SDK Task ID before recipient ACK. Recovery must not create an execution Task. Exact-ID retransmission may make more than one transport call.
+
+Recipient storage ACK must leave the engine count unchanged and the A2A Task submitted without an Artifact. Explicit acceptance creates exactly one execution Task. Even after that Task succeeds, `GetTask` must expose no Artifact or canonical result until the recipient sends an execution-result reply. Completion requires exactly one Artifact containing the canonical response.
+
+Each fresh measured fixture retains exactly five tasks. Each run must finish with five SDK Tasks, five engine Tasks, fifteen Relay rows, five recipient inbox entries, ten origin inbox entries, five Artifacts, and zero unresolved intents. Task IDs, execution IDs, and source message IDs must be unique. Twenty-five completions, five expected faults, and zero unexpected failures are required across measured runs. A separate one-task warmup fixture closes before measurement begins.
+
+The wall window runs from the first send through the last validated result and aggregate checks. It includes fault injection, full store restart, retries, assertions, and private database correlation reads. It excludes fixture setup, AgentCard discovery, host snapshots, and cleanup. Per-task raw totals and stage timings separate twenty nominal tasks from five recovery tasks. The summary reports median and range across five run rates, five nominal run medians, and five recovery totals. These small samples provide no tail-latency estimate. Transport timeouts are implementation limits, not business SLOs.
+
+A separate one-task diagnostic wraps `node:sqlite` StatementSync `all`, `get`, and `run` in this process. It restores their prototypes in `finally`. The report stores SQL verb and query hash without SQL text or bound values. Observed statement wall time includes harness validation reads. Coverage excludes SQLite `exec`, `prepare`, iterators, SDK operations through better-sqlite3 and Kysely, and other processes. The diagnostic is excluded from timing samples. SQL wall share and process CPU time describe observed work. They establish no disk-fsync, hardware, or capacity limiter.
+
+`claim.json` precedes workload execution. `report.json` records the Git HEAD and tree, dirty status, source and lockfile hashes, runtime, CPU models and count, memory, load averages, and a command-name-only process snapshot. Every run retains raw samples, CPU usage, before-and-after host load, counts, and timing summaries. A busy shared host can affect these numbers. No unrelated process is stopped.
+
+Every fixture executes its cleanup hooks and checks both owned HTTP ports for connection refusal with a bounded fetch. This proves closure of the owned listeners. A global process inventory is not measured. Setup, warmup, diagnostic, and cleanup outcomes remain visible in the report.
