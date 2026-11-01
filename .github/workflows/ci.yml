@@ -14,6 +14,8 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      - name: Check npm version
+        run: test "$(npm --version)" = 11.6.2
       - run: npm ci
       - run: node docs/diagrams/render-mermaid.mjs --check
       - run: npm run lint
