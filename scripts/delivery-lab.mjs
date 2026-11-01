@@ -17,6 +17,12 @@ import {
   executeNode,
   assertLoopbackPortFree,
 } from "./lib/delivery-lab.mjs";
+import { a2aAcceptance } from "../test/delivery-lab/a2a-acceptance.js";
+import {
+  verifyA2aSource,
+  observedCases,
+  assessA2aAcceptance,
+} from "./lib/a2a-acceptance.mjs";
 import { parseLabOptions, prepareNatsServer } from "./lib/nats-input.mjs";
 import {
   pendingBackends,
@@ -67,6 +73,7 @@ const regressionFiles = [
   "task-bridge-replies",
 ].map((name) => `test/${name}.test.js`);
 const definitions = [
+  ...a2aAcceptance.groups,
   { id: "shared-contracts", files: ["test/delivery-lab/contracts.test.js"] },
   {
     id: "storage-and-harness",
@@ -74,6 +81,7 @@ const definitions = [
       "test/delivery-lab/sqlite-failures.test.js",
       "test/delivery-lab/harness.test.js",
       "test/delivery-lab/nats-input.test.js",
+      "test/delivery-lab/a2a-harness.test.js",
     ],
   },
   { id: "relay-regressions", files: regressionFiles },
@@ -149,6 +157,7 @@ try {
     env,
     encoding: "utf8",
   }).trim();
+  report.a2a_provenance = verifyA2aSource(repo);
   if (options.natsServer) {
     let prepared;
     try {
@@ -224,6 +233,7 @@ try {
       id: definition.id,
       ...execution,
       totals,
+      cases: observedCases(readFileSync(log, "utf8")),
       parse_error,
       elapsed_ms: Date.now() - started,
       evidence: log,
@@ -236,6 +246,7 @@ try {
   report.runner_error = error.message;
 } finally {
   report.finished_at = new Date().toISOString();
+  report.a2a = assessA2aAcceptance(groups);
   report.verdict = report.environment_blocker
     ? "BLOCKED"
     : interrupted || report.runner_error
@@ -246,7 +257,10 @@ try {
           report.release_requested,
           definitions.map(({ id }) => id),
         );
+  if (!report.environment_blocker && report.a2a.state !== "passed")
+    report.verdict = "FAIL";
   try {
+    report.a2a_provenance_after = verifyA2aSource(repo);
     report.sources_unchanged =
       sourceHashes !== undefined &&
       JSON.stringify(snapshot()) === JSON.stringify(sourceHashes);

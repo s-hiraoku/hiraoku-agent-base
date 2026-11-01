@@ -24,7 +24,6 @@ jobs:
       - run: node docs/diagrams/render-mermaid.mjs --check
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run test:delivery-lab -- --full
       - run: node node_modules/eslint/bin/eslint.js scripts/ci-nats.mjs scripts/lib/p7-worker.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts
       - name: Check CI input refusals
         run: node --test --test-timeout=30000 test/ci-nats/arguments.test.js
@@ -34,7 +33,7 @@ jobs:
           import {readFileSync} from 'node:fs';
           import {spawnSync} from 'node:child_process';
           const {binary}=JSON.parse(readFileSync('.runtime/nats-install.json','utf8'));
-          const result=spawnSync(process.execPath,['scripts/ci-nats.mjs','--stage','p6','--nats-server',binary],{stdio:'inherit'});
+          const result=spawnSync(process.execPath,['scripts/p7-lab.mjs','--full','--nats-server',binary],{stdio:'inherit'});
           process.exit(result.status ?? 1);
           JS
       - run: python3 -m unittest discover -s hermes_bridge -p 'test_*.py'
@@ -44,18 +43,17 @@ jobs:
       - run: python3 -m ruff format --check hermes_bridge
       - run: python3 -m ruff check scripts/inventory_token_input.py scripts/test_inventory_token_input.py
       - run: python3 -m ruff format --check scripts/inventory_token_input.py scripts/test_inventory_token_input.py
-      - name: Retain delivery lab evidence
+      - name: Retain P7 evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: delivery-lab-${{ github.run_id }}-${{ github.run_attempt }}
+          name: p7-${{ github.run_id }}-${{ github.run_attempt }}
           include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
           path: |
-            .lab/run-*/report.json
-            .lab/run-*/sources.json
-            .lab/run-*/*.tap
-            .lab/run-*/build.log
-            .runtime/ci-nats-*/report.json
-            .runtime/ci-nats-*/*.tap
+            .lab/p7-run-*/report.json
+            .lab/p7-run-*/sources.json
+            .lab/p7-run-*/*.tap
+            .lab/p7-run-*/build.log
+            .lab/p7-run-*/cases/*.json
