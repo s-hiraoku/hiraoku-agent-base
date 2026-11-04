@@ -195,6 +195,7 @@ export class GenericTextJobs<C> {
       const p = await this.principal(context, "submit");
       return this.project(
         await this.tasks.submitText(p, textInputSchema.parse(input)),
+        false,
       );
     } catch (error) {
       throw publicError(error, "invalid_request");

@@ -381,3 +381,117 @@ test("storage errors are typed and never disclose internal messages", async (t) 
   };
   await assert.rejects(app.submit(null, input()), code("unavailable"));
 });
+
+test("idempotent submit returns completed metadata without exposing a result", async (t) => {
+  const { app, h, worker, claim, input } = fixture(t);
+  const request = input("replayed-completion");
+  const job = await app.submit(null, request);
+  const lease = await claim();
+  await h.complete(worker, {
+    ...lease,
+    state: "succeeded",
+    result: "get-only result",
+  });
+  const repeated = await app.submit(null, request);
+  assert.equal(repeated.id, job.id);
+  assert.equal(repeated.state, "completed");
+  assert.equal("result" in repeated, false);
+});
+
+test("page totals exclude foreign owners clients bindings and fixed tasks", async (t) => {
+  const { app, h, sender, submit, input } = fixture(t);
+  await submit();
+  await submit();
+  for (const change of [
+    { subject: "foreign-owner" },
+    { clientId: "foreign-client" },
+    {
+      textBinding: {
+        ...sender.textBinding,
+        conversationBinding: "foreign-conversation",
+      },
+    },
+  ])
+    await h.submitText({ ...sender, ...change }, input());
+  await h.submit(
+    { ...sender, destination: "hermes", taskTypes: ["connectivity_check"] },
+    { task_type: "connectivity_check", request_key: "fixed-count" },
+  );
+  const first = await app.list(null, { pageSize: 1 });
+  assert.equal(first.totalSize, 2);
+  const next = await app.list(null, {
+    pageSize: 1,
+    pageToken: first.nextPageToken,
+  });
+  assert.equal(next.totalSize, 2);
+  assert.equal(next.jobs.length, 1);
+  assert.notEqual(first.jobs[0].id, next.jobs[0].id);
+});
+
+test("cancelled execution becomes confirmed only after terminal runtime evidence", async (t) => {
+  const { app, h, worker, submit, claim } = fixture(t);
+  const job = await submit();
+  const lease = await claim();
+  await h.heartbeat(worker, { ...lease, run_id: "cancelled-known-run" });
+  const requested = await app.cancel(null, { id: job.id });
+  assert.equal(requested.cancellationConfirmed, false);
+  const internal = await h.get(worker, { id: job.id });
+  await h.reconcile(
+    worker,
+    { id: job.id, fence: internal.fence },
+    {
+      supportedTaskTypes: ["generic_text"],
+      boundaryId: worker.runnerScope,
+      admissionContract: "synthetic-text-v1",
+      toolIsolationVerified: true,
+      durableIdempotency: true,
+      retentionMs: 200000,
+      textBoundary: {
+        version: 1,
+        inputAuthority: "external_agent",
+        effects: "none",
+        automaticReply: false,
+      },
+      async createText() {
+        throw Error("not-used");
+      },
+      async create() {
+        throw Error("not-used");
+      },
+      async get(id) {
+        return {
+          id,
+          state: "succeeded",
+          text: "late result must remain hidden",
+        };
+      },
+    },
+  );
+  const confirmed = await app.get(null, { id: job.id });
+  assert.equal(confirmed.state, "canceled");
+  assert.equal(confirmed.outcome, "confirmed");
+  assert.equal(confirmed.cancellationRequested, true);
+  assert.equal(confirmed.cancellationConfirmed, true);
+  assert.equal("result" in confirmed, false);
+});
+
+test("revocation during list hydration aborts the whole public response", async (t) => {
+  const { app, h, submit, sender } = fixture(t);
+  await submit();
+  const batch = h.authorization.batch.bind(h.authorization);
+  let revoked = false;
+  h.authorization.batch = async (p, statements, peers) => {
+    const rows = await batch(p, statements, peers);
+    if (!revoked && statements.some((s) => s.sql.includes("SELECT tasks.*"))) {
+      revoked = true;
+      await h.authorization.setStopped(
+        { kind: "client", id: sender.clientId },
+        true,
+        await h.authorization.epoch(),
+        "synthetic-maintenance",
+      );
+    }
+    return rows;
+  };
+  await assert.rejects(app.list(null), code("forbidden"));
+});
