@@ -56,6 +56,8 @@ NODE_NO_WARNINGS=1 node --test test/generic-text-task.test.js test/generic-async
 
 試験は、2種類の合成 runtime、順序が逆転した結果、内容変更の競合、owner・client・agent の分離、失効、期限、移行保全を確認します。受付応答の消失、既知 run の再開、実行前 image の独立復元、結果保存後の応答消失も確認します。これらは合成実行の受入試験です。
 
+汎用 `claim()` の第3引数は `{ textRetentionMs }` です。実行先の `runnerScope` も必須です。保持期間が作業期限を覆わない依頼は、実行枠を取る前に候補から除外します。
+
 runtime の重複防止保持期間は、不変の `acceptedAt` と作業期限を覆う必要があります。復元後に receipt を作り直しても、この基準時刻を更新しません。期限切れや保持契約の不一致では新規実行を止め、未確認の実行を未実行とは扱いません。
 
 ## 後続の受入条件
