@@ -2,6 +2,8 @@
 
 [READMEへ](../README.md) · [Auth0詳細](auth0-boundary.md) · [受入れゲート](mvp-acceptance.md)
 
+汎用の外部メッセージを扱う場合の[受信側承認・実行境界](generic-agent-async-design.md#4-通信許可と実行承認の責任)は追加設計である。送信者の承認を受信側所有者の承認に代用せず、既存のmanual承認設定は実効toolで検証する。
+
 ## 認証と操作権限
 
 Hubはfail-closedです。認証部品が未接続でも匿名公開へ切り替わりません。Auth0 resource-server部品は署名、固定issuer/audience、expiry、subject/client bindingとscopeを検証します。本番tenant/API/client登録、主体の登録、account状態の確認、entrypoint配線は未完です。
