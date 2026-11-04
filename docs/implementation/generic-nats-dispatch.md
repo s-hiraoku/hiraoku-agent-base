@@ -32,11 +32,11 @@ runtime への呼出しが不明になった場合、保存済みの実行 ID �
 
 本文と結果は、NUL と孤立サロゲートを除く正しい Unicode、UTF-8最大32,768バイトです。JSONでのエスケープを含む実サイズを検査します。data は256 KiB、Relay envelope は384 KiB、broker message は512 KiB以上が必要です。既存の小さい fixture 設定を、そのまま汎用本文へ流用しません。
 
-private journal は owner 専用の通常ファイル、FULL同期、設定 binding と key を照合する metadata、各行の binding 付き MAC を使います。他用途の DB を開いて移行しません。破損・誤った key・異なる binding・容量超過は拒否し、既存証跡を捨てて継続しません。能動的な重複防止情報を空き容量のために削除しません。
+private journal は owner 専用の通常ファイル、FULL同期、設定 binding と key を照合する metadata、各行の binding 付き MAC を使います。他用途の DB を開いて移行しません。破損・誤った key・異なる binding・容量超過は拒否し、既存証跡を捨てて継続しません。能動的な重複防止情報を空き容量のために削除しません。送信 client は保持128ジョブ、各ジョブの明示照会32回を上限とします。到達時は新規受付・照会を拒否し、既存証跡を保全します。長期の常駐組み込みでは、これらの予算と保持記録の運用手順も受入対象にします。
 
 ## 組み込みと検証
 
-`src/generic-nats/` が private protocol、journal、Task gate、client、recipient を持ちます。`packages/relay-nats/src/text-port.ts` の `jetStreamTextPort()` は、既存の実 JetStream backend と認可 context を固定したポートを作ります。接続先や権限はメッセージから指定しません。
+`src/generic-nats/` が private protocol、journal、Task gate、client、recipient を持ちます。`packages/relay-nats/src/text-port.ts` の `jetStreamTextPort()` は、既存の実 JetStream backend と認可 context を固定したポートを作ります。接続先や権限はメッセージから指定しません。実行証跡を返す peer は、ホストが信頼する実行サービスに限定します。一般の送信者がその名義で `generic_text_evidence` を発行できる認可設定にはしません。実製品へ接続する前に、この送信名義と kind の分離も検証します。
 
 client と recipient の constructor は listener や常駐 loop を開始しません。ホストが有限 step を呼び、必要な supervisor を別に構成します。`close()` 後も注入した inbox・journal・runtime・transport は呼出し側が所有します。閉じる順番と pending operation の完了を確認してから保存先を閉じます。有限走査の1回に進捗がないことを、全 pending 要求がなくなった証拠にしません。
 
