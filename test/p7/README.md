@@ -14,3 +14,7 @@ node scripts/pin-p7-successor.mjs --source-ref <full-commit-sha> --write \
 Review the manifest and predecessor archive, set the printed `successorManifestSha256` in `scripts/lib/p7-provenance.mjs`, rerun verification, and commit the pin update separately. Inputs come from the specified committed Git blobs, not uncommitted working files.
 
 The generation command and its regression fixture need the historical baseline commit `028b3754175f47668cc3f787a0a149926351f752`. A depth-one checkout does not provide it. CI therefore uses `actions/checkout` with `fetch-depth: 0`; local shallow clones must explicitly fetch the missing history before generation. The command refuses missing history before writing either output. The runner verifies this refusal and successful generation after fetching the fixture's complete local history.
+
+The mandatory `generic-nats` group runs the isolated two-recipient text transport against the verifier-staged real JetStream binary. Its independent case catalog is `test/generic-nats/case-names.js`. It does not silently skip when a broker is unavailable. The root regression remains separate and does not receive broker credentials or a server URL.
+
+Owned process groups are closed before scratch removal. If a zero-signal group liveness probe returns `EPERM`, the runner uses read-only numeric group evidence from `/bin/ps`; it does not bypass a denied termination signal. Both unavailable liveness methods fail verification.

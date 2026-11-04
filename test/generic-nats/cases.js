@@ -759,5 +759,4 @@ const implementations = [
     },
   ],
 ];
-export const genericNatsCases = implementations.map(([name]) => name);
 export const genericNatsImplementations = implementations;

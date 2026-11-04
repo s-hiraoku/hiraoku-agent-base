@@ -474,3 +474,41 @@ test(runnerCases[6], async (t) => {
     (e) => e.code === "ESRCH",
   );
 });
+
+test(runnerCases[7], async (t) => {
+  const root = temporary(t, "p7-denied-probe-"),
+    script = join(root, "worker.mjs"),
+    pidFile = join(root, "descendant.pid");
+  writeFileSync(
+    script,
+    `import{spawn}from'node:child_process';import{writeFileSync}from'node:fs';const c=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});process.send('ready');setInterval(()=>{},1000)"],{stdio:['ignore','ignore','ignore','ipc']});c.on('message',()=>{writeFileSync(process.argv[2],String(c.pid));process.exit(0)});`,
+  );
+  const original = process.kill;
+  let probes = 0;
+  process.kill = function (pid, signal) {
+    if (pid < 0 && signal === 0) {
+      probes++;
+      const error = Error("synthetic denied group probe");
+      error.code = "EPERM";
+      throw error;
+    }
+    return Reflect.apply(original, process, [pid, signal]);
+  };
+  try {
+    const result = await executeOwnedNode({
+      cwd: root,
+      env: labEnvironment(process.env, root),
+      log: join(root, "worker.log"),
+      args: [script, pidFile],
+      timeout_ms: 3000,
+      grace_ms: 100,
+    });
+    assert.equal(result.exit_code, 0);
+    assert.equal(result.timed_out, false);
+    assert.equal(result.owned_group_closed, true);
+    assert.ok(probes >= 2);
+    assert.ok(existsSync(pidFile));
+  } finally {
+    process.kill = original;
+  }
+});

@@ -11,7 +11,7 @@
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
     "test": "npm run build && node --test test/*.test.js",
     "check": "tsc --noEmit",
-    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/prove-generic-entrances.mjs scripts/lib/local-mvp.mjs scripts/hab-relay.mjs scripts/hab-relay-admin.mjs scripts/delivery-lab.mjs scripts/lib/delivery-lab.mjs scripts/lib/nats-input.mjs scripts/lib/a2a-acceptance.mjs scripts/p7-lab.mjs scripts/lib/p7*.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts",
+    "lint": "eslint src db test scripts/hab-mvp-demo.mjs scripts/prove-generic-entrances.mjs scripts/prove-generic-nats.mjs scripts/lib/local-mvp.mjs scripts/hab-relay.mjs scripts/hab-relay-admin.mjs scripts/delivery-lab.mjs scripts/lib/delivery-lab.mjs scripts/lib/nats-input.mjs scripts/lib/a2a-acceptance.mjs scripts/p7-lab.mjs scripts/lib/p7*.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",
     "schema:generate": "drizzle-kit generate",
@@ -24,7 +24,8 @@
     "proof:a2a-relay": "node scripts/prove-a2a-relay.mjs",
     "test:delivery-lab": "node scripts/delivery-lab.mjs",
     "test:p7": "node scripts/p7-lab.mjs",
-    "proof:generic-entrances": "node scripts/prove-generic-entrances.mjs"
+    "proof:generic-entrances": "node scripts/prove-generic-entrances.mjs",
+    "proof:generic-nats": "node scripts/prove-generic-nats.mjs"
   },
   "dependencies": {
     "@a2a-js/sdk": "1.3.0",
