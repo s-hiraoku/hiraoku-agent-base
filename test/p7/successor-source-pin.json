@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "aa05dc2f6dc02a7fd4faa9e07ad79cb75d97c726",
+  "source_ref": "78b1630c00483ce3f4732c800471d56a7337461d",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -14,7 +14,7 @@
     },
     "docs/implementation/generic-nats-dispatch.md": {
       "previous_sha256": null,
-      "sha256": "2e5c5f4622d328d3b078e4cb7f2f73cff73b079924988e728686b1be9d88719b"
+      "sha256": "1c1b00abd38b5538c29a847bc4bc2e374b69b9d807ba4b4ba5c4b3d39c8fec4e"
     },
     "docs/implementation/generic-text-preview.md": {
       "previous_sha256": null,
@@ -158,7 +158,7 @@
     },
     "test/generic-nats/cases.js": {
       "previous_sha256": null,
-      "sha256": "61308393a3ed79ee190c6a2c3ef6360791ac2293c46822b6eaef695a875d38e2"
+      "sha256": "5fc29a1bc716d7ca37cf7b4f912d4e5f4065182e9d34ded84a9d100b2b97499c"
     },
     "test/generic-nats/effect-runtime.js": {
       "previous_sha256": null,
@@ -166,7 +166,7 @@
     },
     "test/generic-nats/fixture.js": {
       "previous_sha256": null,
-      "sha256": "9bdb8b44111d864b648a5f1107850c2f78fd2f2e90067d39a61195e4c820d80a"
+      "sha256": "2f922f662912f540dbdc1207310e94d66997377cbacf1d588878f66bb6b0f0b4"
     },
     "test/generic-nats/integration.test.js": {
       "previous_sha256": null,
