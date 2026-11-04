@@ -7,6 +7,8 @@ import {
   GENERIC_TEXT_PROFILE,
 } from "../src/generic-jobs.ts";
 import { identities } from "./generic-async/fixtures.js";
+import { Adapter } from "../src/adapter.ts";
+import { journal } from "./fixtures.js";
 
 function fixture(t) {
   let clock = 100;
@@ -494,4 +496,93 @@ test("revocation during list hydration aborts the whole public response", async 
     return rows;
   };
   await assert.rejects(app.list(null), code("forbidden"));
+});
+
+test("NUL input is rejected before any task is inserted", async (t) => {
+  const { app, h, sender, input } = fixture(t);
+  for (const text of ["\u0000abc", "abc\u0000def", "abc\u0000"]) {
+    await assert.rejects(
+      app.submit(null, { ...input(), text }),
+      code("invalid_request"),
+    );
+    await assert.rejects(h.submitText(sender, { ...input(), text }));
+  }
+  assert.equal(
+    h.sqlite.db.prepare("SELECT count(*) AS n FROM tasks").get().n,
+    0,
+  );
+  assert.equal(
+    h.sqlite.db.prepare("SELECT count(*) AS n FROM task_text_requests").get().n,
+    0,
+  );
+});
+
+test("direct NUL completion is rejected without confirming or persisting a result", async (t) => {
+  const { app, h, submit, claim, worker } = fixture(t);
+  const task = await submit();
+  const lease = await claim();
+  for (const result of ["\u0000abc", "abc\u0000def", "abc\u0000"]) {
+    await assert.rejects(
+      h.complete(worker, { ...lease, state: "succeeded", result }),
+      /invalid_result/,
+    );
+    const current = await app.get(null, { id: task.id });
+    assert.equal(current.state, "working");
+    assert.equal(current.outcome, "pending");
+    assert.equal("result" in current, false);
+  }
+  assert.equal((await h.get(worker, { id: task.id })).result, null);
+  assert.equal(
+    h.sqlite.db.prepare("SELECT count(*) AS n FROM outbox").get().n,
+    0,
+  );
+});
+
+test("a runtime NUL result becomes a confirmed failure with no public artifact", async (t) => {
+  const { app, h, submit, worker } = fixture(t);
+  const task = await submit();
+  const runs = {
+    supportedTaskTypes: ["generic_text"],
+    boundaryId: worker.runnerScope,
+    admissionContract: "synthetic-text-v1",
+    toolIsolationVerified: true,
+    durableIdempotency: true,
+    retentionMs: 200000,
+    textBoundary: {
+      version: 1,
+      inputAuthority: "external_agent",
+      effects: "none",
+      automaticReply: false,
+    },
+    async create() {
+      throw Error("not-used");
+    },
+    async createText() {
+      return { id: "nul-result-run", state: "succeeded", text: "abc\u0000def" };
+    },
+    async get() {
+      throw Error("not-used");
+    },
+  };
+  await new Adapter(h, worker, runs, journal(), { now: () => 100 }).once();
+  const current = await app.get(null, { id: task.id });
+  assert.equal(current.state, "failed");
+  assert.equal(current.outcome, "confirmed");
+  assert.equal("result" in current, false);
+  assert.equal(
+    (await h.get(worker, { id: task.id })).result,
+    "generic_text_failed",
+  );
+});
+
+test("maximum U+0001 input and result round-trip exactly", async (t) => {
+  const { app, h, input, claim, worker } = fixture(t);
+  const text = "\u0001".repeat(32768);
+  const task = await app.submit(null, { ...input(), text });
+  const lease = await claim();
+  assert.equal(lease.text_request.input.text, text);
+  await h.complete(worker, { ...lease, state: "succeeded", result: text });
+  const current = await app.get(null, { id: task.id });
+  assert.equal(current.state, "completed");
+  assert.deepEqual(current.result, { version: 1, text });
 });

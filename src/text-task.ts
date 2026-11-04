@@ -4,7 +4,11 @@ const identifier = z.string().min(1).max(200);
 export const boundedText = z
   .string()
   .min(1)
-  .refine((text) => new TextEncoder().encode(text).length <= 32768);
+  .refine(
+    (text) =>
+      !text.includes("\u0000") &&
+      new TextEncoder().encode(text).length <= 32768,
+  );
 export const textBindingSchema = z.strictObject({
   ownerScope: identifier,
   senderAgent: identifier,
