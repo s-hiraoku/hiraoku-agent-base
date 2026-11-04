@@ -47,6 +47,16 @@ HAB_TEST_TMPDIR="$(node --input-type=module -e 'import {tmpdir} from "node:os"; 
 TMPDIR="$HAB_TEST_TMPDIR" NODE_NO_WARNINGS=1 npm test
 ```
 
+## GitHub CIのsource固定への追従
+
+最初の[PR CI](https://github.com/s-hiraoku/hiraoku-agent-base/actions/runs/41935743092)は、今回変更した `generic-job-application.md` がP7 successor manifestの固定hashと異なり、試験開始前に拒否された。通常の `npm test` は `test/p7/` の専用guardを含まないため、Node全体1685件の成功だけではこのCI入口を検証できなかった。
+
+既存の `scripts/pin-p7-successor.mjs` を使い、固定commit `84248665cfce44791027a0b232de6c7dd76c529c` からsuccessor manifestを生成し直した。新しい境界試験も `--include test/common-mcp-boundary.test.js` で検証対象へ加えた。historical source-pinとpredecessor fixturesは変更せず、265入力の固定hash検査を維持した。P7の全体回帰期待件数も追加4件を含む1685件へ更新し、失敗・skip・cancel・TODOを許可する変更は加えていない。
+
+修正後、CIと同じ `scripts/p7-lab.mjs --full --nats-server <検証済み公式binary>` をローカルで実行し、9グループすべてが成功した。全体回帰1685件、sourceの前後一致、所有workerの終了、scratch削除を確認し、`P7_LOGICAL_PASS` を得た。lintとroot/NATSの型検証も成功した。これは製品やbrokerの本番採用を意味しない。
+
+P7に固定された文書・試験・sourceを変更する場合は、[P7実行手順](../testing/p7-lab.md)の専用検証も実行する。manifestは可変な作業ファイルのhashを直接書き換えず、レビューしたcommitから既存生成器で作成する。
+
 ## 残る受入れ
 
 ローカル試験は合成認証・一時DB・loopback listenerを使い、周期は注入schedulerで進める。実時間のpoll頻度、実製品への表示・引渡し、既存のtool・承認UI、認証更新、本番hostの常駐受信を検証したものではない。GUIの稼働版を変更・検証した主張もしない。

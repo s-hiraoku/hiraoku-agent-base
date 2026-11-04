@@ -28,6 +28,8 @@ Require exit code zero and no failed, skipped, or canceled tests. The TAP names 
 
 ## Gotchas
 
+- CI also runs [P7](../../../../docs/testing/p7-lab.md). Changes to files pinned by its successor manifest require a replacement manifest generated from reviewed committed source with `scripts/pin-p7-successor.mjs`, and the full-regression expectation must include added tests. A passing root `npm test` does not exercise the dedicated P7 guard.
+
 - Each test closes only its own listener and stores, then removes its temporary databases. The TAP evidence remains under the separate RUN directory. Confirm that the TAP still exists after completion.
 - This proves local communication boundaries. It does not verify a real product's model, tools, approval UI, credential refresh, inbox display, or deployment.
 - A body that mentions owner approval does not test or grant a real native approval. Changes to receiving agents' existing approval mechanisms require their own tests.
