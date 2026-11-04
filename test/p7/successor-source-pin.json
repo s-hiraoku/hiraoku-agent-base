@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "78b1630c00483ce3f4732c800471d56a7337461d",
+  "source_ref": "636e92cc0998d54b2626c3532dee85ff71e3a523",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -14,7 +14,7 @@
     },
     "docs/implementation/generic-nats-dispatch.md": {
       "previous_sha256": null,
-      "sha256": "1c1b00abd38b5538c29a847bc4bc2e374b69b9d807ba4b4ba5c4b3d39c8fec4e"
+      "sha256": "d64f8aca908880bc597ad2cc865870b86ee4c4b7f5311a6ab9a4e22326a50818"
     },
     "docs/implementation/generic-text-preview.md": {
       "previous_sha256": null,
@@ -32,13 +32,25 @@
       "previous_sha256": null,
       "sha256": "94e873b8338dd6a8f8f658607a06e3dd697eb9e7372a3a07353401e7d81e407e"
     },
+    "packages/relay-nats/test/fixture.js": {
+      "previous_sha256": "75bc9335f5461a80aea0522ac2b0b69f182ba4695b8dba8ac7db2f7573a6a2d6",
+      "sha256": "5e33a06340317cd8cbf02b2e9ee9c36b3b16c2613cecafe48dd684241cac95a2"
+    },
+    "packages/relay-nats/test/startup-cases.js": {
+      "previous_sha256": null,
+      "sha256": "a960960ac48ce975b6bb0fa8ac2ec12c95a8dc060f431147ae6690a84d0ba182"
+    },
+    "packages/relay-nats/test/startup.test.js": {
+      "previous_sha256": null,
+      "sha256": "3978ffcc968e69056293391b90d4d9e6de252806aa48ebae2fc9ae89ba069641"
+    },
     "scripts/lib/p7-worker.mjs": {
       "previous_sha256": null,
       "sha256": "2fa1522be974eae60963a299d22623703fab46bcf8d2fa02c05b0d0219558962"
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "97343b23f0bdcc9797fff211db63b6a71338592cc41c43da0557e670e74204c8"
+      "sha256": "4892e35757e2f6d64dc1e089e9d6598c2a4b4ffa3d212eb7d1cec1d845d12c0b"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -186,11 +198,11 @@
     },
     "test/p7/README.md": {
       "previous_sha256": null,
-      "sha256": "14047f34b3b72c0ad734656dc79e40634f45ae188a08b2d0cc43f0a56739c094"
+      "sha256": "a2300b981016ae1871eecbee620d71f839ad61977a7406abe1ff0915adbac7ef"
     },
     "test/p7/manifest.js": {
       "previous_sha256": null,
-      "sha256": "5c30631db2e20d88ba64d7559f53da21a7192a53d671a57a10bafbfc28f86174"
+      "sha256": "3e2611c20616712d2b8bcedb92b9ac65262410284d73a25eefd307dd8585ff09"
     },
     "test/p7/runner.test.js": {
       "previous_sha256": null,
