@@ -31,14 +31,45 @@ import {
 import { prepareNatsServer } from "../../scripts/lib/nats-input.mjs";
 import { EffectRuntime } from "./effect-runtime.js";
 
+const fixtureLeaseMs = 1000;
+
 export { a2aRequest, unpack };
+export function expireFirstDelivery(real) {
+  const deliveries = [],
+    acknowledgments = [];
+  return {
+    deliveries,
+    acknowledgments,
+    transport: {
+      ...real,
+      async poll() {
+        const delivery = await real.poll();
+        if (delivery) {
+          deliveries.push(delivery);
+          if (deliveries.length === 1)
+            await delay(
+              Math.max(0, Date.parse(delivery.lease_until) - Date.now() + 25),
+            );
+        }
+        return delivery;
+      },
+      ack(request) {
+        acknowledgments.push(request);
+        return real.ack(request);
+      },
+    },
+  };
+}
 export async function call(client, name, args) {
   const reply = await client.callTool({ name, arguments: args });
   assert.notEqual(reply.isError, true, JSON.stringify(reply));
   return unpack(reply);
 }
 export async function eventually(work, label = "finite condition") {
-  for (let i = 0; i < 100; i++) {
+  for (
+    const deadline = Date.now() + fixtureLeaseMs * 10;
+    Date.now() < deadline;
+  ) {
     const value = await work();
     if (value) return value;
     await delay(20);
@@ -173,7 +204,7 @@ export async function proof(t, options = {}) {
       max_records: 1000,
       max_pending: 100,
       max_pending_per_recipient: 50,
-      lease_ms: 100,
+      lease_ms: fixtureLeaseMs,
       max_attempts: 20,
     },
     staged.stagedPath,

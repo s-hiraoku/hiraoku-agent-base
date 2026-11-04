@@ -20,6 +20,7 @@ import {
   call,
   a2aRequest,
   eventually,
+  expireFirstDelivery,
   inboxAt,
   journalAt,
 } from "./fixture.js";
@@ -462,8 +463,61 @@ const implementations = [
       const f = await proof(t);
       await f.submit("paper", "ttl-known");
       const request = await f.prepare();
-      await deliver(f);
-      await f.finish();
+      const requestLease = expireFirstDelivery(f.transport("b"));
+      const receiver = await f.openRecipient("paper", {
+        transport: requestLease.transport,
+      });
+      await assert.rejects(deliver(f), { code: "expired_delivery" });
+      assert.equal(receiver.inbox.inbox().length, 0);
+      assert.equal(requestLease.acknowledgments.length, 0);
+      assert.equal(effectCount(f, "paper"), 0);
+      assert.notEqual(
+        (await f.transport("a").status(request.packet.requestId)).state,
+        "acked",
+      );
+      await eventually(async () => {
+        await receiver.recipient.receiveOnce();
+        return receiver.inbox.inbox()[0]?.receipt_confirmed;
+      }, "fresh request lease saves and ACKs the original identity");
+      assert.equal(requestLease.deliveries.length, 2);
+      assert.equal(requestLease.acknowledgments.length, 1);
+      const resultLease = expireFirstDelivery(f.transport("a"));
+      await f.openClient({ transport: resultLease.transport });
+      await assert.rejects(f.finish(), { code: "expired_delivery" });
+      assert.equal(f.clientInbox.inbox().length, 0);
+      assert.equal(resultLease.acknowledgments.length, 0);
+      assert.equal(
+        (await f.client.runs("paper").get(request.task.run_id)).state,
+        "running",
+      );
+      await eventually(async () => {
+        await f.client.receiveOnce();
+        return (
+          (await f.client.runs("paper").get(request.task.run_id)).state ===
+          "succeeded"
+        );
+      }, "fresh result lease recovers the already committed effect");
+      assert.equal(resultLease.deliveries.length, 2);
+      assert.equal(resultLease.acknowledgments.length, 1);
+      for (const fault of [requestLease, resultLease]) {
+        const [expired, fresh] = fault.deliveries;
+        assert.equal(fresh.sender_id, expired.sender_id);
+        assert.equal(canonical(fresh.message), canonical(expired.message));
+        assert.ok(fresh.generation > expired.generation);
+        t.diagnostic(
+          JSON.stringify({
+            event: "expired_lease_recovered",
+            message_id: fresh.message.message_id,
+            expired_generation: expired.generation,
+            fresh_generation: fresh.generation,
+            acknowledgments: fault.acknowledgments.length,
+          }),
+        );
+      }
+      await f.adapter("paper").once();
+      await receiver.recipient.executeOnce();
+      assert.equal(effectCount(f, "paper"), 1);
+      assert.equal(receiver.runtime.calls("create"), 1);
       const before = await f.client.runs("paper").get(request.task.run_id);
       assert.equal(before.state, "succeeded");
       await f.submit("mirror", "ttl-held");
