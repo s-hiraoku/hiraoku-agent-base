@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "6e8341ff1c53125ffe4e6275d2de3ebb00e6a161",
+  "source_ref": "aa05dc2f6dc02a7fd4faa9e07ad79cb75d97c726",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -12,25 +12,41 @@
       "previous_sha256": null,
       "sha256": "d3605b4aec5a27cff2430a57700b54caacdeece3166b523ab02e5e55452dbf61"
     },
+    "docs/implementation/generic-nats-dispatch.md": {
+      "previous_sha256": null,
+      "sha256": "2e5c5f4622d328d3b078e4cb7f2f73cff73b079924988e728686b1be9d88719b"
+    },
     "docs/implementation/generic-text-preview.md": {
       "previous_sha256": null,
       "sha256": "23dd648161476daac2663f0d0edf21124335958df7ec7534253fd3fad5623433"
     },
     "docs/profiles/async-text-v1.md": {
       "previous_sha256": null,
-      "sha256": "6ebdc82ae5a01972ede0288b5bbdcc48e150c37afea014de6258c8643b0fa4ff"
+      "sha256": "f6b9902add6246ddb89769894be09d8f48f25d03a63fda8f952c4060b0a776ac"
     },
     "drizzle/0009_generic_text.sql": {
       "previous_sha256": null,
       "sha256": "e4068073157cd6134f9f46b15494f9f6307adb4bc52b637ef4bff3ae08cb01c8"
     },
+    "packages/relay-nats/src/text-port.ts": {
+      "previous_sha256": null,
+      "sha256": "94e873b8338dd6a8f8f658607a06e3dd697eb9e7372a3a07353401e7d81e407e"
+    },
+    "scripts/lib/p7-worker.mjs": {
+      "previous_sha256": null,
+      "sha256": "2fa1522be974eae60963a299d22623703fab46bcf8d2fa02c05b0d0219558962"
+    },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "59ea449365e58cb41a2b5dc283b7273a93e63c43d4b249d6da416099a7e148b7"
+      "sha256": "97343b23f0bdcc9797fff211db63b6a71338592cc41c43da0557e670e74204c8"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
       "sha256": "f27f5b04666a1b420af58daaf867cb18cc797885fd38599e60a36d5263a75113"
+    },
+    "scripts/prove-generic-nats.mjs": {
+      "previous_sha256": null,
+      "sha256": "d32bd2f5065733a76837aa9f9016fce2952a9a966fdd95b1e7041951ffa04dc1"
     },
     "src/a2a/generic-handler.ts": {
       "previous_sha256": null,
@@ -55,6 +71,26 @@
     "src/generic-mcp.ts": {
       "previous_sha256": null,
       "sha256": "4fcb4393ce94dddab1d1435254fde8d2f29aed5e194c079e6f260aab512568e7"
+    },
+    "src/generic-nats/client.ts": {
+      "previous_sha256": null,
+      "sha256": "1408fb265a62eb2455d38495efb9057015e65cd5358fc1f0ec3147d24f8ba99f"
+    },
+    "src/generic-nats/journal.ts": {
+      "previous_sha256": null,
+      "sha256": "9e1669b931ff58659c548c1f8811979082d24de2c1dbeb1f0a818af267fcee25"
+    },
+    "src/generic-nats/protocol.ts": {
+      "previous_sha256": null,
+      "sha256": "fd95f3ade23bff30f20799436504f7d990c7dc6643f5ff3ccc91b1519fa850f2"
+    },
+    "src/generic-nats/recipient.ts": {
+      "previous_sha256": null,
+      "sha256": "3b202768911424258165def9c62e1b6ebae792d99051cf920b41aebd71c7f509"
+    },
+    "src/generic-nats/task-gate.ts": {
+      "previous_sha256": null,
+      "sha256": "8a313f6104b9a2025f188fff7473c414fca8b4a094e3ab33d1db03980f66d878"
     },
     "src/store.ts": {
       "previous_sha256": "7c534b9ab811a3358dc9a879a380c117d629a8c13a47eccf3fa5a7eed39bd043",
@@ -104,6 +140,42 @@
       "previous_sha256": null,
       "sha256": "7f4f6a0e81cdb50d31559edec88a2310946ff282d2fd1a33288c096b1caf4c85"
     },
+    "test/generic-nats-client.test.js": {
+      "previous_sha256": null,
+      "sha256": "65c551ac958273523f1e122ec3b9ae5e1a0f9cdc8575ade50f681e21e29f3e92"
+    },
+    "test/generic-nats-core.test.js": {
+      "previous_sha256": null,
+      "sha256": "918b1fd0fad698d4716c391e8c36da05a6ff6497e8885101b8ef04a6bac91a78"
+    },
+    "test/generic-nats-recipient.test.js": {
+      "previous_sha256": null,
+      "sha256": "106a34b9fea1fe0fa3bd8b4cb006a4c25af04624fea75b397a4675e08c971365"
+    },
+    "test/generic-nats/case-names.js": {
+      "previous_sha256": null,
+      "sha256": "6ec72d4cb8dcd5fdef6a96d0fbcf6a892537023def7ef44b816329af5ea8d1eb"
+    },
+    "test/generic-nats/cases.js": {
+      "previous_sha256": null,
+      "sha256": "61308393a3ed79ee190c6a2c3ef6360791ac2293c46822b6eaef695a875d38e2"
+    },
+    "test/generic-nats/effect-runtime.js": {
+      "previous_sha256": null,
+      "sha256": "0525e7cdd563f75da09cd3e8bca170a9481695c8b200f2ab9a0460cc81d07933"
+    },
+    "test/generic-nats/fixture.js": {
+      "previous_sha256": null,
+      "sha256": "9bdb8b44111d864b648a5f1107850c2f78fd2f2e90067d39a61195e4c820d80a"
+    },
+    "test/generic-nats/integration.test.js": {
+      "previous_sha256": null,
+      "sha256": "a71f0e9893b0f5ea00d7c20b0b76e419593cac80bf25a3d0a41689cf3fb17663"
+    },
+    "test/generic-nats/recipient-process.js": {
+      "previous_sha256": null,
+      "sha256": "579ec268c69af00a15bfdbb351315045034f839854c0bd37e75ff1af62ec9ae7"
+    },
     "test/generic-text-task.test.js": {
       "previous_sha256": null,
       "sha256": "d03b3eefe534586def7cf7e393e0573ee2d02c933c353acfc52a5b572f5c71ae"
@@ -111,6 +183,18 @@
     "test/generic-text-unicode.test.js": {
       "previous_sha256": null,
       "sha256": "5046d6aacecc6614c378af71003f720f69975af677ec3e7ae71b49b5f68048fe"
+    },
+    "test/p7/README.md": {
+      "previous_sha256": null,
+      "sha256": "14047f34b3b72c0ad734656dc79e40634f45ae188a08b2d0cc43f0a56739c094"
+    },
+    "test/p7/manifest.js": {
+      "previous_sha256": null,
+      "sha256": "5c30631db2e20d88ba64d7559f53da21a7192a53d671a57a10bafbfc28f86174"
+    },
+    "test/p7/runner.test.js": {
+      "previous_sha256": null,
+      "sha256": "0fc96bf08ab359301e7ef1a58e8315290fb9f7bf55513f2ad7ac1537f21be40b"
     }
   }
 }
