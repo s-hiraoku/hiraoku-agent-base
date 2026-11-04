@@ -310,7 +310,13 @@ export class TaskService {
       )
         throw Error("text_claim_capability_required");
       const b = textBinding(p);
-      if (p.worker !== b.recipientAgent) throw Error("text_binding_required");
+      if (
+        p.worker !== b.recipientAgent ||
+        typeof p.runnerScope !== "string" ||
+        !p.runnerScope.length ||
+        p.runnerScope.length > 200
+      )
+        throw Error("text_binding_required");
       scope = {
         sql: "EXISTS(SELECT 1 FROM task_text_requests t WHERE t.task_id=tasks.id AND t.owner_scope=? AND t.sender_agent=? AND t.recipient_agent=? AND t.recipient_owner=? AND t.conversation_binding=?)",
         params: [

@@ -336,6 +336,12 @@ test("incompatible queued text does not occupy the recipient gate or block compa
     input({ messageId: "compatible", workDeadline: 5000 }),
   );
   await assert.rejects(h.claim(worker), /text_claim_capability_required/);
+  for (const runnerScope of [undefined, "", "x".repeat(201)]) {
+    await assert.rejects(
+      h.claim({ ...worker, runnerScope }, {}, { textRetentionMs: 10000 }),
+      /text_binding_required/,
+    );
+  }
   let created = 0;
   const runs = runtime({
     retentionMs: 10000,
