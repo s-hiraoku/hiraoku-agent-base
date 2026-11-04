@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 import pin from "../../test/p7/source-pin.json" with { type: "json" };
+import successor from "../../test/p7/successor-source-pin.json" with { type: "json" };
 
 export const sha256 = (bytes) =>
   createHash("sha256").update(bytes).digest("hex");
@@ -40,6 +41,70 @@ export function validateOrigins(value) {
       throw Error(`P7 invalid component origin: ${path}`);
   }
 }
+export const successorManifestSha256 =
+  "22774f62812a81cb36b8e47dd2bd77128673ce2fc63e9854f2a3eb61753829be";
+const canonical = (value) =>
+  Array.isArray(value)
+    ? value.map(canonical)
+    : value && typeof value === "object"
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map((key) => [key, canonical(value[key])]),
+        )
+      : value;
+const safePath = (path) =>
+  typeof path === "string" &&
+  !path.includes("\\") &&
+  path.split("/").every((part) => part && part !== "." && part !== "..");
+export function validateSuccessor(value) {
+  if (
+    value?.version !== 1 ||
+    value.base_ref !== "028b3754175f47668cc3f787a0a149926351f752" ||
+    value.base_pin_sha256 !==
+      sha256(
+        readFileSync(new URL("../../test/p7/source-pin.json", import.meta.url)),
+      ) ||
+    !/^[a-f0-9]{40}$/.test(value.source_ref) ||
+    !value.inputs ||
+    typeof value.inputs !== "object" ||
+    Array.isArray(value.inputs) ||
+    sha256(JSON.stringify(canonical(value))) !== successorManifestSha256
+  )
+    throw Error("P7 successor fixed manifest mismatch");
+  for (const [path, input] of Object.entries(value.inputs)) {
+    const previous = pin.inputs[path]?.sha256 ?? null;
+    if (
+      !safePath(path) ||
+      path === "package.json" ||
+      input.previous_sha256 !== previous ||
+      (input.sha256 !== null && !/^[a-f0-9]{64}$/.test(input.sha256)) ||
+      input.sha256 === previous
+    )
+      throw Error(`P7 successor component declaration mismatch: ${path}`);
+  }
+  return value;
+}
+export function p7ExpectedInputs(profile = "current") {
+  if (profile === "historical") return pin.inputs;
+  if (profile !== "current") throw Error("P7 source profile unknown");
+  validateSuccessor(successor);
+  const inputs = { ...pin.inputs };
+  for (const [path, input] of Object.entries(successor.inputs)) {
+    if (input.sha256 === null) delete inputs[path];
+    else inputs[path] = { sha256: input.sha256 };
+  }
+  return inputs;
+}
+function regularPath(root, path) {
+  for (const part of ["", ...path.split("/")]) {
+    root = part ? join(root, part) : root;
+    if (lstatSync(root).isSymbolicLink())
+      throw Error(`P7 component symlink: ${path}`);
+  }
+  if (!lstatSync(root).isFile())
+    throw Error(`P7 component not regular: ${path}`);
+}
 function walk(root, path) {
   return readdirSync(join(root, path), { withFileTypes: true }).flatMap(
     (entry) => {
@@ -49,14 +114,13 @@ function walk(root, path) {
       )
         return [];
       const name = `${path}/${entry.name}`;
+      if (entry.isSymbolicLink()) throw Error(`P7 component symlink: ${name}`);
       return entry.isDirectory() ? walk(root, name) : [name];
     },
   );
 }
-export function verifyP7Source(root) {
-  validateOrigins(pin);
-  const expected = Object.keys(pin.inputs).sort();
-  const selected = [
+export function selectedP7Paths(root, expected = Object.keys(pin.inputs)) {
+  return [
     ...walk(root, "src"),
     ...readdirSync(join(root, "drizzle"))
       .filter((p) => p.endsWith(".sql"))
@@ -73,13 +137,19 @@ export function verifyP7Source(root) {
         !/^test\/a2a-.*\.js$/.test(p),
     ),
   ].sort();
+}
+export function verifyP7Source(root, profile = "current") {
+  validateOrigins(pin);
+  if (!lstatSync(root).isDirectory() || lstatSync(root).isSymbolicLink())
+    throw Error("P7 source requires a regular directory");
+  const inputs = p7ExpectedInputs(profile);
+  const expected = Object.keys(inputs).sort();
+  const selected = selectedP7Paths(root, expected);
   if (JSON.stringify(expected) !== JSON.stringify(selected))
     throw Error("P7 component inventory mismatch");
   for (const path of expected) {
-    if (
-      !lstatSync(join(root, path)).isFile() ||
-      sha256(readFileSync(join(root, path))) !== pin.inputs[path].sha256
-    )
+    regularPath(root, path);
+    if (sha256(readFileSync(join(root, path))) !== inputs[path].sha256)
       throw Error(`P7 component source mismatch: ${path}`);
   }
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -89,6 +159,13 @@ export function verifyP7Source(root) {
     if (JSON.stringify(pkg[field]) !== JSON.stringify(expectedValue))
       throw Error(`P7 dependency mismatch: ${field}`);
   return {
+    source_profile: profile,
+    ...(profile === "current"
+      ? {
+          successor_ref: successor.source_ref,
+          successor_manifest_sha256: successorManifestSha256,
+        }
+      : {}),
     refs: pin.refs,
     a2a_core_ref: pin.a2a_core_ref,
     inputs: expected.length,
