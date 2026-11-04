@@ -43,6 +43,8 @@ export function createTextTaskGate(
         ))
       )
         throw Error("text_origin_inactive");
+      if (!(await tasks.authorization.isActive(route.binding.recipientOwner)))
+        throw Error("text_recipient_owner_inactive");
       const current = await resolve(route);
       if (canonical(current) !== originalFingerprint)
         throw Error("text_authorization_changed");
