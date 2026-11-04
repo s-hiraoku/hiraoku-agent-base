@@ -13,9 +13,9 @@ import {
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout, clearTimeout } from "node:timers";
-import { fixture } from "./fixture.js";
+import { fixture } from "../fixture.js";
 import { startupCases } from "./startup-cases.js";
-import { prepareNatsServer } from "../../../scripts/lib/nats-input.mjs";
+import { prepareNatsServer } from "../../../../scripts/lib/nats-input.mjs";
 
 const sentinel = "synthetic-startup-private-marker";
 const diagnosticKeys = [
