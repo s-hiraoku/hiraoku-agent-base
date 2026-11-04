@@ -7,6 +7,7 @@ export const boundedText = z
   .refine(
     (text) =>
       !text.includes("\u0000") &&
+      !/[\uD800-\uDFFF]/u.test(text) &&
       new TextEncoder().encode(text).length <= 32768,
   );
 export const textBindingSchema = z.strictObject({
