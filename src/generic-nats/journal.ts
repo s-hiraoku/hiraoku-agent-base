@@ -95,7 +95,7 @@ export class TextNatsJournal {
   }
   #mac(value: string): string {
     return createHmac("sha256", this.#options.fingerprintKey)
-      .update(value)
+      .update(canonical([this.#options.binding, value]))
       .digest("hex");
   }
   #names(bucket: string, id: string) {
