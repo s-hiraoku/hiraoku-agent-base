@@ -226,7 +226,7 @@ function fixture(
     rmSync(dir, { recursive: true, force: true });
   });
   function deliver(packet = execute, sender = route.coordinator) {
-    pending.push({
+    const delivery = {
       message: {
         ...packetMessage(
           packet,
@@ -240,7 +240,9 @@ function fixture(
       lease_until: new Date(
         Math.min(Date.now() + 30000, acceptedAt + 3600000),
       ).toISOString(),
-    });
+    };
+    pending.push(delivery);
+    return delivery.message;
   }
   return {
     route,
@@ -288,6 +290,16 @@ async function saved(f, packet) {
   await f.recipient.receiveOnce();
 }
 const packet = (message) => message.body.parts[0].value;
+
+async function sendUntil(f, count) {
+  for (
+    let attempt = 0;
+    attempt < count + 3 && f.submits.length < count;
+    attempt++
+  )
+    await f.recipient.sendOnce();
+  assert.equal(f.submits.length, count);
+}
 
 test("unit recipient saves and ACKs before explicit runtime execution", async (t) => {
   const f = fixture(t);
@@ -484,7 +496,7 @@ test("unit recipient uses known actual id for recovery and never regresses termi
   f.ledger.set(f.key, { id: "unit-real-id", state: "running" });
   await saved(f, inspectPacket(f.execute, 4));
   await f.recipient.executeOnce();
-  await f.recipient.sendOnce();
+  await sendUntil(f, 3);
   assert.equal(packet(f.submits[2]).run.state, "succeeded");
   assert.equal(f.calls.get, 1);
 });
@@ -648,11 +660,238 @@ test("unit recipient drains reply backlog beyond the bounded 128-record scan", a
     await saved(f, inspectPacket(f.execute, index));
     await f.recipient.executeOnce();
   }
-  for (let index = 0; index < 150; index++) await f.recipient.sendOnce();
+  await sendUntil(f, 130);
+  await f.recipient.close();
+  f.reopen({ journal: f.openJournal() });
+  await sendUntil(f, 141);
   assert.equal(f.submits.length, 141);
   assert.equal(
     new Set(f.submits.map((message) => message.message_id)).size,
     141,
   );
   assert.equal(f.calls.create, 1);
+});
+
+for (const invalid of [
+  "foreign peer",
+  "malformed packet",
+  "envelope correlation",
+]) {
+  test(`unit recipient quarantines ${invalid} once and allows the next legitimate command`, async (t) => {
+    const f = fixture(t);
+    const message = f.deliver(
+      inspectPacket(f.execute, 99),
+      invalid === "foreign peer" ? "unit-wrong-peer" : f.route.coordinator,
+    );
+    if (invalid === "malformed packet") message.body.parts[0].value = {};
+    if (invalid === "envelope correlation")
+      message.thread_id = "unit-wrong-thread";
+    await f.recipient.receiveOnce();
+    const original = structuredClone(f.inbox.inbox()[0]);
+    await assert.rejects(f.recipient.executeOnce());
+    assert.equal(f.calls.create, 0);
+    assert.equal(f.recipient.inspect(f.key), null);
+    const quarantined = f.journal.list("recipient_rejected");
+    assert.equal(quarantined.length, 1);
+    assert.deepEqual(quarantined[0].data.entry, original);
+    assert.match(quarantined[0].data.reason, /^[a-z_]+$/);
+    assert.deepEqual(f.inbox.inbox(), []);
+    assert.equal(await f.recipient.executeOnce(), false);
+    await saved(f);
+    assert.equal(await f.recipient.executeOnce(), true);
+    await sendUntil(f, 1);
+    assert.equal(f.calls.create, 1);
+    assert.equal(packet(f.submits[0]).run.text, "unit answer");
+    assert.equal(f.journal.list("recipient_rejected").length, 1);
+  });
+}
+
+test("unit recipient quarantines immutable execute and inspect conflicts without poisoning later work", async (t) => {
+  const f = fixture(t);
+  f.journal.insert("recipient_runs", f.key, {
+    execute: f.execute,
+    state: "ready",
+  });
+  const conflicting = executePacket(
+    f.route,
+    {
+      ...f.input,
+      content: { ...f.input.content, text: "unit conflicting text" },
+    },
+    f.execute.acceptedAt,
+  );
+  await saved(f, conflicting);
+  await assert.rejects(
+    f.recipient.executeOnce(),
+    /text_recipient_request_conflict/,
+  );
+  assert.equal(f.calls.create, 0);
+  assert.deepEqual(f.inbox.inbox(), []);
+  await saved(f, inspectPacket(conflicting, 1));
+  await assert.rejects(
+    f.recipient.executeOnce(),
+    /text_recipient_request_conflict/,
+  );
+  assert.equal(f.calls.create, 0);
+  assert.deepEqual(f.inbox.inbox(), []);
+  await f.recipient.executeOnce();
+  await sendUntil(f, 1);
+  assert.equal(f.calls.create, 1);
+  assert.equal(packet(f.submits[0]).run.text, "unit answer");
+  assert.equal(f.journal.list("recipient_rejected").length, 2);
+});
+
+test("unit recipient retains rejected inbox body when quarantine cannot be saved", async (t) => {
+  const f = fixture(t, { maxRecords: 1 });
+  f.journal.insert("unit_fixture", "occupied", {});
+  f.deliver(f.execute, "unit-wrong-peer");
+  await f.recipient.receiveOnce();
+  const original = structuredClone(f.inbox.inbox()[0]);
+  await assert.rejects(f.recipient.executeOnce(), /text_journal_capacity/);
+  assert.deepEqual(f.inbox.inbox(), [original]);
+  assert.deepEqual(f.journal.list("recipient_rejected"), []);
+  assert.equal(f.calls.create, 0);
+  f.reopen({ journal: f.openJournal({ maxRecords: 100 }) });
+  await assert.rejects(f.recipient.executeOnce(), /foreign_text_packet/);
+  assert.deepEqual(
+    f.journal.list("recipient_rejected")[0].data.entry,
+    original,
+  );
+  assert.deepEqual(f.inbox.inbox(), []);
+});
+
+test("unit recipient holds valid input on admission, journal, and current authority failure", async (t) => {
+  const f = fixture(t, { maxRecords: 1 });
+  f.journal.insert("unit_fixture", "occupied", {});
+  await saved(f);
+  const original = structuredClone(f.inbox.inbox()[0]);
+  await assert.rejects(f.recipient.executeOnce(), /text_journal_capacity/);
+  assert.deepEqual(f.inbox.inbox(), [original]);
+  f.reopen({ journal: f.openJournal({ maxRecords: 100 }) });
+  f.revoke();
+  await assert.rejects(f.recipient.executeOnce(), /unit_authority_revoked/);
+  assert.deepEqual(f.recipient.inspect(f.key).execute, f.execute);
+  assert.deepEqual(f.journal.list("recipient_rejected"), []);
+  assert.equal(f.calls.create, 0);
+  f.revoke(false);
+  f.task.lease = f.now();
+  await assert.rejects(f.recipient.executeOnce(), /text_admission_denied/);
+  assert.deepEqual(f.journal.list("recipient_rejected"), []);
+  f.task.lease = f.now() + 3600000;
+  await f.recipient.executeOnce();
+  await sendUntil(f, 1);
+  assert.equal(f.calls.create, 1);
+});
+
+test("unit recipient close waits for in-flight runtime evidence before caller closes stores", async (t) => {
+  const f = fixture(t);
+  let started, finish;
+  const running = new Promise((resolve) => {
+    started = resolve;
+  });
+  const result = new Promise((resolve) => {
+    finish = resolve;
+  });
+  f.runtime.createText = async () => {
+    f.calls.create++;
+    started();
+    return result;
+  };
+  await saved(f);
+  const execution = assert.rejects(
+    f.recipient.executeOnce(),
+    /text_recipient_closed/,
+  );
+  await running;
+  let closed = false;
+  const closing = f.recipient.close().then(() => {
+    closed = true;
+  });
+  await Promise.resolve();
+  const closedEarly = closed;
+  await assert.rejects(f.recipient.executeOnce(), /text_recipient_closed/);
+  finish({
+    id: "unit-drained-run",
+    state: "succeeded",
+    text: "unit drained result",
+  });
+  await execution;
+  await closing;
+  assert.equal(closedEarly, false);
+  assert.equal(
+    f.journal.entry("recipient_runs", f.key).data.run.id,
+    "unit-drained-run",
+  );
+  assert.deepEqual(f.journal.list("recipient_replies"), []);
+  assert.deepEqual(f.inbox.inbox(), []);
+  f.reopen({ journal: f.openJournal() });
+  await f.recipient.executeOnce();
+  await sendUntil(f, 1);
+  assert.equal(packet(f.submits[0]).run.text, "unit drained result");
+  assert.equal(f.calls.create, 1);
+});
+
+test("unit recipient close drains runtime timeout and retains prepared uncertainty", async (t) => {
+  const f = fixture(t, { timeout: 20 });
+  let started;
+  const running = new Promise((resolve) => {
+    started = resolve;
+  });
+  f.runtime.createText = async () => {
+    f.calls.create++;
+    started();
+    return new Promise(() => {});
+  };
+  await saved(f);
+  const execution = assert.rejects(
+    f.recipient.executeOnce(),
+    /text_runtime_timeout/,
+  );
+  await running;
+  let closed = false;
+  const closing = f.recipient.close().then(() => {
+    closed = true;
+  });
+  await Promise.resolve();
+  const closedEarly = closed;
+  await closing;
+  await execution;
+  assert.equal(closedEarly, false);
+  assert.equal(f.journal.entry("recipient_runs", f.key).data.state, "prepared");
+  assert.equal(f.journal.entry("recipient_runs", f.key).data.run, undefined);
+  assert.equal(f.calls.create, 1);
+});
+
+test("unit recipient close drains receiver ACK without closing injected resources", async (t) => {
+  const f = fixture(t);
+  let started, finish;
+  const acknowledging = new Promise((resolve) => {
+    started = resolve;
+  });
+  const result = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const ack = f.transport.ack;
+  f.transport.ack = async (request) => {
+    started();
+    await result;
+    return ack(request);
+  };
+  f.deliver();
+  const receive = f.recipient.receiveOnce();
+  await acknowledging;
+  let closed = false;
+  const closing = f.recipient.close().then(() => {
+    closed = true;
+  });
+  await Promise.resolve();
+  const closedEarly = closed;
+  assert.equal(f.inbox.inbox()[0].receipt_confirmed, false);
+  finish();
+  await receive;
+  await closing;
+  assert.equal(closedEarly, false);
+  assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
+  assert.deepEqual(f.journal.list("recipient_rejected"), []);
+  assert.equal(f.calls.create, 0);
 });
