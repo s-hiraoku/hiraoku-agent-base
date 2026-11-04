@@ -50,13 +50,21 @@ export class TaskService {
   }
   row(rows: Row[]): Task {
     if (!rows[0]) throw new Error("operation_rejected");
-    const { text_request_json, ...record } = rows[0];
-    const task = record as unknown as Task;
-    if (text_request_json)
-      task.text_request = storedTextSchema.parse(
-        JSON.parse(String(text_request_json)),
-      );
-    return task;
+    return rows[0] as unknown as Task;
+  }
+  private async loadText(p: Principal, task: Task) {
+    if (task.task_type !== "generic_text") return undefined;
+    const rows = await this.authorization.batch(p, [
+      stmt(
+        "SELECT payload,worker_client FROM task_text_requests WHERE task_id=?",
+        task.id,
+      ),
+    ]);
+    if (!rows[0][0]) throw Error("text_record_missing");
+    task.text_request = storedTextSchema.parse(
+      JSON.parse(String(rows[0][0].payload)),
+    );
+    return rows[0][0].worker_client;
   }
   private async bind(p: Principal) {
     if (p.textBinding || p.taskTypes?.includes("generic_text")) {
@@ -89,6 +97,7 @@ export class TaskService {
   }
   private async guardText(p: Principal, task: Task, ownerOnly = false) {
     if (task.task_type !== "generic_text") return;
+    const workerClient = await this.loadText(p, task);
     const request = task.text_request;
     let b;
     try {
@@ -123,14 +132,7 @@ export class TaskService {
       task.runner_scope !== (p.runnerScope ?? null)
     )
       throw Error("operation_rejected");
-    const rows = await this.authorization.batch(p, [
-      stmt(
-        "SELECT 1 AS valid FROM task_text_requests WHERE task_id=? AND worker_client=?",
-        task.id,
-        p.clientId!,
-      ),
-    ]);
-    if (!rows[0][0]) throw Error("operation_rejected");
+    if (workerClient !== p.clientId) throw Error("operation_rejected");
   }
   async submitText(p: Principal, input: TextInput) {
     this.principal(p, "submit");
@@ -192,12 +194,13 @@ export class TaskService {
         mutation,
       ),
       stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE owner=? AND request_key=?",
+        "SELECT * FROM tasks WHERE owner=? AND request_key=?",
         p.subject,
         requestKey,
       ),
     ]);
     const task = this.row(rows[2]);
+    await this.loadText(p, task);
     if (
       task.task_type !== "generic_text" ||
       task.text_request?.fingerprint !== fingerprint
@@ -211,7 +214,7 @@ export class TaskService {
     p = await this.bind(p);
     const r = await this.authorization.batch(p, [
       stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=? AND (owner=? OR (destination=? AND runner_subject=? AND runner_scope IS ?) OR EXISTS(SELECT 1 FROM task_access g WHERE g.task=tasks.id AND g.subject=?))",
+        "SELECT * FROM tasks WHERE id=? AND (owner=? OR (destination=? AND runner_subject=? AND runner_scope IS ?) OR EXISTS(SELECT 1 FROM task_access g WHERE g.task=tasks.id AND g.subject=?))",
         a.id,
         p.subject,
         p.worker ?? "",
@@ -273,7 +276,7 @@ export class TaskService {
         ),
       ),
       stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE owner=? AND request_key=?",
+        "SELECT * FROM tasks WHERE owner=? AND request_key=?",
         p.subject,
         a.request_key,
       ),
@@ -311,6 +314,9 @@ export class TaskService {
     if (p.worker !== "hermes" && allowed.some((t) => t !== "generic_text"))
       throw Error("forbidden");
     const clock = this.driver.nowSQL;
+    const deadlineScope = allowed.includes("generic_text")
+      ? `(${scope.sql}) AND EXISTS(SELECT 1 FROM task_text_requests t WHERE t.task_id=tasks.id AND t.work_deadline>${clock})`
+      : "0";
     const mutation = crypto.randomUUID();
     const rows = await this.authorization.batch(p, [
       stmt(
@@ -321,7 +327,7 @@ export class TaskService {
         ...scope.params,
       ),
       stmt(
-        `UPDATE tasks SET state='running',execution_open=1,fence=fence+1,lease=${clock}+?,runner_scope=?,runner_subject=?,actor=?,at=${clock},mutation=? WHERE id=(SELECT id FROM tasks WHERE destination=? AND task_type IN (${allowed.map(() => "?").join(",")}) AND state='queued' AND (task_type<>'generic_text' OR ((${scope.sql}) AND EXISTS(SELECT 1 FROM task_text_requests t WHERE t.task_id=tasks.id AND t.work_deadline>${clock}))) ORDER BY at,rowid LIMIT 1) AND NOT EXISTS(SELECT 1 FROM tasks WHERE destination=? AND execution_open=1)`,
+        `UPDATE tasks SET state='running',execution_open=1,fence=fence+1,lease=${clock}+?,runner_scope=?,runner_subject=?,actor=?,at=${clock},mutation=? WHERE id=(SELECT id FROM tasks WHERE destination=? AND task_type IN (${allowed.map(() => "?").join(",")}) AND state='queued' AND (task_type<>'generic_text' OR (${deadlineScope})) ORDER BY at,rowid LIMIT 1) AND NOT EXISTS(SELECT 1 FROM tasks WHERE destination=? AND execution_open=1)`,
         this.leaseMs,
         p.runnerScope ?? null,
         p.subject,
@@ -332,17 +338,22 @@ export class TaskService {
         ...scope.params,
         p.worker!,
       ),
-      stmt(
-        "UPDATE task_text_requests SET worker_client=? WHERE task_id=(SELECT id FROM tasks WHERE mutation=?) AND worker_client IS NULL",
-        p.clientId ?? null,
-        mutation,
-      ),
-      stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE mutation=?",
-        mutation,
-      ),
+      ...(allowed.includes("generic_text")
+        ? [
+            stmt(
+              "UPDATE task_text_requests SET worker_client=? WHERE task_id=(SELECT id FROM tasks WHERE mutation=?) AND worker_client IS NULL",
+              p.clientId ?? null,
+              mutation,
+            ),
+          ]
+        : []),
+      stmt("SELECT * FROM tasks WHERE mutation=?", mutation),
     ]);
-    return rows[3][0] ? this.row(rows[3]) : null;
+    const claimed = rows[rows.length - 1];
+    if (!claimed[0]) return null;
+    const task = this.row(claimed);
+    await this.guardText(p, task);
+    return task;
   }
   async heartbeat(p: Principal, a: Lease & { run_id?: string }) {
     this.principal(p, "heartbeat");
@@ -350,10 +361,7 @@ export class TaskService {
     const before = this.row(
       (
         await this.authorization.batch(p, [
-          stmt(
-            "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=?",
-            a.id,
-          ),
+          stmt("SELECT * FROM tasks WHERE id=?", a.id),
         ])
       )[0],
     );
@@ -375,12 +383,11 @@ export class TaskService {
         a.run_id ?? null,
         a.run_id ?? null,
       ),
-      stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE mutation=?",
-        mutation,
-      ),
+      stmt("SELECT * FROM tasks WHERE mutation=?", mutation),
     ]);
-    return this.row(r[1]);
+    const updated = this.row(r[1]);
+    await this.guardText(p, updated);
+    return updated;
   }
   async complete(
     p: Principal,
@@ -392,7 +399,7 @@ export class TaskService {
       (
         await this.authorization.batch(p, [
           stmt(
-            "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=? AND destination=? AND runner_subject=? AND runner_scope IS ?",
+            "SELECT * FROM tasks WHERE id=? AND destination=? AND runner_subject=? AND runner_scope IS ?",
             a.id,
             p.worker ?? "",
             p.subject,
@@ -427,7 +434,7 @@ export class TaskService {
         a.fence,
       ),
       stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=? AND destination=? AND runner_subject=? AND runner_scope IS ? AND fence=? AND state=? AND result=?",
+        "SELECT * FROM tasks WHERE id=? AND destination=? AND runner_subject=? AND runner_scope IS ? AND fence=? AND state=? AND result=?",
         a.id,
         p.worker ?? "",
         p.subject,
@@ -437,7 +444,9 @@ export class TaskService {
         a.result,
       ),
     ]);
-    return this.row(r[1]);
+    const updated = this.row(r[1]);
+    await this.guardText(p, updated);
+    return updated;
   }
   async cancel(p: Principal, a: { id: string }) {
     this.principal(p, "cancel");
@@ -445,10 +454,7 @@ export class TaskService {
     const before = this.row(
       (
         await this.authorization.batch(p, [
-          stmt(
-            "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=?",
-            a.id,
-          ),
+          stmt("SELECT * FROM tasks WHERE id=?", a.id),
         ])
       )[0],
     );
@@ -462,13 +468,11 @@ export class TaskService {
         a.id,
         p.subject,
       ),
-      stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=? AND owner=?",
-        a.id,
-        p.subject,
-      ),
+      stmt("SELECT * FROM tasks WHERE id=? AND owner=?", a.id, p.subject),
     ]);
-    return this.row(r[1]);
+    const updated = this.row(r[1]);
+    await this.guardText(p, updated);
+    return updated;
   }
   async view(p: Principal, a: { id: string }) {
     const task = await this.get(p, a);
@@ -519,10 +523,7 @@ export class TaskService {
     const task = this.row(
       (
         await this.authorization.batch(p, [
-          stmt(
-            "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=?",
-            id,
-          ),
+          stmt("SELECT * FROM tasks WHERE id=?", id),
         ])
       )[0],
     );
@@ -600,13 +601,11 @@ export class TaskService {
         a.run_id,
         a.runner_scope,
       ),
-      stmt(
-        "SELECT tasks.*,(SELECT payload FROM task_text_requests WHERE task_id=tasks.id) AS text_request_json FROM tasks WHERE id=? AND mutation=?",
-        a.id,
-        mutation,
-      ),
+      stmt("SELECT * FROM tasks WHERE id=? AND mutation=?", a.id, mutation),
     ]);
-    return this.row(r[1]);
+    const updated = this.row(r[1]);
+    await this.guardText(p, updated);
+    return updated;
   }
   async pending(p: Principal) {
     this.principal(p, "events");
