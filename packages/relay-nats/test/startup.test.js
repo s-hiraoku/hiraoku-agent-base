@@ -9,6 +9,7 @@ import {
   readFileSync,
   rmSync,
   unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout, clearTimeout } from "node:timers";
