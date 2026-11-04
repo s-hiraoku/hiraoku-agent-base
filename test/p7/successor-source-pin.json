@@ -2,6 +2,55 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "28fc2c8e03468145c46440af7a5ae01e3d2de655",
-  "inputs": {}
+  "source_ref": "330c3614d8fb895eb7af83a2bbb57ae53ffa1f3f",
+  "inputs": {
+    "db/schema.ts": {
+      "previous_sha256": null,
+      "sha256": "9f353a2c6407f495ac7d46d841d5accb6c63fe789cc2d2e9bab674d7730d7818"
+    },
+    "docs/implementation/generic-text-preview.md": {
+      "previous_sha256": null,
+      "sha256": "d6d49b410befabbfe10513cb55f0616abb2a3411e46bb36e8648e21e43cc0190"
+    },
+    "drizzle/0009_generic_text.sql": {
+      "previous_sha256": null,
+      "sha256": "e4068073157cd6134f9f46b15494f9f6307adb4bc52b637ef4bff3ae08cb01c8"
+    },
+    "src/adapter.ts": {
+      "previous_sha256": "4105718441970854cbaddc0795137bb512c003ac193be4fb8bb1cc832b92e99c",
+      "sha256": "8e1d81e9b6a36b9b8457030154f9470d1bdb1ffca155046f6dc5e901fb07904d"
+    },
+    "src/store.ts": {
+      "previous_sha256": "7c534b9ab811a3358dc9a879a380c117d629a8c13a47eccf3fa5a7eed39bd043",
+      "sha256": "c5df6e760217b867ba0820fa9f727194a7d32d76c5e7241fabe7ddcdad620a5f"
+    },
+    "src/task-contract.ts": {
+      "previous_sha256": "b54f0a31191d53eb3adbe9a5720359483f43b4f444f7ac3494d6b7942f91ae95",
+      "sha256": "af091cf17ace961375cacf4f3559ccb1b5af579fccfe9897515749a9f17cb011"
+    },
+    "src/text-task.ts": {
+      "previous_sha256": null,
+      "sha256": "20a9b10f349c8867dd26514eec127978bd2a7148acb54ceca3904d491c3cacab"
+    },
+    "src/types.ts": {
+      "previous_sha256": "5ed448109e226fa0612f571dd616e5be2cbb2691f560a6e207bc47b89c16aeac",
+      "sha256": "10392a615913dda114cc1ebcccb5b1d7713567b3f46938e182707c6d84948835"
+    },
+    "test/generic-async-e2e.test.js": {
+      "previous_sha256": null,
+      "sha256": "f2c03d300e7a31a7b611dcebc13b33c74a0d12cf83b350d5c3933961516cbf63"
+    },
+    "test/generic-async/fixtures.js": {
+      "previous_sha256": null,
+      "sha256": "99adf36932192a129a69c0b047caea215e0a33f5d7a68d6bade27fd3f6e9bf5b"
+    },
+    "test/generic-async/worker.mjs": {
+      "previous_sha256": null,
+      "sha256": "99a6944273a96db9ee940d1d340efb696aaef02f140dd4e9c0fa3306d9fc483a"
+    },
+    "test/generic-text-task.test.js": {
+      "previous_sha256": null,
+      "sha256": "c7443521688a0469de127e8cbc7868c5d7b5a20edb0b1237cf10444927c4882c"
+    }
+  }
 }
