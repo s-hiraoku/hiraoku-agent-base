@@ -518,3 +518,28 @@ test("public MCP input rejects NUL text before creating a task", async (t) => {
   assert.equal(response.status, 400);
   assert.equal((await f.h.listText(f.sender)).totalSize, 0);
 });
+
+test("MCP rejects isolated UTF-16 surrogates and preserves valid emoji", async (t) => {
+  const f = await fixture(t);
+  for (const text of [
+    "\ud800",
+    "\udfff",
+    "before\ud800after",
+    "before\udfffafter",
+  ]) {
+    const response = await f.raw(
+      rpc("tools/call", {
+        name: "text_submit",
+        arguments: f.input(crypto.randomUUID(), text),
+      }),
+    );
+    assert.equal(response.status, 400);
+  }
+  assert.equal((await f.h.listText(f.sender)).totalSize, 0);
+  const client = await f.connect();
+  const text = "valid emoji 🦊👩🏽‍💻 and replacement character �";
+  const job = await call(client, "text_submit", f.input("valid-unicode", text));
+  const stored = await f.h.get(f.sender, { id: job.id });
+  assert.equal(stored.text_request.input.text, text);
+  assert.equal((await f.h.listText(f.sender)).totalSize, 1);
+});
