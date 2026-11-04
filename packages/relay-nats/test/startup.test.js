@@ -79,11 +79,12 @@ async function controlled(t, mode, check) {
       assert.equal(spawnCount, 1);
       config = args[1];
       if (mode === "spawn-failure") unlinkSync(binary);
-      child = originalSpawn(
-        binary,
-        mode === "nonzero-exit" ? [`--${sentinel}`] : args,
-        options,
-      );
+      if (mode === "nonzero-exit")
+        writeFileSync(
+          config,
+          readFileSync(config, "utf8") + `\n"${sentinel}": true\n`,
+        );
+      child = originalSpawn(binary, args, options);
       closed = new Promise((resolve) =>
         child.once("close", (code, signal) => {
           events.push({ event: "close", code, signal });
