@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import pin from "./source-pin.json" with { type: "json" };
 import { sourceFixture, fixtureBytes } from "./source-fixtures.js";
 import successor from "./successor-source-pin.json" with { type: "json" };
@@ -152,6 +152,49 @@ test(runnerCases[0], (t) => {
       [script, "--source-ref", "HEAD", "--write"],
       { cwd: generator, stdio: "pipe" },
     ),
+  );
+  const shallow = temporary(t, "p7-successor-shallow-");
+  execFileSync("git", [
+    "clone",
+    "--quiet",
+    "--depth",
+    "1",
+    pathToFileURL(generator).href,
+    shallow,
+  ]);
+  const shallowScript = join(shallow, "scripts/pin-p7-successor.mjs");
+  writeFileSync(shallowScript, readFileSync(script));
+  const outputPaths = [
+    "test/p7/successor-source-pin.json",
+    "test/p7/predecessor-source-fixtures.json",
+  ];
+  const before = outputPaths.map((path) => readFileSync(join(shallow, path)));
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [shallowScript, "--source-ref", source, "--write"],
+        { cwd: shallow, stdio: "pipe" },
+      ),
+    (error) =>
+      error.status === 1 &&
+      error.stderr.toString().includes("Historical P7 baseline unavailable"),
+  );
+  assert.deepEqual(
+    outputPaths.map((path) => readFileSync(join(shallow, path))),
+    before,
+  );
+  execFileSync("git", ["fetch", "--quiet", "--unshallow"], { cwd: shallow });
+  execFileSync(
+    process.execPath,
+    [shallowScript, "--source-ref", source, "--write"],
+    { cwd: shallow },
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(shallow, "test/p7/successor-source-pin.json"), "utf8"),
+    ).source_ref,
+    source,
   );
 });
 test(runnerCases[1], (t) => {

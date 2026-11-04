@@ -64,6 +64,16 @@ for (const path of Object.keys(previous.inputs)) selected.add(path);
 const inputs = {},
   blobs = {};
 const baseline = "028b3754175f47668cc3f787a0a149926351f752";
+try {
+  execFileSync("git", ["cat-file", "-e", `${baseline}^{commit}`], {
+    cwd: root,
+    stdio: "pipe",
+  });
+} catch {
+  throw Error(
+    `Historical P7 baseline unavailable: ${baseline}; fetch full Git history before generating successor sources`,
+  );
+}
 for (const path of [...selected].sort()) {
   const old = pin.inputs[path]?.sha256 ?? null,
     entry = entries.get(path);
