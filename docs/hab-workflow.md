@@ -2,6 +2,8 @@
 
 [READMEへ](../README.md) · [内部設計](architecture.md) · [セキュリティ](hab-security.md)
 
+製品に依存しないメッセージ判断・非同期の結果相関・受信側所有者の承認は[追加設計](generic-agent-async-design.md)を参照。以下の固定Task契約と実装範囲は維持する。
+
 以下は目標フローと、実装された限定契約の対応です。Dots/Grokの本番接続や任意の仕事の振分けは未実施です。
 
 ```mermaid

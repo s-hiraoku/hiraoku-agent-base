@@ -4,6 +4,8 @@
 
 [README](../README.md) · [Relay契約](hab-relay-spec.md) · [認証group](relay-auth-groups.md) · [discovery](mcp-agent-discovery.md) · [Task bridge](task-bridge.md)
 
+非同期処理と受信者承認の追加仕様は[汎用エージェント間の非同期処理](generic-agent-async-design.md)を参照。通信許可と受信側所有者による実行承認を分ける。本文0.1の技術評価・配備状況は当時の基準であり、追加設計の実装完了を示さない。
+
 ## 1. 目的と製品の境界
 
 HABは、異なる製品・実行環境のエージェントを、簡単に接続して通信を始められるようにする。利用者はA2A、NATS、MCPを理解せず、**つなぐ・登録を確認する・相手を選んで送る**という操作で利用できることを目指す。
