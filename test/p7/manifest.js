@@ -1,3 +1,4 @@
+import { startupCases } from "../../packages/relay-nats/test/startup-cases.js";
 import { genericNatsCases } from "../generic-nats/case-names.js";
 import a2aCases from "./a2a-cases.json" with { type: "json" };
 import natsCases from "./nats-cases.json" with { type: "json" };
@@ -47,6 +48,11 @@ export const groups = [
       "hab-integration",
     ].map((name) => `packages/relay-nats/test/${name}.test.js`),
     cases: natsCases,
+  },
+  {
+    id: "broker-startup",
+    files: ["packages/relay-nats/test/startup.test.js"],
+    cases: startupCases,
   },
   {
     id: "p7-acceptance",

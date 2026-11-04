@@ -52,3 +52,5 @@ NODE_NO_WARNINGS=1 node scripts/prove-generic-nats.mjs --nats-server /absolute/p
 proof runner は実行前に binary の固定サイズ・SHAを検査し、別の scratch へ検証済みの byte だけを stage します。任意 binary や本番 server URL は実行対象にできません。実 JetStream の要求・結果を公式 manager で観測し、異なる2つの合成 runtime、保存後 ACK、逆順の結果、応答喪失、broker/receiver の停止と再開、独立した疑似外部 API 台帳の重複防止を試験します。LLM と実エージェントには接続しません。
 
 これは、宣言した重複防止・照合契約の範囲での試験です。実製品の tool 隔離、電源断、物理 SSD 障害、本番権限、移設先 volume の保証にはしません。本番配置・実認証・実製品の接続は、別の受入と運用手順を通します。
+
+P7 の必須 `broker-startup` 群は、同じ検証済み公式 binary で起動前の signal 終了、3秒遅延、起動期限超過、spawn 失敗、非ゼロ終了を確認します。試験 fixture の起動待ちは単調時計による10秒期限です。子の終了を検知したら待機を終了し、自動で起動し直しません。認証付き NATS 接続で ready を確認し、接続後も死活と期限を再確認します。失敗理由・試行数・経過時間・終了 code/signal・限定した接続 error code を TAP に残します。credential・URL・path・生の error/stderr は公開診断へ含めません。この起動予算は試験用であり、本番の性能目標、配送 lease、TTL を変更しません。

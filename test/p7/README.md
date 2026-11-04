@@ -18,3 +18,5 @@ The generation command and its regression fixture need the historical baseline c
 The mandatory `generic-nats` group runs the isolated two-recipient text transport against the verifier-staged real JetStream binary. Its independent case catalog is `test/generic-nats/case-names.js`. It does not silently skip when a broker is unavailable. The root regression remains separate and does not receive broker credentials or a server URL.
 
 Owned process groups are closed before scratch removal. If a zero-signal group liveness probe returns `EPERM`, the runner uses read-only numeric group evidence from `/bin/ps`; it does not bypass a denied termination signal. Both unavailable liveness methods fail verification.
+
+The mandatory `broker-startup` group uses the verifier-staged official binary to test signal termination, delayed authenticated readiness, the finite readiness deadline, spawn failure, and nonzero exit. Its fixed catalog is `packages/relay-nats/test/startup-cases.js`. The existing 55-case producer catalog is unchanged. Startup failure diagnostics survive scratch cleanup in TAP and omit credentials, URLs, paths, raw errors, and broker output.
