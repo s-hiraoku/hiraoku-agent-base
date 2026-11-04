@@ -303,6 +303,8 @@ export function assertWitness(
   witness: TaskWitness,
   mode: GateMode,
 ): void {
+  if (!Number.isSafeInteger(witness.now) || witness.now < 0)
+    throw Error("invalid_text_clock");
   const task = witness.task,
     stored = task.text_request;
   if (

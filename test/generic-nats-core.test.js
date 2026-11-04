@@ -321,6 +321,11 @@ test("Task witness denies admission at exact TTL, work and lease boundaries but 
   const f = await taskFixture(t);
   await f.attach();
   const w = await f.gate.inspect(f.route, f.packet.key);
+  for (const now of [NaN, Infinity, -1, Number.MAX_SAFE_INTEGER + 1])
+    assert.throws(
+      () => assertWitness(f.route, f.packet, { ...w, now }, "execute"),
+      /invalid_text_clock/,
+    );
   assert.doesNotThrow(() =>
     assertWitness(
       f.route,
