@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "330c3614d8fb895eb7af83a2bbb57ae53ffa1f3f",
+  "source_ref": "6b143a406f5c5a93191318b5238a833f04d83b34",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -10,19 +10,23 @@
     },
     "docs/implementation/generic-text-preview.md": {
       "previous_sha256": null,
-      "sha256": "d6d49b410befabbfe10513cb55f0616abb2a3411e46bb36e8648e21e43cc0190"
+      "sha256": "80aee7e24168b5d8f69fd4ac3fd75246dfe056cb9ca7945cc45de2d20a965271"
     },
     "drizzle/0009_generic_text.sql": {
       "previous_sha256": null,
       "sha256": "e4068073157cd6134f9f46b15494f9f6307adb4bc52b637ef4bff3ae08cb01c8"
     },
+    "scripts/p7-lab.mjs": {
+      "previous_sha256": null,
+      "sha256": "bc307fcb427fbb2a82f13a224c40b3d0428715ebdc3ef488114dcc3b74c0ee1f"
+    },
     "src/adapter.ts": {
       "previous_sha256": "4105718441970854cbaddc0795137bb512c003ac193be4fb8bb1cc832b92e99c",
-      "sha256": "8e1d81e9b6a36b9b8457030154f9470d1bdb1ffca155046f6dc5e901fb07904d"
+      "sha256": "cf35ebee2431d6585d12aeeec24f7f60a5b465de085f229c17c636ab7d8860b7"
     },
     "src/store.ts": {
       "previous_sha256": "7c534b9ab811a3358dc9a879a380c117d629a8c13a47eccf3fa5a7eed39bd043",
-      "sha256": "c5df6e760217b867ba0820fa9f727194a7d32d76c5e7241fabe7ddcdad620a5f"
+      "sha256": "9b1f35d8681a82a972b064b687460dc0be761fd1c94a00caf6b2a031f031676a"
     },
     "src/task-contract.ts": {
       "previous_sha256": "b54f0a31191d53eb3adbe9a5720359483f43b4f444f7ac3494d6b7942f91ae95",
@@ -30,11 +34,11 @@
     },
     "src/text-task.ts": {
       "previous_sha256": null,
-      "sha256": "20a9b10f349c8867dd26514eec127978bd2a7148acb54ceca3904d491c3cacab"
+      "sha256": "18fba885381369bc9a06f48a7a12351e9c3f86c3c20d4d55b04b39c6ad974ca3"
     },
     "src/types.ts": {
       "previous_sha256": "5ed448109e226fa0612f571dd616e5be2cbb2691f560a6e207bc47b89c16aeac",
-      "sha256": "10392a615913dda114cc1ebcccb5b1d7713567b3f46938e182707c6d84948835"
+      "sha256": "c5e217f4b3ee7a19d2c73d758e260e3f71f220eb6e0ef1e2dff465327afdee54"
     },
     "test/generic-async-e2e.test.js": {
       "previous_sha256": null,
@@ -50,7 +54,7 @@
     },
     "test/generic-text-task.test.js": {
       "previous_sha256": null,
-      "sha256": "c7443521688a0469de127e8cbc7868c5d7b5a20edb0b1237cf10444927c4882c"
+      "sha256": "d03b3eefe534586def7cf7e393e0573ee2d02c933c353acfc52a5b572f5c71ae"
     }
   }
 }
