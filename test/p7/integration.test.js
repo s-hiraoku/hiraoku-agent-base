@@ -40,7 +40,11 @@ async function receiveRequest(f) {
 async function receiveResult(f, count) {
   await eventually(async () => {
     await f.receiveResult();
-    return f.originEntries().length === count;
+    const entries = f.originEntries();
+    return (
+      entries.length === count &&
+      entries.every((entry) => entry.receipt_confirmed)
+    );
   });
 }
 async function execute(f, task, witnesses) {
@@ -179,6 +183,18 @@ test("P7-01 official A2A and real HAB NATS separate saved ACK from one Task and 
 });
 
 test("P7-02 whole HAB cold restore preserves a live broker reply and one known engine Task", async (t) => {
+  const savedBeforeAck = [{ receipt_confirmed: false }];
+  let receiveAttempts = 0;
+  await receiveResult(
+    {
+      async receiveResult() {
+        if (++receiveAttempts === 2) savedBeforeAck[0].receipt_confirmed = true;
+      },
+      originEntries: () => savedBeforeAck,
+    },
+    1,
+  );
+  assert.equal(receiveAttempts, 2);
   const area = mkdtempSync(join(tmpdir(), "p7-cold-"));
   const backup = join(area, "backup"),
     restoredRoot = join(area, "restored");

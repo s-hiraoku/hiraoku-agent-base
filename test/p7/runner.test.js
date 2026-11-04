@@ -14,12 +14,18 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import pin from "./source-pin.json" with { type: "json" };
+import { sourceFixture, fixtureBytes } from "./source-fixtures.js";
+import successor from "./successor-source-pin.json" with { type: "json" };
+import { gzipSync } from "node:zlib";
+import { execFileSync } from "node:child_process";
 import { groups, runnerCases } from "./manifest.js";
 import {
   verifyP7Source,
   validateOrigins,
+  validateSuccessor,
+  p7ExpectedInputs,
 } from "../../scripts/lib/p7-provenance.mjs";
 import { verifyA2aSource } from "../../scripts/lib/a2a-acceptance.mjs";
 import { parseP7Options } from "../../scripts/lib/p7-options.mjs";
@@ -44,14 +50,6 @@ function temporary(t, prefix) {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }
-function sourceFixture(t) {
-  const root = temporary(t, "p7-source-");
-  for (const file of [...Object.keys(pin.inputs), "package.json"]) {
-    mkdirSync(dirname(join(root, file)), { recursive: true });
-    writeFileSync(join(root, file), readFileSync(join(repo, file)));
-  }
-  return root;
-}
 function validGroups() {
   return groups.map((d) => {
     const n = d.cases?.length ?? d.count;
@@ -67,10 +65,137 @@ function validGroups() {
 
 test(runnerCases[0], (t) => {
   const root = sourceFixture(t);
-  const result = verifyP7Source(root);
+  const result = verifyP7Source(root, "historical");
   assert.equal(result.inputs, 218);
   assert.equal(result.ancestry_required, false);
   assert.equal(existsSync(join(root, ".git")), false);
+  const current = sourceFixture(t, "current");
+  assert.equal(verifyP7Source(current).source_profile, "current");
+  assert.equal(verifyP7Source(repo).contents_match, true);
+  assert.throws(() => p7ExpectedInputs("unknown"), /profile/);
+  assert.deepEqual(validateSuccessor(successor), successor);
+  const wrong = structuredClone(successor);
+  wrong.source_ref = "0".repeat(40);
+  assert.throws(() => validateSuccessor(wrong), /manifest/);
+  const generator = temporary(t, "p7-successor-generator-");
+  execFileSync("git", ["clone", "--no-hardlinks", "--quiet", repo, generator]);
+  const run = (...args) =>
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=Synthetic test",
+        "-c",
+        "user.email=test@example.invalid",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "maintenance.auto=false",
+        "-c",
+        "gc.auto=0",
+        ...args,
+      ],
+      { cwd: generator },
+    );
+  const script = join(generator, "scripts/pin-p7-successor.mjs");
+  writeFileSync(
+    script,
+    readFileSync(join(repo, "scripts/pin-p7-successor.mjs")),
+  );
+  writeFileSync(
+    join(generator, "test/p7/successor-source-pin.json"),
+    JSON.stringify(successor),
+  );
+  const changed = "src/types.ts",
+    extra = "src/synthetic-successor.ts";
+  writeFileSync(
+    join(generator, changed),
+    Buffer.concat([readFileSync(join(generator, changed)), Buffer.from("\n")]),
+  );
+  writeFileSync(join(generator, extra), "export const synthetic = true;\n");
+  run("add", changed, extra);
+  run(
+    "-c",
+    "core.hooksPath=/dev/null",
+    "commit",
+    "--quiet",
+    "-m",
+    "synthetic provenance fixture",
+  );
+  const source = run("rev-parse", "HEAD").toString().trim();
+  execFileSync(process.execPath, [script, "--source-ref", source, "--write"], {
+    cwd: generator,
+  });
+  const generated = JSON.parse(
+    readFileSync(join(generator, "test/p7/successor-source-pin.json"), "utf8"),
+  );
+  assert.equal(generated.source_ref, source);
+  assert.equal(
+    generated.inputs[changed].previous_sha256,
+    pin.inputs[changed].sha256,
+  );
+  assert.equal(generated.inputs[extra].previous_sha256, null);
+  const archived = JSON.parse(
+    readFileSync(
+      join(generator, "test/p7/predecessor-source-fixtures.json"),
+      "utf8",
+    ),
+  );
+  assert.ok(archived.blobs[pin.inputs[changed].sha256]);
+  assert.deepEqual(
+    readFileSync(join(generator, "test/p7/source-pin.json")),
+    readFileSync(join(repo, "test/p7/source-pin.json")),
+  );
+  assert.throws(() =>
+    execFileSync(
+      process.execPath,
+      [script, "--source-ref", "HEAD", "--write"],
+      { cwd: generator, stdio: "pipe" },
+    ),
+  );
+  const shallow = temporary(t, "p7-successor-shallow-");
+  execFileSync("git", [
+    "clone",
+    "--quiet",
+    "--depth",
+    "1",
+    pathToFileURL(generator).href,
+    shallow,
+  ]);
+  const shallowScript = join(shallow, "scripts/pin-p7-successor.mjs");
+  writeFileSync(shallowScript, readFileSync(script));
+  const outputPaths = [
+    "test/p7/successor-source-pin.json",
+    "test/p7/predecessor-source-fixtures.json",
+  ];
+  const before = outputPaths.map((path) => readFileSync(join(shallow, path)));
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [shallowScript, "--source-ref", source, "--write"],
+        { cwd: shallow, stdio: "pipe" },
+      ),
+    (error) =>
+      error.status === 1 &&
+      error.stderr.toString().includes("Historical P7 baseline unavailable"),
+  );
+  assert.deepEqual(
+    outputPaths.map((path) => readFileSync(join(shallow, path))),
+    before,
+  );
+  execFileSync("git", ["fetch", "--quiet", "--unshallow"], { cwd: shallow });
+  execFileSync(
+    process.execPath,
+    [shallowScript, "--source-ref", source, "--write"],
+    { cwd: shallow },
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(shallow, "test/p7/successor-source-pin.json"), "utf8"),
+    ).source_ref,
+    source,
+  );
 });
 test(runnerCases[1], (t) => {
   for (const fault of [
@@ -110,8 +235,24 @@ test(runnerCases[1], (t) => {
       pkg.dependencies["@a2a-js/sdk"] = "unreviewed";
       writeFileSync(path, JSON.stringify(pkg));
     }
-    assert.throws(() => verifyP7Source(root), undefined, fault);
+    assert.throws(() => verifyP7Source(root, "historical"), undefined, fault);
   }
+  const historicalFile = "src/types.ts",
+    expected = pin.inputs[historicalFile];
+  const bytes = fixtureBytes(historicalFile, expected);
+  const archive = {
+    blobs: {
+      [expected.sha256]: { gzip_base64: gzipSync(bytes).toString("base64") },
+    },
+  };
+  assert.deepEqual(fixtureBytes("absent-fixture", expected, archive), bytes);
+  archive.blobs[expected.sha256].gzip_base64 = gzipSync(
+    Buffer.from("corrupt"),
+  ).toString("base64");
+  assert.throws(() => fixtureBytes("absent-fixture", expected, archive));
+  const current = sourceFixture(t, "current");
+  writeFileSync(join(current, "src/.unexpected"), "extra");
+  assert.throws(() => verifyP7Source(current), /inventory/);
   const wrong = structuredClone(pin);
   wrong.inputs["src/hab/sqlite-registry.ts"].origin = "nats";
   assert.throws(() => validateOrigins(wrong), /origin/);
