@@ -648,6 +648,7 @@ test("Task gate refreshes durable authorization and denies revoked owner subject
   for (const target of [
     { kind: "subject", id: f.identity.sender.subject },
     { kind: "client", id: f.identity.sender.clientId },
+    { kind: "subject", id: f.route.binding.recipientOwner },
   ]) {
     await f.hub.authorization.setStopped(
       target,
@@ -774,4 +775,18 @@ test("Task gate cannot return an admissible stale snapshot after a delayed princ
         /text_admission_denied/,
       );
   }
+});
+
+test("journal cursor reaches later immutable records without deleting earlier evidence", (t) => {
+  const f = journalFixture(t, { maxRecords: 300 });
+  const journal = f.open();
+  for (let n = 0; n < 140; n++)
+    journal.insert("pages", `row-${String(n).padStart(3, "0")}`, { n });
+  const first = journal.list("pages", 128);
+  const second = journal.list("pages", 128, first.at(-1).id);
+  assert.equal(first.length, 128);
+  assert.equal(second.length, 12);
+  assert.equal(new Set([...first, ...second].map((row) => row.id)).size, 140);
+  assert.deepEqual(journal.list("pages", 128, second.at(-1).id), []);
+  assert.equal(journal.entry("pages", "row-000").data.n, 0);
 });
