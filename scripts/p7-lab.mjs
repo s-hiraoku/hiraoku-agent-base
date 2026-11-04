@@ -158,6 +158,7 @@ try {
     mkdirSync(cwd, { mode: 0o700 });
     const brokerGroup = [
       "nats-producer",
+      "broker-startup",
       "p7-acceptance",
       "shared-real-backends",
       "generic-nats",

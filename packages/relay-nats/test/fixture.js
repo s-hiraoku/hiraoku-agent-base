@@ -4,6 +4,7 @@ import { createServer, createConnection } from "node:net";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { setTimeout as delay } from "node:timers/promises";
 import { connect } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
@@ -60,7 +61,8 @@ export async function fixture(
     { mode: 0o600 },
   );
   let broker,
-    log = "",
+    log = Buffer.alloc(0),
+    generation = 0,
     backend,
     admin;
   const opened = new Set();
@@ -100,29 +102,111 @@ export async function fixture(
     ...patch,
   };
   async function start() {
-    broker = spawn(serverBinary, ["-c", config], {
+    const started = performance.now();
+    const deadline = started + 10000;
+    const currentGeneration = ++generation;
+    const safeCodes = new Set([
+      "EACCES",
+      "EAGAIN",
+      "ECONNREFUSED",
+      "ECONNRESET",
+      "EHOSTUNREACH",
+      "EINVAL",
+      "EMFILE",
+      "ENETUNREACH",
+      "ENFILE",
+      "ENOENT",
+      "ENOEXEC",
+      "ENOMEM",
+      "ENOTFOUND",
+      "EPERM",
+      "ETIMEDOUT",
+      "ETXTBSY",
+      "TIMEOUT",
+      "AUTHORIZATION_VIOLATION",
+      "CONNECTION_CLOSED",
+      "CONNECTION_REFUSED",
+      "CONNECTION_TIMEOUT",
+    ]);
+    const safeCode = (error) =>
+      [error?.code, error?.cause?.code].find((code) => safeCodes.has(code)) ??
+      "OTHER";
+    let state = { phase: "pending" },
+      attempts = 0,
+      stderrBytes = 0,
+      lastConnectionCode = null,
+      spawnErrorCode = null;
+    const terminal = (reason, code = null, signal = null) => {
+      if (state.phase === "pending")
+        state = { phase: "terminal", reason, code, signal };
+    };
+    const child = spawn(serverBinary, ["-c", config], {
       stdio: ["ignore", "ignore", "pipe"],
     });
-    broker.stderr.on("data", (data) => {
-      log += data.toString();
+    broker = child;
+    child.on("error", (error) => {
+      spawnErrorCode = safeCode(error);
+      terminal("spawn_failed");
     });
-    for (let attempt = 0; attempt < 100; attempt++) {
-      if (broker.exitCode !== null) throw Error(`broker startup failed ${log}`);
+    child.once("exit", (code, signal) => terminal("exited", code, signal));
+    child.stderr.on("data", (data) => {
+      stderrBytes += data.length;
+      log = Buffer.concat([log, data]).subarray(-65536);
+    });
+    const observe = () => {
+      if (child.exitCode !== null || child.signalCode !== null)
+        terminal("exited", child.exitCode, child.signalCode);
+      if (performance.now() >= deadline) terminal("deadline_exceeded");
+    };
+    while (state.phase === "pending") {
+      observe();
+      if (state.phase !== "pending") break;
+      attempts++;
+      let connected = false;
       try {
         const nc = await connect({
           servers: options.server,
           user: options.user,
           pass: options.password,
           reconnect: false,
-          timeout: 100,
+          timeout: Math.min(
+            100,
+            Math.max(1, Math.ceil(deadline - performance.now())),
+          ),
         });
         await nc.close();
-        return;
-      } catch {
-        await delay(20);
+        connected = true;
+      } catch (error) {
+        lastConnectionCode = safeCode(error);
       }
+      observe();
+      if (state.phase !== "pending") break;
+      if (connected) {
+        state = { phase: "ready" };
+        break;
+      }
+      await delay(Math.min(20, Math.max(0, deadline - performance.now())));
     }
-    throw Error(`broker startup timed out ${log}`);
+    const record = {
+      reason: state.reason ?? "ready",
+      generation: currentGeneration,
+      attempts,
+      elapsed_ms: Math.ceil(performance.now() - started),
+      pid: child.pid ?? null,
+      exit_code: state.code ?? child.exitCode,
+      signal: state.signal ?? child.signalCode,
+      spawn_error_code: spawnErrorCode,
+      last_connection_code: lastConnectionCode,
+      stderr_bytes: stderrBytes,
+    };
+    writeFileSync(
+      join(dir, "broker-startup.json"),
+      JSON.stringify(record) + "\n",
+      { mode: 0o600 },
+    );
+    t.diagnostic?.(JSON.stringify({ event: "broker_startup", ...record }));
+    if (state.phase !== "ready")
+      throw Error(`broker startup ${JSON.stringify(record)}`);
   }
   async function stop(signal = "SIGTERM") {
     if (!broker || broker.exitCode !== null || broker.signalCode !== null)
