@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { ReadableStream } from "node:stream/web";
+import { setTimeout, clearTimeout } from "node:timers";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { toNodeHandler } from "@modelcontextprotocol/node";
@@ -124,6 +126,20 @@ const rpc = (method, params = {}) => ({
   method,
   params,
 });
+
+const streamedRequest = (f, body, signal) =>
+  new Request(f.url, {
+    method: "POST",
+    headers: {
+      host: new URL(f.url).host,
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      authorization: "Bearer synthetic-sender",
+    },
+    body,
+    duplex: "half",
+    signal,
+  });
 
 test("official MCP client submits, lists, gets and cancels real persisted generic jobs", async (t) => {
   const f = await fixture(t);
@@ -542,4 +558,90 @@ test("MCP rejects isolated UTF-16 surrogates and preserves valid emoji", async (
   const stored = await f.h.get(f.sender, { id: job.id });
   assert.equal(stored.text_request.input.text, text);
   assert.equal((await f.h.listText(f.sender)).totalSize, 1);
+});
+
+test(
+  "stalled authenticated request body expires after the real ten-second deadline",
+  { timeout: 16000 },
+  async (t) => {
+    const f = await fixture(t);
+    let controller;
+    let canceled = false;
+    const body = new ReadableStream({
+      start(value) {
+        controller = value;
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
+    const started = Date.now();
+    const rescue = setTimeout(() => controller.close(), 14000);
+    try {
+      const exchange = f.endpoint.fetch(streamedRequest(f, body));
+      const closing = f.endpoint.close();
+      const response = await exchange;
+      assert.equal(response.status, 413);
+      assert.ok(Date.now() - started >= 9000);
+      assert.equal(canceled, true);
+      await closing;
+      assert.equal((await f.h.listText(f.sender)).totalSize, 0);
+    } finally {
+      clearTimeout(rescue);
+    }
+  },
+);
+
+test("oversized request rejection does not await an underlying cancel promise", async (t) => {
+  const f = await fixture(t);
+  let releaseCancel;
+  let canceled = false;
+  const cancelPending = new Promise((resolve) => {
+    releaseCancel = resolve;
+  });
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(262145));
+    },
+    cancel() {
+      canceled = true;
+      return cancelPending;
+    },
+  });
+  let deadline;
+  try {
+    const response = await Promise.race([
+      f.endpoint.fetch(streamedRequest(f, body)),
+      new Promise((_resolve, reject) => {
+        deadline = setTimeout(
+          () => reject(Error("cancel blocked rejection")),
+          1000,
+        );
+      }),
+    ]);
+    assert.equal(response.status, 413);
+    assert.equal(canceled, true);
+    await f.endpoint.close();
+    assert.equal((await f.h.listText(f.sender)).totalSize, 0);
+  } finally {
+    clearTimeout(deadline);
+    releaseCancel();
+  }
+});
+
+test("request abort interrupts a stalled body without waiting for its deadline", async (t) => {
+  const f = await fixture(t);
+  const abort = new AbortController();
+  let canceled = false;
+  const body = new ReadableStream({
+    cancel() {
+      canceled = true;
+    },
+  });
+  const response = f.endpoint.fetch(streamedRequest(f, body, abort.signal));
+  abort.abort();
+  assert.equal((await response).status, 413);
+  assert.equal(canceled, true);
+  await f.endpoint.close();
+  assert.equal((await f.h.listText(f.sender)).totalSize, 0);
 });

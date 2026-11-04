@@ -49,23 +49,34 @@ const envelope = z.strictObject({
 async function readBounded(
   body: ReadableStream<Uint8Array> | null,
   limit: number,
+  signal?: AbortSignal,
 ) {
   if (!body) return new Uint8Array();
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
+  let rejectRead: (error: Error) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    rejectRead = reject;
+  });
+  const abort = () => rejectRead(Error("body_aborted"));
+  const timer = setTimeout(() => rejectRead(Error("body_timeout")), 10000);
+  signal?.addEventListener("abort", abort, { once: true });
+  if (signal?.aborted) abort();
   let length = 0;
   try {
     for (;;) {
-      const { done, value } = await reader.read();
+      const { done, value } = await Promise.race([reader.read(), interrupted]);
       if (done) break;
       length += value.length;
-      if (length > limit) {
-        await reader.cancel();
-        throw Error("body_limit");
-      }
+      if (length > limit) throw Error("body_limit");
       chunks.push(value);
     }
+  } catch (error) {
+    void reader.cancel().catch(() => {});
+    throw error;
   } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
     reader.releaseLock();
   }
   const bytes = new Uint8Array(length);
@@ -128,7 +139,7 @@ export function createGenericTextMCPHTTP(options: {
     if (!Object.values(capabilities).some(Boolean)) return rejected(401);
     let bytes: Uint8Array;
     try {
-      bytes = await readBounded(request.body, requestLimit);
+      bytes = await readBounded(request.body, requestLimit, request.signal);
     } catch {
       return rejected(413);
     }
@@ -251,7 +262,11 @@ export function createGenericTextMCPHTTP(options: {
           body: new Uint8Array(bytes).buffer,
         }),
       );
-      const body = await readBounded(response.body, responseLimit);
+      const body = await readBounded(
+        response.body,
+        responseLimit,
+        request.signal,
+      );
       const headers = new Headers(response.headers);
       headers.set("Cache-Control", "no-store");
       headers.delete("content-length");
