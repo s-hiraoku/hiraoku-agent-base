@@ -127,15 +127,16 @@ export class TextNatsJournal {
       .get(bucket, id);
     return row ? this.#decode(bucket, row) : null;
   }
-  list(bucket: string, limit = 32): TextJournalEntry[] {
+  list(bucket: string, limit = 32, afterId?: string): TextJournalEntry[] {
     this.#names(bucket, "scan");
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 128)
       throw Error("invalid_text_scan_limit");
+    if (afterId !== undefined) this.#names(bucket, afterId);
     return this.#db
       .prepare(
-        "SELECT * FROM generic_nats_records WHERE bucket=? ORDER BY rowid LIMIT ?",
+        "SELECT * FROM generic_nats_records WHERE bucket=? AND id>? ORDER BY id LIMIT ?",
       )
-      .all(bucket, limit)
+      .all(bucket, afterId ?? "", limit)
       .map((row) => this.#decode(bucket, row));
   }
   #invoke<T>(work: () => T): T {
