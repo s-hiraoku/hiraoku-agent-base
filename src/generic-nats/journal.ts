@@ -17,6 +17,7 @@ export class TextNatsJournal {
   readonly #db: DatabaseSync;
   readonly #options: TextJournalOptions;
   #transaction = false;
+  #failed = false;
   constructor(path: string, options: TextJournalOptions) {
     if (
       !options.binding ||
@@ -137,14 +138,35 @@ export class TextNatsJournal {
       .all(bucket, limit)
       .map((row) => this.#decode(bucket, row));
   }
+  #invoke<T>(work: () => T): T {
+    if (work.constructor.name === "AsyncFunction")
+      throw Error("async_text_journal_transaction");
+    const result = work();
+    if (
+      result &&
+      (typeof result === "object" || typeof result === "function") &&
+      "then" in result
+    ) {
+      void Promise.resolve(result).catch(() => {});
+      throw Error("async_text_journal_transaction");
+    }
+    return result;
+  }
   transaction<T>(work: () => T): T {
-    if (this.#transaction) return work();
+    if (this.#transaction) {
+      try {
+        return this.#invoke(work);
+      } catch (error) {
+        this.#failed = true;
+        throw error;
+      }
+    }
     this.#db.exec("BEGIN IMMEDIATE");
     this.#transaction = true;
+    this.#failed = false;
     try {
-      const result = work();
-      if (result && typeof result === "object" && "then" in result)
-        throw Error("async_text_journal_transaction");
+      const result = this.#invoke(work);
+      if (this.#failed) throw Error("text_journal_transaction_failed");
       this.#db.exec("COMMIT");
       return result;
     } catch (error) {
@@ -152,8 +174,10 @@ export class TextNatsJournal {
       throw error;
     } finally {
       this.#transaction = false;
+      this.#failed = false;
     }
   }
+
   insert(bucket: string, id: string, data: unknown): void {
     this.transaction(() => {
       this.#names(bucket, id);

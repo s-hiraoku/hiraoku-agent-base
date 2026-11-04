@@ -36,7 +36,6 @@ export function createTextTaskGate(
       )
         throw Error("text_worker_binding_denied");
       const bound = await tasks.authorization.bind(p);
-      const task = await tasks.get(bound, { id: key.slice(4) });
       if (
         !(await tasks.authorization.isActive(
           route.ownerSubject,
@@ -44,12 +43,12 @@ export function createTextTaskGate(
         ))
       )
         throw Error("text_origin_inactive");
-      const epoch = await tasks.authorization.epoch();
       const current = await resolve(route);
-      if (
-        epoch !== bound.authorizationEpoch ||
-        canonical(current) !== originalFingerprint
-      )
+      if (canonical(current) !== originalFingerprint)
+        throw Error("text_authorization_changed");
+      const task = await tasks.get(bound, { id: key.slice(4) });
+      const epoch = await tasks.authorization.epoch();
+      if (epoch !== bound.authorizationEpoch)
         throw Error("text_authorization_changed");
       if (
         task.owner !== route.ownerSubject ||
