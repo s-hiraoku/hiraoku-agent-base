@@ -10,6 +10,7 @@ import {
   assertWitness,
   canonical,
   defineRoute,
+  digest,
   evidencePacket,
   evidenceSchema,
   executePacket,
@@ -28,6 +29,8 @@ import {
   type TextRoute,
   type TextTaskGate,
 } from "./protocol.ts";
+
+class RejectedEvidence extends Error {}
 
 const MAX_JOBS = 128;
 const MAX_QUERIES = 32;
@@ -348,12 +351,35 @@ export class NatsTextClient {
   async #adopt(entry: InboxEntry): Promise<void> {
     const part = entry.message.body.parts[0];
     if (part?.type !== "data" || part.schema_id !== TEXT_NATS_SCHEMA) return;
-    const parsed = evidenceSchema.parse(part.value);
-    const route = this.#route(parsed.route);
-    const packet = packetFrom(entry, route, "evidence");
-    if (packet.type !== "evidence") throw Error("foreign_text_packet");
+    const parsed = evidenceSchema.safeParse(part.value);
+    if (!parsed.success) throw new RejectedEvidence("invalid_text_evidence");
+    const route = this.#routes.get(parsed.data.route);
+    if (!route) throw new RejectedEvidence("unknown_text_route");
+    let packet;
+    try {
+      packet = packetFrom(entry, route, "evidence");
+    } catch (error) {
+      if (error instanceof z.ZodError)
+        throw new RejectedEvidence("invalid_text_evidence");
+      if (
+        error instanceof Error &&
+        ["foreign_text_packet", "text_packet_conflict", "text_reply_conflict"].includes(error.message)
+      )
+        throw new RejectedEvidence(error.message);
+      throw error;
+    }
+    if (packet.type !== "evidence")
+      throw new RejectedEvidence("foreign_text_packet");
+    if (!this.#journal.entry("client_jobs", packet.handle))
+      throw new RejectedEvidence("unknown_text_handle");
     const { job } = this.#job(packet.handle);
-    this.#correlate(job, packet);
+    try {
+      this.#correlate(job, packet);
+    } catch (error) {
+      if (error instanceof Error && error.message === "text_evidence_correlation_denied")
+        throw new RejectedEvidence(error.message);
+      throw error;
+    }
     const before = await this.#gate.inspect(route, job.request.key);
     assertWitness(route, job.request, before, "observe");
     const after = await this.#gate.inspect(route, job.request.key);
@@ -364,14 +390,14 @@ export class NatsTextClient {
       this.#correlate(current.job, packet);
       const old = current.job.evidence?.run;
       if (old && packet.run && old.id !== packet.run.id)
-        throw Error("text_runtime_identity_conflict");
+        throw new RejectedEvidence("text_runtime_identity_conflict");
       if (old && old.state !== "running") {
         if (
           packet.run &&
           packet.run.state !== "running" &&
           canonical(old) !== canonical(packet.run)
         )
-          throw Error("text_terminal_evidence_conflict");
+          throw new RejectedEvidence("text_terminal_evidence_conflict");
       } else if (packet.run) current.job.evidence = packet;
       const query = current.job.queries.find(
         (item) => item.packet.requestId === packet.replyTo,
@@ -399,7 +425,18 @@ export class NatsTextClient {
         const part = entry.message.body.parts[0];
         if (part?.type !== "data" || part.schema_id !== TEXT_NATS_SCHEMA)
           continue;
-        await this.#adopt(entry);
+        try {
+          await this.#adopt(entry);
+        } catch (error) {
+          if (!(error instanceof RejectedEvidence)) throw error;
+          this.#journal.insert(
+            "client_rejected",
+            digest([entry.sender_id, entry.message.message_id]),
+            { reason: error.message, entry },
+          );
+          this.#inbox.releaseBody(entry.sender_id, entry.message.message_id);
+          throw error;
+        }
         if (++count >= MAX_JOBS) break;
       }
     });

@@ -174,8 +174,9 @@ function fixture(t, products = ["paper"], journalLimits = {}) {
         lease_until: new Date(Date.now() + 10_000).toISOString(),
       });
     },
-    async reopen() {
+    async reopen(limits = {}) {
       await client.close();
+      Object.assign(journalOptions, limits);
       journal.close();
       journal = new TextNatsJournal(join(root, "client.db"), journalOptions);
       client = new NatsTextClient(options());
@@ -721,4 +722,21 @@ test("unit client quarantines terminal runtime conflicts and preserves known ter
   assert.equal((await f.client.runs("paper").get(p.run.id)).text, "known terminal");
   assert.equal((await f.client.runs("mirror").get(other.run.id)).text, "other result");
   assert.equal(f.journal.list("client_rejected").length, 2);
+});
+
+test("unit client retains valid evidence across actual journal capacity failure and retry", async (t) => {
+  const f = fixture(t, ["paper"], { maxBytes: 3000 });
+  const p = await f.prepare();
+  const record = f.client.inspect("paper", p.input.idempotencyKey);
+  const text = "capacity retained result ".repeat(200);
+  f.enqueue(p.route, evidencePacket(record.request, "outcome", {
+    id: "unit-run", state: "succeeded", text,
+  }));
+  await assert.rejects(f.client.receiveOnce(), /text_journal_capacity/);
+  assert.equal(f.inbox.inbox().length, 1);
+  assert.deepEqual(f.journal.list("client_rejected"), []);
+  await f.reopen({ maxBytes: 20_000 });
+  await f.client.receiveOnce();
+  assert.equal((await f.client.runs("paper").get(p.run.id)).text, text);
+  assert.deepEqual(f.inbox.inbox(), []);
 });
