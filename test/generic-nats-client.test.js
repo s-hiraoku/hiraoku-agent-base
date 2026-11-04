@@ -14,13 +14,14 @@ import { createTextTaskGate } from "../src/generic-nats/task-gate.ts";
 import {
   defineRoute,
   evidencePacket,
+  handleFor,
   packetMessage,
   textNatsLimits,
   TEXT_NATS_CONTRACT,
 } from "../src/generic-nats/protocol.ts";
 import { identities, request } from "./generic-async/fixtures.js";
 
-function fixture(t, products = ["paper"]) {
+function fixture(t, products = ["paper"], journalLimits = {}) {
   const root = mkdtempSync(join(tmpdir(), "generic-nats-client-unit-"));
   let clock = Date.now();
   const hub = new Hub(join(root, "tasks.db"), () => clock);
@@ -60,6 +61,7 @@ function fixture(t, products = ["paper"]) {
     fingerprintKey: new Uint8Array(32).fill(2),
     maxRecords: 1000,
     maxBytes: 10_000_000,
+    ...journalLimits,
   };
   let journal = new TextNatsJournal(join(root, "client.db"), journalOptions);
   const incoming = [],
@@ -592,4 +594,131 @@ test("unit client rejects duplicate recipient routes and mismatched coordinator 
       }),
     /invalid_text_routes/,
   );
+});
+
+for (const [name, mutate, reason] of [
+  ["wrong authenticated peer", (packet) => [packet, "unit-foreign"], /foreign_text_packet/],
+  ["foreign route", (packet) => [{ ...packet, route: "unit-foreign" }], /unknown_text_route/],
+  ["foreign scope", (packet) => [{ ...packet, scope: "0".repeat(64) }], /text_packet_conflict/],
+  ["wrong fingerprint", (packet) => [{ ...packet, fingerprint: "0".repeat(64) }], /text_evidence_correlation_denied/],
+  ["unknown correlation", (packet) => [{ ...packet, replyTo: "unit-unknown" }], /text_evidence_correlation_denied/],
+  ["unknown handle", (packet, route) => {
+    const key = `hub-${randomUUID()}`;
+    return [{ ...packet, key, handle: handleFor(route, key) }];
+  }, /unknown_text_handle/],
+  ["malformed evidence", (packet) => [{ ...packet, run: { id: "unit-run", state: "succeeded" } }], /invalid_text_evidence/],
+]) {
+  test(`unit client quarantines ${name} once and adopts a later legitimate result across reopen`, async (t) => {
+    const f = fixture(t);
+    const p = await f.prepare();
+    const record = f.client.inspect("paper", p.input.idempotencyKey);
+    const packet = evidencePacket(record.request, "outcome", {
+      id: "unit-run", state: "succeeded", text: "legitimate result",
+    });
+    const [bad, sender] = mutate(packet, p.route);
+    f.enqueue(p.route, bad, sender);
+    await assert.rejects(f.client.receiveOnce(), reason);
+    assert.equal(f.inbox.inbox().length, 0, "rejected evidence no longer poisons the inbox");
+    const quarantined = f.journal.list("client_rejected");
+    assert.equal(quarantined.length, 1);
+    assert.match(quarantined[0].data.reason, reason);
+    assert.equal(quarantined[0].data.entry.sender_id, sender ?? p.route.recipient);
+    assert.deepEqual(quarantined[0].data.entry.message.body.parts[0].value, bad);
+    assert.equal(quarantined[0].data.entry.message.message_id, bad.requestId);
+    assert.equal(quarantined[0].data.entry.receipt_confirmed, true);
+    await f.reopen();
+    await f.client.requestStatus("paper", p.input.idempotencyKey);
+    const query = f.client.inspect("paper", p.input.idempotencyKey).queries[0].packet;
+    f.enqueue(p.route, evidencePacket(query, "inspection", packet.run));
+    await f.client.receiveOnce();
+    assert.equal((await f.client.runs("paper").get(p.run.id)).text, "legitimate result");
+    await f.client.receiveOnce();
+    assert.equal(f.journal.list("client_rejected").length, 1);
+  });
+}
+
+test("unit client retains poison evidence when its bounded durable quarantine is full", async (t) => {
+  const f = fixture(t, ["paper"], { maxRecords: 1 });
+  const p = await f.prepare();
+  const record = f.client.inspect("paper", p.input.idempotencyKey);
+  const bad = evidencePacket(record.request, "outcome", {
+    id: "unit-run", state: "succeeded", text: "retained body",
+  });
+  f.enqueue(p.route, bad, "unit-foreign");
+  await assert.rejects(f.client.receiveOnce(), /text_journal_capacity/);
+  assert.deepEqual(f.inbox.inbox()[0].message.body.parts[0].value, bad);
+  assert.deepEqual(f.journal.list("client_rejected"), []);
+});
+
+for (const failure of ["authorization", "transient gate", "changed epoch", "journal write"]) {
+  test(`unit client retains valid evidence after ${failure} and adopts it when permitted`, async (t) => {
+    const f = fixture(t);
+    const p = await f.prepare();
+    const record = f.client.inspect("paper", p.input.idempotencyKey);
+    f.enqueue(p.route, evidencePacket(record.request, "outcome", {
+      id: "unit-run", state: "succeeded", text: "held result",
+    }));
+    if (failure === "authorization") await f.hub.authorization.setStopped(
+      { kind: "client", id: p.identity.worker.clientId }, true,
+      await f.hub.authorization.epoch(), "unit-operator",
+    );
+    let checks = 0;
+    if (failure === "transient gate") f.onGate(() => { throw Error("unit_gate_unavailable"); });
+    if (failure === "changed epoch") f.onGate(async () => {
+      if (++checks === 2) {
+        await f.hub.authorization.setStopped(
+          { kind: "client", id: p.identity.worker.clientId }, true,
+          await f.hub.authorization.epoch(), "unit-operator",
+        );
+        await f.hub.authorization.setStopped(
+          { kind: "client", id: p.identity.worker.clientId }, false,
+          await f.hub.authorization.epoch(), "unit-operator",
+        );
+      }
+    });
+    const set = f.journal.set;
+    if (failure === "journal write") f.journal.set = () => { throw Error("unit_store_unavailable"); };
+    await assert.rejects(f.client.receiveOnce());
+    assert.equal(f.inbox.inbox().length, 1, "valid body stays available for authorized retry");
+    assert.deepEqual(f.journal.list("client_rejected"), []);
+    f.onGate(undefined);
+    f.journal.set = set;
+    if (failure === "authorization") await f.hub.authorization.setStopped(
+      { kind: "client", id: p.identity.worker.clientId }, false,
+      await f.hub.authorization.epoch(), "unit-operator",
+    );
+    await f.client.receiveOnce();
+    assert.equal((await f.client.runs("paper").get(p.run.id)).text, "held result");
+    assert.deepEqual(f.inbox.inbox(), []);
+  });
+}
+
+test("unit client quarantines terminal runtime conflicts and preserves known terminal evidence", async (t) => {
+  const f = fixture(t, ["paper", "mirror"]);
+  const p = await f.prepare("paper");
+  const other = await f.prepare("mirror");
+  const record = f.client.inspect("paper", p.input.idempotencyKey);
+  f.enqueue(p.route, evidencePacket(record.request, "outcome", {
+    id: "unit-known-run", state: "succeeded", text: "known terminal",
+  }));
+  await f.client.receiveOnce();
+  for (const run of [
+    { id: "unit-foreign-run", state: "succeeded", text: "conflicting runtime" },
+    { id: "unit-known-run", state: "succeeded", text: "conflicting terminal" },
+  ]) {
+    await f.client.requestStatus("paper", p.input.idempotencyKey);
+    const query = f.client.inspect("paper", p.input.idempotencyKey).queries.at(-1).packet;
+    f.enqueue(p.route, evidencePacket(query, "inspection", run));
+    await assert.rejects(f.client.receiveOnce(), /text_(runtime_identity|terminal_evidence)_conflict/);
+    assert.deepEqual(f.inbox.inbox(), []);
+    f.setClock(f.now + 3_600_001);
+  }
+  const otherRecord = f.client.inspect("mirror", other.input.idempotencyKey);
+  f.enqueue(other.route, evidencePacket(otherRecord.request, "outcome", {
+    id: "unit-other-run", state: "succeeded", text: "other result",
+  }));
+  await f.client.receiveOnce();
+  assert.equal((await f.client.runs("paper").get(p.run.id)).text, "known terminal");
+  assert.equal((await f.client.runs("mirror").get(other.run.id)).text, "other result");
+  assert.equal(f.journal.list("client_rejected").length, 2);
 });
