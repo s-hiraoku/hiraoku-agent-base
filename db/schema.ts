@@ -40,7 +40,7 @@ export const tasks = sqliteTable(
     ),
     check(
       "fixed_task_type",
-      sql`${t.task_type} IN ('connectivity_check','shift_log_inventory')`,
+      sql`${t.task_type} IN ('connectivity_check','shift_log_inventory','generic_text')`,
     ),
     check("valid_gate", sql`${t.execution_open} IN (0,1)`),
   ],
@@ -270,5 +270,32 @@ export const tokenBudget = sqliteTable(
       "token_budget_state",
       sql`${t.state} IN ('open','attempting','parked')`,
     ),
+  ],
+);
+
+export const taskTextRequests = sqliteTable(
+  "task_text_requests",
+  {
+    task_id: text()
+      .primaryKey()
+      .references(() => tasks.id),
+    owner_client: text().notNull(),
+    worker_client: text(),
+    owner_scope: text().notNull(),
+    sender_agent: text().notNull(),
+    recipient_agent: text().notNull(),
+    recipient_owner: text().notNull(),
+    conversation_binding: text().notNull(),
+    accepted_at: integer().notNull(),
+    work_deadline: integer().notNull(),
+    fingerprint: text().notNull(),
+    payload: text().notNull(),
+  },
+  (t) => [
+    check(
+      "text_payload_size",
+      sql`length(CAST(${t.payload} AS BLOB)) <= 262144`,
+    ),
+    check("text_deadline", sql`${t.work_deadline} >= 0`),
   ],
 );

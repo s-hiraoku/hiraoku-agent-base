@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { boundedText } from "./text-task.ts";
 import { RESPONSE } from "./types.ts";
 export const taskTypes = ["connectivity_check", "shift_log_inventory"] as const;
-export type TaskType = (typeof taskTypes)[number];
+export const allTaskTypes = [...taskTypes, "generic_text"] as const;
+export type TaskType = (typeof allTaskTypes)[number];
 export const INVENTORY_REQUEST = "hub:shift-log-inventory:v1";
 export const inventoryLocations = [
   "applications-spaced",
@@ -41,12 +43,15 @@ export const inventoryResult = z
       inventoryLocations.length,
   );
 export function taskRequest(type: TaskType) {
+  if (type === "generic_text") throw Error("text_requires_structured_runtime");
   return type === "connectivity_check" ? RESPONSE : INVENTORY_REQUEST;
 }
 export function canonicalResult(
   type: TaskType,
   text: string,
 ): string | undefined {
+  if (type === "generic_text")
+    return boundedText.safeParse(text).success ? text : undefined;
   if (type === "connectivity_check")
     return text === RESPONSE ? RESPONSE : undefined;
   if (type !== "shift_log_inventory" || text.length > 4096) return;
@@ -63,6 +68,8 @@ export function canonicalResult(
   }
 }
 export const taskFailure = (type: TaskType) =>
-  type === "connectivity_check"
-    ? "connectivity_check_failed"
-    : "shift_log_inventory_failed";
+  type === "generic_text"
+    ? "generic_text_failed"
+    : type === "connectivity_check"
+      ? "connectivity_check_failed"
+      : "shift_log_inventory_failed";
