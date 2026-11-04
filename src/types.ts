@@ -1,3 +1,8 @@
+import type {
+  TextBinding,
+  StoredTextRequest,
+  TextBoundary,
+} from "./text-task.ts";
 import type { TaskType } from "./task-contract.ts";
 export const RUN_ID_PATTERN = /^[a-zA-Z0-9_-]{1,124}$/;
 export const RESPONSE = "Agent Hub connectivity check completed.";
@@ -31,8 +36,9 @@ export interface Principal {
   /** Approved task allowlist; absent means connectivity only. */
   taskTypes?: readonly TaskType[];
   operations: readonly Operation[];
-  destination?: "hermes";
-  worker?: "hermes";
+  destination?: string;
+  worker?: string;
+  textBinding?: TextBinding;
   runnerScope?: string;
   /** Trusted verifier policy only; never copied from task arguments. */
   resultReaders?: readonly { subject: string; notify: boolean }[];
@@ -42,6 +48,7 @@ export interface Lease {
   fence: number;
 }
 export interface Task extends Lease {
+  text_request?: StoredTextRequest;
   task_type?: TaskType;
   owner: string;
   destination: string;
@@ -73,6 +80,21 @@ export interface Run {
   text?: string;
 }
 export interface Runs {
+  readonly textBoundary?: TextBoundary;
+  createText?(input: {
+    idempotencyKey: string;
+    content: {
+      origin: "external_agent";
+      text: string;
+      messageId: string;
+      contextId: string;
+      senderAgent: string;
+      recipientAgent: string;
+    };
+    tools: never[];
+    signal?: AbortSignal;
+    replay?: ReplayContract;
+  }): Promise<Run>;
   readonly supportedTaskTypes?: readonly TaskType[];
   readonly boundaryId?: string;
   readonly admissionContract?: string;

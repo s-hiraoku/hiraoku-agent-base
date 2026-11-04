@@ -1,3 +1,4 @@
+import { textBoundarySchema, storedTextSchema } from "./text-task.ts";
 import { taskRequest, canonicalResult, taskFailure } from "./task-contract.ts";
 import {
   RESPONSE,
@@ -93,6 +94,16 @@ export class Adapter {
       )
     )
       throw Error("runner_task_type_unverified");
+    if (
+      this.principal.taskTypes?.includes("generic_text") &&
+      (!this.runs.createText ||
+        !textBoundarySchema.safeParse(this.runs.textBoundary).success ||
+        !this.runs.boundaryId ||
+        !this.runs.admissionContract ||
+        !Number.isSafeInteger(this.runs.retentionMs) ||
+        this.runs.retentionMs <= 0)
+    )
+      throw Error("text_runner_boundary_unverified");
     const now = this.options.now ?? (() => Date.now());
     let entry = this.journal.load();
     if (
@@ -110,6 +121,17 @@ export class Adapter {
       const task = await this.hub.claim(this.principal, {});
       if (!task) return null;
       const admitted = now();
+      const originalAdmission =
+        task.task_type === "generic_text"
+          ? storedTextSchema.parse(task.text_request).acceptedAt
+          : admitted;
+      const replayDeadline =
+        task.task_type === "generic_text"
+          ? Math.min(
+              originalAdmission + this.runs.retentionMs,
+              task.text_request!.input.workDeadline,
+            )
+          : admitted + this.runs.retentionMs;
       entry = {
         id: task.id,
         fence: task.fence,
@@ -117,7 +139,7 @@ export class Adapter {
         run_id: task.run_id,
         admitted_at: admitted,
         replay: {
-          deadline: admitted + this.runs.retentionMs,
+          deadline: replayDeadline,
           retentionMs: this.runs.retentionMs,
           contract: this.runs.admissionContract ?? "fixed-connectivity-v1",
         },
@@ -155,6 +177,16 @@ export class Adapter {
       (task.runner_scope ?? undefined) !== (this.runs.boundaryId ?? undefined)
     )
       throw Error("runner_scope_requires_reconciliation");
+    if (type === "generic_text") {
+      const request = storedTextSchema.parse(task.text_request);
+      const originalHorizon = request.acceptedAt + this.runs.retentionMs;
+      if (
+        !receipt.run_id &&
+        (request.input.workDeadline > originalHorizon ||
+          now() >= Math.min(originalHorizon, request.input.workDeadline))
+      )
+        throw Error("text_work_deadline_requires_reconciliation");
+    }
     if (task.state === "cancelled") {
       // Do not send a guessed stop request or clear a receipt before terminal confirmation.
       if (!receipt.run_id)
@@ -223,13 +255,28 @@ export class Adapter {
       checkStop();
       const work = receipt.run_id
         ? this.runs.get(receipt.run_id, controller.signal)
-        : this.runs.create({
-            idempotencyKey: receipt.key,
-            prompt: taskRequest(type),
-            tools: [],
-            replay: receipt.replay,
-            signal: controller.signal,
-          });
+        : type === "generic_text"
+          ? this.runs.createText!({
+              idempotencyKey: receipt.key,
+              content: {
+                origin: "external_agent",
+                text: task.text_request!.input.text,
+                messageId: task.text_request!.input.messageId,
+                contextId: task.text_request!.input.contextId,
+                senderAgent: task.text_request!.binding.senderAgent,
+                recipientAgent: task.text_request!.binding.recipientAgent,
+              },
+              tools: [],
+              replay: receipt.replay,
+              signal: controller.signal,
+            })
+          : this.runs.create({
+              idempotencyKey: receipt.key,
+              prompt: taskRequest(type),
+              tools: [],
+              replay: receipt.replay,
+              signal: controller.signal,
+            });
       const run = await Promise.race([work, leaseFailure, stopFailure]);
       clearInterval(timer);
       await renewing;
