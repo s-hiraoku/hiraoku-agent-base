@@ -187,9 +187,10 @@ export class GenericTextA2aHandler implements A2ARequestHandler {
     params: ListTasksRequest,
     context: ServerCallContext,
   ): Promise<ListTasksResponse> {
+    const pageSize = params.pageSize || 20;
     const result = await this.#call(context, (request) =>
       this.jobs.list(request, {
-        ...(params.pageSize ? { pageSize: params.pageSize } : {}),
+        pageSize,
         ...(params.pageToken ? { pageToken: params.pageToken } : {}),
         ...(params.contextId ? { contextId: params.contextId } : {}),
       }),
@@ -197,7 +198,7 @@ export class GenericTextA2aHandler implements A2ARequestHandler {
     return {
       tasks: result.jobs.map((job) => project(job, false)),
       nextPageToken: result.nextPageToken ?? "",
-      pageSize: params.pageSize || 20,
+      pageSize,
       totalSize: result.totalSize,
     };
   }

@@ -641,3 +641,34 @@ test("read list and cancel reject raw coercion and authority fields before mutat
   );
   assert.equal(f.count(), 1);
 });
+
+test("official A2A default page size remains consistent when continuing its cursor", async (t) => {
+  const f = await fixture(t);
+  for (let n = 0; n < 21; n++)
+    await f.client.sendMessage(
+      SendMessageRequest.fromJSON(wire(input(`default-page-${n}`))),
+      options,
+    );
+  const first = await f.client.listTasks(
+    ListTasksRequest.fromJSON({}),
+    options,
+  );
+  assert.equal(first.pageSize, 20);
+  assert.equal(first.tasks.length, first.pageSize);
+  assert.equal(first.totalSize, 21);
+  assert.ok(first.nextPageToken);
+  const next = await f.client.listTasks(
+    ListTasksRequest.fromJSON({
+      pageSize: first.pageSize,
+      pageToken: first.nextPageToken,
+    }),
+    options,
+  );
+  assert.equal(next.tasks.length, 1);
+  assert.equal(next.totalSize, 21);
+  assert.equal(next.nextPageToken, "");
+  assert.equal(
+    new Set([...first.tasks, ...next.tasks].map((task) => task.id)).size,
+    21,
+  );
+});
