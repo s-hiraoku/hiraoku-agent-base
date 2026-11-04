@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DurableReceiver } from "../relay/receiver.ts";
+import { DurableReceiver, type InboxEntry } from "../relay/receiver.ts";
 import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
 import { DELIVERY_TTL_MS } from "../relay/contract.ts";
 import { verifyTextRuntime } from "../text-task.ts";
@@ -11,6 +11,7 @@ import {
   canonical,
   commonPacket,
   defineRoute,
+  digest,
   evidencePacket,
   evidenceSchema,
   executePacket,
@@ -50,6 +51,7 @@ type ReplyData = z.infer<typeof replySchema>;
 const RUNS = "recipient_runs";
 const QUERIES = "recipient_queries";
 const REPLIES = "recipient_replies";
+const REJECTED = "recipient_rejected";
 
 export interface NatsTextRecipientOptions {
   route: TextRoute;
@@ -73,6 +75,8 @@ export class NatsTextRecipient {
   readonly #now: () => number;
   readonly #timeout: number;
   #closed = false;
+  #inboxCursor = 0;
+  readonly #active = new Set<Promise<unknown>>();
   readonly #cursors = new Map<string, string>();
 
   constructor(options: NatsTextRecipientOptions) {
@@ -98,6 +102,17 @@ export class NatsTextRecipient {
 
   #open(): void {
     if (this.#closed) throw Error("text_recipient_closed");
+  }
+
+  #operation<T>(work: () => Promise<T>): Promise<T> {
+    if (this.#closed) return Promise.reject(Error("text_recipient_closed"));
+    const result = Promise.resolve().then(() => {
+      this.#open();
+      return work();
+    });
+    this.#active.add(result);
+    void result.finally(() => this.#active.delete(result)).catch(() => {});
+    return result;
   }
 
   #time(): number {
@@ -135,19 +150,19 @@ export class NatsTextRecipient {
     return record;
   }
 
-  #matches(execute: ExecutePacket, request: RequestPacket): void {
+  #matches(execute: ExecutePacket, request: RequestPacket): boolean {
     const expected = { ...commonPacket(execute), requestId: request.requestId };
-    if (
-      canonical(commonPacket(request)) !== canonical(expected) ||
-      (request.type === "execute" && canonical(request) !== canonical(execute))
-    )
-      throw Error("text_recipient_request_conflict");
+    return (
+      canonical(commonPacket(request)) === canonical(expected) &&
+      (request.type !== "execute" || canonical(request) === canonical(execute))
+    );
   }
 
   #reply(entry: TextJournalEntry): ReplyData {
     const reply = replySchema.parse(entry.data);
     this.#execute(reply.execute);
-    this.#matches(reply.execute, reply.request);
+    if (!this.#matches(reply.execute, reply.request))
+      throw Error("text_recipient_request_conflict");
     const packet = reply.packet;
     if (
       entry.id !== packet.requestId ||
@@ -308,8 +323,22 @@ export class NatsTextRecipient {
     return result ? safeRun(result) : result;
   }
 
+  #quarantine(entry: InboxEntry, reason: string): void {
+    this.#journal.insert(
+      REJECTED,
+      digest([entry.sender_id, entry.message.message_id]),
+      { entry, reason },
+    );
+    if (this.#inbox.releaseBody(entry.sender_id, entry.message.message_id))
+      throw Error(reason);
+  }
+
   #adopt(): { key: string; query?: string } | null {
-    for (const entry of this.#receiver.inbox()) {
+    const entries = this.#receiver.inbox();
+    for (let visited = 0; visited < Math.min(128, entries.length); visited++) {
+      const index = this.#inboxCursor % entries.length;
+      const entry = entries[index];
+      this.#inboxCursor = (index + 1) % entries.length;
       if (!entry.receipt_confirmed) continue;
       const part = entry.message.body.parts[0];
       if (
@@ -317,21 +346,54 @@ export class NatsTextRecipient {
         !(part?.type === "data" && part.schema_id === TEXT_NATS_SCHEMA)
       )
         continue;
-      const request = packetFrom(entry, this.#route, "request");
-      if (request.type === "evidence") throw Error("foreign_text_packet");
-      if (request.type === "execute") {
-        this.#journal.transaction(() => {
-          const old = this.#journal.entry(RUNS, request.key);
-          if (old) {
-            if (canonical(this.#record(old).execute) !== canonical(request))
-              throw Error("text_recipient_request_conflict");
-          } else
+      let request: RequestPacket;
+      try {
+        const packet = packetFrom(entry, this.#route, "request");
+        if (packet.type === "evidence") throw Error("foreign_text_packet");
+        request = packet;
+      } catch (error) {
+        const reason =
+          error instanceof z.ZodError
+            ? "invalid_text_packet"
+            : error instanceof Error &&
+                [
+                  "foreign_text_packet",
+                  "text_packet_conflict",
+                  "text_request_conflict",
+                ].includes(error.message)
+              ? error.message
+              : undefined;
+        if (!reason) throw error;
+        this.#quarantine(entry, reason);
+        continue;
+      }
+      const conflict = this.#journal.transaction(() => {
+        const old = this.#journal.entry(RUNS, request.key);
+        if (request.type === "inspect" && !old) return null;
+        if (old && !this.#matches(this.#record(old).execute, request))
+          return true;
+        if (request.type === "execute") {
+          if (!old)
             this.#journal.insert(RUNS, request.key, {
               execute: request,
               state: "ready",
             } satisfies RecordData);
-        });
-      } else this.#journal.insert(QUERIES, request.requestId, { request });
+        } else {
+          const query = this.#journal.entry(QUERIES, request.requestId);
+          if (query) {
+            const saved = querySchema.parse(query.data);
+            if (query.id !== saved.request.requestId)
+              throw Error("text_recipient_query_conflict");
+            if (canonical(saved.request) !== canonical(request)) return true;
+          } else this.#journal.insert(QUERIES, request.requestId, { request });
+        }
+        return false;
+      });
+      if (conflict === null) continue;
+      if (conflict) {
+        this.#quarantine(entry, "text_recipient_request_conflict");
+        continue;
+      }
       this.#inbox.releaseBody(entry.sender_id, entry.message.message_id);
       return {
         key: request.key,
@@ -341,9 +403,8 @@ export class NatsTextRecipient {
     return null;
   }
 
-  async receiveOnce(): Promise<void> {
-    this.#open();
-    await this.#receiver.receiveOnce();
+  receiveOnce(): Promise<void> {
+    return this.#operation(() => this.#receiver.receiveOnce());
   }
 
   async #executeOne(key: string): Promise<boolean> {
@@ -408,7 +469,8 @@ export class NatsTextRecipient {
     const execution = this.#journal.entry(RUNS, request.key);
     if (!execution) return false;
     const record = this.#record(execution);
-    this.#matches(record.execute, request);
+    if (!this.#matches(record.execute, request))
+      throw Error("text_recipient_request_conflict");
     const before = await this.#gate.inspect(this.#route, request.key);
     assertWitness(this.#route, record.execute, before, "observe");
     let run =
@@ -430,7 +492,11 @@ export class NatsTextRecipient {
     return this.#journal.list(bucket, 128);
   }
 
-  async executeOnce(): Promise<boolean> {
+  executeOnce(): Promise<boolean> {
+    return this.#operation(() => this.#executeOnce());
+  }
+
+  async #executeOnce(): Promise<boolean> {
     this.#open();
     const adopted = this.#adopt();
     if (adopted?.query)
@@ -457,7 +523,11 @@ export class NatsTextRecipient {
     return false;
   }
 
-  async sendOnce(): Promise<boolean> {
+  sendOnce(): Promise<boolean> {
+    return this.#operation(() => this.#sendOnce());
+  }
+
+  async #sendOnce(): Promise<boolean> {
     this.#open();
     for (const entry of this.#page(REPLIES)) {
       this.#cursors.set(REPLIES, entry.id);
@@ -501,5 +571,6 @@ export class NatsTextRecipient {
 
   async close(): Promise<void> {
     this.#closed = true;
+    await Promise.allSettled([...this.#active]);
   }
 }

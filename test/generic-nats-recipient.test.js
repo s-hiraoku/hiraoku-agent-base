@@ -498,7 +498,9 @@ test("unit recipient uses known actual id for recovery and never regresses termi
   await f.recipient.executeOnce();
   await sendUntil(f, 3);
   assert.equal(packet(f.submits[2]).run.state, "succeeded");
+  assert.equal(f.calls.create, 1);
   assert.equal(f.calls.get, 1);
+  assert.equal(f.calls.lookup, 0);
 });
 
 test("unit recipient rejects authenticated peer forgery before runtime", async (t) => {
@@ -894,4 +896,93 @@ test("unit recipient close drains receiver ACK without closing injected resource
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
   assert.deepEqual(f.journal.list("recipient_rejected"), []);
   assert.equal(f.calls.create, 0);
+});
+
+test("unit recipient retains early inspection until execute makes its correlation decidable", async (t) => {
+  const f = fixture(t);
+  const conflicting = executePacket(
+    f.route,
+    {
+      ...f.input,
+      content: { ...f.input.content, text: "unit foreign request" },
+    },
+    f.execute.acceptedAt,
+  );
+  await saved(f, inspectPacket(conflicting, 1));
+  const original = structuredClone(f.inbox.inbox()[0]);
+  assert.equal(await f.recipient.executeOnce(), false);
+  assert.deepEqual(f.inbox.inbox(), [original]);
+  assert.equal(f.calls.create, 0);
+  await f.recipient.close();
+  f.reopen({ journal: f.openJournal() });
+  await saved(f);
+  assert.equal(await f.recipient.executeOnce(), true);
+  await sendUntil(f, 1);
+  await assert.rejects(
+    f.recipient.executeOnce(),
+    /text_recipient_request_conflict/,
+  );
+  assert.deepEqual(
+    f.journal.list("recipient_rejected")[0].data.entry,
+    original,
+  );
+  assert.deepEqual(f.inbox.inbox(), []);
+  await saved(f, inspectPacket(f.execute, 2));
+  assert.equal(await f.recipient.executeOnce(), true);
+  await sendUntil(f, 2);
+  assert.equal(packet(f.submits[1]).phase, "inspection");
+  assert.equal(packet(f.submits[1]).run.text, "unit answer");
+  assert.equal(await f.recipient.executeOnce(), false);
+  assert.equal(f.calls.create, 1);
+  assert.equal(f.calls.lookup, 0);
+});
+
+test("unit recipient bounds early-inspection scanning and reaches execute past 128 entries", async (t) => {
+  const f = fixture(t, { maxRecords: 1000 });
+  for (let sequence = 1; sequence <= 140; sequence++)
+    await saved(f, inspectPacket(f.execute, sequence));
+  await saved(f);
+  assert.equal(await f.recipient.executeOnce(), false);
+  assert.equal(f.calls.create, 0);
+  assert.equal(f.inbox.inbox().length, 141);
+  assert.equal(await f.recipient.executeOnce(), true);
+  assert.equal(f.calls.create, 1);
+  assert.equal(f.inbox.inbox().length, 140);
+});
+
+test("unit recipient close drains publication before caller releases transport and stores", async (t) => {
+  const f = fixture(t);
+  await saved(f);
+  await f.recipient.executeOnce();
+  let started, finish;
+  const publishing = new Promise((resolve) => {
+    started = resolve;
+  });
+  const result = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const submit = f.transport.submit;
+  f.transport.submit = async (message) => {
+    started();
+    await result;
+    return submit(message);
+  };
+  const send = assert.rejects(f.recipient.sendOnce(), /text_recipient_closed/);
+  await publishing;
+  let closed = false;
+  const closing = f.recipient.close().then(() => {
+    closed = true;
+  });
+  await Promise.resolve();
+  const closedEarly = closed;
+  finish();
+  await send;
+  await closing;
+  assert.equal(closedEarly, false);
+  assert.equal(f.submits.length, 1);
+  assert.equal(f.journal.list("recipient_replies")[0].data.state, "pending");
+  f.reopen({ journal: f.openJournal() });
+  await f.recipient.sendOnce();
+  assert.deepEqual(f.submits[1], f.submits[0]);
+  assert.equal(f.calls.create, 1);
 });
