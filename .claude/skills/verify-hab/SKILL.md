@@ -13,6 +13,8 @@ HAB is a personal agent hub. Its user-facing surfaces today are:
 
 The repo now ships a configured Relay CLI (`npm run relay:local`) and an operator CLI (`npm run relay:admin`); drive those with `configured.sh` per [features/configured-relay.md](features/configured-relay.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `SQLiteRelayStore`, `runHabEnrollment`, `HabRelayService`, `HabHttpGateway`, `createRelayNodeHandler`) exactly as `test/hab-journey-fixtures.js` does, enrolls three agents through the real enrollment workflow, and listens on a loopback port. Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
 
+For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
+
 All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 24 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`. `tmux` is needed only for the enrollment terminal.
 
 ## Launch

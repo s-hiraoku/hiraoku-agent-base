@@ -19,6 +19,7 @@
     "test:hab-mvp": "node --test test/local-mvp.test.js",
     "relay:local": "node scripts/hab-relay.mjs",
     "relay:admin": "node scripts/hab-relay-admin.mjs",
+    "test:communication-boundary": "node --test --test-reporter=tap test/common-mcp-boundary.test.js test/receive-supervisor.test.js test/hab-mcp-resolve.test.js test/generic-jobs.test.js",
     "test:a2a": "node --test test/a2a-adapter.test.js test/a2a-sdk-store.test.js",
     "test:a2a-relay": "node --test test/a2a-hab-unit*.test.js test/a2a-relay-e2e.test.js test/a2a-submission-receipts.test.js",
     "proof:a2a-relay": "node scripts/prove-a2a-relay.mjs",

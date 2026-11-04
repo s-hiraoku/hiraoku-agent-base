@@ -2,7 +2,7 @@
 
 [READMEへ](../README.md) · [Auth0詳細](auth0-boundary.md) · [受入れゲート](mvp-acceptance.md)
 
-汎用の外部メッセージを扱う場合の[受信側承認・実行境界](generic-agent-async-design.md#4-通信許可と実行承認の責任)は追加設計である。送信者の承認を受信側所有者の承認に代用せず、既存のmanual承認設定は実効toolで検証する。
+標準通信では[共通MCP接続](common-mcp-connection.md)の認証・配送権限を適用し、内容判断・実行と既存の承認は受信エージェント側が担当する。[受信側承認・実行境界](generic-agent-async-design.md#4-通信許可と実行承認の責任)の追加設計は任意Task連携の契約であり、HAB独自の製品別承認機構を標準接続に必須化しない。送信者の申告を受信側所有者の承認に代用しない。
 
 ## 認証と操作権限
 

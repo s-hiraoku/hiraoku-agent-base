@@ -2,7 +2,7 @@
 
 [READMEへ](../README.md) · [ADR](hab-decisions.md) · [役割と機能](hab-roles.md)
 
-現在の製品要件と、A2A・NATS JetStreamを将来候補として再評価する範囲は[HAB製品仕様](hab-product-spec.md)を参照してください。以下の比較と初期版の判断は記録時点のものです。
+現在の製品要件と、A2A・NATS JetStreamを将来候補として再評価する範囲は[HAB製品仕様](hab-product-spec.md)を参照してください。標準通信は[共通MCP接続](common-mcp-connection.md)と[受信supervisor](receive-supervisor.md)を基準にし、モデル実行・承認は受信側の既存機構へ残します。以下の比較と初期版の限定Taskの判断は記録時点のものです。inventoryや製品専用runnerを通常通信の開始条件にはしません。
 
 ## 比較の扱い
 

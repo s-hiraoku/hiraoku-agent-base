@@ -1,4 +1,6 @@
-# First Hermes connection contract
+# Optional fixed-task Hermes Runs connection contract
+
+This is the existing limited Task integration. Standard Hermes messaging uses its native [common MCP client](common-mcp-connection.md) with recipient-owned polling, durable storage, and ACK. It requires neither this Runs driver nor a HAB-owned model or approval adapter.
 
 `HermesRuns.connect` accepts an explicitly approved loopback HTTP endpoint, a runtime-only standard API key, an immutable approved durable credential/profile `scopeId`, and a trusted `inspectIsolation` function. There is no default endpoint, Desktop backend fallback, credential file reader, startup command, profile creation, or daemon installation. The driver is not wired to a runnable real-worker entry point. Tests start only temporary localhost mock APIs.
 

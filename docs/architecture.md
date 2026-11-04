@@ -1,6 +1,6 @@
 # Scope and boundaries
 
-For the overall HAB roles, current evidence and hosting decisions, start at [README](../README.md) and [ADR](hab-decisions.md). This page owns the technical queue/adapter contract.
+For the overall HAB roles, current evidence and hosting decisions, start at [README](../README.md) and [ADR](hab-decisions.md). This page owns the existing optional Task Engine and execution-adapter contract. Standard agent communication follows [common MCP](common-mcp-connection.md) and the [receive-only supervisor](receive-supervisor.md). Agents retain content decisions, execution, and their existing approval policy. Hermes Runs and the prerequisites below apply to the limited Task integration, not to ordinary message delivery.
 
 Dots retains personal context, consultation, important-mail decisions, mark-read after notification, and schedule summaries. Grok retains its existing connpass job and future Calendar/browser/long-task work. Hermes handles development experiments, MCP and Skills. These are design roles. Current limited task contracts are connectivity_check and the opt-in fixed shift_log_inventory; the diagnostic ping/pong service is separate. Verified server policy chooses the route and allowed task types. Results and notifications never submit tasks.
 
