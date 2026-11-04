@@ -1,4 +1,4 @@
-import { textBoundarySchema, storedTextSchema } from "./text-task.ts";
+import { verifyTextRuntime, storedTextSchema } from "./text-task.ts";
 import { taskRequest, canonicalResult, taskFailure } from "./task-contract.ts";
 import {
   RESPONSE,
@@ -8,6 +8,7 @@ import {
   type Runs,
   type JournalStore,
   type Run,
+  type Task,
 } from "./types.ts";
 import type { TaskService } from "./store.ts";
 const payload = (e: Receipt) => ({
@@ -94,16 +95,8 @@ export class Adapter {
       )
     )
       throw Error("runner_task_type_unverified");
-    if (
-      this.principal.taskTypes?.includes("generic_text") &&
-      (!this.runs.createText ||
-        !textBoundarySchema.safeParse(this.runs.textBoundary).success ||
-        !this.runs.boundaryId ||
-        !this.runs.admissionContract ||
-        !Number.isSafeInteger(this.runs.retentionMs) ||
-        this.runs.retentionMs <= 0)
-    )
-      throw Error("text_runner_boundary_unverified");
+    if (this.principal.taskTypes?.includes("generic_text"))
+      verifyTextRuntime(this.runs, this.principal.runnerScope);
     const now = this.options.now ?? (() => Date.now());
     let entry = this.journal.load();
     if (
@@ -118,7 +111,13 @@ export class Adapter {
         (this.runs.boundaryId ?? undefined)
       )
         throw new Error("runner_scope_mismatch");
-      const task = await this.hub.claim(this.principal, {});
+      const task = await this.hub.claim(
+        this.principal,
+        {},
+        this.principal.taskTypes?.includes("generic_text")
+          ? { textRetentionMs: this.runs.retentionMs }
+          : undefined,
+      );
       if (!task) return null;
       const admitted = now();
       const originalAdmission =
@@ -177,16 +176,6 @@ export class Adapter {
       (task.runner_scope ?? undefined) !== (this.runs.boundaryId ?? undefined)
     )
       throw Error("runner_scope_requires_reconciliation");
-    if (type === "generic_text") {
-      const request = storedTextSchema.parse(task.text_request);
-      const originalHorizon = request.acceptedAt + this.runs.retentionMs;
-      if (
-        !receipt.run_id &&
-        (request.input.workDeadline > originalHorizon ||
-          now() >= Math.min(originalHorizon, request.input.workDeadline))
-      )
-        throw Error("text_work_deadline_requires_reconciliation");
-    }
     if (task.state === "cancelled") {
       // Do not send a guessed stop request or clear a receipt before terminal confirmation.
       if (!receipt.run_id)
@@ -198,18 +187,7 @@ export class Adapter {
     }
     if (task.state !== "running" || task.fence !== receipt.fence)
       throw new Error("reconciliation_requires_approval");
-    if (!receipt.run_id) {
-      if (
-        this.runs.admissionContract &&
-        (!receipt.replay ||
-          receipt.replay.contract !== this.runs.admissionContract ||
-          receipt.replay.retentionMs !== this.runs.retentionMs)
-      )
-        throw new Error("replay_contract_requires_reconciliation");
-      const horizon =
-        receipt.replay?.deadline ?? receipt.admitted_at + this.runs.retentionMs;
-      if (now() >= horizon) throw new Error("idempotency_horizon_expired");
-    }
+    this.checkAdmission(task, receipt, now);
     const interval = this.options.heartbeatMs ?? 10000;
     if (interval <= 0 || !task.lease || interval >= task.lease - task.at)
       throw new Error("unsafe_heartbeat_interval");
@@ -253,6 +231,7 @@ export class Adapter {
     }, interval);
     try {
       checkStop();
+      this.checkAdmission(task, receipt, now);
       const work = receipt.run_id
         ? this.runs.get(receipt.run_id, controller.signal)
         : type === "generic_text"
@@ -281,12 +260,18 @@ export class Adapter {
       clearInterval(timer);
       await renewing;
       if (lost) throw lost;
+      if (receipt.run_id && receipt.run_id !== run.id)
+        throw Error("run_identity_requires_reconciliation");
       receipt.run_id = run.id;
       this.journal.save(receipt);
+      if (type === "generic_text")
+        verifyTextRuntime(this.runs, task.runner_scope ?? undefined);
       checkStop();
       await renew();
       if (lost) throw lost;
       checkStop();
+      if (type === "generic_text")
+        verifyTextRuntime(this.runs, task.runner_scope ?? undefined);
       if (run.state === "running") return task.id;
       const result = run.text ? canonicalResult(type, run.text) : undefined;
       const success = run.state === "succeeded" && result !== undefined;
@@ -305,6 +290,34 @@ export class Adapter {
       controller.abort();
       await renewing;
     }
+  }
+  private checkAdmission(task: Task, receipt: Receipt, now: () => number) {
+    if (task.task_type === "generic_text") {
+      verifyTextRuntime(this.runs, task.runner_scope ?? undefined);
+      if (receipt.runner_scope !== this.runs.boundaryId)
+        throw Error("runner_scope_requires_reconciliation");
+      if (!receipt.run_id) {
+        const request = storedTextSchema.parse(task.text_request);
+        const originalHorizon = request.acceptedAt + this.runs.retentionMs;
+        if (
+          !Number.isSafeInteger(originalHorizon) ||
+          request.input.workDeadline > originalHorizon ||
+          now() >= Math.min(originalHorizon, request.input.workDeadline)
+        )
+          throw Error("text_work_deadline_requires_reconciliation");
+      }
+    }
+    if (receipt.run_id) return;
+    if (
+      this.runs.admissionContract &&
+      (!receipt.replay ||
+        receipt.replay.contract !== this.runs.admissionContract ||
+        receipt.replay.retentionMs !== this.runs.retentionMs)
+    )
+      throw Error("replay_contract_requires_reconciliation");
+    const horizon =
+      receipt.replay?.deadline ?? receipt.admitted_at + this.runs.retentionMs;
+    if (now() >= horizon) throw Error("idempotency_horizon_expired");
   }
   async run(signal?: AbortSignal): Promise<string | null> {
     let id: string | null = null;

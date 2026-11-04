@@ -4,7 +4,7 @@ import {
   storedTextSchema,
   sameTextBinding,
   textDigest,
-  textBoundarySchema,
+  verifyTextRuntime,
   type TextInput,
 } from "./text-task.ts";
 import {
@@ -286,7 +286,11 @@ export class TaskService {
       throw Error("idempotency_task_type_conflict");
     return task;
   }
-  async claim(p: Principal, a: Record<string, never> = {}) {
+  async claim(
+    p: Principal,
+    a: Record<string, never> = {},
+    capabilities?: { textRetentionMs: number },
+  ) {
     this.principal(p, "claim");
     p = await this.bind(p);
     const allowed = p.taskTypes ?? ["connectivity_check"];
@@ -298,6 +302,13 @@ export class TaskService {
       throw Error("forbidden");
     let scope = { sql: "0", params: [] as string[] };
     if (allowed.includes("generic_text")) {
+      if (
+        !capabilities ||
+        Object.keys(capabilities).some((key) => key !== "textRetentionMs") ||
+        !Number.isSafeInteger(capabilities.textRetentionMs) ||
+        capabilities.textRetentionMs <= 0
+      )
+        throw Error("text_claim_capability_required");
       const b = textBinding(p);
       if (p.worker !== b.recipientAgent) throw Error("text_binding_required");
       scope = {
@@ -315,8 +326,16 @@ export class TaskService {
       throw Error("forbidden");
     const clock = this.driver.nowSQL;
     const deadlineScope = allowed.includes("generic_text")
-      ? `(${scope.sql}) AND EXISTS(SELECT 1 FROM task_text_requests t WHERE t.task_id=tasks.id AND t.work_deadline>${clock})`
+      ? `(${scope.sql}) AND EXISTS(SELECT 1 FROM task_text_requests t WHERE t.task_id=tasks.id AND t.work_deadline>${clock} AND t.work_deadline<=t.accepted_at+? AND t.accepted_at+?>${clock} AND t.accepted_at<=?)`
       : "0";
+    const deadlineParams = allowed.includes("generic_text")
+      ? [
+          ...scope.params,
+          capabilities!.textRetentionMs,
+          capabilities!.textRetentionMs,
+          Number.MAX_SAFE_INTEGER - capabilities!.textRetentionMs,
+        ]
+      : [];
     const mutation = crypto.randomUUID();
     const rows = await this.authorization.batch(p, [
       stmt(
@@ -335,7 +354,7 @@ export class TaskService {
         mutation,
         p.worker!,
         ...allowed,
-        ...scope.params,
+        ...deadlineParams,
         p.worker!,
       ),
       ...(allowed.includes("generic_text")
@@ -547,15 +566,15 @@ export class TaskService {
       task.runner_scope !== runs.boundaryId ||
       !runs.toolIsolationVerified ||
       !runs.durableIdempotency ||
-      (task.task_type === "generic_text" &&
-        (!runs.createText ||
-          !textBoundarySchema.safeParse(runs.textBoundary).success ||
-          !runs.supportedTaskTypes?.includes("generic_text"))) ||
       task.fence !== a.fence ||
       task.execution_open !== 1
     )
       throw Error("reconciliation_evidence_missing");
+    if (task.task_type === "generic_text")
+      verifyTextRuntime(runs, task.runner_scope);
     const run = await runs.get(task.run_id);
+    if (task.task_type === "generic_text")
+      verifyTextRuntime(runs, task.runner_scope);
     if (
       run.id !== task.run_id ||
       run.state !== "succeeded" ||
@@ -566,15 +585,19 @@ export class TaskService {
       !runs.durableIdempotency
     )
       throw Error("reconciliation_terminal_unconfirmed");
-    return this.commitReconciliation(p, {
-      ...a,
-      run_id: task.run_id,
-      runner_scope: task.runner_scope,
-      result: canonicalResult(
-        task.task_type ?? "connectivity_check",
-        run.text,
-      )!,
-    });
+    return this.commitReconciliation(
+      p,
+      {
+        ...a,
+        run_id: task.run_id,
+        runner_scope: task.runner_scope,
+        result: canonicalResult(
+          task.task_type ?? "connectivity_check",
+          run.text,
+        )!,
+      },
+      task.task_type === "generic_text" ? runs : undefined,
+    );
   }
   private async commitReconciliation(
     p: Principal,
@@ -585,9 +608,11 @@ export class TaskService {
       runner_scope: string;
       result: string;
     },
+    runs?: Runs,
   ) {
     this.principal(p, "reconcile");
     p = await this.bind(p);
+    if (runs) verifyTextRuntime(runs, a.runner_scope);
     const clock = this.driver.nowSQL;
     const mutation = crypto.randomUUID();
     const r = await this.authorization.batch(p, [

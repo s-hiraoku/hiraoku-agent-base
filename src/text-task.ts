@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Principal } from "./types.ts";
+import type { Principal, Runs } from "./types.ts";
 const identifier = z.string().min(1).max(200);
 export const boundedText = z
   .string()
@@ -60,4 +60,20 @@ export function sameTextBinding(a: TextBinding, b: TextBinding): boolean {
     JSON.stringify(textBindingSchema.parse(a)) ===
     JSON.stringify(textBindingSchema.parse(b))
   );
+}
+
+export function verifyTextRuntime(runs: Runs, expectedScope?: string): void {
+  if (
+    !runs.createText ||
+    !textBoundarySchema.safeParse(runs.textBoundary).success ||
+    !runs.supportedTaskTypes?.includes("generic_text") ||
+    !runs.toolIsolationVerified ||
+    !runs.durableIdempotency ||
+    !runs.boundaryId ||
+    !runs.admissionContract ||
+    (expectedScope !== undefined && runs.boundaryId !== expectedScope) ||
+    !Number.isSafeInteger(runs.retentionMs) ||
+    runs.retentionMs <= 0
+  )
+    throw Error("text_runner_boundary_unverified");
 }

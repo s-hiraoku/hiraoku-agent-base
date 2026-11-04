@@ -116,7 +116,11 @@ export interface JournalStore {
   clear(): void;
 }
 export interface HubClient {
-  claim(p: Principal, a: Record<string, never>): Promise<Task | null>;
+  claim(
+    p: Principal,
+    a: Record<string, never>,
+    capabilities?: { textRetentionMs: number },
+  ): Promise<Task | null>;
   get(p: Principal, a: { id: string }): Promise<Task>;
   heartbeat(p: Principal, a: Lease & { run_id?: string }): Promise<Task>;
   complete(
