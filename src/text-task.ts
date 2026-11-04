@@ -4,7 +4,12 @@ const identifier = z.string().min(1).max(200);
 export const boundedText = z
   .string()
   .min(1)
-  .refine((text) => new TextEncoder().encode(text).length <= 32768);
+  .refine(
+    (text) =>
+      !text.includes("\u0000") &&
+      !/[\uD800-\uDFFF]/u.test(text) &&
+      new TextEncoder().encode(text).length <= 32768,
+  );
 export const textBindingSchema = z.strictObject({
   ownerScope: identifier,
   senderAgent: identifier,
@@ -76,4 +81,32 @@ export function verifyTextRuntime(runs: Runs, expectedScope?: string): void {
     runs.retentionMs <= 0
   )
     throw Error("text_runner_boundary_unverified");
+}
+
+export const textListSchema = z.strictObject({
+  pageSize: z.number().int().min(1).max(20).default(10),
+  pageToken: z.string().min(1).max(2048).optional(),
+  contextId: identifier.optional(),
+});
+export type TextListInput = z.input<typeof textListSchema>;
+const textCursorSchema = z.strictObject({
+  version: z.literal(1),
+  at: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  id: z.string().uuid(),
+  scope: z.string().regex(/^[a-f0-9]{64}$/),
+});
+export function decodeTextCursor(token: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(token)) throw Error("invalid_text_cursor");
+  try {
+    const value = atob(token.replaceAll("-", "+").replaceAll("_", "/"));
+    return textCursorSchema.parse(JSON.parse(value));
+  } catch {
+    throw Error("invalid_text_cursor");
+  }
+}
+export function encodeTextCursor(cursor: z.infer<typeof textCursorSchema>) {
+  return btoa(JSON.stringify(textCursorSchema.parse(cursor)))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
 }

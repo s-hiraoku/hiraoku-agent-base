@@ -6,6 +6,10 @@ import {
   textDigest,
   verifyTextRuntime,
   type TextInput,
+  textListSchema,
+  type TextListInput,
+  decodeTextCursor,
+  encodeTextCursor,
 } from "./text-task.ts";
 import {
   taskTypes,
@@ -226,6 +230,73 @@ export class TaskService {
     const task = this.row(r[0]);
     await this.guardText(p, task);
     return task;
+  }
+  async listText(p: Principal, input: TextListInput = {}) {
+    this.principal(p, "get");
+    p = await this.bind(p);
+    const binding = textBinding(p);
+    const parsed = textListSchema.parse(input);
+    const filter = this.textFilter(p);
+    const scope = await textDigest({
+      subject: p.subject,
+      clientId: p.clientId,
+      binding,
+      contextId: parsed.contextId ?? null,
+      pageSize: parsed.pageSize,
+    });
+    const cursor = parsed.pageToken
+      ? decodeTextCursor(parsed.pageToken)
+      : undefined;
+    if (cursor && cursor.scope !== scope) throw Error("invalid_text_cursor");
+    const conditions = [
+      "tasks.owner=?",
+      "tasks.task_type='generic_text'",
+      filter.sql,
+    ];
+    const params: (string | number | null)[] = [p.subject, ...filter.params];
+    if (parsed.contextId !== undefined) {
+      conditions.push(
+        "EXISTS(SELECT 1 FROM task_text_requests c WHERE c.task_id=tasks.id AND json_extract(c.payload,'$.input.contextId')=?)",
+      );
+      params.push(parsed.contextId);
+    }
+    const count = stmt(
+      `SELECT count(*) AS total FROM tasks WHERE ${conditions.join(" AND ")}`,
+      ...params,
+    );
+    if (cursor) {
+      conditions.push("(tasks.at<? OR (tasks.at=? AND tasks.id<?))");
+      params.push(cursor.at, cursor.at, cursor.id);
+    }
+    const rows = await this.authorization.batch(p, [
+      count,
+      stmt(
+        `SELECT tasks.* FROM tasks WHERE ${conditions.join(" AND ")} ORDER BY tasks.at DESC,tasks.id DESC LIMIT ?`,
+        ...params,
+        parsed.pageSize + 1,
+      ),
+    ]);
+    const tasks: Task[] = [];
+    for (const row of rows[1].slice(0, parsed.pageSize)) {
+      const task = this.row([row]);
+      await this.guardText(p, task, true);
+      tasks.push(task);
+    }
+    const last = tasks.at(-1);
+    return {
+      tasks,
+      totalSize: Number(rows[0][0].total),
+      ...(rows[1].length > parsed.pageSize && last
+        ? {
+            nextPageToken: encodeTextCursor({
+              version: 1,
+              at: last.at,
+              id: last.id,
+              scope,
+            }),
+          }
+        : {}),
+    };
   }
   async submit(p: Principal, a: { task_type: string; request_key: string }) {
     this.principal(p, "submit");
@@ -474,12 +545,22 @@ export class TaskService {
     return updated;
   }
   async cancel(p: Principal, a: { id: string }) {
+    return this.cancelTask(p, a);
+  }
+  async cancelText(p: Principal, a: { id: string }) {
+    return this.cancelTask(p, a, true);
+  }
+  private async cancelTask(p: Principal, a: { id: string }, textOnly = false) {
     this.principal(p, "cancel");
     p = await this.bind(p);
     const before = this.row(
       (
         await this.authorization.batch(p, [
-          stmt("SELECT * FROM tasks WHERE id=?", a.id),
+          stmt(
+            "SELECT * FROM tasks WHERE id=? AND (?=0 OR task_type='generic_text')",
+            a.id,
+            Number(textOnly),
+          ),
         ])
       )[0],
     );
@@ -487,13 +568,19 @@ export class TaskService {
     const clock = this.driver.nowSQL;
     const r = await this.authorization.batch(p, [
       stmt(
-        `UPDATE tasks SET state='cancelled',fence=fence+1,lease=NULL,actor=?,at=${clock},mutation=? WHERE id=? AND owner=? AND state NOT IN ('succeeded','failed','cancelled')`,
+        `UPDATE tasks SET state='cancelled',fence=fence+1,lease=NULL,actor=?,at=${clock},mutation=? WHERE id=? AND owner=? AND state NOT IN ('succeeded','failed','cancelled') AND (?=0 OR task_type='generic_text')`,
         p.subject,
         crypto.randomUUID(),
         a.id,
         p.subject,
+        Number(textOnly),
       ),
-      stmt("SELECT * FROM tasks WHERE id=? AND owner=?", a.id, p.subject),
+      stmt(
+        "SELECT * FROM tasks WHERE id=? AND owner=? AND (?=0 OR task_type='generic_text')",
+        a.id,
+        p.subject,
+        Number(textOnly),
+      ),
     ]);
     const updated = this.row(r[1]);
     await this.guardText(p, updated);
