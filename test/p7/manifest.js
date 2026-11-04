@@ -1,3 +1,4 @@
+import { genericNatsCases } from "../generic-nats/case-names.js";
 import a2aCases from "./a2a-cases.json" with { type: "json" };
 import natsCases from "./nats-cases.json" with { type: "json" };
 import { nativeCases } from "../delivery-lab/a2a-acceptance.js";
@@ -16,6 +17,7 @@ export const runnerCases = [
   "R05 P7 CLI and binary refusal never execute unverified bytes",
   "R06 cold image metadata rejects unsafe paths symlinks byte and mode drift",
   "R07 timeout closes an owned worker and its descendant process group",
+  "R08 denied group liveness probes verify and close owned descendants through read-only evidence",
 ];
 export const groups = [
   {
@@ -50,6 +52,11 @@ export const groups = [
     id: "p7-acceptance",
     files: ["test/p7/integration.test.js"],
     cases: p7Cases,
+  },
+  {
+    id: "generic-nats",
+    files: ["test/generic-nats/integration.test.js"],
+    cases: genericNatsCases,
   },
   { id: "p7-guards", files: ["test/p7/runner.test.js"], cases: runnerCases },
   {

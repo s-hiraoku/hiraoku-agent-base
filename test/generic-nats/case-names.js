@@ -1,0 +1,16 @@
+export const genericNatsCases = [
+  "actual JetStream carries two official A2A/MCP jobs with reversed and scoped results",
+  "lost real PubAck and committed submit response reuse the original request",
+  "lost application ACK before and after commit preserves one saved inbox body",
+  "owned receiver process crash after independent effect commit recovers by the same key",
+  "actual broker SIGKILL preserves accepted work and a missing accepted store fails closed",
+  "coordinator inbox and Task reopen recover a saved result after ACK uncertainty",
+  "two owned receiver processes compete without a duplicate external admission",
+  "revocation before execution and epoch changes across an effect withhold authority",
+  "original delivery expiry stops new execution while a known result remains durable",
+  "an independently restored pre-prepare Task cannot refresh original delivery time",
+  "changed request content and authenticated wrong-peer evidence cannot complete a Task",
+  "a local save failure sends no ACK and an unverified runtime performs no effect",
+  "unknown admission and a corrupted reopened record remain held without another create",
+  "the maximum valid 32KiB escaped text roundtrips on the real broker and oversize is rejected",
+];

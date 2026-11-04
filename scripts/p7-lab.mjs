@@ -54,7 +54,7 @@ if (options.full)
       .filter((p) => p.endsWith(".test.js"))
       .sort()
       .map((p) => `test/${p}`),
-    count: 1602,
+    count: 1681,
   });
 const abort = new AbortController();
 const interrupt = () => abort.abort();
@@ -160,6 +160,7 @@ try {
       "nats-producer",
       "p7-acceptance",
       "shared-real-backends",
+      "generic-nats",
     ].includes(definition.id);
     const childEnv = labEnvironment(
       process.env,

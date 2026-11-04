@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { open } from "node:fs/promises";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
@@ -13,7 +13,23 @@ function signalGroup(pid, signal) {
   }
 }
 function groupExists(pid) {
-  return signalGroup(pid, 0);
+  try {
+    return signalGroup(pid, 0);
+  } catch (error) {
+    if (error.code !== "EPERM") throw error;
+    const output = execFileSync("/bin/ps", ["-axo", "pgid="], {
+      encoding: "utf8",
+      timeout: 1000,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const groups = output
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (groups.some((group) => !/^\d+$/.test(group)))
+      throw Error("owned_group_probe_unavailable");
+    return groups.some((group) => Number(group) === pid);
+  }
 }
 export async function executeOwnedNode({
   cwd,
