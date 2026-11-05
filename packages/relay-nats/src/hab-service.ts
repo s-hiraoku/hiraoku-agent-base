@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
-import { parseSubmission, parseAck } from "../../../src/relay/contract.ts";
-import type { ContractLimits } from "../../../src/relay/contract.ts";
-import { RelayError, RelayService } from "../../../src/relay/service.ts";
-import type { Authorization, Receipt } from "../../../src/relay/service.ts";
+import { parseSubmission, parseAck } from "../../../src/messaging/contract.ts";
+import type { ContractLimits } from "../../../src/messaging/contract.ts";
+import {
+  MessagingError,
+  StoreDeliveryService,
+} from "../../../src/messaging/delivery-service.ts";
+import type {
+  Authorization,
+  Receipt,
+} from "../../../src/messaging/delivery-service.ts";
 import type { SQLiteRelayStore } from "../../../src/relay/sqlite-store.ts";
 import type { StoreOptions } from "../../../src/relay/sqlite-store.ts";
 import {
@@ -70,7 +76,7 @@ export class HabJetStreamService {
       backend.prefetchWindow <
       Math.min(capacity.max_pending, capacity.max_pending_per_recipient)
     )
-      throw new RelayError("insufficient_prefetch_window");
+      throw new MessagingError("insufficient_prefetch_window");
     this.#assertCurrent();
     this.#backend.configureRouting(routing.epoch, this.#digest);
   }
@@ -86,7 +92,7 @@ export class HabJetStreamService {
       (authorization, agentId) => {
         this.#assertCurrent();
         if (authorization.authorize(context, operation)?.agent_id !== agentId)
-          throw new RelayError("forbidden");
+          throw new MessagingError("forbidden");
         return action(authorization, agentId);
       },
     );
@@ -99,11 +105,11 @@ export class HabJetStreamService {
         message_id: messageId,
       }));
     } catch (error) {
-      if (!(error instanceof RelayError && error.code === "not_found"))
+      if (!(error instanceof MessagingError && error.code === "not_found"))
         throw error;
     }
     const current = this.#backend.lookupReceipt(sender, messageId);
-    if (legacy && current) throw new RelayError("route_owner_conflict");
+    if (legacy && current) throw new MessagingError("route_owner_conflict");
     return legacy ? "sqlite" : current ? "jetstream" : null;
   }
   submit(context: unknown, input: unknown) {
@@ -117,7 +123,7 @@ export class HabJetStreamService {
           message.kind,
         )?.agent_id !== sender
       )
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       this.#backend.configureRouting(this.#routing.epoch, this.#digest);
       const existing = this.#owner(sender, message.message_id);
       const parentOwner = message.in_reply_to
@@ -144,10 +150,11 @@ export class HabJetStreamService {
         );
       return owner === "jetstream"
         ? this.#backend.admitWithAuthorization(context, message, authorization)
-        : new RelayService(this.#legacy, this.#limits, authorization).submit(
-            context,
-            message,
-          );
+        : new StoreDeliveryService(
+            this.#legacy,
+            this.#limits,
+            authorization,
+          ).submit(context, message);
     });
   }
   status(context: unknown, messageId: string) {
@@ -155,20 +162,21 @@ export class HabJetStreamService {
       typeof messageId !== "string" ||
       !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(messageId)
     )
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#run(context, "status", (authorization, sender) => {
       const owner = this.#owner(sender, messageId);
-      if (!owner) throw new RelayError("not_found");
+      if (!owner) throw new MessagingError("not_found");
       return owner === "jetstream"
         ? this.#backend.statusWithAuthorization(
             context,
             messageId,
             authorization,
           )
-        : new RelayService(this.#legacy, this.#limits, authorization).status(
-            context,
-            messageId,
-          );
+        : new StoreDeliveryService(
+            this.#legacy,
+            this.#limits,
+            authorization,
+          ).status(context, messageId);
     });
   }
   #checkCapacity(sender: string, recipientId: string, bytes: number) {
@@ -209,7 +217,7 @@ export class HabJetStreamService {
       totals.body_bytes + bytes > this.#capacity.max_body_bytes ||
       recipient.pending >= this.#capacity.max_pending_per_recipient
     )
-      throw new RelayError("capacity_exceeded");
+      throw new MessagingError("capacity_exceeded");
     if (this.#capacity.agent_capacity)
       assertAgentCapacity(
         this.#capacity.agent_capacity,
@@ -236,9 +244,11 @@ export class HabJetStreamService {
         const delivery =
           owner === "jetstream"
             ? this.#backend.pollWithAuthorization(context, authorization)
-            : new RelayService(this.#legacy, this.#limits, authorization).poll(
-                context,
-              );
+            : new StoreDeliveryService(
+                this.#legacy,
+                this.#limits,
+                authorization,
+              ).poll(context);
         if (delivery) {
           this.#backend.recordPollTurn(
             recipient,
@@ -254,7 +264,7 @@ export class HabJetStreamService {
     const request = parseAck(input, this.#limits);
     return this.#run(context, "ack", (authorization, recipient) => {
       const owner = this.#owner(request.sender_id, request.message_id);
-      if (!owner) throw new RelayError("invalid_ack");
+      if (!owner) throw new MessagingError("invalid_ack");
       const receipts = [
         this.#legacy.lookupAckRequest(recipient, request.request_id),
         this.#backend.lookupAckRequest(recipient, request.request_id),
@@ -267,13 +277,14 @@ export class HabJetStreamService {
             receipt.message_id !== request.message_id,
         )
       )
-        throw new RelayError("ack_idempotency_conflict");
+        throw new MessagingError("ack_idempotency_conflict");
       return owner === "jetstream"
         ? this.#backend.ackWithAuthorization(context, request, authorization)
-        : new RelayService(this.#legacy, this.#limits, authorization).ack(
-            context,
-            request,
-          );
+        : new StoreDeliveryService(
+            this.#legacy,
+            this.#limits,
+            authorization,
+          ).ack(context, request);
     });
   }
   get discoveryEnabled() {

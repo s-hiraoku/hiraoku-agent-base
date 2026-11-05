@@ -11,7 +11,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { RelayService, DurableReceiver } from "../src/relay/index.ts";
+import { StoreDeliveryService } from "../src/messaging/index.ts";
+import { DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 const limits = {
@@ -84,7 +85,7 @@ function fixture(t, patch = {}) {
   const server = new SQLiteRelayStore(serverPath, serverOptions);
   stores.push(server);
   server.migrate();
-  const service = new RelayService(server, limits, policy);
+  const service = new StoreDeliveryService(server, limits, policy);
   const open = () => {
     const s = new SQLiteInbox(path, { ...inboxOptions, ...patch });
     stores.push(s);

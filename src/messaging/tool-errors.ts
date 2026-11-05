@@ -1,5 +1,5 @@
 /** Fixed public tool errors shared by the optional MCP server and narrow client. */
-const relayMcpErrors = new Set([
+const publicToolErrors = new Set([
   "forbidden",
   "invalid_contract",
   "unsupported_version",
@@ -13,6 +13,6 @@ const relayMcpErrors = new Set([
   "ack_idempotency_conflict",
   "invalid_request",
 ]);
-export function isRelayMcpError(code: string): boolean {
-  return relayMcpErrors.has(code);
+export function isPublicToolError(code: string): boolean {
+  return publicToolErrors.has(code);
 }

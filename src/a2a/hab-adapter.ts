@@ -26,8 +26,8 @@ import {
   parseSubmission,
   makeReplayBoundMessageId,
   DELIVERY_TTL_MS,
-} from "../relay/contract.ts";
-import type { Submission } from "../relay/contract.ts";
+} from "../messaging/contract.ts";
+import type { Submission } from "../messaging/contract.ts";
 import {
   bindingSchema,
   identifier,

@@ -16,7 +16,7 @@ import type { SQLiteTaskBridgeJournal } from "../task-bridge/sqlite-journal.ts";
 import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
 import type { BridgeReplyOutbox } from "../task-bridge/replies.ts";
 import type { DurableReceiver } from "../relay/receiver.ts";
-import type { ContractLimits } from "../relay/contract.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
 import type { SubmissionReceipts } from "./submission-receipts.ts";
 import type { ReplyKind } from "../task-bridge/reply-contract.ts";
 

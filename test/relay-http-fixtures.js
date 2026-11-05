@@ -2,7 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { RelayService, makeReplayBoundMessageId } from "../src/relay/index.ts";
+import {
+  StoreDeliveryService,
+  makeReplayBoundMessageId,
+} from "../src/messaging/index.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 import { RelayHttpGateway } from "../src/relay/http.ts";
 export const limits = {
@@ -124,7 +127,7 @@ export function fixture(t) {
     contexts[name] = Symbol(`verified-${name}`);
     identities.set(contexts[name], name);
   }
-  const service = new RelayService(store, limits, {
+  const service = new StoreDeliveryService(store, limits, {
     authorize(ctx) {
       const id = identities.get(ctx);
       return active.has(id) ? { agent_id: id } : undefined;

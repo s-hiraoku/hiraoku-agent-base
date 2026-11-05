@@ -4,7 +4,7 @@ import {
   parseSubmission,
   comparisonMaterial,
   DELIVERY_TTL_MS,
-} from "../src/relay/index.ts";
+} from "../src/messaging/index.ts";
 
 // Test policy only: deployment capacity has deliberately not been selected.
 const limits = {

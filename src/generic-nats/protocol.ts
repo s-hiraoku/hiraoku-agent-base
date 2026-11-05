@@ -7,9 +7,9 @@ import {
   DELIVERY_TTL_MS,
   type Submission,
   type ContractLimits,
-} from "../relay/contract.ts";
+} from "../messaging/contract.ts";
 import type { InboxEntry, ReceiverTransport } from "../relay/receiver.ts";
-import type { Receipt } from "../relay/service.ts";
+import type { Receipt } from "../messaging/delivery-service.ts";
 
 export const TEXT_NATS_CONTRACT = "hab-generic-nats-text-v1";
 export const TEXT_NATS_SCHEMA = "hab.generic-text-nats";

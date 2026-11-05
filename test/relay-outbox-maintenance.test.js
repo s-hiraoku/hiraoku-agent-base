@@ -9,7 +9,7 @@ import {
   comparisonMaterial,
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
-} from "../src/relay/index.ts";
+} from "../src/messaging/index.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 
 const day = 86400000;

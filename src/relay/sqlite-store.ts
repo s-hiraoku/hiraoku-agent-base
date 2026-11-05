@@ -13,7 +13,7 @@ import type {
   AgentCapacityPolicy,
   SenderCapacityUsage,
 } from "./agent-capacity.ts";
-import { RelayError } from "./service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 import type {
   Acceptance,
   DeliveryStore,
@@ -23,13 +23,13 @@ import type {
   MaintenanceResult,
   Receipt,
   ReceiptQuery,
-} from "./service.ts";
-import type { AckRequest } from "./contract.ts";
+} from "../messaging/delivery-service.ts";
+import type { AckRequest } from "../messaging/contract.ts";
 import {
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
   isReplayBoundMessageId,
-} from "./contract.ts";
+} from "../messaging/contract.ts";
 
 export interface StoreOptions {
   fingerprint_key: Uint8Array;
@@ -140,7 +140,7 @@ export class SQLiteRelayStore implements DeliveryStore {
       options.fair_poll !== undefined &&
       typeof options.fair_poll !== "boolean"
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     for (const k of [
       "max_pending",
       "max_records",
@@ -153,14 +153,14 @@ export class SQLiteRelayStore implements DeliveryStore {
       "poll_scan_limit",
     ] as const)
       if (!Number.isSafeInteger(options[k]) || options[k] < 1)
-        throw new RelayError("invalid_store_options");
+        throw new MessagingError("invalid_store_options");
     if (
       options.lease_ms > 3600000 ||
       options.max_attempts > 1000 ||
       options.retry_cap_ms < options.retry_base_ms ||
       options.retry_cap_ms > 3600000
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
       !Number.isSafeInteger(options.max_clock_skew_ms) ||
       options.max_clock_skew_ms < 0 ||
@@ -168,7 +168,7 @@ export class SQLiteRelayStore implements DeliveryStore {
       !(options.fingerprint_key instanceof Uint8Array) ||
       options.fingerprint_key.byteLength < 32
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     this.#options = {
       ...options,
       agent_capacity:
@@ -222,7 +222,7 @@ export class SQLiteRelayStore implements DeliveryStore {
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
           )
           .all();
-        if (others.length) throw new RelayError("unknown_schema");
+        if (others.length) throw new MessagingError("unknown_schema");
         this.#db.exec(SCHEMA);
         this.#db
           .prepare("INSERT INTO relay_schema VALUES(?,?)")
@@ -240,9 +240,9 @@ export class SQLiteRelayStore implements DeliveryStore {
           rows[0].version !== 5 &&
           rows[0].version !== SCHEMA_VERSION)
       )
-        throw new RelayError("unsupported_schema");
+        throw new MessagingError("unsupported_schema");
       if (rows[0].fingerprint_key_check !== this.#keyCheck())
-        throw new RelayError("fingerprint_key_mismatch");
+        throw new MessagingError("fingerprint_key_mismatch");
       if (rows[0].version === 1) {
         // Rebuild CHECK-constrained tables transactionally; preserve every v1 receipt.
         this.#db.exec(
@@ -303,17 +303,17 @@ UPDATE relay_schema SET version=2;`);
           )
           .get()
       )
-        throw new RelayError("poll_cursor_schema_unavailable");
+        throw new MessagingError("poll_cursor_schema_unavailable");
     });
     this.#ready = true;
   }
   #now(): number {
-    if (!this.#ready) throw new RelayError("schema_not_ready");
+    if (!this.#ready) throw new MessagingError("schema_not_ready");
     const row = this.#db
       .prepare("SELECT CAST(unixepoch('subsec')*1000 AS INTEGER) AS at")
       .get();
     if (!row || typeof row.at !== "number" || !Number.isSafeInteger(row.at))
-      throw new RelayError("invalid_clock");
+      throw new MessagingError("invalid_clock");
     return row.at;
   }
   #expire(now: number, limit = this.#options.max_records): number {
@@ -361,7 +361,7 @@ UPDATE relay_schema SET version=2;`);
         .get(sender, m.message_id) as Row | undefined;
       if (existing) {
         if (existing.fingerprint !== fingerprint)
-          throw new RelayError("idempotency_conflict");
+          throw new MessagingError("idempotency_conflict");
         this.#expire(now);
         return receipt(
           this.#db
@@ -374,14 +374,14 @@ UPDATE relay_schema SET version=2;`);
       const sent = Date.parse(m.first_sent_at),
         expires = Date.parse(m.expires_at);
       if (sent > now + this.#options.max_clock_skew_ms)
-        throw new RelayError("clock_skew");
-      if (expires <= now) throw new RelayError("expired_before_acceptance");
+        throw new MessagingError("clock_skew");
+      if (expires <= now) throw new MessagingError("expired_before_acceptance");
       this.#expire(now);
       const total = this.#db
         .prepare("SELECT count(*) n FROM relay_messages")
         .get()!;
       if (Number(total.n) >= this.#options.max_records)
-        throw new RelayError("capacity_exceeded");
+        throw new MessagingError("capacity_exceeded");
       const body = JSON.stringify(m),
         size = Buffer.byteLength(body);
       const usage = this.#db
@@ -394,7 +394,7 @@ UPDATE relay_schema SET version=2;`);
         Number(usage.recipient_n) >= this.#options.max_pending_per_recipient ||
         Number(usage.bytes) + size > this.#options.max_body_bytes
       )
-        throw new RelayError("capacity_exceeded");
+        throw new MessagingError("capacity_exceeded");
       if (this.#options.agent_capacity) {
         const senders = this.#db
           .prepare(
@@ -441,7 +441,7 @@ UPDATE relay_schema SET version=2;`);
           parent.recipient_id !== sender ||
           parent.thread_id !== threadKey
         )
-          throw new RelayError("invalid_reference");
+          throw new MessagingError("invalid_reference");
       }
       if (!thread)
         this.#db
@@ -499,7 +499,7 @@ UPDATE relay_schema SET version=2;`);
           "SELECT * FROM relay_messages WHERE sender_id=? AND message_id=?",
         )
         .get(q.sender_id, q.message_id) as Row | undefined;
-      if (!row) throw new RelayError("not_found");
+      if (!row) throw new MessagingError("not_found");
       return receipt(row);
     });
   }
@@ -581,7 +581,7 @@ UPDATE relay_schema SET version=2;`);
       (!this.#positionValid(cursor) ||
         cursor.fingerprint !== this.#pollHash(cursor))
     )
-      throw new RelayError("poll_cursor_integrity");
+      throw new MessagingError("poll_cursor_integrity");
     const senders = this.#db
       .prepare(
         "SELECT DISTINCT m.sender_id FROM relay_messages m JOIN relay_deliveries d USING(sender_id,message_id) WHERE m.recipient_id=? AND d.state='pending' AND d.next_visible_at<=? AND m.expires_at>? ORDER BY CASE WHEN ? IS NULL OR m.sender_id>? THEN 0 ELSE 1 END,m.sender_id LIMIT ?",
@@ -610,7 +610,7 @@ UPDATE relay_schema SET version=2;`);
           !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(position.message_id) ||
           position.fingerprint !== this.#senderHash(position))
       )
-        throw new RelayError("poll_cursor_integrity");
+        throw new MessagingError("poll_cursor_integrity");
       const row = this.#db
         .prepare(
           "SELECT m.*,d.generation,d.attempts FROM relay_messages m JOIN relay_deliveries d USING(sender_id,message_id) WHERE m.recipient_id=? AND m.sender_id=? AND d.state='pending' AND d.next_visible_at<=? AND m.expires_at>? ORDER BY CASE WHEN ? IS NULL OR m.accepted_at>? OR (m.accepted_at=? AND m.message_id>?) THEN 0 ELSE 1 END,m.accepted_at,m.message_id LIMIT 1",
@@ -738,9 +738,9 @@ UPDATE relay_schema SET version=2;`);
           if (
             authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
           )
-            throw new RelayError("forbidden");
+            throw new MessagingError("forbidden");
         } catch (e) {
-          if (e instanceof RelayError && e.code === "forbidden") continue;
+          if (e instanceof MessagingError && e.code === "forbidden") continue;
           throw e;
         }
         const token = Buffer.from(randomBytes(32)).toString("base64url"),
@@ -775,9 +775,9 @@ UPDATE relay_schema SET version=2;`);
             authorize() !== receiver ||
             authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
           )
-            throw new RelayError("forbidden");
+            throw new MessagingError("forbidden");
           if (until <= this.#now())
-            throw new RelayError("expired_before_acceptance");
+            throw new MessagingError("expired_before_acceptance");
         }
         return {
           message: { ...JSON.parse(row.body), sender_id: row.sender_id },
@@ -787,7 +787,7 @@ UPDATE relay_schema SET version=2;`);
         };
       }
       if (this.#options.fair_poll && authorize() !== receiver)
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       return null;
     });
   }
@@ -807,9 +807,9 @@ UPDATE relay_schema SET version=2;`);
             lease_until: number | null;
           })
         | undefined;
-      if (!row) throw new RelayError("invalid_ack");
+      if (!row) throw new MessagingError("invalid_ack");
       if (authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver)
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       const fingerprint = this.#hash("ack", JSON.stringify(request));
       const existing = this.#db
         .prepare(
@@ -827,7 +827,7 @@ UPDATE relay_schema SET version=2;`);
       });
       if (existing) {
         if (existing.fingerprint !== fingerprint)
-          throw new RelayError("ack_idempotency_conflict");
+          throw new MessagingError("ack_idempotency_conflict");
         return result(String(existing.receipt_id), Number(existing.acked_at));
       }
       const tokenHash = this.#hash("lease", request.lease_token);
@@ -843,7 +843,7 @@ UPDATE relay_schema SET version=2;`);
         row.lease_until <= now ||
         row.expires_at <= now
       )
-        throw new RelayError("invalid_ack");
+        throw new MessagingError("invalid_ack");
       const receiptId = randomUUID();
       this.#db
         .prepare("INSERT INTO relay_ack_receipts VALUES(?,?,?,?,?,?,?)")
@@ -879,7 +879,7 @@ UPDATE relay_schema SET version=2;`);
   /** Bounded explicit maintenance. No daemon, external IO or application execution. */
   maintain(authorize: () => void, limit: number): MaintenanceResult {
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
-      throw new RelayError("invalid_maintenance_limit");
+      throw new MessagingError("invalid_maintenance_limit");
     return this.#tx(() => {
       const now = this.#now();
       const check = () => {
@@ -889,7 +889,7 @@ UPDATE relay_schema SET version=2;`);
             void Promise.resolve(result).catch(() => {});
           if (result !== undefined) throw Error();
         } catch {
-          throw new RelayError("forbidden");
+          throw new MessagingError("forbidden");
         }
       };
       check();
@@ -898,7 +898,7 @@ UPDATE relay_schema SET version=2;`);
           .prepare("SELECT 1 FROM relay_maintenance_totals WHERE id=1")
           .get()
       )
-        throw new RelayError("maintenance_state_unavailable");
+        throw new MessagingError("maintenance_state_unavailable");
       const expired = this.#expire(now, limit);
       const rows = this.#db
         .prepare(

@@ -1,7 +1,7 @@
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { SQLiteOutbox } from "../relay/sqlite-outbox.ts";
 import type { InboxEntry } from "../relay/receiver.ts";
-import { RelayError } from "../relay/service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 import type { HabA2aRoute, HabExecutionEvidence } from "./hab-contract.ts";
 
 export function createHabRelayRoute(options: {
@@ -17,7 +17,7 @@ export function createHabRelayRoute(options: {
   const { registry, outbox, senderTransport, inbox, evidence } = options;
   const sender = Object.freeze({ ...options.sender });
   const recipient = Object.freeze({ ...options.recipient });
-  if (outbox.agentId !== sender.agent_id) throw new RelayError("forbidden");
+  if (outbox.agentId !== sender.agent_id) throw new MessagingError("forbidden");
   const selected = registry.selectAddress(
     options.context,
     sender.address,
@@ -32,13 +32,13 @@ export function createHabRelayRoute(options: {
         "execution_request",
       );
       if (agentId !== sender.agent_id || decision?.agent_id !== sender.agent_id)
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
     });
     if (
       registry.resolve(selected, recipient.address).recipient_id !==
       recipient.agent_id
     )
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
   };
   assertCurrent();
   return Object.freeze<HabA2aRoute>({
@@ -53,7 +53,7 @@ export function createHabRelayRoute(options: {
         message.recipient_id !== recipient.agent_id ||
         message.kind !== "execution_request"
       )
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       return registry.withRelay(selected, "submit", (authorization, agentId) =>
         outbox.enqueueGuarded(message, () => {
           const decision = authorization.authorize(
@@ -66,7 +66,7 @@ export function createHabRelayRoute(options: {
             agentId !== sender.agent_id ||
             decision?.agent_id !== sender.agent_id
           )
-            throw new RelayError("forbidden");
+            throw new MessagingError("forbidden");
         }),
       );
     },

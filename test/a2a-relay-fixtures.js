@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { randomUUID } from "node:crypto";
-import { makeReplayBoundMessageId } from "../src/relay/contract.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 import { DatabaseSync } from "node:sqlite";
 import { ClientFactory, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
 import { SendMessageRequest } from "@a2a-js/sdk";

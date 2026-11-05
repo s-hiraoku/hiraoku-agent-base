@@ -7,7 +7,10 @@ import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createRelayMcpServer } from "../src/relay/mcp.ts";
-import { RelayService, makeReplayBoundMessageId } from "../src/relay/index.ts";
+import {
+  StoreDeliveryService,
+  makeReplayBoundMessageId,
+} from "../src/messaging/index.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 const limits = {
@@ -77,7 +80,7 @@ function fixture(t) {
         : undefined;
     },
   };
-  const service = new RelayService(store, limits, policy),
+  const service = new StoreDeliveryService(store, limits, policy),
     handlers = [];
   t.after(async () => {
     for (const h of handlers) await h.close();
@@ -202,7 +205,7 @@ test("standalone SDK catalog exposes exactly four delivery tools and no local ad
 
 test("missing, throwing, unverified and policy-less auth fail closed even for an otherwise valid call", async (t) => {
   const f = fixture(t),
-    unbound = new RelayService(f.store, limits);
+    unbound = new StoreDeliveryService(f.store, limits);
   for (const e of [
     f.endpoint(),
     f.endpoint(() => {

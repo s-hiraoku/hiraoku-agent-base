@@ -11,8 +11,8 @@ import {
   isReplayBoundMessageId,
   DELIVERY_TTL_MS,
   RECORD_RETENTION_MS,
-} from "../relay/contract.ts";
-import type { ContractLimits, Submission } from "../relay/contract.ts";
+} from "../messaging/contract.ts";
+import type { ContractLimits, Submission } from "../messaging/contract.ts";
 import {
   id,
   sourceKey,

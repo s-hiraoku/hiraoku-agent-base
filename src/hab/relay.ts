@@ -1,15 +1,15 @@
 /** HAB policy composition. No listener, scheduler, MCP registration or credential creation. */
-import { RelayService } from "../relay/service.ts";
+import { StoreDeliveryService } from "../messaging/delivery-service.ts";
 import type {
   AcceptanceStore,
   DeliveryStore,
   MaintenanceStore,
-  RelayOperations,
-} from "../relay/service.ts";
-import type { ContractLimits } from "../relay/contract.ts";
+  DeliveryService,
+} from "../messaging/delivery-service.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
 import type { SQLiteHabRegistry } from "./sqlite-registry.ts";
 import type { HabDirectory } from "./directory.ts";
-export class HabRelayService implements RelayOperations, HabDirectory {
+export class HabRelayService implements DeliveryService, HabDirectory {
   readonly #registry: SQLiteHabRegistry;
   readonly #store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>;
   readonly #limits: ContractLimits;
@@ -24,7 +24,7 @@ export class HabRelayService implements RelayOperations, HabDirectory {
   }
   submit(context: unknown, input: unknown) {
     return this.#registry.withRelay(context, "submit", (authorization) =>
-      new RelayService(this.#store, this.#limits, authorization).submit(
+      new StoreDeliveryService(this.#store, this.#limits, authorization).submit(
         context,
         input,
       ),
@@ -32,7 +32,7 @@ export class HabRelayService implements RelayOperations, HabDirectory {
   }
   status(context: unknown, messageId: string) {
     return this.#registry.withRelay(context, "status", (authorization) =>
-      new RelayService(this.#store, this.#limits, authorization).status(
+      new StoreDeliveryService(this.#store, this.#limits, authorization).status(
         context,
         messageId,
       ),
@@ -40,12 +40,14 @@ export class HabRelayService implements RelayOperations, HabDirectory {
   }
   poll(context: unknown) {
     return this.#registry.withRelay(context, "poll", (authorization) =>
-      new RelayService(this.#store, this.#limits, authorization).poll(context),
+      new StoreDeliveryService(this.#store, this.#limits, authorization).poll(
+        context,
+      ),
     );
   }
   ack(context: unknown, input: unknown) {
     return this.#registry.withRelay(context, "ack", (authorization) =>
-      new RelayService(this.#store, this.#limits, authorization).ack(
+      new StoreDeliveryService(this.#store, this.#limits, authorization).ack(
         context,
         input,
       ),

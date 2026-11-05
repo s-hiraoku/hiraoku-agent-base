@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { createHmac } from "node:crypto";
 import {
-  RelayService,
+  StoreDeliveryService,
   makeReplayBoundMessageId,
   isReplayBoundMessageId,
   parseSubmission,
@@ -14,7 +14,7 @@ import {
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
   DELIVERY_TTL_MS,
-} from "../src/relay/index.ts";
+} from "../src/messaging/index.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 const DAY = 86400000;
 const limits = {
@@ -56,7 +56,12 @@ function fixture(t) {
     store.close();
     rmSync(dir, { recursive: true, force: true });
   });
-  return { path, store, db, service: new RelayService(store, limits, policy) };
+  return {
+    path,
+    store,
+    db,
+    service: new StoreDeliveryService(store, limits, policy),
+  };
 }
 function message(at = Date.now() - 100, entropy = "a".repeat(32)) {
   const first = new Date(at).toISOString();
@@ -178,7 +183,7 @@ test("maintenance requires separate verified authorization and rejects unknown/m
   historical(f);
   code(() => f.service.maintain("a", 10), "forbidden");
   code(
-    () => new RelayService(f.store, limits).maintain("operator", 10),
+    () => new StoreDeliveryService(f.store, limits).maintain("operator", 10),
     "forbidden",
   );
   assert.equal(
@@ -383,13 +388,14 @@ test("v2 metadata migration is explicit, preserves receipts, and rolls back part
     6,
   );
   assert.equal(
-    new RelayService(upgraded, limits, policy).status("a", m.message_id)
+    new StoreDeliveryService(upgraded, limits, policy).status("a", m.message_id)
       .receipt_id,
     "receipt-1",
   );
   assert.deepEqual(f.db.prepare("PRAGMA foreign_key_check").all(), []);
   assert.equal(
-    new RelayService(upgraded, limits, policy).maintain("operator", 10).purged,
+    new StoreDeliveryService(upgraded, limits, policy).maintain("operator", 10)
+      .purged,
     1,
   );
 });
@@ -438,7 +444,7 @@ UPDATE relay_schema SET version=5;`);
       .get().n,
     0,
   );
-  const service = new RelayService(upgraded, limits, policy);
+  const service = new StoreDeliveryService(upgraded, limits, policy);
   assert.equal(
     service.status("a", m.message_id).receipt_id,
     receipt.receipt_id,

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
-import { RelayService } from "../src/relay/index.ts";
+import { StoreDeliveryService } from "../src/messaging/index.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 const limits = {
   envelope_bytes: 32768,
@@ -74,7 +74,7 @@ function fixture(t, opts = options) {
     path,
     store,
     open,
-    service: new RelayService(store, limits, policy),
+    service: new StoreDeliveryService(store, limits, policy),
   };
 }
 function code(fn, expected) {
@@ -91,7 +91,7 @@ test("acceptance is durable, contains no body, and recovers an unchanged receipt
   f.store.close();
   const reopened = f.open();
   reopened.migrate();
-  const service = new RelayService(reopened, limits, policy);
+  const service = new StoreDeliveryService(reopened, limits, policy);
   assert.deepEqual(service.submit("connection-a", input), first);
   assert.deepEqual(service.status("connection-a", input.message_id), first);
   const db = new DatabaseSync(f.path);
@@ -110,12 +110,12 @@ test("missing, throwing and revoked policy fail closed; foreign status and sende
   const f = fixture(t),
     m = message();
   code(
-    () => new RelayService(f.store, limits).submit("connection-a", m),
+    () => new StoreDeliveryService(f.store, limits).submit("connection-a", m),
     "forbidden",
   );
   code(
     () =>
-      new RelayService(f.store, limits, {
+      new StoreDeliveryService(f.store, limits, {
         authorize() {
           throw Error("sensitive");
         },
@@ -134,7 +134,7 @@ test("missing, throwing and revoked policy fail closed; foreign status and sende
     "forbidden",
   );
   let active = true;
-  const service = new RelayService(f.store, limits, {
+  const service = new StoreDeliveryService(f.store, limits, {
     authorize() {
       return active ? { agent_id: "agent-a" } : undefined;
     },
@@ -233,7 +233,10 @@ test("capacity rejection does not discard an accepted message and duplicate retr
   small.migrate();
   code(
     () =>
-      new RelayService(small, limits, policy).submit("connection-a", message()),
+      new StoreDeliveryService(small, limits, policy).submit(
+        "connection-a",
+        message(),
+      ),
     "capacity_exceeded",
   );
 });
@@ -261,7 +264,7 @@ test("thread names are scoped per agent pair: a third agent cannot squat or prob
     "connection-b": "agent-b",
     "connection-c": "agent-c",
   };
-  const service = new RelayService(f.store, limits, {
+  const service = new StoreDeliveryService(f.store, limits, {
     authorize: (context) =>
       agents[context] ? { agent_id: agents[context] } : undefined,
   });
@@ -340,7 +343,10 @@ test("opening never applies schema; explicit migration rejects unknown schema an
   const fresh = f.open();
   code(
     () =>
-      new RelayService(fresh, limits, policy).submit("connection-a", message()),
+      new StoreDeliveryService(fresh, limits, policy).submit(
+        "connection-a",
+        message(),
+      ),
     "schema_not_ready",
   );
   fresh.migrate();
@@ -353,7 +359,11 @@ test("opening never applies schema; explicit migration rejects unknown schema an
   const unknown = new SQLiteRelayStore(":memory:", options);
   t.after(() => unknown.close()); // readiness is explicit even for memory databases
   code(
-    () => new RelayService(unknown, limits, policy).status("connection-a", "m"),
+    () =>
+      new StoreDeliveryService(unknown, limits, policy).status(
+        "connection-a",
+        "m",
+      ),
     "schema_not_ready",
   );
   const db = new DatabaseSync(f.path);
@@ -366,7 +376,7 @@ test("opening never applies schema; explicit migration rejects unknown schema an
 test("concurrent SQLite connections return one receipt for duplicate submit and enforce capacity atomically", async (t) => {
   const f = fixture(t, { ...options, max_pending: 1 });
   const m = message();
-  const source = `const {parentPort,workerData}=await import('node:worker_threads');const {SQLiteRelayStore}=await import(workerData.storeURL);const {RelayService}=await import(workerData.serviceURL);const s=new SQLiteRelayStore(workerData.path,workerData.options);s.migrate();const service=new RelayService(s,workerData.limits,{authorize(){return {agent_id:'agent-a'};}});parentPort.postMessage('ready');parentPort.once('message',()=>{try{parentPort.postMessage({receipt:service.submit(null,workerData.message)});}catch(e){parentPort.postMessage({error:e.code});}finally{s.close();}});`;
+  const source = `const {parentPort,workerData}=await import('node:worker_threads');const {SQLiteRelayStore}=await import(workerData.storeURL);const {StoreDeliveryService}=await import(workerData.serviceURL);const s=new SQLiteRelayStore(workerData.path,workerData.options);s.migrate();const service=new StoreDeliveryService(s,workerData.limits,{authorize(){return {agent_id:'agent-a'};}});parentPort.postMessage('ready');parentPort.once('message',()=>{try{parentPort.postMessage({receipt:service.submit(null,workerData.message)});}catch(e){parentPort.postMessage({error:e.code});}finally{s.close();}});`;
   async function pair(messages, path = f.path) {
     const workers = messages.map(
       (message) =>
@@ -379,8 +389,10 @@ test("concurrent SQLite connections return one receipt for duplicate submit and 
             message,
             storeURL: new URL("../src/relay/sqlite-store.ts", import.meta.url)
               .href,
-            serviceURL: new URL("../src/relay/service.ts", import.meta.url)
-              .href,
+            serviceURL: new URL(
+              "../src/messaging/delivery-service.ts",
+              import.meta.url,
+            ).href,
           },
         }),
     );

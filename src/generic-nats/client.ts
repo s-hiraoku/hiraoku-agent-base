@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DELIVERY_TTL_MS } from "../relay/contract.ts";
+import { DELIVERY_TTL_MS } from "../messaging/contract.ts";
 import type { Run, Runs } from "../types.ts";
 import { DurableReceiver, type InboxEntry } from "../relay/receiver.ts";
 import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";

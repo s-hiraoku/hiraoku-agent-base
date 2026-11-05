@@ -1,12 +1,24 @@
 /** Fixed Relay MCP profile; no discovery, credential issuance, retries or scheduler. */
 import { z } from "zod";
-import { parseSubmission, parseAck, validateLimits } from "./contract.ts";
-import type { Submission, AckRequest, ContractLimits } from "./contract.ts";
-import { RelayError } from "./service.ts";
-import type { Receipt, Delivery, AckReceipt } from "./service.ts";
+import {
+  parseSubmission,
+  parseAck,
+  validateLimits,
+} from "../messaging/contract.ts";
+import type {
+  Submission,
+  AckRequest,
+  ContractLimits,
+} from "../messaging/contract.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type {
+  Receipt,
+  Delivery,
+  AckReceipt,
+} from "../messaging/delivery-service.ts";
 import type { SenderTransport } from "./sender.ts";
 import type { ReceiverTransport } from "./receiver.ts";
-import { isRelayMcpError } from "./mcp-errors.ts";
+import { isPublicToolError } from "../messaging/tool-errors.ts";
 
 export interface RelayMcpClientPolicy {
   resource_url: string;
@@ -273,7 +285,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
       )
         throw Error();
     } catch {
-      throw new RelayError("invalid_relay_client_policy");
+      throw new MessagingError("invalid_relay_client_policy");
     }
     this.#policy = Object.freeze({ ...options.policy });
     this.#limits = Object.freeze({ ...options.limits });
@@ -293,14 +305,14 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     args: Record<string, unknown>,
   ): Promise<unknown> {
     if (!/^[a-z][a-z0-9_]{0,63}$(?![\s\S])/.test(tool))
-      return Promise.reject(new RelayError("invalid_request"));
+      return Promise.reject(new MessagingError("invalid_request"));
     return this.#call(tool, args);
   }
   async #call(tool: string, args: unknown): Promise<unknown> {
     if (this.#active >= this.#policy.max_active_requests)
-      throw new RelayError("relay_client_busy");
+      throw new MessagingError("relay_client_busy");
     if (this.#sequence === Number.MAX_SAFE_INTEGER)
-      throw new RelayError("relay_transport_failed");
+      throw new MessagingError("relay_transport_failed");
     const rpcId = ++this.#sequence;
     const body = JSON.stringify({
       jsonrpc: "2.0",
@@ -318,7 +330,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     if (
       new TextEncoder().encode(body).byteLength > this.#policy.max_request_bytes
     )
-      throw new RelayError("capacity_exceeded");
+      throw new MessagingError("capacity_exceeded");
     const controller = new AbortController(),
       deadline = Date.now() + this.#policy.timeout_ms;
     const check = () => {
@@ -347,7 +359,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
       ]);
     } catch (error) {
       // Only errors constructed inside this boundary can carry semantic server codes.
-      throw new RelayError(
+      throw new MessagingError(
         error instanceof ClientFailure ? error.code : "relay_transport_failed",
       );
     } finally {
@@ -448,7 +460,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
           .strictObject({ error: z.string() })
           .parse(content).error;
         throw new ClientFailure(
-          isRelayMcpError(error) ? error : "relay_transport_failed",
+          isPublicToolError(error) ? error : "relay_transport_failed",
         );
       }
       return content;
@@ -463,7 +475,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
   }
   async status(messageId: string): Promise<Receipt> {
     if (!id.safeParse(messageId).success)
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#receipt(
       await this.requestTool("relay_status", { message_id: messageId }),
       messageId,
@@ -471,10 +483,10 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
   }
   #receipt(value: unknown, messageId: string, input?: Submission): Receipt {
     const parsed = receiptSchema.safeParse(value);
-    if (!parsed.success) throw new RelayError("relay_transport_failed");
+    if (!parsed.success) throw new MessagingError("relay_transport_failed");
     const r = parsed.data;
     if (r.sender_id !== this.#policy.agent_id)
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     if (
       r.message_id !== messageId ||
       Date.parse(r.accepted_at) >= Date.parse(r.expires_at) ||
@@ -482,7 +494,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
         (r.recipient_id !== input.recipient_id ||
           r.expires_at !== input.expires_at))
     )
-      throw new RelayError("relay_transport_failed");
+      throw new MessagingError("relay_transport_failed");
     return r;
   }
   async poll(): Promise<Delivery | null> {
@@ -515,7 +527,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
         message: { ...message, sender_id: senderId as string },
       };
     } catch (error) {
-      throw new RelayError(
+      throw new MessagingError(
         error instanceof ClientFailure ? error.code : "relay_transport_failed",
       );
     }
@@ -525,14 +537,14 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     const value = await this.requestTool("relay_ack", { ...input });
     const parsed = ackReceiptSchema.safeParse(value);
     if (parsed.success && parsed.data.recipient_id !== this.#policy.agent_id)
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     if (
       !parsed.success ||
       parsed.data.sender_id !== input.sender_id ||
       parsed.data.message_id !== input.message_id ||
       parsed.data.request_id !== input.request_id
     )
-      throw new RelayError("relay_transport_failed");
+      throw new MessagingError("relay_transport_failed");
     return parsed.data;
   }
 }

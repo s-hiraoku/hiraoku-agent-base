@@ -1,10 +1,10 @@
 import { comparisonMaterial, parseSubmission, parseAck } from "./contract.ts";
 import type { ContractLimits, Submission, AckRequest } from "./contract.ts";
-export class RelayError extends Error {
+export class MessagingError extends Error {
   readonly code: string;
   constructor(code: string) {
     super(code);
-    this.name = "RelayError";
+    this.name = "MessagingError";
     this.code = code;
   }
 }
@@ -56,7 +56,7 @@ export interface AckReceipt {
   state: "acked";
 }
 /** Public delivery surface; optional host integrations can compose this port. */
-export interface RelayOperations {
+export interface DeliveryService {
   submit(context: unknown, input: unknown): Receipt;
   status(context: unknown, messageId: string): Receipt;
   poll(context: unknown): Delivery | null;
@@ -79,7 +79,7 @@ export interface MaintenanceResult {
 export interface MaintenanceStore {
   maintain(authorize: () => void, limit: number): MaintenanceResult;
 }
-export class RelayService implements RelayOperations {
+export class StoreDeliveryService implements DeliveryService {
   readonly #store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>;
   readonly #authorization: Authorization | undefined;
   readonly #limits: ContractLimits;
@@ -102,14 +102,14 @@ export class RelayService implements RelayOperations {
     try {
       decision = this.#authorization?.authorize(context, op, recipient, kind);
     } catch {
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     }
     if (
       !decision ||
       typeof decision.agent_id !== "string" ||
       !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(decision.agent_id)
     )
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     return decision.agent_id;
   }
   submit(context: unknown, input: unknown): Receipt {
@@ -134,30 +134,32 @@ export class RelayService implements RelayOperations {
       typeof messageId !== "string" ||
       !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(messageId)
     )
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#store.status(() => ({
       sender_id: this.#identity(context, "status"),
       message_id: messageId,
     }));
   }
   poll(context: unknown): Delivery | null {
-    if (!this.#store.poll) throw new RelayError("delivery_store_unavailable");
+    if (!this.#store.poll)
+      throw new MessagingError("delivery_store_unavailable");
     return this.#store.poll((peer) =>
       this.#identity(context, "poll", peer?.sender_id, peer?.kind),
     );
   }
   ack(context: unknown, input: unknown): AckReceipt {
     const request = parseAck(input, this.#limits);
-    if (!this.#store.ack) throw new RelayError("delivery_store_unavailable");
+    if (!this.#store.ack)
+      throw new MessagingError("delivery_store_unavailable");
     return this.#store.ack(request, (peer) =>
       this.#identity(context, "ack", peer?.sender_id, peer?.kind),
     );
   }
   maintain(context: unknown, limit: number): MaintenanceResult {
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
-      throw new RelayError("invalid_maintenance_limit");
+      throw new MessagingError("invalid_maintenance_limit");
     if (!this.#store.maintain)
-      throw new RelayError("maintenance_store_unavailable");
+      throw new MessagingError("maintenance_store_unavailable");
     return this.#store.maintain(() => {
       this.#identity(context, "maintenance");
     }, limit);

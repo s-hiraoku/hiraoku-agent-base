@@ -23,20 +23,21 @@ These are project-specific JavaScript checks for HAB's TypeScript/JavaScript imp
 
 ## Static communication dependency boundary
 
-`communication-boundary.mjs` recursively enumerates every `.ts` file beneath `src/relay`, classifies each as a reviewed inner/storage/host module or outer transport module, then checks **two separate transitive closures**. A new unclassified module or missing protected source fails and requires role review. This is an explicit dependency policy, not a claim that storage and host workers are literally part of the domain core package.
+`communication-boundary.mjs` recursively enumerates every `.ts` file beneath `src/relay` and `src/messaging`, classifies each as a reviewed inner/storage/host module or outer transport module, then checks **two separate transitive closures**. A new unclassified module or missing protected source fails and requires role review. This is an explicit dependency policy, not a claim that storage and host workers are literally part of the domain core package.
 
-The communication closure retains the original product/Task boundary across **all** Relay source, including outer adapters. Only `src/relay/**`, `src/protocol.ts` and `src/security.ts` are allowed local modules; Node built-ins (`node:`), `zod` and `@modelcontextprotocol/*` are the approved package edges. An isolated product adapter outside this closure is not rejected just because it exists.
+The communication closure retains the original product/Task boundary across **all** Relay source, including outer adapters. Only `src/relay/**`, `src/messaging/**`, `src/protocol.ts` and `src/security.ts` are allowed local modules; Node built-ins (`node:`), `zod` and `@modelcontextprotocol/*` are the approved package edges. An isolated product adapter outside this closure is not rejected just because it exists.
 
 The additional protected core/storage closure starts from the explicit `coreModules` list in the helper, then checks every transitive local/type/module edge with the stricter policy. It rejects all MCP SDK packages, the MCP client/server wrappers, HTTP and OAuth-resource modules, and the outer-only `src/protocol.ts`/`src/security.ts`. It also rejects direct `node:http` and every package except `node:buffer`, `node:crypto`, `node:fs`, `node:path`, `node:sqlite` and `zod`. A core import of an outer wrapper fails even before that wrapper's SDK edge is reached; an intermediate permitted core module cannot hide the reverse dependency.
 
 The reviewed roles follow `docs/hab-relay-spec.md:74–97` and the implementation's actual imports at the generation baseline:
 
-| Role | Explicit modules under `src/relay/` | Reason |
+| Role | Explicit modules | Reason |
 | --- | --- | --- |
-| Protected public/domain | `index.ts`, `contract.ts`, `service.ts`, `sender.ts`, `receiver.ts` | Standalone entry point, envelope/state machine and transport-injected durable delivery. |
+| Protected messaging contract | `src/messaging/index.ts`, `contract.ts`, `delivery-service.ts`, `tool-errors.ts` | Backend-neutral entry point, envelope, `DeliveryService` port, store-backed service and the fixed public tool error codes. |
+| Protected public/domain | `src/relay/index.ts`, `sender.ts`, `receiver.ts` | Durable sender/receiver entry point with injected transport. |
 | Protected storage | `sqlite-store.ts`, `sqlite-outbox.ts`, `sqlite-inbox.ts`, listed individually in `coreModules` | Dedicated Relay/outbox/inbox storage must not acquire transport SDK or credential dependencies. A future filename is not implicitly accepted by this description. |
 | Protected host contracts | `agent-capacity.ts`, `writer-admission.ts` | Pure domain or finite host orchestration with injected ports; no import of the transport implementation is required. |
-| Outer transport | `mcp.ts`, `mcp-client.ts`, `mcp-errors.ts`, `http.ts`, `http-node.ts`, `oauth-resource.ts` | Optional MCP/HTTP codecs/clients/listener, fixed transport error contract and OAuth metadata. These can depend inward and use the MCP SDK. |
+| Outer transport | `src/relay/mcp.ts`, `mcp-client.ts`, `http.ts`, `http-node.ts`, `oauth-resource.ts` | Optional MCP/HTTP codecs/clients/listener and OAuth metadata. These can depend inward and use the MCP SDK. |
 | Outer-only shared modules | `src/protocol.ts`, `src/security.ts` | HTTP admission and shared audit contracts needed by outer adapters. They are not exceptions to core's independent closure. |
 
 The TypeScript AST identifies imports, exports, import-equals, import types, dynamic `import()` and direct `require()`. Computed paths, unresolvable project extensions, syntax errors, triple-slash path references and source symlinks require review rather than silently passing. Strings and comments are not dependencies. An isolated execution adapter outside the inspected closure is permitted.

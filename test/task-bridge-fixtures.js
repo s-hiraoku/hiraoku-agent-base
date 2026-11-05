@@ -8,7 +8,7 @@ import {
 } from "./relay-http-fixtures.js";
 import { Hub, owner, worker, RESPONSE } from "./fixtures.js";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { makeReplayBoundMessageId } from "../src/relay/contract.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 import { SQLiteTaskBridgeJournal } from "../src/task-bridge/sqlite-journal.ts";
 import { ConnectivityTaskPort } from "../src/task-bridge/task-port.ts";
 import { TaskBridge } from "../src/task-bridge/bridge.ts";

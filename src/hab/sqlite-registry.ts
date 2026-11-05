@@ -8,7 +8,7 @@ import {
 } from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
 import { z } from "zod";
-import { RelayError } from "../relay/service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 import {
   habDiscoverySchema,
   habHostIdentitySchema,
@@ -18,8 +18,8 @@ import type { HabDiscoveryPolicy, HabHostIdentity } from "./discovery.ts";
 import { AUTH_GROUP_SCHEMA } from "./auth-groups.ts";
 import { AGENT_NAME_SCHEMA } from "./agent-names.ts";
 import type { AuthenticationGroup, GroupBinding } from "./auth-groups.ts";
-import { ContractError } from "../relay/contract.ts";
-import type { Authorization } from "../relay/service.ts";
+import { ContractError } from "../messaging/contract.ts";
+import type { Authorization } from "../messaging/delivery-service.ts";
 import {
   RegistryError,
   habSlug,
@@ -347,7 +347,7 @@ export class SQLiteHabRegistry {
       }
       if (
         error instanceof RegistryError ||
-        error instanceof RelayError ||
+        error instanceof MessagingError ||
         error instanceof ContractError
       )
         throw error;
@@ -1028,7 +1028,7 @@ export class SQLiteHabRegistry {
   }
   #peer(agentId: string): AgentRecord {
     const agent = this.#agent(agentId);
-    if (agent.state !== "active") throw new RelayError("forbidden");
+    if (agent.state !== "active") throw new MessagingError("forbidden");
     if (this.#groupsPresent) {
       const member = this.#db
         .prepare("SELECT group_id FROM hab_auth_group_members WHERE agent_id=?")
@@ -1043,7 +1043,7 @@ export class SQLiteHabRegistry {
             )
             .get(member.group_id))
       )
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
     }
     return agent;
   }
@@ -1305,7 +1305,7 @@ export class SQLiteHabRegistry {
     const canonical = parseHabAddress(address).address;
     if (expectedAgentId !== undefined) parse(id, expectedAgentId);
     if (context && typeof context === "object" && this.#selections.has(context))
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     const selected = Object.freeze({});
     this.#selections.set(selected, {
       context,
@@ -1372,9 +1372,10 @@ export class SQLiteHabRegistry {
     this.#assertReady();
     return this.#tx(() => {
       try {
-        if (this.#stopRecord().stopped !== 0) throw new RelayError("forbidden");
+        if (this.#stopRecord().stopped !== 0)
+          throw new MessagingError("forbidden");
       } catch {
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       }
       let individual;
       try {
@@ -1384,7 +1385,7 @@ export class SQLiteHabRegistry {
             : undefined;
         individual = this.#verified(selected ? selected.context : context);
       } catch {
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       }
       const expiry = Date.parse(individual.expires_at);
       const binding = this.#db
@@ -1402,26 +1403,26 @@ export class SQLiteHabRegistry {
       if (binding) {
         local = this.#peer(binding.agent_id);
         if (selected && local.address !== selected.address)
-          throw new RelayError("forbidden");
+          throw new MessagingError("forbidden");
       } else {
         if (
           this.#options.authentication_groups !== true ||
           !this.#groupsPresent
         )
-          throw new RelayError("forbidden");
+          throw new MessagingError("forbidden");
         const shared = this.#db
           .prepare(
             "SELECT group_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
           )
           .get(this.#principalHash(individual.principal));
-        if (!shared) throw new RelayError("forbidden");
+        if (!shared) throw new MessagingError("forbidden");
         group = this.#group(String(shared.group_id));
         if (
           group.state !== "active" ||
           !group.operations.includes(operation) ||
           (operation === "resolve" && !group.operations.includes("submit"))
         )
-          throw new RelayError("forbidden");
+          throw new MessagingError("forbidden");
         const members = selected
           ? this.#db
               .prepare(
@@ -1433,20 +1434,20 @@ export class SQLiteHabRegistry {
                 "SELECT agent_id FROM hab_auth_group_members WHERE group_id=? LIMIT 2",
               )
               .all(group.group_id);
-        if (members.length !== 1) throw new RelayError("forbidden");
+        if (members.length !== 1) throw new MessagingError("forbidden");
         local = this.#peer(String(members[0].agent_id));
       }
       if (
         selected?.expected_agent_id !== undefined &&
         selected.expected_agent_id !== local.agent_id
       )
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       const policyEpoch = this.#globalEpoch();
       if (
         !local.operations.includes(operation) ||
         (operation === "resolve" && !local.operations.includes("submit"))
       )
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       if (group) {
         // Bounded retention, not a lifetime quota: keep the newest records so routine
         // polling cannot exhaust the table and permanently deny every group member.
@@ -1509,7 +1510,7 @@ export class SQLiteHabRegistry {
         )
         .get(canonicalAddress);
       if (!row || this.#blocked(senderId, String(row.agent_id)))
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       this.#peer(String(row.agent_id));
       return {
         recipient_id: String(row.agent_id),
@@ -1524,7 +1525,7 @@ export class SQLiteHabRegistry {
   /** Authenticates discovery without selecting a sender or writing authorization history. */
   #discoveryScope(context: unknown) {
     if (!this.discoveryEnabled || this.#stopRecord().stopped !== 0)
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     const selected =
       context && typeof context === "object"
         ? this.#selections.get(context)
@@ -1534,7 +1535,7 @@ export class SQLiteHabRegistry {
     try {
       verified = this.#verified(root);
     } catch {
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     }
     const fingerprint = this.#principalHash(verified.principal);
     const binding = this.#db
@@ -1548,7 +1549,7 @@ export class SQLiteHabRegistry {
         !agent.operations.includes("resolve") ||
         !agent.operations.includes("submit")
       )
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       return {
         root,
         fingerprint,
@@ -1562,20 +1563,20 @@ export class SQLiteHabRegistry {
       };
     }
     if (!this.#groupsPresent || this.#options.authentication_groups !== true)
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     const bindingGroup = this.#db
       .prepare(
         "SELECT group_id,binding_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
       )
       .get(fingerprint);
-    if (!bindingGroup) throw new RelayError("forbidden");
+    if (!bindingGroup) throw new MessagingError("forbidden");
     const group = this.#group(String(bindingGroup.group_id));
     if (
       group.state !== "active" ||
       !group.operations.includes("resolve") ||
       !group.operations.includes("submit")
     )
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     return {
       root,
       fingerprint,
@@ -1591,7 +1592,7 @@ export class SQLiteHabRegistry {
   /** Read-only snapshot. No registration, reservation, grant, lease, or history update. */
   discover(context: unknown, value: unknown) {
     const parsed = habDiscoverySchema.safeParse(value);
-    if (!parsed.success) throw new RelayError("invalid_request");
+    if (!parsed.success) throw new MessagingError("invalid_request");
     const input = parsed.data;
     this.#assertReady();
     return this.#tx(() => {
@@ -1685,7 +1686,7 @@ export class SQLiteHabRegistry {
           else host = attested;
         }
       } catch {
-        throw new RelayError("forbidden");
+        throw new MessagingError("forbidden");
       }
       const entry = (agent: AgentRecord) => ({
         agent_id: agent.agent_id,
@@ -1732,7 +1733,7 @@ export class SQLiteHabRegistry {
         const expected =
           input.expected_agent_id ?? scope.selected?.expected_agent_id;
         if (expected !== undefined && requestedAddress === undefined)
-          throw new RelayError("invalid_request");
+          throw new MessagingError("invalid_request");
         const members = this.#db
           .prepare(membersSql + " ORDER BY agent_id LIMIT 2")
           .all(scope.scope_id);
@@ -1744,10 +1745,10 @@ export class SQLiteHabRegistry {
             )
             .get(requestedAddress);
           if (!row || !owns(String(row.agent_id)))
-            throw new RelayError("forbidden");
+            throw new MessagingError("forbidden");
           selected = this.#agent(String(row.agent_id));
           if (expected !== undefined && selected.agent_id !== expected)
-            throw new RelayError("forbidden");
+            throw new MessagingError("forbidden");
         } else if (members.length === 1)
           selected = this.#agent(String(members[0].agent_id));
         return {
@@ -1799,7 +1800,7 @@ export class SQLiteHabRegistry {
             Buffer.from(mac(parts[0]), "hex"),
           )
         )
-          throw new RelayError("invalid_reference");
+          throw new MessagingError("invalid_reference");
         after = parts[0];
       }
       const rows = this.#db

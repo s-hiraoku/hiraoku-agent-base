@@ -2,7 +2,7 @@
 
 This optional integration owns HAB names, product enrollment and individual
 authorization. The reusable Relay core never imports `src/hab`, parses `.hab`
-addresses or queries registry tables. The four-method `RelayOperations` port lets
+addresses or queries registry tables. The four-method `DeliveryService` port lets
 the existing HTTP/MCP adapters accept the composed `HabRelayService`. No existing
 runtime, route, credential, Hermes setting or process is changed by this module.
 
@@ -69,7 +69,7 @@ explicit fresh grants. Retirement revokes all live bindings and cannot be undone
 
 ## Current authorization and transaction order
 
-`HabRelayService` composes the existing `RelayService` with the registry. Each
+`HabRelayService` composes the existing `StoreDeliveryService` with the registry. Each
 operation obtains the registry's `BEGIN IMMEDIATE` write guard **before** the
 Relay transaction, and holds it until the synchronous Relay call/commit finishes.
 Every admin mutation uses that same registry write lock. A stop/block/revoke

@@ -8,7 +8,7 @@ import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
 import { RelayMcpClient } from "../src/relay/mcp-client.ts";
-import { makeReplayBoundMessageId } from "../src/relay/contract.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 export { limits };
 export function deferred() {
   let resolve;

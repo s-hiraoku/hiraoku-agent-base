@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
-import { RelayService } from "../src/relay/service.ts";
+import { StoreDeliveryService } from "../src/messaging/delivery-service.ts";
 import {
   makeReplayBoundMessageId,
   parseSubmission,
-} from "../src/relay/contract.ts";
+} from "../src/messaging/contract.ts";
 import { limits } from "./relay-http-fixtures.js";
 export function fixture(t, changes = {}, capacity = {}) {
   const dir = mkdtempSync(join(tmpdir(), "relay-agent-capacity-")),
@@ -83,7 +83,7 @@ export function fixture(t, changes = {}, capacity = {}) {
       return { agent_id: who };
     },
   };
-  const serviceFor = (s) => new RelayService(s, limits, authorization),
+  const serviceFor = (s) => new StoreDeliveryService(s, limits, authorization),
     service = serviceFor(store);
   let seq = 0;
   const message = (

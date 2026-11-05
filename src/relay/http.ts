@@ -9,7 +9,7 @@ import type { RelayMcpGate } from "./mcp.ts";
 import type { RelayContextResolver } from "./mcp.ts";
 import type { z } from "zod";
 import { RelayOAuthResource, RELAY_OAUTH_SCOPES } from "./oauth-resource.ts";
-import type { RelayOperations } from "./service.ts";
+import type { DeliveryService } from "../messaging/delivery-service.ts";
 export interface RelayHttpPolicy {
   resource_url: string;
   /** Explicit opt-in, fixed issuer discovery and tool consent metadata. */
@@ -58,7 +58,7 @@ export class RelayHttpGateway {
   get policy(): Readonly<RelayHttpPolicy> {
     return this.#policy;
   }
-  readonly #service: RelayOperations;
+  readonly #service: DeliveryService;
   readonly #audit: AuditSink;
   readonly #verify: RelayHttpVerifier;
   readonly #admission: WriterAdmission | undefined;
@@ -100,7 +100,7 @@ export class RelayHttpGateway {
   #requests = 0;
   #active = 0;
   constructor(
-    service: RelayOperations,
+    service: DeliveryService,
     policy: RelayHttpPolicy,
     audit: AuditSink,
     verify: RelayHttpVerifier = () => null,

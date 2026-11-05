@@ -24,13 +24,15 @@ const ts = createRequire(join(target, "package.json"))("typescript");
 const shared = new Set(["src/protocol.ts", "src/security.ts"]);
 const slash = (path) => path.split(sep).join("/");
 const relayPath = (name) => `src/relay/${name}`;
+const messagingPath = (name) => `src/messaging/${name}`;
 // docs/hab-relay-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
-const coreModules = new Set(
-  [
+const coreModules = new Set([
+  ...["index.ts", "contract.ts", "delivery-service.ts", "tool-errors.ts"].map(
+    messagingPath,
+  ),
+  ...[
     "index.ts",
-    "contract.ts",
-    "service.ts",
     "sender.ts",
     "receiver.ts",
     "sqlite-store.ts",
@@ -39,12 +41,11 @@ const coreModules = new Set(
     "agent-capacity.ts",
     "writer-admission.ts",
   ].map(relayPath),
-);
+]);
 const outerModules = new Set(
   [
     "mcp.ts",
     "mcp-client.ts",
-    "mcp-errors.ts",
     "http.ts",
     "http-node.ts",
     "oauth-resource.ts",
@@ -60,7 +61,10 @@ const corePackages = new Set([
 ]);
 const communicationPolicy = {
   name: "communication",
-  allowsModule: (name) => name.startsWith("src/relay/") || shared.has(name),
+  allowsModule: (name) =>
+    name.startsWith("src/relay/") ||
+    name.startsWith("src/messaging/") ||
+    shared.has(name),
   allowsPackage: (name) =>
     name.startsWith("node:") ||
     name === "zod" ||
@@ -173,6 +177,7 @@ if (mode === "--self-test") {
   const scratch = mkdtempSync(join(tmpdir(), "hab-boundary-"));
   try {
     mkdirSync(join(scratch, "src/relay"), { recursive: true });
+    mkdirSync(join(scratch, "src/messaging"), { recursive: true });
     const entry = join(scratch, "src/relay/index.ts");
     // A deliberately isolated optional adapter must not contaminate the communication closure.
     writeFileSync(
@@ -217,29 +222,29 @@ if (mode === "--self-test") {
       () => inspect(scratch, ["src/relay/index.ts"]),
       /forbidden communication dependency/,
     );
-    const service = join(scratch, "src/relay/service.ts");
+    const service = join(scratch, "src/messaging/delivery-service.ts");
     const coreCheck = () =>
-      inspect(scratch, ["src/relay/service.ts"], corePolicy);
+      inspect(scratch, ["src/messaging/delivery-service.ts"], corePolicy);
     writeFileSync(
       service,
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /unreviewed core package dependency/);
-    writeFileSync(service, 'import "./mcp.ts";');
+    writeFileSync(service, 'import "../relay/mcp.ts";');
     writeFileSync(
       join(scratch, "src/relay/mcp.ts"),
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "./sender.ts";');
+    writeFileSync(service, 'import "../relay/sender.ts";');
     writeFileSync(
       join(scratch, "src/relay/sender.ts"),
       'export * from "./mcp.ts";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "./oauth-resource.ts";');
+    writeFileSync(service, 'import "../relay/oauth-resource.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "./http.ts";');
+    writeFileSync(service, 'import "../relay/http.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import type { AuditSink } from "../security.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
@@ -274,12 +279,15 @@ if (mode === "--self-test") {
     rmSync(scratch, { recursive: true, force: true });
   }
 } else {
-  const entries = relayEntries(target);
+  const entries = [
+    ...relayEntries(target),
+    ...relayEntries(target, "src/messaging"),
+  ];
   assert(entries.length > 0, "empty communication source set");
   for (const name of entries)
     assert(
       coreModules.has(name) || outerModules.has(name),
-      `unclassified Relay module requires role review: ${name}`,
+      `unclassified communication module requires role review: ${name}`,
     );
   for (const name of coreModules)
     assert(entries.includes(name), `required core source missing: ${name}`);

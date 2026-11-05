@@ -11,7 +11,10 @@ import { hostFixture, limits } from "./adapter-host-fixtures.js";
 import { code } from "./task-bridge-fixtures.js";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 import { AnswerIntents } from "../src/answer-intents/answers.ts";
-import { DELIVERY_TTL_MS, RECORD_RETENTION_MS } from "../src/relay/contract.ts";
+import {
+  DELIVERY_TTL_MS,
+  RECORD_RETENTION_MS,
+} from "../src/messaging/contract.ts";
 import { createRelayNodeHandler } from "../src/relay/http-node.ts";
 const body = () => ({
   parts: [{ type: "text", text: "synthetic durable answer" }],

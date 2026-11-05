@@ -17,7 +17,7 @@ import { InboxAnswers } from "../src/adapter-policy/inbox-answers.ts";
 import { TaskReplies } from "../src/task-bridge/replies.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { DurableSender } from "../src/relay/sender.ts";
-import { makeReplayBoundMessageId } from "../src/relay/contract.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 const context = Symbol("reply-operator");
 function setup(t, patch = {}) {
   const f = fixture(t),

@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
-import { RelayError } from "../../../src/relay/service.ts";
+import { MessagingError } from "../../../src/messaging/delivery-service.ts";
 import {
   agentCapacityPolicy,
   assertAgentCapacity,
@@ -14,13 +14,16 @@ import type {
   Receipt,
   Delivery,
   AckReceipt,
-} from "../../../src/relay/service.ts";
-import type { Submission, AckRequest } from "../../../src/relay/contract.ts";
+} from "../../../src/messaging/delivery-service.ts";
+import type {
+  Submission,
+  AckRequest,
+} from "../../../src/messaging/contract.ts";
 import {
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
   isReplayBoundMessageId,
-} from "../../../src/relay/contract.ts";
+} from "../../../src/messaging/contract.ts";
 
 export interface JournalOptions {
   fair_poll?: boolean;
@@ -105,7 +108,7 @@ export class NatsJournal {
       "retry_cap_ms",
     ] as const)
       if (!Number.isSafeInteger(options[key]) || options[key] < 1)
-        throw new RelayError("invalid_store_options");
+        throw new MessagingError("invalid_store_options");
     if (
       !(options.fingerprint_key instanceof Uint8Array) ||
       options.fingerprint_key.length < 32 ||
@@ -117,14 +120,14 @@ export class NatsJournal {
       options.retry_cap_ms > 3_600_000 ||
       options.max_attempts > 1000
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
       options.prefetch_per_recipient !== undefined &&
       (!Number.isSafeInteger(options.prefetch_per_recipient) ||
         options.prefetch_per_recipient < 1 ||
         options.prefetch_per_recipient > options.max_pending_per_recipient)
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
       (options.route_epoch !== undefined &&
         (!Number.isSafeInteger(options.route_epoch) ||
@@ -132,7 +135,7 @@ export class NatsJournal {
       (options.migrate_journal !== undefined &&
         typeof options.migrate_journal !== "boolean")
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
       (options.fair_poll !== undefined &&
         typeof options.fair_poll !== "boolean") ||
@@ -140,7 +143,7 @@ export class NatsJournal {
         (!Number.isSafeInteger(options.poll_scan_limit) ||
           options.poll_scan_limit < 1))
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     this.#options = {
       ...options,
       fair_poll: options.fair_poll ?? false,
@@ -154,7 +157,8 @@ export class NatsJournal {
           : agentCapacityPolicy(options.agent_capacity, options),
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
     };
-    if (path === ":memory:") throw new RelayError("durable_journal_required");
+    if (path === ":memory:")
+      throw new MessagingError("durable_journal_required");
     const fd = openSync(
       path,
       constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW,
@@ -163,7 +167,7 @@ export class NatsJournal {
     try {
       const stat = fstatSync(fd);
       if (!stat.isFile() || (stat.mode & 0o077) !== 0)
-        throw new RelayError("insecure_journal_file");
+        throw new MessagingError("insecure_journal_file");
     } finally {
       closeSync(fd);
     }
@@ -189,18 +193,18 @@ export class NatsJournal {
         let version = 0;
         if (tables.length) {
           if (!tables.includes("nats_meta"))
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
           const meta = this.#db.prepare("SELECT * FROM nats_meta").all();
           if (meta.length !== 1 || meta[0].key_check !== check)
-            throw new RelayError("journal_key_or_version_mismatch");
+            throw new MessagingError("journal_key_or_version_mismatch");
           version = Number(meta[0].version);
           if (![1, 2, 3].includes(version))
-            throw new RelayError("journal_key_or_version_mismatch");
+            throw new MessagingError("journal_key_or_version_mismatch");
           if (
             JSON.stringify(tables) !==
             JSON.stringify(version === 1 ? previous : expected)
           )
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
           if (
             version === 3 &&
             !this.#db
@@ -208,9 +212,9 @@ export class NatsJournal {
               .all()
               .some((row) => row.name === "scan_order")
           )
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
           if (version < 3 && options.migrate_journal !== true)
-            throw new RelayError("journal_migration_required");
+            throw new MessagingError("journal_migration_required");
           if (
             version === 3 &&
             !this.#db
@@ -218,7 +222,7 @@ export class NatsJournal {
               .all()
               .some((row) => row.name === "last_sender_id")
           )
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
         }
         return version;
       };
@@ -315,21 +319,21 @@ export class NatsJournal {
       const existing = this.row(sender, message.message_id);
       if (existing) {
         if (existing.fingerprint !== fingerprint)
-          throw new RelayError("idempotency_conflict");
+          throw new MessagingError("idempotency_conflict");
         return existing;
       }
       const routing = this.#db
         .prepare("SELECT epoch FROM nats_routing WHERE id=1")
         .get();
       if (routing && routing.epoch !== this.#options.route_epoch)
-        throw new RelayError("routing_epoch_rejected");
+        throw new MessagingError("routing_epoch_rejected");
       const expires = Date.parse(message.expires_at);
       if (
         Date.parse(message.first_sent_at) >
         now + this.#options.max_clock_skew_ms
       )
-        throw new RelayError("clock_skew");
-      if (expires <= now) throw new RelayError("expired_before_acceptance");
+        throw new MessagingError("clock_skew");
+      if (expires <= now) throw new MessagingError("expired_before_acceptance");
       const outbox = JSON.stringify({ sender_id: sender, message });
       const size = Buffer.byteLength(outbox);
       const usage = this.#db
@@ -343,7 +347,7 @@ export class NatsJournal {
         Number(usage.recipient) >= this.#options.max_pending_per_recipient ||
         Number(usage.bytes) + size > this.#options.max_body_bytes
       )
-        throw new RelayError("capacity_exceeded");
+        throw new MessagingError("capacity_exceeded");
       if (this.#options.agent_capacity) {
         const senders = this.#db
           .prepare(
@@ -382,7 +386,7 @@ export class NatsJournal {
           parent.recipient_id !== sender ||
           parent.thread_key !== thread
         )
-          throw new RelayError("invalid_reference");
+          throw new MessagingError("invalid_reference");
       }
       this.#db
         .prepare(
@@ -426,7 +430,7 @@ export class NatsJournal {
       authorize();
       this.#refresh(Date.now());
       const row = this.row(sender, message);
-      if (!row) throw new RelayError("not_found");
+      if (!row) throw new MessagingError("not_found");
       return this.receipt(row);
     });
   }
@@ -454,7 +458,7 @@ export class NatsJournal {
       epoch !== this.#options.route_epoch ||
       !/^[a-f0-9]{64}$/.test(digest)
     )
-      throw new RelayError("routing_epoch_rejected");
+      throw new MessagingError("routing_epoch_rejected");
     this.#tx(() => {
       const existing = this.#db
         .prepare("SELECT epoch,digest FROM nats_routing WHERE id=1")
@@ -464,7 +468,7 @@ export class NatsJournal {
         (Number(existing.epoch) > epoch ||
           (existing.epoch === epoch && existing.digest !== digest))
       )
-        throw new RelayError("routing_epoch_rejected");
+        throw new MessagingError("routing_epoch_rejected");
       if (existing && existing.epoch === epoch) return;
       this.#db
         .prepare("INSERT OR REPLACE INTO nats_routing VALUES(1,?,?)")
@@ -707,7 +711,7 @@ export class NatsJournal {
     return this.#tx(() => {
       const row = this.row(request.sender_id, request.message_id);
       if (!row || row.recipient_id !== recipient)
-        throw new RelayError("invalid_ack");
+        throw new MessagingError("invalid_ack");
       authorize(row);
       const fingerprint = this.hash("ack", JSON.stringify(request));
       const existing = this.#db
@@ -717,7 +721,7 @@ export class NatsJournal {
         .get(recipient, request.request_id) as unknown as Row | undefined;
       if (existing) {
         if (existing.ack_fingerprint !== fingerprint)
-          throw new RelayError("ack_idempotency_conflict");
+          throw new MessagingError("ack_idempotency_conflict");
         return existing;
       }
       const now = Date.now();
@@ -728,7 +732,7 @@ export class NatsJournal {
         row.lease_until <= now ||
         row.expires_at <= now
       )
-        throw new RelayError("invalid_ack");
+        throw new MessagingError("invalid_ack");
       this.#db
         .prepare(
           "UPDATE nats_messages SET state='acked',outbox=NULL,candidate=NULL,body_bytes=0,token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=?",
@@ -753,7 +757,7 @@ export class NatsJournal {
       row.ack_request_id === null ||
       row.ack_receipt_id === null
     )
-      throw new RelayError("invalid_ack");
+      throw new MessagingError("invalid_ack");
     return {
       recipient_id: row.recipient_id,
       sender_id: row.sender_id,

@@ -12,7 +12,8 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteRelayStore } from "../../src/relay/sqlite-store.ts";
 import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
-import { RelayService, DurableReceiver } from "../../src/relay/index.ts";
+import { StoreDeliveryService } from "../../src/messaging/index.ts";
+import { DurableReceiver } from "../../src/relay/index.ts";
 import { limits, message } from "../relay-http-fixtures.js";
 import { ackRequest } from "./backends.js";
 import { spawn } from "node:child_process";
@@ -51,7 +52,7 @@ function fixture(t) {
   const store = track(new SQLiteRelayStore(path, options));
   store.migrate();
   const raw = track(new DatabaseSync(path));
-  const service = new RelayService(store, limits, {
+  const service = new StoreDeliveryService(store, limits, {
     authorize: (ctx) =>
       ["a", "b", "c"].includes(ctx) ? { agent_id: ctx } : undefined,
   });

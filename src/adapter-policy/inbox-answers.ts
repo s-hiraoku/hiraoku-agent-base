@@ -1,6 +1,6 @@
 /** Explicit automatic answers to confirmed durable inbox entries. No model, Task or network IO. */
-import { parseSubmission, validateLimits } from "../relay/contract.ts";
-import type { ContractLimits } from "../relay/contract.ts";
+import { parseSubmission, validateLimits } from "../messaging/contract.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
 import type { InboxEntry } from "../relay/receiver.ts";
 import type { OutboxRecord } from "../relay/sender.ts";
 import { ReplyBudgetError, sourceKey, authorizationGuard } from "./contract.ts";

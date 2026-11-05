@@ -12,7 +12,7 @@ import type {
   LocalRelayServiceFactory,
   LocalRelayServiceDependencies,
 } from "../../../src/relay-host/local.ts";
-import { RelayError } from "../../../src/relay/service.ts";
+import { MessagingError } from "../../../src/messaging/delivery-service.ts";
 import { JetStreamRelay } from "./backend.ts";
 import { HabJetStreamService } from "./hab-service.ts";
 
@@ -91,7 +91,7 @@ export function createJetStreamServiceFactory(
       )
         throw Error("volume_identity_mismatch");
     } catch {
-      throw new RelayError("local_relay_extension_storage_unavailable");
+      throw new MessagingError("local_relay_extension_storage_unavailable");
     }
     return undefined;
   };
@@ -197,7 +197,7 @@ export function createJetStreamServiceFactory(
           recordHealth(null);
         } catch (error) {
           const reason =
-            error instanceof RelayError && safeReasons.has(error.code)
+            error instanceof MessagingError && safeReasons.has(error.code)
               ? error.code
               : "pump_failed";
           try {

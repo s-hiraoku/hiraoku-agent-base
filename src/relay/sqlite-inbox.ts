@@ -8,10 +8,14 @@ import {
   validateLimits,
   RECORD_RETENTION_MS,
   isReplayBoundMessageId,
-} from "./contract.ts";
-import type { AckRequest, ContractLimits, Submission } from "./contract.ts";
-import { RelayError } from "./service.ts";
-import type { AckReceipt, Delivery } from "./service.ts";
+} from "../messaging/contract.ts";
+import type {
+  AckRequest,
+  ContractLimits,
+  Submission,
+} from "../messaging/contract.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type { AckReceipt, Delivery } from "../messaging/delivery-service.ts";
 import type {
   InboxEntry,
   ReceiverStore,
@@ -59,7 +63,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       !(options.fingerprint_key instanceof Uint8Array) ||
       options.fingerprint_key.byteLength < 32
     )
-      throw new RelayError("invalid_inbox_options");
+      throw new MessagingError("invalid_inbox_options");
     for (const k of [
       "max_records",
       "max_body_bytes",
@@ -70,14 +74,14 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       "max_attempts",
     ] as const)
       if (!Number.isSafeInteger(options[k]) || options[k] < 1)
-        throw new RelayError("invalid_inbox_options");
+        throw new MessagingError("invalid_inbox_options");
     if (
       options.retry_cap_ms < options.retry_base_ms ||
       options.retry_cap_ms > 3600000 ||
       options.ack_retry_ms > 30 * 86400000 ||
       options.max_attempts > 1000
     )
-      throw new RelayError("invalid_inbox_options");
+      throw new MessagingError("invalid_inbox_options");
     this.#options = {
       ...options,
       limits: { ...options.limits },
@@ -93,7 +97,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       try {
         const info = fstatSync(fd);
         if (!info.isFile() || (info.mode & 0o077) !== 0)
-          throw new RelayError("insecure_inbox_file");
+          throw new MessagingError("insecure_inbox_file");
       } finally {
         closeSync(fd);
       }
@@ -160,7 +164,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
             )
             .get()
         )
-          throw new RelayError("unknown_schema");
+          throw new MessagingError("unknown_schema");
         this.#db.exec(SCHEMA);
         this.#db
           .prepare("INSERT INTO relay_inbox_meta VALUES(1,?,?)")
@@ -168,12 +172,12 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       }
       const rows = this.#db.prepare("SELECT * FROM relay_inbox_meta").all();
       if (rows.length !== 1 || ![1, 2, 3, 4].includes(Number(rows[0].version)))
-        throw new RelayError("unsupported_schema");
+        throw new MessagingError("unsupported_schema");
       if (
         rows[0].agent_id !== this.#options.agent_id ||
         rows[0].key_check !== this.#keyCheck()
       )
-        throw new RelayError("inbox_identity_mismatch");
+        throw new MessagingError("inbox_identity_mismatch");
       if (rows[0].version === 1) {
         const now = this.#clock();
         this.#db.exec(MIGRATION_2);
@@ -183,7 +187,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           )
           .all();
         if (messages.length > this.#options.max_records)
-          throw new RelayError("inbox_capacity_exceeded");
+          throw new MessagingError("inbox_capacity_exceeded");
         this.#db
           .prepare(
             "UPDATE relay_receiver_acks SET terminal_at=CASE WHEN state='pending' THEN NULL ELSE ? END,retain_until=max(retry_until,?)+?",
@@ -205,7 +209,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
               ),
             ) !== row.fingerprint
           )
-            throw new RelayError("invalid_inbox_record");
+            throw new MessagingError("invalid_inbox_record");
           const ack = this.#db
             .prepare(
               "SELECT coalesce(max(retry_until),0) horizon,max(terminal_at) terminal FROM relay_receiver_acks WHERE sender_id=? AND message_id=?",
@@ -250,18 +254,18 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         .prepare("SELECT CAST(unixepoch('subsec')*1000 AS INTEGER) at")
         .get()!.at,
     );
-    if (!Number.isSafeInteger(at)) throw new RelayError("invalid_clock");
+    if (!Number.isSafeInteger(at)) throw new MessagingError("invalid_clock");
     return at;
   }
   #now(): number {
-    if (!this.#ready) throw new RelayError("schema_not_ready");
+    if (!this.#ready) throw new MessagingError("schema_not_ready");
     return this.#clock();
   }
   save(delivery: Delivery): void {
     const { sender_id, ...wire } = delivery.message;
     const message = parseSubmission(wire, this.#options.limits);
     if (message.recipient_id !== this.#options.agent_id)
-      throw new RelayError("foreign_delivery");
+      throw new MessagingError("foreign_delivery");
     this.#saveVerified(delivery, sender_id, message);
   }
   #saveVerified(
@@ -285,7 +289,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       new Date(lease).toISOString() !== delivery.lease_until ||
       lease > Date.parse(message.expires_at)
     )
-      throw new RelayError("invalid_delivery");
+      throw new MessagingError("invalid_delivery");
     const fingerprint = this.#hash(
       comparisonMaterial(sender_id, message, this.#options.limits),
     );
@@ -297,7 +301,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         )
         .get(sender_id, message.message_id);
       if (existing && existing.fingerprint !== fingerprint)
-        throw new RelayError("inbox_content_conflict");
+        throw new MessagingError("inbox_content_conflict");
       const prior = this.#db
         .prepare(
           "SELECT fingerprint FROM relay_receiver_acks WHERE sender_id=? AND message_id=? AND generation=?",
@@ -306,20 +310,20 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       const leaseFingerprint = this.#leaseFingerprint(request);
       if (prior) {
         if (prior.fingerprint !== leaseFingerprint)
-          throw new RelayError("inbox_lease_conflict");
+          throw new MessagingError("inbox_lease_conflict");
         return;
       }
       // Existing exact journal retries above remain valid after TTL. A new ACK
       // generation or unseen expired delivery must never recreate collected state.
       if (lease <= now || Date.parse(message.expires_at) <= now)
-        throw new RelayError("expired_delivery");
+        throw new MessagingError("expired_delivery");
       if (
         Number(
           this.#db.prepare("SELECT count(*) n FROM relay_receiver_acks").get()!
             .n,
         ) >= this.#options.max_ack_records
       )
-        throw new RelayError("inbox_capacity_exceeded");
+        throw new MessagingError("inbox_capacity_exceeded");
       if (!existing) {
         const usage = this.#db
           .prepare(
@@ -332,7 +336,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           Number(usage.bytes) + Buffer.byteLength(body) >
             this.#options.max_body_bytes
         )
-          throw new RelayError("inbox_capacity_exceeded");
+          throw new MessagingError("inbox_capacity_exceeded");
         this.#db
           .prepare(
             "INSERT INTO relay_inbox(sender_id,message_id,body,fingerprint,received_at,expires_at,ack_retry_until,retain_until) VALUES(?,?,?,?,?,?,?,?)",
@@ -445,7 +449,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       !Number.isFinite(stamp) ||
       new Date(stamp).toISOString() !== receipt.acked_at
     )
-      throw new RelayError("invalid_ack_receipt");
+      throw new MessagingError("invalid_ack_receipt");
     this.#tx(() => {
       const now = this.#now();
       const row = this.#db
@@ -454,7 +458,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         )
         .get(request.request_id, request.sender_id, request.message_id);
       if (!row || row.fingerprint !== this.#leaseFingerprint(request))
-        throw new RelayError("unknown_local_ack");
+        throw new MessagingError("unknown_local_ack");
       const safe = {
         recipient_id: receipt.recipient_id,
         sender_id: receipt.sender_id,
@@ -465,7 +469,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         state: "acked",
       };
       if (row.receipt && row.receipt !== JSON.stringify(safe))
-        throw new RelayError("local_ack_receipt_conflict");
+        throw new MessagingError("local_ack_receipt_conflict");
       if (row.state === "confirmed") return;
       this.#db
         .prepare(
@@ -493,7 +497,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
     if (
       !["invalid_ack", "forbidden", "ack_idempotency_conflict"].includes(reason)
     )
-      throw new RelayError("invalid_failure_reason");
+      throw new MessagingError("invalid_failure_reason");
     this.#tx(() => {
       const now = this.#now();
       const row = this.#db
@@ -502,7 +506,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         )
         .get(request.request_id, request.sender_id, request.message_id);
       if (!row || row.fingerprint !== this.#leaseFingerprint(request))
-        throw new RelayError("unknown_local_ack");
+        throw new MessagingError("unknown_local_ack");
       if (row.state !== "pending") return;
       this.#db
         .prepare(
@@ -530,7 +534,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       !identifier(messageId) ||
       typeof action !== "function"
     )
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#tx(() => {
       this.#now();
       const row = this.#db
@@ -538,7 +542,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           "SELECT body,fingerprint,received_at,receipt_confirmed FROM relay_inbox WHERE sender_id=? AND message_id=? AND released_at IS NULL",
         )
         .get(senderId, messageId);
-      if (!row) throw new RelayError("not_found");
+      if (!row) throw new MessagingError("not_found");
       const message = parseSubmission(
         JSON.parse(String(row.body)),
         this.#options.limits,
@@ -550,7 +554,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           comparisonMaterial(senderId, message, this.#options.limits),
         ) !== row.fingerprint
       )
-        throw new RelayError("inbox_content_conflict");
+        throw new MessagingError("inbox_content_conflict");
       const result = action({
         sender_id: senderId,
         message,
@@ -559,7 +563,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       });
       if (result && typeof result === "object" && "then" in result) {
         void Promise.resolve(result).catch(() => {});
-        throw new RelayError("invalid_request");
+        throw new MessagingError("invalid_request");
       }
       return result;
     });
@@ -581,7 +585,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
   /** Call only after a separate, durable application save; no execution is implied. */
   releaseBody(senderId: string, messageId: string): boolean {
     if (!identifier(senderId) || !identifier(messageId))
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#tx(() => {
       const now = this.#now(),
         row = this.#db
@@ -589,7 +593,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
             "SELECT released_at FROM relay_inbox WHERE sender_id=? AND message_id=?",
           )
           .get(senderId, messageId);
-      if (!row) throw new RelayError("not_found");
+      if (!row) throw new MessagingError("not_found");
       if (row.released_at !== null) return false;
       this.#db
         .prepare(
@@ -602,7 +606,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
   /** Local-only, bounded administration. Never deletes an unreleased inbox body. */
   maintain(limit: number): InboxMaintenanceResult {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#tx(() => {
       const now = this.#now(),
         cutoff = now - RECORD_RETENTION_MS;
@@ -611,7 +615,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           .prepare("SELECT 1 FROM relay_inbox_maintenance_totals WHERE id=1")
           .get()
       )
-        throw new RelayError("maintenance_state_unavailable");
+        throw new MessagingError("maintenance_state_unavailable");
       const expired = this.#expireAcks(now, limit);
       const acks = this.#db
         .prepare(

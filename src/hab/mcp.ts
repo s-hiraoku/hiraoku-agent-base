@@ -6,14 +6,14 @@ import {
   relayMcpSchemas,
 } from "../relay/mcp.ts";
 import type { RelayContextResolver, RelayMcpGate } from "../relay/mcp.ts";
-import type { RelayOperations } from "../relay/service.ts";
-import { RelayError } from "../relay/service.ts";
+import type { DeliveryService } from "../messaging/delivery-service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabDirectory } from "./directory.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import type { HabDiscoveryService } from "./discovery.ts";
 import { HAB_ADDRESS_PATTERN } from "./registry.ts";
-export type HabMcpService = RelayOperations &
+export type HabMcpService = DeliveryService &
   HabDiscoveryService &
   HabDirectory & {
     selectAddress?(
@@ -57,7 +57,8 @@ export function prepareHabInvocation(
   tool: string,
   input: unknown,
 ) {
-  if (!Object.hasOwn(habMcpSchemas, tool)) throw new RelayError("forbidden");
+  if (!Object.hasOwn(habMcpSchemas, tool))
+    throw new MessagingError("forbidden");
   const parsed = habMcpSchemas[tool as keyof typeof habMcpSchemas].parse(input);
   const {
     as_address: address,
@@ -65,11 +66,12 @@ export function prepareHabInvocation(
     ...payload
   } = parsed;
   if (address === undefined) {
-    if (expectedAgentId !== undefined) throw new RelayError("invalid_request");
+    if (expectedAgentId !== undefined)
+      throw new MessagingError("invalid_request");
     return { context, input: payload };
   }
   if (typeof service.selectAddress !== "function")
-    throw new RelayError("forbidden");
+    throw new MessagingError("forbidden");
   return {
     context: service.selectAddress(context, address, expectedAgentId),
     input: payload,
@@ -82,7 +84,7 @@ export function createHabMcpServer(
   oauthScopes?: readonly string[],
 ) {
   if (typeof service?.resolve !== "function")
-    throw new RelayError("invalid_hab_mcp_service");
+    throw new MessagingError("invalid_hab_mcp_service");
   const server = createRelayMcpServer(
     service,
     resolveContext,
@@ -126,7 +128,7 @@ export function createHabMcpServer(
   );
   if (service.discoveryEnabled === true) {
     if (typeof service.discover !== "function")
-      throw new RelayError("invalid_hab_mcp_service");
+      throw new MessagingError("invalid_hab_mcp_service");
     server.registerTool(
       "hab_discover",
       {

@@ -1,6 +1,8 @@
 # Standalone Relay contract — implementation step 1
 
-Import from `./index.ts`. This module owns no database, process, credentials,
+Import the contract, `DeliveryService` port and `StoreDeliveryService` from
+[`../messaging/index.ts`](../messaging/index.ts); `./index.ts` exports the durable
+sender and receiver. The messaging contract owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.
 It validates a version-1 caller submission and supplies stable comparison material.
 Service and SQLite delivery are described below. The optional MCP factory, HTTP adapters and client in steps 9–11 are unmounted from the existing runtime; no deployed endpoint is changed.
@@ -54,7 +56,7 @@ Nothing here changes existing Task or diagnostic-ping behavior.
 
 ## Implementation step 2: durable acceptance
 
-`RelayService` now accepts an injected `Authorization` port and `AcceptanceStore`.
+`StoreDeliveryService` now accepts an injected `Authorization` port and `AcceptanceStore`.
 The trusted policy resolves the individual from opaque connection context on
 every submit and status operation; neither product names nor supplied IDs are
 identity proof. Missing, failed or revoked policy denies access. The callback is
@@ -127,7 +129,7 @@ ports. Calling `receiveOnce()` explicitly first recovers a due ACK, then polls a
 most one new delivery, commits its body/dedup record **and stable ACK request**,
 then ACKs. It does not start a server, scheduler, agent or model. The caller must
 provide an authenticated, bounded-time transport. The current local fixture binds
-that port directly to `RelayService`; it is not evidence of a real MCP connection.
+that port directly to `StoreDeliveryService`; it is not evidence of a real MCP connection.
 
 The separate infrastructure entry point `./sqlite-inbox.ts` provides `SQLiteInbox`.
 Use a dedicated database per immutable individual and call `migrate()` explicitly.
@@ -222,7 +224,7 @@ MCP listener, real-agent call, cron or new credentials are introduced.
 
 ## Implementation step 6: explicit server maintenance and replay-safe collection
 
-`RelayService.maintain(context, limit)` is an internal maintenance operation with
+`StoreDeliveryService.maintain(context, limit)` is an internal maintenance operation with
 its own mandatory `maintenance` authorization. It is not in the MCP catalog and
 starts no cron/daemon. SQLite samples its clock once per transaction. Each call
 has a 1–1000 unit budget shared across expired-message transitions, collected

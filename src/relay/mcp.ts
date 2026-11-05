@@ -1,10 +1,10 @@
 /** Optional SDK boundary. Importing/constructing starts no listener or external connection. */
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { ContractError } from "./contract.ts";
-import { RelayError } from "./service.ts";
-import { isRelayMcpError } from "./mcp-errors.ts";
-import type { RelayOperations } from "./service.ts";
+import { ContractError } from "../messaging/contract.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import { isPublicToolError } from "../messaging/tool-errors.ts";
+import type { DeliveryService } from "../messaging/delivery-service.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 const part = z.discriminatedUnion("type", [
@@ -70,15 +70,15 @@ export async function executeRelayMcpOperation(
     try {
       context = await resolveContext();
     } catch {
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     }
     if (context === null || context === undefined || context === false)
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     gate?.check();
     const value = operation(context);
     if (value && typeof value === "object" && "then" in value) {
       void Promise.resolve(value).catch(() => {});
-      throw new RelayError("relay_operation_failed");
+      throw new MessagingError("relay_operation_failed");
     }
     const output = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
     await finish?.(true);
@@ -94,8 +94,8 @@ export async function executeRelayMcpOperation(
       /* A service may already have committed; never repeat it here. */
     }
     const code =
-      (error instanceof RelayError || error instanceof ContractError) &&
-      isRelayMcpError(error.code)
+      (error instanceof MessagingError || error instanceof ContractError) &&
+      isPublicToolError(error.code)
         ? error.code
         : "relay_operation_failed";
     return {
@@ -117,7 +117,7 @@ export interface RelayMcpToolBinding {
   ): { context: unknown; input: unknown };
 }
 export function createRelayMcpServer(
-  service: RelayOperations,
+  service: DeliveryService,
   resolveContext: RelayContextResolver = () => null,
   gate?: RelayMcpGate,
   oauthScopes?: readonly string[],

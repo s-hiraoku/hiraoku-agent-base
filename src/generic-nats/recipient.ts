@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DurableReceiver, type InboxEntry } from "../relay/receiver.ts";
 import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
-import { DELIVERY_TTL_MS } from "../relay/contract.ts";
+import { DELIVERY_TTL_MS } from "../messaging/contract.ts";
 import { verifyTextRuntime } from "../text-task.ts";
 import type { Run } from "../types.ts";
 import { TextNatsJournal, type TextJournalEntry } from "./journal.ts";

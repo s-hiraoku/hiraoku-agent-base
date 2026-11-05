@@ -1,5 +1,5 @@
 /** Transport-neutral Relay wire contract. No IO, identity lookup or task execution. */
-export const RELAY_VERSION = 1 as const;
+export const CONTRACT_VERSION = 1 as const;
 export const DELIVERY_TTL_MS = 3_600_000;
 export const RECORD_RETENTION_MS = 30 * 86_400_000;
 /** Upper bound shared with client ACK retry policy, not an automatic scheduler. */
@@ -203,7 +203,7 @@ export function parseSubmission(
 ): Submission {
   validateLimits(limits);
   const v = record(json(input, limits));
-  if (v.version !== RELAY_VERSION)
+  if (v.version !== CONTRACT_VERSION)
     throw new ContractError("unsupported_version");
   fields(v, [
     "version",

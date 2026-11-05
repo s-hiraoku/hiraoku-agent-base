@@ -1,7 +1,7 @@
 /** Fixed Task replies, separate from reusable Relay transport. */
 import { z } from "zod";
-import { parseSubmission, DELIVERY_TTL_MS } from "../relay/contract.ts";
-import type { Submission, ContractLimits } from "../relay/contract.ts";
+import { parseSubmission, DELIVERY_TTL_MS } from "../messaging/contract.ts";
+import type { Submission, ContractLimits } from "../messaging/contract.ts";
 import { TaskBridgeError, closedTask, taskSchema } from "./contract.ts";
 import type { TaskEvidence } from "./contract.ts";
 import type { BridgeLink } from "./sqlite-journal.ts";

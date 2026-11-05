@@ -231,7 +231,10 @@ test("agent capacity: concurrent native writers cannot spend the same last unres
   const f = fixture(t);
   for (let n = 0; n < 3; n++) f.send("a");
   const source = new URL("../src/relay/sqlite-store.ts", import.meta.url).href;
-  const service = new URL("../src/relay/service.ts", import.meta.url).href;
+  const service = new URL(
+    "../src/messaging/delivery-service.ts",
+    import.meta.url,
+  ).href;
   const run = (message) =>
     new Promise((resolve, reject) => {
       const w = new Worker(
@@ -239,10 +242,10 @@ test("agent capacity: concurrent native writers cannot spend the same last unres
       const { parentPort, workerData: d } = require("node:worker_threads");
       (async () => {
         const { SQLiteRelayStore } = await import(d.source);
-        const { RelayService } = await import(d.service);
+        const { StoreDeliveryService } = await import(d.service);
         const s = new SQLiteRelayStore(d.path, d.options);
         try {
-          s.migrate(); const api = new RelayService(s, d.limits, { authorize: () => ({ agent_id: "a" }) });
+          s.migrate(); const api = new StoreDeliveryService(s, d.limits, { authorize: () => ({ agent_id: "a" }) });
           api.submit(null, d.message); parentPort.postMessage("accepted");
         } catch (e) { parentPort.postMessage(e.code); }
         finally { s.close(); }

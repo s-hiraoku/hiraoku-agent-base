@@ -1,7 +1,7 @@
 /** Model-free orchestration: no background loop, product integration or execution. */
-import { RelayError } from "./service.ts";
-import type { AckRequest, Submission } from "./contract.ts";
-import type { Delivery, AckReceipt } from "./service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type { AckRequest, Submission } from "../messaging/contract.ts";
+import type { Delivery, AckReceipt } from "../messaging/delivery-service.ts";
 export interface ReceiverTransport {
   poll(): Promise<Delivery | null>;
   ack(request: AckRequest): Promise<AckReceipt>;
@@ -59,13 +59,13 @@ export class DurableReceiver {
         this.#store.rejectAck(request, code);
         return code === "invalid_ack";
       }
-      throw new RelayError("ack_transport_failed");
+      throw new MessagingError("ack_transport_failed");
     }
     this.#store.confirmAck(request, receipt);
     return true;
   }
   async receiveOnce(): Promise<void> {
-    if (this.#running) throw new RelayError("receiver_busy");
+    if (this.#running) throw new MessagingError("receiver_busy");
     this.#running = true;
     try {
       if (!(await this.#flush())) return;
@@ -73,7 +73,7 @@ export class DurableReceiver {
       try {
         delivery = await this.#transport.poll();
       } catch {
-        throw new RelayError("poll_transport_failed");
+        throw new MessagingError("poll_transport_failed");
       }
       if (!delivery) return;
       this.#store.save(delivery);

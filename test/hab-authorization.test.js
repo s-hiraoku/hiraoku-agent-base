@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HabRelayService } from "../src/hab/relay.ts";
-import { RelayService } from "../src/relay/service.ts";
+import { StoreDeliveryService } from "../src/messaging/delivery-service.ts";
 import {
   fixture,
   options,
@@ -302,7 +302,7 @@ test("scoped authorization cannot escape its transaction, change operation/conte
     saved.authorize(f.contexts.a, "submit", b.agent_id, "question"),
     undefined,
   );
-  const escaped = new RelayService(f.store, limits, saved);
+  const escaped = new StoreDeliveryService(f.store, limits, saved);
   assert.throws(
     () => escaped.submit(f.contexts.a, submission(b)),
     code("forbidden"),

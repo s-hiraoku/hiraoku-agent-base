@@ -13,11 +13,10 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import {
-  DurableSender,
-  DurableReceiver,
-  RelayService,
-  RelayError,
-} from "../src/relay/index.ts";
+  StoreDeliveryService,
+  MessagingError,
+} from "../src/messaging/index.ts";
+import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
@@ -93,7 +92,7 @@ function fixture(t, patch = {}) {
   const server = new SQLiteRelayStore(serverPath, relayOptions);
   stores.push(server);
   server.migrate();
-  const service = new RelayService(server, limits, policy);
+  const service = new StoreDeliveryService(server, limits, policy);
   const open = () => {
     const s = new SQLiteOutbox(path, { ...options, ...patch });
     stores.push(s);
@@ -277,7 +276,7 @@ test("expired delivery attempts only status, clears payload and eventually recor
     },
     async status() {
       lookups++;
-      throw new RelayError("not_found");
+      throw new MessagingError("not_found");
     },
   });
   sender.enqueue(m);
@@ -304,7 +303,7 @@ test("status not found is retried finitely rather than interpreted as definitive
     },
     async status() {
       lookups++;
-      throw new RelayError("not_found");
+      throw new MessagingError("not_found");
     },
   });
   sender.enqueue(m);
@@ -328,11 +327,11 @@ test("server expiry rejection forces status-only without extending the message d
   const sender = new DurableSender(f.outbox, {
     async submit() {
       sends++;
-      throw new RelayError("expired_before_acceptance");
+      throw new MessagingError("expired_before_acceptance");
     },
     async status() {
       lookups++;
-      throw new RelayError("not_found");
+      throw new MessagingError("not_found");
     },
   });
   sender.enqueue(m);
@@ -351,7 +350,7 @@ test("permanent refusal quarantines without changing identity, credentials or re
     ...f.transport,
     async submit() {
       calls++;
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     },
   });
   sender.enqueue(m);

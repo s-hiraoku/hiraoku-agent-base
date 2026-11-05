@@ -1,4 +1,4 @@
-import type { Submission, ContractLimits } from "../relay/contract.ts";
+import type { Submission, ContractLimits } from "../messaging/contract.ts";
 import type { InboxEntry } from "../relay/receiver.ts";
 import type { OutboxRecord } from "../relay/sender.ts";
 import type {

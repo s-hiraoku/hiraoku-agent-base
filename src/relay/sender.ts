@@ -1,7 +1,7 @@
 /** Explicit one-step sending; no scheduler, identity provisioning or product logic. */
-import { RelayError } from "./service.ts";
-import type { Submission } from "./contract.ts";
-import type { Receipt } from "./service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type { Submission } from "../messaging/contract.ts";
+import type { Receipt } from "../messaging/delivery-service.ts";
 export type OutboxState =
   "queued" | "sending" | "accepted" | "quarantined" | "expired_unknown";
 export interface OutboxRecord {
@@ -50,7 +50,7 @@ export class DurableSender {
     return this.#store.get(messageId);
   }
   async sendOnce(): Promise<void> {
-    if (this.#running) throw new RelayError("sender_busy");
+    if (this.#running) throw new MessagingError("sender_busy");
     this.#running = true;
     try {
       const job = this.#store.claim();
@@ -84,7 +84,7 @@ export class DurableSender {
           return;
         }
         this.#store.defer(job);
-        throw new RelayError("sender_transport_failed");
+        throw new MessagingError("sender_transport_failed");
       }
       // Storage failure intentionally keeps the durable claim until lease recovery.
       this.#store.confirm(job, receipt);

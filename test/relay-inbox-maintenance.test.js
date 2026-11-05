@@ -9,9 +9,9 @@ import {
   comparisonMaterial,
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
-  RelayService,
-  DurableReceiver,
-} from "../src/relay/index.ts";
+  StoreDeliveryService,
+} from "../src/messaging/index.ts";
+import { DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 const day = 86400000;
@@ -195,7 +195,7 @@ function realRelay(t, f) {
   });
   t.after(() => server.close());
   server.migrate();
-  const service = new RelayService(server, limits, {
+  const service = new StoreDeliveryService(server, limits, {
     authorize(ctx) {
       return ["a", "b"].includes(ctx) ? { agent_id: ctx } : undefined;
     },

@@ -12,7 +12,7 @@ import {
 } from "./mcp.ts";
 import type { HabMcpService } from "./mcp.ts";
 import { habDiscoverySchema } from "./discovery.ts";
-import { RelayError } from "../relay/service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 export class HabHttpGateway extends RelayHttpGateway {
   readonly #hab: HabMcpService;
   constructor(
@@ -23,7 +23,7 @@ export class HabHttpGateway extends RelayHttpGateway {
     admission?: WriterAdmission,
   ) {
     if (typeof service?.resolve !== "function")
-      throw new RelayError("invalid_hab_mcp_service");
+      throw new MessagingError("invalid_hab_mcp_service");
     super(service, policy, audit, verify, admission);
     this.#hab = service;
   }

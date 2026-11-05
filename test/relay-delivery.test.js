@@ -6,7 +6,10 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { createHash, createHmac } from "node:crypto";
-import { RelayService, comparisonMaterial } from "../src/relay/index.ts";
+import {
+  StoreDeliveryService,
+  comparisonMaterial,
+} from "../src/messaging/index.ts";
 import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 const limits = {
   envelope_bytes: 32768,
@@ -78,7 +81,7 @@ function fixture(t, patch = {}) {
     store,
     raw,
     open,
-    service: new RelayService(store, limits, policy),
+    service: new StoreDeliveryService(store, limits, policy),
   };
 }
 function code(fn, expected) {
@@ -127,7 +130,7 @@ test("poll leases own mailbox once; ACK atomically erases body and recovers afte
   f.store.close();
   const s = f.open();
   s.migrate();
-  const service = new RelayService(s, limits, policy);
+  const service = new StoreDeliveryService(s, limits, policy);
   f.raw.exec("UPDATE relay_messages SET expires_at=0");
   assert.deepEqual(service.ack("b", ack(d)), r);
   assert.equal(service.status("a", m.message_id).state, "acked");
@@ -214,7 +217,7 @@ test("persisted leases survive restart, cap at message expiry and only requeue a
   f.store.close();
   const s = f.open();
   s.migrate();
-  const service = new RelayService(s, limits, policy);
+  const service = new StoreDeliveryService(s, limits, policy);
   assert.equal(service.poll("b"), null);
   f.raw.exec(
     "UPDATE relay_deliveries SET lease_until=0,next_visible_at=9223372036854775807",
@@ -261,7 +264,7 @@ test("policy is rechecked on poll, candidate selection, ACK and even committed A
   f.service.submit("a", message());
   let active = true,
     blocked = false;
-  const service = new RelayService(f.store, limits, {
+  const service = new StoreDeliveryService(f.store, limits, {
     authorize(ctx, op, peer) {
       if (!active || (blocked && peer === "a")) return;
       return policy.authorize(ctx, op, peer);
@@ -305,7 +308,7 @@ test("ACK input is strict and does not accept recipient self-assertion or execut
 test("simultaneous polls through different SQLite connections issue one lease", async (t) => {
   const f = fixture(t);
   f.service.submit("a", message());
-  const source = `const{parentPort,workerData}=await import('node:worker_threads');const{SQLiteRelayStore}=await import(workerData.storeURL);const{RelayService}=await import(workerData.serviceURL);const s=new SQLiteRelayStore(workerData.path,workerData.options);s.migrate();const svc=new RelayService(s,workerData.limits,{authorize(){return {agent_id:'b'};}});parentPort.postMessage('ready');parentPort.once('message',()=>{try{parentPort.postMessage(svc.poll(null));}finally{s.close();}});`;
+  const source = `const{parentPort,workerData}=await import('node:worker_threads');const{SQLiteRelayStore}=await import(workerData.storeURL);const{StoreDeliveryService}=await import(workerData.serviceURL);const s=new SQLiteRelayStore(workerData.path,workerData.options);s.migrate();const svc=new StoreDeliveryService(s,workerData.limits,{authorize(){return {agent_id:'b'};}});parentPort.postMessage('ready');parentPort.once('message',()=>{try{parentPort.postMessage(svc.poll(null));}finally{s.close();}});`;
   const workers = [1, 2].map(
     () =>
       new Worker(source, {
@@ -316,7 +319,10 @@ test("simultaneous polls through different SQLite connections issue one lease", 
           limits,
           storeURL: new URL("../src/relay/sqlite-store.ts", import.meta.url)
             .href,
-          serviceURL: new URL("../src/relay/service.ts", import.meta.url).href,
+          serviceURL: new URL(
+            "../src/messaging/delivery-service.ts",
+            import.meta.url,
+          ).href,
         },
       }),
   );
@@ -420,7 +426,7 @@ test("explicit v1-to-current migration preserves accepted receipts and allows de
     6,
   );
   assert.deepEqual(raw.prepare("PRAGMA foreign_key_check").all(), []);
-  const service = new RelayService(store, limits, policy);
+  const service = new StoreDeliveryService(store, limits, policy);
   assert.equal(service.submit("a", m).receipt_id, "old-receipt");
   const d = service.poll("b");
   assert.equal(service.ack("b", ack(d)).state, "acked");

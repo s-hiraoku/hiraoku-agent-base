@@ -17,7 +17,7 @@ import { SQLiteRelayStore } from "../../src/relay/sqlite-store.ts";
 import { createRelayNodeHandler } from "../../src/relay/http-node.ts";
 import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
 import { SQLiteOutbox } from "../../src/relay/sqlite-outbox.ts";
-import { makeReplayBoundMessageId } from "../../src/relay/contract.ts";
+import { makeReplayBoundMessageId } from "../../src/messaging/contract.ts";
 import { SQLiteReplyBudget } from "../../src/adapter-policy/sqlite-reply-budget.ts";
 import { SQLiteAnswerJournal } from "../../src/answer-intents/sqlite-journal.ts";
 import { SQLiteHostControl } from "../../src/adapter-host/sqlite-control.ts";

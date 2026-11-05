@@ -7,10 +7,10 @@ import {
   validateLimits,
   RECORD_RETENTION_MS,
   isReplayBoundMessageId,
-} from "./contract.ts";
-import type { ContractLimits } from "./contract.ts";
-import { RelayError } from "./service.ts";
-import type { Receipt } from "./service.ts";
+} from "../messaging/contract.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type { Receipt } from "../messaging/delivery-service.ts";
 import type {
   OutboxRecord,
   OutboxState,
@@ -82,10 +82,10 @@ function view(row: Row): OutboxRecord {
 }
 function utc(value: unknown): number {
   if (typeof value !== "string")
-    throw new RelayError("invalid_acceptance_receipt");
+    throw new MessagingError("invalid_acceptance_receipt");
   const at = Date.parse(value);
   if (!Number.isFinite(at) || new Date(at).toISOString() !== value)
-    throw new RelayError("invalid_acceptance_receipt");
+    throw new MessagingError("invalid_acceptance_receipt");
   return at;
 }
 export class SQLiteOutbox implements SenderStore {
@@ -100,7 +100,7 @@ export class SQLiteOutbox implements SenderStore {
       !(options.fingerprint_key instanceof Uint8Array) ||
       options.fingerprint_key.byteLength < 32
     )
-      throw new RelayError("invalid_outbox_options");
+      throw new MessagingError("invalid_outbox_options");
     for (const key of [
       "max_records",
       "max_body_bytes",
@@ -112,7 +112,7 @@ export class SQLiteOutbox implements SenderStore {
       "status_retry_ms",
     ] as const)
       if (!Number.isSafeInteger(options[key]) || options[key] < 1)
-        throw new RelayError("invalid_outbox_options");
+        throw new MessagingError("invalid_outbox_options");
     if (
       !Number.isSafeInteger(options.max_clock_skew_ms) ||
       options.max_clock_skew_ms < 0 ||
@@ -124,7 +124,7 @@ export class SQLiteOutbox implements SenderStore {
       options.max_status_attempts > 1000 ||
       options.status_retry_ms > 30 * 86400000
     )
-      throw new RelayError("invalid_outbox_options");
+      throw new MessagingError("invalid_outbox_options");
     this.#options = {
       ...options,
       limits: { ...options.limits },
@@ -139,7 +139,7 @@ export class SQLiteOutbox implements SenderStore {
       try {
         const info = fstatSync(fd);
         if (!info.isFile() || (info.mode & 0o077) !== 0)
-          throw new RelayError("insecure_outbox_file");
+          throw new MessagingError("insecure_outbox_file");
       } finally {
         closeSync(fd);
       }
@@ -160,7 +160,7 @@ export class SQLiteOutbox implements SenderStore {
     }
   }
   #tx<T>(fn: () => T, guard: () => void = () => {}): T {
-    if (this.#inside) throw new RelayError("outbox_busy");
+    if (this.#inside) throw new MessagingError("outbox_busy");
     this.#inside = true;
     let began = false;
     try {
@@ -169,12 +169,12 @@ export class SQLiteOutbox implements SenderStore {
       const out = fn();
       if (out && typeof out === "object" && "then" in out) {
         void Promise.resolve(out).catch(() => {});
-        throw new RelayError("outbox_busy");
+        throw new MessagingError("outbox_busy");
       }
       const checked: unknown = guard();
       if (checked && typeof checked === "object" && "then" in checked) {
         void Promise.resolve(checked).catch(() => {});
-        throw new RelayError("invalid_outbox_admission");
+        throw new MessagingError("invalid_outbox_admission");
       }
       this.#db.exec("COMMIT");
       return out;
@@ -205,7 +205,7 @@ export class SQLiteOutbox implements SenderStore {
             )
             .get()
         )
-          throw new RelayError("unknown_schema");
+          throw new MessagingError("unknown_schema");
         this.#db.exec(SCHEMA);
         this.#db
           .prepare("INSERT INTO relay_outbox_meta VALUES(1,?,?)")
@@ -213,12 +213,12 @@ export class SQLiteOutbox implements SenderStore {
       }
       const rows = this.#db.prepare("SELECT * FROM relay_outbox_meta").all();
       if (rows.length !== 1 || ![1, 2].includes(Number(rows[0].version)))
-        throw new RelayError("unsupported_schema");
+        throw new MessagingError("unsupported_schema");
       if (
         rows[0].agent_id !== this.#options.agent_id ||
         rows[0].key_check !== this.#keyCheck()
       )
-        throw new RelayError("outbox_identity_mismatch");
+        throw new MessagingError("outbox_identity_mismatch");
       if (rows[0].version === 1) {
         const now = this.#clock();
         this.#db.exec(MIGRATION_2);
@@ -240,11 +240,11 @@ export class SQLiteOutbox implements SenderStore {
         .prepare("SELECT CAST(unixepoch('subsec')*1000 AS INTEGER) at")
         .get()!.at,
     );
-    if (!Number.isSafeInteger(at)) throw new RelayError("invalid_clock");
+    if (!Number.isSafeInteger(at)) throw new MessagingError("invalid_clock");
     return at;
   }
   #now() {
-    if (!this.#ready) throw new RelayError("schema_not_ready");
+    if (!this.#ready) throw new MessagingError("schema_not_ready");
     return this.#clock();
   }
   #row(id: string) {
@@ -307,7 +307,7 @@ export class SQLiteOutbox implements SenderStore {
   /** Recheck a synchronous local authorization inside the durable commit. */
   enqueueGuarded(input: unknown, guard: () => void): OutboxRecord {
     if (typeof guard !== "function")
-      throw new RelayError("invalid_outbox_admission");
+      throw new MessagingError("invalid_outbox_admission");
     const message = parseSubmission(input, this.#options.limits);
     const fingerprint = createHmac("sha256", this.#options.fingerprint_key)
       .update(
@@ -324,16 +324,16 @@ export class SQLiteOutbox implements SenderStore {
       const existing = this.#row(message.message_id);
       if (existing) {
         if (existing.fingerprint !== fingerprint)
-          throw new RelayError("outbox_content_conflict");
+          throw new MessagingError("outbox_content_conflict");
         return view(existing);
       }
       const expires = Date.parse(message.expires_at);
-      if (expires <= now) throw new RelayError("expired_before_enqueue");
+      if (expires <= now) throw new MessagingError("expired_before_enqueue");
       if (
         Date.parse(message.first_sent_at) >
         now + this.#options.max_clock_skew_ms
       )
-        throw new RelayError("clock_skew");
+        throw new MessagingError("clock_skew");
       const body = JSON.stringify(message),
         usage = this.#db
           .prepare(
@@ -345,7 +345,7 @@ export class SQLiteOutbox implements SenderStore {
         Number(usage.bytes) + Buffer.byteLength(body) >
           this.#options.max_body_bytes
       )
-        throw new RelayError("outbox_capacity_exceeded");
+        throw new MessagingError("outbox_capacity_exceeded");
       this.#db
         .prepare(
           "INSERT INTO relay_outbox(message_id,recipient_id,expires_at,first_sent_at,fingerprint,body,state,status_until) VALUES(?,?,?,?,?,?,'queued',?)",
@@ -363,10 +363,10 @@ export class SQLiteOutbox implements SenderStore {
     }, guard);
   }
   get(messageId: string): OutboxRecord {
-    if (!identifier(messageId)) throw new RelayError("invalid_request");
+    if (!identifier(messageId)) throw new MessagingError("invalid_request");
     this.#now();
     const row = this.#row(messageId);
-    if (!row) throw new RelayError("not_found");
+    if (!row) throw new MessagingError("not_found");
     return view(row);
   }
   claim(): SendJob | null {
@@ -441,7 +441,7 @@ export class SQLiteOutbox implements SenderStore {
             message.recipient_id !== row.recipient_id ||
             Date.parse(message.expires_at) !== row.expires_at
           )
-            throw new RelayError("outbox_integrity");
+            throw new MessagingError("outbox_integrity");
         }
         const column =
           operation === "submit" ? "submit_attempts" : "status_attempts";
@@ -476,7 +476,7 @@ export class SQLiteOutbox implements SenderStore {
       row.lease_until === null ||
       row.lease_until <= now
     )
-      throw new RelayError("stale_sender_lease");
+      throw new MessagingError("stale_sender_lease");
     return row;
   }
   confirm(job: SendJob, receipt: Receipt): void {
@@ -497,7 +497,7 @@ export class SQLiteOutbox implements SenderStore {
         at >= expiry ||
         at < row.first_sent_at - this.#options.max_clock_skew_ms
       )
-        throw new RelayError("invalid_acceptance_receipt");
+        throw new MessagingError("invalid_acceptance_receipt");
       const safe: Receipt = {
         sender_id: receipt.sender_id,
         message_id: receipt.message_id,
@@ -549,7 +549,7 @@ export class SQLiteOutbox implements SenderStore {
       "unsupported_version",
     ];
     if (!allowed.includes(reason))
-      throw new RelayError("invalid_failure_reason");
+      throw new MessagingError("invalid_failure_reason");
     this.#tx(() => {
       const now = this.#now(),
         row = this.#owned(job, now);
@@ -563,13 +563,13 @@ export class SQLiteOutbox implements SenderStore {
   }
   notFound(job: SendJob): void {
     if (job.operation !== "status")
-      throw new RelayError("invalid_status_result");
+      throw new MessagingError("invalid_status_result");
     this.defer(job, true);
   }
   /** Explicit local administration; never transmits, schedules or replaces a message. */
   maintain(limit: number): OutboxMaintenanceResult {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
-      throw new RelayError("invalid_request");
+      throw new MessagingError("invalid_request");
     return this.#tx(() => {
       const now = this.#now();
       if (
@@ -577,7 +577,7 @@ export class SQLiteOutbox implements SenderStore {
           .prepare("SELECT 1 FROM relay_outbox_maintenance_totals WHERE id=1")
           .get()
       )
-        throw new RelayError("maintenance_state_unavailable");
+        throw new MessagingError("maintenance_state_unavailable");
       const expired = this.#expire(now, limit),
         cutoff = now - RECORD_RETENTION_MS;
       const eligible = `state IN ('accepted','expired_unknown') AND body IS NULL AND lease_until IS NULL

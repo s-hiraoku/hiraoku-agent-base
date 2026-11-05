@@ -1,5 +1,5 @@
 /** Trusted host message-capacity policy. Identity is the verified Acceptance.sender_id, never wire arguments. */
-import { RelayError } from "./service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 export interface AgentCapacityPolicy {
   max_pending_per_sender: number;
   max_body_bytes_per_sender: number;
@@ -31,7 +31,7 @@ export function agentCapacityPolicy(
   total: CapacityTotals,
 ): AgentCapacityPolicy {
   const invalid = () => {
-    throw new RelayError("invalid_agent_capacity_policy");
+    throw new MessagingError("invalid_agent_capacity_policy");
   };
   if (!input || typeof input !== "object") return invalid();
   for (const key of [
@@ -111,7 +111,7 @@ export function assertAgentCapacity(
     !count(recipient.records) ||
     !count(recipient.body_bytes)
   )
-    throw new RelayError("capacity_state_invalid");
+    throw new MessagingError("capacity_state_invalid");
   for (const row of senders) {
     if (
       typeof row.sender_id !== "string" ||
@@ -119,11 +119,12 @@ export function assertAgentCapacity(
       ![row.pending, row.body_bytes, row.records].every(count) ||
       row.pending > row.records
     )
-      throw new RelayError("capacity_state_invalid");
+      throw new MessagingError("capacity_state_invalid");
     usage.set(row.sender_id, { ...row });
     for (const k of ["pending", "body_bytes", "records"] as const) {
       combined[k] += row[k];
-      if (!count(combined[k])) throw new RelayError("capacity_state_invalid");
+      if (!count(combined[k]))
+        throw new MessagingError("capacity_state_invalid");
     }
   }
   const own = usage.get(sender) ?? {
@@ -143,7 +144,7 @@ export function assertAgentCapacity(
     recipient.records + 1 > policy.max_records_per_recipient ||
     recipient.body_bytes + bytes > policy.max_body_bytes_per_recipient
   )
-    throw new RelayError("capacity_exceeded");
+    throw new MessagingError("capacity_exceeded");
   const unused = { pending: 0, body_bytes: 0, records: 0 };
   for (const floor of policy.reservations) {
     const current = usage.get(floor.sender_id);
@@ -155,5 +156,5 @@ export function assertAgentCapacity(
     combined.body_bytes + unused.body_bytes > total.max_body_bytes ||
     combined.records + unused.records > total.max_records
   )
-    throw new RelayError("capacity_exceeded");
+    throw new MessagingError("capacity_exceeded");
 }
