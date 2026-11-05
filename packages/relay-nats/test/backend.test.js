@@ -91,7 +91,7 @@ test("redelivery increments application fence, enforces backoff, and rejects a s
 });
 
 test("lost application ACK response survives backend and broker restart with the exact receipt", async (t) => {
-  const f = await fixture(t);
+  const f = await fixture(t, { lease_ms: 2000 });
   const message = f.message();
   await f.backend.submit("a", message);
   const delivery = await f.backend.poll("b");
