@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "f1b99cc6d0a7dc9b5cc257304c3c9ab18d823615",
+  "source_ref": "37cb13bf4038908e2317ad23c3c2b50b18aee55f",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -39,6 +39,10 @@
     "packages/relay-nats/test/fixture.js": {
       "previous_sha256": "75bc9335f5461a80aea0522ac2b0b69f182ba4695b8dba8ac7db2f7573a6a2d6",
       "sha256": "5e33a06340317cd8cbf02b2e9ee9c36b3b16c2613cecafe48dd684241cac95a2"
+    },
+    "packages/relay-nats/test/guarded-commits.test.js": {
+      "previous_sha256": "5afa9e4dcb48ce35ace76189aa6d1e50e97c3ab8fb401cab4454b09bca805875",
+      "sha256": "fceaf1e6b800549abffc2113035ed6d95129533e8cd455899872db01404f0ab0"
     },
     "packages/relay-nats/test/startup/startup-cases.js": {
       "previous_sha256": null,
