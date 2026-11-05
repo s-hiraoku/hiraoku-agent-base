@@ -49,7 +49,7 @@ const result = await supervisor.run(stopController.signal);
 - 例外本文、受信本文、lease token、認証値を結果やログへ出しません。固定reasonと件数だけを返します。
 
 `receive_steps` はreceive呼出しが返った回数で、メッセージ件数・ACK成功件数ではありません。
-受信本文はdurable inboxに留め、モデルやTaskへの自動受渡しは別の明示契約とします。
+受信本文はdurable inboxに留め、モデルやTaskへの自動受渡しは行いません。受信側callerはhostがidleのとき、別のsource別読取り権限で[明示的なinbox_read](adapter-host.md#保存済み本文を明示的に読む)を呼べます。読取りから実行・返信・ACK確認を始めず、内容判断と必要な承認は受信エージェント側に残します。
 
 ## 再起動と本番への配線
 

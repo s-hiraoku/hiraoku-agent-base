@@ -96,10 +96,12 @@ Miniflareが固定していたUndiciは[修正版7.30.1](https://github.com/node
 
 ## 未検証ゲートと実接続の条件
 
+このMVPの1対1 bindingは従来経路の検証です。実接続では[認証グループ設計](relay-auth-groups.md)に従い、本人が承認したグループ単位の認証とアドレス単位の配送名義を確認します。共有認証によるグループ内のBot専有性は保証しません。旧1対1 bindingも引き続き利用できます。
+
 | 対象 | 次に確認／承認が必要な内容 |
 | --- | --- |
-| G0 実Grok・Dots・Hermesの各個体 | 個体専有binding、送信前の永続保存、再送契機、受信inbox、poll／wakeの実能力。共有の人間subjectだけで個体識別できるとは扱わない |
-| 本番Relay入口 | 接続先URL・port／path、公開の有無、認証issuer／audience、各個体client／connection、proxyのheader保持を確定。MVPの一時portや模擬tokenは転用しない |
+| G0 実Grok・Dots・Hermesの各個体 | 認証済み接続／グループと所属アドレス、選択名義の固定、送信前の永続保存、再送契機、受信inbox、poll／wakeの実能力。共有subjectや選択名義をBot本人の専有実行の証明にはしない |
+| 本番Relay入口 | 接続先URL・port／path、公開の有無、認証issuer／audience、認証済みclient／connectionとグループ／アドレスの対応、proxyのheader保持を確定。MVPの一時portや模擬tokenは転用しない |
 | 最初の実通信 | 対象の個体と相手を特定し、無害な固定テキストのquestion／answer各1通、resolve／submit／status／poll／ackだけの権限、停止条件・保存場所を確認して承認 |
 | 新規認証・永続起動 | credential／OAuthの発行・scope、保存先・有効期限、実daemonやcron、既存設定変更は個別確認。MVP実行の承認から引き継がない |
 | 実Hermes Task | capabilities／auth／tool無効化を実境界で確認し、固定Task・対象Runs・送信データ・modelの追加費用0円・停止方法を個別に確定。MVPの模擬worker成功を代用しない |

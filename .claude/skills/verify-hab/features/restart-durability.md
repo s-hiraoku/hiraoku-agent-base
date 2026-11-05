@@ -1,6 +1,6 @@
 # Restart durability
 
-A message accepted by the Relay is stored durably: if the Relay process stops and starts again on the same data, the recipient still receives it.
+This recipe verifies that an accepted message remains deliverable after a graceful Relay process restart using the same data.
 
 ## Sub-features
 
@@ -26,4 +26,5 @@ Preconditions:
 ## Gotchas
 
 - Reopen reuses the recorded port; if another process grabbed it meanwhile, launch fails with `stack_exited` and a listen error in `stack.log`. Start a new run dir in that case.
-- This is a clean SIGTERM stop. Crash/kill-9 recovery is covered by `npm run test:hab-integration`, not by this recipe.
+- This recipe verifies a graceful SIGTERM stop only when `HAB_VERIFY_STOPPED` is present before relaunch. A cleanup fallback to SIGKILL does not pass this graceful-stop proof.
+- `npm run test:hab-integration` covers orderly in-process DB/listener close/reopen and injected lost-response recovery. It does not terminate a child with kill-9. Abrupt process death, power loss and physical storage failure remain unverified by these paths.
