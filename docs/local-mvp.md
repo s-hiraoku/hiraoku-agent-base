@@ -2,7 +2,7 @@
 
 [README](../README.md) · [正式仕様のゲート](hab-relay-spec.md#20-導入と受入れゲート) · [受入れ表](mvp-acceptance.md)
 
-**このMVPの完了条件は、モデルなしの模擬3個体で登録→MCP配送→返信→停止→永続状態からの再開→固定Taskの結果配送を、一つの有限コマンドで再現できることです。** 実Grok・Dots・Hermesの接続や、管理添付・全DBの整合backupを含むG1全体の受入れとは分けます。
+**このMVPの完了条件は、モデルなしの模擬3個体で登録→MCP配送→返信→停止→永続状態からの再開→固定Taskの結果配送を、一つの有限コマンドで再現できることです。** 実Grok・Dots・Hermesの接続や、全DBの整合backupを含むG1全体の受入れとは分けます。
 
 ## 起動
 
@@ -86,7 +86,7 @@ python3 -B -m unittest discover -s hermes_bridge -p 'test_*.py'
 python3 -B -m unittest scripts.test_inventory_token_input
 ```
 
-MVPの5テストは、上記CLIそのものの15段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。既存の独立Relay、D1／Task、添付・公平性・snapshot等の回帰も続けます。補助的なRelay MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
+MVPの5テストは、上記CLIそのものの15段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。既存の独立Relay、D1／Task、公平性等の回帰も続けます。補助的なRelay MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
 
 ## 新規導入時の依存確認
 
@@ -105,7 +105,7 @@ Miniflareが固定していたUndiciは[修正版7.30.1](https://github.com/node
 | 最初の実通信 | 対象の個体と相手を特定し、無害な固定テキストのquestion／answer各1通、resolve／submit／status／poll／ackだけの権限、停止条件・保存場所を確認して承認 |
 | 新規認証・永続起動 | credential／OAuthの発行・scope、保存先・有効期限、実daemonやcron、既存設定変更は個別確認。MVP実行の承認から引き継がない |
 | 実Hermes Task | capabilities／auth／tool無効化を実境界で確認し、固定Task・対象Runs・送信データ・modelの追加費用0円・停止方法を個別に確定。MVPの模擬worker成功を代用しない |
-| G1全体・運用 | 管理添付の実runtime適用、全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |
+| G1全体・運用 | 全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |
 
 この一覧の未確定値を推測して接続・credential発行・課金・公開へ進めません。現在の完了は、ローカルMVPの再現手順・模擬往復・失敗復旧と、その検証済みコードです。
 

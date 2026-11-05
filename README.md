@@ -10,7 +10,7 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 
 通信部分の**HAB Relay**は、HAB固有の登録・アドレス、Task Engine、製品別Adapterから独立した再利用可能なコンポーネントとして実装しています。[正式仕様](docs/hab-relay-spec.md)でstore-and-forward、個体認証、受信ACK、Task Engineとの境界、受入れ条件を管理し、[実装手順と検証範囲](src/relay/README.md)に現在の到達点を記録します。
 
-**現在はテキスト・構造化データの配送基盤、MCP送受信・アドレス解決、人向けの登録フローを模擬認証と一時DB／loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 本番の認証binding・管理入口、添付bytes、runtimeへの配線・運用整備などが残っています。
+**現在はテキスト・構造化データの配送基盤、MCP送受信・アドレス解決、人向けの登録フローを模擬認証と一時DB／loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 本番の認証binding・管理入口、runtimeへの配線・運用整備などが残っています。
 
 2026-10-25、**実Codexと実Hermes（双方`gpt-6.1-sol`）の共通MCPによる固定文・返信・双方の保存後ACK**をMac内で確認しました。試験認証の失効・秘密と追加設定の除去・試験Relay停止も確認済みです。[有限試験の手順と限界](docs/finite-mcp-trial.md)に、hostの時刻・ID生成と保存の補助、使用CLI、操作承認、回帰検証を記録しています。実Dots接続と常駐・自律運用は別の未完了項目です。
 
@@ -62,14 +62,13 @@ flowchart LR
 | 永続タスクキュー、HTTP MCP、lease/fencing、監査・outbox、停止・照合                        | **実装済み**。SQLiteとローカルD1で失敗系を検証                                                                                   |
 | 固定テキストの`connectivity_check`、固定候補metadataの`shift_log_inventory`、診断ping/pong | **実装済み**。信頼済みpolicyで個別に許可する限定契約。自由入力・任意shellなし                                                    |
 | JWT/Auth0 resource-server、OAuth discovery、Events、限定キー管理、Hermes隔離bridge         | **実装済み**。通常runtimeと専用inventory入口の認証配線をfixtureで検証。本番の主体・設定・実接続は未確認                          |
-| Relayの独立契約・SQLite受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。本文はテキスト・構造化データ。既定経路は添付を拒否。任意のhost組立てで添付の受付・配送・ACKと削除を追加でき、配送受領だけでTaskを実行しない |
+| Relayの独立契約・SQLite受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。本文はテキスト・構造化データ。添付partは廃止し、SQLite／NATSとも契約検証で拒否。配送受領だけでTaskを実行しない |
 | Relayの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
 | Relay専用MCP 4ツール・HTTP adapter | **実装済み／既存runtimeへ未配線**。`relay_submit/status/poll/ack`を一時loopback HTTPでも検証。Bearer検証port・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | Relay専用MCPクライアント | **実装済み／模擬検証済み**。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
 | HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、変更／再利用禁止、権限分離、有効化・失効・blockを実装。HAB専用catalogの`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復。既存runtimeへは未配線 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
 | 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
-| 管理添付の保存・配送・削除 | **任意構成で実装済み／模擬検証済み**。source永続化・SHA検証・有限送信worker・認可付きMCP転送・durable受信・ACK・物理削除を実装。応答消失・再起動後も同じID／bytesで照合。[転送](docs/attachment-transport.md)と[送信journal／worker](docs/upload-journal.md)、[message outbox連携](docs/attachment-outbox.md)を参照。既定経路は添付を拒否。[受信checkpoint／worker](docs/attachment-receiver.md)まで実装。本番配線・運用整備が残る |
 | Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
@@ -83,15 +82,15 @@ flowchart LR
 | 順序 | タスク | 完了の目安 |
 | --- | --- | --- |
 | 1・進行中 | 登録・アドレス解決・認証binding | 核・MCP lookup・人向け管理フローは実装済み。本番管理認証・接続選択の配線と実個体のbinding実証が残る |
-| 2・進行中 | 管理添付 | source保存・有限送信workerからMCP転送・durable受信・ACK・削除まで模擬確認済み。送受信キュー連携も実装済み。有限保守cycleも実装済み。snapshot／停止復元の核も実装済み。実運用の実行契機・監視、復元後の照合、公平性・本番配線が残る |
+| 2・廃止 | 管理添付 | 添付bytesの保存・転送・削除は廃止。契約は添付partを拒否し、旧DBの添付tableは移行時に削除 |
 | 3・進行中 | 個体別の容量・公平性 | message／blobの個体別上限・最低予約枠、送信者巡回・永続scan位置、任意の1プロセス内rate・公平writer受付を模擬検証済み。本番policy・監視・実負荷と複数writer全体の評価が残る |
 | 4・進行中 | Task bridge | 明示引受け・永続link・固定Taskの同key受付／照合と、accepted／resultの永続返信・送信outbox連携を模擬検証済み。受信側の永続返信budgetも任意構成で模擬検証済み。有限hostの明示操作・停止／照合、質問返信の永続intent・起動時一覧も模擬検証済み。実製品の全入口への適用と本番配線が残る |
-| 5・進行中 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守cycleと配送DBのsnapshot／停止復元は実装済み。実runtimeの静止・復元後の昇格、停止・照合・復旧手順 |
-| 6・進行中 | 統合試験 | 人向け登録→HTTP配送→不在・失効・競合・停止・復旧の17シナリオは確認済み。添付、実Adapterのloop制御、運用restore等は機能追加とともに拡張 |
+| 5・進行中 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守cycleは実装済み。実runtimeの静止・復元後の昇格、停止・照合・復旧手順 |
+| 6・進行中 | 統合試験 | 人向け登録→HTTP配送→不在・失効・競合・停止・復旧の17シナリオは確認済み。実Adapterのloop制御、運用restore等は機能追加とともに拡張 |
 | 7・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
 | 8・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-**ローカルMVPは[一つの有限コマンド](docs/local-mvp.md)で再現可能です。** 15段階で登録・実HTTP MCP・送受信・返信intentとACKの再開・running Taskのgate維持・停止を確認しました。次は実個体のG0能力・接続条件の確定と、全hostの整合backup／restore・本番運用の受入れです。[単一owner管理](docs/adapter-owner.md)を任意構成として追加し、13件で二重起動、通信中の解放拒否、native process終了後の再取得を検証しました。[質問返信の永続intent](docs/answer-intents.md)を独立部品として追加し、44シナリオでoutbox前の保存、再起動後の一覧・同ID引渡し、応答消失、本文解放、期限・30日GC、権限・並列producerを検証しました。[有限Adapter host](docs/adapter-host.md)で受信・明示回答／Task引受け・返信・送信を組み立て、30シナリオで永続停止・世代・遅い応答・timeout後のslot保持・同ID照合・native HTTP MCPを検証しました。[受信側の永続返信budgetとloop制御](docs/adapter-reply-budget.md)を独立部品として実装し、36シナリオで原要求・thread・個体rate、再起動・不明な送信・通知ループ拒否・Task返信との共通枠を検証しました。[明示引受けとTask link](docs/task-bridge.md)を実装し、30シナリオでACKとの分離・固定Task・応答消失・再起動・fencingを検証しました。受付／結果の返信outboxも実装し、32シナリオで固定ID・期限・不明な引渡しの再照合・権限失効・模擬配送／ACKを検証しました。[公平writer受付とHTTP配線](docs/writer-admission.md)を任意構成として実装し、core20シナリオ・MCP26シナリオで個体別rate・巡回・失効・timeout後のslot保持を検証しました。[添付blobの個体別容量・最低予約枠](docs/attachment-capacity.md)を実装し、24シナリオで宣言bytes・保持記録・binding・native競合・認証分離を検証しました。[公平pollと永続scan位置](docs/relay-fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[配送DBのsnapshot／停止復元](docs/sqlite-snapshot-bundle.md)を実装し、26シナリオで一括lock・WAL・改ざん拒否・3 profileの復元・schema4/5互換を確認しました。[サーバー添付の有限保守cycle](docs/attachment-maintenance.md)を実装し、16シナリオで専用認可・孤立upload回収・部分失敗を確認しました。[受信checkpoint／worker](docs/attachment-receiver.md)を実装し、29シナリオで途中再開・lease更新・ACK復旧を確認しました。添付messageの[送信outbox連携](docs/attachment-outbox.md)は実装し、21シナリオを追加検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)、[添付MCP転送37件](docs/attachment-transport.md)、[送信journal／worker48件](docs/upload-journal.md)を模擬検証済みです。孤立回収の運用、整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+**ローカルMVPは[一つの有限コマンド](docs/local-mvp.md)で再現可能です。** 15段階で登録・実HTTP MCP・送受信・返信intentとACKの再開・running Taskのgate維持・停止を確認しました。次は実個体のG0能力・接続条件の確定と、全hostの整合backup／restore・本番運用の受入れです。[単一owner管理](docs/adapter-owner.md)を任意構成として追加し、13件で二重起動、通信中の解放拒否、native process終了後の再取得を検証しました。[質問返信の永続intent](docs/answer-intents.md)を独立部品として追加し、44シナリオでoutbox前の保存、再起動後の一覧・同ID引渡し、応答消失、本文解放、期限・30日GC、権限・並列producerを検証しました。[有限Adapter host](docs/adapter-host.md)で受信・明示回答／Task引受け・返信・送信を組み立て、30シナリオで永続停止・世代・遅い応答・timeout後のslot保持・同ID照合・native HTTP MCPを検証しました。[受信側の永続返信budgetとloop制御](docs/adapter-reply-budget.md)を独立部品として実装し、36シナリオで原要求・thread・個体rate、再起動・不明な送信・通知ループ拒否・Task返信との共通枠を検証しました。[明示引受けとTask link](docs/task-bridge.md)を実装し、30シナリオでACKとの分離・固定Task・応答消失・再起動・fencingを検証しました。受付／結果の返信outboxも実装し、32シナリオで固定ID・期限・不明な引渡しの再照合・権限失効・模擬配送／ACKを検証しました。[公平writer受付とHTTP配線](docs/writer-admission.md)を任意構成として実装し、core20シナリオ・MCP26シナリオで個体別rate・巡回・失効・timeout後のslot保持を検証しました。[公平pollと永続scan位置](docs/relay-fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)を模擬検証済みです。整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
 汎用の非同期依頼、送信後の会話継続、受信側所有者の承認、結果相関と障害復旧は[追加設計](docs/generic-agent-async-design.md)にまとめています。固定Taskの現行実装と将来案を区別しています。
 

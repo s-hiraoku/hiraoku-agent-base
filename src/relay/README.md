@@ -15,50 +15,16 @@ also covers 17 native loopback journeys with offline receipt, uncertain submit/A
 stop/revocation and store/listener reopen. These tests compose this core without
 adding HAB or Task dependencies to it.
 
-The optional [managed upload contract and SQLite chunk backend](../../docs/managed-attachments.md)
-implement resumable owner-scoped uploads and digest-checked finalize separately
-from message storage. Optional durable per-message bindings and an acceptance-only
-coordinator now protect finalized bytes before Relay commit and reconcile the original
-receipt after failure/reopen. A host must explicitly supply prepared-reference admission;
-default acceptance/outbox/inbox still reject attachments. Admission alone does not enable
-poll or ACK: the host must additionally supply a fourth `AttachmentDeliveryPolicy`
-constructor argument, connecting its finite limits and synchronous check to the fixed
-blob store's `checkDeliverable`. Only then can confirmed attachments be leased and ACKed. The optional
-`./attachment-read.ts` host service reads one bounded integrity-checked chunk for the
-current receiver under a live Relay transaction; it rechecks message state/expiry,
-confirmed refs and current poll authority. Grants expire at callback exit and reads
-never advance delivery state. The optional [receiver attachment journal](../../docs/attachment-inbox.md) now
-durably saves bounded chunks, resumes offsets and verifies the complete SHA-256
-before a scoped readiness action. An explicit third constructor argument now gates ordinary inbox save and ACK
-claim on verified retained bytes. Its schema-3 migration preserves v1/v2 journals
-and released-text ACK replay; a keyed metadata tag retains attachment verification
-after body handoff. The optional stager fetches at most one chunk per invocation.
-Relay schema 4 introduced minimal attachment references and a fenced
-[terminal deletion outbox](../../docs/attachment-deletion.md) in the same DB.
-Unfinished deletion blocks receipt GC. A host-invoked `AttachmentDeletionWorker`
-claims at most one job, checks separate maintenance authority and deletes the exact
-terminal binding under the live fenced proof. Partial failures roll back all owned
-bytes; retries reconcile a lost blob/queue completion without distributed transactions.
-ACK immediately closes download access before physical deletion. Twenty in-process
-HAB tests cover actual leases, durable local bytes, server ACK and cleanup, including
-response loss and authority/lease changes. An explicit optional [attachment MCP/HTTP catalog](../../docs/attachment-transport.md)
-adds six bounded version-1 upload/read tools; the default catalog is unchanged.
-An optional fixed client and 19 native loopback tests now cover durable receiver
-bytes, server ACK, physical cleanup, response loss and store/client restart.
-A separate [sender source/progress journal](../../docs/upload-journal.md) now
-persists original intents and bounded source chunks, seals their SHA, fences one
-active claim and verifies progress receipts. A one-operation upload worker now
-connects the fixed client with bounded waiting and fenced recovery; 20 additional
-native loopback tests cover response/commit loss and restart. Message-outbox
-handoff, receiver orchestration and production wiring remain pending; defaults
-still withhold attachments. HAB provides separate scoped acceptance/read guards without
-changing this core; the pure Relay entry and MCP catalogs are unchanged.
+Managed attachments have been removed. The contract has no attachment part type
+or attachment limits, so an attachment part fails validation as an unsupported part
+on every path (contract, MCP submit, SQLite stores and the NATS backend). Relay schema 6
+drops the schema-4 attachment reference and deletion tables, and inbox schema 4 drops
+the schema-3 attachment columns; older databases still open and migrate in place.
 
 The envelope has opaque recipient/message/thread IDs, kind, reply reference,
 `first_sent_at`, `expires_at` and ordered body parts. UTC timestamps use the exact
 `YYYY-MM-DDTHH:mm:ss.sssZ` form. The lifetime is exactly 3,600,000 ms. Parts are
-text, managed attachment references (media type, bytes, SHA-256, optional display
-filename), or schema-identified JSON data. Attachment bytes are not inline.
+text or schema-identified JSON data.
 JSON keys, strings and part ordering are preserved; object key order alone does
 not affect comparison. Unknown wire versions/control fields/part types fail
 explicitly. New wire features require a versioned contract change.
@@ -73,17 +39,16 @@ must also be enforced by the future transport before parsing untrusted JSON.
 
 `parseSubmission` rejects caller-supplied `sender_id`. This does not authenticate
 anyone: the future service must resolve a verified principal, authorize every
-operation, validate DB time/clock skew, and check finalized attachment ownership,
-bytes and integrity before committing acceptance. Schema-valid data must never
+operation and validate DB time/clock skew before committing acceptance. Schema-valid data must never
 be treated as accepted delivery. No product/model capability decisions belong here.
 
 `comparisonMaterial` returns sensitive canonical comparison input, **not a hash**.
 The future store must supply the verified sender and apply its private fingerprint
 scheme; do not log or expose the returned string. The material includes the fixed
-expiry, attachment manifests and structured content. It is never persisted as a
+expiry and structured content. It is never persisted as a
 replacement copy of the body after deletion.
 
-Next steps are tracked below: managed attachment storage, client outbox/inbox,
+Next steps are tracked below: client outbox/inbox,
 registry enrollment, maintenance and MCP wiring.
 Nothing here changes existing Task or diagnostic-ping behavior.
 
@@ -116,10 +81,7 @@ submissions without discarding accepted messages. Receipt/status contain no body
 Thread participants and reciprocal reply references are checked in the same
 transaction. Pure contract parsing remains independent of SQLite/crypto modules.
 
-This is an incremental internal API, not production delivery. Managed attachments
-are refused with `attachment_store_unavailable` by default. The optional host-only
-attachment coordinator described above enables acceptance after durable prepare; it does
-not enable delivery. Poll/lease/ACK is implemented in step 3 below. Receiver inbox, registry enrollment, background
+This is an incremental internal API, not production delivery. Poll/lease/ACK is implemented in step 3 below. Receiver inbox, registry enrollment, background
 expiry maintenance, 30-day tombstone collection and standalone setup are next
 steps. Current records are conservatively retained (with a hard record-count
 limit); the complete retention acceptance gate has not passed. Expiry cleanup
@@ -155,7 +117,7 @@ transactionally and preserves previous messages/receipts. Unknown newer versions
 are refused; rolling back to old code does not downgrade or destroy schema.
 This migration has only run against new/dummy test databases.
 
-Background maintenance, 30-day collection, attachment storage and real MCP wiring
+Background maintenance, 30-day collection and real MCP wiring
 remain separate milestones. No production readiness is implied by local polling.
 
 ## Implementation step 4: receiver inbox and ACK journal
@@ -191,7 +153,6 @@ Retry due time and attempt count are durable and bounded, with required policy
 values and no background loop. Quarantine/expiry of the ACK retry horizon leaves
 a durable received-but-unconfirmed inbox record; it does not claim non-delivery.
 Record, byte and journal quotas reject new saves without discarding older content.
-Attachments are refused until their durable-byte storage port is implemented.
 The inbox is a received-message record, not an execution queue. Reading it again
 is allowed and does not claim exactly-once application side effects. Application
 handoff/body release and metadata collection are implemented in step 8 below;
@@ -256,7 +217,7 @@ fencing, capacity/refusal, expiry/status, local-save failure and a model-free
 sender → Relay → receiver fixture that loses both acceptance and ACK responses.
 Only synthetic data/new temporary databases are used. This proves the injected
 local transport path, not production MCP or a real product's durable integration.
-Attachments still fail closed pending managed-byte storage. No product SDK,
+No product SDK,
 MCP listener, real-agent call, cron or new credentials are introduced.
 
 ## Implementation step 6: explicit server maintenance and replay-safe collection
@@ -301,8 +262,7 @@ and strict validation applies to newly submitted prefixed IDs.
 Schema upgrade is explicit, transactional and handles v1/v2 receipts. Known
 newer schema is refused by older code rather than silently downgraded. Maintenance
 has only run on synthetic temporary databases. Client inbox collection and the
-local handoff boundary are in step 8; backup expiry and managed attachments remain
-later layers.
+local handoff boundary are in step 8; backup expiry remains a later layer.
 
 ## Implementation step 7: local sender maintenance
 
@@ -339,7 +299,7 @@ roll back together. Only synthetic temporary databases have been maintained.
 `node --test test/relay-outbox-maintenance.test.js` covers expiry, active/stale
 leases, uncertainty, bounded batches, safe replay after purge, quota recovery,
 legacy holds, retention guards, rollback and schema upgrade. Receiver inbox
-handoff/collection are in step 8. Scheduling, backup expiry, managed attachments and production
+handoff/collection are in step 8. Scheduling, backup expiry and production
 MCP/product integration remain separate work. In particular this API never
 deletes a receiver's unconsumed inbox body.
 
@@ -399,7 +359,7 @@ have been migrated/maintained.
 release failure, loss/restart, stale replay, live/exhausted ACKs, unconsumed bodies,
 quota recovery, legacy holds, retention guards, atomic rollback and migration.
 Production MCP/agent integration, actual application storage, scheduled upkeep,
-backup expiry and managed attachment bytes remain separate work.
+and backup expiry remain separate work.
 
 
 ## Implementation step 9: isolated MCP tool catalog
@@ -431,8 +391,7 @@ current user. Async authentication must finish before synchronous DB authorizati
 Tool hints are not permission enforcement. Even status may perform expiry cleanup,
 so no tool advertises readOnlyHint. Poll is not idempotent; exact submit/status/ACK
 operations are. Core contract validation still enforces JSON depth/node/UTF-8 byte
-limits and immutable TTL, beyond the SDK's structural schema. Managed attachment
-manifests continue to fail closed. Known core failures return isError with a fixed
+limits and immutable TTL, beyond the SDK's structural schema. Known core failures return isError with a fixed
 allowlisted `{error: code}` in text/structured form; unexpected storage details
 become `relay_operation_failed` with no raw exception/body. SDK structural schema
 or unknown-tool rejection follows SDK protocol errors instead of entering storage.
@@ -451,7 +410,7 @@ Host/Origin/path/method, pre-parse body bytes/deadline, rate/concurrency/respons
 bounds, disable unsupported listeners and preserve the existing audit boundary.
 Do not expose a raw SDK handler as a ready production endpoint. No OAuth scopes,
 credentials, public/no-auth fallback or plugin registration are provisioned here.
-A durable MCP client transport, real registry binding, managed attachments and
+A durable MCP client transport, real registry binding and
 production agent connections remain later work.
 
 
@@ -534,7 +493,7 @@ refusal, audit/storage uncertainty, rate/concurrency, stalled body/verifier/audi
 late dispatch prevention and client disconnect. Existing MCP catalog tests remain
 unchanged and pass with the optional gate. All data/keys are synthetic; no real
 Auth0, service token, Hermes/model or existing route is used. Durable MCP client
-transport, registry/real binding, managed attachments, runtime activation and
+transport, registry/real binding, runtime activation and
 production connections remain separate milestones.
 
 ## Implementation step 11: durable MCP client transport
@@ -630,25 +589,14 @@ native redirect refusal. Synthetic keys, temporary databases and new loopback
 ports are used exclusively. This is not a product integration or registered
 three-agent end-to-end acceptance. The separate HAB tests now cover a registered
 mock three-individual HTTP path; local registry/address policy is described in
-the HAB integration above, including optional MCP lookup. Managed bytes,
-application history, scheduling, runtime activation and production connections
+the HAB integration above, including optional MCP lookup. Application history, scheduling, runtime activation and production connections
 remain separate work.
-
-任意構成の[添付message outbox連携](../../docs/attachment-outbox.md)を追加しました。完了したsourceを同期gateで照合してenqueueし、既存DurableSenderで同じIDを再送します。sourceの自動解放・runtimeの有効化は行いません。
-
-[受信checkpoint／worker](../../docs/attachment-receiver.md)を任意構成として追加しました。全文・leaseとchunkを永続化し、1呼出し最大1 RPCで途中再開・inbox保存・ACK照合を行います。元のTTL・既定runtimeは変更しません。
-
-[サーバー添付の有限保守cycle](../../docs/attachment-maintenance.md)は保守専用認可で、Relay期限回収→削除1job→孤立upload回収を順に実行し、部分commitを明示します。scheduler・runtimeの起動や受信済みbytesの自動解放は追加しません。
-
-[配送DBのsnapshot／停止復元](../../docs/sqlite-snapshot-bundle.md)はprofile全DBのwriter lockとHMAC付きmanifestを使い、既存DBを置換しない新規offline directoryへ復元します。registry・認証・設定・鍵を巻き戻さず、runtimeの接続を自動再開しません。
 
 [Message個体別容量と最低予約枠](../../docs/relay-agent-capacity.md)はagent_capacity設定で有効にします。`npm run relay:local`の構成済みhostでは必須で、送信者別上限は全体上限より小さくする必要があります。verified senderと現在の保存量から受付transaction内で判定し、元のreceipt照合と既存retentionを維持します。
 
-[公平pollと永続scan](../../docs/relay-fair-poll.md)は任意のfair_poll設定で有効にします。schema5のHMAC付き位置でsenderごと1候補を巡回し、lease・auditと原子的に進行します。snapshotはschema4/5を検証・停止復元し、runtimeの接続を自動再開しません。
+[公平pollと永続scan](../../docs/relay-fair-poll.md)は任意のfair_poll設定で有効にします。schema5のHMAC付き位置でsenderごと1候補を巡回し、lease・auditと原子的に進行します。
 
-[添付blobの個体別容量・最低予約枠](../../docs/attachment-capacity.md)は任意のowner_capacity設定で有効にします。verified ownerごとのupload・binding保持記録、live宣言bytes・件数を受付transaction内で集計し、未使用最低枠を保護します。schema2・元receipt・既定runtimeを維持します。
-
-[検証済み個体のrateと公平writer受付](../../docs/writer-admission.md)の独立coreを追加しました。1プロセスで共有する任意構成で、単調token bucketと有限queueを使います。Relay／HAB／添付HTTPへも任意配線しました。認証済みcontextと現在の個体bindingで判定し、timeout後も未完了tool監査がsettleするまでslotを保持します。既定runtimeは有効化しません。
+[検証済み個体のrateと公平writer受付](../../docs/writer-admission.md)の独立coreを追加しました。1プロセスで共有する任意構成で、単調token bucketと有限queueを使います。Relay／HAB HTTPへも任意配線しました。認証済みcontextと現在の個体bindingで判定し、timeout後も未完了tool監査がsettleするまでslotを保持します。既定runtimeは有効化しません。
 
 [Task bridgeの明示引受け・永続link](../../docs/task-bridge.md)はRelay coreの外の任意integrationです。inboxのローカルwithEntryは検証済み本文を同期handoffするだけで、受領・ACKからTaskを作りません。受付／結果の永続返信outbox連携も任意のローカルAPIとして実装しています。[受信側の永続返信budget](../../docs/adapter-reply-budget.md)はcore外の別部品です。実製品配線は未完了です。
 

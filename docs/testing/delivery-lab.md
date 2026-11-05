@@ -46,7 +46,7 @@ timestampと暗号lease tokenは毎回変わる。合成agent名、本文、送�
 | TTL等号、未来時計skew境界                 | F03、relay-contract、relay-store                   | 実行対象             | 追加実装必要             |
 | 実SQLite FULL、安全な容量制限             | F01、F02                                           | 実行対象             | broker/adapter別注入必要 |
 | 書き込み失敗とtransaction rollback        | relay-store/delivery/receiver                      | 実行対象             | 追加実装必要             |
-| 破損DB、添付/保存manifest改変             | F04、relay-attachment-inbox、relay-snapshot-bundle | 実行対象             | 追加実装必要             |
+| 破損DB、保存manifest改変                  | F04                                                | 実行対象             | 追加実装必要             |
 | 保存直後の実process強制終了と復旧         | F05                                                | 実行対象             | broker/adapter別に必要   |
 | group、宛先/送信者偽装、権限取消          | hab-auth-groups、hab-enrollment-delivery           | 実行対象             | 同じRegistry policy必要  |
 | keyset paginationとscope漏洩              | hab-discovery                                      | 実行対象             | 共通Registryに再適用     |

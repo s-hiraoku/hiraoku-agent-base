@@ -22,10 +22,10 @@ pending・bytes・recordは独立した条件です。count枠があっても本
 
 新しい予約対象を追加するなどして既存の使用量が予約を圧迫している場合、古いrecordを追い出して予約を作りません。新規受付をbackpressureで止め、ACK・期限処理・保守による容量回復を待ちます。現在のusageがある状態で予約を追加すれば即座に最低枠を提供できる、という保証ではありません。
 
-追加schema・migrationはありません。snapshotには配送recordが入り、quota policyはhost側の現在設定を使います。公開toolには個体一覧や他者usageを出さず、拒否は既存の `capacity_exceeded` です。
+追加schema・migrationはありません。quota policyはhost側の現在設定を使います。公開toolには個体一覧や他者usageを出さず、拒否は既存の `capacity_exceeded` です。
 
 ## 検証と範囲
 
 `node --test test/relay-agent-capacity.test.js` の15シナリオで、件数／bytes／metadataの枠、ACK・元TTL、lease／隔離、exact replay、policy縮小・copy、認証分離、audit rollback、native worker同士の受付競合を確認します。
 
-これはmessage受付の保存容量です。[添付blob側の最低予約枠](attachment-capacity.md)と[配送順・有限scanの進行](relay-fair-poll.md)も別の任意policyとして実装しました。個体別の送信rate、公平なwriter admission、遅延SLOは残っています。message最低枠だけで全体の公平性を証明したとは扱いません。
+これはmessage受付の保存容量です。[配送順・有限scanの進行](relay-fair-poll.md)も別の任意policyとして実装しました。個体別の送信rate、公平なwriter admission、遅延SLOは残っています。message最低枠だけで全体の公平性を証明したとは扱いません。

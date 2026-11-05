@@ -178,7 +178,7 @@ ACK後のRelay本文解放、brokerの論理除去、file上書き、SSD/backup/
 | 初期MVP | 既存read-only GUIに接続/登録案内、宛先picker、明示メッセージ送信/返信、受付/相手保存/問題表示を追加する。最初は管理者が用意した登録済み名義と承認済みadapterを使い、既存MCP/SQLiteを維持 | 初心者がprotocol操作なしで送信・返信・切断からの復旧を完了。製品の能力差を正しく表示 |
 | 次段階 | GUIの登録/割当/明示テスト送信/復旧mutation、正式な継続受信、A2A固定Task/Artifact PoC | 共通APIの認可と冪等、保存ACKとTask完了の分離、PC/モバイルのprivate操作が受入条件を満たす |
 | 配送置換評価 | JetStream adapterの隔離PoC、現行SQLiteとの保守負担・故障/復元比較 | 期限・旧lease・再送・削除・失効・backup/rollbackの互換性と削減効果を確認し、採否を決定 |
-| 拡張 | 製品adapter追加、通知、SSE/webhook、管理添付、複数host、追加設定 | 製品の正式能力と運用/費用を検証して個別に追加。Kanbanは別の任意アプリ |
+| 拡張 | 製品adapter追加、通知、SSE/webhook、複数host、追加設定 | 製品の正式能力と運用/費用を検証して個別に追加。Kanbanは別の任意アプリ |
 
 この段階表は作業日数や実装済みの主張ではない。置換見積はSDK/driver、store境界、製品adapter、private GUI認証、移行試験の未決を分けて作成する。
 

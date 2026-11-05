@@ -201,104 +201,11 @@ there is no real enrollment launcher in this change. Workflow completion means
 registry activation, not live reachability, G0, delivery success or removal of
 the global emergency-stop latch.
 
-## Optional managed upload authorization
+## Managed attachments removed
 
-`./attachment-uploads.ts` composes `HabAttachmentUploads` with the separate
-[upload backend](../../docs/managed-attachments.md). Its begin/status/chunk/finalize/cancel
-operations require the current verified individual binding, active local state
-and submit grant. They derive the owner from that binding and check the saved
-recipient, kind allowlist and directional block. Knowing an attachment ID gives
-no foreign owner access. Exact retries also recheck policy; missing or expired
-identity, revocation, stop and the emergency latch deny.
-
-Each call holds the registry write guard before the upload transaction and
-through its COMMIT, using the same lock order as Relay: **registry → upload DB**.
-The SQLite upload store rechecks each current authorization decision immediately
-before COMMIT. Policy revocation therefore serializes with the operation, and
-an expired scoped decision cannot become a reusable upload grant. Callbacks
-must be synchronous and side-effect-free; multiple checks are intentional.
-Never acquire the upload write lock and then try to enter the registry guard.
-
-All five upload operations use submit authority, including owner status/cancel;
-receipt-only rights do not grant this port. A stopped or blocked peer denies
-those operations too; no drain exception is implied. Partial bytes remain subject
-to the separately authorized upload maintenance/expiry path. This class exposes
-no maintenance or download operation, grants no new registry rights, adds no
-MCP tool or HTTP route and starts no service. It does not enable message attachment
-acceptance, receiver download/ACK or production credential binding.
-
-The 14 additional tests cover ownership, false identity arguments, foreign IDs,
-current submit/kind policy, owner/peer stop, block, revoked or expired binding,
-emergency stop, a second registry connection attempting revocation before
-upload commit, escaped authorization and rollback on a decision changed before
-COMMIT. Only synthetic temporary databases and contexts are used.
-
-## Optional managed attachment acceptance
-
-`./attachment-acceptance.ts` composes `HabAttachmentAcceptance` with the independent
-[durable reservation and acceptance coordinator](../../docs/managed-attachments.md).
-It exposes only submit and sender-owned status as host APIs. The host must also
-explicitly configure the Relay store's prepared-reference admission; constructing
-this class does not enable attachment delivery or mount any MCP/HTTP route.
-
-One registry write guard surrounds **registry → upload prepare → Relay acceptance
-→ upload confirm**. Each storage transaction commits separately; the registry
-guard stays held throughout. A competing stop/block/revoke serializes before or
-after the operation, including the gap between its separate DB commits. Never
-hold an upload or Relay write transaction and then enter the registry guard.
-These DBs have no shared SQL schema and no distributed rollback guarantee.
-
-Submit uses the current individual binding, submit grant, active recipient, kind
-and directional block. Exact retry may reconcile its own original receipt under
-submit authority without a status grant; the public status method requires its
-separate status grant and retains ordinary sender-only receipt visibility.
-Prepared reference identity comes from the verified host context, never a supplied
-agent name. Scoped callbacks cannot be reused after the registry action exits.
-
-If Relay fails after prepare, or context expires after Relay commit but before
-confirmation, earlier commits and pins remain durable. Fresh authorization can
-reconcile the same original ID/intent/expiry; registry rollback must not be treated
-as rollback of other DBs. Current policy still applies to every attempt. Attached
-messages remain withheld from poll/ACK unless the host separately supplies the
-explicit Relay delivery policy and verified receiver-byte admission described in
-[attachment delivery and deletion](../../docs/attachment-deletion.md).
-This class adds no maintenance, read, confirm or credential authority.
-
-Fourteen additional synthetic SQLite tests cover authority separation, foreign
-receipt/ref refusal, stop/block/kind/revocation, missing or expired identity,
-emergency stop, all three inter-DB revocation gaps, escaped decisions, actual
-short-context expiry after Relay commit and same-intent recovery. These are host
-composition checks, not real product binding or production transfer evidence.
-
-## Optional managed receiver reads
-
-`./attachment-read.ts` provides `HabAttachmentRead` as a read-only host facade over
-the independent chunk service. It requires current **poll** authority for the
-verified receiver, checks the stored sender/kind and original directional block,
-and holds **registry → Relay → upload DB** guards through the bounded chunk read.
-Status rights, sender identity or knowing the attachment ID grant no download.
-Stop/revocation and reads serialize under the same registry lock.
-
-Every chunk rechecks the live message deadline/state, original fingerprint,
-confirmed per-message references, manifest and chunk integrity. Both the scoped
-registry authorization and live Relay proof expire when their callbacks exit.
-If context expires after bytes are looked up, the call refuses to return them;
-fresh verified context can retry the same saved offset without extending expiry.
-Previously returned bytes belong to the receiver and cannot be retracted by stop.
-
-Thirteen additional SQLite tests cover verified-recipient reads, authority and
-individual separation, sender/receiver stop, directional block, binding
-revocation, missing/expired identity, emergency stop, another connection attempting
-revocation at all read stages, escaped decisions/proof, context expiry after
-byte lookup and current kind policy. The shared attachment fixture also retains
-the fourteen existing acceptance tests.
-
-This class exposes only `read`. It adds no route, MCP tool, credential, lease,
-receiver journal, ACK or deletion authority. An explicit Relay host composition now
-supports attachment poll/ACK and terminal cleanup, while defaults still withhold
-attachments. Twenty additional in-process tests combine actual HAB leases and ACKs,
-durable receiver bytes, stopped/blocked peers and the separately authorized deletion
-worker. They do not expose attachment HTTP/MCP routes or prove real product binding.
+The HAB upload, acceptance, read and attachment MCP/HTTP compositions have been
+deleted together with the Relay attachment modules. An attachment body part is
+refused by the shared contract before any registry or Relay transaction.
 
 ## Optional HAB MCP/HTTP and client
 
@@ -418,34 +325,15 @@ acceptance or ACK quarantines the journal without dropping the local body or
 creating a replacement message. The [integration matrix](../../docs/hab-relay-integration.md)
 records injection methods and limits: same-process reopen, synthetic identity
 ports and accelerated retry/lease state are not production cold-start, real
-identity proof, reply budgets, managed attachment or backup/restore acceptance.
+identity proof, reply budgets or backup/restore acceptance.
 
 This is local mock evidence, **not real product identity verification or completed
 G1/full initial release**. Production management/connection wiring,
-per-individual fairness/quotas, managed attachments, automatic-reply
+per-individual fairness/quotas, automatic-reply
 budgets, operational activation and complete failure/restore coverage remain.
 No real product is enrolled or contacted. New credential issuance, public routes,
 paid contracts, background activation and real connections require their separate
 approved endpoint/scope/data/stop plan; this module grants none of those actions.
-
-## Optional attachment MCP catalog
-
-The explicit `HabAttachmentHttpGateway` adds six owner-upload/receiver-read tools
-to the HAB catalog (11 total), retaining the verified context, registry guards,
-audit and HTTP byte/concurrency/rate/deadline limits. Default factories retain
-five tools. Upload admission, confirmed delivery policy and acceptance coordinator
-are separate host injections. See [the version-1 wire contract](../../docs/attachment-transport.md)
-for canonical bounded base64, uncertainty recovery and the 18 gateway/SDK tests.
-No maintenance or credential tool, runtime route or real-agent connection is added.
-
-The optional `HabAttachmentMcpClient` extends the attachment client with directory
-resolution while sharing the same admission and credential provider. Nineteen
-native temporary-loopback tests cover mixed parts, two files, durable receiver
-save before ACK, uncertain upload/ACK responses and restart. The sender intent
-is explicitly saved by the fixture; an attachment sender journal and receiver
-orchestration are still separate work. Production credentials and product
-bindings remain unverified.
-
 
 ## Optional shared authentication groups
 
@@ -476,8 +364,8 @@ The five basic HAB MCP tools accept optional `as_address` and a paired
 foreign group names and mismatched immutable IDs are rejected before delivery.
 `HabMcpClient` fixes both values across submit, status, poll and ACK recovery.
 The normal service config accepts the explicit group opt-in, but no live config,
-credential or OAuth refresh policy is changed. Multi-address attachment tool
-selection and real-agent acceptance remain pending. Tests use synthetic verified
+credential or OAuth refresh policy is changed. Real-agent acceptance remains
+pending. Tests use synthetic verified
 contexts and temporary databases only:
 
 ```sh
