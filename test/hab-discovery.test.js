@@ -3,7 +3,6 @@ import { test } from "node:test";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { HabHttpGateway } from "../src/hab/http.ts";
 import { createHabMcpServer } from "../src/hab/mcp.ts";
-import { HabRelayService } from "../src/hab/relay.ts";
 import { groupFixture } from "./hab-group-fixtures.js";
 import {
   fixture,
@@ -11,12 +10,12 @@ import {
   operations,
   principal,
 } from "./hab-registry-fixtures.js";
-import { limits, policy, request, decode } from "./relay-http-fixtures.js";
+import { policy, request, decode } from "./relay-http-fixtures.js";
 import { WriterAdmission } from "../src/relay/writer-admission.ts";
 
 const discovery = { availability_namespaces: ["grok-bot"] };
-function group(t, patch = {}) {
-  return groupFixture(t, { discovery, ...patch });
+async function group(t, patch = {}) {
+  return await groupFixture(t, { discovery, ...patch });
 }
 function gateway(f, admission) {
   return new HabHttpGateway(f.hab, policy, f.audit, f.verifier, admission);
@@ -53,7 +52,7 @@ function state(f) {
 function hosted(f, identity) {
   const registry = f.open({}, { ...f.authority, hostIdentity: () => identity });
   registry.migrate();
-  return { registry, hab: new HabRelayService(registry, f.store, limits) };
+  return { registry, hab: f.habFor(registry) };
 }
 function attestation(agent, patch = {}) {
   return {
@@ -69,7 +68,7 @@ function attestation(agent, patch = {}) {
 }
 
 test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool", async (t) => {
-  const plain = fixture(t);
+  const plain = await fixture(t);
   plain.enroll("a");
   const g = gateway(plain);
   assert.equal((await decode(await g.fetch(request()))).result.tools.length, 5);
@@ -79,7 +78,7 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
     () => plain.registry.discover(plain.contexts.a, { action: "whoami" }),
     code("forbidden"),
   );
-  const f = group(t),
+  const f = await group(t),
     enabled = gateway(f);
   const tools = (await decode(await enabled.fetch(request()))).result.tools;
   assert.equal(tools.length, 6);
@@ -103,8 +102,8 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
   assert.equal(result.result.structuredContent.agents.length, 2);
 });
 
-test("group whoami distinguishes a selected alias from the actual host owner; profile names are irrelevant", (t) => {
-  const f = group(t),
+test("group whoami distinguishes a selected alias from the actual host owner; profile names are irrelevant", async (t) => {
+  const f = await group(t),
     before = state(f);
   const self = discover(f, { action: "whoami" });
   assert.equal(self.connection.kind, "authentication_group");
@@ -149,8 +148,8 @@ test("group whoami distinguishes a selected alias from the actual host owner; pr
   assert.equal(state(f), before);
 });
 
-test("legacy individual binding only sees its own identity, not the product or another group", (t) => {
-  const f = group(t);
+test("legacy individual binding only sees its own identity, not the product or another group", async (t) => {
+  const f = await group(t);
   const result = f.registry.discover(f.contexts.b, { action: "whoami" });
   assert.equal(result.connection.kind, "individual_connection");
   assert.equal(result.selected_identity.agent_id, f.external.agent_id);
@@ -170,8 +169,8 @@ test("legacy individual binding only sees its own identity, not the product or a
   );
 });
 
-test("directory is group-scoped, keyset paged, filtered and secret-free; cursors cannot cross principals/filters/snapshots", (t) => {
-  const f = group(t);
+test("directory is group-scoped, keyset paged, filtered and secret-free; cursors cannot cross principals/filters/snapshots", async (t) => {
+  const f = await group(t);
   const pending = f.enroll("pending", false);
   const g = f.registry.inspectGroup(f.admin, f.group.group_id);
   f.registry.addGroupMember(f.admin, {
@@ -263,8 +262,8 @@ test("directory is group-scoped, keyset paged, filtered and secret-free; cursors
   );
 });
 
-test("availability is exact and explicitly namespace-scoped, leaks no foreign record and never reserves", (t) => {
-  const f = group(t),
+test("availability is exact and explicitly namespace-scoped, leaks no foreign record and never reserves", async (t) => {
+  const f = await group(t),
     before = state(f);
   const own = discover(f, {
     action: "check_address",
@@ -316,8 +315,8 @@ test("availability is exact and explicitly namespace-scoped, leaks no foreign re
   );
 });
 
-test("availability races converge at atomic enrollment; stopped and retired addresses stay reserved", (t) => {
-  const f = group(t),
+test("availability races converge at atomic enrollment; stopped and retired addresses stay reserved", async (t) => {
+  const f = await group(t),
     peer = f.open();
   peer.migrate();
   const address = "race@grok-bot.hab";
@@ -361,7 +360,7 @@ test("availability races converge at atomic enrollment; stopped and retired addr
 });
 
 test("forged selections, host identities, group IDs, credentials and malformed inputs cannot grant or change identity", async (t) => {
-  const f = group(t),
+  const f = await group(t),
     g = gateway(f),
     before = state(f);
   for (const input of [
@@ -436,8 +435,8 @@ test("forged selections, host identities, group IDs, credentials and malformed i
   assert.equal(state(f), before);
 });
 
-test("discovery rechecks expiry, revoked bindings, rights and emergency stop", (t) => {
-  const f = group(t);
+test("discovery rechecks expiry, revoked bindings, rights and emergency stop", async (t) => {
+  const f = await group(t);
   f.mutable.expires_at = new Date(Date.now() - 1).toISOString();
   assert.throws(() => discover(f, { action: "directory" }), code("forbidden"));
   f.mutable.expires_at = null;
@@ -455,8 +454,8 @@ test("discovery rechecks expiry, revoked bindings, rights and emergency stop", (
   );
 });
 
-test("a revoked binding denies retained contexts and another group's mutation does not change a scope snapshot", (t) => {
-  const f = group(t);
+test("a revoked binding denies retained contexts and another group's mutation does not change a scope snapshot", async (t) => {
+  const f = await group(t);
   const before = discover(f, { action: "directory", limit: 1 });
   f.registry.setAccess(f.admin, {
     request_id: "foreign-stop",
@@ -484,7 +483,7 @@ test("a revoked binding denies retained contexts and another group's mutation do
 });
 
 test("HTTP authentication, audit, bounds and writer-admission compatibility apply to discovery", async (t) => {
-  const f = group(t),
+  const f = await group(t),
     before = state(f);
   const admission = new WriterAdmission(
     {

@@ -20,8 +20,8 @@ const body = () => ({
   parts: [{ type: "text", text: "synthetic durable answer" }],
 });
 const yes = () => {};
-function fixture(t, patch = {}, timing = {}) {
-  const f = hostFixture(t, {}, timing),
+async function fixture(t, patch = {}, timing = {}) {
+  const f = await hostFixture(t, {}, timing),
     path = join(f.dir, "answer-intents.sqlite"),
     stores = new Set();
   const options = {
@@ -103,8 +103,8 @@ function at(now, action) {
     DatabaseSync.prototype.prepare = original;
   }
 }
-test("Answer intents: durable preparation precedes all budget, outbox, Task and network work", (t) => {
-  const f = fixture(t),
+test("Answer intents: durable preparation precedes all budget, outbox, Task and network work", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   const v = f.prepare(key);
   assert.equal(v.state, "prepared");
@@ -121,8 +121,8 @@ test("Answer intents: durable preparation precedes all budget, outbox, Task and 
   assert.equal(JSON.stringify(v).includes("synthetic"), false);
   assert.equal(JSON.stringify(v).includes("fingerprint"), false);
 });
-test("Answer intents: exact repeat keeps ID and saved copy; changed text conflicts before handoff", (t) => {
-  const f = fixture(t),
+test("Answer intents: exact repeat keeps ID and saved copy; changed text conflicts before handoff", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     input = body();
   const first = f.answers.prepare(f.context, key, input);
@@ -138,8 +138,8 @@ test("Answer intents: exact repeat keeps ID and saved copy; changed text conflic
     body().parts[0].text,
   );
 });
-test("Answer intents: canonical data key order replays but part order and values are exact", (t) => {
-  const f = fixture(t),
+test("Answer intents: canonical data key order replays but part order and values are exact", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   const parts = [
     {
@@ -162,8 +162,8 @@ test("Answer intents: canonical data key order replays but part order and values
     code("answer_intent_conflict"),
   );
 });
-test("Answer intents: restart discovers redacted pending intents and resumes after inbox body release", (t) => {
-  const f = fixture(t),
+test("Answer intents: restart discovers redacted pending intents and resumes after inbox body release", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     first = f.prepare(key);
   f.inbox.releaseBody(key.sender_id, key.message_id);
@@ -182,8 +182,8 @@ test("Answer intents: restart discovers redacted pending intents and resumes aft
   );
   assert.equal(answers.inspect(f.context, key).outbox_state, "queued");
 });
-test("Answer intents: lost outbox response reuses the same envelope and budget reservation", (t) => {
-  const f = fixture(t),
+test("Answer intents: lost outbox response reuses the same envelope and budget reservation", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     first = f.prepare(key),
     seen = [];
@@ -208,8 +208,8 @@ test("Answer intents: lost outbox response reuses the same envelope and budget r
   assert.equal(f.queued()[0].message_id, first.reply_id);
   assert.deepEqual(JSON.parse(f.queued()[0].body), seen[0]);
 });
-test("Answer intents: journal confirmation failure after outbox commit is restart-reconcilable", (t) => {
-  const f = fixture(t),
+test("Answer intents: journal confirmation failure after outbox commit is restart-reconcilable", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     first = f.prepare(key);
   f.raw.exec(
@@ -225,8 +225,8 @@ test("Answer intents: journal confirmation failure after outbox commit is restar
   assert.equal(f.make(s).enqueueOnce(f.context, key).reply_id, first.reply_id);
   assert.equal(f.rows()[0].message, null);
 });
-test("Answer intents: confirmed handoff never recreates an independently missing outbox", (t) => {
-  const f = fixture(t),
+test("Answer intents: confirmed handoff never recreates an independently missing outbox", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   f.prepare(key);
   f.enqueue(key);
@@ -236,8 +236,8 @@ test("Answer intents: confirmed handoff never recreates an independently missing
   assert.equal(f.queued().length, 0);
   assert.equal(f.rows()[0].message, null);
 });
-test("Answer intents: expiry erases producer body without renewing ID, time or budget", (t) => {
-  const f = fixture(t),
+test("Answer intents: expiry erases producer body without renewing ID, time or budget", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     first = f.prepare(key),
     expiry = Date.parse(first.expires_at);
@@ -258,8 +258,8 @@ test("Answer intents: expiry erases producer body without renewing ID, time or b
     code("answer_intent_conflict"),
   );
 });
-test("Answer intents: bounded maintenance expires bodies then retains metadata for 30 days", (t) => {
-  const f = fixture(t),
+test("Answer intents: bounded maintenance expires bodies then retains metadata for 30 days", async (t) => {
+  const f = await fixture(t),
     a = f.receive(),
     b = f.receive(),
     aa = f.prepare(a.key),
@@ -272,8 +272,8 @@ test("Answer intents: bounded maintenance expires bodies then retains metadata f
   assert.equal(at(now + RECORD_RETENTION_MS, () => f.maintain(1)).purged, 1);
   assert.equal(at(now + RECORD_RETENTION_MS, () => f.maintain(1)).purged, 1);
 });
-test("Answer intents: GC cannot mint a new ID from an old replay-bound source and clock rollback fails", (t) => {
-  const f = fixture(t),
+test("Answer intents: GC cannot mint a new ID from an old replay-bound source and clock rollback fails", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     first = f.prepare(key),
     expiry = Date.parse(first.expires_at);
@@ -289,8 +289,8 @@ test("Answer intents: GC cannot mint a new ID from an old replay-bound source an
     code("answer_intent_clock_regressed"),
   );
 });
-test("Answer intents: source delivery deadline is not a one-hour answer decision deadline", (t) => {
-  const f = fixture(t),
+test("Answer intents: source delivery deadline is not a one-hour answer decision deadline", async (t) => {
+  const f = await fixture(t),
     { key, message } = f.receive();
   const first = at(Date.parse(message.expires_at) + 1000, () => f.prepare(key));
   assert.equal(first.state, "prepared");
@@ -299,8 +299,8 @@ test("Answer intents: source delivery deadline is not a one-hour answer decision
     Date.parse(message.expires_at) + 1000,
   );
 });
-test("Answer intents: old opaque source tombstones are safety-held instead of unsafe GC", (t) => {
-  const f = fixture(t),
+test("Answer intents: old opaque source tombstones are safety-held instead of unsafe GC", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   // Independent trusted journal proof exercises legacy source IDs; no wire identity is inferred.
   const legacy = { sender_id: "a", message_id: "legacy-source" },
@@ -327,8 +327,8 @@ test("Answer intents: old opaque source tombstones are safety-held instead of un
   assert.equal(result.safety_held, 1);
   assert.equal(f.rows().length, 1);
 });
-test("Answer intents: redacted startup pagination is bounded and requires current authority", (t) => {
-  const f = fixture(t);
+test("Answer intents: redacted startup pagination is bounded and requires current authority", async (t) => {
+  const f = await fixture(t);
   for (let i = 0; i < 3; i++) f.prepare(f.receive().key);
   const a = f.pending(1),
     b = f.pending(1, a.next_after),
@@ -348,8 +348,8 @@ test("Answer intents: redacted startup pagination is bounded and requires curren
   f.state.denied.add("answer_pending");
   assert.throws(() => f.pending(), code("answer_intent_forbidden"));
 });
-test("Answer intents: default-deny and wrong-agent composition reject all producer work", (t) => {
-  const f = fixture(t),
+test("Answer intents: default-deny and wrong-agent composition reject all producer work", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   const boundary = new AnswerIntents(
     f.journal,
@@ -375,8 +375,8 @@ test("Answer intents: default-deny and wrong-agent composition reject all produc
 for (const kind of ["notice", "answer", "execution_request"]) {
   test(
     "Answer intents: " + kind + " does not trigger an answer or Task",
-    (t) => {
-      const f = fixture(t),
+    async (t) => {
+      const f = await fixture(t),
         { key } = f.receive(kind);
       assert.throws(() => f.prepare(key), code("invalid_reply_source"));
       assert.equal(f.rows().length, 0);
@@ -384,8 +384,8 @@ for (const kind of ["notice", "answer", "execution_request"]) {
     },
   );
 }
-test("Answer intents: unconfirmed, mismatched or forged inbox sources are rejected", (t) => {
-  const f = fixture(t),
+test("Answer intents: unconfirmed, mismatched or forged inbox sources are rejected", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive("question", false);
   assert.throws(() => f.prepare(key), code("invalid_reply_source"));
   const entry = f.inbox.inbox()[0];
@@ -405,8 +405,8 @@ test("Answer intents: unconfirmed, mismatched or forged inbox sources are reject
   }
   assert.equal(f.rows().length, 0);
 });
-test("Answer intents: mid-step authority revocation cannot commit an intent", (t) => {
-  const f = fixture(t),
+test("Answer intents: mid-step authority revocation cannot commit an intent", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   let calls = 0;
   const a = f.make(f.journal, f.outbox, () =>
@@ -418,8 +418,8 @@ test("Answer intents: mid-step authority revocation cannot commit an intent", (t
   );
   assert.equal(f.rows().length, 0);
 });
-test("Answer intents: actor changes and asynchronous authority fail closed", (t) => {
-  const f = fixture(t),
+test("Answer intents: actor changes and asynchronous authority fail closed", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   let n = 0;
   const a = f.make(f.journal, f.outbox, () => ({
@@ -440,8 +440,8 @@ test("Answer intents: actor changes and asynchronous authority fail closed", (t)
   );
   assert.equal(f.rows().length, 0);
 });
-test("Answer intents: record and byte caps preserve existing exact retries", (t) => {
-  const f = fixture(t, { max_records: 1 }),
+test("Answer intents: record and byte caps preserve existing exact retries", async (t) => {
+  const f = await fixture(t, { max_records: 1 }),
     a = f.receive(),
     b = f.receive(),
     first = f.prepare(a.key);
@@ -452,14 +452,14 @@ test("Answer intents: record and byte caps preserve existing exact retries", (t)
   assert.deepEqual(f.prepare(a.key), first);
   assert.equal(f.rows().length, 1);
 });
-test("Answer intents: body byte cap rejects the whole intent transaction", (t) => {
-  const f = fixture(t, { max_body_bytes: 1 }),
+test("Answer intents: body byte cap rejects the whole intent transaction", async (t) => {
+  const f = await fixture(t, { max_body_bytes: 1 }),
     { key } = f.receive();
   assert.throws(() => f.prepare(key), code("answer_intent_capacity_exceeded"));
   assert.equal(f.rows().length, 0);
 });
-test("Answer intents: exhausted shared budget preserves prepared ID and payload for reconciliation", (t) => {
-  const f = fixture(t),
+test("Answer intents: exhausted shared budget preserves prepared ID and payload for reconciliation", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   const first = f.prepare(key);
   const budget = {
@@ -480,7 +480,7 @@ test("Answer intents: exhausted shared budget preserves prepared ID and payload 
   assert.equal(f.queued().length, 0);
 });
 test("Answer intents: host legacy answer path is fenced when producer journal is configured", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = f.receive();
   f.resume(f.host);
   assert.equal(
@@ -500,7 +500,7 @@ test("Answer intents: host legacy answer path is fenced when producer journal is
   assert.equal(f.queued().length, 0);
 });
 test("Answer intents: host pause, command permission and binding gate local producer actions", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = f.receive();
   await assert.rejects(
     f.step({ op: "answer_prepare", source: key, body: body() }),
@@ -519,7 +519,7 @@ test("Answer intents: host pause, command permission and binding gate local prod
   assert.equal(f.rows().length, 0);
 });
 test("Answer intents: host startup inventory, inspect and explicit handoff keep state meanings separate", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = f.receive();
   f.resume(f.host);
   const prepared = await f.step({
@@ -562,14 +562,14 @@ for (const sql of [
   "UPDATE answer_intent_meta SET last_at=0",
   "UPDATE answer_intent_meta SET body_bytes=0",
 ])
-  test("Answer intents: integrity rejects " + sql, (t) => {
-    const f = fixture(t);
+  test("Answer intents: integrity rejects " + sql, async (t) => {
+    const f = await fixture(t);
     f.prepare(f.receive().key);
     f.raw.exec(sql);
     assert.throws(() => f.pending(), code("answer_intent_integrity_failed"));
   });
-test("Answer intents: private mode, symlinks, options and database binding are checked", (t) => {
-  const f = fixture(t),
+test("Answer intents: private mode, symlinks, options and database binding are checked", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   f.prepare(key);
   assert.equal(statSync(f.path).mode & 0o777, 0o600);
@@ -597,8 +597,8 @@ test("Answer intents: private mode, symlinks, options and database binding are c
   assert.throws(() => f.open(), code("answer_intent_unavailable"));
   chmodSync(f.path, 0o600);
 });
-test("Answer intents: unknown schema and explicit migration gate fail closed", (t) => {
-  const f = fixture(t),
+test("Answer intents: unknown schema and explicit migration gate fail closed", async (t) => {
+  const f = await fixture(t),
     p = join(f.dir, "unknown.sqlite"),
     raw = new DatabaseSync(p);
   raw.exec("CREATE TABLE unrelated(id INTEGER)");
@@ -617,8 +617,8 @@ test("Answer intents: unknown schema and explicit migration gate fail closed", (
     code("unsupported_answer_intent_schema"),
   );
 });
-test("Answer intents: rollback failure latches instance until explicit migration", (t) => {
-  const f = fixture(t),
+test("Answer intents: rollback failure latches instance until explicit migration", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   f.raw.exec(
     "CREATE TRIGGER synthetic BEFORE INSERT ON answer_intents BEGIN SELECT RAISE(ROLLBACK,'synthetic'); END",
@@ -629,8 +629,8 @@ test("Answer intents: rollback failure latches instance until explicit migration
   f.journal.migrate();
   assert.equal(f.prepare(key).state, "prepared");
 });
-test("Answer intents: two SQLite connections converge on one ID and one outbox message", (t) => {
-  const f = fixture(t),
+test("Answer intents: two SQLite connections converge on one ID and one outbox message", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive(),
     other = f.open();
   other.migrate();
@@ -644,7 +644,7 @@ test("Answer intents: two SQLite connections converge on one ID and one outbox m
 });
 test("Answer intents: real loopback HTTP MCP receive-restart-answer-send-ACK uses the saved ID", async (t) => {
   // This success-path test includes real HTTP; retain the short defaults for fault/expiry tests.
-  const f = fixture(t, {}, { outboxLeaseMs: 5000 });
+  const f = await fixture(t, {}, { outboxLeaseMs: 5000 });
   const server = createServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -710,7 +710,7 @@ test("Answer intents: real loopback HTTP MCP receive-restart-answer-send-ACK use
 });
 
 test("Answer intents: native simultaneous producers commit one stable ID", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key, message } = f.receive();
   const proof = {
     source: {
@@ -773,7 +773,7 @@ test("Answer intents: native simultaneous producers commit one stable ID", async
 });
 
 test("Answer intents: host revocation after outbox commit leaves a recoverable prepared intent", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = f.receive();
   f.resume(f.host);
   const first = f.prepare(key);
@@ -797,7 +797,7 @@ test("Answer intents: host revocation after outbox commit leaves a recoverable p
 });
 
 test("Answer intents: asynchronous budget cannot falsely confirm handoff or enqueue after return", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = f.receive();
   f.prepare(key);
   let delayed, failure;
@@ -824,8 +824,8 @@ test("Answer intents: asynchronous budget cannot falsely confirm handoff or enqu
   assert.equal(f.rows()[0].state, "prepared");
   assert.equal(f.queued().length, 0);
 });
-test("Answer intents: asynchronous outbox result never confirms producer handoff", (t) => {
-  const f = fixture(t),
+test("Answer intents: asynchronous outbox result never confirms producer handoff", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   f.prepare(key);
   const outbox = {
@@ -842,7 +842,7 @@ test("Answer intents: asynchronous outbox result never confirms producer handoff
 });
 
 test("Answer intents: asynchronous inbox callback cannot persist a producer intent after return", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = f.receive(),
     entry = f.inbox.inbox()[0];
   let pending, failure;
@@ -868,8 +868,8 @@ test("Answer intents: asynchronous inbox callback cannot persist a producer inte
   assert.equal(f.rows().length, 0);
 });
 
-test("Answer intents: budget that skips the handoff action cannot discard the saved reply", (t) => {
-  const f = fixture(t),
+test("Answer intents: budget that skips the handoff action cannot discard the saved reply", async (t) => {
+  const f = await fixture(t),
     { key } = f.receive();
   const first = f.prepare(key);
   const budget = { agentId: "b", withReply: () => undefined };

@@ -9,8 +9,7 @@ import { DatabaseSync } from "node:sqlite";
 import { ClientFactory, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
 import { SendMessageRequest } from "@a2a-js/sdk";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
-import { HabRelayService } from "../src/hab/relay.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+import { jetstreamDelivery } from "./jetstream-delivery.js";
 import { SQLiteTaskBridgeJournal } from "../src/task-bridge/sqlite-journal.ts";
 import { ConnectivityTaskPort } from "../src/task-bridge/task-port.ts";
 import { DurableSender } from "../src/relay/sender.ts";
@@ -81,7 +80,7 @@ export async function createA2aRelayFixture(t, overrides = {}) {
     ],
   };
   const relayOptions = {
-    fingerprint_key: new Uint8Array(32).fill(43),
+    agent_capacity: undefined,
     max_pending: 30,
     max_records: 200,
     max_pending_per_recipient: 20,
@@ -104,7 +103,7 @@ export async function createA2aRelayFixture(t, overrides = {}) {
           }
         : undefined,
   };
-  let registry, relayStore, hub, sdk, journal, net, server, receipts;
+  let registry, delivery, hub, sdk, journal, net, server, receipts;
   t.after(async () => {
     if (server?.listening) {
       server.closeAllConnections();
@@ -115,7 +114,6 @@ export async function createA2aRelayFixture(t, overrides = {}) {
     receipts?.close();
     await net?.dispose();
     registry?.close();
-    relayStore?.close();
     hub?.close();
     rmSync(dir, { recursive: true, force: true });
   });
@@ -126,8 +124,6 @@ export async function createA2aRelayFixture(t, overrides = {}) {
       authority,
     );
     registry.migrate();
-    relayStore = new SQLiteRelayStore(join(dir, "relay.sqlite"), relayOptions);
-    relayStore.migrate();
     hub = new Hub(join(dir, "tasks.sqlite"));
   };
   openBase();
@@ -225,7 +221,13 @@ export async function createA2aRelayFixture(t, overrides = {}) {
     state: "active",
     operations,
   });
-  const service = () => new HabRelayService(registry, relayStore, limits);
+  delivery = await jetstreamDelivery(t, {
+    registry,
+    limits,
+    directory: dir,
+    queue: relayOptions,
+  });
+  const service = () => delivery.serviceFor(registry);
   net = await setup(
     { after() {} },
     {
@@ -558,13 +560,21 @@ export async function createA2aRelayFixture(t, overrides = {}) {
       return count;
     },
     relayRows() {
-      const db = new DatabaseSync(join(dir, "relay.sqlite"));
+      const db = new DatabaseSync(join(dir, "jetstream-journal.sqlite"));
       try {
         return db
           .prepare(
-            "SELECT sender_id,message_id,recipient_id,receipt_id,thread_id,expires_at,body FROM relay_messages ORDER BY rowid",
+            "SELECT sender_id,message_id,recipient_id,receipt_id,thread_key,expires_at,fingerprint,coalesce(outbox,candidate) envelope FROM nats_messages ORDER BY rowid",
           )
-          .all();
+          .all()
+          .map(({ thread_key, envelope, ...row }) => ({
+            ...row,
+            thread_id: JSON.parse(thread_key)[1],
+            // The journal holds the body until publication and again while it is cached for delivery.
+            body: envelope
+              ? JSON.stringify(JSON.parse(envelope).message)
+              : null,
+          }));
       } finally {
         db.close();
       }
@@ -634,9 +644,9 @@ export async function createA2aRelayFixture(t, overrides = {}) {
       closeStores();
       await net.stop();
       registry.close();
-      relayStore.close();
       hub.close();
       openBase();
+      await delivery.reopen(registry);
       await net.start(service());
       openStores();
       openGateway();

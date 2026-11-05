@@ -8,7 +8,10 @@ import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedRelayOAuthAuthority } from "./oauth-auth.ts";
 import { startLocalRelay } from "./local.ts";
-import type { LocalRelayServiceFactory } from "./local.ts";
+import {
+  deliverySchema,
+  createJetStreamDelivery,
+} from "../../packages/relay-nats/src/configured.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const absolute = z.string().refine(isAbsolute);
 const keys = z.strictObject({
@@ -54,43 +57,7 @@ const schema = z.strictObject({
     busy_timeout_ms: positive,
     allowed_kinds: z.array(z.string()).min(1),
   }),
-  store: z
-    .strictObject({
-      max_pending: positive,
-      max_records: positive,
-      max_pending_per_recipient: positive,
-      max_body_bytes: positive,
-      max_clock_skew_ms: z.number().int().nonnegative(),
-      lease_ms: positive,
-      max_attempts: positive,
-      retry_base_ms: positive,
-      retry_cap_ms: positive,
-      poll_scan_limit: positive,
-      fair_poll: z.boolean().optional(),
-      // Required: without a per-sender budget one enrolled sender can fill the retained-record pool for every agent.
-      agent_capacity: z.strictObject({
-        max_pending_per_sender: positive,
-        max_body_bytes_per_sender: positive,
-        max_records_per_sender: positive,
-        max_body_bytes_per_recipient: positive,
-        max_records_per_recipient: positive,
-        reservations: z
-          .array(
-            z.strictObject({
-              sender_id: z.string(),
-              pending: positive,
-              body_bytes: positive,
-              records: positive,
-            }),
-          )
-          .max(256),
-      }),
-    })
-    .refine(
-      (store) =>
-        store.agent_capacity.max_records_per_sender < store.max_records &&
-        store.agent_capacity.max_pending_per_sender < store.max_pending,
-    ),
+  delivery: deliverySchema,
   http: z.strictObject({
     max_request_bytes: positive,
     max_response_bytes: positive,
@@ -130,9 +97,16 @@ function stage<T>(reason: string, action: () => T): T {
         reason,
         [
           ...new Set(
-            error.issues.map((issue) => issue.path.join(".") || "(root)"),
+            error.issues.flatMap((issue) =>
+              // Name a retired or misspelled section (such as `store`) instead of only its parent.
+              issue.code === "unrecognized_keys"
+                ? issue.keys.map((key) => [...issue.path, key].join("."))
+                : [issue.path.join(".") || "(root)"],
+            ),
           ),
-        ].slice(0, 16),
+        ]
+          .sort()
+          .slice(0, 16),
       );
     throw new LocalRelayStartError(reason);
   }
@@ -140,10 +114,17 @@ function stage<T>(reason: string, action: () => T): T {
 // Fixed codes from the composed classes that are safe and useful to surface.
 const hostReasons = new Set([
   "local_relay_private_path_required",
-  "local_relay_extension_required",
-  "local_relay_extension_mismatch",
-  "local_relay_extension_rejected",
   "local_relay_extension_storage_unavailable",
+  "broker_unavailable",
+  "broker_store_missing",
+  "broker_configuration_mismatch",
+  "unsupported_broker_version",
+  "loopback_broker_required",
+  "journal_migration_required",
+  "journal_key_or_version_mismatch",
+  "unknown_journal_schema",
+  "insecure_journal_file",
+  "insufficient_prefetch_window",
   "invalid_local_relay_options",
   "invalid_local_relay_ingress",
   "registry_key_mismatch",
@@ -188,10 +169,7 @@ export function readLocalRelayConfig(configPath: string) {
       config.ingress ? read(config.ingress.oauth_file) : undefined,
   };
 }
-export async function startConfiguredLocalRelay(
-  configPath: string,
-  serviceFactory?: LocalRelayServiceFactory,
-) {
+export async function startConfiguredLocalRelay(configPath: string) {
   try {
     const { config, readCredentials, readOAuth, ...secrets } =
       readLocalRelayConfig(configPath);
@@ -209,6 +187,9 @@ export async function startConfiguredLocalRelay(
     }
     if (remote && remote.resource.resource !== config.ingress!.resource_url)
       throw new LocalRelayStartError("oauth_resource_mismatch");
+    const delivery = stage("config_invalid", () =>
+      createJetStreamDelivery(config.delivery, secrets.relay_fingerprint_key),
+    );
     let sink: LocalAudit | undefined;
     let host: Awaited<ReturnType<typeof startLocalRelay>>;
     try {
@@ -219,10 +200,6 @@ export async function startConfiguredLocalRelay(
         registry: {
           ...config.registry,
           fingerprint_key: secrets.registry_fingerprint_key,
-        },
-        store: {
-          ...config.store,
-          fingerprint_key: secrets.relay_fingerprint_key,
         },
         http: config.http,
         ...(config.ingress && remote
@@ -245,7 +222,7 @@ export async function startConfiguredLocalRelay(
             sink.record(category, correlation);
           },
         },
-        ...(serviceFactory ? { service_factory: serviceFactory } : {}),
+        delivery,
       });
     } catch (error) {
       throw new LocalRelayStartError(hostReason(error));

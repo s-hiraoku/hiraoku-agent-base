@@ -40,7 +40,7 @@ const bodies = {
 
 for (const [kind, body] of Object.entries(bodies))
   test(`Common MCP boundary: ${kind} is durably received without Task acceptance or reply`, async (t) => {
-    const f = hostFixture(t);
+    const f = await hostFixture(t);
     const owner = new SQLiteHostOwner(join(f.dir, "receive-owner.sqlite"), {
       agent_id: "b",
       fingerprint_key: new Uint8Array(32).fill(91),

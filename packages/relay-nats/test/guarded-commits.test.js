@@ -47,6 +47,9 @@ const acknowledge = (backend, recipient, request) =>
   scope(recipient, "ack", (auth) =>
     backend.ackWithAuthorization(recipient, request, auth),
   );
+// Rewrites a current journal into the shipped schema 3 (SQLite/JetStream routing era).
+const schema3 =
+  "DROP TABLE nats_delivery_audit; DROP TABLE nats_maintenance_totals; ALTER TABLE nats_messages ADD COLUMN route_epoch INTEGER NOT NULL DEFAULT 1; CREATE TABLE nats_routing(id INTEGER PRIMARY KEY CHECK(id=1),epoch INTEGER NOT NULL,digest TEXT NOT NULL); DROP TABLE nats_poll_turns; CREATE TABLE nats_poll_turns(recipient_id TEXT PRIMARY KEY,owner TEXT NOT NULL CHECK(owner IN ('sqlite','jetstream')),updated_at INTEGER NOT NULL,last_sender_id TEXT); UPDATE nats_meta SET version=3";
 
 test("pump retains no scoped authority and synchronous save receipt survives candidate reopen", async (t) => {
   const f = await fixture(t, {
@@ -193,46 +196,6 @@ test("cached redelivery preserves backoff and rejects an old application fence",
   await f.backend.pumpOnce();
 });
 
-test("routing epoch pins new admissions, preserves exact retries, and persists next-owner turn", async (t) => {
-  const f = await fixture(t, { route_epoch: 1 });
-  const first = f.message();
-  f.backend.configureRouting(1, "a".repeat(64));
-  f.backend.configureRouting(1, "a".repeat(64));
-  const accepted = admit(f.backend, "a", first);
-  f.backend.recordPollTurn("b", "jetstream");
-  const advanced = f.track(
-    await JetStreamRelay.open({ ...f.options, route_epoch: 2 }),
-  );
-  advanced.configureRouting(2, "b".repeat(64));
-  assert.equal(advanced.pollTurn("b"), "jetstream");
-  assert.throws(() => f.backend.configureRouting(1, "a".repeat(64)), {
-    code: "routing_epoch_rejected",
-  });
-  assert.throws(() => admit(f.backend, "a", f.message()), {
-    code: "routing_epoch_rejected",
-  });
-  assert.equal(admit(f.backend, "a", first).receipt_id, accepted.receipt_id);
-  assert.throws(() => advanced.configureRouting(2, "c".repeat(64)), {
-    code: "routing_epoch_rejected",
-  });
-  const second = f.message();
-  admit(advanced, "c", second);
-  const journal = raw(t, f.options.journal_path);
-  assert.equal(
-    journal
-      .prepare("SELECT route_epoch FROM nats_messages WHERE message_id=?")
-      .get(first.message_id).route_epoch,
-    1,
-  );
-  assert.equal(
-    journal
-      .prepare("SELECT route_epoch FROM nats_messages WHERE message_id=?")
-      .get(second.message_id).route_epoch,
-    2,
-  );
-  assert.equal(advanced.pollTurn("unknown"), "sqlite");
-});
-
 const capacity = {
   max_pending_per_sender: 2,
   max_body_bytes_per_sender: 10000,
@@ -290,6 +253,7 @@ test("P4 journal upgrade requires explicit migration and preserves the admitted 
   const accepted = admit(f.backend, "a", message);
   await f.close(f.backend);
   const journal = raw(t, f.options.journal_path);
+  journal.exec(schema3);
   journal.exec(
     "DROP INDEX nats_cached_candidates; DROP TABLE nats_routing; DROP TABLE nats_poll_turns; ALTER TABLE nats_messages DROP COLUMN candidate; ALTER TABLE nats_messages DROP COLUMN route_epoch; ALTER TABLE nats_messages DROP COLUMN scan_order; UPDATE nats_meta SET version=1",
   );
@@ -312,7 +276,7 @@ test("P4 journal upgrade requires explicit migration and preserves the admitted 
   );
   assert.equal(
     journal.prepare("SELECT version FROM nats_meta").get().version,
-    3,
+    4,
   );
   assert.equal(
     migrated.lookupReceipt("a", message.message_id).receipt_id,
@@ -404,7 +368,7 @@ test("concurrent new journal initialization creates one schema identity", async 
   assert.equal(journal.prepare("SELECT count(*) n FROM nats_meta").get().n, 1);
   assert.equal(
     journal.prepare("SELECT version FROM nats_meta").get().version,
-    3,
+    4,
   );
 });
 
@@ -447,11 +411,11 @@ test("owner-enabled recovery reconnects the same backend without offline PUB buf
   assert.equal(poll(backend, "b"), null);
 });
 
-test("v2 migration adds fair cursor only with explicit opt-in and retains the next-store turn", async (t) => {
+test("v2 migration adds fair cursor only with explicit opt-in", async (t) => {
   const f = await fixture(t);
-  f.backend.recordPollTurn("b", "jetstream");
   await f.close(f.backend);
   const journal = raw(t, f.options.journal_path);
+  journal.exec(schema3);
   journal.exec(
     "ALTER TABLE nats_poll_turns DROP COLUMN last_sender_id; ALTER TABLE nats_messages DROP COLUMN scan_order; UPDATE nats_meta SET version=2",
   );
@@ -465,10 +429,75 @@ test("v2 migration adds fair cursor only with explicit opt-in and retains the ne
   const migrated = f.track(
     await JetStreamRelay.open({ ...f.options, migrate_journal: true }),
   );
-  assert.equal(migrated.pollTurn("b"), "jetstream");
+  assert.ok(migrated);
+  assert.equal(
+    journal.prepare("SELECT version FROM nats_meta").get().version,
+    4,
+  );
+});
+
+test("v3 migration retires routing state, keeps the fair cursor and receipts, and starts the delivery audit", async (t) => {
+  const f = await fixture(t, { fair_poll: true });
+  const message = f.message();
+  const accepted = admit(f.backend, "a", message);
+  await f.close(f.backend);
+  const journal = raw(t, f.options.journal_path);
+  journal.exec(schema3);
+  journal.exec(
+    "INSERT INTO nats_routing VALUES(1,3,'" +
+      "a".repeat(64) +
+      "'); INSERT INTO nats_poll_turns VALUES('b','jetstream',1,'c'), ('c','sqlite',1,NULL)",
+  );
+  await assert.rejects(JetStreamRelay.open(f.options), {
+    code: "journal_migration_required",
+  });
   assert.equal(
     journal.prepare("SELECT version FROM nats_meta").get().version,
     3,
+  );
+  const migrated = f.track(
+    await JetStreamRelay.open({ ...f.options, migrate_journal: true }),
+  );
+  assert.equal(
+    journal.prepare("SELECT version FROM nats_meta").get().version,
+    4,
+  );
+  assert.deepEqual(
+    journal
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'nats_%' ORDER BY name",
+      )
+      .all()
+      .map((row) => row.name),
+    [
+      "nats_delivery_audit",
+      "nats_maintenance_totals",
+      "nats_messages",
+      "nats_meta",
+      "nats_poll_turns",
+      "nats_pulls",
+    ],
+  );
+  assert.deepEqual(
+    journal
+      .prepare("SELECT recipient_id,last_sender_id FROM nats_poll_turns")
+      .all()
+      .map((row) => ({ ...row })),
+    [{ recipient_id: "b", last_sender_id: "c" }],
+  );
+  assert.equal(
+    migrated.lookupReceipt("a", message.message_id).receipt_id,
+    accepted.receipt_id,
+  );
+  await migrated.pumpOnce();
+  const delivery = poll(migrated, "b");
+  assert.equal(delivery.message.message_id, message.message_id);
+  assert.deepEqual(
+    journal
+      .prepare("SELECT event FROM nats_delivery_audit WHERE message_id=?")
+      .all(message.message_id)
+      .map((row) => row.event),
+    ["leased"],
   );
 });
 

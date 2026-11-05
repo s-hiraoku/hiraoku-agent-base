@@ -16,9 +16,7 @@ export const requiredFiles = [
   "broker.conf",
   "host/owner.sqlite",
   "host/registry.sqlite",
-  "host/relay.sqlite",
   "host/jetstream-journal.sqlite",
-  "host/service-extension.local.json",
   "host/volume.local.json",
   ...[
     "a2a",

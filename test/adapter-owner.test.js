@@ -16,8 +16,8 @@ import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
 import { hostFixture, deferred } from "./adapter-host-fixtures.js";
 import { code } from "./task-bridge-fixtures.js";
 const yes = () => {};
-function fixture(t) {
-  const f = hostFixture(t),
+async function fixture(t) {
+  const f = await hostFixture(t),
     path = join(f.dir, "owner.sqlite"),
     owners = new Set();
   const options = {
@@ -42,8 +42,8 @@ function fixture(t) {
     openOwner: open,
   };
 }
-test("Host owner: explicit migrate/acquire precede a single host attachment", (t) => {
-  const f = fixture(t);
+test("Host owner: explicit migrate/acquire precede a single host attachment", async (t) => {
+  const f = await fixture(t);
   assert.throws(() => f.owner.attach(), code("host_owner_not_held"));
   f.owner.acquire(yes);
   const host = f.makeHost({ owner: f.owner });
@@ -56,8 +56,8 @@ test("Host owner: explicit migrate/acquire precede a single host attachment", (t
   host.releaseOwner(f.context);
   assert.equal(host.status(f.context).owner, "lost");
 });
-test("Host owner: acquire requires current synchronous authorization", (t) => {
-  const f = fixture(t);
+test("Host owner: acquire requires current synchronous authorization", async (t) => {
+  const f = await fixture(t);
   assert.throws(() => f.owner.acquire(undefined));
   assert.throws(() => f.owner.acquire(async () => {}));
   assert.throws(() =>
@@ -68,8 +68,8 @@ test("Host owner: acquire requires current synchronous authorization", (t) => {
   f.owner.acquire(yes);
   f.owner.attach().check();
 });
-test("Host owner: second SQLite connection cannot acquire, migrate or read through an active owner", (t) => {
-  const f = fixture(t),
+test("Host owner: second SQLite connection cannot acquire, migrate or read through an active owner", async (t) => {
+  const f = await fixture(t),
     other = f.openOwner();
   other.migrate();
   f.owner.acquire(yes);
@@ -79,7 +79,7 @@ test("Host owner: second SQLite connection cannot acquire, migrate or read throu
   f.owner.attach().check();
 });
 test("Host owner: release requires separate permission, paused control and no active operation", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.owner.acquire(yes);
   const host = f.makeHost({ owner: f.owner });
   f.resume(host);
@@ -101,7 +101,7 @@ test("Host owner: release requires separate permission, paused control and no ac
   );
 });
 test("Host owner: timeout keeps ownership until underlying credential work settles", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.owner.acquire(yes);
   f.state.timeout_ms = 20;
   const wait = deferred();
@@ -123,7 +123,7 @@ test("Host owner: timeout keeps ownership until underlying credential work settl
   next.acquire(yes);
 });
 test("Host owner: closing the raw composition resource fences an already created host", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.owner.acquire(yes);
   const host = f.makeHost({ owner: f.owner });
   f.resume(host);
@@ -138,7 +138,7 @@ test("Host owner: closing the raw composition resource fences an already created
   assert.equal(host.status(f.context).paused, true);
 });
 test("Host owner: lost owner after an RPC cannot save or ACK late data", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.owner.acquire(yes);
   const host = f.makeHost({ owner: f.owner });
   f.resume(host);
@@ -151,8 +151,8 @@ test("Host owner: lost owner after an RPC cannot save or ACK late data", async (
   assert.equal(f.inbox.inbox().length, 0);
   assert.deepEqual(f.state.tools, ["relay_poll"]);
 });
-test("Host owner: file replacement and permission changes fail closed", (t) => {
-  const f = fixture(t);
+test("Host owner: file replacement and permission changes fail closed", async (t) => {
+  const f = await fixture(t);
   f.owner.acquire(yes);
   const cap = f.owner.attach();
   chmodSync(f.ownerPath, 0o644);
@@ -160,16 +160,16 @@ test("Host owner: file replacement and permission changes fail closed", (t) => {
   chmodSync(f.ownerPath, 0o600);
   assert.throws(() => cap.check(), code("host_owner_not_held"));
 });
-test("Host owner: replaced inode cannot borrow the old owner's SQLite lock", (t) => {
-  const f = fixture(t);
+test("Host owner: replaced inode cannot borrow the old owner's SQLite lock", async (t) => {
+  const f = await fixture(t);
   f.owner.acquire(yes);
   const cap = f.owner.attach();
   renameSync(f.ownerPath, f.ownerPath + ".old");
   writeFileSync(f.ownerPath, "", { mode: 0o600 });
   assert.throws(() => cap.check(), code("host_owner_lost"));
 });
-test("Host owner: private file, symlink, binding and unknown schema are checked", (t) => {
-  const f = fixture(t);
+test("Host owner: private file, symlink, binding and unknown schema are checked", async (t) => {
+  const f = await fixture(t);
   assert.equal(statSync(f.ownerPath).mode & 0o777, 0o600);
   for (const patch of [
     { agent_id: "c" },
@@ -195,8 +195,8 @@ test("Host owner: private file, symlink, binding and unknown schema are checked"
     code("invalid_host_owner_options"),
   );
 });
-test("Host owner: WAL and memory cannot be used as process-lifetime ownership", (t) => {
-  const f = fixture(t),
+test("Host owner: WAL and memory cannot be used as process-lifetime ownership", async (t) => {
+  const f = await fixture(t),
     path = join(f.dir, "wal.sqlite"),
     db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode=WAL");
@@ -209,7 +209,7 @@ test("Host owner: WAL and memory cannot be used as process-lifetime ownership", 
   );
 });
 test("Host owner: a terminated native process releases only the ephemeral owner lock", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   const moduleUrl = new URL(
     "../src/adapter-host/sqlite-owner.ts",
     import.meta.url,
@@ -241,7 +241,7 @@ test("Host owner: a terminated native process releases only the ephemeral owner 
   assert.equal(f.count(), 0);
 });
 test("Host owner: closing a failed same-process competitor does not release the live OS lock", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.owner.acquire(yes);
   for (let i = 0; i < 3; i++)
     assert.throws(() => f.openOwner(), code("host_owner_busy"));

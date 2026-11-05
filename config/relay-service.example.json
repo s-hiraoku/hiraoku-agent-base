@@ -32,25 +32,47 @@
       "execution_result"
     ]
   },
-  "store": {
-    "max_pending": 20,
-    "max_records": 100,
-    "max_pending_per_recipient": 10,
-    "max_body_bytes": 100000,
-    "max_clock_skew_ms": 1000,
-    "lease_ms": 30000,
-    "max_attempts": 3,
-    "retry_base_ms": 1000,
-    "retry_cap_ms": 60000,
-    "poll_scan_limit": 20,
-    "fair_poll": true,
-    "agent_capacity": {
-      "max_pending_per_sender": 10,
-      "max_body_bytes_per_sender": 50000,
-      "max_records_per_sender": 25,
-      "max_body_bytes_per_recipient": 50000,
-      "max_records_per_recipient": 50,
-      "reservations": []
+  "delivery": {
+    "broker": {
+      "server": "nats://127.0.0.1:4222",
+      "user": "replace-with-dedicated-user",
+      "password": "replace-with-private-password",
+      "stream": "HAB_TEXT",
+      "subject_prefix": "habText",
+      "max_consumers": 100,
+      "max_bytes": 67108864,
+      "max_message_bytes": 65536,
+      "request_timeout_ms": 2000
+    },
+    "pump": {
+      "interval_ms": 100,
+      "max_records_per_cycle": 100
+    },
+    "volume": {
+      "identity_file": "/ABSOLUTE/PRIVATE/HAB/state/relay/volume.local.json",
+      "expected_id": "replace-with-volume-id",
+      "expected_device": 0
+    },
+    "queue": {
+      "max_pending": 20,
+      "max_records": 100,
+      "max_pending_per_recipient": 10,
+      "max_body_bytes": 100000,
+      "max_clock_skew_ms": 1000,
+      "lease_ms": 30000,
+      "max_attempts": 3,
+      "retry_base_ms": 1000,
+      "retry_cap_ms": 60000,
+      "poll_scan_limit": 20,
+      "fair_poll": true,
+      "agent_capacity": {
+        "max_pending_per_sender": 10,
+        "max_body_bytes_per_sender": 50000,
+        "max_records_per_sender": 25,
+        "max_body_bytes_per_recipient": 50000,
+        "max_records_per_recipient": 50,
+        "reservations": []
+      }
     }
   },
   "http": {

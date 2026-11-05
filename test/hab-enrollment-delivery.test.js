@@ -251,11 +251,11 @@ test(
     assert.equal(f.count("hab_bindings"), 3);
     assert.equal(
       f.raw(
-        "relay.sqlite",
+        "jetstream-journal.sqlite",
         (db) =>
           db
             .prepare(
-              "SELECT count(*) n FROM relay_messages WHERE body IS NOT NULL",
+              "SELECT count(*) n FROM nats_messages WHERE body_bytes > 0",
             )
             .get().n,
       ),
@@ -368,9 +368,9 @@ test(
       code("sender_transport_failed"),
     );
     const receipt = f.raw(
-      "relay.sqlite",
+      "jetstream-journal.sqlite",
       (db) =>
-        db.prepare("SELECT receipt_id FROM relay_messages").get().receipt_id,
+        db.prepare("SELECT receipt_id FROM nats_messages").get().receipt_id,
     );
     f.net.close(initial.store);
     await f.restart();
@@ -394,11 +394,11 @@ test(
     assert.equal(f.count("relay_deliveries"), 1);
     assert.equal(
       f.raw(
-        "relay.sqlite",
+        "jetstream-journal.sqlite",
         (db) =>
           db
             .prepare(
-              "SELECT count(*) n FROM relay_delivery_audit WHERE event='accepted'",
+              "SELECT count(*) n FROM nats_delivery_audit WHERE event='accepted'",
             )
             .get().n,
       ),
@@ -436,13 +436,20 @@ test(
     );
     assert.equal(initial.receiver.inbox()[0].receipt_confirmed, false);
     assert.deepEqual(initial.receiver.inbox()[0].message, m);
-    const original = f.raw("relay.sqlite", (db) =>
-      db.prepare("SELECT request_id,receipt_id FROM relay_ack_receipts").get(),
+    const original = f.raw("jetstream-journal.sqlite", (db) =>
+      db
+        .prepare(
+          "SELECT ack_request_id request_id,ack_receipt_id receipt_id FROM nats_messages WHERE ack_request_id IS NOT NULL",
+        )
+        .get(),
     );
     assert.equal(
       f.raw(
-        "relay.sqlite",
-        (db) => db.prepare("SELECT body FROM relay_messages").get().body,
+        "jetstream-journal.sqlite",
+        (db) =>
+          db
+            .prepare("SELECT nullif(body_bytes,0) body FROM nats_messages")
+            .get().body,
       ),
       null,
     );
@@ -454,9 +461,11 @@ test(
     assert.equal(restored.receiver.inbox().length, 1);
     assert.equal(restored.receiver.inbox()[0].receipt_confirmed, true);
     assert.deepEqual(
-      f.raw("relay.sqlite", (db) =>
+      f.raw("jetstream-journal.sqlite", (db) =>
         db
-          .prepare("SELECT request_id,receipt_id FROM relay_ack_receipts")
+          .prepare(
+            "SELECT ack_request_id request_id,ack_receipt_id receipt_id FROM nats_messages WHERE ack_request_id IS NOT NULL",
+          )
           .get(),
       ),
       original,
@@ -504,10 +513,9 @@ test(
     assert.equal(restored.receiver.inbox()[0].receipt_confirmed, true);
     assert.equal(
       f.raw(
-        "relay.sqlite",
+        "jetstream-journal.sqlite",
         (db) =>
-          db.prepare("SELECT generation FROM relay_deliveries").get()
-            .generation,
+          db.prepare("SELECT generation FROM nats_messages").get().generation,
       ),
       2,
     );
@@ -570,8 +578,11 @@ test(
     );
     assert.notEqual(
       f.raw(
-        "relay.sqlite",
-        (db) => db.prepare("SELECT body FROM relay_messages").get().body,
+        "jetstream-journal.sqlite",
+        (db) =>
+          db
+            .prepare("SELECT nullif(body_bytes,0) body FROM nats_messages")
+            .get().body,
       ),
       null,
     );
@@ -843,8 +854,11 @@ test(
     assert.equal(f.count("relay_ack_receipts"), 0);
     assert.notEqual(
       f.raw(
-        "relay.sqlite",
-        (db) => db.prepare("SELECT body FROM relay_messages").get().body,
+        "jetstream-journal.sqlite",
+        (db) =>
+          db
+            .prepare("SELECT nullif(body_bytes,0) body FROM nats_messages")
+            .get().body,
       ),
       null,
     );

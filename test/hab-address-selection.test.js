@@ -17,12 +17,11 @@ import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
 import { WriterAdmission } from "../src/relay/writer-admission.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
-import { HabRelayService } from "../src/hab/relay.ts";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 
-function direct(t, admission = false) {
-  const f = groupFixture(t);
+async function direct(t, admission = false) {
+  const f = await groupFixture(t);
   const queue = admission
     ? new WriterAdmission(
         {
@@ -43,14 +42,14 @@ function direct(t, admission = false) {
 }
 
 test("HAB discovers exactly five tools with the optional address selector; core Relay stays independent", async (t) => {
-  const f = direct(t);
+  const f = await direct(t);
   const listed = await decode(await f.gateway.fetch(request("tools/list")));
   assert.equal(listed.result.tools.length, 5);
   for (const tool of listed.result.tools) {
     assert.ok(tool.inputSchema.properties.as_address);
     assert.ok(!(tool.inputSchema.required ?? []).includes("as_address"));
   }
-  const core = new RelayHttpGateway(f.service, policy, f.audit, f.verifier);
+  const core = new RelayHttpGateway(f.hab, policy, f.audit, f.verifier);
   const coreList = await decode(await core.fetch(request("tools/list")));
   assert.equal(coreList.result.tools.length, 4);
   for (const tool of coreList.result.tools)
@@ -58,7 +57,7 @@ test("HAB discovers exactly five tools with the optional address selector; core 
 });
 
 test("one authenticated group selects two sender names over standard MCP", async (t) => {
-  const f = direct(t);
+  const f = await direct(t);
   for (const [index, agent] of [f.first, f.second].entries()) {
     const resolved = await call(f.gateway, "relay_resolve", {
       as_address: agent.address,
@@ -87,7 +86,7 @@ test("one authenticated group selects two sender names over standard MCP", async
 });
 
 test("all five MCP operations refuse foreign local names and do not infer identity from extra fields", async (t) => {
-  const f = direct(t);
+  const f = await direct(t);
   const args = {
     relay_resolve: { address: f.first.address },
     relay_submit: { ...message(), recipient_id: f.first.agent_id },
@@ -140,7 +139,7 @@ test("all five MCP operations refuse foreign local names and do not infer identi
 });
 
 test("writer admission uses the validated selected member and rechecks group stop", async (t) => {
-  const f = direct(t, true);
+  const f = await direct(t, true);
   const result = await call(f.gateway, "relay_poll", {
     as_address: f.second.address,
   });
@@ -154,7 +153,7 @@ test("writer admission uses the validated selected member and rechecks group sto
 });
 
 test("selector capability is fail-closed if a host only supplies the legacy service contract", async (t) => {
-  const f = direct(t);
+  const f = await direct(t);
   const legacy = Object.fromEntries(
     ["submit", "status", "poll", "ack", "resolve"].map((op) => [
       op,
@@ -179,7 +178,7 @@ test(
   "native HTTP clients preserve their fixed address through durable send, reply, status and ACK",
   { timeout: 10000 },
   async (t) => {
-    const f = groupFixture(t),
+    const f = await groupFixture(t),
       net = await setup(t, f);
     const first = net.clients("a", f.first, globalThis.fetch, f.first.address);
     const second = net.clients(
@@ -242,7 +241,7 @@ test(
   "client validates its expected immutable owner independently of the selected name",
   { timeout: 10000 },
   async (t) => {
-    const f = groupFixture(t),
+    const f = await groupFixture(t),
       net = await setup(t, f);
     const wrong = net.clients("a", f.second, globalThis.fetch, f.first.address);
     const input = { ...message(), recipient_id: f.external.agent_id };
@@ -262,7 +261,7 @@ test(
   "lost acceptance resumes the original outbox and selected name after registry and HTTP restart",
   { timeout: 10000 },
   async (t) => {
-    const f = groupFixture(t),
+    const f = await groupFixture(t),
       net = await setup(t, f),
       seen = [];
     let lost = false;
@@ -307,7 +306,7 @@ test(
     await net.stop();
     const registry = f.open();
     registry.migrate();
-    await net.start(new HabRelayService(registry, f.store, limits));
+    await net.start(f.habFor(registry));
     const after = new DurableSender(
       net.outbox("recover-selected", f.first),
       net.clients("a", f.first, transport, f.first.address),

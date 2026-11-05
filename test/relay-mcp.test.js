@@ -7,11 +7,8 @@ import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createRelayMcpServer } from "../src/relay/mcp.ts";
-import {
-  StoreDeliveryService,
-  makeReplayBoundMessageId,
-} from "../src/messaging/index.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
+import { authorizedDelivery } from "./jetstream-delivery.js";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
@@ -45,25 +42,9 @@ function message(at = Date.now() - 100, entropy = "1".repeat(32)) {
     expires_at: new Date(at + 3600000).toISOString(),
   };
 }
-function fixture(t) {
-  const dir = mkdtempSync(join(tmpdir(), "relay-mcp-")),
-    path = join(dir, "relay.sqlite");
-  const store = new SQLiteRelayStore(path, {
-    fingerprint_key: new Uint8Array(32).fill(42),
-    max_pending: 10,
-    max_records: 100,
-    max_pending_per_recipient: 5,
-    max_body_bytes: 100000,
-    max_clock_skew_ms: 1000,
-    lease_ms: 30000,
-    max_attempts: 3,
-    retry_base_ms: 10,
-    retry_cap_ms: 100,
-    poll_scan_limit: 10,
-  });
-  store.migrate();
-  const raw = new DatabaseSync(path),
-    identities = new Map(),
+async function fixture(t) {
+  const dir = mkdtempSync(join(tmpdir(), "relay-mcp-"));
+  const identities = new Map(),
     active = new Set(["a", "b", "c"]),
     denied = new Set();
   const contexts = {};
@@ -80,12 +61,23 @@ function fixture(t) {
         : undefined;
     },
   };
-  const service = new StoreDeliveryService(store, limits, policy),
+  const delivery = await authorizedDelivery(t, {
+    authorization: policy,
+    limits,
+    directory: dir,
+    queue: {
+      max_pending: 10,
+      max_pending_per_recipient: 5,
+      poll_scan_limit: 10,
+      agent_capacity: undefined,
+    },
+  });
+  const service = delivery.service,
+    raw = new DatabaseSync(join(dir, "jetstream-journal.sqlite")),
     handlers = [];
   t.after(async () => {
     for (const h of handlers) await h.close();
     raw.close();
-    store.close();
     rmSync(dir, { recursive: true, force: true });
   });
   const endpoint = (resolve, selectedService = service) => {
@@ -100,7 +92,7 @@ function fixture(t) {
     c = endpoint(() => contexts.c);
   return {
     dir,
-    store,
+    delivery,
     raw,
     service,
     contexts,
@@ -176,11 +168,11 @@ function request(d) {
   };
 }
 function count(f) {
-  return f.raw.prepare("SELECT count(*) n FROM relay_messages").get().n;
+  return f.raw.prepare("SELECT count(*) n FROM nats_messages").get().n;
 }
 
 test("standalone SDK catalog exposes exactly four delivery tools and no local admin, Task, shell or registration tools", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     body = await rpc(f.a, "tools/list");
   assert.deepEqual(body.result.tools.map((x) => x.name).sort(), [
     "relay_ack",
@@ -204,8 +196,12 @@ test("standalone SDK catalog exposes exactly four delivery tools and no local ad
 });
 
 test("missing, throwing, unverified and policy-less auth fail closed even for an otherwise valid call", async (t) => {
-  const f = fixture(t),
-    unbound = new StoreDeliveryService(f.store, limits);
+  const f = await fixture(t),
+    unbound = {
+      ...f.service,
+      submit: (context, input) =>
+        f.delivery.backend.admitWithAuthorization(context, input, {}),
+    };
   for (const e of [
     f.endpoint(),
     f.endpoint(() => {
@@ -239,7 +235,7 @@ test("missing, throwing, unverified and policy-less auth fail closed even for an
 });
 
 test("SDK request/response path submits multipart data, durably receives before ACK and recovers exact ACK retries", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message(),
     accepted = await call(f.a, "relay_submit", m);
   assert.equal(accepted.structuredContent.sender_id, "a");
@@ -279,7 +275,9 @@ test("SDK request/response path submits multipart data, durably receives before 
     "acked",
   );
   assert.equal(
-    f.raw.prepare("SELECT body FROM relay_messages").get().body,
+    f.raw
+      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+      .get().body,
     null,
   );
   assert.equal(inbox.releaseBody("a", m.message_id), true);
@@ -290,7 +288,7 @@ test("SDK request/response path submits multipart data, durably receives before 
 });
 
 test("tool arguments cannot impersonate a sender or select a foreign mailbox and receipt ownership remains scoped", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   for (const extra of [
     { sender_id: "c" },
@@ -317,7 +315,7 @@ test("tool arguments cannot impersonate a sender or select a foreign mailbox and
 });
 
 test("each tool resolves current connection context and rechecks policy so revocation also blocks dedup retries", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   let resolutions = 0;
   const a = f.endpoint(() => {
@@ -339,7 +337,7 @@ test("each tool resolves current connection context and rechecks policy so revoc
 });
 
 test("operation-specific refusal remains enforced independently of a valid subject", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   await call(f.a, "relay_submit", m);
   f.denied.add("poll");
@@ -354,13 +352,13 @@ test("operation-specific refusal remains enforced independently of a valid subje
     { error: "forbidden" },
   );
   assert.equal(
-    f.raw.prepare("SELECT state FROM relay_messages").get().state,
+    f.raw.prepare("SELECT state FROM nats_messages").get().state,
     "leased",
   );
 });
 
 test("concurrent SDK polls for the same individual grant exactly one active lease", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   await call(f.a, "relay_submit", message());
   const other = f.endpoint(() => f.contexts.b);
   const results = await Promise.all([
@@ -373,19 +371,19 @@ test("concurrent SDK polls for the same individual grant exactly one active leas
   );
   assert.equal(
     f.raw
-      .prepare("SELECT count(*) n FROM relay_deliveries WHERE state='leased'")
+      .prepare("SELECT count(*) n FROM nats_messages WHERE state='leased'")
       .get().n,
     1,
   );
 });
 
 test("stale ACKs cannot consume new leases and exact committed ACK retry survives expiry", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   await call(f.a, "relay_submit", m);
   const first = (await call(f.b, "relay_poll")).structuredContent.delivery,
     old = request(first);
-  f.raw.exec("UPDATE relay_deliveries SET lease_until=0,next_visible_at=0");
+  f.raw.exec("UPDATE nats_messages SET lease_until=0,next_visible_at=0");
   const second = (await call(f.b, "relay_poll")).structuredContent.delivery;
   assert.ok(second.generation > first.generation);
   assert.deepEqual((await call(f.b, "relay_ack", old)).structuredContent, {
@@ -393,7 +391,7 @@ test("stale ACKs cannot consume new leases and exact committed ACK retry survive
   });
   const req = request(second),
     r = (await call(f.b, "relay_ack", req)).structuredContent;
-  f.raw.exec("UPDATE relay_messages SET expires_at=0");
+  f.raw.exec("UPDATE nats_messages SET expires_at=0");
   assert.deepEqual((await call(f.b, "relay_ack", req)).structuredContent, r);
   assert.deepEqual(
     (await call(f.b, "relay_ack", { ...req, generation: req.generation + 1 }))
@@ -403,7 +401,7 @@ test("stale ACKs cannot consume new leases and exact committed ACK retry survive
 });
 
 test("core body and expiry limits reject invalid payloads with fixed errors and no committed messages", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     oversized = message();
   oversized.body.parts[0].text = "private".repeat(3000);
   const huge = await call(f.a, "relay_submit", oversized);
@@ -424,7 +422,7 @@ test("core body and expiry limits reject invalid payloads with fixed errors and 
 });
 
 test("relay_submit refuses an attachment part and stores nothing", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   m.body.parts.push({
     type: "attachment",
@@ -443,9 +441,9 @@ test("relay_submit refuses an attachment part and stores nothing", async (t) => 
 });
 
 test("unexpected storage details are normalized and transaction failure cannot return acceptance", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.raw.exec(
-    "CREATE TRIGGER fail_accept BEFORE INSERT ON relay_messages BEGIN SELECT RAISE(ABORT,'synthetic private storage detail'); END",
+    "CREATE TRIGGER fail_accept BEFORE INSERT ON nats_messages BEGIN SELECT RAISE(ABORT,'synthetic private storage detail'); END",
   );
   const r = await call(f.a, "relay_submit", message());
   assert.deepEqual(r.structuredContent, { error: "relay_operation_failed" });
@@ -454,7 +452,10 @@ test("unexpected storage details are normalized and transaction failure cannot r
 });
 
 test("unknown/local-administration tools never reach Relay maintenance or execute a task", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
+  const totals = () =>
+    f.raw.prepare("SELECT * FROM nats_maintenance_totals").get();
+  const before = { ...totals() };
   for (const name of [
     "relay_maintain",
     "releaseBody",
@@ -466,14 +467,11 @@ test("unknown/local-administration tools never reach Relay maintenance or execut
   ])
     assert.ok((await call(f.a, name, {})).rejected);
   assert.equal(count(f), 0);
-  assert.equal(
-    f.raw.prepare("SELECT last_at FROM relay_maintenance_totals").get().last_at,
-    0,
-  );
+  assert.deepEqual({ ...totals() }, before);
 });
 
 test("legacy JSON-RPC/SSE clients use the same isolated four-tool contract", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   assert.equal(
     (await rpc(f.a, "tools/list", {}, false)).result.tools.length,

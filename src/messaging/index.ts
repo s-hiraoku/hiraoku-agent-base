@@ -19,18 +19,11 @@ export type {
   ContractLimits,
   AckRequest,
 } from "./contract.ts";
-export { StoreDeliveryService, MessagingError } from "./delivery-service.ts";
+export { MessagingError } from "./delivery-service.ts";
 export type {
   Receipt,
   Authorization,
-  AcceptanceStore,
-  Acceptance,
-  ReceiptQuery,
   DeliveryService,
   Delivery,
   AckReceipt,
-  ReceiveAuthorization,
-  DeliveryStore,
-  MaintenanceResult,
-  MaintenanceStore,
 } from "./delivery-service.ts";

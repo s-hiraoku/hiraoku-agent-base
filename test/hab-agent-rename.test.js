@@ -3,8 +3,6 @@ import assert from "node:assert/strict";
 import { fixture, code } from "./hab-registry-fixtures.js";
 import { groupFixture } from "./hab-group-fixtures.js";
 import { message } from "./relay-http-fixtures.js";
-import { HabRelayService } from "../src/hab/relay.ts";
-import { limits } from "./relay-http-fixtures.js";
 import { backup } from "node:sqlite";
 import { join } from "node:path";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
@@ -20,8 +18,11 @@ const renamed = (f, agent, bot_name = "renamed", request_id = "rename") =>
     bot_name,
   });
 
-test("opt-in rename preserves the birth identity and reserves the old name without forwarding", (t) => {
-  const f = fixture(t, { authentication_groups: true, agent_rename: true });
+test("opt-in rename preserves the birth identity and reserves the old name without forwarding", async (t) => {
+  const f = await fixture(t, {
+    authentication_groups: true,
+    agent_rename: true,
+  });
   const a = f.enroll("a"),
     b = f.enroll("b");
   const input = {
@@ -60,9 +61,9 @@ test("opt-in rename preserves the birth identity and reserves the old name witho
   assert.equal(f.registry.inspect(f.admin, b.agent_id).address, b.address);
 });
 
-test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy credentials", (t) => {
+test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy credentials", async (t) => {
   for (const authentication_groups of [false, true]) {
-    const f = fixture(t, { authentication_groups });
+    const f = await fixture(t, { authentication_groups });
     const a = f.enroll("a"),
       b = f.enroll("b");
     assert.equal(
@@ -88,7 +89,7 @@ test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy c
       expected_address: a.address,
       bot_name: "renamed",
     });
-    const hab = new HabRelayService(next, f.store, limits);
+    const hab = f.habFor(next);
     assert.equal(
       hab.submit(f.contexts.a, { ...message(), recipient_id: b.agent_id })
         .sender_id,
@@ -117,8 +118,11 @@ test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy c
   }
 });
 
-test("admin permission, CAS, retired state, immutable birth row and request conflict are enforced", (t) => {
-  const f = fixture(t, { authentication_groups: true, agent_rename: true });
+test("admin permission, CAS, retired state, immutable birth row and request conflict are enforced", async (t) => {
+  const f = await fixture(t, {
+    authentication_groups: true,
+    agent_rename: true,
+  });
   const a = f.enroll("a");
   const input = {
     request_id: "rename",
@@ -179,8 +183,11 @@ test("admin permission, CAS, retired state, immutable birth row and request conf
   );
 });
 
-test("permanent reservations prevent cross-agent reuse and permit an explicit same-ID rollback", (t) => {
-  const f = fixture(t, { authentication_groups: true, agent_rename: true });
+test("permanent reservations prevent cross-agent reuse and permit an explicit same-ID rollback", async (t) => {
+  const f = await fixture(t, {
+    authentication_groups: true,
+    agent_rename: true,
+  });
   const a = f.enroll("a"),
     b = f.enroll("b");
   const current = renamed(f, a);
@@ -225,8 +232,8 @@ test("permanent reservations prevent cross-agent reuse and permit an explicit sa
   );
 });
 
-test("leased delivery ACK, saved sender status, duplicate submit and reply IDs survive rename", (t) => {
-  const f = groupFixture(t, { agent_rename: true });
+test("leased delivery ACK, saved sender status, duplicate submit and reply IDs survive rename", async (t) => {
+  const f = await groupFixture(t, { agent_rename: true });
   const before = f.select(f.first);
   const inbound = { ...message(), recipient_id: f.first.agent_id };
   f.hab.submit(f.contexts.b, inbound);
@@ -265,8 +272,8 @@ test("leased delivery ACK, saved sender status, duplicate submit and reply IDs s
   assert.equal(f.hab.submit(selected, reply).sender_id, f.first.agent_id);
 });
 
-test("group discovery reflects the current name, invalidates cursors, and marks old host attestations unknown", (t) => {
-  const f = groupFixture(t, {
+test("group discovery reflects the current name, invalidates cursors, and marks old host attestations unknown", async (t) => {
+  const f = await groupFixture(t, {
     agent_rename: true,
     discovery: { availability_namespaces: ["grok-bot"] },
   });
@@ -336,8 +343,8 @@ test("group discovery reflects the current name, invalidates cursors, and marks 
   );
 });
 
-test("exhausted group epoch rolls back all name and authority changes", (t) => {
-  const f = groupFixture(t, { agent_rename: true });
+test("exhausted group epoch rolls back all name and authority changes", async (t) => {
+  const f = await groupFixture(t, { agent_rename: true });
   const a = f.registry.inspect(f.admin, f.first.agent_id);
   f.registryRaw
     .prepare("UPDATE hab_auth_groups SET epoch=? WHERE group_id=?")
@@ -352,7 +359,10 @@ test("exhausted group epoch rolls back all name and authority changes", (t) => {
 });
 
 test("v3 registry backup/reopen retains names, reservations, ID and existing binding without token rotation", async (t) => {
-  const f = fixture(t, { authentication_groups: true, agent_rename: true });
+  const f = await fixture(t, {
+    authentication_groups: true,
+    agent_rename: true,
+  });
   const a = f.enroll("a"),
     b = f.enroll("b"),
     current = renamed(f, a);
@@ -367,7 +377,7 @@ test("v3 registry backup/reopen retains names, reservations, ID and existing bin
   t.after(() => restored.close());
   restored.migrate();
   assert.equal(restored.inspect(f.admin, a.agent_id).address, current.address);
-  const hab = new HabRelayService(restored, f.store, limits);
+  const hab = f.habFor(restored);
   assert.equal(
     hab.submit(f.contexts.a, { ...message(), recipient_id: b.agent_id })
       .sender_id,
@@ -380,8 +390,11 @@ test("v3 registry backup/reopen retains names, reservations, ID and existing bin
   );
 });
 
-test("permanent event capacity fails closed without reserving a new address", (t) => {
-  const f = fixture(t, { authentication_groups: true, agent_rename: true });
+test("permanent event capacity fails closed without reserving a new address", async (t) => {
+  const f = await fixture(t, {
+    authentication_groups: true,
+    agent_rename: true,
+  });
   const a = f.enroll("a");
   renamed(f, a);
   let previous = "renamed@grok-bot.hab";
@@ -409,8 +422,8 @@ test("permanent event capacity fails closed without reserving a new address", (t
   );
 });
 
-test("retired member groups and foreign host address attestations cannot be bypassed by rename", (t) => {
-  const f = groupFixture(t, {
+test("retired member groups and foreign host address attestations cannot be bypassed by rename", async (t) => {
+  const f = await groupFixture(t, {
     agent_rename: true,
     discovery: { availability_namespaces: ["grok-bot"] },
   });

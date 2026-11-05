@@ -4,13 +4,9 @@ import { isAbsolute, join, dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { readRuntimeConfig } from "../../../src/runtime-config.ts";
-import {
-  startConfiguredLocalRelay,
-  LocalRelayStartError,
-} from "../../../src/relay-host/configured.ts";
 import type {
-  LocalRelayServiceFactory,
-  LocalRelayServiceDependencies,
+  DeliveryFactory,
+  DeliveryDependencies,
 } from "../../../src/relay-host/local.ts";
 import { MessagingError } from "../../../src/messaging/delivery-service.ts";
 import { JetStreamRelay } from "./backend.ts";
@@ -19,8 +15,45 @@ import { HabJetStreamService } from "./hab-service.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
 const absolute = z.string().refine(isAbsolute);
-const schema = z.strictObject({
-  version: z.literal(1),
+const queue = z
+  .strictObject({
+    max_pending: positive,
+    max_records: positive,
+    max_pending_per_recipient: positive,
+    max_body_bytes: positive,
+    max_clock_skew_ms: z.number().int().nonnegative(),
+    lease_ms: positive,
+    max_attempts: positive,
+    retry_base_ms: positive,
+    retry_cap_ms: positive,
+    poll_scan_limit: positive,
+    fair_poll: z.boolean().optional(),
+    // Required: without a per-sender budget one enrolled sender can fill the retained-record pool for every agent.
+    agent_capacity: z.strictObject({
+      max_pending_per_sender: positive,
+      max_body_bytes_per_sender: positive,
+      max_records_per_sender: positive,
+      max_body_bytes_per_recipient: positive,
+      max_records_per_recipient: positive,
+      reservations: z
+        .array(
+          z.strictObject({
+            sender_id: z.string(),
+            pending: positive,
+            body_bytes: positive,
+            records: positive,
+          }),
+        )
+        .max(256),
+    }),
+  })
+  .refine(
+    (value) =>
+      value.agent_capacity.max_records_per_sender < value.max_records &&
+      value.agent_capacity.max_pending_per_sender < value.max_pending,
+  );
+/** The host config's `delivery` section. JetStream is the only delivery backend. */
+export const deliverySchema = z.strictObject({
   broker: z.strictObject({
     server: z.string(),
     user: z.string().min(1),
@@ -32,18 +65,6 @@ const schema = z.strictObject({
     max_message_bytes: positive,
     request_timeout_ms: positive.max(30000),
   }),
-  routing: z
-    .strictObject({
-      epoch: positive,
-      enabled: z.boolean(),
-      recipients: z.array(id).max(256),
-      kinds: z.array(id).min(1).max(64),
-    })
-    .refine(
-      (value) =>
-        new Set(value.recipients).size === value.recipients.length &&
-        new Set(value.kinds).size === value.kinds.length,
-    ),
   pump: z.strictObject({
     interval_ms: positive.max(60000),
     max_records_per_cycle: positive.max(1000),
@@ -57,25 +78,21 @@ const schema = z.strictObject({
       .nonnegative()
       .max(Number.MAX_SAFE_INTEGER),
   }),
+  queue,
   migrate_journal: z.boolean().optional(),
 });
-export type JetStreamHostConfig = z.infer<typeof schema>;
+export type DeliveryConfig = z.infer<typeof deliverySchema>;
 function read(path: string) {
   if (!isAbsolute(path) || lstatSync(path).nlink !== 1)
     throw Error("jetstream_private_config_required");
   return readRuntimeConfig(path);
 }
-export function readJetStreamHostConfig(path: string): JetStreamHostConfig {
-  try {
-    return schema.parse(read(path));
-  } catch {
-    throw new LocalRelayStartError("jetstream_config_rejected");
-  }
-}
-export function createJetStreamServiceFactory(
-  config: JetStreamHostConfig,
-): LocalRelayServiceFactory {
-  const policy = schema.parse(config);
+export function createJetStreamDelivery(
+  config: DeliveryConfig,
+  fingerprintKey: Uint8Array,
+): DeliveryFactory {
+  const policy = deliverySchema.parse(config);
+  const key = Uint8Array.from(fingerprintKey);
   const assertVolume = (directory: string): undefined => {
     try {
       const marker = z
@@ -95,7 +112,7 @@ export function createJetStreamServiceFactory(
     }
     return undefined;
   };
-  const factory = async (dependencies: LocalRelayServiceDependencies) => {
+  const factory = async (dependencies: DeliveryDependencies) => {
     const assertCurrent = () => {
       dependencies.assertOwner();
       assertVolume(dependencies.directory);
@@ -103,8 +120,9 @@ export function createJetStreamServiceFactory(
     assertCurrent();
     const maintenanceContext = Symbol("jetstream-host-maintenance");
     const backend = await JetStreamRelay.open({
-      ...dependencies.store_options,
-      journal_path: join(dependencies.directory, "jetstream-journal.sqlite"),
+      ...policy.queue,
+      fingerprint_key: key,
+      journal_path: dependencies.privateFile("jetstream-journal.sqlite"),
       server: policy.broker.server,
       user: policy.broker.user,
       password: policy.broker.password,
@@ -115,11 +133,10 @@ export function createJetStreamServiceFactory(
       broker_max_message_bytes: policy.broker.max_message_bytes,
       request_timeout_ms: policy.broker.request_timeout_ms,
       limits: dependencies.limits,
-      route_epoch: policy.routing.epoch,
       migrate_journal: policy.migrate_journal,
       prefetch_per_recipient: Math.min(
-        dependencies.store_options.max_pending_per_recipient,
-        dependencies.store_options.max_pending,
+        policy.queue.max_pending_per_recipient,
+        policy.queue.max_pending,
       ),
       reconnect: true,
       authorization: {
@@ -133,11 +150,8 @@ export function createJetStreamServiceFactory(
     try {
       service = new HabJetStreamService(
         dependencies.registry,
-        dependencies.store,
         backend,
-        dependencies.limits,
-        policy.routing,
-        dependencies.store_options,
+        policy.queue,
         assertCurrent,
       );
     } catch (error) {
@@ -186,7 +200,7 @@ export function createJetStreamServiceFactory(
       "journal_integrity_failed",
       "broker_configuration_mismatch",
       "consumer_configuration_mismatch",
-      "routing_epoch_conflict",
+      "maintenance_state_unavailable",
       "local_relay_extension_storage_unavailable",
     ]);
     const loop = (async () => {
@@ -234,17 +248,5 @@ export function createJetStreamServiceFactory(
       },
     };
   };
-  return Object.assign(factory, {
-    extension_id: "hab-jetstream-v1",
-    preflight: assertVolume,
-  });
-}
-export function startConfiguredJetStreamRelay(
-  configPath: string,
-  jetstreamConfigPath: string,
-) {
-  const factory = createJetStreamServiceFactory(
-    readJetStreamHostConfig(jetstreamConfigPath),
-  );
-  return startConfiguredLocalRelay(configPath, factory);
+  return Object.assign(factory, { preflight: assertVolume });
 }

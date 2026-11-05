@@ -403,18 +403,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
   lookupReceipt(senderId: string, messageId: string): Receipt | null {
     return this.#journal.lookupReceipt(senderId, messageId);
   }
-  hasActiveLease(recipientId: string): boolean {
-    return this.#journal.hasActiveLease(recipientId);
-  }
-  configureRouting(epoch: number, policyDigest: string): void {
-    this.#journal.configureRouting(epoch, policyDigest);
-  }
-  pollTurn(recipient: string): "sqlite" | "jetstream" {
-    return this.#journal.pollTurn(recipient);
-  }
-  recordPollTurn(recipient: string, owner: "sqlite" | "jetstream"): void {
-    this.#journal.recordPollTurn(recipient, owner);
-  }
 
   async #consumer(recipient: string) {
     const name = "mailbox_" + hash(recipient);
@@ -828,12 +816,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
   }
   get prefetchWindow(): number {
     return this.#options.prefetch_per_recipient ?? 1;
-  }
-  lookupAckRequest(recipient: string, requestId: string) {
-    return this.#journal.lookupAckRequest(recipient, requestId);
-  }
-  capacityUsage(recipientId: string) {
-    return this.#journal.capacityUsage(recipientId);
   }
   close(): Promise<void> {
     if (this.#closing) return this.#closing;

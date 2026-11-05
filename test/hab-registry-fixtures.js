@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
-import { HabRelayService } from "../src/hab/relay.ts";
-import { fixture as relayFixture, limits } from "./relay-http-fixtures.js";
+import { identities, limits } from "./relay-http-fixtures.js";
+import { jetstreamDelivery } from "./jetstream-delivery.js";
 export const options = {
   fingerprint_key: new Uint8Array(32).fill(61),
   max_products: 10,
@@ -28,8 +28,8 @@ export function principal(name, patch = {}) {
 }
 export const code = (wanted) => (e) =>
   e.code === wanted && e.message === wanted;
-export function fixture(t, patch = {}) {
-  const f = relayFixture(t),
+async function registryFixture(t, patch = {}) {
+  const f = identities(t),
     path = join(f.dir, "registry.sqlite"),
     admin = Symbol("management"),
     stores = new Set();
@@ -118,6 +118,27 @@ export function fixture(t, patch = {}) {
     product,
     enroll,
     bindings,
-    hab: new HabRelayService(registry, f.store, limits),
+  };
+}
+/** A synthetic Registry with JetStream delivery behind it, as `hab`. */
+export async function fixture(t, patch = {}, queue = {}) {
+  const f = await registryFixture(t, patch);
+  const delivery = await jetstreamDelivery(t, {
+    registry: f.registry,
+    limits,
+    directory: f.dir,
+    queue,
+  });
+  const raw = new DatabaseSync(join(f.dir, "jetstream-journal.sqlite"));
+  t.after(() => raw.close());
+  return {
+    ...f,
+    delivery,
+    raw,
+    get hab() {
+      return delivery.service;
+    },
+    habFor: (registry) => delivery.serviceFor(registry),
+    count: () => raw.prepare("SELECT count(*) n FROM nats_messages").get().n,
   };
 }

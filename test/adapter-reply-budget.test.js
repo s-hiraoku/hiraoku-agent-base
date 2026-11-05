@@ -19,8 +19,8 @@ import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { DurableSender } from "../src/relay/sender.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 const context = Symbol("reply-operator");
-function setup(t, patch = {}) {
-  const f = fixture(t),
+async function setup(t, patch = {}) {
+  const f = await fixture(t),
     path = join(f.dir, "reply-budget.sqlite");
   const options = {
     agent_id: "b",
@@ -143,8 +143,8 @@ function clock(at, action) {
     DatabaseSync.prototype.prepare = original;
   }
 }
-test("Reply budget: explicit confirmed inbox answer consumes exactly one reservation", (t) => {
-  const f = setup(t),
+test("Reply budget: explicit confirmed inbox answer consumes exactly one reservation", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     message = f.message(key);
   assert.equal(f.answers.enqueueOnce(context, key, message).state, "queued");
@@ -152,14 +152,14 @@ test("Reply budget: explicit confirmed inbox answer consumes exactly one reserva
   assert.equal(f.sent().length, 1);
   assert.equal(f.count(), 0);
 });
-test("Reply budget: ACK alone neither answers nor consumes a reservation", (t) => {
-  const f = setup(t);
+test("Reply budget: ACK alone neither answers nor consumes a reservation", async (t) => {
+  const f = await setup(t);
   f.key();
   assert.equal(f.records().length, 0);
   assert.equal(f.sent().length, 0);
 });
-test("Reply budget: unconfirmed source, source mismatch and absent source cannot answer", (t) => {
-  const f = setup(t),
+test("Reply budget: unconfirmed source, source mismatch and absent source cannot answer", async (t) => {
+  const f = await setup(t),
     key = f.key("question", "thread-ab", false);
   assert.throws(
     () => f.answers.enqueueOnce(context, key, f.message(key)),
@@ -176,8 +176,8 @@ test("Reply budget: unconfirmed source, source mismatch and absent source cannot
   );
   assert.equal(f.records().length, 0);
 });
-test("Reply budget: answering answers, failures, notices or execution requests is forbidden", (t) => {
-  const f = setup(t);
+test("Reply budget: answering answers, failures, notices or execution requests is forbidden", async (t) => {
+  const f = await setup(t);
   for (const kind of [
     "answer",
     "delivery_failure",
@@ -195,8 +195,8 @@ test("Reply budget: answering answers, failures, notices or execution requests i
   assert.equal(f.records().length, 0);
   assert.equal(f.sent().length, 0);
 });
-test("Reply budget: known source identity cannot authorize another caller", (t) => {
-  const f = setup(t),
+test("Reply budget: known source identity cannot authorize another caller", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     message = f.message(key);
   const denied = new InboxAnswers(f.budget, f.inbox, f.outbox, limits);
@@ -215,8 +215,8 @@ test("Reply budget: known source identity cannot authorize another caller", (t) 
   );
   assert.equal(f.records().length, 0);
 });
-test("Reply budget: async and decorated promise authorization is denied", (t) => {
-  const f = setup(t),
+test("Reply budget: async and decorated promise authorization is denied", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   for (const auth of [
@@ -231,8 +231,8 @@ test("Reply budget: async and decorated promise authorization is denied", (t) =>
   }
   assert.equal(f.records().length, 0);
 });
-test("Reply budget: exact retries at capacity preserve one reply and one charge", (t) => {
-  const f = setup(t, {
+test("Reply budget: exact retries at capacity preserve one reply and one charge", async (t) => {
+  const f = await setup(t, {
       max_records: 1,
       max_thread_replies: 1,
       max_per_window: 1,
@@ -244,8 +244,8 @@ test("Reply budget: exact retries at capacity preserve one reply and one charge"
   assert.equal(f.records().length, 1);
   assert.equal(f.sent().length, 1);
 });
-test("Reply budget: a second answer ID or changed content for the same request is a conflict", (t) => {
-  const f = setup(t),
+test("Reply budget: a second answer ID or changed content for the same request is a conflict", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -260,8 +260,8 @@ test("Reply budget: a second answer ID or changed content for the same request i
   assert.equal(f.records().length, 1);
   assert.equal(f.sent().length, 1);
 });
-test("Reply budget: new source messages cannot bypass the thread cap", (t) => {
-  const f = setup(t, { max_thread_replies: 2 });
+test("Reply budget: new source messages cannot bypass the thread cap", async (t) => {
+  const f = await setup(t, { max_thread_replies: 2 });
   for (let i = 0; i < 2; i++) {
     const key = f.key();
     f.answers.enqueueOnce(context, key, f.message(key));
@@ -274,8 +274,8 @@ test("Reply budget: new source messages cannot bypass the thread cap", (t) => {
   assert.equal(f.records().length, 2);
   assert.equal(f.sent().length, 2);
 });
-test("Reply budget: new threads cannot bypass the agent-wide rate window", (t) => {
-  const f = setup(t, { max_per_window: 2 });
+test("Reply budget: new threads cannot bypass the agent-wide rate window", async (t) => {
+  const f = await setup(t, { max_per_window: 2 });
   for (let i = 0; i < 2; i++) {
     const thread = "thread-" + i,
       key = f.key("question", thread);
@@ -293,8 +293,8 @@ test("Reply budget: new threads cannot bypass the agent-wide rate window", (t) =
   );
   assert.equal(f.records().length, 2);
 });
-test("Reply budget: sliding window recovery preserves permanent source and thread charges", (t) => {
-  const f = setup(t, { max_per_window: 1, max_thread_replies: 2 }),
+test("Reply budget: sliding window recovery preserves permanent source and thread charges", async (t) => {
+  const f = await setup(t, { max_per_window: 1, max_thread_replies: 2 }),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -319,8 +319,8 @@ test("Reply budget: sliding window recovery preserves permanent source and threa
     ),
   );
 });
-test("Reply budget: reopen does not reset source, thread or rate limits", (t) => {
-  const f = setup(t, { max_per_window: 1 }),
+test("Reply budget: reopen does not reset source, thread or rate limits", async (t) => {
+  const f = await setup(t, { max_per_window: 1 }),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -336,8 +336,8 @@ test("Reply budget: reopen does not reset source, thread or rate limits", (t) =>
   );
   assert.equal(f.records().length, 1);
 });
-test("Reply budget: lost outbox response consumes the slot and only exact retry recovers", (t) => {
-  const f = setup(t),
+test("Reply budget: lost outbox response consumes the slot and only exact retry recovers", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   const answers = new InboxAnswers(
@@ -360,8 +360,8 @@ test("Reply budget: lost outbox response consumes the slot and only exact retry 
   assert.equal(f.records().length, 1);
   assert.equal(f.sent().length, 1);
 });
-test("Reply budget: failure before outbox commit retains the conservative charge", (t) => {
-  const f = setup(t, { max_per_window: 1 }),
+test("Reply budget: failure before outbox commit retains the conservative charge", async (t) => {
+  const f = await setup(t, { max_per_window: 1 }),
     key = f.key(),
     m = f.message(key);
   const answers = new InboxAnswers(
@@ -387,8 +387,8 @@ test("Reply budget: failure before outbox commit retains the conservative charge
   f.answers.enqueueOnce(context, key, m);
   assert.equal(f.sent().length, 1);
 });
-test("Reply budget: source body release does not prevent an already admitted exact retry", (t) => {
-  const f = setup(t),
+test("Reply budget: source body release does not prevent an already admitted exact retry", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -400,8 +400,8 @@ test("Reply budget: source body release does not prevent an already admitted exa
     code("reply_budget_conflict"),
   );
 });
-test("Reply budget: destination, thread and reply reference cannot be redirected", (t) => {
-  const f = setup(t),
+test("Reply budget: destination, thread and reply reference cannot be redirected", async (t) => {
+  const f = await setup(t),
     key = f.key();
   for (const patch of [
     { recipient_id: "c" },
@@ -416,8 +416,8 @@ test("Reply budget: destination, thread and reply reference cannot be redirected
     );
   assert.equal(f.records().length, 0);
 });
-test("Reply budget: opaque IDs, expired intent and future timestamps are rejected", (t) => {
-  const f = setup(t),
+test("Reply budget: opaque IDs, expired intent and future timestamps are rejected", async (t) => {
+  const f = await setup(t),
     key = f.key();
   const expired = Date.now() - 3600001,
     first = new Date(expired).toISOString();
@@ -460,8 +460,8 @@ test("Reply budget: opaque IDs, expired intent and future timestamps are rejecte
   );
   assert.equal(f.records().length, 0);
 });
-test("Reply budget: capacity exhaustion never evicts an admitted source", (t) => {
-  const f = setup(t, { max_records: 1 }),
+test("Reply budget: capacity exhaustion never evicts an admitted source", async (t) => {
+  const f = await setup(t, { max_records: 1 }),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -472,8 +472,8 @@ test("Reply budget: capacity exhaustion never evicts an admitted source", (t) =>
   );
   assert.equal(f.budget.lookup(key, "answer").reply_id, m.message_id);
 });
-test("Reply budget: source and reply bodies are absent from the reservation ledger", (t) => {
-  const f = setup(t),
+test("Reply budget: source and reply bodies are absent from the reservation ledger", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -483,8 +483,8 @@ test("Reply budget: source and reply bodies are absent from the reservation ledg
   assert.equal(data.includes("body"), false);
   assert.match(JSON.parse(data).reply_fingerprint, /^[a-f0-9]{64}$/);
 });
-test("Reply budget: authority revoked before reservation commit leaves no charge", (t) => {
-  const f = setup(t),
+test("Reply budget: authority revoked before reservation commit leaves no charge", async (t) => {
+  const f = await setup(t),
     key = f.key();
   let n = 0;
   const answers = new InboxAnswers(f.budget, f.inbox, f.outbox, limits, () =>
@@ -497,8 +497,8 @@ test("Reply budget: authority revoked before reservation commit leaves no charge
   assert.equal(f.records().length, 0);
   assert.equal(f.sent().length, 0);
 });
-test("Reply budget: authority revoked at outbox commit retains charge but rolls back the message", (t) => {
-  const f = setup(t),
+test("Reply budget: authority revoked at outbox commit retains charge but rolls back the message", async (t) => {
+  const f = await setup(t),
     key = f.key();
   let n = 0;
   const answers = new InboxAnswers(f.budget, f.inbox, f.outbox, limits, () =>
@@ -511,8 +511,8 @@ test("Reply budget: authority revoked at outbox commit retains charge but rolls 
   assert.equal(f.records().length, 1);
   assert.equal(f.sent().length, 0);
 });
-test("Reply budget: async guards and actions do not claim successful admission", (t) => {
-  const f = setup(t),
+test("Reply budget: async guards and actions do not claim successful admission", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   assert.throws(
@@ -538,8 +538,8 @@ test("Reply budget: async guards and actions do not claim successful admission",
   );
   assert.equal(f.records().length, 1);
 });
-test("Reply budget: failed reservation insert rolls back counters before outbox", (t) => {
-  const f = setup(t),
+test("Reply budget: failed reservation insert rolls back counters before outbox", async (t) => {
+  const f = await setup(t),
     key = f.key();
   f.budgetRaw.exec(
     "CREATE TRIGGER fail_budget BEFORE INSERT ON reply_budget_reservations BEGIN SELECT RAISE(ABORT,'synthetic');END",
@@ -556,9 +556,9 @@ test("Reply budget: failed reservation insert rolls back counters before outbox"
     0,
   );
 });
-test("Reply budget: tampered reservation, sealed clock and missing rows fail closed", (t) => {
+test("Reply budget: tampered reservation, sealed clock and missing rows fail closed", async (t) => {
   for (const kind of ["row", "clock", "delete"]) {
-    const f = setup(t),
+    const f = await setup(t),
       key = f.key(),
       m = f.message(key);
     f.answers.enqueueOnce(context, key, m);
@@ -579,8 +579,8 @@ test("Reply budget: tampered reservation, sealed clock and missing rows fail clo
     assert.equal(f.sent().length, 1);
   }
 });
-test("Reply budget: backward clock fails closed instead of replenishing rate", (t) => {
-  const f = setup(t),
+test("Reply budget: backward clock fails closed instead of replenishing rate", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -595,8 +595,8 @@ test("Reply budget: backward clock fails closed instead of replenishing rate", (
   );
   assert.equal(f.records().length, 1);
 });
-test("Reply budget: bindings include agent, key and finite policy across restart", (t) => {
-  const f = setup(t);
+test("Reply budget: bindings include agent, key and finite policy across restart", async (t) => {
+  const f = await setup(t);
   assert.equal(statSync(f.path).mode & 0o777, 0o600);
   for (const patch of [
     { agent_id: "c" },
@@ -614,8 +614,8 @@ test("Reply budget: bindings include agent, key and finite policy across restart
   assert.throws(() => f.open(), code("reply_budget_unavailable"));
   chmodSync(f.path, 0o600);
 });
-test("Reply budget: unknown schema and missing immutable triggers are not auto repaired", (t) => {
-  const f = setup(t);
+test("Reply budget: unknown schema and missing immutable triggers are not auto repaired", async (t) => {
+  const f = await setup(t);
   f.budgetRaw.exec("DROP TRIGGER reply_budget_no_delete");
   const b = f.open();
   assert.throws(() => b.migrate(), code("unsupported_reply_budget_schema"));
@@ -627,8 +627,8 @@ test("Reply budget: unknown schema and missing immutable triggers are not auto r
   const unknown = f.open({}, path);
   assert.throws(() => unknown.migrate(), code("unknown_reply_budget_schema"));
 });
-test("Reply budget: options require explicit finite positive limits and composition identity", (t) => {
-  const f = setup(t);
+test("Reply budget: options require explicit finite positive limits and composition identity", async (t) => {
+  const f = await setup(t);
   for (const patch of [
     { max_thread_replies: 0 },
     { max_per_window: Infinity },
@@ -660,7 +660,7 @@ test("Reply budget: options require explicit finite positive limits and composit
   );
 });
 test("Reply budget: Task accepted and result share the same persistent thread cap", async (t) => {
-  const f = setup(t, { max_thread_replies: 1 }),
+  const f = await setup(t, { max_thread_replies: 1 }),
     key = f.receive();
   f.bridge.accept(f.taskContext, key);
   await f.bridge.submitOnce(f.taskContext, key);
@@ -691,7 +691,7 @@ test("Reply budget: Task accepted and result share the same persistent thread ca
   assert.equal(f.calls.filter((c) => c.op === "submit").length, 1);
 });
 test("Reply budget: normal Task replies use two independent slots without automatic re-execution", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = f.receive();
   f.bridge.accept(f.taskContext, key);
   await f.bridge.submitOnce(f.taskContext, key);
@@ -719,7 +719,7 @@ test("Reply budget: normal Task replies use two independent slots without automa
   assert.equal(f.sent().length, 2);
 });
 test("Reply budget: real Relay question-answer roundtrip ACKs without starting another conversation", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -746,7 +746,7 @@ test("Reply budget: real Relay question-answer roundtrip ACKs without starting a
   assert.equal(f.count(), 0);
 });
 test("Reply budget: competing native writers cannot exceed a one-reply rate budget", async (t) => {
-  const f = setup(t, { max_per_window: 1 });
+  const f = await setup(t, { max_per_window: 1 });
   const requests = [
     f.key("question", "thread-1"),
     f.key("question", "thread-2"),
@@ -802,7 +802,7 @@ test("Reply budget: competing native writers cannot exceed a one-reply rate budg
 });
 
 test("Reply budget: automatic answers and Task replies share one individual thread budget", async (t) => {
-  const f = setup(t, { max_thread_replies: 1 }),
+  const f = await setup(t, { max_thread_replies: 1 }),
     question = f.key();
   f.answers.enqueueOnce(context, question, f.message(question));
   const key = f.receive();
@@ -825,7 +825,7 @@ test("Reply budget: automatic answers and Task replies share one individual thre
 });
 
 test("Reply budget: lost Task reply journal commit recovers without another reservation", async (t) => {
-  const f = setup(t, { max_records: 1, max_per_window: 1 }),
+  const f = await setup(t, { max_records: 1, max_per_window: 1 }),
     key = f.receive();
   f.bridge.accept(f.taskContext, key);
   await f.bridge.submitOnce(f.taskContext, key);
@@ -857,8 +857,8 @@ test("Reply budget: lost Task reply journal commit recovers without another rese
   assert.equal(f.calls.filter((c) => c.op === "submit").length, 1);
 });
 
-test("Reply budget: expired exact replay cannot recreate a missing outbox record or a fresh ID", (t) => {
-  const f = setup(t),
+test("Reply budget: expired exact replay cannot recreate a missing outbox record or a fresh ID", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
@@ -879,8 +879,8 @@ test("Reply budget: expired exact replay cannot recreate a missing outbox record
   assert.equal(f.sent().length, 0);
 });
 
-test("Reply budget: transaction-level rollback stops the store until explicit migration", (t) => {
-  const f = setup(t),
+test("Reply budget: transaction-level rollback stops the store until explicit migration", async (t) => {
+  const f = await setup(t),
     key = f.key(),
     m = f.message(key);
   f.budgetRaw.exec(

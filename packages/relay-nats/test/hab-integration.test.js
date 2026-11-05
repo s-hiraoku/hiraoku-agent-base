@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HabRelayService } from "../../../src/hab/relay.ts";
 import { HabHttpGateway } from "../../../src/hab/http.ts";
 import { DurableReceiver } from "../../../src/relay/receiver.ts";
 import { policy, call } from "../../../test/relay-http-fixtures.js";
@@ -69,63 +68,6 @@ test("stopped address, stopped group, expired credential and emergency stop fenc
   raw.close();
   f.registry.emergencyStop(f.admin);
   assert.throws(() => f.service.poll(f.selected("b")), { code: "forbidden" });
-});
-
-test("old SQLite receipts and new NATS receipts keep their owner across route rollback", async (t) => {
-  const f = await habFixture(t);
-  const old = new HabRelayService(f.registry, f.legacy, f.options.limits);
-  const legacyMessage = f.message();
-  const legacyReceipt = old.submit(f.selected("a"), legacyMessage);
-  assert.deepEqual(
-    f.service.submit(f.selected("a"), legacyMessage),
-    legacyReceipt,
-  );
-  assert.equal(
-    f.backend.lookupReceipt(f.agents.a.agent_id, legacyMessage.message_id),
-    null,
-  );
-  const natsMessage = f.message();
-  const natsReceipt = f.service.submit(f.selected("a"), natsMessage);
-  const rollbackBackend = f.track(
-    await JetStreamRelay.open({ ...f.options, route_epoch: 2 }),
-  );
-  const rollback = f.createService(
-    { ...f.routing, epoch: 2, enabled: false },
-    rollbackBackend,
-  );
-  assert.deepEqual(rollback.submit(f.selected("a"), natsMessage), natsReceipt);
-  const future = f.message();
-  rollback.submit(f.selected("a"), future);
-  assert.equal(
-    f.backend.lookupReceipt(f.agents.a.agent_id, future.message_id),
-    null,
-  );
-  assert.throws(
-    () => f.service.submit(f.selected("a"), f.message()),
-    /routing|epoch/i,
-  );
-  assert.equal(
-    rollback.status(f.selected("a"), natsMessage.message_id).receipt_id,
-    natsReceipt.receipt_id,
-  );
-});
-
-test("mixed old and new queues share one live lease and alternate after a saved ACK", async (t) => {
-  const f = await habFixture(t);
-  const old = new HabRelayService(f.registry, f.legacy, f.options.limits);
-  const legacyMessage = f.message();
-  old.submit(f.selected("a"), legacyMessage);
-  const natsMessage = f.message();
-  f.service.submit(f.selected("a"), natsMessage);
-  await f.backend.pumpOnce();
-  const first = f.service.poll(f.selected("b"));
-  assert.equal(first.message.message_id, legacyMessage.message_id);
-  assert.equal(f.service.poll(f.selected("b")), null);
-  f.service.ack(f.selected("b"), ackRequest(first, "legacy-saved"));
-  const second = f.service.poll(f.selected("b"));
-  assert.equal(second.message.message_id, natsMessage.message_id);
-  assert.equal(f.service.poll(f.selected("b")), null);
-  f.service.ack(f.selected("b"), ackRequest(second, "nats-saved"));
 });
 
 test("real MCP five-tool gateway accepts the synchronous façade and preserves group name selection", async (t) => {
@@ -199,7 +141,7 @@ test("revocation while PubAck is held cannot create a HAB lease from a prefetche
   const backend = f.track(
     await JetStreamRelay.open({ ...f.options, server: proxy.server }),
   );
-  const service = f.createService(f.routing, backend);
+  const service = f.createService(backend);
   const message = f.message();
   const accepted = service.submit(f.selected("a"), message);
   const pumping = backend.pumpOnce();
@@ -219,44 +161,7 @@ test("revocation while PubAck is held cannot create a HAB lease from a prefetche
   assert.equal(accepted.state, "pending");
 });
 
-test("replies follow the parent's persisted owner during rollout and rollback", async (t) => {
-  const f = await habFixture(t);
-  const old = new HabRelayService(f.registry, f.legacy, f.options.limits);
-  const legacyParent = f.message();
-  old.submit(f.selected("a"), legacyParent);
-  const legacyReply = f.message("a", {
-    kind: "answer",
-    in_reply_to: {
-      sender_id: f.agents.a.agent_id,
-      message_id: legacyParent.message_id,
-    },
-  });
-  f.service.submit(f.selected("b"), legacyReply);
-  assert.equal(
-    f.backend.lookupReceipt(f.agents.b.agent_id, legacyReply.message_id),
-    null,
-  );
-  const natsParent = f.message();
-  f.service.submit(f.selected("a"), natsParent);
-  const backend = f.track(
-    await JetStreamRelay.open({ ...f.options, route_epoch: 2 }),
-  );
-  const rollback = f.createService(
-    { ...f.routing, epoch: 2, enabled: false },
-    backend,
-  );
-  const natsReply = f.message("a", {
-    kind: "answer",
-    in_reply_to: {
-      sender_id: f.agents.a.agent_id,
-      message_id: natsParent.message_id,
-    },
-  });
-  rollback.submit(f.selected("b"), natsReply);
-  assert.ok(backend.lookupReceipt(f.agents.b.agent_id, natsReply.message_id));
-});
-
-test("service-wide sender capacity cannot be doubled across selected and legacy routes", async (t) => {
+test("per-sender capacity is enforced at admission and an exact retry needs no new capacity", async (t) => {
   const f = await habFixture(t, {
     agent_capacity: {
       max_pending_per_sender: 1,
@@ -300,7 +205,7 @@ test("broker backpressure still drains accepted cached delivery and frees space 
   );
 });
 
-test("retained record budget stays shared after saved ACKs on different owners", async (t) => {
+test("saved ACKs keep counting against the sender's retained record budget", async (t) => {
   const f = await habFixture(t, {
     agent_capacity: {
       max_pending_per_sender: 2,
@@ -319,9 +224,10 @@ test("retained record budget stays shared after saved ACKs on different owners",
     ackRequest(f.service.poll(f.selected("b")), "nats-record"),
   );
   f.service.submit(f.selected("a"), f.message("c"));
+  await f.backend.pumpOnce();
   f.service.ack(
     f.selected("c"),
-    ackRequest(f.service.poll(f.selected("c")), "sqlite-record"),
+    ackRequest(f.service.poll(f.selected("c")), "second-record"),
   );
   assert.throws(() => f.service.submit(f.selected("a"), f.message()), {
     code: "capacity_exceeded",
@@ -329,7 +235,7 @@ test("retained record budget stays shared after saved ACKs on different owners",
   assert.equal(f.service.submit(f.selected("a"), first).state, "acked");
 });
 
-test("shared reservations retain one sender's admission across both queues", async (t) => {
+test("reservations retain one sender's admission when another sender fills the pool", async (t) => {
   const f = await habFixture(t, {
     max_pending: 4,
     max_pending_per_recipient: 4,
@@ -350,7 +256,8 @@ test("shared reservations retain one sender's admission across both queues", asy
       },
     ],
   };
-  const service = f.createService();
+  // The journal enforces capacity, so the policy takes effect on a backend opened with it.
+  const service = f.createService(await f.openBackend());
   service.submit(f.selected("a"), f.message());
   service.submit(f.selected("a"), f.message("c"));
   service.submit(f.selected("a"), f.message("c"));
@@ -404,30 +311,24 @@ test("HAB rejects partial prefetch profiles that could indefinitely hide an auth
   });
 });
 
-test("ACK request IDs remain recipient-wide across both owners and preserve exact retries", async (t) => {
-  for (const firstOwner of ["sqlite", "jetstream"]) {
-    const f = await habFixture(t);
-    const old = new HabRelayService(f.registry, f.legacy, f.options.limits);
-    const messages = { sqlite: f.message(), jetstream: f.message() };
-    const services = { sqlite: old, jetstream: f.service };
-    services[firstOwner].submit(f.selected("a"), messages[firstOwner]);
-    await f.backend.pumpOnce();
-    const first = f.service.poll(f.selected("b"));
-    const request = ackRequest(first, "recipient-wide");
-    const receipt = f.service.ack(f.selected("b"), request);
-    assert.deepEqual(f.service.ack(f.selected("b"), request), receipt);
-    const other = firstOwner === "sqlite" ? "jetstream" : "sqlite";
-    services[other].submit(f.selected("a"), messages[other]);
-    await f.backend.pumpOnce();
-    const second = f.service.poll(f.selected("b"));
-    assert.equal(second.message.message_id, messages[other].message_id);
-    assert.throws(
-      () =>
-        f.service.ack(f.selected("b"), ackRequest(second, "recipient-wide")),
-      { code: "ack_idempotency_conflict" },
-    );
-    f.service.ack(f.selected("b"), ackRequest(second, "recipient-wide-other"));
-  }
+test("ACK request IDs are recipient-wide and preserve exact retries", async (t) => {
+  const f = await habFixture(t);
+  const messages = [f.message(), f.message()];
+  f.service.submit(f.selected("a"), messages[0]);
+  await f.backend.pumpOnce();
+  const first = f.service.poll(f.selected("b"));
+  const request = ackRequest(first, "recipient-wide");
+  const receipt = f.service.ack(f.selected("b"), request);
+  assert.deepEqual(f.service.ack(f.selected("b"), request), receipt);
+  f.service.submit(f.selected("a2"), messages[1]);
+  await f.backend.pumpOnce();
+  const second = f.service.poll(f.selected("b"));
+  assert.equal(second.message.message_id, messages[1].message_id);
+  assert.throws(
+    () => f.service.ack(f.selected("b"), ackRequest(second, "recipient-wide")),
+    { code: "ack_idempotency_conflict" },
+  );
+  f.service.ack(f.selected("b"), ackRequest(second, "recipient-wide-other"));
 });
 
 test("small pump budget makes uncached progress despite repeatedly expired broker ACK waits", async (t) => {

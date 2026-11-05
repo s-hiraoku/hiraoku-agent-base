@@ -11,9 +11,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { StoreDeliveryService } from "../src/messaging/index.ts";
 import { DurableReceiver } from "../src/relay/index.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+import { authorizedDelivery } from "./jetstream-delivery.js";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
@@ -24,7 +23,7 @@ const limits = {
   json_nodes: 1000,
 };
 const serverOptions = {
-  fingerprint_key: new Uint8Array(32).fill(42),
+  agent_capacity: undefined,
   max_pending: 10,
   max_records: 100,
   max_pending_per_recipient: 5,
@@ -67,9 +66,9 @@ function message(key = "m-1") {
     expires_at: new Date(at + 3600000).toISOString(),
   };
 }
-function fixture(t, patch = {}) {
+async function fixture(t, patch = {}) {
   const dir = mkdtempSync(join(tmpdir(), "relay-receiver-")),
-    serverPath = join(dir, "server.sqlite"),
+    serverPath = join(dir, "jetstream-journal.sqlite"),
     path = join(dir, "inbox.sqlite"),
     stores = [];
   t.after(() => {
@@ -82,10 +81,13 @@ function fixture(t, patch = {}) {
     }
     rmSync(dir, { recursive: true, force: true });
   });
-  const server = new SQLiteRelayStore(serverPath, serverOptions);
-  stores.push(server);
-  server.migrate();
-  const service = new StoreDeliveryService(server, limits, policy);
+  const server = await authorizedDelivery(t, {
+    authorization: policy,
+    limits,
+    directory: dir,
+    queue: serverOptions,
+  });
+  const service = server.service;
   const open = () => {
     const s = new SQLiteInbox(path, { ...inboxOptions, ...patch });
     stores.push(s);
@@ -119,12 +121,12 @@ function due(f) {
 }
 function redeliver(f) {
   f.serverRaw.exec(
-    "UPDATE relay_deliveries SET lease_until=0,next_visible_at=0 WHERE state='leased'",
+    "UPDATE nats_messages SET lease_until=0,next_visible_at=0 WHERE state='leased'",
   );
 }
 
 test("normal receive commits durable inbox and stable ACK before contacting server, then retains local body only", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   f.service.submit("a", m);
   let calls = 0;
@@ -147,7 +149,9 @@ test("normal receive commits durable inbox and stable ACK before contacting serv
   assert.deepEqual(receiver.inbox()[0].message, m);
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
   assert.equal(
-    f.serverRaw.prepare("SELECT body FROM relay_messages").get().body,
+    f.serverRaw
+      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+      .get().body,
     null,
   );
   assert.equal(
@@ -157,7 +161,7 @@ test("normal receive commits durable inbox and stable ACK before contacting serv
   assert.equal(statSync(f.path).mode & 0o777, 0o600);
 });
 test("ACK response loss is recovered after client restart using exactly the durable request without duplicate inbox", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.service.submit("a", message());
   const requests = [];
   const failing = new DurableReceiver(f.inbox, {
@@ -196,7 +200,7 @@ test("ACK response loss is recovered after client restart using exactly the dura
   );
 });
 test("inbox/journal transaction failure sends no ACK; redelivery after restart is safe", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.service.submit("a", message());
   let acks = 0;
   const receiver = new DurableReceiver(f.inbox, {
@@ -221,7 +225,7 @@ test("inbox/journal transaction failure sends no ACK; redelivery after restart i
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
 });
 test("lost ACK before server commit plus stale lease yields new ACK generation without new inbox entry", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.service.submit("a", message());
   const offline = new DurableReceiver(f.inbox, {
     ...f.transport,
@@ -250,7 +254,7 @@ test("lost ACK before server commit plus stale lease yields new ACK generation w
   );
 });
 test("wrong receipt is not confirmed locally and later exact request retry recovers", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.service.submit("a", message());
   const receiver = new DurableReceiver(f.inbox, {
     ...f.transport,
@@ -265,8 +269,8 @@ test("wrong receipt is not confirmed locally and later exact request retry recov
   await new DurableReceiver(f.inbox, f.transport).receiveOnce();
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
 });
-test("same ID content/lease conflicts never replace durable content; foreign or attachment-bearing delivery is refused", (t) => {
-  const f = fixture(t);
+test("same ID content/lease conflicts never replace durable content; foreign or attachment-bearing delivery is refused", async (t) => {
+  const f = await fixture(t);
   f.service.submit("a", message());
   const d = f.service.poll("b");
   f.inbox.save(d);
@@ -297,7 +301,7 @@ test("same ID content/lease conflicts never replace durable content; foreign or 
   code(() => f.inbox.save(attachment), "invalid_contract");
 });
 test("capacity and retry limits are explicit and finite; exhausted token is removed without dropping inbox", async (t) => {
-  const f = fixture(t, { max_attempts: 1, max_records: 1 });
+  const f = await fixture(t, { max_attempts: 1, max_records: 1 });
   f.service.submit("a", message());
   const receiver = new DurableReceiver(f.inbox, {
     ...f.transport,
@@ -319,15 +323,15 @@ test("capacity and retry limits are explicit and finite; exhausted token is remo
   const other = message("m-2");
   f.service.submit("a", other);
   f.serverRaw.exec(
-    "UPDATE relay_messages SET expires_at=0 WHERE message_id='m-1'",
+    "UPDATE nats_messages SET expires_at=0 WHERE message_id='m-1'",
   );
   const newer = f.service.poll("b");
   assert.equal(newer.message.message_id, "m-2");
   code(() => f.inbox.save(newer), "inbox_capacity_exceeded");
   assert.equal(f.inbox.inbox().length, 1);
 });
-test("identity/key binding is checked on reopening and constructor never auto-migrates", (t) => {
-  const f = fixture(t);
+test("identity/key binding is checked on reopening and constructor never auto-migrates", async (t) => {
+  const f = await fixture(t);
   const other = new SQLiteInbox(f.path, { ...inboxOptions, agent_id: "c" });
   t.after(() => other.close());
   code(() => other.migrate(), "inbox_identity_mismatch");
@@ -341,8 +345,8 @@ test("identity/key binding is checked on reopening and constructor never auto-mi
   t.after(() => fresh.close());
   code(() => fresh.inbox(), "schema_not_ready");
 });
-test("loose files and symlinks are refused without rewriting target permissions", (t) => {
-  const f = fixture(t),
+test("loose files and symlinks are refused without rewriting target permissions", async (t) => {
+  const f = await fixture(t),
     loose = join(f.dir, "loose.sqlite");
   writeFileSync(loose, "");
   chmodSync(loose, 0o644);
@@ -353,7 +357,7 @@ test("loose files and symlinks are refused without rewriting target permissions"
   assert.throws(() => new SQLiteInbox(link, inboxOptions));
 });
 test("local overlapping receive is refused and poll errors expose no raw details", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   let finish;
   const receiver = new DurableReceiver(f.inbox, {
     ...f.transport,
@@ -379,7 +383,7 @@ test("local overlapping receive is refused and poll errors expose no raw details
   );
 });
 test("three model-free opaque individuals exchange messages independently", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     receivers = {};
   for (const id of ["a", "b", "c"]) {
     const store = new SQLiteInbox(join(f.dir, `${id}.sqlite`), {
@@ -418,7 +422,7 @@ test("three model-free opaque individuals exchange messages independently", asyn
   assert.equal(
     f.serverRaw
       .prepare(
-        "SELECT count(*) n FROM relay_messages WHERE state='acked' AND body IS NULL",
+        "SELECT count(*) n FROM nats_messages WHERE state='acked' AND coalesce(outbox,candidate) IS NULL",
       )
       .get().n,
     6,
@@ -426,7 +430,7 @@ test("three model-free opaque individuals exchange messages independently", asyn
 });
 
 test("restart after inbox save but before ACK sends the saved request first", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.service.submit("a", message());
   const delivery = f.service.poll("b");
   f.inbox.save(delivery);
@@ -450,7 +454,7 @@ test("restart after inbox save but before ACK sends the saved request first", as
 });
 
 test("local receipt confirmation failure rolls back journal cleanup and can recover server ACK", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.service.submit("a", message());
   f.raw.exec(
     "CREATE TRIGGER fail_confirm BEFORE UPDATE ON relay_inbox WHEN NEW.receipt_confirmed=1 BEGIN SELECT RAISE(ABORT,'confirmation failure'); END",

@@ -9,11 +9,10 @@ import {
   comparisonMaterial,
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
-  StoreDeliveryService,
 } from "../src/messaging/index.ts";
 import { DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+import { authorizedDelivery } from "./jetstream-delivery.js";
 const day = 86400000;
 const limits = {
   envelope_bytes: 32768,
@@ -179,25 +178,20 @@ function seed(
     );
   return { m, req };
 }
-function realRelay(t, f) {
-  const server = new SQLiteRelayStore(join(f.dir, "relay.sqlite"), {
-    fingerprint_key: new Uint8Array(32).fill(42),
-    max_pending: 10,
-    max_records: 100,
-    max_pending_per_recipient: 5,
-    max_body_bytes: 100000,
-    max_clock_skew_ms: 1000,
-    lease_ms: 30000,
-    max_attempts: 3,
-    retry_base_ms: 10,
-    retry_cap_ms: 100,
-    poll_scan_limit: 10,
-  });
-  t.after(() => server.close());
-  server.migrate();
-  const service = new StoreDeliveryService(server, limits, {
-    authorize(ctx) {
-      return ["a", "b"].includes(ctx) ? { agent_id: ctx } : undefined;
+async function realRelay(t, f) {
+  const { service } = await authorizedDelivery(t, {
+    authorization: {
+      authorize(ctx) {
+        return ["a", "b"].includes(ctx) ? { agent_id: ctx } : undefined;
+      },
+    },
+    limits,
+    directory: f.dir,
+    queue: {
+      max_pending: 10,
+      max_pending_per_recipient: 5,
+      poll_scan_limit: 10,
+      agent_capacity: undefined,
     },
   });
   return service;
@@ -236,7 +230,7 @@ test("explicit application handoff is idempotent and released bodies never reapp
 
 test("lost server ACK response recovers after release and restart without a second application handoff", async (t) => {
   const f = fixture(t),
-    service = realRelay(t, f),
+    service = await realRelay(t, f),
     m = message(),
     requests = [];
   service.submit("a", m);

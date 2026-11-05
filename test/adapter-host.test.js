@@ -19,7 +19,7 @@ async function question(f) {
   return source;
 }
 test("Adapter host: fresh gate is paused; missing authority cannot resume or use a mailbox", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   assert.equal(f.host.status(f.context).paused, true);
   await assert.rejects(f.step({ op: "receive" }), code("host_paused"));
   const denied = f.makeHost({ authorization: undefined });
@@ -36,7 +36,7 @@ test("Adapter host: fresh gate is paused; missing authority cannot resume or use
   assert.equal(f.count(), 0);
 });
 test("Adapter host: finite MCP question-answer-ACK path uses explicit actions without Tasks", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const { key } = await question(f);
   assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack"]);
@@ -70,7 +70,7 @@ test("Adapter host: finite MCP question-answer-ACK path uses explicit actions wi
   assert.equal(f.count(), 0);
 });
 test("Adapter host: stop and restart preserve state and require current epoch for resume", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.pause();
   const b = f.open();
@@ -93,7 +93,7 @@ test("Adapter host: stop and restart preserve state and require current epoch fo
   assert.equal(f.audit().length, 3);
 });
 test("Adapter host: stopped operations do not claim queues or read new inbox entries", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const { key } = await question(f),
     message = f.answer(key);
@@ -105,7 +105,7 @@ test("Adapter host: stopped operations do not claim queues or read new inbox ent
   assert.equal(f.queued()[0].submit_attempts, 0);
 });
 test("Adapter host: source names and fake context never authenticate a caller", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   await assert.rejects(
     f.host.stepOnce({ agent_id: "b", actor_id: "operator" }, { op: "receive" }),
@@ -118,7 +118,7 @@ test("Adapter host: source names and fake context never authenticate a caller", 
   assert.equal(f.state.tools.length, 0);
 });
 test("Adapter host: decorated promises cannot act as synchronous authority", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const host = f.makeHost({
     authorization: () =>
       Object.assign(Promise.resolve(), { agent_id: "b", actor_id: "operator" }),
@@ -130,7 +130,7 @@ test("Adapter host: decorated promises cannot act as synchronous authority", asy
   assert.equal(f.control.snapshot().epoch, 0);
 });
 test("Adapter host: operation permissions remain separate", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.state.denied.add("receive");
   await assert.rejects(f.step({ op: "receive" }), code("host_forbidden"));
@@ -139,7 +139,7 @@ test("Adapter host: operation permissions remain separate", async (t) => {
   assert.throws(() => f.pause(), code("host_forbidden"));
 });
 test("Adapter host: a stop during poll discards late delivery and sends no ACK", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.submit();
   f.state.afterNetwork = async (tool) => {
@@ -152,7 +152,7 @@ test("Adapter host: a stop during poll discards late delivery and sends no ACK",
   assert.equal(f.inbox.inbox().length, 0);
 });
 test("Adapter host: a stop after remote ACK preserves the exact local ACK request for recovery", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const { key } = f.submit();
   f.state.afterNetwork = async (tool) => {
@@ -176,7 +176,7 @@ test("Adapter host: a stop after remote ACK preserves the exact local ACK reques
   );
 });
 test("Adapter host: a stop after remote submit retains sending lease and same reply ID", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const { key } = await question(f),
     message = f.answer(key);
@@ -200,7 +200,7 @@ test("Adapter host: a stop after remote submit retains sending lease and same re
   assert.equal(f.count(), 0);
 });
 test("Adapter host: same-instance concurrent commands are refused while RPC is pending", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred(),
     started = deferred();
   f.resume();
@@ -216,7 +216,7 @@ test("Adapter host: same-instance concurrent commands are refused while RPC is p
   assert.equal((await pending).state, "done");
 });
 test("Adapter host: timed-out credential work retains admission until the provider settles", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred();
   f.resume();
   f.state.timeout_ms = 30;
@@ -234,7 +234,7 @@ test("Adapter host: timed-out credential work retains admission until the provid
   assert.equal((await f.step({ op: "receive" })).state, "done");
 });
 test("Adapter host: stopped credential resolution cannot start a late network request after resume", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred(),
     started = deferred();
   f.resume();
@@ -253,7 +253,7 @@ test("Adapter host: stopped credential resolution cannot start a late network re
   assert.equal((await f.step({ op: "receive" })).state, "done");
 });
 test("Adapter host: timed-out fetch work retains admission without dropping old epoch fences", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred();
   f.resume();
   f.state.timeout_ms = 30;
@@ -269,7 +269,7 @@ test("Adapter host: timed-out fetch work retains admission without dropping old 
   assert.equal((await f.step({ op: "receive" })).state, "done");
 });
 test("Adapter host: authorization revoked during RPC stops later save and ACK", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.submit();
   f.state.afterNetwork = async () => {
@@ -281,7 +281,7 @@ test("Adapter host: authorization revoked during RPC stops later save and ACK", 
   assert.deepEqual(f.state.tools, ["relay_poll"]);
 });
 test("Adapter host: actor change during RPC cannot borrow the original actor's admission", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.submit();
   f.state.afterNetwork = async () => {
@@ -291,7 +291,7 @@ test("Adapter host: actor change during RPC cannot borrow the original actor's a
   assert.equal(f.inbox.inbox().length, 0);
 });
 test("Adapter host: Task delivery does not execute until separate explicit accept and submit", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const { key } = f.submit("execution_request", {
     body: {
@@ -365,7 +365,7 @@ test("Adapter host: Task delivery does not execute until separate explicit accep
   assert.equal(f.count(), 1);
 });
 test("Adapter host: Task RPC stop keeps unknown submission for same-key restart reconciliation", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred(),
     started = deferred();
   f.resume();
@@ -418,7 +418,7 @@ test("Adapter host: Task RPC stop keeps unknown submission for same-key restart 
   assert.equal(f.count(), 1);
 });
 test("Adapter host: missing Task binding refuses explicit Task commands", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const host = f.makeHost({ task: undefined });
   assert.equal(
@@ -433,7 +433,7 @@ test("Adapter host: missing Task binding refuses explicit Task commands", async 
   assert.equal(f.count(), 0);
 });
 test("Adapter host: unknown failure text is redacted and never becomes a reply", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const host = f.makeHost({
     transport: () => {
@@ -446,7 +446,7 @@ test("Adapter host: unknown failure text is redacted and never becomes a reply",
   assert.equal(f.queued().length, 0);
 });
 test("Adapter host: a different bound transport is refused before network IO", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const host = f.makeHost({
     transport: () => ({
@@ -465,7 +465,7 @@ test("Adapter host: a different bound transport is refused before network IO", a
   assert.equal(f.state.tools.length, 0);
 });
 test("Adapter host: control audit reserves a stop slot when history capacity is reached", async (t) => {
-  const f = hostFixture(t, { max_audit_records: 2 });
+  const f = await hostFixture(t, { max_audit_records: 2 });
   f.resume();
   f.pause();
   assert.equal(f.audit().length, 2);
@@ -474,7 +474,7 @@ test("Adapter host: control audit reserves a stop slot when history capacity is 
   await assert.rejects(f.step({ op: "receive" }), code("host_paused"));
 });
 test("Adapter host: failed pause persistence is not success and latches the local gate unavailable", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.controlRaw.exec(
     "CREATE TRIGGER fail_pause BEFORE INSERT ON adapter_host_audit BEGIN SELECT RAISE(ABORT,'synthetic');END",
@@ -490,7 +490,7 @@ test("Adapter host: failed pause persistence is not success and latches the loca
 });
 test("Adapter host: metadata or audit tampering rejects further work", async (t) => {
   for (const which of ["meta", "audit"]) {
-    const f = hostFixture(t);
+    const f = await hostFixture(t);
     f.resume();
     if (which === "meta")
       f.controlRaw.exec("UPDATE adapter_host_meta SET data='{}'");
@@ -505,8 +505,8 @@ test("Adapter host: metadata or audit tampering rejects further work", async (t)
     assert.equal(f.state.tools.length, 0);
   }
 });
-test("Adapter host: private control files, binding and immutable audit schema are required", (t) => {
-  const f = hostFixture(t);
+test("Adapter host: private control files, binding and immutable audit schema are required", async (t) => {
+  const f = await hostFixture(t);
   assert.equal(statSync(f.path).mode & 0o777, 0o600);
   for (const patch of [
     { agent_id: "c" },
@@ -526,8 +526,8 @@ test("Adapter host: private control files, binding and immutable audit schema ar
   const s = f.open();
   assert.throws(() => s.migrate(), code("unsupported_host_schema"));
 });
-test("Adapter host: a denied or changed control actor cannot commit a resume", (t) => {
-  const f = hostFixture(t);
+test("Adapter host: a denied or changed control actor cannot commit a resume", async (t) => {
+  const f = await hostFixture(t);
   let n = 0;
   const host = f.makeHost({
     authorization: () => ({
@@ -543,7 +543,7 @@ test("Adapter host: a denied or changed control actor cannot commit a resume", (
   assert.equal(f.audit().length, 0);
 });
 test("Adapter host: native control writers cannot both win the same resume epoch", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const moduleUrl = new URL(
     "../src/adapter-host/sqlite-control.ts",
     import.meta.url,
@@ -579,7 +579,7 @@ test("Adapter host: native control writers cannot both win the same resume epoch
   assert.equal(f.control.snapshot().epoch, 1);
 });
 test("Adapter host: real loopback HTTP MCP receives and sends through the fixed client", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     server = createServer();
   let handle;
   server.on("request", (req, res) => {
@@ -616,7 +616,7 @@ test("Adapter host: real loopback HTTP MCP receives and sends through the fixed 
 });
 
 test("Adapter host: a completed command cannot reuse its captured fetch admission", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   assert.equal((await f.step({ op: "receive" })).state, "done");
   const fetch = f.state.fetchPorts[0],
@@ -629,7 +629,7 @@ test("Adapter host: a completed command cannot reuse its captured fetch admissio
 });
 
 test("Adapter host: a request abandoned by a failed gate guard retains its network slot", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred();
   f.resume();
   const host = f.makeHost({

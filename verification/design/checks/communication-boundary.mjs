@@ -35,7 +35,6 @@ const coreModules = new Set([
     "index.ts",
     "sender.ts",
     "receiver.ts",
-    "sqlite-store.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
     "agent-capacity.ts",

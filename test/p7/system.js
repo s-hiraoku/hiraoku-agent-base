@@ -24,7 +24,7 @@ import { connect } from "../../packages/relay-nats/node_modules/@nats-io/transpo
 import { jetstreamManager } from "../../packages/relay-nats/node_modules/@nats-io/jetstream/lib/mod.js";
 import { SQLiteHabRegistry } from "../../src/hab/sqlite-registry.ts";
 import { startLocalRelay } from "../../src/relay-host/local.ts";
-import { createJetStreamServiceFactory } from "../../packages/relay-nats/src/configured.ts";
+import { createJetStreamDelivery } from "../../packages/relay-nats/src/configured.ts";
 import { HabMcpClient } from "../../src/hab/mcp-client.ts";
 import { SQLiteOutbox } from "../../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
@@ -65,8 +65,7 @@ const registryOptions = {
   agent_rename: true,
   allowed_kinds: kinds,
 };
-const storeOptions = {
-  fingerprint_key: key(42),
+const queueOptions = {
   max_records: 200,
   max_pending: 30,
   max_pending_per_recipient: 20,
@@ -77,6 +76,14 @@ const storeOptions = {
   retry_base_ms: 20,
   retry_cap_ms: 100,
   poll_scan_limit: 30,
+  agent_capacity: {
+    max_pending_per_sender: 20,
+    max_body_bytes_per_sender: 50000,
+    max_records_per_sender: 100,
+    max_body_bytes_per_recipient: 50000,
+    max_records_per_recipient: 150,
+    reservations: [],
+  },
 };
 export async function eventually(action) {
   for (let n = 0; n < 250; n++) {
@@ -111,10 +118,7 @@ async function closeListener(server) {
   server.closeAllConnections();
   await closed;
 }
-export async function openP7System(
-  t,
-  { root, routing, brokerOnly = false } = {},
-) {
+export async function openP7System(t, { root, brokerOnly = false } = {}) {
   const binary = process.env.HAB_NATS_SERVER;
   if (!binary) throw Error("P7 requires the verifier-staged NATS binary");
   root ??= mkdtempSync(join(tmpdir(), "p7-world-"));
@@ -145,7 +149,6 @@ export async function openP7System(
           client_id: null,
         },
         agents: null,
-        routing: { epoch: 1, enabled: true },
         urls: {},
       }
     : JSON.parse(readFileSync(configPath, "utf8"));
@@ -155,7 +158,6 @@ export async function openP7System(
     ...registryOptions,
     fingerprint_key: material("registry"),
   };
-  if (routing) config.routing = routing;
   const persist = () =>
     writeFileSync(configPath, JSON.stringify(config), { mode: 0o600 });
   const admin = Symbol("synthetic-admin"),
@@ -359,7 +361,6 @@ export async function openP7System(
       port: 0,
       limits,
       registry: instanceRegistryOptions,
-      store: { ...storeOptions, fingerprint_key: material("relay") },
       http,
       authority,
       verify: ({ authorization }) =>
@@ -379,44 +380,38 @@ export async function openP7System(
     if (!broker || broker.exitCode !== null || broker.signalCode !== null)
       throw Error("P7 application requires owned live broker");
     phase = "starting-application";
-    const extension = createJetStreamServiceFactory({
-      version: 1,
-      broker: {
-        server: config.urls.broker,
-        user: "backend",
-        password: config.password,
-        stream: "HAB",
-        subject_prefix: "hab",
-        max_consumers: 20,
-        max_bytes: 4000000,
-        max_message_bytes: 64000,
-        request_timeout_ms: 500,
+    const delivery = createJetStreamDelivery(
+      {
+        broker: {
+          server: config.urls.broker,
+          user: "backend",
+          password: config.password,
+          stream: "HAB",
+          subject_prefix: "hab",
+          max_consumers: 20,
+          max_bytes: 4000000,
+          max_message_bytes: 64000,
+          request_timeout_ms: 500,
+        },
+        pump: { interval_ms: 10, max_records_per_cycle: 30 },
+        volume: {
+          identity_file: join(hostDir, "volume.local.json"),
+          expected_id: "p7-synthetic-ssd",
+          expected_device: lstatSync(hostDir).dev,
+        },
+        queue: queueOptions,
       },
-      routing: {
-        ...config.routing,
-        recipients: [agents.a.agent_id, agents.b.agent_id],
-        kinds,
-      },
-      pump: { interval_ms: 10, max_records_per_cycle: 30 },
-      volume: {
-        identity_file: join(hostDir, "volume.local.json"),
-        expected_id: "p7-synthetic-ssd",
-        expected_device: lstatSync(hostDir).dev,
-      },
-    });
+      material("relay"),
+    );
     const capture = Object.assign(
       async (dependencies) => {
         registry = dependencies.registry;
-        return extension(dependencies);
+        return delivery(dependencies);
       },
-      { extension_id: extension.extension_id, preflight: extension.preflight },
+      { preflight: delivery.preflight },
     );
-    assert.equal(capture.preflight, extension.preflight);
-    assert.equal(capture.extension_id, extension.extension_id);
-    host = await startLocalRelay({
-      ...hostOptions(),
-      service_factory: capture,
-    });
+    assert.equal(capture.preflight, delivery.preflight);
+    host = await startLocalRelay({ ...hostOptions(), delivery: capture });
     config.urls.hab = host.url;
     for (const name of [
       "engine.sqlite",
@@ -673,10 +668,8 @@ export async function openP7System(
       readDb(join(hostDir, "jetstream-journal.sqlite"), (db) =>
         db.prepare("SELECT * FROM nats_messages ORDER BY rowid").all(),
       ),
-    legacyRows: () =>
-      readDb(join(hostDir, "relay.sqlite"), (db) =>
-        db.prepare("SELECT * FROM relay_messages ORDER BY rowid").all(),
-      ),
+    /** JetStream is the only delivery backend; the retired SQLite store must never appear. */
+    retiredStorePresent: () => existsSync(join(hostDir, "relay.sqlite")),
     async brokerMessage(sequence) {
       return manager.streams.getMessage("HAB", { seq: sequence });
     },
@@ -706,15 +699,7 @@ export async function openP7System(
       assert.equal(body.message.kind, kind);
       assert.equal(body.sender_id, row.sender_id);
       assert.equal(body.message.message_id, row.message_id);
-      assert.equal(
-        system
-          .legacyRows()
-          .filter(
-            (r) =>
-              r.sender_id === row.sender_id && r.message_id === row.message_id,
-          ).length,
-        0,
-      );
+      assert.equal(system.retiredStorePresent(), false);
       return {
         sender_id: row.sender_id,
         message_id: row.message_id,
@@ -832,10 +817,6 @@ export async function openP7System(
     stopBroker,
     startBroker: openBroker,
     startApplication,
-    async ordinaryEntry() {
-      const ordinary = await startLocalRelay(hostOptions());
-      await ordinary.close();
-    },
     close() {
       if (closing) return closing;
       closing = (async () => {

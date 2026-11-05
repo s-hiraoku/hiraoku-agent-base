@@ -179,10 +179,7 @@ test("A2A lost Relay response and full store reopen recover one original receipt
   assert.equal(receipt.receipt_id, accepted.receipt_id);
   assert.equal(receipt.message_id, accepted.message_id);
   assert.equal(Date.parse(receipt.expires_at), accepted.expires_at);
-  assert.equal(
-    replay.metadata.hab_relay.source.thread_id,
-    JSON.parse(accepted.body).thread_id,
-  );
+  assert.equal(replay.metadata.hab_relay.source.thread_id, accepted.thread_id);
   assert.equal(f.relayRows().length, 1);
   await f.recipient.receiveOnce();
   assert.equal(f.recipientEntries().length, 1);

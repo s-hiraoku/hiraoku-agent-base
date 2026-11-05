@@ -19,6 +19,7 @@ import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 import { envelope, message, limits, decode } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
+import { eventually, pollUntilDelivered } from "./jetstream-delivery.js";
 import { oauthFixture } from "./relay-oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
 import { main as runRelayAdmin } from "../scripts/hab-relay-admin.mjs";
@@ -27,7 +28,7 @@ const cli = resolve("scripts/hab-relay-admin.mjs");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
 
 async function started(t, patch = {}, oauthConfig) {
-  const f = fixture(t);
+  const f = await fixture(t);
   Object.assign(f.config.registry, patch);
   if (oauthConfig) {
     f.config.ingress = {
@@ -85,8 +86,8 @@ async function started(t, patch = {}, oauthConfig) {
   return { ...f, host, call, credentials };
 }
 
-test("admin refuses a registry the Relay has not created", (t) => {
-  const f = fixture(t);
+test("admin refuses a registry the Relay has not created", async (t) => {
+  const f = await fixture(t);
   assert.throws(() => relayAdminStatus(f.configPath), {
     code: "relay_not_initialized",
   });
@@ -140,7 +141,9 @@ test("connect registers, binds and grants two addresses for a real roundtrip; re
     (await f.call(tokens.c, "relay_submit", sent)).sender_id,
     codex.address.agent_id,
   );
-  const { delivery } = await f.call(tokens.h, "relay_poll");
+  const delivery = await eventually(
+    async () => (await f.call(tokens.h, "relay_poll")).delivery,
+  );
   assert.equal(delivery.message.message_id, sent.message_id);
   const acked = await f.call(tokens.h, "relay_ack", {
     sender_id: delivery.message.sender_id,
@@ -264,7 +267,8 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
     t.after(() => inbox.close());
     const savedBeforeAck = [];
     const receiver = new DurableReceiver(inbox, {
-      poll: () => client.poll(),
+      // The pump publishes on its next cycle; every receive in this test expects a message.
+      poll: () => pollUntilDelivered(client),
       ack: async (request) => {
         // A separate connection must see the committed body before network ACK.
         const reader = openInbox();
@@ -499,12 +503,15 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
     (await call("relay_submit", { ...selection, ...sent })).sender_id,
     second.address.agent_id,
   );
-  const received = (
-    await f.call(tokens.h, "relay_poll", {
-      as_address: local.address.address,
-      expected_agent_id: local.address.agent_id,
-    })
-  ).delivery;
+  const received = await eventually(
+    async () =>
+      (
+        await f.call(tokens.h, "relay_poll", {
+          as_address: local.address.address,
+          expected_agent_id: local.address.agent_id,
+        })
+      ).delivery,
+  );
   assert.equal(received.message.sender_id, second.address.agent_id);
   assert.equal(received.message.message_id, sent.message_id);
   const ack = {
@@ -540,7 +547,9 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
     },
   };
   await f.call(tokens.h, "relay_submit", { ...localSelection, ...reply });
-  const returned = (await call("relay_poll", selection)).delivery;
+  const returned = await eventually(
+    async () => (await call("relay_poll", selection)).delivery,
+  );
   assert.deepEqual(returned.message.in_reply_to, reply.in_reply_to);
   assert.equal(
     (

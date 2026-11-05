@@ -12,8 +12,8 @@ const policy = {
   retry_cap_ms: 4000,
   drain_timeout_ms: 3000,
 };
-function fixture(t) {
-  const f = hostFixture(t);
+async function fixture(t) {
+  const f = await hostFixture(t);
   const owner = new SQLiteHostOwner(join(f.dir, "supervisor-owner.sqlite"), {
     agent_id: "b",
     fingerprint_key: new Uint8Array(32).fill(91),
@@ -25,7 +25,7 @@ function fixture(t) {
   return { ...f, host, port: { version: 1, host, context: f.context } };
 }
 test("Receive supervisor: durable host stores and ACKs once, restart does not reprocess or execute", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     stop = new AbortController();
   f.resume(f.host);
   const { key } = f.submit();
@@ -114,7 +114,7 @@ test("Receive supervisor: durable host stores and ACKs once, restart does not re
   assert.equal(f.queued().length, 0);
 });
 test("Receive supervisor: lost ACK response is reconciled before polling another message", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     stop = new AbortController(),
     waits = [];
   f.resume(f.host);
@@ -149,7 +149,7 @@ test("Receive supervisor: lost ACK response is reconciled before polling another
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
 });
 test("Receive supervisor: pause, revocation and missing owner never start network work", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   assert.equal(
     (
       await new ReceiveSupervisor(f.port, policy).run(
@@ -172,7 +172,7 @@ test("Receive supervisor: pause, revocation and missing owner never start networ
   assert.deepEqual(f.state.tools, []);
 });
 test("Receive supervisor: stop waits for the current receive and prevents overlap", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     stop = new AbortController(),
     started = deferred(),
     finish = deferred();

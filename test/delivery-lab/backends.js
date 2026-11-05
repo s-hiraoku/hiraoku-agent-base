@@ -7,7 +7,7 @@ export async function relayBackend(t) {
   const f = await journey(t);
   await f.enrollAll();
   return {
-    id: "relay-sqlite",
+    id: "hab-host-jetstream",
     agent: (name) => f.agents[name].agent_id,
     message: (to, patch) => f.makeMessage(to, patch),
     transport: (name) => ({
@@ -37,7 +37,7 @@ export async function relayBackend(t) {
 }
 
 export const backends = [
-  { id: "relay-sqlite", create: relayBackend },
+  { id: "hab-host-jetstream", create: relayBackend },
   ...pendingBackends,
 ];
 

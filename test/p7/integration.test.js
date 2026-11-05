@@ -153,7 +153,7 @@ test("P7-01 official A2A and real HAB NATS separate saved ACK from one Task and 
     replay.metadata.hab_relay.source,
     task.metadata.hab_relay.source,
   );
-  assert.equal(f.legacyRows().length, 0);
+  assert.equal(f.retiredStorePresent(), false);
   const [closed, sameClose] = await Promise.all([f.close(), f.close()]);
   assert.equal(sameClose, closed);
   await assert.rejects(() => f.startBroker(), /closed system/);
@@ -177,7 +177,7 @@ test("P7-01 official A2A and real HAB NATS separate saved ACK from one Task and 
     broker_witnesses: witnesses,
     independent_pre_ack_reads: observed,
     unresolved_delivery_and_rpc_intents: pending,
-    legacy_rows: 0,
+    retired_sqlite_store: false,
     cleanup: [closed.closure, cleanup.closure],
   });
 });
@@ -369,9 +369,9 @@ test("P7-03 incomplete cold images refuse restoration before serving traffic", a
   });
 });
 
-test("P7-04 same-ID rename and epoch rollback preserve old NATS chains and new SQLite ownership", async (t) => {
+test("P7-04 same-ID rename preserves the NATS chain and receipt across a cold host restart", async (t) => {
   let f = await openP7System(t);
-  const request = a2aRequest("p7_rollback_old");
+  const request = a2aRequest("p7_rename_restart");
   const task = await f.client.sendMessage(request, f.options);
   const witnesses = [await f.witness("execution_request", f.sourceOf(task))];
   const originalReceipt = await f.receipt(task),
@@ -389,21 +389,7 @@ test("P7-04 same-ID rename and epoch rollback preserve old NATS chains and new S
     task.metadata.hab_relay.source,
   );
   const closed = await f.close();
-  await assert.rejects(() => f.ordinaryEntry(), {
-    message: "local_relay_extension_required",
-  });
-  await assert.rejects(
-    () =>
-      openP7System(t, {
-        root: closed.root,
-        routing: { epoch: 1, enabled: false },
-      }),
-    (e) => e.code === "routing_epoch_rejected",
-  );
-  f = await openP7System(t, {
-    root: closed.root,
-    routing: { epoch: 2, enabled: false },
-  });
+  f = await openP7System(t, { root: closed.root });
   const replay = await f.client.sendMessage(request, f.options);
   assert.equal(replay.id, task.id);
   assert.deepEqual(
@@ -421,18 +407,15 @@ test("P7-04 same-ID rename and epoch rollback preserve old NATS chains and new S
   await receiveRequest(f);
   const { done } = await execute(f, replay, witnesses);
   const fresh = await f.client.sendMessage(
-    a2aRequest("p7_rollback_new"),
+    a2aRequest("p7_rename_restart_new"),
     f.options,
   );
   const newSource = f.sourceOf(fresh);
   assert.equal(
     f.journalRows().filter((r) => r.message_id === newSource.message_id).length,
-    0,
-  );
-  assert.equal(
-    f.legacyRows().filter((r) => r.message_id === newSource.message_id).length,
     1,
   );
+  witnesses.push(await f.witness("execution_request", newSource));
   await eventually(async () => {
     await f.recipient.receiveOnce();
     return f.recipientEntries().length === 2;
@@ -442,26 +425,9 @@ test("P7-04 same-ID rename and epoch rollback preserve old NATS chains and new S
     (await f.client.getTask({ id: fresh.id }, f.options)).status.state,
     TaskState.TASK_STATE_SUBMITTED,
   );
-  for (const row of f.journalRows())
-    assert.equal(
-      f
-        .legacyRows()
-        .filter(
-          (r) =>
-            r.sender_id === row.sender_id && r.message_id === row.message_id,
-        ).length,
-      0,
-    );
-  const pendingAfterRollback = await f.settledCounts();
+  assert.equal(f.retiredStorePresent(), false);
+  const pendingAfterRestart = await f.settledCounts();
   const finalClose = await f.close();
-  await assert.rejects(
-    () =>
-      openP7System(t, {
-        root: closed.root,
-        routing: { epoch: 1, enabled: true },
-      }),
-    (e) => e.code === "routing_epoch_rejected",
-  );
   evidence("P7-04", {
     native_task: task.id,
     source: task.metadata.hab_relay.source,
@@ -469,27 +435,25 @@ test("P7-04 same-ID rename and epoch rollback preserve old NATS chains and new S
     renamed_recipient: renamed,
     immutable_recipient_id: renamed.agent_id,
     old_receipt: originalReceipt.receipt_id,
-    epoch: 2,
-    old_chain_broker_witnesses: witnesses,
-    new_sqlite_source: newSource,
+    broker_witnesses: witnesses,
+    new_source: newSource,
     new_task_unexecuted: true,
-    unresolved_delivery_and_rpc_intents: pendingAfterRollback,
+    unresolved_delivery_and_rpc_intents: pendingAfterRestart,
     engine_tasks: 1,
     artifacts: done.artifacts.length,
-    ordinary_entry_refused_with_host_closed: true,
-    same_and_lower_epoch_refused: true,
+    retired_sqlite_store: false,
     cleanup: [closed.closure, finalClose.closure],
   });
 });
 
-test("P7-05 broker outage retains original admission without implicit SQLite fallback", async (t) => {
+test("P7-05 broker outage retains original admission without any SQLite fallback", async (t) => {
   const f = await openP7System(t);
   await f.stopBroker();
   const request = a2aRequest("p7_broker_outage");
   const task = await f.client.sendMessage(request, f.options);
   const original = await f.receipt(task);
   assert.equal(original.state, "pending");
-  assert.equal(f.legacyRows().length, 0);
+  assert.equal(f.retiredStorePresent(), false);
   assert.equal(f.engineCount(), 0);
   const replay = await f.client.sendMessage(request, f.options);
   assert.equal(replay.id, task.id);
@@ -504,7 +468,7 @@ test("P7-05 broker outage retains original admission without implicit SQLite fal
   assert.equal(f.engineCount(), 0);
   const { done } = await execute(f, task, witnesses);
   assert.equal((await f.receipt(task)).receipt_id, original.receipt_id);
-  assert.equal(f.legacyRows().length, 0);
+  assert.equal(f.retiredStorePresent(), false);
   const pendingAfterOutage = await f.settledCounts();
   const cleanup = await f.close();
   evidence("P7-05", {

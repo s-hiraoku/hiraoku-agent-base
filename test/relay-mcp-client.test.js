@@ -237,7 +237,7 @@ test(
   "real SDK gateway supplies all four client operations with scoped identities and exact receipts",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       gateway = f.gateway(),
       m = message();
     const a = client((_body, url, init) =>

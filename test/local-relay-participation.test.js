@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { cpSync, rmSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fixture } from "./local-relay-service-fixtures.js";
+import { pollUntilDelivered } from "./jetstream-delivery.js";
 import {
   oauthFixture,
   persistentOAuthFixture,
@@ -65,7 +66,7 @@ function proxyFetch(currentHost) {
 }
 
 async function setup(t, oauth, groups = true) {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.config.registry.authentication_groups = groups;
   f.config.ingress = {
     port: 0,
@@ -204,7 +205,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
   const sent = { ...message(), recipient_id: f.local.agent_id };
   const accepted = await remote.submit(sent);
   const receiver = new DurableReceiver(inbox, {
-    poll: () => local.poll(),
+    poll: () => pollUntilDelivered(local),
     ack: async (ack) => {
       const separate = openInbox();
       try {
@@ -232,7 +233,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
   };
   await local.submit(reply);
   await new DurableReceiver(replyInbox, {
-    poll: () => remote.poll(),
+    poll: () => pollUntilDelivered(remote),
     ack: async (ack) => {
       const separate = openInbox(f.remote, replyInboxPath);
       try {
@@ -314,7 +315,7 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
     local = f.client(f.local);
   const sent = { ...message(), recipient_id: f.local.agent_id };
   await remote.submit(sent);
-  const delivery = await local.poll();
+  const delivery = await pollUntilDelivered(local);
   const ack = await local.ack({
     sender_id: f.remote.agent_id,
     message_id: sent.message_id,

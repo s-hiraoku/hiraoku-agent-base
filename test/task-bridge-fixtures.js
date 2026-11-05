@@ -15,8 +15,8 @@ import { TaskBridge } from "../src/task-bridge/bridge.ts";
 export { owner, worker, RESPONSE, limits };
 export const code = (wanted) => (error) =>
   error.code === wanted || error.message === wanted;
-export function fixture(t, patch = {}) {
-  const f = relayFixture(t),
+export async function fixture(t, patch = {}) {
+  const f = await relayFixture(t),
     inbox = new SQLiteInbox(join(f.dir, "bridge-inbox.sqlite"), {
       agent_id: "b",
       fingerprint_key: new Uint8Array(32).fill(44),

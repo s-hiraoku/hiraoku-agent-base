@@ -1,5 +1,4 @@
-import { comparisonMaterial, parseSubmission, parseAck } from "./contract.ts";
-import type { ContractLimits, Submission, AckRequest } from "./contract.ts";
+import type { Submission } from "./contract.ts";
 export class MessagingError extends Error {
   readonly code: string;
   constructor(code: string) {
@@ -26,20 +25,6 @@ export interface Authorization {
     kind?: string,
   ): { agent_id: string } | undefined;
 }
-export interface Acceptance {
-  message: Submission;
-  sender_id: string;
-  comparison_material: string;
-}
-export interface ReceiptQuery {
-  sender_id: string;
-  message_id: string;
-}
-/** Resolution runs inside the store transaction. Must be synchronous, current and side-effect-free. */
-export interface AcceptanceStore {
-  accept(resolve: () => Acceptance): Receipt;
-  status(resolve: () => ReceiptQuery): Receipt;
-}
 export interface Delivery {
   message: Submission & { sender_id: string };
   generation: number;
@@ -55,113 +40,10 @@ export interface AckReceipt {
   acked_at: string;
   state: "acked";
 }
-/** Public delivery surface; optional host integrations can compose this port. */
+/** Public delivery surface. NATS JetStream (packages/relay-nats) is its only implementation. */
 export interface DeliveryService {
   submit(context: unknown, input: unknown): Receipt;
   status(context: unknown, messageId: string): Receipt;
   poll(context: unknown): Delivery | null;
   ack(context: unknown, input: unknown): AckReceipt;
-}
-export type ReceiveAuthorization = (peer?: {
-  sender_id: string;
-  kind: string;
-}) => string;
-export interface DeliveryStore extends AcceptanceStore {
-  poll(authorize: ReceiveAuthorization): Delivery | null;
-  ack(request: AckRequest, authorize: ReceiveAuthorization): AckReceipt;
-}
-export interface MaintenanceResult {
-  expired: number;
-  purged: number;
-  threads: number;
-  safety_held: number;
-}
-export interface MaintenanceStore {
-  maintain(authorize: () => void, limit: number): MaintenanceResult;
-}
-export class StoreDeliveryService implements DeliveryService {
-  readonly #store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>;
-  readonly #authorization: Authorization | undefined;
-  readonly #limits: ContractLimits;
-  constructor(
-    store: AcceptanceStore & Partial<DeliveryStore & MaintenanceStore>,
-    limits: ContractLimits,
-    authorization?: Authorization,
-  ) {
-    this.#store = store;
-    this.#limits = Object.freeze({ ...limits });
-    this.#authorization = authorization;
-  }
-  #identity(
-    context: unknown,
-    op: "submit" | "status" | "poll" | "ack" | "maintenance",
-    recipient?: string,
-    kind?: string,
-  ) {
-    let decision;
-    try {
-      decision = this.#authorization?.authorize(context, op, recipient, kind);
-    } catch {
-      throw new MessagingError("forbidden");
-    }
-    if (
-      !decision ||
-      typeof decision.agent_id !== "string" ||
-      !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(decision.agent_id)
-    )
-      throw new MessagingError("forbidden");
-    return decision.agent_id;
-  }
-  submit(context: unknown, input: unknown): Receipt {
-    // Validate a private snapshot before entering the write transaction.
-    const message = parseSubmission(input, this.#limits);
-    return this.#store.accept(() => {
-      const sender = this.#identity(
-        context,
-        "submit",
-        message.recipient_id,
-        message.kind,
-      );
-      return {
-        message,
-        sender_id: sender,
-        comparison_material: comparisonMaterial(sender, message, this.#limits),
-      };
-    });
-  }
-  status(context: unknown, messageId: string): Receipt {
-    if (
-      typeof messageId !== "string" ||
-      !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(messageId)
-    )
-      throw new MessagingError("invalid_request");
-    return this.#store.status(() => ({
-      sender_id: this.#identity(context, "status"),
-      message_id: messageId,
-    }));
-  }
-  poll(context: unknown): Delivery | null {
-    if (!this.#store.poll)
-      throw new MessagingError("delivery_store_unavailable");
-    return this.#store.poll((peer) =>
-      this.#identity(context, "poll", peer?.sender_id, peer?.kind),
-    );
-  }
-  ack(context: unknown, input: unknown): AckReceipt {
-    const request = parseAck(input, this.#limits);
-    if (!this.#store.ack)
-      throw new MessagingError("delivery_store_unavailable");
-    return this.#store.ack(request, (peer) =>
-      this.#identity(context, "ack", peer?.sender_id, peer?.kind),
-    );
-  }
-  maintain(context: unknown, limit: number): MaintenanceResult {
-    if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
-      throw new MessagingError("invalid_maintenance_limit");
-    if (!this.#store.maintain)
-      throw new MessagingError("maintenance_store_unavailable");
-    return this.#store.maintain(() => {
-      this.#identity(context, "maintenance");
-    }, limit);
-  }
 }

@@ -2,12 +2,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import {
-  StoreDeliveryService,
-  makeReplayBoundMessageId,
-} from "../src/messaging/index.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
 import { RelayHttpGateway } from "../src/relay/http.ts";
+import { authorizedDelivery } from "./jetstream-delivery.js";
 export const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
@@ -102,37 +99,22 @@ export async function call(gateway, name, args = {}, patch = {}) {
   };
 }
 export const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
-export function fixture(t) {
-  const dir = mkdtempSync(join(tmpdir(), "relay-http-")),
-    path = join(dir, "relay.sqlite");
-  const store = new SQLiteRelayStore(path, {
-    fingerprint_key: new Uint8Array(32).fill(42),
-    max_pending: 10,
-    max_records: 100,
-    max_pending_per_recipient: 5,
-    max_body_bytes: 100000,
-    max_clock_skew_ms: 1000,
-    lease_ms: 30000,
-    max_attempts: 3,
-    retry_base_ms: 10,
-    retry_cap_ms: 100,
-    poll_scan_limit: 10,
-  });
-  store.migrate();
-  const raw = new DatabaseSync(path),
-    identities = new Map(),
+/** Three verified synthetic identities and an audit sink; no delivery backend. */
+export function identities(t, { cleanup = true } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "relay-http-"));
+  const known = new Map(),
     contexts = {},
     active = new Set(["a", "b", "c"]);
   for (const name of active) {
     contexts[name] = Symbol(`verified-${name}`);
-    identities.set(contexts[name], name);
+    known.set(contexts[name], name);
   }
-  const service = new StoreDeliveryService(store, limits, {
+  const authorization = {
     authorize(ctx) {
-      const id = identities.get(ctx);
+      const id = known.get(ctx);
       return active.has(id) ? { agent_id: id } : undefined;
     },
-  });
+  };
   const events = [],
     notes = [],
     audit = {
@@ -151,25 +133,52 @@ export function fixture(t) {
         "Bearer fixture-c": "c",
       }[authorization]
     ] ?? null;
-  const gateway = (patch = {}, verify = verifier, sink = audit) =>
-    new RelayHttpGateway(service, { ...policy, ...patch }, sink, verify);
-  t.after(() => {
-    raw.close();
-    store.close();
-    rmSync(dir, { recursive: true, force: true });
-  });
+  if (cleanup) t.after(() => rmSync(dir, { recursive: true, force: true }));
   return {
     dir,
-    store,
-    raw,
-    service,
     contexts,
     active,
+    authorization,
     events,
     notes,
     audit,
     verifier,
+  };
+}
+/** The identities above in front of a JetStream delivery backend and the four-tool gateway. */
+export async function fixture(t, queue = {}) {
+  const f = identities(t, { cleanup: false });
+  const delivery = await authorizedDelivery(t, {
+    authorization: f.authorization,
+    limits,
+    directory: f.dir,
+    queue: {
+      max_pending: 10,
+      max_pending_per_recipient: 5,
+      poll_scan_limit: 10,
+      agent_capacity: undefined,
+      ...queue,
+    },
+  });
+  const raw = new DatabaseSync(join(f.dir, "jetstream-journal.sqlite"));
+  t.after(() => {
+    raw.close();
+    rmSync(f.dir, { recursive: true, force: true });
+  });
+  const gateway = (patch = {}, verify = f.verifier, sink = f.audit) =>
+    new RelayHttpGateway(
+      delivery.service,
+      { ...policy, ...patch },
+      sink,
+      verify,
+    );
+  return {
+    ...f,
+    raw,
+    delivery,
+    service: delivery.service,
+    pump: delivery.pump,
     gateway,
-    count: () => raw.prepare("SELECT count(*) n FROM relay_messages").get().n,
+    count: () => raw.prepare("SELECT count(*) n FROM nats_messages").get().n,
   };
 }
