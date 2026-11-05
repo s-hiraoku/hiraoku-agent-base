@@ -1,0 +1,1175 @@
+[
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base",
+    "referenced_by": [
+      "README.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/website/docs/user-guide/features/mcp.md",
+    "referenced_by": [
+      "docs/common-mcp-connection.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://a2a-protocol.org/v1.0.0/specification/#413-taskstate",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v1.0.0 URL; content not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://a2a-protocol.org/v1.0.0/specification/#76-in-task-authorization",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v1.0.0 URL; content not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://a2a-protocol.org/v1.0.0/topics/extensions/",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md",
+      "docs/generic-agent-async-design.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v1.0.0 URL; content not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://a2a-protocol.org/v1.0.0/topics/life-of-a-task/",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md",
+      "docs/generic-agent-async-design.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v1.0.0 URL; content not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/concepts/jetstream",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md",
+      "docs/generic-agent-async-design.md",
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://a2a-protocol.org/v1.0.0/topics/streaming-and-async/",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md",
+      "docs/generic-agent-async-design.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v1.0.0 URL; content not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://a2a-protocol.org/v1.0.0/specification/",
+    "referenced_by": [
+      "docs/generic-agent-async-design.md",
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v1.0.0 URL; content not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/pull/132",
+    "referenced_by": [
+      "docs/hab-decisions.md",
+      "docs/implementation/design-boundary-alignment.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/s-hiraoku/shift-log/tree/2a7e8b4fb33df66be440bd41324258aab40ce5d3",
+    "referenced_by": [
+      "docs/hab-decisions.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/releases/tag/v2.15.2",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v2.15.2 release URL; not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/releases/tag/v2.14.0",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v2.14.0 release URL; not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/releases/tag/v2.14.6",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "v2.14.6 release URL; not fetched"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://jepsen.io/analyses/nats-2.12.1",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/learn/jetstream/retention-policies",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/reference/jetstream/api/stream/msg-delete",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/a2aproject/a2a-js",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/reference/config/jetstream/sync_interval",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/learn/jetstream/message-ttl",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/learn/backup-recovery/stream-backup-restore",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/issues/7549",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local product spec records 2026-10-31 status; current status not checked"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/issues/7556",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local product spec records 2026-10-31 status; current status not checked"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/issues/7564",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local product spec records 2026-10-31 status; current status not checked"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/nats-io/nats-server/issues/7567",
+    "referenced_by": [
+      "docs/hab-product-spec.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local product spec records 2026-10-31 status; current status not checked"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/mvanhorn/agent-tincan",
+    "referenced_by": [
+      "docs/hab-roadmap.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local document records 2026-10-10 read; external source not pinned here"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/TadMSTR/homelab-agent",
+    "referenced_by": [
+      "docs/hab-roadmap.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local document records 2026-10-10 read; external source not pinned here"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/viniciusbuscacio/pop-agent",
+    "referenced_by": [
+      "docs/hab-roadmap.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local document records 2026-10-10 read; external source not pinned here"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/faelnor92/Athena",
+    "referenced_by": [
+      "docs/hab-roadmap.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local document records 2026-10-10 read; external source not pinned here"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/mvanhorn/agent-tincan/blob/main/docs/adapters/web-agents.md",
+    "referenced_by": [
+      "docs/hab-roadmap.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": "local document records 2026-10-10 read; external source not pinned here"
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams",
+    "referenced_by": [
+      "docs/hab-topology.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/mermaid-js/mermaid-cli",
+    "referenced_by": [
+      "docs/hab-topology.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/actions/runs/41935743092",
+    "referenced_by": [
+      "docs/implementation/design-boundary-alignment.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://docs.nats.io/learn/jetstream/delivery-and-acknowledgment",
+    "referenced_by": [
+      "docs/implementation/generic-nats-dispatch.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://tailscale.com/docs/features/tailscale-funnel",
+    "referenced_by": [
+      "docs/hab-security.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://nodejs.org/api/sqlite.html#databaseistransaction",
+    "referenced_by": [
+      "docs/adapter-owner.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://example-tenant.jp.auth0.com/",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://relay.example/hab/mcp",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/get-refresh-tokens",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "foundations",
+    "url": "https://developers.openai.com/plugins/deploy/connect-chatgpt",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
+    "revision": null
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/signup",
+    "referenced_by": [
+      "docs/auth0-account-step.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/pricing",
+    "referenced_by": [
+      "docs/auth0-account-step.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://www.okta.com/legal/auth0-pss-self-service/",
+    "referenced_by": [
+      "docs/auth0-account-step.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://www.okta.com/content/dam/okta---digital/en_us/legal/okta-auth0-self-service-PSS.pdf",
+    "referenced_by": [
+      "docs/auth0-account-step.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://www.okta.com/legal/",
+    "referenced_by": [
+      "docs/auth0-account-step.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://www.okta.com/legal/privacy-policy/",
+    "referenced_by": [
+      "docs/auth0-account-step.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.openai.com/plugins/build/auth",
+    "referenced_by": [
+      "docs/auth0-boundary.md",
+      "docs/local-integration.md",
+      "docs/relay-oauth-ingress.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/ai/docs/mcp/get-started/authorization-for-your-mcp-server",
+    "referenced_by": [
+      "docs/auth0-boundary.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets",
+    "referenced_by": [
+      "docs/auth0-boundary.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/docs/secure/tokens/token-best-practices",
+    "referenced_by": [
+      "docs/auth0-boundary.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/108",
+    "referenced_by": [
+      "docs/dots-hermes-connection-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/98",
+    "referenced_by": [
+      "docs/dots-hermes-connection-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://tailscale.com/docs/features/tailscale-funnel",
+    "referenced_by": [
+      "docs/hab-security.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.openai.com/plugins/build/mcp-events",
+    "referenced_by": [
+      "docs/local-integration.md",
+      "docs/migration-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.openai.com/api/docs/guides/secure-mcp-tunnels",
+    "referenced_by": [
+      "docs/local-integration.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/model_tools.py",
+    "referenced_by": [
+      "docs/local-relay-host.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/agent/agent_init.py",
+    "referenced_by": [
+      "docs/local-relay-host.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/website/docs/user-guide/features/api-server.md",
+    "referenced_by": [
+      "docs/local-relay-host.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "http://www.apple.com/DTDs/PropertyList-1.0.dtd\"",
+    "referenced_by": [
+      "docs/local-relay-launchagent.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://learn.chatgpt.com/docs/extend/mcp#use-mcp-backed-tools-in-chatgpt-web",
+    "referenced_by": [
+      "docs/local-relay-service.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/112",
+    "referenced_by": [
+      "docs/mcp-agent-discovery.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.cloudflare.com/d1/worker-api/d1-database/",
+    "referenced_by": [
+      "docs/migration-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://modelcontextprotocol.io/docs/2026-07-28/sdk",
+    "referenced_by": [
+      "docs/migration-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.cloudflare.com/workers/runtime-apis/nodejs/https/",
+    "referenced_by": [
+      "docs/migration-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.cloudflare.com/workers/runtime-apis/nodejs/dns/",
+    "referenced_by": [
+      "docs/migration-plan.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/get-refresh-tokens",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "authority",
+    "url": "https://developers.openai.com/plugins/deploy/connect-chatgpt",
+    "referenced_by": [
+      "docs/persistent-mcp-auth.md"
+    ],
+    "access": "not_accessed",
+    "status": "pending",
+    "outcome": "Read-only source extraction recorded the link; external content was not retrieved and no current interoperability/pricing/standard claim is verified.",
+    "revision": "not_pinned_in_url"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nodejs/node/blob/v24.x/doc/api/sqlite.md",
+    "referenced_at": [
+      {
+        "path": "docs/sqlite-snapshot-bundle.md",
+        "line": 45
+      }
+    ],
+    "recorded_revision": "v24.x moving branch; no immutable commit pinned",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://www.sqlite.org/backup.html",
+    "referenced_at": [
+      {
+        "path": "docs/sqlite-snapshot-bundle.md",
+        "line": 45
+      }
+    ],
+    "recorded_revision": "unversioned/current page; no immutable revision recorded",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/releases/tag/v2.15.2",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 29
+      }
+    ],
+    "recorded_revision": "v2.15.2 release tag (page access only; no binary verification by reader)",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://docs.nats.io/reference/config/jetstream/sync_interval",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 61
+      }
+    ],
+    "recorded_revision": "unversioned/current page; no immutable revision recorded",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/releases/tag/v2.14.6",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 61
+      }
+    ],
+    "recorded_revision": "v2.14.6 release tag (page access only; no binary verification by reader)",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/releases/tag/v2.15.0",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 61
+      }
+    ],
+    "recorded_revision": "v2.15.0 release tag (page access only; no binary verification by reader)",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/issues/7549",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 63
+      }
+    ],
+    "recorded_revision": "issue 7549; original HAB assertion is dated2026-11-01; current status not revalidated",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/issues/7556",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 63
+      }
+    ],
+    "recorded_revision": "issue 7556; original HAB assertion is dated2026-11-01; current status not revalidated",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/issues/7564",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 63
+      }
+    ],
+    "recorded_revision": "issue 7564; original HAB assertion is dated2026-11-01; current status not revalidated",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/nats-io/nats-server/issues/7567",
+    "referenced_at": [
+      {
+        "path": "packages/relay-nats/DESIGN.md",
+        "line": 63
+      }
+    ],
+    "recorded_revision": "issue 7567; original HAB assertion is dated2026-11-01; current status not revalidated",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://github.com/modelcontextprotocol/typescript-sdk",
+    "referenced_at": [
+      {
+        "path": "src/relay/README.md",
+        "line": 410
+      }
+    ],
+    "recorded_revision": "unversioned/current page; no immutable revision recorded",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "delivery",
+    "url": "https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http",
+    "referenced_at": [
+      {
+        "path": "src/relay/README.md",
+        "line": 494
+      },
+      {
+        "path": "src/relay/README.md",
+        "line": 550
+      }
+    ],
+    "recorded_revision": "2026-07-28 specification URL",
+    "access_outcome": "accessible via web open; title/initial excerpt only",
+    "review": "pending",
+    "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
+    "access_date": "2026-11-05"
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://a2a-protocol.org/v1.0.0/specification/",
+    "occurrences": [
+      {
+        "path": "docs/profiles/async-text-v1.md",
+        "line": 5
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles",
+    "occurrences": [
+      {
+        "path": "docs/fixed-readback-worker-identity.md",
+        "line": 95
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://chatgpt.com/backend-api/codex",
+    "occurrences": [
+      {
+        "path": "docs/local-hermes-key.md",
+        "line": 98
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://developers.openai.com/plugins/build/auth",
+    "occurrences": [
+      {
+        "path": "docs/mvp-inventory.md",
+        "line": 65
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://docs.nats.io/learn/jetstream/delivery-and-acknowledgment",
+    "occurrences": [
+      {
+        "path": "docs/implementation/generic-nats-dispatch.md",
+        "line": 19
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/hermes_cli/auth_codex.py",
+    "occurrences": [
+      {
+        "path": "docs/local-hermes-key.md",
+        "line": 106
+      }
+    ],
+    "recorded_revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/hermes_cli/runtime_provider.py",
+    "occurrences": [
+      {
+        "path": "docs/local-hermes-key.md",
+        "line": 107
+      }
+    ],
+    "recorded_revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/website/docs/user-guide/features/api-server.md",
+    "occurrences": [
+      {
+        "path": "docs/hermes-connection.md",
+        "line": 25
+      }
+    ],
+    "recorded_revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/a2aproject/a2a-js",
+    "occurrences": [
+      {
+        "path": "docs/a2a-sdk-preview.md",
+        "line": 57
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/colinhacks/zod/commit/a0ebf970f2d752e5f58527cd2942ff48be4f46bd",
+    "occurrences": [
+      {
+        "path": "docs/local-mvp.md",
+        "line": 93
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828",
+    "occurrences": [
+      {
+        "path": "docs/local-mvp.md",
+        "line": 93
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/nodejs/undici/releases/tag/v7.30.1",
+    "occurrences": [
+      {
+        "path": "docs/local-mvp.md",
+        "line": 95
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/openai/codex/blob/rust-v0.164.0-alpha.11.1/codex-rs/core/src/mcp_tool_call.rs",
+    "occurrences": [
+      {
+        "path": "docs/finite-mcp-trial.md",
+        "line": 106
+      }
+    ],
+    "recorded_revision": "rust-v0.164.0-alpha.11.1",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/blob/main/docs/profiles/async-text-v1.md",
+    "occurrences": [
+      {
+        "path": "docs/profiles/async-text-v1.md",
+        "line": 5
+      }
+    ],
+    "recorded_revision": "main",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/102",
+    "occurrences": [
+      {
+        "path": "docs/finite-mcp-trial.md",
+        "line": 150
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/104",
+    "occurrences": [
+      {
+        "path": "docs/finite-mcp-trial.md",
+        "line": 149
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/105",
+    "occurrences": [
+      {
+        "path": "docs/finite-mcp-trial.md",
+        "line": 9
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://learn.chatgpt.com/docs/auth",
+    "occurrences": [
+      {
+        "path": "docs/local-hermes-key.md",
+        "line": 89
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://learn.chatgpt.com/docs/pricing",
+    "occurrences": [
+      {
+        "path": "docs/local-hermes-key.md",
+        "line": 88
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "execution",
+    "url": "https://nodejs.org/api/sqlite.html#databaseistransaction",
+    "occurrences": [
+      {
+        "path": "docs/adapter-owner.md",
+        "line": 9
+      }
+    ],
+    "recorded_revision": "local source reference only; remote revision not independently retrieved",
+    "access_outcome": "pending-not-retrieved",
+    "reason": "Read-only local semantic review; no external content used as verified fact."
+  },
+  {
+    "reader_scope": "verification",
+    "url": "https://github.com/cloudflare/security-audit-skill",
+    "revision": "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
+    "referenced_by": [
+      ".claude/skills/security-audit/UPSTREAM.md"
+    ],
+    "role": "vendored methodology provenance, excluded from HAB requirements",
+    "access_outcome": "pending_remote_unread; local pinned provenance read",
+    "reason": "Source reader is read-only and does not contact external endpoints; repository-local vendored provenance establishes classification, not remote contents."
+  },
+  {
+    "reader_scope": "verification",
+    "url": "https://api.github.com/repos/nats-io/nats-server/releases/tags/v2.15.2",
+    "revision": "tag v2.15.2; historical docs report four archive/executable pins",
+    "referenced_by": [
+      "docs/testing/verified-nats-input.md"
+    ],
+    "role": "external release metadata for optional broker verification",
+    "access_outcome": "pending_remote_unread",
+    "reason": "No remote fetch or binary execution performed; historical local derivation report is not independent current source-reader verification."
+  }
+]
