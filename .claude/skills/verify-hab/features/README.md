@@ -30,6 +30,8 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 ## Features
 
+- [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, external text and structured execution requests remaining data, and optional Task state semantics. It runs isolated fixtures with its own listeners and cleanup.
+
 - [Resolve an address](./resolve-address.md) covers `relay_resolve` success, unknown address and malformed address.
 - [Send a message](./send-message.md) covers `relay_submit`, idempotent replay, conflicting replay, disallowed kind, sender-only `relay_status` and per-pair thread names.
 - [Receive and acknowledge](./receive-ack.md) covers `relay_poll` leasing, empty poll, lease expiry redelivery and `relay_ack` including wrong-token and wrong-agent refusal.

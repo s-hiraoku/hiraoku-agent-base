@@ -1,6 +1,6 @@
 # HAB asynchronous text profile v1
 
-This opt-in profile connects A2A and MCP clients to the same authorized generic text jobs. The existing fixed-task endpoints retain their contracts. The factories do not start a listener, a worker, or a production authentication policy.
+This opt-in profile connects A2A and MCP clients to the same authorized generic text jobs. Ordinary agent messaging uses [common Relay MCP](../common-mcp-connection.md) and the [receive-only supervisor](../receive-supervisor.md) without this profile, a Task, or a Hermes-specific runner. Receiving agents retain content decisions, execution, and their existing approval policy. The existing fixed-task endpoints retain their contracts. The factories do not start a listener, a worker, or a production authentication policy.
 
 The required A2A extension URI is `https://github.com/s-hiraoku/hiraoku-agent-base/blob/main/docs/profiles/async-text-v1.md`. The profile uses [A2A 1.0](https://a2a-protocol.org/v1.0.0/specification/) JSON-RPC with `A2A-Version: 1.0` and `A2A-Extensions` equal to that URI. The authenticated Agent Card advertises the extension as required. Streaming, subscriptions, push notifications, task continuation and extended cards are unsupported.
 
@@ -37,7 +37,7 @@ The host resolves the verified subject, client and complete conversation binding
 
 `ListTasks` accepts optional `contextId`, `pageSize` from 1 to 20, and an opaque `pageToken`. `includeArtifacts` may only be false; true returns an unsupported-operation error. Summaries omit results. Results are ordered by status timestamp and ID descending. `totalSize` is the exact count within the current authorized scope and filter. A cursor is bound to that scope, filter and page size. Authorization is checked again on every page. This is live pagination without a snapshot guarantee, so updates between pages can move jobs.
 
-`CancelTask` accepts `{ "id": "<Task UUID>" }`. A queued job can become canceled immediately. An active cancellation remains working with unknown outcome until trusted runtime evidence confirms termination. Lease loss also remains working with execution reconciliation pending. Neither state represents owner approval, and neither grants permission to execute or retry.
+`CancelTask` accepts `{ "id": "<Task UUID>" }`. A queued job can become canceled immediately. Working means the Task coordinator has claimed the job. It can precede external runtime admission and does not prove a model is running. An active cancellation remains working with unknown outcome until trusted runtime evidence confirms termination. Lease loss also remains working with execution reconciliation pending. Neither state represents owner approval, and neither grants permission to execute or retry.
 
 Task metadata under the extension URI includes `sourceMessageId`, `acceptedAt`, `workDeadline`, `outcome`, `cancellationRequested`, `cancellationConfirmed`, and an optional `waitReason`. These are a projection of the existing Task service. There is no separate SDK Task store or ID mapping.
 

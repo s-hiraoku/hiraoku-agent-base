@@ -285,6 +285,19 @@ test("queued cancellation needs no get grant and repeated cancellation is idempo
   assert.equal(canceled.cancellationConfirmed, true);
   assert.deepEqual(await app.cancel(null, { id: job.id }), canceled);
 });
+test("working reports coordinator claim before any runtime admission", async (t) => {
+  const { submit, app, claim, h, worker } = fixture(t);
+  const job = await submit();
+  await claim();
+  const task = await h.get(worker, { id: job.id });
+  assert.equal(task.run_id, null);
+  assert.equal(task.execution_open, 1);
+  const current = await app.get(null, { id: job.id });
+  assert.equal(current.state, "working");
+  assert.equal(current.outcome, "pending");
+  assert.equal("result" in current, false);
+  assert.equal("waitReason" in current, false);
+});
 test("running cancellation remains working and unconfirmed", async (t) => {
   const { submit, app, claim } = fixture(t);
   const job = await submit();

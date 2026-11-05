@@ -15,6 +15,8 @@
 | Cua（後続候補）    | 将来の限定computer/browser操作                                            | 起動未完。上記開発toolの接続やGrokの操作能力とは別の**後続検証**                                                                                                                              |
 | Agent Hub          | 依頼・policy routing・進捗・結果・監査                                    | 限定タスク、ping/pong、Auth0検証部品、Events、停止・照合は**実装済み**。本番Auth0設定・entrypoint配線・公開経路は未完                                                                         |
 
+標準通信では全製品が[共通MCP](common-mcp-connection.md)のクライアントとして接続し、受信側hostが定期poll・保存後ACKを行います。表のRuns・inventory・Hub-controlled executorは既存の限定Task連携の状況です。通常通信の必須機能や、HABによるエージェントの判断・承認の代行を意味しません。
+
 ## ShiftLogをHABの機能として扱う方針
 
 ShiftLogは独立repoのまま、HABの**作業記憶・再開context**機能として統合する計画です。

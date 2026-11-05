@@ -1,5 +1,7 @@
 # 汎用テキストの NATS 配送と再起動復旧
 
+この文書は明示構成する任意Task連携の契約です。標準の[共通MCP接続](../common-mcp-connection.md)と[受信supervisor](../receive-supervisor.md)はTaskなしで使えます。内容判断・実行・既存の権限や承認は受信エージェント側に残し、Hermes固有runnerを接続条件にしません。
+
 この経路は、[汎用 A2A/MCP profile](../profiles/async-text-v1.md)の Task を、既存の JetStream 配送で受信 runtime へ接続する opt-in の実行ポートです。TaskService が Task の正本です。broker や配送 journal に別の Task エンジンを追加しません。本番の認証・起動設定、実 Hermes、所有者承認、保護対象 tool、自動返信は有効化しません。
 
 ## 配送と実行の境界

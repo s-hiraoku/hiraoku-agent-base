@@ -1,5 +1,7 @@
 # 汎用ジョブ application service
 
+この文書は明示構成する任意Task連携の契約です。標準の[共通MCP接続](../common-mcp-connection.md)と[受信supervisor](../receive-supervisor.md)はTaskなしで使えます。内容判断・実行・既存の権限や承認は受信エージェント側に残し、Hermes固有runnerを接続条件にしません。
+
 `GenericTextJobs` は、認証済みホストと既存の `TaskService` を接続します。ジョブを保存するエンジンと ID は追加しません。A2A と MCP の adapter はこの service を共有できます。
 
 ホストの resolver は操作ごとに現在の Principal を返します。subject、clientId、送受信 agent、owner scope、受信側所有者、会話 binding はホストが検証します。外部本文はこれらを指定できません。異なる認証 client を、同じ人という理由で同一視しません。
@@ -15,6 +17,8 @@
 公開する情報は ID、元message/contextの相関、状態、時刻、期限、取消確認、版付き結果です。本文、所有者、client、内部binding、実行ID、runner、journal、SQL例外は公開しません。submit-onlyの利用者が完了済み依頼を再送しても、結果本文は返しません。
 
 一覧は状態更新時刻、IDの降順です。cursorは認可scope・filter・pageSizeへ結び付け、全ページで現在の認可条件を適用します。状態更新でページ間の位置が変わるため、snapshot保証はありません。summaryには結果本文を含めません。
+
+`working` はTaskのclaim後というcoordinatorの状態です。外部runtimeが要求を受理する前も含み、受信エージェントのモデル起動を証明しません。UIはこの状態だけからモデル実行中と表示しません。
 
 lease切れは `working` と `waitReason=execution_reconciliation`、取消未確認は `working` と `waitReason=cancellation_confirmation` です。両方とも `outcome=unknown` とします。所有者承認待ちへ変換しません。停止が確認できた場合だけ `canceled` を返します。
 

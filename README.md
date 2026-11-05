@@ -1,6 +1,8 @@
 # HAB — Hiraoku Agent Base
 
-HABは、個人文脈を持つDots（スタローン）、クラウドで働くGrok Bot、Macで実験・開発するHermesを、共通のAgent Hubでつなぐための基盤です。依頼・担当・進捗・結果を仲介し、それぞれのエージェントが持つ判断や既存の仕事を尊重します。Claude Code・Codex・Cursorなども、MCPクライアントとしての接続対象に含めます。配送の許可と、開発・業務を実行する権限は別に管理します。
+HABは、Dots（スタローン）、Grok Bot、Hermes、Claude Code・Codex・Cursorなどのエージェントを、共通MCPでつなぐメッセージ基盤です。受信側のhostがモデルを使わず定期poll・永続保存・ACKを行い、受信エージェントが内容を判断して既存の権限・承認機構で処理します。配送の許可と、開発・業務を実行する権限は別に管理します。
+
+標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。既存の固定Task、汎用テキストTask、A2A/NATS実行portは明示的に構成する任意機能であり、Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を記録します。
 
 GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品仕様](docs/hab-product-spec.md)では、登録・宛先選択・状態表示・privateなPC/モバイル利用と、A2A/JetStreamの採用評価範囲を定義します。確定要件と実装状況は区別しています。
 

@@ -1,10 +1,10 @@
-# 依頼から結果まで
+# 共通メッセージと任意Taskの処理
 
 [READMEへ](../README.md) · [内部設計](architecture.md) · [セキュリティ](hab-security.md)
 
-製品に依存しないメッセージ判断・非同期の結果相関・受信側所有者の承認は[追加設計](generic-agent-async-design.md)を参照。以下の固定Task契約と実装範囲は維持する。
+標準通信は[共通MCP接続](common-mcp-connection.md)を使います。送信側がoutboxへ保存してsubmitし、受信側hostが定期poll・重複排除・永続保存後ACKを行います。受信後の判断・実行・必要な承認は受信エージェントの既存機構に残ります。返信は受信側が決め、元messageへの参照を付けて自分のoutboxから送ります。通常の質問・回答にTaskは不要です。
 
-以下は目標フローと、実装された限定契約の対応です。Dots/Grokの本番接続や任意の仕事の振分けは未実施です。
+以下の図と1〜5節は既存の任意固定Task連携の契約です。一般会話をこのフローへ自動変換しません。[汎用Taskの追加設計](generic-agent-async-design.md)も明示構成する任意機能として扱います。Dots/Grokの本番接続や任意の仕事の振分けは未実施です。
 
 ```mermaid
 flowchart TD
@@ -23,7 +23,7 @@ flowchart TD
 
 requesterは許可済みtask typeとrequest keyを送ります。自由な宛先・URL・shell・個人データは初期契約にありません。Hubは署名検証された主体とpolicyから宛先・操作を決め、request keyをowner単位で重複排除します。診断ping/pongはsubject/client単位の別契約です。
 
-一般的な会話を自動分類して実行するrouterは計画です。現在のHub routingは明示的な固定taskとpolicyです。責任者、環境、tool、workspace、完了条件が不明な依頼は、権限を推測して実行しません。
+一般的な会話の判断は受信エージェントに残し、HAB内の自動分類・実行routerを標準接続の計画にはしません。現在のHub routingは明示的な固定taskとpolicyです。責任者、環境、tool、workspace、完了条件が不明な依頼は、権限を推測して実行しません。
 
 ## 2. 承認
 

@@ -6,17 +6,19 @@
 
 Personal ContextはDotsに置きます。相談の背景、重要なメールの判断、予定の意味を理解する担当です。Grok BotはCloud Workerとして、既存の情報収集や将来のブラウザ操作・長い仕事を担当します。HermesはLocal Agentとして、Macの開発実験、MCP、Skillsを扱います。ここでのCloud WorkerはGrokの役割であり、Cloudflare WorkersにHubを配置する意味ではありません。
 
-Hubは誰にどの限定仕事を渡せるかを検証し、状態と結果を記録します。各agentの記憶や判断を中央へ移したり、一つの巨大な会話へ統合したりしません。役割分担は目標であり、接続済み機能は[役割表](hab-roles.md)で別に示します。
+HABは送信名義・宛先・配送権限を検証し、メッセージと配送状態を記録します。内容の判断、仕事の引受け、実行と必要な承認は受信エージェント側の責務です。各agentの記憶や判断を中央へ移したり、一つの巨大な会話へ統合したりしません。役割分担は目標であり、接続済み機能は[役割表](hab-roles.md)で別に示します。
 
 ## 共通Hubと疎結合
 
-共通契約をHTTP MCPと永続キューで表現し、実行環境ごとの差はadapterへ閉じ込めます。Macのworkerは外向きに仕事を受け取ります。agentが停止しても依頼と実行receiptを照合できるようにします。一つのdeploymentでは一つの状態DBを選び、Mac側journalを第二のタスクDBにしません。
+標準の通信契約は[共通HTTP MCP](common-mcp-connection.md)と永続outbox/inboxです。各エージェント側のhostが定期pollし、重複排除と本文の永続保存後にACKします。[受信supervisor](receive-supervisor.md)はモデルを呼ばず、受信だけを反復します。製品名による配送分岐や、HABから製品実行APIを起動する専用adapterは標準接続へ追加しません。
+
+質問・回答はTaskなしで送受信できます。既存Task Engineや汎用ジョブは任意の実行連携であり、受信・ACKから自動でTaskを作りません。その連携を明示的に使う場合だけ、実行receiptを照合し、一つのTask状態DBを選びます。Mac側journalを第二のタスクDBにしません。
 
 担当agent、実行tool、実行環境、workspace、完了条件は別の概念です。Claude Code・Codex・Cursorを使う場合も、その名前を指定しただけでは権限や接続を得られません。実際の主体と実行境界の確認が必要です。
 
 ## 最小権限と承認
 
-認証済み主体・client・scope・静的policyから操作と宛先を決めます。引数のagent名、自然言語の「readonly」、proxy headerを認証として扱いません。初期契約は固定payloadで、並列1のHermes実行を基本にします。個人データ、自由な転送先、shell、既存profileの広い権限は追加のレビュー対象です。
+認証済み主体・client・scope・静的policyから操作と宛先を決めます。引数のagent名、自然言語の「readonly」、proxy headerを認証として扱いません。固定payload・並列1のHermes実行は、既存の限定Task試験の契約です。通常のMCPメッセージ接続の要件にはしません。受信後の実行には受信側の既存policyと承認機構を適用し、外部本文を所有者の直接指示や承認へ昇格させません。HAB独自の一律no-tools制約や毎回の返信承認を標準接続へ強制しません。個人データ、転送、shell等の許可範囲と必要な承認は受信側で確認します。
 
 sourceのcommit/pushは、外部公開経路、新credential、OAuth grant、常駐process、課金契約や実agent実行の承認を兼ねません。必要な承認は接続先・scope・データ・時間・停止方法を具体化して取ります。
 

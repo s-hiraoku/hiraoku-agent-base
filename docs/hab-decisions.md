@@ -8,7 +8,7 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | ADR-001 / 採用 | agentの判断を保持し、共通Hubは依頼・進捗・結果を仲介する                                                                 | 中央の単一super-agentへの統合は当面不採用。個人文脈を全agentへ複製しない                                                         |
 | ADR-002 / 採用 | 現本番候補はMac＋SQLite。状態DBは一つ                                                                                    | Worker/D1核とmockを移植性のため維持。Sites/D1本番は保留で、現在のpilotでは使わない                                               |
-| ADR-003 / 採用 | HTTP MCPと外向きMac worker、独立Hermes Runs、durable receiptを使う                                                       | A2Aは初期版で当面不採用。Desktop session/API/authの流用もしない                                                                  |
+| ADR-003 / 採用 | 既存の限定Task試験ではHTTP MCPと外向きMac worker、独立Hermes Runs、durable receiptを使う。標準通信の接続条件はADR-015で区別する                                                       | A2Aは初期版で当面不採用。Desktop session/API/authの流用もしない                                                                  |
 | ADR-004 / 採用 | 原子的claim、lease/fence、要求idempotency、監査/outboxで失敗を扱う                                                       | exactly-once配送を保証しない。有限retryと受信側dedup、未知runの照合が必要                                                        |
 | ADR-005 / 採用 | 固定task、最小scope、並列1、実tool/import境界を最初の受入れにする                                                        | 任意shell・自由入力・自由な宛先・個人データ・自律follow-upは当面不採用                                                           |
 | ADR-006 / 採用 | Auth0をidentity候補とし、主体/clientを分離。未設定は拒否                                                                 | 本番設定・無料feature・client登録方式は未確認。service credentialをuser consentの代わりにしない                                  |
@@ -20,6 +20,19 @@
 | ADR-012 / 保留 | 競合は設計参考として保存し、部品単位で比較する                                                                           | 導入・置換・migrationは未決定。browser本人sessionによるdot代理操作は初期HAB接続に採用しない                                      |
 | ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-relay-spec.md)を通信設計に採用。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
 | ADR-014 / 採用 | 2026-10-25 JST：[認証は参加グループ単位、Botの切り分けはアドレス単位](relay-auth-groups.md)。1認証主体に1件または複数の所属個体を紐付ける | グループ内のBot本人性は要求しない。グループ外の名義使用・受信箱閲覧を拒否。Registryのopt-in拡張を実装。基本5操作のMCP名義選択を実装。常用token更新は未実装で、稼働設定やgrantを変更しない |
+
+## ADR-015 / 採用：共通MCP通信と受信側の判断を分離する
+
+2026-11-04 UTC。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receive-supervisor.md)、[Relay責務](hab-relay-spec.md#3-構成と責務)とする。
+
+- HABは認証・名義・宛先・配送・相関を担当する。受信側hostが定期poll・重複排除・永続保存後ACKを行う。ACKは表示・引受け・実行・承認・完了を証明しない。
+- 内容の判断、返信、作業の実行、既存の権限・承認の適用は受信エージェント側が担当する。HABは製品専用モデルrunnerや承認実装を標準接続へ組み込まない。
+- 通常の質問・回答にはTaskを要求しない。既存の限定Task、汎用テキストTask、A2A入口、NATS実行portは明示構成する任意機能として保持する。任意機能の実行状態やjournal契約を、共通MCP接続の必須条件へ広げない。
+- 製品の既存MCP設定、受信契機、保存先、表示能力の確認は必要である。製品実行APIをHABが呼ぶ専用adapterの追加とは区別する。正式なwake・表示APIがなければ、その能力を未対応・未確認として報告する。
+
+照合基準のmain `c667095` では、ReceiveSupervisorはreceiveのみを反復し、汎用Task入口は通常Relayへ未配線だった。稼働経路の破損を確認した判断ではない。未マージ[PR #132](https://github.com/s-hiraoku/hiraoku-agent-base/pull/132)はHermes固有実行・承認の隔離候補であり、標準接続として採用しない。既存の受信経路を置換するものとして進めず、mainへの取込み・本番有効化は本判断に含めない。
+
+通常通信を任意Task実行に統合する案と、全エージェントへ新たな共通承認UIを必須にする案は採用しない。受信側既存機構へ権限と判断を残すためである。回帰検証は[設計境界の照合記録](implementation/design-boundary-alignment.md)を参照。
 
 ## 次に決める内容
 
