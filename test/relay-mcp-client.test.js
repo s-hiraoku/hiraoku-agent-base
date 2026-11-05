@@ -277,7 +277,6 @@ test("only equivalent text/structured fixed tool errors retain semantic codes", 
     "invalid_ack",
     "forbidden",
     "idempotency_conflict",
-    "attachment_store_unavailable",
     "expired_before_acceptance",
     "ack_idempotency_conflict",
   ]) {

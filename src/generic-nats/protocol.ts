@@ -17,10 +17,7 @@ export const textNatsLimits: ContractLimits = Object.freeze({
   envelope_bytes: 393216,
   text_bytes: 32768,
   data_bytes: 262144,
-  attachment_bytes: 1,
-  total_attachment_bytes: 1,
   parts: 1,
-  attachments: 1,
   json_depth: 20,
   json_nodes: 1000,
 });

@@ -24,22 +24,7 @@ import type {
   Receipt,
   ReceiptQuery,
 } from "./service.ts";
-import type { AttachmentDeliveryPolicy } from "./attachment-delivery.ts";
-import type { AckRequest, ContractLimits } from "./contract.ts";
-import type {
-  AttachmentDeletionPayload,
-  AttachmentDeletionJob,
-  AttachmentDeletionGrant,
-  AttachmentDeletionPolicy,
-  AttachmentDeletionQueue,
-} from "./attachment-deletion.ts";
-import { validateLimits } from "./contract.ts";
-import { parseSubmission, comparisonMaterial } from "./contract.ts";
-import { parseAttachmentRead } from "./attachment-read.ts";
-import type {
-  AttachmentReadRequest,
-  AttachmentReadGrant,
-} from "./attachment-read.ts";
+import type { AckRequest } from "./contract.ts";
 import {
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
@@ -61,11 +46,7 @@ export interface StoreOptions {
   agent_capacity?: AgentCapacityPolicy;
   fair_poll?: boolean;
 }
-/** Trusted host composition: validate durable prepared refs, never caller claims. */
-export interface AttachmentAdmission {
-  check(acceptance: Acceptance): void;
-}
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 const MIGRATION_5 = `
 CREATE TABLE relay_poll_cursors(recipient_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,updated_at INTEGER NOT NULL,fingerprint TEXT NOT NULL);
 CREATE TABLE relay_poll_senders(recipient_id TEXT NOT NULL,sender_id TEXT NOT NULL,accepted_at INTEGER NOT NULL,message_id TEXT NOT NULL,updated_at INTEGER NOT NULL,fingerprint TEXT NOT NULL,PRIMARY KEY(recipient_id,sender_id));
@@ -75,6 +56,8 @@ DELETE FROM relay_poll_senders WHERE recipient_id=NEW.recipient_id AND sender_id
 DELETE FROM relay_poll_cursors WHERE recipient_id=NEW.recipient_id AND NOT EXISTS(SELECT 1 FROM relay_messages WHERE recipient_id=NEW.recipient_id AND state IN ('pending','leased','quarantined'));
 END;
 `;
+const MIGRATION_6 = `DROP TABLE IF EXISTS relay_attachment_deletions;
+DROP TABLE IF EXISTS relay_message_attachments;`;
 type PollPosition = {
   recipient_id: string;
   sender_id: string;
@@ -84,26 +67,6 @@ type PollPosition = {
 type SenderPosition = PollPosition & {
   accepted_at: number;
   message_id: string;
-};
-
-const MIGRATION_4 = `
-CREATE TABLE relay_message_attachments(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,refs TEXT NOT NULL,fingerprint TEXT NOT NULL,PRIMARY KEY(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages);
-CREATE TABLE relay_attachment_deletions(job_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,payload TEXT NOT NULL,fingerprint TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','leased','done','parked')),generation INTEGER NOT NULL DEFAULT 0,token_hash TEXT,lease_until INTEGER,attempts INTEGER NOT NULL DEFAULT 0,next_retry_at INTEGER NOT NULL DEFAULT 0,last_error TEXT,created_at INTEGER NOT NULL,UNIQUE(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages);
-CREATE INDEX relay_attachment_deletion_ready ON relay_attachment_deletions(state,next_retry_at,lease_until);
-CREATE TRIGGER relay_attachment_refs_immutable BEFORE UPDATE ON relay_message_attachments BEGIN SELECT RAISE(ABORT,'immutable');END;
-CREATE TRIGGER relay_attachment_deletion_immutable BEFORE UPDATE OF job_id,sender_id,message_id,payload,fingerprint,created_at ON relay_attachment_deletions BEGIN SELECT RAISE(ABORT,'immutable');END;
-`;
-type DeletionRow = {
-  job_id: string;
-  sender_id: string;
-  message_id: string;
-  payload: string;
-  fingerprint: string;
-  state: "pending" | "leased" | "done" | "parked";
-  generation: number;
-  token_hash: string | null;
-  lease_until: number | null;
-  attempts: number;
 };
 
 const TABLES = `
@@ -168,43 +131,16 @@ function receipt(row: Row): Receipt {
     state: row.state,
   };
 }
-export class SQLiteRelayStore
-  implements DeliveryStore, AttachmentDeletionQueue
-{
+export class SQLiteRelayStore implements DeliveryStore {
   readonly #db: DatabaseSync;
   readonly #options: StoreOptions;
-  readonly #attachments: AttachmentAdmission | undefined;
-  readonly #attachmentDelivery: AttachmentDeliveryPolicy | undefined;
   #ready = false;
-  constructor(
-    path: string,
-    options: StoreOptions,
-    attachments?: AttachmentAdmission,
-    attachmentDelivery?: AttachmentDeliveryPolicy,
-  ) {
+  constructor(path: string, options: StoreOptions) {
     if (
       options.fair_poll !== undefined &&
       typeof options.fair_poll !== "boolean"
     )
       throw new RelayError("invalid_store_options");
-    if (attachmentDelivery !== undefined) {
-      if (!attachments || typeof attachmentDelivery.check !== "function")
-        throw new RelayError("invalid_attachment_delivery_policy");
-      validateLimits(attachmentDelivery.limits);
-    }
-    this.#attachmentDelivery =
-      attachmentDelivery === undefined
-        ? undefined
-        : Object.freeze({
-            limits: Object.freeze({ ...attachmentDelivery.limits }),
-            check: attachmentDelivery.check.bind(attachmentDelivery),
-          });
-    if (attachments !== undefined && typeof attachments.check !== "function")
-      throw new RelayError("invalid_attachment_admission");
-    this.#attachments =
-      attachments === undefined
-        ? undefined
-        : Object.freeze({ check: attachments.check.bind(attachments) });
     for (const k of [
       "max_pending",
       "max_records",
@@ -274,9 +210,7 @@ export class SQLiteRelayStore
       .digest("hex");
   }
   /** Caller must explicitly authorize schema application to a dedicated Relay database. */
-  migrate(attachmentLimits?: ContractLimits): void {
-    attachmentLimits ??= this.#attachmentDelivery?.limits;
-    if (attachmentLimits) validateLimits(attachmentLimits);
+  migrate(): void {
     this.#ready = false;
     this.#tx(() => {
       const table = this.#db
@@ -303,6 +237,7 @@ export class SQLiteRelayStore
           rows[0].version !== 2 &&
           rows[0].version !== 3 &&
           rows[0].version !== 4 &&
+          rows[0].version !== 5 &&
           rows[0].version !== SCHEMA_VERSION)
       )
         throw new RelayError("unsupported_schema");
@@ -342,46 +277,14 @@ UPDATE relay_schema SET version=2;`);
           .run(MAX_ACK_RETRY_MS, RECORD_RETENTION_MS);
         this.#db.exec("UPDATE relay_schema SET version=3");
       }
-      if (Number(rows[0].version) < 4) {
-        this.#db.exec(MIGRATION_4);
-        const live = this.#db
-          .prepare("SELECT * FROM relay_messages WHERE body IS NOT NULL")
-          .all();
-        if (live.length > this.#options.max_records)
-          throw new RelayError("capacity_exceeded");
-        for (const raw of live) {
-          const body = JSON.parse(String(raw.body));
-          if (
-            !body.body.parts.some(
-              (p: { type: string }) => p.type === "attachment",
-            )
-          )
-            continue;
-          if (!attachmentLimits)
-            throw new RelayError("attachment_migration_limits_required");
-          const message = parseSubmission(body, attachmentLimits),
-            row = raw as unknown as Row;
-          if (
-            row.fingerprint !==
-            createHmac("sha256", this.#options.fingerprint_key)
-              .update(
-                comparisonMaterial(row.sender_id, message, attachmentLimits),
-              )
-              .digest("hex")
-          )
-            throw new RelayError("attachment_reference_mismatch");
-          this.#saveAttachmentRefs(
-            row,
-            message.body.parts
-              .filter((p) => p.type === "attachment")
-              .map((p) => p.attachment_id),
-          );
-        }
-        this.#db.exec("UPDATE relay_schema SET version=4");
-      }
       if (Number(rows[0].version) < 5) {
         this.#db.exec(MIGRATION_5);
         this.#db.exec("UPDATE relay_schema SET version=5");
+      }
+      if (Number(rows[0].version) < 6) {
+        // Schema 4 attachment tables are dropped, not migrated; schema 4/5 databases keep opening.
+        this.#db.exec(MIGRATION_6);
+        this.#db.exec("UPDATE relay_schema SET version=6");
       }
       this.#db
         .prepare(
@@ -401,9 +304,6 @@ UPDATE relay_schema SET version=2;`);
           .get()
       )
         throw new RelayError("poll_cursor_schema_unavailable");
-      this.#db
-        .prepare("SELECT job_id FROM relay_attachment_deletions LIMIT 0")
-        .all();
     });
     this.#ready = true;
   }
@@ -423,7 +323,6 @@ UPDATE relay_schema SET version=2;`);
       )
       .all(now, limit);
     for (const row of rows) {
-      this.#enqueueAttachmentDeletion(row as unknown as Row, "expired", now);
       this.#audit(
         String(row.sender_id),
         String(row.message_id),
@@ -452,9 +351,6 @@ UPDATE relay_schema SET version=2;`);
         sender_id: sender,
         comparison_material: material,
       } = acceptance;
-      const hasAttachments = m.body.parts.some((p) => p.type === "attachment");
-      if (hasAttachments && !this.#attachments)
-        throw new RelayError("attachment_store_unavailable");
       const fingerprint = createHmac("sha256", this.#options.fingerprint_key)
         .update(material)
         .digest("hex");
@@ -480,14 +376,6 @@ UPDATE relay_schema SET version=2;`);
       if (sent > now + this.#options.max_clock_skew_ms)
         throw new RelayError("clock_skew");
       if (expires <= now) throw new RelayError("expired_before_acceptance");
-      if (hasAttachments) {
-        const checked: unknown = this.#attachments!.check(acceptance);
-        if (checked !== undefined) {
-          if (checked && typeof checked === "object" && "then" in checked)
-            void Promise.resolve(checked).catch(() => {});
-          throw new RelayError("attachment_binding_unavailable");
-        }
-      }
       this.#expire(now);
       const total = this.#db
         .prepare("SELECT count(*) n FROM relay_messages")
@@ -588,13 +476,6 @@ UPDATE relay_schema SET version=2;`);
           size,
           m.kind,
         );
-      if (hasAttachments)
-        this.#saveAttachmentRefs(
-          row,
-          m.body.parts
-            .filter((p) => p.type === "attachment")
-            .map((p) => p.attachment_id),
-        );
       this.#db
         .prepare(
           "INSERT INTO relay_deliveries(sender_id,message_id,recipient_id,state) VALUES(?,?,?,'pending')",
@@ -620,82 +501,6 @@ UPDATE relay_schema SET version=2;`);
         .get(q.sender_id, q.message_id) as Row | undefined;
       if (!row) throw new RelayError("not_found");
       return receipt(row);
-    });
-  }
-  /** Host-only receiver read guard. This does not lease, ACK or expose a public tool. */
-  withAttachmentRead<T>(
-    input: AttachmentReadRequest,
-    limits: ContractLimits,
-    authorize: ReceiveAuthorization,
-    action: (grant: AttachmentReadGrant) => T,
-  ): T {
-    const request = parseAttachmentRead(input);
-    return this.#tx(() => {
-      const receiver = authorize(),
-        now = this.#now();
-      if (!this.#attachments)
-        throw new RelayError("attachment_store_unavailable");
-      const row = this.#db
-        .prepare(
-          "SELECT * FROM relay_messages WHERE sender_id=? AND message_id=? AND recipient_id=?",
-        )
-        .get(request.sender_id, request.message_id, receiver) as
-        (Row & { body: string | null }) | undefined;
-      if (
-        !row ||
-        !row.body ||
-        row.expires_at <= now ||
-        !["pending", "leased"].includes(row.state)
-      )
-        throw new RelayError("attachment_read_not_found");
-      if (authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver)
-        throw new RelayError("forbidden");
-      const message = parseSubmission(JSON.parse(row.body), limits);
-      const material = comparisonMaterial(row.sender_id, message, limits);
-      if (
-        row.fingerprint !==
-        createHmac("sha256", this.#options.fingerprint_key)
-          .update(material)
-          .digest("hex")
-      )
-        throw new RelayError("attachment_integrity_failed");
-      if (
-        message.recipient_id !== receiver ||
-        message.message_id !== request.message_id ||
-        Date.parse(message.expires_at) !== row.expires_at ||
-        !message.body.parts.some(
-          (p) =>
-            p.type === "attachment" &&
-            p.attachment_id === request.attachment_id,
-        )
-      )
-        throw new RelayError("attachment_read_not_found");
-      let alive = true;
-      const assertCurrent = () => {
-        if (!alive || row.expires_at <= this.#now())
-          throw new RelayError("attachment_read_not_found");
-        if (
-          authorize() !== receiver ||
-          authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
-        )
-          throw new RelayError("forbidden");
-      };
-      try {
-        const result = action({
-          sender_id: row.sender_id,
-          message,
-          receipt: receipt(row),
-          assertCurrent,
-        });
-        if (result && typeof result === "object" && "then" in result) {
-          void Promise.resolve(result).catch(() => {});
-          throw new RelayError("attachment_read_failed");
-        }
-        assertCurrent();
-        return result;
-      } finally {
-        alive = false;
-      }
     });
   }
   #hash(domain: string, value: string): string {
@@ -929,10 +734,6 @@ UPDATE relay_schema SET version=2;`);
           attempts: number;
         };
         if (this.#options.fair_poll) this.#advancePoll(receiver, row);
-        const hasAttachments = JSON.parse(row.body).body.parts.some(
-          (p: { type: string }) => p.type === "attachment",
-        );
-        if (hasAttachments && !this.#attachmentDelivery) continue;
         try {
           if (
             authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
@@ -941,30 +742,6 @@ UPDATE relay_schema SET version=2;`);
         } catch (e) {
           if (e instanceof RelayError && e.code === "forbidden") continue;
           throw e;
-        }
-        if (hasAttachments) {
-          try {
-            this.#checkAttachmentDelivery(row);
-            if (
-              authorize({ sender_id: row.sender_id, kind: row.kind }) !==
-              receiver
-            )
-              throw new RelayError("forbidden");
-            if (row.expires_at <= this.#now())
-              throw new RelayError("expired_before_acceptance");
-          } catch (e) {
-            if (
-              this.#options.fair_poll &&
-              e instanceof RelayError &&
-              [
-                "attachment_binding_unavailable",
-                "attachment_delivery_unavailable",
-                "forbidden",
-              ].includes(e.code)
-            )
-              continue;
-            throw e;
-          }
         }
         const token = Buffer.from(randomBytes(32)).toString("base64url"),
           generation = row.generation + 1;
@@ -1033,17 +810,6 @@ UPDATE relay_schema SET version=2;`);
       if (!row) throw new RelayError("invalid_ack");
       if (authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver)
         throw new RelayError("forbidden");
-      const hasAttachments = this.#attachmentRefs(row) !== null;
-      if (
-        row.body &&
-        JSON.parse(row.body).body.parts.some(
-          (p: { type: string }) => p.type === "attachment",
-        ) &&
-        !hasAttachments
-      )
-        throw new RelayError("attachment_reference_mismatch");
-      if (hasAttachments && !this.#attachmentDelivery)
-        throw new RelayError("attachment_delivery_unavailable");
       const fingerprint = this.#hash("ack", JSON.stringify(request));
       const existing = this.#db
         .prepare(
@@ -1078,16 +844,6 @@ UPDATE relay_schema SET version=2;`);
         row.expires_at <= now
       )
         throw new RelayError("invalid_ack");
-      if (hasAttachments) {
-        this.#checkAttachmentDelivery(row);
-        if (
-          authorize({ sender_id: row.sender_id, kind: row.kind }) !== receiver
-        )
-          throw new RelayError("forbidden");
-        if (row.expires_at <= this.#now() || row.lease_until <= this.#now())
-          throw new RelayError("invalid_ack");
-      }
-      this.#enqueueAttachmentDeletion(row, "acked", now);
       const receiptId = randomUUID();
       this.#db
         .prepare("INSERT INTO relay_ack_receipts VALUES(?,?,?,?,?,?,?)")
@@ -1146,7 +902,7 @@ UPDATE relay_schema SET version=2;`);
       const expired = this.#expire(now, limit);
       const rows = this.#db
         .prepare(
-          "SELECT sender_id,message_id FROM relay_messages WHERE state IN ('acked','expired') AND retain_until<=? AND expires_at+?<=? AND terminal_at+?<=? AND NOT EXISTS(SELECT 1 FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id AND a.acked_at+?+?>?) AND (state!='acked' OR EXISTS(SELECT 1 FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id)) AND NOT EXISTS(SELECT 1 FROM relay_attachment_deletions j WHERE j.sender_id=relay_messages.sender_id AND j.message_id=relay_messages.message_id AND j.state!='done') AND relay_gc_safe(message_id,expires_at)=1 ORDER BY retain_until,sender_id,message_id LIMIT ?",
+          "SELECT sender_id,message_id FROM relay_messages WHERE state IN ('acked','expired') AND retain_until<=? AND expires_at+?<=? AND terminal_at+?<=? AND NOT EXISTS(SELECT 1 FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id AND a.acked_at+?+?>?) AND (state!='acked' OR EXISTS(SELECT 1 FROM relay_ack_receipts a WHERE a.sender_id=relay_messages.sender_id AND a.message_id=relay_messages.message_id)) AND relay_gc_safe(message_id,expires_at)=1 ORDER BY retain_until,sender_id,message_id LIMIT ?",
         )
         .all(
           now,
@@ -1161,8 +917,6 @@ UPDATE relay_schema SET version=2;`);
         );
       for (const row of rows) {
         for (const table of [
-          "relay_attachment_deletions",
-          "relay_message_attachments",
           "relay_ack_receipts",
           "relay_deliveries",
           "relay_delivery_audit",
@@ -1199,346 +953,6 @@ UPDATE relay_schema SET version=2;`);
         threads: threads.length,
         safety_held: held,
       };
-    });
-  }
-  #checkAttachmentDelivery(row: Row & { body: string | null }): void {
-    if (!this.#attachmentDelivery || !row.body)
-      throw new RelayError("attachment_delivery_unavailable");
-    const limits = this.#attachmentDelivery.limits,
-      message = parseSubmission(JSON.parse(row.body), limits),
-      material = comparisonMaterial(row.sender_id, message, limits);
-    if (
-      row.fingerprint !==
-        createHmac("sha256", this.#options.fingerprint_key)
-          .update(material)
-          .digest("hex") ||
-      JSON.stringify(this.#attachmentRefs(row)) !==
-        JSON.stringify(
-          message.body.parts
-            .filter((p) => p.type === "attachment")
-            .map((p) => p.attachment_id),
-        )
-    )
-      throw new RelayError("attachment_reference_mismatch");
-    const result: unknown = this.#attachmentDelivery.check(
-      { message, sender_id: row.sender_id, comparison_material: material },
-      receipt(row),
-    );
-    if (result !== undefined) {
-      if (result && typeof result === "object" && "then" in result)
-        void Promise.resolve(result).catch(() => {});
-      throw new RelayError("attachment_delivery_unavailable");
-    }
-  }
-  #saveAttachmentRefs(row: Row, ids: string[]): void {
-    if (
-      !ids.length ||
-      ids.length > 64 ||
-      new Set(ids).size !== ids.length ||
-      ids.some(
-        (id) =>
-          typeof id !== "string" ||
-          !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(id),
-      )
-    )
-      throw new RelayError("attachment_reference_mismatch");
-    const refs = JSON.stringify(ids);
-    this.#db
-      .prepare("INSERT INTO relay_message_attachments VALUES(?,?,?,?)")
-      .run(
-        row.sender_id,
-        row.message_id,
-        refs,
-        this.#hash(
-          "attachment-refs-v1",
-          JSON.stringify([
-            row.sender_id,
-            row.message_id,
-            row.recipient_id,
-            row.receipt_id,
-            row.accepted_at,
-            row.expires_at,
-            ids,
-          ]),
-        ),
-      );
-  }
-  #attachmentRefs(row: Row): string[] | null {
-    const refs = this.#db
-      .prepare(
-        "SELECT refs,fingerprint FROM relay_message_attachments WHERE sender_id=? AND message_id=?",
-      )
-      .get(row.sender_id, row.message_id);
-    if (!refs) return null;
-    const ids = JSON.parse(String(refs.refs)) as string[];
-    if (
-      !Array.isArray(ids) ||
-      !ids.length ||
-      ids.length > 64 ||
-      new Set(ids).size !== ids.length ||
-      refs.fingerprint !==
-        this.#hash(
-          "attachment-refs-v1",
-          JSON.stringify([
-            row.sender_id,
-            row.message_id,
-            row.recipient_id,
-            row.receipt_id,
-            row.accepted_at,
-            row.expires_at,
-            ids,
-          ]),
-        )
-    )
-      throw new RelayError("attachment_reference_mismatch");
-    return ids;
-  }
-  #enqueueAttachmentDeletion(
-    row: Row,
-    reason: "acked" | "expired",
-    now: number,
-  ): void {
-    const ids = this.#attachmentRefs(row);
-    if (!ids) return;
-    const payload = JSON.stringify({
-      receipt: { ...receipt(row), state: reason },
-      attachment_ids: ids,
-      reason,
-      terminal_at: new Date(
-        reason === "expired" ? row.expires_at : now,
-      ).toISOString(),
-    });
-    const prior = this.#db
-      .prepare(
-        "SELECT payload FROM relay_attachment_deletions WHERE sender_id=? AND message_id=?",
-      )
-      .get(row.sender_id, row.message_id);
-    if (prior) {
-      if (prior.payload !== payload)
-        throw new RelayError("attachment_deletion_conflict");
-      return;
-    }
-    const id = randomUUID();
-    this.#db
-      .prepare(
-        "INSERT INTO relay_attachment_deletions(job_id,sender_id,message_id,payload,fingerprint,state,created_at) VALUES(?,?,?,?,?,'pending',?)",
-      )
-      .run(
-        id,
-        row.sender_id,
-        row.message_id,
-        payload,
-        this.#hash("attachment-delete-v1", JSON.stringify([id, payload])),
-        now,
-      );
-  }
-  #deletionAuthorization(authorize: () => void): void {
-    try {
-      const result: unknown = authorize();
-      if (result !== undefined) {
-        if (result && typeof result === "object" && "then" in result)
-          void Promise.resolve(result).catch(() => {});
-        throw Error();
-      }
-    } catch {
-      throw new RelayError("forbidden");
-    }
-  }
-  #deletionPolicy(policy: AttachmentDeletionPolicy): void {
-    if (
-      !policy ||
-      (
-        ["lease_ms", "max_attempts", "retry_base_ms", "retry_cap_ms"] as const
-      ).some((k) => !Number.isSafeInteger(policy[k]) || policy[k] < 1) ||
-      policy.lease_ms > 3600000 ||
-      policy.max_attempts > 1000 ||
-      policy.retry_cap_ms < policy.retry_base_ms ||
-      policy.retry_cap_ms > 3600000
-    )
-      throw new RelayError("invalid_attachment_deletion_policy");
-  }
-  #deletionPayload(row: DeletionRow): AttachmentDeletionPayload {
-    if (
-      row.fingerprint !==
-      this.#hash(
-        "attachment-delete-v1",
-        JSON.stringify([row.job_id, row.payload]),
-      )
-    )
-      throw new RelayError("attachment_deletion_conflict");
-    const payload = JSON.parse(row.payload) as AttachmentDeletionPayload;
-    const message = this.#db
-      .prepare(
-        "SELECT * FROM relay_messages WHERE sender_id=? AND message_id=?",
-      )
-      .get(row.sender_id, row.message_id) as Row | undefined;
-    if (
-      !message ||
-      message.state !== payload.reason ||
-      !["acked", "expired"].includes(message.state) ||
-      JSON.stringify(payload.receipt) !== JSON.stringify(receipt(message)) ||
-      JSON.stringify(payload.attachment_ids) !==
-        JSON.stringify(this.#attachmentRefs(message))
-    )
-      throw new RelayError("attachment_deletion_conflict");
-    return payload;
-  }
-  #fencedDeletion(job: AttachmentDeletionJob, done = false): DeletionRow {
-    if (
-      !job ||
-      typeof job.job_id !== "string" ||
-      typeof job.lease_token !== "string" ||
-      !Number.isSafeInteger(job.generation)
-    )
-      throw new RelayError("stale_attachment_deletion");
-    const row = this.#db
-      .prepare("SELECT * FROM relay_attachment_deletions WHERE job_id=?")
-      .get(job.job_id) as DeletionRow | undefined;
-    if (
-      !row ||
-      row.generation !== job.generation ||
-      row.token_hash !==
-        this.#hash("attachment-delete-lease", job.lease_token) ||
-      (!(done && row.state === "done") &&
-        (row.state !== "leased" ||
-          row.lease_until === null ||
-          row.lease_until <= this.#now()))
-    )
-      throw new RelayError("stale_attachment_deletion");
-    const payload = this.#deletionPayload(row);
-    if (
-      JSON.stringify(payload) !==
-      JSON.stringify({
-        receipt: job.receipt,
-        attachment_ids: job.attachment_ids,
-        reason: job.reason,
-        terminal_at: job.terminal_at,
-      })
-    )
-      throw new RelayError("attachment_deletion_conflict");
-    return row;
-  }
-  claimAttachmentDeletion(
-    authorize: () => void,
-    policy: AttachmentDeletionPolicy,
-  ): AttachmentDeletionJob | null {
-    this.#deletionPolicy(policy);
-    return this.#tx(() => {
-      const now = this.#now();
-      this.#deletionAuthorization(authorize);
-      const row = this.#db
-        .prepare(
-          "SELECT * FROM relay_attachment_deletions WHERE state='pending' AND next_retry_at<=? OR state='leased' AND lease_until<=? ORDER BY created_at,job_id LIMIT 1",
-        )
-        .get(now, now) as DeletionRow | undefined;
-      if (!row) return null;
-      if (row.attempts >= policy.max_attempts) {
-        this.#db
-          .prepare(
-            "UPDATE relay_attachment_deletions SET state='parked',token_hash=NULL,lease_until=NULL,last_error='retry_exhausted' WHERE job_id=?",
-          )
-          .run(row.job_id);
-        this.#deletionAuthorization(authorize);
-        return null;
-      }
-      const payload = this.#deletionPayload(row),
-        token = Buffer.from(randomBytes(32)).toString("base64url"),
-        until = now + policy.lease_ms,
-        generation = row.generation + 1;
-      this.#db
-        .prepare(
-          "UPDATE relay_attachment_deletions SET state='leased',generation=?,token_hash=?,lease_until=?,attempts=attempts+1 WHERE job_id=?",
-        )
-        .run(
-          generation,
-          this.#hash("attachment-delete-lease", token),
-          until,
-          row.job_id,
-        );
-      this.#deletionAuthorization(authorize);
-      return {
-        ...payload,
-        job_id: row.job_id,
-        generation,
-        lease_token: token,
-        lease_until: new Date(until).toISOString(),
-      };
-    });
-  }
-  withAttachmentDeletion<T>(
-    job: AttachmentDeletionJob,
-    authorize: () => void,
-    action: (grant: AttachmentDeletionGrant) => T,
-  ): T {
-    return this.#tx(() => {
-      this.#now();
-      this.#deletionAuthorization(authorize);
-      const row = this.#fencedDeletion(job),
-        payload = this.#deletionPayload(row);
-      let alive = true;
-      const assertCurrent = () => {
-        if (!alive) throw new RelayError("stale_attachment_deletion");
-        this.#deletionAuthorization(authorize);
-        this.#fencedDeletion(job);
-      };
-      try {
-        const result = action({ ...payload, assertCurrent });
-        if (result && typeof result === "object" && "then" in result) {
-          void Promise.resolve(result).catch(() => {});
-          throw new RelayError("attachment_deletion_conflict");
-        }
-        assertCurrent();
-        return result;
-      } finally {
-        alive = false;
-      }
-    });
-  }
-  completeAttachmentDeletion(
-    job: AttachmentDeletionJob,
-    authorize: () => void,
-  ): void {
-    this.#tx(() => {
-      this.#now();
-      this.#deletionAuthorization(authorize);
-      const row = this.#fencedDeletion(job, true);
-      if (row.state === "done") return;
-      this.#db
-        .prepare(
-          "UPDATE relay_attachment_deletions SET state='done',lease_until=NULL,last_error=NULL WHERE job_id=?",
-        )
-        .run(row.job_id);
-      this.#deletionAuthorization(authorize);
-      if (row.lease_until! <= this.#now())
-        throw new RelayError("stale_attachment_deletion");
-    });
-  }
-  failAttachmentDeletion(
-    job: AttachmentDeletionJob,
-    authorize: () => void,
-    policy: AttachmentDeletionPolicy,
-  ): void {
-    this.#deletionPolicy(policy);
-    this.#tx(() => {
-      const now = this.#now();
-      this.#deletionAuthorization(authorize);
-      const row = this.#fencedDeletion(job);
-      const backoff = Math.min(
-        policy.retry_cap_ms,
-        policy.retry_base_ms * 2 ** Math.min(30, row.attempts - 1),
-      );
-      this.#db
-        .prepare(
-          "UPDATE relay_attachment_deletions SET state=?,token_hash=NULL,lease_until=NULL,next_retry_at=?,last_error='delete_failed' WHERE job_id=?",
-        )
-        .run(
-          row.attempts >= policy.max_attempts ? "parked" : "pending",
-          now + backoff,
-          row.job_id,
-        );
-      this.#deletionAuthorization(authorize);
-      if (row.lease_until! <= this.#now())
-        throw new RelayError("stale_attachment_deletion");
     });
   }
   close(): void {

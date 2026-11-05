@@ -11,10 +11,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -325,7 +322,7 @@ test("threads stored before pair scoping keep working for their own pair only", 
   );
   assert.equal(db.prepare("SELECT count(*) n FROM relay_threads").get().n, 2);
 });
-test("unimplemented attachment storage fails closed rather than issuing a false acceptance", (t) => {
+test("an attachment part is refused by the contract rather than issuing a false acceptance", (t) => {
   const f = fixture(t),
     m = message();
   m.body.parts.push({
@@ -335,10 +332,7 @@ test("unimplemented attachment storage fails closed rather than issuing a false 
     size_bytes: 10,
     sha256: "a".repeat(64),
   });
-  code(
-    () => f.service.submit("connection-a", m),
-    "attachment_store_unavailable",
-  );
+  code(() => f.service.submit("connection-a", m), "invalid_contract");
   code(() => f.service.status("connection-a", m.message_id), "not_found");
 });
 test("opening never applies schema; explicit migration rejects unknown schema and changed fingerprint key", (t) => {

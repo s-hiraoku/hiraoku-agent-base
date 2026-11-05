@@ -66,9 +66,6 @@ const regressionFiles = [
   "relay-inbox-maintenance",
   "relay-outbox-maintenance",
   "relay-maintenance",
-  "relay-attachment-delivery",
-  "relay-attachment-inbox",
-  "relay-snapshot-bundle",
   "task-bridge",
   "task-bridge-replies",
 ].map((name) => `test/${name}.test.js`);

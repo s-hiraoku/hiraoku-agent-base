@@ -5,8 +5,6 @@ import { once } from "node:events";
 import { WriterAdmission } from "../src/relay/writer-admission.ts";
 import { RelayHttpGateway } from "../src/relay/http.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { HabAttachmentHttpGateway } from "../src/hab/attachment-http.ts";
-import { AttachmentHttpGateway } from "../src/relay/attachment-http.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
 import { createRelayNodeHandler } from "../src/relay/http-node.ts";
 import {
@@ -14,15 +12,10 @@ import {
   policy,
   call,
   request,
-  decode,
   message,
   tick,
 } from "./relay-http-fixtures.js";
 import { fixture as registryFixture } from "./hab-registry-fixtures.js";
-import {
-  fixture as attachmentFixture,
-  wire,
-} from "./relay-attachment-mcp-fixtures.js";
 const admissionPolicy = {
   max_individuals: 4,
   max_waiting_per_individual: 4,
@@ -376,111 +369,6 @@ test("writer HTTP: HAB identity port honors operation-specific rights without gr
     (await call(g, "relay_resolve", { address: a.address }, as("b"))).response
       .status,
     403,
-  );
-});
-const attachmentCalls = [
-  "begin",
-  "status",
-  "put",
-  "finalize",
-  "cancel",
-  "read",
-];
-for (const tool of attachmentCalls) {
-  test(
-    "writer HTTP: optional attachment " +
-      tool +
-      " shares the verified individual's tool budget",
-    async (t) => {
-      const f = attachmentFixture(t),
-        admission = new WriterAdmission(
-          { ...admissionPolicy, requests_per_window: 1 },
-          habWriterIdentity(f.registry),
-        );
-      t.after(() => admission.close());
-      const g = new HabAttachmentHttpGateway(
-        f.service,
-        f.operations,
-        wire,
-        policy,
-        f.audit,
-        f.verifier,
-        admission,
-      );
-      const r = await f.begin(),
-        who = tool === "read" ? "b" : "a";
-      const args = {
-        begin: f.beginInput(),
-        status: f.ref(r),
-        put: {
-          ...f.ref(r),
-          offset: 0,
-          data_base64: "AP+AAQ==",
-        },
-        finalize: f.ref(r),
-        cancel: f.ref(r),
-        read: f.readInput(r),
-      };
-      assert.equal(
-        (await call(g, "relay_poll", {}, as(who))).response.status,
-        200,
-      );
-      assert.equal(
-        (await call(g, "relay_attachment_" + tool, args[tool], as(who)))
-          .response.status,
-        429,
-      );
-      assert.equal((await f.list(g)).length, 11);
-    },
-  );
-}
-test("writer HTTP: directory lookup and attachment uploads share the same HAB budget", async (t) => {
-  const f = attachmentFixture(t),
-    admission = new WriterAdmission(
-      { ...admissionPolicy, requests_per_window: 1 },
-      habWriterIdentity(f.registry),
-    );
-  t.after(() => admission.close());
-  const g = new HabAttachmentHttpGateway(
-    f.service,
-    f.operations,
-    wire,
-    policy,
-    f.audit,
-    f.verifier,
-    admission,
-  );
-  assert.equal(
-    (await call(g, "relay_resolve", { address: f.b.address })).response.status,
-    200,
-  );
-  assert.equal(
-    (await call(g, "relay_attachment_begin", f.beginInput())).response.status,
-    429,
-  );
-});
-test("writer HTTP: standalone Relay attachment catalog also enforces optional admission", async (t) => {
-  const f = attachmentFixture(t),
-    admission = new WriterAdmission(
-      { ...admissionPolicy, requests_per_window: 1 },
-      habWriterIdentity(f.registry),
-    );
-  t.after(() => admission.close());
-  const g = new AttachmentHttpGateway(
-    f.service,
-    f.operations,
-    wire,
-    policy,
-    f.audit,
-    f.verifier,
-    admission,
-  );
-  const first = await call(g, "relay_attachment_begin", f.beginInput());
-  assert.equal(first.body.result.structuredContent.owner_id, f.a.agent_id);
-  assert.equal((await call(g, "relay_poll")).response.status, 429);
-  assert.equal(
-    (await decode(await g.fetch(request()))).result.tools.length,
-    10,
   );
 });
 test("writer HTTP: native loopback listener applies independent authenticated budgets", async (t) => {

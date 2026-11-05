@@ -39,14 +39,6 @@ export type Json =
   null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Part =
   | { type: "text"; text: string }
-  | {
-      type: "attachment";
-      attachment_id: string;
-      media_type: string;
-      size_bytes: number;
-      sha256: string;
-      filename?: string;
-    }
   | { type: "data"; schema_id: string; schema_version: number; value: Json };
 export interface Submission {
   version: 1;
@@ -64,10 +56,7 @@ export interface ContractLimits {
   envelope_bytes: number;
   text_bytes: number;
   data_bytes: number;
-  attachment_bytes: number;
-  total_attachment_bytes: number;
   parts: number;
-  attachments: number;
   json_depth: number;
   json_nodes: number;
 }
@@ -144,10 +133,7 @@ const limitKeys = [
   "envelope_bytes",
   "text_bytes",
   "data_bytes",
-  "attachment_bytes",
-  "total_attachment_bytes",
   "parts",
-  "attachments",
   "json_depth",
   "json_nodes",
 ] as const;
@@ -208,7 +194,7 @@ function json(
   }
 }
 /** Parses a caller submission only. Caller-supplied sender_id is always rejected.
- * Authentication, authorization, attachment finalize/ownership and DB-time checks
+ * Authentication, authorization and DB-time checks
  * belong to the service boundary and are mandatory before acceptance.
  */
 export function parseSubmission(
@@ -243,9 +229,7 @@ export function parseSubmission(
   fields(body, ["parts"]);
   if (!Array.isArray(body.parts) || !body.parts.length) return fail();
   cap(body.parts.length, limits.parts);
-  let attachmentCount = 0,
-    attachmentBytes = 0,
-    textBytes = 0,
+  let textBytes = 0,
     dataBytes = 0;
   const parts = body.parts.map((raw): Part => {
     const p = record(raw);
@@ -255,44 +239,6 @@ export function parseSubmission(
       textBytes += bytes(p.text);
       cap(textBytes, limits.text_bytes);
       return { type: "text", text: p.text };
-    }
-    if (p.type === "attachment") {
-      fields(
-        p,
-        ["type", "attachment_id", "media_type", "size_bytes", "sha256"],
-        ["filename"],
-      );
-      if (
-        typeof p.media_type !== "string" ||
-        p.media_type.length > 255 ||
-        !/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(p.media_type)
-      )
-        return fail();
-      if (typeof p.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(p.sha256))
-        return fail();
-      if (
-        p.filename !== undefined &&
-        (typeof p.filename !== "string" ||
-          !p.filename.length ||
-          bytes(p.filename) > 255 ||
-          /[\x00-\x1f\x7f/\\]/.test(p.filename) ||
-          p.filename === "." ||
-          p.filename === "..")
-      )
-        return fail();
-      const size = integer(p.size_bytes, 0);
-      cap(size, limits.attachment_bytes);
-      cap(++attachmentCount, limits.attachments);
-      attachmentBytes += size;
-      cap(attachmentBytes, limits.total_attachment_bytes);
-      return {
-        type: "attachment",
-        attachment_id: id(p.attachment_id),
-        media_type: p.media_type,
-        size_bytes: size,
-        sha256: p.sha256,
-        ...(p.filename === undefined ? {} : { filename: p.filename as string }),
-      };
     }
     if (p.type === "data") {
       fields(p, ["type", "schema_id", "schema_version", "value"]);

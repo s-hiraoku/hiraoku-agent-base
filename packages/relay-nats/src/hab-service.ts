@@ -129,8 +129,7 @@ export class HabJetStreamService {
       const selected =
         this.#routing.enabled &&
         this.#routing.recipients.includes(message.recipient_id) &&
-        this.#routing.kinds.includes(message.kind) &&
-        !message.body.parts.some((part) => part.type === "attachment");
+        this.#routing.kinds.includes(message.kind);
       const owner =
         existing ?? parentOwner ?? (selected ? "jetstream" : "sqlite");
       if (!existing)

@@ -6,9 +6,7 @@ import {
   fixture as capacityFixture,
   limits,
 } from "./relay-agent-capacity-fixtures.js";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
-import { RelayError } from "../src/relay/service.ts";
-import { code } from "./relay-attachment-fixtures.js";
+import { code } from "./hab-registry-fixtures.js";
 const legacy =
   "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;UPDATE relay_schema SET version=4";
 const fixture = (t, changes = {}) =>
@@ -41,28 +39,6 @@ const acknowledge = (f, d, api = f.service, who = "sink") =>
   api.ack(f.contexts[who], request(d));
 const cursorCount = (f) =>
   f.raw.prepare("SELECT count(*) n FROM relay_poll_cursors").get().n;
-function attachmentPort(t, f, check, configured = true) {
-  const s = new SQLiteRelayStore(
-    f.path,
-    f.options,
-    { check() {} },
-    configured ? { limits, check } : undefined,
-  );
-  t.after(() => s.close());
-  s.migrate();
-  const api = f.serviceFor(s),
-    m = f.message("a");
-  m.body.parts.push({
-    type: "attachment",
-    attachment_id: "synthetic-file",
-    media_type: "text/plain",
-    size_bytes: 1,
-    sha256: "0".repeat(64),
-  });
-  api.submit(f.contexts.a, m);
-  f.send("b");
-  return { s, api, m };
-}
 test("fair poll: eligible senders alternate despite one sender having an older backlog", (t) => {
   const f = fixture(t);
   for (const who of ["a", "a", "a", "b", "b", "b", "c", "c", "c"]) f.send(who);
@@ -137,43 +113,6 @@ test("fair poll: all denied senders consume at most the configured number of can
   checks = [];
   assert.equal(f.service.poll(f.contexts.sink), null);
   assert.deepEqual(checks, ["c", "d"]);
-  assert.equal(
-    f.raw.prepare("SELECT sum(attempts) n FROM relay_deliveries").get().n,
-    0,
-  );
-});
-test("fair poll: missing attachment delivery composition withholds it and advances to text", (t) => {
-  const f = fixture(t, { poll_scan_limit: 1 }),
-    { api } = attachmentPort(t, f, () => {}, false);
-  assert.equal(api.poll(f.contexts.sink), null);
-  assert.equal(api.poll(f.contexts.sink).message.sender_id, "b");
-  assert.equal(
-    f.raw
-      .prepare("SELECT attempts FROM relay_deliveries WHERE sender_id='a'")
-      .get().attempts,
-    0,
-  );
-});
-test("fair poll: unconfirmed attachment readiness does not starve a different sender", (t) => {
-  const f = fixture(t, { poll_scan_limit: 1 }),
-    { api } = attachmentPort(t, f, () => {
-      throw new RelayError("attachment_binding_unavailable");
-    });
-  assert.equal(api.poll(f.contexts.sink), null);
-  assert.equal(api.poll(f.contexts.sink).message.sender_id, "b");
-  assert.equal(
-    f.raw.prepare("SELECT state FROM relay_messages WHERE sender_id='a'").get()
-      .state,
-    "pending",
-  );
-});
-test("fair poll: unexpected attachment failures roll back both cursor and attempts", (t) => {
-  const f = fixture(t),
-    { api } = attachmentPort(t, f, () => {
-      throw Error("synthetic storage failure");
-    });
-  assert.throws(() => api.poll(f.contexts.sink), /synthetic storage failure/);
-  assert.equal(cursorCount(f), 0);
   assert.equal(
     f.raw.prepare("SELECT sum(attempts) n FROM relay_deliveries").get().n,
     0,
@@ -345,7 +284,7 @@ test("fair poll: schema4 migration is explicit, atomic and preserves old receipt
   const s = f.open();
   assert.equal(
     f.raw.prepare("SELECT version FROM relay_schema").get().version,
-    5,
+    6,
   );
   assert.equal(
     f.serviceFor(s).submit(f.contexts.a, m).receipt_id,

@@ -342,7 +342,7 @@ test("unsupported payload and nonloopback broker reject before touching producti
         },
       }),
     ),
-    { code: "attachment_store_unavailable" },
+    { code: "invalid_contract" },
   );
 });
 

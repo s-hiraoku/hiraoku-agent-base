@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Worker } from "node:worker_threads";
 import { fixture, limits } from "./relay-agent-capacity-fixtures.js";
-import { code } from "./relay-attachment-fixtures.js";
+import { code } from "./hab-registry-fixtures.js";
 test("agent capacity: a hot sender cannot consume another sender's reserved pending slots", (t) => {
   const f = fixture(t);
   for (let n = 0; n < 4; n++) f.send("a");

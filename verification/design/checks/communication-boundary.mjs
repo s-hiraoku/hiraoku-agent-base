@@ -36,28 +36,7 @@ const coreModules = new Set(
     "sqlite-store.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
-    "sqlite-upload-journal.ts",
-    "sqlite-attachment-store.ts",
-    "sqlite-attachment-inbox.ts",
-    "sqlite-receive-checkpoint.ts",
-    "sqlite-snapshot-bundle.ts",
     "agent-capacity.ts",
-    "attachments.ts",
-    "attachment-acceptance.ts",
-    "attachment-bindings.ts",
-    "attachment-capacity.ts",
-    "attachment-deletion.ts",
-    "attachment-deletion-worker.ts",
-    "attachment-delivery.ts",
-    "attachment-inbox.ts",
-    "attachment-maintenance.ts",
-    "attachment-outbox.ts",
-    "attachment-read.ts",
-    "attachment-receiver.ts",
-    "attachment-stager.ts",
-    "receive-checkpoint.ts",
-    "upload-journal.ts",
-    "upload-sender.ts",
     "writer-admission.ts",
   ].map(relayPath),
 );
@@ -69,14 +48,8 @@ const outerModules = new Set(
     "http.ts",
     "http-node.ts",
     "oauth-resource.ts",
-    "attachment-mcp.ts",
-    "attachment-mcp-client.ts",
-    "attachment-http.ts",
   ].map(relayPath),
 );
-// SQLiteUploadJournal shares strict receipt parsing with the transport layer.
-// This codec has no SDK/network/credential dependency; its closure stays checked.
-const coreShared = new Set([relayPath("attachment-wire.ts")]);
 const corePackages = new Set([
   "node:buffer",
   "node:crypto",
@@ -95,7 +68,7 @@ const communicationPolicy = {
 };
 const corePolicy = {
   name: "core",
-  allowsModule: (name) => coreModules.has(name) || coreShared.has(name),
+  allowsModule: (name) => coreModules.has(name),
   allowsPackage: (name) => corePackages.has(name),
 };
 
@@ -272,21 +245,6 @@ if (mode === "--self-test") {
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import "node:http";');
     assert.throws(coreCheck, /unreviewed core package dependency/);
-    // A permitted shared codec must not hide an outward SDK dependency.
-    writeFileSync(service, 'import "./attachment-wire.ts";');
-    writeFileSync(
-      join(scratch, "src/relay/attachment-wire.ts"),
-      'import "@modelcontextprotocol/server";',
-    );
-    assert.throws(coreCheck, /unreviewed core package dependency/);
-    writeFileSync(
-      join(scratch, "src/relay/attachment-wire.ts"),
-      'import { z } from "zod"; export const codec = z.string();',
-    );
-    assert.deepEqual(coreCheck().files, [
-      "src/relay/attachment-wire.ts",
-      "src/relay/service.ts",
-    ]);
     assert.deepEqual(inspect(scratch, ["src/relay/mcp.ts"]).files, [
       "src/relay/mcp.ts",
     ]);
@@ -303,14 +261,12 @@ if (mode === "--self-test") {
           "core HTTP outer",
           "core outer shared security type",
           "core HTTP builtin",
-          "shared codec to SDK",
         ],
         harmlessControls: [
           "comments",
           "string literal",
           "optional execution adapter outside closure",
           "MCP outer to SDK",
-          "core to explicit SDK-free shared codec",
         ],
       }),
     );
@@ -322,27 +278,19 @@ if (mode === "--self-test") {
   assert(entries.length > 0, "empty communication source set");
   for (const name of entries)
     assert(
-      coreModules.has(name) || outerModules.has(name) || coreShared.has(name),
+      coreModules.has(name) || outerModules.has(name),
       `unclassified Relay module requires role review: ${name}`,
     );
-  for (const name of [...coreModules, ...coreShared])
-    assert(
-      entries.includes(name),
-      `required core/shared source missing: ${name}`,
-    );
+  for (const name of coreModules)
+    assert(entries.includes(name), `required core source missing: ${name}`);
   console.log(
     JSON.stringify(
       {
         status: "pass",
         communicationBoundary: inspect(target, entries),
-        coreBoundary: inspect(
-          target,
-          [...coreModules, ...coreShared],
-          corePolicy,
-        ),
+        coreBoundary: inspect(target, [...coreModules], corePolicy),
         reviewedRoles: {
           core: [...coreModules].sort(),
-          sharedCodec: [...coreShared],
           outer: [...outerModules].sort(),
           outerOnlyShared: [...shared],
           corePackages: [...corePackages],

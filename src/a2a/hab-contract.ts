@@ -30,10 +30,7 @@ export const HAB_A2A_LIMITS: Readonly<ContractLimits> = Object.freeze({
   envelope_bytes: 16384,
   text_bytes: 4096,
   data_bytes: 4096,
-  attachment_bytes: 1,
-  total_attachment_bytes: 1,
   parts: 1,
-  attachments: 1,
   json_depth: 16,
   json_nodes: 128,
 });

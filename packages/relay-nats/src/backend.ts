@@ -327,8 +327,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
     authorization: Authorization,
   ): Receipt {
     const message = parseSubmission(input, this.#options.limits);
-    if (message.body.parts.some((part) => part.type === "attachment"))
-      throw new RelayError("attachment_store_unavailable");
     const sender = this.#identity(
       context,
       "submit",

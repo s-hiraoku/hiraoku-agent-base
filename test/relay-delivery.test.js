@@ -12,10 +12,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -420,7 +417,7 @@ test("explicit v1-to-current migration preserves accepted receipts and allows de
   store.migrate();
   assert.equal(
     raw.prepare("SELECT version FROM relay_schema").get().version,
-    5,
+    6,
   );
   assert.deepEqual(raw.prepare("PRAGMA foreign_key_check").all(), []);
   const service = new RelayService(store, limits, policy);

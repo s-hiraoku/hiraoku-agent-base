@@ -75,7 +75,6 @@ export class DurableSender {
         const permanent = [
           "forbidden",
           "idempotency_conflict",
-          "attachment_store_unavailable",
           "invalid_contract",
           "invalid_reference",
           "unsupported_version",

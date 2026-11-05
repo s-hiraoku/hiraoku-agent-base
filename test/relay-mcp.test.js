@@ -14,10 +14,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -423,7 +420,7 @@ test("core body and expiry limits reject invalid payloads with fixed errors and 
   assert.equal(count(f), 0);
 });
 
-test("managed attachments still fail closed instead of accepting an unverified manifest", async (t) => {
+test("relay_submit refuses an attachment part and stores nothing", async (t) => {
   const f = fixture(t),
     m = message();
   m.body.parts.push({
@@ -433,9 +430,12 @@ test("managed attachments still fail closed instead of accepting an unverified m
     size_bytes: 10,
     sha256: "a".repeat(64),
   });
-  assert.deepEqual((await call(f.a, "relay_submit", m)).structuredContent, {
-    error: "attachment_store_unavailable",
-  });
+  const result = await call(f.a, "relay_submit", m);
+  assert.ok(
+    result.rejected,
+    "attachment part rejected by the published schema",
+  );
+  assert.equal(result.structuredContent, undefined);
   assert.equal(count(f), 0);
 });
 

@@ -10,14 +10,6 @@ const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 const part = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("text"), text: z.string() }),
   z.strictObject({
-    type: z.literal("attachment"),
-    attachment_id: id,
-    media_type: z.string(),
-    size_bytes: z.number().int().nonnegative(),
-    sha256: z.string().regex(/^[a-f0-9]{64}$/),
-    filename: z.string().optional(),
-  }),
-  z.strictObject({
     type: z.literal("data"),
     schema_id: id,
     schema_version: z.number().int().positive(),

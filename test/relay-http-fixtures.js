@@ -9,10 +9,7 @@ export const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };

@@ -25,10 +25,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -599,7 +596,7 @@ test("acceptance receipt identity, deadline, state and UTC time are checked befo
       .receipt.includes("must not persist"),
   );
 });
-test("expired/future enqueue and unavailable attachments fail closed; expired status horizon cannot send", async (t) => {
+test("expired/future enqueue and attachment parts fail closed; expired status horizon cannot send", async (t) => {
   const f = fixture(t),
     m = message();
   let calls = 0;
@@ -633,7 +630,7 @@ test("expired/future enqueue and unavailable attachments fail closed; expired st
     size_bytes: 10,
     sha256: "a".repeat(64),
   });
-  code(() => sender.enqueue(file), "attachment_store_unavailable");
+  code(() => sender.enqueue(file), "invalid_contract");
   sender.enqueue(m);
   f.raw.exec("UPDATE relay_outbox SET expires_at=0,status_until=0");
   await sender.sendOnce();

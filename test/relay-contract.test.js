@@ -11,10 +11,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 1000,
   data_bytes: 1000,
-  attachment_bytes: 10000,
-  total_attachment_bytes: 15000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -26,14 +23,6 @@ const message = () => ({
   body: {
     parts: [
       { type: "text", text: "日本語\r\nそのまま" },
-      {
-        type: "attachment",
-        attachment_id: "file-1",
-        media_type: "image/png",
-        size_bytes: 8000,
-        sha256: "a".repeat(64),
-        filename: "画像.png",
-      },
       {
         type: "data",
         schema_id: "example:form",
@@ -47,24 +36,32 @@ const message = () => ({
   first_sent_at: "2030-01-01T00:00:00.000Z",
   expires_at: "2030-01-01T01:00:00.000Z",
 });
+const attachment = {
+  type: "attachment",
+  attachment_id: "file-1",
+  media_type: "image/png",
+  size_bytes: 8000,
+  sha256: "a".repeat(64),
+  filename: "画像.png",
+};
 const rejects = (input, code = "invalid_contract", policy = limits) =>
   assert.throws(
     () => parseSubmission(input, policy),
     (e) => e.code === code,
   );
 
-test("public contract preserves multipart order, UTF-8, binary references and arbitrary structured keys", () => {
+test("public contract preserves multipart order, UTF-8 and arbitrary structured keys", () => {
   const input = message();
-  input.body.parts[2].value = JSON.parse(
+  input.body.parts[1].value = JSON.parse(
     '{"__proto__":{"safe":true},"constructor":"literal"}',
   );
   const output = parseSubmission(input, limits);
   assert.equal(output.body.parts[0].text, input.body.parts[0].text);
   assert.deepEqual(
     output.body.parts.map((x) => x.type),
-    ["text", "attachment", "data"],
+    ["text", "data"],
   );
-  assert.equal(output.body.parts[2].value.__proto__.safe, true);
+  assert.equal(output.body.parts[1].value.__proto__.safe, true);
   output.body.parts[0].text = "changed";
   assert.notEqual(input.body.parts[0].text, "changed");
   assert.equal(DELIVERY_TTL_MS, 3600000);
@@ -72,7 +69,7 @@ test("public contract preserves multipart order, UTF-8, binary references and ar
 test("comparison ignores object key order, preserves part order, sender, deadline and text bytes", () => {
   const original = message();
   const reordered = message();
-  reordered.body.parts[2].value = { a: "選択", b: [true, null, 2] };
+  reordered.body.parts[1].value = { a: "選択", b: [true, null, 2] };
   const base = comparisonMaterial("sender-a", original, limits);
   assert.equal(base, comparisonMaterial("sender-a", reordered, limits));
   assert.notEqual(base, comparisonMaterial("sender-b", reordered, limits));
@@ -101,26 +98,16 @@ test("one-hour lifetime is exact; invalid dates and optional TTL cannot bypass i
   rejects({ ...message(), expires_at: "2030-02-30T01:00:00.000Z" });
   rejects({ ...message(), ttl_ms: 1000 });
 });
-test("all quota dimensions fail explicitly, measuring UTF-8 and aggregate attachments", () => {
+test("all quota dimensions fail explicitly, measuring UTF-8", () => {
   for (const key of [
     "envelope_bytes",
     "text_bytes",
     "data_bytes",
-    "attachment_bytes",
-    "total_attachment_bytes",
     "parts",
     "json_depth",
     "json_nodes",
   ])
     rejects(message(), "capacity_exceeded", { ...limits, [key]: 1 });
-  const m = message();
-  m.body.parts.push({ ...m.body.parts[1], attachment_id: "file-2" });
-  rejects(m, "capacity_exceeded");
-  rejects(m, "capacity_exceeded", {
-    ...limits,
-    total_attachment_bytes: 20000,
-    attachments: 1,
-  });
   const text = message();
   text.body.parts = [{ type: "text", text: "ああ" }];
   rejects(text, "capacity_exceeded", { ...limits, text_bytes: 5 });
@@ -129,22 +116,27 @@ test("all quota dimensions fail explicitly, measuring UTF-8 and aggregate attach
     "ああ",
   );
 });
-test("invalid attachment metadata and unsafe file names are refused without fetching anything", () => {
-  for (const patch of [
-    { size_bytes: -1 },
-    { sha256: "wrong" },
-    { media_type: "image/png\r\nX:evil" },
-    { filename: "../secret" },
-    { filename: ".." },
-  ]) {
+test("attachment parts are not part of the contract and are refused in any position", () => {
+  for (const at of [0, 1, 2]) {
     const m = message();
-    Object.assign(m.body.parts[1], patch);
+    m.body.parts.splice(at, 0, structuredClone(attachment));
     rejects(m);
   }
+  const only = message();
+  only.body.parts = [structuredClone(attachment)];
+  rejects(only);
+});
+test("former attachment limit keys are rejected as invalid policy", () => {
+  for (const key of [
+    "attachment_bytes",
+    "total_attachment_bytes",
+    "attachments",
+  ])
+    rejects(message(), "invalid_limits", { ...limits, [key]: 1000 });
 });
 test("cyclic, non-JSON and accessor inputs are rejected without executing user code", () => {
   const m = message();
-  m.body.parts[2].value = m;
+  m.body.parts[1].value = m;
   rejects(m);
   for (const value of [
     NaN,
@@ -156,7 +148,7 @@ test("cyclic, non-JSON and accessor inputs are rejected without executing user c
     [, 1],
   ]) {
     const n = message();
-    n.body.parts[2].value = value;
+    n.body.parts[1].value = value;
     rejects(n);
   }
   let invoked = false;

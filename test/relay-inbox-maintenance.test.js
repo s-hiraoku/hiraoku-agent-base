@@ -19,10 +19,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -532,10 +529,10 @@ test("purge failures roll back ACK deletion, tombstone deletion and maintenance 
 function downgrade(f) {
   f.store.close();
   f.raw
-    .exec(`DROP TRIGGER relay_attachment_identity; DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
+    .exec(`DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
     ALTER TABLE relay_inbox DROP COLUMN released_at; ALTER TABLE relay_inbox DROP COLUMN expires_at;
     ALTER TABLE relay_inbox DROP COLUMN ack_retry_until; ALTER TABLE relay_inbox DROP COLUMN ack_terminal_at;
-    ALTER TABLE relay_inbox DROP COLUMN retain_until; ALTER TABLE relay_inbox DROP COLUMN has_attachments; ALTER TABLE relay_inbox DROP COLUMN attachment_guard;
+    ALTER TABLE relay_inbox DROP COLUMN retain_until;
     ALTER TABLE relay_receiver_acks DROP COLUMN terminal_at; ALTER TABLE relay_receiver_acks DROP COLUMN retain_until;
     DROP TABLE relay_inbox_maintenance_totals; UPDATE relay_inbox_meta SET version=1;`);
 }
@@ -573,7 +570,7 @@ test("v1 migration preserves body and stable pending ACK, verifies identity befo
   assert.equal(ack(f).request, pending);
   assert.equal(
     f.raw.prepare("SELECT version FROM relay_inbox_meta").get().version,
-    3,
+    4,
   );
   assert.deepEqual(f.raw.prepare("PRAGMA foreign_key_check").all(), []);
   const before = row(f, d.message.message_id);
@@ -623,4 +620,33 @@ test("invalid budgets, missing counters and unsupported schema fail closed witho
   f.raw.exec("UPDATE relay_inbox_meta SET version=99");
   const newer = f.open();
   code(() => newer.migrate(), "unsupported_schema");
+});
+
+test("schema 3 inbox with retired attachment columns still opens, drops them and claims its pending ACK", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const pending = ack(f).request;
+  f.store.close();
+  f.raw
+    .exec(`ALTER TABLE relay_inbox ADD COLUMN has_attachments INTEGER NOT NULL DEFAULT 0 CHECK(has_attachments IN (0,1));
+ALTER TABLE relay_inbox ADD COLUMN attachment_guard TEXT NOT NULL DEFAULT '';
+CREATE TRIGGER relay_attachment_identity BEFORE UPDATE OF has_attachments,attachment_guard ON relay_inbox BEGIN SELECT RAISE(ABORT,'immutable attachment identity');END;
+UPDATE relay_inbox_meta SET version=3;`);
+  const upgraded = f.open();
+  upgraded.migrate();
+  assert.equal(
+    f.raw.prepare("SELECT version FROM relay_inbox_meta").get().version,
+    4,
+  );
+  assert.equal(
+    f.raw
+      .prepare(
+        "SELECT count(*) n FROM sqlite_master WHERE sql LIKE '%attachment%'",
+      )
+      .get().n,
+    0,
+  );
+  assert.deepEqual(upgraded.inbox()[0].message, messageFrom(d));
+  assert.equal(JSON.stringify(upgraded.claimAck()), pending);
 });

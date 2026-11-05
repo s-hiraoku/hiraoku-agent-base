@@ -21,10 +21,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -360,7 +357,7 @@ test("v2 metadata migration is explicit, preserves receipts, and rolls back part
   const f = fixture(t),
     m = historical(f, { age: 61, state: "acked" });
   f.db.exec(
-    "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;DROP TABLE relay_attachment_deletions; DROP TABLE relay_message_attachments; DROP INDEX relay_messages_retention; ALTER TABLE relay_messages DROP COLUMN terminal_at; ALTER TABLE relay_messages DROP COLUMN retain_until; DROP TABLE relay_maintenance_totals; UPDATE relay_schema SET version=2;",
+    "DROP TRIGGER relay_poll_positions_terminal;DROP TABLE relay_poll_senders;DROP TABLE relay_poll_cursors;DROP INDEX relay_messages_retention; ALTER TABLE relay_messages DROP COLUMN terminal_at; ALTER TABLE relay_messages DROP COLUMN retain_until; DROP TABLE relay_maintenance_totals; UPDATE relay_schema SET version=2;",
   );
   f.db.exec(
     "CREATE TRIGGER fail_upgrade BEFORE UPDATE ON relay_schema BEGIN SELECT RAISE(ABORT,'upgrade failure'); END",
@@ -383,7 +380,7 @@ test("v2 metadata migration is explicit, preserves receipts, and rolls back part
   upgraded.migrate();
   assert.equal(
     f.db.prepare("SELECT version FROM relay_schema").get().version,
-    5,
+    6,
   );
   assert.equal(
     new RelayService(upgraded, limits, policy).status("a", m.message_id)
@@ -409,4 +406,42 @@ test("missing maintenance counter fails closed instead of silently losing deleti
     f.db.prepare("SELECT count(*) n FROM relay_messages").get().n,
     1,
   );
+});
+
+test("schema 5 database with retired attachment tables still opens, drops them and keeps delivering", (t) => {
+  const f = fixture(t),
+    m = message();
+  const receipt = f.service.submit("a", m);
+  f.db
+    .exec(`CREATE TABLE relay_message_attachments(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,refs TEXT NOT NULL,fingerprint TEXT NOT NULL,PRIMARY KEY(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages);
+CREATE TABLE relay_attachment_deletions(job_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,payload TEXT NOT NULL,fingerprint TEXT NOT NULL,state TEXT NOT NULL,created_at INTEGER NOT NULL,UNIQUE(sender_id,message_id),FOREIGN KEY(sender_id,message_id) REFERENCES relay_messages);
+CREATE INDEX relay_attachment_deletion_ready ON relay_attachment_deletions(state);
+CREATE TRIGGER relay_attachment_refs_immutable BEFORE UPDATE ON relay_message_attachments BEGIN SELECT RAISE(ABORT,'immutable');END;
+UPDATE relay_schema SET version=5;`);
+  f.db
+    .prepare(
+      "INSERT INTO relay_message_attachments VALUES('a',?,'[\"file-1\"]','x')",
+    )
+    .run(m.message_id);
+  const upgraded = new SQLiteRelayStore(f.path, options);
+  t.after(() => upgraded.close());
+  upgraded.migrate();
+  assert.equal(
+    f.db.prepare("SELECT version FROM relay_schema").get().version,
+    6,
+  );
+  assert.equal(
+    f.db
+      .prepare(
+        "SELECT count(*) n FROM sqlite_master WHERE name LIKE '%attachment%'",
+      )
+      .get().n,
+    0,
+  );
+  const service = new RelayService(upgraded, limits, policy);
+  assert.equal(
+    service.status("a", m.message_id).receipt_id,
+    receipt.receipt_id,
+  );
+  assert.equal(service.poll("b").message.message_id, m.message_id);
 });

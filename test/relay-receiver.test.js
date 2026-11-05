@@ -18,10 +18,7 @@ const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -267,7 +264,7 @@ test("wrong receipt is not confirmed locally and later exact request retry recov
   await new DurableReceiver(f.inbox, f.transport).receiveOnce();
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
 });
-test("same ID content/lease conflicts never replace durable content; foreign or incomplete attachment delivery is refused", (t) => {
+test("same ID content/lease conflicts never replace durable content; foreign or attachment-bearing delivery is refused", (t) => {
   const f = fixture(t);
   f.service.submit("a", message());
   const d = f.service.poll("b");
@@ -296,7 +293,7 @@ test("same ID content/lease conflicts never replace durable content; foreign or 
     size_bytes: 10,
     sha256: "a".repeat(64),
   });
-  code(() => f.inbox.save(attachment), "attachment_store_unavailable");
+  code(() => f.inbox.save(attachment), "invalid_contract");
 });
 test("capacity and retry limits are explicit and finite; exhausted token is removed without dropping inbox", async (t) => {
   const f = fixture(t, { max_attempts: 1, max_records: 1 });
