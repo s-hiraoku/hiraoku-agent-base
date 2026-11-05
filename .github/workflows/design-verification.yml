@@ -1,0 +1,65 @@
+name: Design verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  automated-design-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare HAB native dependencies
+        run: |
+          test "$(npm --version)" = 11.6.2
+          npm ci
+          npm ci --prefix packages/relay-nats --ignore-scripts
+      - name: Read pinned generic coordinator only
+        uses: actions/checkout@v4
+        with:
+          repository: s-hiraoku/hirastack
+          ref: 0ead9d3899e813916e0180cb4ffbff6c08d45ad6
+          path: .runtime/hirastack
+          persist-credentials: false
+          sparse-checkout: hirastack
+      - name: Audit reviewed source and citations
+        env:
+          PYTHONPATH: ${{ github.workspace }}/.runtime/hirastack
+        run: python3 -B -m hirastack audit --target "$GITHUB_WORKSPACE" --spec verification/design/contract.json
+      - name: Run report-gate negative controls
+        run: node verification/design/checks/assert-automated.mjs --self-test
+      - name: Run native checks and require complete automated evidence
+        env:
+          PYTHONPATH: ${{ github.workspace }}/.runtime/hirastack
+        run: |
+          set +e
+          python3 -B -m hirastack run --target "$GITHUB_WORKSPACE" --spec verification/design/contract.json --out "$RUNNER_TEMP/hab-design-run" --execute
+          result=$?
+          set -e
+          test "$result" = 0 -o "$result" = 2
+          node verification/design/checks/assert-automated.mjs "$RUNNER_TEMP/hab-design-run/report.json" verification/design/contract.json
+          printf '%s\n' 'Automated HAB design checks passed. Manual/native/production requirements remain unverified; this is not complete design compliance. Existing CI verifies current P7 separately.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain scoped evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hab-design-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/hab-design-run/report.json
+            ${{ runner.temp }}/hab-design-run/report.md
+            ${{ runner.temp }}/hab-design-run/*.log
+            ${{ runner.temp }}/hab-design-run/mcp-roundtrip/proof.json
+            ${{ runner.temp }}/hab-design-run/mcp-roundtrip/cleanup.json
+            ${{ runner.temp }}/hab-design-run/mcp-roundtrip/trace.jsonl
+            ${{ runner.temp }}/hab-design-run/mcp-roundtrip/stack.log

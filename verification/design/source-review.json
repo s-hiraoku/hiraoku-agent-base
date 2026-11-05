@@ -1,0 +1,943 @@
+[
+  {
+    "scope": "foundations",
+    "read_files": {
+      "attestation": "All sixteen assigned included documents were read in full as semantic source review at the fixed commit, not merely inventoried/hashed. Where one combined tool output was truncated, the affected README/architecture/principles/ADR and roadmap content was reread in complete smaller batches. Supplemental files below were also read in full. No target/hirastack edits, test/live driving, external fetches or remote writes performed by this reader.",
+      "assigned": [
+        "README.md",
+        "docs/adapter-host.md",
+        "docs/architecture.md",
+        "docs/common-mcp-connection.md",
+        "docs/generic-agent-async-design.md",
+        "docs/hab-decisions.md",
+        "docs/hab-principles.md",
+        "docs/hab-product-spec.md",
+        "docs/hab-relay-spec.md",
+        "docs/hab-roadmap.md",
+        "docs/hab-roles.md",
+        "docs/hab-topology.md",
+        "docs/hab-workflow.md",
+        "docs/implementation/design-boundary-alignment.md",
+        "docs/receive-supervisor.md",
+        "docs/recipient-readiness.md"
+      ],
+      "supplemental": [
+        {
+          "path": "docs/relay-auth-groups.md",
+          "sha256": "72b6db302257c2b19c8b0219fd82d3cbbbc3d08f8875678a35a4b4790d97a7f7",
+          "review": "reviewed"
+        },
+        {
+          "path": "docs/implementation/generic-nats-dispatch.md",
+          "sha256": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
+          "review": "reviewed"
+        },
+        {
+          "path": "docs/implementation/generic-job-application.md",
+          "sha256": "efdb11537a862b0bccb07b892c86f0bedcf8f9134adbc520fa8ac649853d5a9e",
+          "review": "reviewed"
+        },
+        {
+          "path": "docs/task-bridge.md",
+          "sha256": "de33807668de97a595cdd4c5bade9259b233e29f6a2a543b0a31547b97a282c6",
+          "review": "reviewed"
+        },
+        {
+          "path": "docs/hab-security.md",
+          "sha256": "c18beef4476dc4d283931e2191608b443c88f6603635b707472a721775ddc218",
+          "review": "reviewed"
+        },
+        {
+          "path": "docs/adapter-owner.md",
+          "sha256": "2d70b4ef18689aadce58754677c43fb88291112da391f4ee214946c420f6a9d4",
+          "review": "reviewed"
+        },
+        {
+          "path": "docs/persistent-mcp-auth.md",
+          "sha256": "6efcae470aa423b3942daee474015c262f4bb6fe88680afe2cd41adc140bb08f",
+          "review": "reviewed"
+        }
+      ],
+      "method": [
+        "external immutable tool checkout/skills/create-design-verification/SKILL.md",
+        "external immutable tool checkout/docs/contract-format.md",
+        "external immutable tool checkout/docs/architecture.md"
+      ],
+      "references_not_fully_accessed": "Other linked implementation/operations/attachment/A2A/testing documents and source files are not attested as fully read by this partition; coordinator must reconcile other source-reader partitions. src/relay/README.md and src/hab/README.md were inventoried for size only here, not semantically reviewed. External links, figures/PDF and actual product/private runtime evidence were not fetched/inspected. No claim of external standards compatibility/security or live operational acceptance is made."
+    },
+    "supplemental_sources": null,
+    "attestation": [
+      "No assigned document excluded; normative files may contain explicitly proposed/historical sections reflected in candidate decision/scope and conflict ledger. Context/evidence files are not upgraded to implementation truth.",
+      "This is requirement proposal evidence, not completed contract validation or runtime pass. Parent owns cross-partition reconciliation, check mapping, real path proof, generated skill and publication.",
+      "Full module implementation, physical-crash durability and actual product injection/model/approval behavior remain outside this reader proof."
+    ]
+  },
+  {
+    "scope": "authority",
+    "read_files": [
+      {
+        "path": "docs/agent-address-rename.md",
+        "scope": "full",
+        "sha256": "2ff8bc87b7fc4c051be7cca244cc03060facff15cb6dc026e6387b5cbfffe971"
+      },
+      {
+        "path": "docs/auth0-account-step.md",
+        "scope": "full",
+        "sha256": "cd9f44255d8c28f107159021b91749d346260fff1d4e0248f7fea17a30034353"
+      },
+      {
+        "path": "docs/auth0-boundary.md",
+        "scope": "full",
+        "sha256": "fa31c8305a1cf607b0c74804e35f30cda3c16ddb7beef0cdb4d05d143aae7f63"
+      },
+      {
+        "path": "docs/dots-hermes-connection-plan.md",
+        "scope": "full",
+        "sha256": "f04c9e83d77a0527d9e790e51302d217b11336329e2aae9c39ba56be84b56135"
+      },
+      {
+        "path": "docs/hab-security.md",
+        "scope": "full",
+        "sha256": "c18beef4476dc4d283931e2191608b443c88f6603635b707472a721775ddc218"
+      },
+      {
+        "path": "docs/local-integration.md",
+        "scope": "full",
+        "sha256": "095ab372112e3d63fb6be4c3dc96e2d869ab844a6104dfa295f0a06a40b1f86d"
+      },
+      {
+        "path": "docs/local-relay-host.md",
+        "scope": "full",
+        "sha256": "36452ca5c75cfeb4b36387a7695bcec92b22a30da29977a68a8664d3f7b9d03c"
+      },
+      {
+        "path": "docs/local-relay-launchagent.md",
+        "scope": "full",
+        "sha256": "16beca8fbfcb2a2f71adbf98b51d63e2247d38f43fa728a3b51ed83e2ef42254"
+      },
+      {
+        "path": "docs/local-relay-service.md",
+        "scope": "full",
+        "sha256": "678d07676887fdaa3575cfaa843ecf19d231dfca4115c54f4ed9bc11fc36e173"
+      },
+      {
+        "path": "docs/mcp-agent-discovery.md",
+        "scope": "full",
+        "sha256": "f38128e60939dc4162e81d20577ddc8176e741ccac7a9331e79663b0bde95867"
+      },
+      {
+        "path": "docs/migration-plan.md",
+        "scope": "full",
+        "sha256": "bfb99c4cea032bd133b26e0f6227a36c8de0f5ca0691e6aaac518841182b4ccc"
+      },
+      {
+        "path": "docs/persistent-mcp-auth.md",
+        "scope": "full",
+        "sha256": "6efcae470aa423b3942daee474015c262f4bb6fe88680afe2cd41adc140bb08f"
+      },
+      {
+        "path": "docs/relay-auth-groups.md",
+        "scope": "full",
+        "sha256": "72b6db302257c2b19c8b0219fd82d3cbbbc3d08f8875678a35a4b4790d97a7f7"
+      },
+      {
+        "path": "docs/relay-oauth-ingress.md",
+        "scope": "full",
+        "sha256": "5be6eff570a7d5ccf9b7969c40757efb42f65e7540b549cd1c005f31cdd0a248"
+      },
+      {
+        "path": "docs/security-audit-limits.md",
+        "scope": "full",
+        "sha256": "5d1163c4ce43bd9abe8360791a55987aba951f768b0db1b86a2a1daf5b48d12b"
+      },
+      {
+        "path": "src/hab/README.md",
+        "scope": "full",
+        "sha256": "ba66ac5767d6ad80dfe6e90faf6e816b36a32d1d15c5b3cec8e9c9c8fb9febe1"
+      },
+      {
+        "path": "src/hab/auth-groups.ts",
+        "scope": "full"
+      },
+      {
+        "path": "src/hab/registry.ts",
+        "scope": "full"
+      },
+      {
+        "path": "src/relay-host/oauth-auth.ts",
+        "scope": "full (read ranges1–115,116–169,170–348)"
+      },
+      {
+        "path": "src/relay-host/configured.ts",
+        "scope": "lines1–115 and180–267 (schema and startup composition)"
+      },
+      {
+        "path": "config/relay-oauth-persistent.example.json",
+        "scope": "full"
+      },
+      {
+        "path": "config/relay-oauth.example.json",
+        "scope": "full"
+      },
+      {
+        "path": "external immutable tool checkout/skills/create-design-verification/SKILL.md",
+        "scope": "full"
+      },
+      {
+        "path": "external immutable tool checkout/docs/contract-format.md",
+        "scope": "full"
+      },
+      {
+        "path": "external immutable tool checkout/docs/architecture.md",
+        "scope": "full"
+      }
+    ],
+    "supplemental_sources": null,
+    "attestation": {
+      "all_assigned_documents_read_in_full": true,
+      "hashes_match_assignment": true,
+      "hab_or_hirastack_edits": false,
+      "live_services_credentials_or_test_driving": false,
+      "limitations": "Source interpretation only; no runtime compliance assertions. Coordinator owns requirement IDs, reconciliation with other source readers and all requirement/check mapping. Legacy source counts/status statements are evidence claims from their documents, not rerun results."
+    }
+  },
+  {
+    "scope": "delivery",
+    "read_files": null,
+    "supplemental_sources": [
+      {
+        "path": "src/relay/receiver.ts",
+        "sha256": "c92ab1e2285981bbede97c2996ebda96286718049366d2b7de29fd203766bcf7",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Actual model-free receiveOnce, injected ReceiverStore/Transport API, save then ACK, stable pending journal flush and overlap guard.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sender.ts",
+        "sha256": "4200462d3a4219055d70a42d0116566310c8ee40f425fe6930269d966355e41a",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/service.ts",
+        "sha256": "aa9a8dbf4780acf490709e197a469182e1a43da5589baea077949f628642c1b2",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Synchronous RelayOperations/auth/store types and actual submit/status/poll/ACK/maintenance identity mapping.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/index.ts",
+        "sha256": "ddd1ae09e722fdb61d44561abba8ad2a791a428f783cb2b4a085b1902f4500e4",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Pure public exports, confirms sender/receiver ports independent of HTTP/SQLite/HAB/Task imports.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-inbox.ts",
+        "sha256": "84336e941c4890edf52a6369f109d8b7ea57830b6c4e0bb545d69c9f283c0890",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "1-165,374-650,675-770",
+        "summary": "Inline SQL schema/migration, private file/owner options, transaction, body+stable ACK insertion, attachment gate/claim/confirm, HMAC-checked withEntry, raw inbox listing and explicit release. Other migration/GC sections not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-outbox.ts",
+        "sha256": "3c9083abce5ac4297540bba70a689cc4e264f88a0045a40e471b7c8742c42359",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "1-60,353-445; explicit PRAGMA at167 and transaction location found by rg",
+        "summary": "Inline state/single-flight schema and guarded immutable enqueue/quota/attachment admission. Other claim/confirm/maintenance internals not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-store.ts",
+        "sha256": "83210c5ddc294a407d94809513ee994289ba0515d4cd55ac89c4b6cf5ac27603",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "1-150; explicit PRAGMA at248 found by rg",
+        "summary": "Inline migrations3/4/5 and message/delivery/ACK/deletion/cursor SQL, one-live-lease index; poll/ACK implementation itself not fully read by this reader.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/attachment-receiver.ts",
+        "sha256": "abd9fa72147e53692a896eb9a91b2e5e2703a5d7df83cddcbde4db5978f0585a",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Finite checkpoint receiver actual one-RPC branches, durable save before complete, only inbox issues ACK; timeout/late-result fencing and actual settlement slot.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-attachment-inbox.ts",
+        "sha256": "c83bf01e3f3ba9a4faa8843b1ff95f20af6f7bc28671aee91cb3d8c2c1aea99d",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "53-59,137-172,570-638",
+        "summary": "Inline chunks/message/file schema and synchronous transaction, full verify and withVerified/withRetained guard structure; scan helper internals not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-upload-journal.ts",
+        "sha256": "80f2a4d3b0fbfc6350317064d8180a9cb927461361dd0a20b97bd0926855bb37",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "62-84,809-847",
+        "summary": "Inline source/progress/fence/single-running/immutable-trigger SQL and withFinalized synchronous local proof; worker and full schema migration not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-attachment-store.ts",
+        "sha256": "b699758aae120fbb53173c6940931c0bf9f5c1e54c15a3592fabbac8fe0a6c08",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "75-101,234-267",
+        "summary": "Inline upload/chunk/binding/ref SQL and immutable/terminal triggers, FULL/secure_delete and guarded transaction; full admission/read/deletion implementation not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-receive-checkpoint.ts",
+        "sha256": "1d625055e021bc7c784ac6e15dcc7df6bbe67cee420528f7c3b6bdfcb1a551ed",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "129-160,164-218,332-401",
+        "summary": "Dedicated one-slot schema, owner/key, guarded transaction and actual claim/save/fence/message equality/current expiry checks; initial private file constructor not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/sqlite-snapshot-bundle.ts",
+        "sha256": "56d6634832f20cc2c58169e92c4388acc9da698b8974996cf81b2e7d666d573b",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "401-440,638-696; backup locations found by rg",
+        "summary": "All-writer-lock-before-copy setup and new-directory offline restore marker; full hashing/filesystem validation/backup API helper not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "src/relay/mcp.ts",
+        "sha256": "aeff4951507e9a18ea3e436f774465add060bc4c41dd9e8dccd9a3b68f8d1c2b",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "125-195; strict schema/catalog locations found by rg",
+        "summary": "Actual four-operation tool registration dispatch under resolver/gate; no general execution tool in factory switch.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "config/relay-service.example.json",
+        "sha256": "f3de14dd1ad1a62f94cf5c031b3921236831408b2f1f49c53fb4305d87e903f1",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Public dummy host policy shape, finite limits/agent_capacity/fair_poll and allowed kinds. Not approved live policy; no private config read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "packages/relay-nats/config/jetstream.example.json",
+        "sha256": "ee68d24e222d9488dd8c3e966a3df6ffc5a26762ab8d0d20edc02d1e64e1a803",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Public opt-in routing disabled example, finite pump/broker and explicit volume identity fields, migration opt-in.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "packages/relay-nats/config/nats-server.example.conf",
+        "sha256": "d08a725d75bfb0ee7c30dbee5cf9b99416a4754ee732d085a6126e34d10ba6bb",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Public placeholder-only loopback File store and sync_interval always example; not runtime deployment evidence.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "packages/relay-nats/src/hab-service.ts",
+        "sha256": "ef7dcd16f642c9f3641b0382bc99b3774b3d4c953132bf911ee5e72530f42958",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Actual current Registry synchronous facade, dual-backend receipt ownership/reply route, capacity sums, cross-store single recipient lease and ACK request collision guard.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "packages/relay-nats/src/journal.ts",
+        "sha256": "2ec27df96b6b748f2321e8c83fb6bcc7bf51f9957e34449d5f2ba01e9a393a17",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "72-115,227-270",
+        "summary": "Inline schema3 persisted outbox/cache/owner/ACK/state/cursor, unique lease, FULL/secure_delete transaction and explicit old-schema migrations; rest not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "packages/relay-nats/src/backend.ts",
+        "sha256": "173b9cc14212025671fdb04f17d6e1e7160efe8b298a2a9851f29f452afb98da",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "74-123,252-315,720-752",
+        "summary": "Fixed broker 2.15.2 config/reconnect disabled, original outbox exact content/subject-sequence publication and tracked ackAck/explicit erase/absent-body cleanup. Other pump/auth/consumer code not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      },
+      {
+        "path": "packages/relay-nats/src/configured.ts",
+        "sha256": "73ab928b169af467c1f9f0f442bcbb085cdfcfcee5a7a8c944c9dc518b041def",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "1-100,180-250",
+        "summary": "Strict host config, volume marker/device fail-closed setup and supervised explicit finite pump/owned close; intermediate factory wiring not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+      }
+    ],
+    "attestation": {
+      "assigned_documents_count": 18,
+      "all_assigned_documents_read_in_full": true,
+      "included_paths": [
+        "docs/attachment-capacity.md",
+        "docs/attachment-deletion.md",
+        "docs/attachment-inbox.md",
+        "docs/attachment-maintenance.md",
+        "docs/attachment-outbox.md",
+        "docs/attachment-receiver.md",
+        "docs/attachment-transport.md",
+        "docs/hab-relay-integration.md",
+        "docs/managed-attachments.md",
+        "docs/relay-agent-capacity.md",
+        "docs/relay-fair-poll.md",
+        "docs/sqlite-snapshot-bundle.md",
+        "docs/upload-journal.md",
+        "docs/writer-admission.md",
+        "packages/relay-nats/DESIGN.md",
+        "packages/relay-nats/OPERATIONS.md",
+        "packages/relay-nats/README.md",
+        "src/relay/README.md"
+      ],
+      "source_commit_verified": true,
+      "source_hashes_match_assignment": true,
+      "generic_skill_read": [
+        "external immutable tool checkout/skills/create-design-verification/SKILL.md",
+        "external immutable tool checkout/docs/contract-format.md",
+        "external immutable tool checkout/docs/architecture.md"
+      ],
+      "scope": "Read-only semantic source extraction. No HAB/hirastack edits, tests, listeners, credentials, private configuration or production operations. Review artifact only under /tmp.",
+      "limitations": [
+        "No tests executed by this reader; coordinator owns Node/TypeScript/JavaScript real protocol/storage tests and negative controls.",
+        "All18 assigned local design documents fully read. Supplemental code/SQL ranges are explicitly partial where stated; doc inventory does not imply full repository code review.",
+        "External URLs were accessible, but full source/revision review remains pending; dated issue/fix claims are not current verifications.",
+        "No real product/OAuth binding, deployment, model/approval execution, crash/power/disk fault, fleet SLO or complete operational restore proof.",
+        "Inline SQLite schemas belong to separate Relay/private journals; unrelated Task drizzle migrations were only inventoried, not read or treated as communication requirements.",
+        "Generic hirastack contract-format and architecture still contain HAB-specific examples; reported to coordinator, no hirastack edits made."
+      ]
+    }
+  },
+  {
+    "scope": "execution",
+    "read_files": [
+      "docs/a2a-relay-preview.md",
+      "docs/a2a-sdk-preview.md",
+      "docs/adapter-owner.md",
+      "docs/adapter-reply-budget.md",
+      "docs/answer-intents.md",
+      "docs/durable-stop-gate.md",
+      "docs/finite-mcp-trial.md",
+      "docs/fixed-pilot.md",
+      "docs/fixed-readback-worker-identity.md",
+      "docs/hermes-connection.md",
+      "docs/hermes-import-boundary.md",
+      "docs/implementation/generic-job-application.md",
+      "docs/implementation/generic-nats-dispatch.md",
+      "docs/implementation/generic-text-preview.md",
+      "docs/inventory-end-to-end.md",
+      "docs/inventory-one-shot.md",
+      "docs/inventory-preparation.md",
+      "docs/inventory-token-input.md",
+      "docs/local-hermes-key.md",
+      "docs/local-mvp.md",
+      "docs/manual-ping-runner.md",
+      "docs/mvp-acceptance.md",
+      "docs/mvp-inventory.md",
+      "docs/ping-discovery.md",
+      "docs/ping-pong-mvp.md",
+      "docs/profiles/async-text-v1.md",
+      "docs/review-fixes.md",
+      "docs/task-bridge.md"
+    ],
+    "supplemental_sources": [
+      {
+        "path": "package.json",
+        "sha256": "9815a917066bd2797d026e1a5cea3acaffbbc4cbb1b8104d8d7b714b826a77e9",
+        "read_ranges": [
+          [
+            1,
+            64
+          ]
+        ],
+        "observation": "Read full package manifest. Native verification is Node test runner plus TS build/typecheck; Python exists for optional import/token executor boundaries.",
+        "full_file_read": true
+      },
+      {
+        "path": "src/server.ts",
+        "sha256": "beb3b6b82afc080e972d3ddd610ceaada6949af7de76de0131ecf63f7f1c6ff6",
+        "read_ranges": [
+          [
+            1,
+            47
+          ]
+        ],
+        "observation": "Read full ordinary legacy Task server entry: explicit config or deny-all createRuntime; separate from local Relay standard composition.",
+        "full_file_read": true
+      },
+      {
+        "path": "src/inventory-server.ts",
+        "sha256": "52e69f4158a3ba9c1ec79b084a1bcc211a73574993f30e96123560aab9c1e455",
+        "read_ranges": [
+          [
+            1,
+            102
+          ]
+        ],
+        "observation": "Read full manual inventory entry: direct-execution guard, explicit mode, read-only preparation precedes bounded secret stdin; metadata bootstrap separate.",
+        "full_file_read": true
+      },
+      {
+        "path": "src/generic-host.ts",
+        "sha256": "ae88c9e411ebcee3bcc80618aad4bc05edb99d7c92f42e892d9d45eb7ec1a4cb",
+        "read_ranges": [
+          [
+            1,
+            81
+          ]
+        ],
+        "observation": "Read full factory: explicit loopback base, injected GenericTextJobs, current HTTP headers/finite connection and explicit close; no listener started by factory.",
+        "full_file_read": true
+      },
+      {
+        "path": "src/generic-jobs.ts",
+        "sha256": "d6daea446874b1b8c3f1e7bb8cd8a2a0322fdd18f8d23105601c34670f53dd8a",
+        "read_ranges": [
+          [
+            120,
+            175
+          ]
+        ],
+        "observation": "Read projection section: queued submitted; running working; waiting_approval unknown reconciliation; canceled-open unknown; success requires closed execution.",
+        "full_file_read": false
+      },
+      {
+        "path": "src/generic-nats/recipient.ts",
+        "sha256": "3b202768911424258165def9c62e1b6ebae792d99051cf920b41aebd71c7f509",
+        "read_ranges": [
+          [
+            300,
+            330
+          ],
+          [
+            400,
+            530
+          ]
+        ],
+        "observation": "Read lookup/receive/execute sections. receive delegates only receiver; ready reservation CAS before createText, later states lookup existing key/id, independent executeOnce finite pages.",
+        "full_file_read": false
+      },
+      {
+        "path": "src/adapter-host/cycle.ts",
+        "sha256": "01e21dd66cba2c86cdca03a651aebfdc84cb3c80ff5955b554d5417f1b7becbb",
+        "read_ranges": [
+          [
+            1,
+            110
+          ],
+          [
+            420,
+            465
+          ]
+        ],
+        "observation": "Read commands/options and inbox_read branch. Explicit inbox_read copies existing entry under atomic wrapper; Task controls and answer operations separately named, no inferred native agent caller.",
+        "full_file_read": false
+      },
+      {
+        "path": "scripts/python_import_guard.py",
+        "sha256": "804bfd2ec212490d55e367c262c55823682d9d207c283011cdf80609536013ce",
+        "read_ranges": [
+          [
+            1,
+            78
+          ]
+        ],
+        "observation": "Read full guard: measured import roots, blocked paths and ctypes audit; explicitly not a general Python sandbox.",
+        "full_file_read": true
+      },
+      {
+        "path": "scripts/inventory_token_input.py",
+        "sha256": "238f371f19b1780bc0f7d6db4bdd7037a7b4c41ca0874987b669a64d63371331",
+        "read_ranges": [
+          [
+            1,
+            173
+          ]
+        ],
+        "observation": "Read full helper: hidden TTY, strict active config and fixed Node child/stdin/minimal environment; bounded stop, no token issuance or Task submit.",
+        "full_file_read": true
+      },
+      {
+        "path": "hermes_bridge/serve_inventory.py",
+        "sha256": "d8e99208dd13d713cf78415b12286f59cbfb109c4bf9e59187849904f766df1e",
+        "read_ranges": [
+          [
+            384,
+            491
+          ]
+        ],
+        "observation": "Read actual main guard: no-site bootstrap, reviewed manifest/key fingerprint/imports, fixed loopback API, owned120-second lifetime/125-second watchdog and cleanup. Did not run it.",
+        "full_file_read": false
+      },
+      {
+        "path": "hermes_bridge/inventory_agent.py",
+        "sha256": "9e0099b99c26bd3fa9b128d87e6567a102808bbc92cf6dab296b03bc092fc213",
+        "read_ranges": [
+          [
+            565,
+            591
+          ]
+        ],
+        "observation": "Read official adapter construction import boundary; AIAgent imported inside explicit loader, not common-MCP module. Did not instantiate or call loader.",
+        "full_file_read": false
+      },
+      {
+        "path": "test/generic-entrances.test.js",
+        "sha256": "96fac9c8997db965e55ea98c5b20913aa6df6acfbbbe7e6d53a2b40a3a1f05e4",
+        "read_ranges": [
+          [
+            1,
+            95
+          ]
+        ],
+        "observation": "Read selected JS test declarations: official cross-protocol clients and independent Task SQLite assertions with synthetic executions, including restart after response loss. Not executed.",
+        "full_file_read": false
+      },
+      {
+        "path": "test/inventory-import-boundary.test.js",
+        "sha256": "9869a6f9502353ff782437739348939f74dce7e4618b3596a1eb8fea0d77b936",
+        "read_ranges": [
+          [
+            1,
+            95
+          ]
+        ],
+        "observation": "Read selected Node test: TS inspector and Python pure validator agree on synthetic isolated/no-site contract and rejection cases. Not executed.",
+        "full_file_read": false
+      },
+      {
+        "path": "docs/generic-agent-async-design.md",
+        "sha256": "980c4f01eff5eeb736a77cc672e4bb9c414681283084fef403024d88ad639230",
+        "read_ranges": [
+          [
+            1,
+            130
+          ]
+        ],
+        "observation": "Read supplemental prefix including current optional-only scope and working coordinator semantics; complete file is assigned to another reader, so no full-file review attestation here.",
+        "full_file_read": false
+      }
+    ],
+    "attestation": {
+      "all_28_assigned_documents_read_in_full": true,
+      "assignment_hashes_recomputed_match": true,
+      "supplemental_partial_reads_marked": true,
+      "no_tests_services_credentials_models_or_repo_mutations": true,
+      "review_method": "Line-numbered full text read in bounded batches; adapter-owner/reply-budget reread separately after output truncation. Supplemental sources traced by explicit ranges; no source execution."
+    }
+  },
+  {
+    "scope": "verification",
+    "read_files": [
+      {
+        "path": ".claude/skills/security-audit/AI-AND-LLM.md",
+        "sha256": "7335a95c43554eadefcf03ece639291bb0e038c398a179299e3887ffe06bd2ef",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/ATTACK-CLASSES.md",
+        "sha256": "3ee4f00c6e8c9dcf6dd02dd5ac2a4ceb322e2085f3e9fbe79cf0c6330bc7ef83",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/CLIENT-SIDE.md",
+        "sha256": "613f6b98f86083e045525c5b60154ffdab122bac35f1e05eb17488e6e453370c",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/CLOUD-AND-DEPLOYMENT.md",
+        "sha256": "3c80f3088be22345e07b057c056d6ed99fe2b0304f794398964f7ccd5a496ca3",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/DATA-ISOLATION-AND-LIFECYCLE.md",
+        "sha256": "307dcb3e24d292715c4a041190e7bb135646a37eb6187619ae01d000a634a4ad",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/DESKTOP-MOBILE-AND-LOCAL-IPC.md",
+        "sha256": "58eae8ee0ca6a46611c501ec5a3ab47fdff88dd7db0d8d74789bbf8bb19d8cb2",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/HUNTING.md",
+        "sha256": "71c121decea1322c47c718f6e110f1a892980bb4266bd7ac55ef043a213ade09",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/MEMORY-SAFETY-AND-BINARY.md",
+        "sha256": "7c8b0dccfb35315cca2455509674d49632b2fe37e1f3aac16c1a496a7e9924a7",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/PROTOCOLS-RPC-AND-MESSAGING.md",
+        "sha256": "8b73816fa5b3697c9c40977f0c836b40f01d6e81929ff2720fe83ce089e9a619",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/RECONNAISSANCE.md",
+        "sha256": "02ca887aca84de8ae137f1891bd2f0a54f28d3fa6da92a27f54734382b3381a2",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/RESOURCE-EXHAUSTION-AND-AVAILABILITY.md",
+        "sha256": "4326fab5c92a0b4c420a70196254040105cd794026562130b59bf1a6db3e4baa",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/SKILL.md",
+        "sha256": "5e3e96a1e438d8f35fef0a1e38f02d4f00e2bdf910401b7dfe00e6779c6dac85",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/security-audit/SUPPLY-CHAIN-AND-RELEASE.md",
+        "sha256": "f372e919940e335468ba1ae09f99026c3986a345f7fe26f8068f132e199f52a5",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/UPSTREAM.md",
+        "sha256": "313070b73331828d311d2b8c5ce7a48a066d2a91d139202bf41d20aa43407701",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/security-audit/VALIDATION-AND-REPORTING.md",
+        "sha256": "b892470cb89bb31f33403e050d4bdfbe2cdaef940ade1496fa65e32b2e129449",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/security-audit/WEB-PROTOCOL-AND-AUTH.md",
+        "sha256": "4f3066dffa23c5635859187be9b96c32f2aff29a688186b91ff0c63e47d62b5c",
+        "mode": "title and applicability header; excluded using full UPSTREAM/SKILL provenance review"
+      },
+      {
+        "path": ".claude/skills/verify-hab/SKILL.md",
+        "sha256": "0fa39eb8247db0bae039ac166286830a95ebb047b6baf277bfe5c1672d7e828d",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/README.md",
+        "sha256": "a93f6465e505529556c298661ac2bda19b9297bb8e2dca5db1b57108cea2013e",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/access-control.md",
+        "sha256": "63401bcd6d9a927d648052ac0e2e5b2a73b890d1e605c7978721a3f3035ecaaa",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/communication-boundary.md",
+        "sha256": "c011708b997e03dccebde2531ce80b03b900d463b563ac069270eeb8db7274f7",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/configured-relay.md",
+        "sha256": "0a3803be626690884d73a1ba996f0246314ea67865a8474dd7366428c17ef8e0",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
+        "sha256": "e254b7e838a7cfc99e6e54040c52e9f47982a25cfa0182462c55f47b6751e2a1",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/receive-ack.md",
+        "sha256": "7d4900165b8595396a7ada68fd9fa86a019eae89ecf49e644614f618d7dc0da5",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/resolve-address.md",
+        "sha256": "3cc17110598cffdc31707795d909b75ccf3345c32179a749db5ae1e9d4d42218",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/restart-durability.md",
+        "sha256": "a4103e7a3943d28922a64ace39feff735b8bd61fb20b85f406a4a2d072e03f58",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/features/send-message.md",
+        "sha256": "df7df1f2cf91b2e3f60b7b4e744f228c2d88ce6ec820427a1f248556de72feb3",
+        "mode": "full"
+      },
+      {
+        "path": "docs/diagrams/manifest.json",
+        "sha256": "c965b9773bda99fe98dbb531d3814de8a861043f4531ca7141e9d4ece25b71ab",
+        "mode": "full"
+      },
+      {
+        "path": "docs/diagrams/render-mermaid.mjs",
+        "sha256": "3d04f2ac79a280b8914bf60d5cb513e061b84260bf0abd6c05155ad5e513505f",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/a2a-bounded-performance.md",
+        "sha256": "491c953e9e638999ece2f14c56ccd75acfd7ed44f75d8eeb17e0f9832edafbf3",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/a2a-independent-results.md",
+        "sha256": "f15db86e069c4b76aee8db7e77a037c9976362a47c70de6c5f910aba1202ee02",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/a2a-native-acceptance.md",
+        "sha256": "3c6699c21f7650a5521a219a3084f0770380fe5cc031b426b093b1a7820dda2f",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/a2a-p1-p3-scope.md",
+        "sha256": "2b0db770ab1362572d222b6e2bd698291e0a91727b659a81821492f5c5f59a57",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/architecture.md",
+        "sha256": "9bfb2943327ed85ba5993a2499f918967068926595d438c959e9b16b6c5d577a",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/decisions.tsv",
+        "sha256": "2be4fe9b9a6f3f852419aa54e880960512eba10ac2d3543892881013776a8784",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/delivery-lab.md",
+        "sha256": "b7a3dd665d324e1c4df1bb3f68e3f2b8057e3f9ba945387785576d9c43532a14",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/p7-ci.yml.example",
+        "sha256": "7876c2b16c95db47d669a79236e030528d2880bf8c77e4f063b942b5e8f27756",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/p7-independent-results.md",
+        "sha256": "25ae76471289cfe63069e1b11412c3ddfaac4ece60fa228d4716bc8f89d93037",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/p7-lab.md",
+        "sha256": "a28be165454f1321e5012bcf1bbb0b04864d1e5db8b12afc90211041d3c7c34e",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/plan.md",
+        "sha256": "33e6ddeb27ddfd1d23abd275dae62658c6cd07eb20cee61bff92424a849ba767",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/publication.md",
+        "sha256": "903628ddffe87ad31a5addde227d6ebea2483e12a0003f99d83ec47023411341",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/results.md",
+        "sha256": "461ac64419e9007585ccb836819fce91252c8e6b2abb68bdfba7b974bea59900",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/verified-nats-input.md",
+        "sha256": "041e9a53c4bc5579e03ca23f318443605f2337eb76c1e442e14f5059c3cd9275",
+        "mode": "full"
+      },
+      {
+        "path": "docs/testing/verified-nats-results.md",
+        "sha256": "2697b792b62a72f9fbbc44a5b06b82b04062a3a80010d509dfe77572b08bea7d",
+        "mode": "full"
+      },
+      {
+        "path": "test/p7/README.md",
+        "sha256": "1f7c43efe3499d2a0dd65b928f16258f2d6aae47d89cf4dd4c5344fc5302fd4a",
+        "mode": "full"
+      }
+    ],
+    "supplemental_sources": [
+      {
+        "path": "test/common-mcp-boundary.test.js",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/launch.sh",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/doctor.sh",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/cleanup.sh",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/stack.mjs",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/mcp.sh",
+        "mode": "full"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/inspect.mjs",
+        "mode": "full"
+      },
+      {
+        "path": "test/hab-journey-fixtures.js",
+        "mode": "lines 150-195, restart implementation"
+      },
+      {
+        "path": "test/delivery-lab/sqlite-failures.test.js",
+        "mode": "lines 245-340, full F05 case"
+      },
+      {
+        "path": "external immutable tool checkout/skills/create-design-verification/SKILL.md",
+        "mode": "full"
+      },
+      {
+        "path": "external immutable tool checkout/docs/contract-format.md",
+        "mode": "full"
+      },
+      {
+        "path": "external immutable tool checkout/docs/architecture.md",
+        "mode": "full"
+      }
+    ],
+    "attestation": {
+      "included_first_party_documents_read_in_full": 28,
+      "excluded_vendor_documents_classified": 16,
+      "vendor_full_provenance_and_skill_read": 2,
+      "other_vendor_headers_inspected": 14,
+      "tests_or_product_code_executed": false,
+      "target_or_hirastack_edited": false,
+      "external_endpoints_contacted": false,
+      "language_scope": "Python is generic contract orchestration. Actual selected product behavior remains TypeScript/JavaScript via native Node suites plus real MCP/HTTP/SQLite; existing Python bridge/input suites retain their own language/subsystem scope, never substitute for Node or real protocol behavior.",
+      "scope_note": "These are source-derived requirements and planned coverage, not a claim that any test/live recipe was executed in this reader."
+    }
+  }
+]
