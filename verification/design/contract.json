@@ -986,7 +986,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "91192a687bb41fab8b7d806decee0ab0724043b34c350d2f1dbf32e9717a8151",
+      "sha256": "ab61e5de7bc4b457f828b9c96391121f9c3283a65508ba35bc2ac7b882972daf",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1026,7 +1026,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "f9f50205af47eff6e786aea4b509c65fb23f68f69ebfdad392ac7de25284573c",
+      "sha256": "0b8ebc1f6308ef892829fe4d916e259916a138736ecb05434045dfaa00ee0862",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -3945,7 +3945,10 @@
       "timeout_seconds": 900,
       "protocol": "node-tap",
       "proves": "Complete current top-level JavaScript test inventory, including real local HTTP/SQLite and bounded optional execution, authority, recovery, attachment and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required.",
-      "limitations": "Scenario-specific functional evidence with synthetic authorities and substituted external runtimes. Does not run nested P7 real-broker groups or native agent models, production OAuth, GUI, real media failures or every possible policy."
+      "limitations": "Scenario-specific functional evidence with synthetic authorities and substituted external runtimes. Does not run nested P7 real-broker groups or native agent models, production OAuth, GUI, real media failures or every possible policy. Explicit NODE_OPTIONS matches the existing P7 lab environment because CLI fixtures compare stderr exactly; it suppresses ExperimentalWarning category only, not test assertions or skip/failure handling.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
     },
     {
       "id": "js-common-mcp",
