@@ -149,9 +149,13 @@ test("missing, throwing and revoked policy fail closed; foreign status and sende
 });
 test("DB clock rejects expired/future messages and expired accepted duplicates never resurrect body", (t) => {
   const f = fixture(t);
+  let now = Date.now();
+  t.mock.method(Date, "now", () => now++);
   const old = message("old");
   old.first_sent_at = new Date(Date.now() - 7200000).toISOString();
-  old.expires_at = new Date(Date.now() - 3600000).toISOString();
+  old.expires_at = new Date(
+    Date.parse(old.first_sent_at) + 3600000,
+  ).toISOString();
   code(
     () => f.service.submit("connection-a", old),
     "expired_before_acceptance",
