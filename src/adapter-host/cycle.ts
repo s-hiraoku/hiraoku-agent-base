@@ -27,6 +27,7 @@ export const hostCommand = z.discriminatedUnion("op", [
   z.strictObject({ op: z.literal("receive") }),
   z.strictObject({ op: z.literal("send") }),
   z.strictObject({ op: z.literal("inbox") }),
+  z.strictObject({ op: z.literal("inbox_read"), source: sourceKey }),
   z.strictObject({
     op: z.literal("answer"),
     source: sourceKey,
@@ -423,6 +424,14 @@ export class AdapterHostCycle {
             throw new HostError("host_initial_message_required");
           return this.#outbox.enqueueGuarded(message, check);
         });
+      } else if (command.op === "inbox_read") {
+        value = atomic(() =>
+          this.#inbox.withEntry(
+            command.source.sender_id,
+            command.source.message_id,
+            (entry) => structuredClone(entry),
+          ),
+        );
       } else if (command.op === "inbox") {
         value = atomic(() =>
           this.#inbox.inbox().map((entry) => ({

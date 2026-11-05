@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "84248665cfce44791027a0b232de6c7dd76c529c",
+  "source_ref": "f1b99cc6d0a7dc9b5cc257304c3c9ab18d823615",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -32,6 +32,10 @@
       "previous_sha256": null,
       "sha256": "94e873b8338dd6a8f8f658607a06e3dd697eb9e7372a3a07353401e7d81e407e"
     },
+    "packages/relay-nats/test/backend.test.js": {
+      "previous_sha256": "3f67358f76d406b91f93f4bb59a80fd2cbb26114d8e4623c3a1013e29dbbec7e",
+      "sha256": "03dc9e19163998c28b1c4345513f5a4848f818537a7aa473bc4da27cf32fc461"
+    },
     "packages/relay-nats/test/fixture.js": {
       "previous_sha256": "75bc9335f5461a80aea0522ac2b0b69f182ba4695b8dba8ac7db2f7573a6a2d6",
       "sha256": "5e33a06340317cd8cbf02b2e9ee9c36b3b16c2613cecafe48dd684241cac95a2"
@@ -50,7 +54,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "4e0defa415d93a3f273c958bdd78c2d63c5769031301f508ed8671165c9c6f03"
+      "sha256": "90d304b4c46a33b9555b75cf85415951897bbf99c33780eeb997e8f52247cf04"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -67,6 +71,10 @@
     "src/a2a/generic-http.ts": {
       "previous_sha256": null,
       "sha256": "aa31b717c69bd4a6939e5b12f0c6cb17b898b7a9fcccc52c28a229b2120c35b4"
+    },
+    "src/adapter-host/cycle.ts": {
+      "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
+      "sha256": "01e21dd66cba2c86cdca03a651aebfdc84cb3c80ff5955b554d5417f1b7becbb"
     },
     "src/adapter.ts": {
       "previous_sha256": "4105718441970854cbaddc0795137bb512c003ac193be4fb8bb1cc832b92e99c",
@@ -119,6 +127,10 @@
     "src/types.ts": {
       "previous_sha256": "5ed448109e226fa0612f571dd616e5be2cbb2691f560a6e207bc47b89c16aeac",
       "sha256": "c5e217f4b3ee7a19d2c73d758e260e3f71f220eb6e0ef1e2dff465327afdee54"
+    },
+    "test/adapter-inbox-read.test.js": {
+      "previous_sha256": null,
+      "sha256": "e776de66172af0c2325e85a255d55400ec8c6cb097d350345dc79f1956d54b2b"
     },
     "test/common-mcp-boundary.test.js": {
       "previous_sha256": null,

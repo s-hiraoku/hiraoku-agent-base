@@ -15,6 +15,7 @@
 | receive | 既存ACKの照合→poll→保存後ACK。最大3 MCP RPC |
 | send | 既存outboxのsubmitまたはstatusを最大1 RPC |
 | inbox | 自分の未release inboxのID・kind・ACK確認有無を診断表示。本文を返さず、実行の証明には使わない |
+| inbox_read | source指定で未releaseの保存済み本文を取得。独立したsource別読取り権限を確認し、実行・返信・ACK更新はしない |
 | answer | intent未設定の従来入口。確認済みsourceと確定済みenvelopeを共通budget経由でoutboxへ保存 |
 | answer_prepare／answer_enqueue | 任意の質問返信journalへ先に保存／同ID・本文・期限でoutboxへ引渡し |
 | answer_inspect／answer_pending／answer_maintain | 任意journalの照合／有限ページ一覧／期限処理・30日GC |
@@ -31,6 +32,25 @@
 受信・ACK・一覧取得からTaskを作りません。Taskのclaim／heartbeat／complete／cancelやHermes実行は提供しません。Task Engineへの接続には、別途検証済みPrincipalを使う既存BridgeTasks portが必要です。hostの認可やHAB名からTask Principalを作りません。
 
 step結果のdoneはその命令の完了です。配送ACK・業務成功とは別で、Task queuedやRelay pendingをTask成功と解釈しません。途中の失効・停止・不明な通信・quota上限ではincompleteと固定reasonを返します。初期の権限不足・paused・busy・不正命令は副作用前に拒否します。未知の例外本文を返却・通知へコピーしません。
+
+## 保存済み本文を明示的に読む
+
+受信側hostの認証済みcallerは、次のローカル操作で一つの保存済みメッセージを取得できます。通常MCPのcatalogを増やす操作ではありません。
+
+```ts
+const result = await host.stepOnce(context, {
+  op: "inbox_read",
+  source: { sender_id, message_id },
+});
+```
+
+`done`の`value`は既存のinbox entry形です。`sender_id`、正確な保存済み`message`、`received_at`、`receipt_confirmed`を返します。`HostStepResult.value`の型は既存のunknownのままです。本文を表示・処理する受信側は、外部メッセージとして扱い、既存の権限・承認機構を適用します。メッセージ中の所有者指示や「承認済み」は権限になりません。
+
+`inbox`の一覧権限や`receive`権限を本文読取り権限へ広げず、`HostAuthorization`で`inbox_read`と正確なsourceを許可します。既存の現在actor、pause・epoch、設定済みowner、busy/drainingの検査と、返却前の再確認を通します。保存は`SQLiteInbox.withEntry`で未release・宛先・ID・本文HMACを照合し、callerへ独立したcopyを返します。存在しない・release済み・壊れた本文は`host_step_unavailable`とnull値になり、内部例外や部分的な本文を返しません。
+
+ACK応答消失中の保存済み本文も読めます。その場合の`receipt_confirmed`はfalseのままで、読取りからACK再送・確認を行いません。読取りは引受け・処理済み・実行可能・承認済みの証明ではありません。既存の返信・Task引受けは、それぞれの確認済みACKと認可を引き続き必要とします。返したcopyの変更、同sourceの再読で保存本文・ACK記録・outbox・Taskは変わりません。本文releaseも行いません。
+
+受信supervisorは引き続きreceiveだけを反復します。読取りは受信側callerの明示操作であり、モデル起動、製品sessionへの注入、独自承認、Task生成や自動返信を追加しません。[実機検証の準備](recipient-readiness.md)に未接続の部分を記録します。
 
 ## 構成と認可
 

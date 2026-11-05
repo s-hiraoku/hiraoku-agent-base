@@ -61,7 +61,9 @@ Build a valid message (replay-bound id `rm1.<ms>.<32hex>`, one-hour deadline):
 MSG=$($S/new-message.sh "$RUN" b "hello from a")       # to agent b; optional 4th arg kind: question|answer|notice
 ```
 
-Minimal round trip (a → b):
+The following raw round trip proves Relay wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses DurableReceiver, SQLiteInbox and an independent SQLite read before network ACK.
+
+Raw wire round trip (a → b):
 
 ```sh
 $S/mcp.sh "$RUN" a relay_resolve '{"address":"verify-b@dot.hab"}'
@@ -79,7 +81,7 @@ Feature-by-feature recipes: [`features/README.md`](features/README.md).
 ## Evidence
 
 - Where: `$RUN/evidence/` (numbered `NNN-*` in call order, plus `audit.jsonl`, `stack.log`).
-- Exercise the user path: only MCP HTTP calls through `mcp.sh` (or the enrollment terminal in tmux). Do not call service classes, write DB rows, or edit `state.json` to make a step pass.
+- Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real client and SQLiteInbox with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
 - Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `relay_status` after receiver `relay_ack`) and `inspect.mjs` (read-only DB snapshot: agents, bindings, messages, deliveries with state/generation, delivery audit events, ack receipt count; bodies omitted).
 - Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
 - Mocks: only identity is synthetic (static bearer → synthetic verified connection), because Auth0/production identity binding is not built yet. Storage, HTTP, MCP framing, registry authorization and enrollment are the real code.

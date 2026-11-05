@@ -7,6 +7,7 @@ Agents receive through common MCP. Their host polls, saves the message and dedup
 - `boundary-receive` uses native loopback HTTP MCP for question, notice, and structured execution_request deliveries.
 - `boundary-save-before-ack` observes committed message and ACK request records through an independent SQLite connection before the server handles ACK.
 - `boundary-no-execution` preserves external content verbatim, calls only receive host operations, and leaves Task links, Tasks, and reply outbox empty even with the optional Task port configured.
+- `boundary-inbox-read` exercises explicit source-authorized saved-body reads, ACK-pending inspection, detached copies, missing/released/tampered records, revocation and an explicit recipient reply after native HTTP periodic reception. Reading creates no Task or reply and grants no action permission.
 - `boundary-task-state` observes working after the optional Task coordinator claims a job while its runtime ID is still absent. This does not prove model execution.
 - The existing supervisor tests also cover restart, lost ACK, finite backoff, owner requirements, and stop/drain behavior. The HAB catalog test keeps the standard five operations separate from optional text_* tools.
 
