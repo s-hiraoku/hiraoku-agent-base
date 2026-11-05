@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "f82efa8396bcffb4f07ef3aafc65d89320dc71a1",
+  "source_ref": "6040c76247e40180594f7e57823d17d39cd882bd",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -131,7 +131,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "296e8823d179a8a78043e35d54ebc92edaa3e728648ae01fd4ec0be4f9480257"
+      "sha256": "29938290be249f814aaab2f1399bd15ee4a20d05a9ce60d53044a4c65209687d"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
