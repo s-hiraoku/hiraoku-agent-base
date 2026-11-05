@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
-import { setTimeout as delay } from "node:timers/promises";
 import { connect } from "@nats-io/transport-node";
 import { jetstream } from "@nats-io/jetstream";
 import { JetStreamRelay } from "../src/backend.ts";
@@ -173,16 +172,24 @@ test("cached redelivery preserves backoff and rejects an old application fence",
   });
   admit(f.backend, "a", f.message());
   await f.backend.pumpOnce();
-  const first = poll(f.backend, "b");
-  await delay(100);
-  assert.equal(poll(f.backend, "b"), null);
-  await delay(70);
-  const second = poll(f.backend, "b");
-  assert.equal(second.generation, first.generation + 1);
-  assert.throws(() => acknowledge(f.backend, "b", ackRequest(first)), {
-    code: "invalid_ack",
-  });
-  acknowledge(f.backend, "b", ackRequest(second));
+  // Advance application wall time only; broker IO and native timers remain real.
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  try {
+    const first = poll(f.backend, "b");
+    t.mock.timers.tick(f.options.lease_ms);
+    assert.equal(poll(f.backend, "b"), null);
+    t.mock.timers.tick(f.options.retry_base_ms - 1);
+    assert.equal(poll(f.backend, "b"), null);
+    t.mock.timers.tick(1);
+    const second = poll(f.backend, "b");
+    assert.equal(second.generation, first.generation + 1);
+    assert.throws(() => acknowledge(f.backend, "b", ackRequest(first)), {
+      code: "invalid_ack",
+    });
+    acknowledge(f.backend, "b", ackRequest(second));
+  } finally {
+    t.mock.timers.reset();
+  }
   await f.backend.pumpOnce();
 });
 
