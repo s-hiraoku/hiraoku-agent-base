@@ -8,7 +8,7 @@ The shipped Relay (`npm run relay:local -- --config …`) refuses a bad start wi
 - `admin-connect` `connect --address <a> --connection-id <id>` registers product/address, binds and grants; rerun returns `steps: []`.
 - `admin-status` `status` lists addresses, credential lifetime/audience/binding and `problems` (`credential_unbound`, `credential_expired`, `credential_audience_mismatch`, `credential_revoked`, `address_unbound`, `address_stopped`).
 - `admin-disconnect` `disconnect --address <a>` revokes with current epochs; works after the token mapping was deleted; rerun → `already_disconnected: true`; the old token then gets `forbidden`.
-- `configured-roundtrip` a → b submit / poll / ack / sender status `acked` through the shipped Relay.
+- `configured-roundtrip` a → b submit / poll / ack / sender status `acked` through the shipped Relay. A submit with an `attachment` part is refused (`isError`, nothing stored), as in `send-attachment-refused`.
 - `host-exact` `Host: localhost:<port>` → HTTP 403; only `127.0.0.1:<port>` is accepted.
 
 ## How to get to it (user POV)
@@ -35,4 +35,5 @@ Preconditions:
 - `inspect.mjs` and `doctor.sh`/`cleanup.sh` target the stack layout; use `configured.sh … admin status` and `configured.sh … stop` here.
 - Credentials expire 15 minutes after `start`; after that every call is 401 and `status` shows `credential_expired`. Relaunch with a new run dir.
 - A revoked connection id can never be bound again (`credential_revoked_use_new_connection_id`); a new credential needs a new `connection_id`.
+- `limits` no longer has `attachment_bytes`, `total_attachment_bytes` or `attachments`. A config that still carries any of them is refused at start with `reason=config_invalid fields=limits`. Delete those keys.
 - Tokens are synthetic and local; a pass is not evidence of a real Codex/Hermes client or model choosing tools.

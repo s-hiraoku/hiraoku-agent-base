@@ -9,6 +9,7 @@ A sender submits a message with a fixed replay-bound id to a recipient id; the R
 - `send-conflict` re-using a `message_id` with a different body is refused with `idempotency_conflict`.
 - `send-kind` a kind outside the allowed set (`question`, `answer`, `notice`) is refused with `forbidden`.
 - `send-status` the sender's `relay_status` returns the receipt; another agent gets `not_found`.
+- `send-attachment-refused` a message with an `attachment` body part is refused before storage. Managed attachments were removed; the published `relay_submit` schema accepts only `text` and `data` parts, so nothing is stored and the id stays `not_found`.
 - `send-thread-scope` a `thread_id` belongs to the agent pair that uses it: another agent reusing the same name with a different peer gets its own thread and the same answer as for an unused name, never `invalid_reference`.
 
 ## How to get to it (user POV)
@@ -28,10 +29,12 @@ Preconditions:
 - **Sender status.** Run `ID=$(jq -r .message_id <<<"$MSG")` then `$S/mcp.sh "$RUN" a relay_status "{\"message_id\":\"$ID\"}"`. Same receipt, `state: "pending"`.
 - **Non-sender status.** Run `$S/mcp.sh "$RUN" c relay_status "{\"message_id\":\"$ID\"}"`. `{"error":"not_found"}`.
 - **Thread scope.** Run `T=$(jq -r .thread_id <<<"$MSG")`, then `$S/mcp.sh "$RUN" c relay_submit "$($S/new-message.sh "$RUN" b "same name" | jq -c --arg t "$T" '.thread_id=$t')"` and `$S/mcp.sh "$RUN" c relay_submit "$($S/new-message.sh "$RUN" a "same name" | jq -c --arg t "$T" '.thread_id=$t')"`. Both return `state: "pending"`, and `a` can still submit to `b` on `$T`.
+- **Attachment refused.** Run `ATT=$($S/new-message.sh "$RUN" b "with file" | jq -c '.body.parts += [{"type":"attachment","attachment_id":"file-1","media_type":"text/plain","size_bytes":1,"sha256":("a"*64)}]')` then `$S/mcp.sh "$RUN" a relay_submit "$ATT"`. HTTP 200 with `"isError":true`, no `structuredContent`, and text starting `Input validation error` with `Expected 'text' | 'data'`. Then `$S/mcp.sh "$RUN" a relay_status "{\"message_id\":\"$(jq -r .message_id <<<"$ATT")\"}"` returns `{"error":"not_found"}`.
 - **Proof.** Run `node $S/inspect.mjs "$RUN" after-send`. Exactly one `messages` row for `$ID`, one `deliveries` row with `state: "pending"`, `generation: 0`, and one `accepted` audit event (the replay added none). `inspect.mjs` shows the plain `thread_id` name even though the store keys threads by agent pair.
 
 ## Gotchas
 
 - `new-message.sh` sets `first_sent_at` 100 ms in the past and `expires_at` exactly one hour later; hand-built messages with another lifetime or a `message_id` whose `rm1.<ms>` part does not equal `first_sent_at` are refused as `invalid_contract`.
+- The attachment refusal comes from the SDK input schema, so it has no fixed `{"error":"<code>"}`. The core contract answers `invalid_contract` when the schema is bypassed. `attachment_store_unavailable` no longer exists.
 - Sending to yourself (`a` → `a`) is currently accepted; do not use it as a negative case.
 - `relay_status` reports delivery state (`pending`/`leased`/`acked`), never work completion.
