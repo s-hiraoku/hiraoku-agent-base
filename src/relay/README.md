@@ -1,6 +1,13 @@
 # Standalone Relay contract — implementation step 1
 
-Import the contract, `DeliveryService` port and `StoreDeliveryService` from
+> **SQLite delivery retired.** JetStream is now the only delivery backend. `sqlite-store.ts`
+> (`SQLiteRelayStore`), `StoreDeliveryService` and the SQLite/JetStream router were removed;
+> the acceptance, lease, ACK, capacity, fair-poll, audit and retention rules described in the
+> historical steps below now live in the JetStream journal
+> ([packages/relay-nats/DESIGN.md](../../packages/relay-nats/DESIGN.md)). The durable sender,
+> receiver, outbox and inbox in this directory are unchanged.
+
+Import the contract and the `DeliveryService` port from
 [`../messaging/index.ts`](../messaging/index.ts); `./index.ts` exports the durable
 sender and receiver. The messaging contract owns no database, process, credentials,
 network connection, environment configuration, HAB naming rules or Task Engine.

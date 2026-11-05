@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
  * VERIFICATION SCAFFOLDING ONLY. Composes the repo's own HAB Relay classes
- * (SQLiteHabRegistry, SQLiteRelayStore, runHabEnrollment, HabRelayService,
- * HabHttpGateway, createRelayNodeHandler) on a loopback port, the same way
- * test/hab-journey-fixtures.js does, and keeps it listening for an agent to
- * drive over real MCP HTTP. Synthetic authority and static bearer tokens;
- * never reads config/*.local.json, .env or any credential.
+ * (SQLiteHabRegistry, runHabEnrollment, the JetStream delivery the host wires
+ * via createJetStreamDelivery, HabHttpGateway, createRelayNodeHandler) on a
+ * loopback port, and keeps it listening for an agent to drive over real MCP
+ * HTTP. It starts its own private nats-server (HAB_NATS_SERVER or
+ * .runtime/nats-install.json) with its store under the run dir. Synthetic
+ * authority and static bearer tokens; never reads config/*.local.json, .env
+ * or any credential.
  *
  * Usage: node stack.mjs <run-dir> [port]
  *   First start enrolls three agents (a: grok-bot, b: dot, c: hermes).
  *   Re-running on the same <run-dir> reopens the same DBs (restart test).
- * Writes <run-dir>/instance/{state.json,*.sqlite,stack.pid} and appends
+ * Writes <run-dir>/instance/{state.json,*.sqlite,broker/,stack.pid} and appends
  * audit categories to <run-dir>/evidence/audit.jsonl. Prints
  * "HAB_VERIFY_READY <url>" once every agent is active and the port listens.
  */
@@ -19,8 +21,12 @@ import { once } from "node:events";
 import {
   appendFileSync,
   chmodSync,
+  closeSync,
+  constants,
   existsSync,
+  lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -35,10 +41,14 @@ const { SQLiteEnrollmentJournal } = await import(
   src("hab/sqlite-enrollment-journal.ts")
 );
 const { runHabEnrollment } = await import(src("hab/enrollment.ts"));
-const { HabRelayService } = await import(src("hab/relay.ts"));
 const { HabHttpGateway } = await import(src("hab/http.ts"));
-const { SQLiteRelayStore } = await import(src("relay/sqlite-store.ts"));
 const { createRelayNodeHandler } = await import(src("relay/http-node.ts"));
+const { createJetStreamDelivery } = await import(
+  join(repo, "packages/relay-nats/src/configured.ts")
+);
+const { startLocalBroker } = await import(
+  join(repo, "scripts/lib/nats-broker.mjs")
+);
 
 const [runArg, portArg] = process.argv.slice(2);
 if (!runArg) {
@@ -110,20 +120,81 @@ const registry = new SQLiteHabRegistry(
   authority,
 );
 registry.migrate();
-const store = new SQLiteRelayStore(join(instance, "relay.sqlite"), {
-  fingerprint_key: new Uint8Array(32).fill(43),
-  max_pending: 20,
-  max_records: 100,
-  max_pending_per_recipient: 10,
-  max_body_bytes: 100000,
-  max_clock_skew_ms: 1000,
-  lease_ms: 30000,
-  max_attempts: 3,
-  retry_base_ms: 10,
-  retry_cap_ms: 100,
-  poll_scan_limit: 20,
+// JetStream is the only delivery backend. The broker store lives under the run dir, so a
+// reopen (restart test) recovers the same stream; each start gets a fresh port and password.
+const broker = await startLocalBroker(join(instance, "broker"), {
+  maxFileStore: "256MB",
+  keepAlive: true,
 });
-store.migrate();
+const marker = join(instance, "volume.local.json");
+if (!existsSync(marker))
+  writeFileSync(
+    marker,
+    JSON.stringify({ version: 1, volume_id: "verify-hab-volume" }),
+    { mode: 0o600 },
+  );
+const delivery = await createJetStreamDelivery(
+  {
+    broker: {
+      server: broker.server,
+      user: broker.user,
+      password: broker.password,
+      stream: "HAB_VERIFY",
+      subject_prefix: "habVerify",
+      max_consumers: 20,
+      max_bytes: 67108864,
+      max_message_bytes: 65536,
+      request_timeout_ms: 2000,
+    },
+    pump: { interval_ms: 20, max_records_per_cycle: 100 },
+    volume: {
+      identity_file: marker,
+      expected_id: "verify-hab-volume",
+      expected_device: lstatSync(instance).dev,
+    },
+    queue: {
+      max_pending: 20,
+      max_records: 100,
+      max_pending_per_recipient: 10,
+      max_body_bytes: 100000,
+      max_clock_skew_ms: 1000,
+      lease_ms: 30000,
+      max_attempts: 3,
+      retry_base_ms: 10,
+      retry_cap_ms: 100,
+      poll_scan_limit: 20,
+      agent_capacity: {
+        max_pending_per_sender: 10,
+        max_body_bytes_per_sender: 50000,
+        max_records_per_sender: 50,
+        max_body_bytes_per_recipient: 50000,
+        max_records_per_recipient: 50,
+        reservations: [],
+      },
+    },
+  },
+  new Uint8Array(32).fill(43),
+)({
+  registry,
+  limits,
+  directory: instance,
+  assertOwner: () => {},
+  privateFile: (name) => {
+    const path = join(instance, name);
+    try {
+      closeSync(
+        openSync(
+          path,
+          constants.O_CREAT | constants.O_EXCL | constants.O_RDWR,
+          0o600,
+        ),
+      );
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+    }
+    return path;
+  },
+});
 const journal = new SQLiteEnrollmentJournal(
   join(instance, "enrollment.sqlite"),
   { max_sessions: 10, busy_timeout_ms: 100 },
@@ -186,7 +257,7 @@ const port = server.address().port,
   url = `http://127.0.0.1:${port}/mcp`;
 const handle = createRelayNodeHandler(
   new HabHttpGateway(
-    new HabRelayService(registry, store, limits),
+    delivery.service,
     {
       resource_url: url,
       allowed_origins: [],
@@ -229,8 +300,10 @@ const shutdown = () => {
   if (closing) return;
   closing = true;
   server.closeAllConnections();
-  server.close(() => {
-    for (const s of [journal, store, registry]) s.close();
+  server.close(async () => {
+    await delivery.close();
+    await broker.stop();
+    for (const s of [journal, registry]) s.close();
     rmSync(join(instance, "stack.pid"), { force: true });
     process.stdout.write("HAB_VERIFY_STOPPED\n");
     process.exit(0);

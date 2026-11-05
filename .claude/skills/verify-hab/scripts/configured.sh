@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Drive the shipped Relay CLI (npm run relay:local) and the operator CLI (relay:admin)
 # instead of the stack.mjs scaffolding. Synthetic 15-minute tokens only, all under the run dir.
+# The Relay delivers only through JetStream, so start also runs a private nats-server
+# (HAB_NATS_SERVER or .runtime/nats-install.json) with its store under instance/broker.
 # Usage: configured.sh <run-dir> start [port]   -> instance/state.json usable by mcp.sh/new-message.sh
 #        configured.sh <run-dir> admin <args...> -> runs relay:admin with this run's config
-#        configured.sh <run-dir> stop            -> SIGTERM the relay this run started (by pid + cmdline)
+#        configured.sh <run-dir> stop            -> SIGTERM the relay, then the broker, this run started (by pid + cmdline)
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); . "$here/_node.sh"
 repo=$(cd "$here/../../../.." && pwd)
@@ -11,14 +13,23 @@ mkdir -p "$1"; run=$(cd "$1" && pwd); inst="$run/instance"; cfg="$inst/service.l
 case "${2:-}" in
 start)
   [ -e "$inst" ] && { echo "instance_exists: $inst (stop + rm first)" >&2; exit 2; }
-  mkdir -p -m 700 "$inst" "$inst/state" "$inst/audit" "$run/evidence"
-  port=${3:-$(node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')}
-  node - "$repo" "$inst" "$port" <<'JS'
-const fs = require("fs"), c = require("crypto"), [repo, inst, port] = process.argv.slice(2);
+  mkdir -p -m 700 "$inst" "$inst/state" "$inst/audit" "$inst/broker" "$run/evidence"
+  freeport() { node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
+  port=${3:-$(freeport)}; nport=$(freeport)
+  nats=$(cd "$repo" && node --input-type=module -e 'import { natsServerBinary } from "./scripts/lib/nats-broker.mjs"; console.log(natsServerBinary())')
+  node - "$repo" "$inst" "$port" "$nport" <<'JS'
+const fs = require("fs"), c = require("crypto"), [repo, inst, port, nport] = process.argv.slice(2);
 const w = (p, o) => fs.writeFileSync(`${inst}/${p}`, JSON.stringify(o), { mode: 0o600 });
 const cfg = JSON.parse(fs.readFileSync(`${repo}/config/relay-service.example.json`, "utf8"));
 Object.assign(cfg, { directory: `${inst}/state`, port: Number(port), keys_file: `${inst}/keys.local.json`,
   credentials_file: `${inst}/individuals.local.json`, audit_directory: `${inst}/audit` });
+// Private broker for this run only: random password, loopback port, file store under instance/broker.
+const password = c.randomBytes(24).toString("hex");
+fs.writeFileSync(`${inst}/broker/broker.conf`, `host: 127.0.0.1\nport: ${nport}\njetstream {\n store_dir: ${JSON.stringify(`${inst}/broker/store`)}\n max_file_store: 256MB\n max_memory_store: 0\n sync_interval: always\n}\naccounts { HAB {\n jetstream: enabled\n users: [{user: backend, password: ${JSON.stringify(password)}}]\n} }\n`, { mode: 0o600 });
+w("state/volume.local.json", { version: 1, volume_id: "verify-hab-volume" });
+Object.assign(cfg.delivery.broker, { server: `nats://127.0.0.1:${nport}`, user: "backend", password });
+cfg.delivery.volume = { identity_file: `${inst}/state/volume.local.json`, expected_id: "verify-hab-volume",
+  expected_device: fs.lstatSync(`${inst}/state`).dev };
 w("service.local.json", cfg);
 w("keys.local.json", { version: 1, registry_fingerprint_key: c.randomBytes(32).toString("hex"),
   relay_fingerprint_key: c.randomBytes(32).toString("hex") });
@@ -32,6 +43,9 @@ w("individuals.local.json", { version: 1, credentials: Object.entries(agents).ma
 }) });
 w("pending.local.json", { agents, tokens, now });
 JS
+  "$nats" -c "$inst/broker/broker.conf" > "$run/evidence/broker.log" 2>&1 &
+  echo $! > "$inst/broker.pid"
+  for _ in $(seq 1 40); do (exec 3<>"/dev/tcp/127.0.0.1/$nport") 2>/dev/null && break; sleep 0.25; done
   (cd "$repo" && exec node scripts/hab-relay.mjs --config "$cfg") > "$run/evidence/relay.log" 2>&1 &
   echo $! > "$inst/relay.pid"
   for _ in $(seq 1 40); do grep -q '"ready"' "$run/evidence/relay.log" && break; sleep 0.25; done
@@ -56,6 +70,15 @@ stop)
     kill -TERM "$pid"; for _ in $(seq 1 40); do kill -0 "$pid" 2>/dev/null || break; sleep 0.25; done
     echo "stopped $pid"
   else echo "pid $pid not our relay; nothing killed"; fi
-  rm -f "$pidf" ;;
+  rm -f "$pidf"
+  bpidf="$inst/broker.pid"
+  if [ -f "$bpidf" ]; then
+    bpid=$(cat "$bpidf")
+    if kill -0 "$bpid" 2>/dev/null && ps -o command= -p "$bpid" | grep -qF -- "-c $inst/broker/broker.conf"; then
+      kill -TERM "$bpid"; for _ in $(seq 1 40); do kill -0 "$bpid" 2>/dev/null || break; sleep 0.25; done
+      echo "stopped broker $bpid"
+    else echo "pid $bpid not our broker; nothing killed"; fi
+    rm -f "$bpidf"
+  fi ;;
 *) echo "usage: configured.sh <run-dir> start [port] | admin <args> | stop" >&2; exit 2 ;;
 esac

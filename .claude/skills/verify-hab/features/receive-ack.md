@@ -42,4 +42,5 @@ Preconditions:
 
 - `relay_poll` hands out the oldest deliverable message across senders; leftovers from an earlier recipe change what you get. Use a fresh run dir per recipe.
 - The lease is 30 s. An ack built from a poll older than that may be refused; re-poll.
+- A message becomes pollable on the pump's next cycle (20 ms in the stack) after `relay_submit`; a poll in the same instant can return `{"delivery":null}`.
 - `inspect.mjs` prints an `ExperimentalWarning` for `node:sqlite` on stderr; it is not a failure.

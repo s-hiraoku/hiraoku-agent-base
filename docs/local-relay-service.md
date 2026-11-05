@@ -10,15 +10,22 @@ After explicit approval and operator preparation, run:
 
 ```sh
 npm ci
+npm ci --prefix packages/relay-nats --ignore-scripts
 npm run relay:local -- --config /ABSOLUTE/PRIVATE/service.local.json
 ```
 
+Delivery runs only through NATS JetStream: start a private loopback broker first
+([package guide](../packages/relay-nats/README.md)). The config has one `delivery`
+section with `broker`, `pump`, `volume` and `queue` parts. The retired SQLite
+`store` section, and `delivery.routing`, are refused with `config_invalid` and the
+field paths; messages held by the retired SQLite store are not migrated.
+
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all
-limits explicitly. `store.agent_capacity` is required: each verified sender gets
+limits explicitly. `delivery.queue.agent_capacity` is required: each verified sender gets
 its own pending/record budget ([details](relay-agent-capacity.md)), and
 `max_records_per_sender` / `max_pending_per_sender` must be smaller than the
-store-wide `max_records` / `max_pending`, so one sender cannot fill the retained
+queue-wide `max_records` / `max_pending`, so one sender cannot fill the retained
 record pool that every other agent relies on. The existing canonical state directory must be 0700. Config,
 keys and individual mappings must be canonical owner-only 0600 files ending in
 `.local.json`, outside Git. Hardlinked config/keys/mappings are rejected. A missing
@@ -65,7 +72,7 @@ cannot be reliably zeroized.
 
 The CLI emits only `{state:"ready",url}` and `{state:"stopped"}`. A refused start
 prints one line, `local_relay_start_rejected reason=<code>[ fields=<config paths>]`,
-for example `reason=config_invalid fields=store.agent_capacity`. Codes are fixed
+for example `reason=config_invalid fields=delivery.queue.agent_capacity`. Codes are fixed
 (`config_required`, `config_file_rejected`, `config_invalid`, `keys_file_rejected`,
 `keys_invalid`, `credentials_invalid`, `oauth_invalid`, `oauth_resource_mismatch`,
 `port_in_use`, `state_in_use`, `local_relay_private_path_required`,
@@ -175,7 +182,7 @@ Registryの`authentication_groups`は任意のbooleanです。省略またはfal
 移行して認証グループを有効にします。既存ID・アドレス・bindingは維持します。
 この設定を既存サービスへ適用する前に、対象release、停止・backup／復旧手順と
 管理者によるグループ登録・所属・権限を確認してください。v2を旧runtimeで開くために
-versionを書き換えることは禁止します。`store.agent_capacity`等の現在の必須設定も
+versionを書き換えることは禁止します。`delivery.queue.agent_capacity`等の現在の必須設定も
 releaseと照合し、不足時に制限を省いて起動しません。
 
 新規空DBで有効化しても、グループや資格情報は自動登録せず全拒否のままです。

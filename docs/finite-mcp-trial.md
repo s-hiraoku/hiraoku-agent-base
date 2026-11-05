@@ -53,7 +53,7 @@ npm run demo:hab-mvp -- --simulate
 ### 1. 実体と設定を固定する
 
 - Relayと[公式管理CLI](local-relay-service.md)を同じrevisionにする。
-  `store.agent_capacity`を含む現行設定を使い、既存DB・サービスと分離する。
+  `delivery.queue.agent_capacity`を含む現行設定を使い、既存DB・サービスと分離する。
 - CLIの実ファイルと`--version`を確認する。PATH上の旧Codex `0.149.0`では
   `gpt-6.1-sol`が`400 model_not_found`となり、同梱版では成功しました。
   これはその試験経路の結果であり、アカウント全体の契約制限という結論ではありません。

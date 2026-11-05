@@ -33,9 +33,9 @@ The reviewed roles follow `docs/hab-relay-spec.md:74–97` and the implementatio
 
 | Role | Explicit modules | Reason |
 | --- | --- | --- |
-| Protected messaging contract | `src/messaging/index.ts`, `contract.ts`, `delivery-service.ts`, `tool-errors.ts` | Backend-neutral entry point, envelope, `DeliveryService` port, store-backed service and the fixed public tool error codes. |
+| Protected messaging contract | `src/messaging/index.ts`, `contract.ts`, `delivery-service.ts`, `tool-errors.ts` | Backend-neutral entry point, envelope, `DeliveryService` port and the fixed public tool error codes. |
 | Protected public/domain | `src/relay/index.ts`, `sender.ts`, `receiver.ts` | Durable sender/receiver entry point with injected transport. |
-| Protected storage | `sqlite-store.ts`, `sqlite-outbox.ts`, `sqlite-inbox.ts`, listed individually in `coreModules` | Dedicated Relay/outbox/inbox storage must not acquire transport SDK or credential dependencies. A future filename is not implicitly accepted by this description. |
+| Protected storage | `sqlite-outbox.ts`, `sqlite-inbox.ts`, listed individually in `coreModules` | Dedicated outbox/inbox storage must not acquire transport SDK or credential dependencies. The retired SQLite Relay store (`sqlite-store.ts`) was removed when JetStream became the only delivery backend. A future filename is not implicitly accepted by this description. |
 | Protected host contracts | `agent-capacity.ts`, `writer-admission.ts` | Pure domain or finite host orchestration with injected ports; no import of the transport implementation is required. |
 | Outer transport | `src/relay/mcp.ts`, `mcp-client.ts`, `http.ts`, `http-node.ts`, `oauth-resource.ts` | Optional MCP/HTTP codecs/clients/listener and OAuth metadata. These can depend inward and use the MCP SDK. |
 | Outer-only shared modules | `src/protocol.ts`, `src/security.ts` | HTTP admission and shared audit contracts needed by outer adapters. They are not exceptions to core's independent closure. |

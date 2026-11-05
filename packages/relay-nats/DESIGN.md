@@ -1,5 +1,7 @@
 # HAB delivery through JetStream
 
+JetStream is HAB's only delivery backend. The host has one start path (`npm run relay:local`), one `delivery` config section, and no SQLite delivery store, router, or routing epoch. Messages held by the retired SQLite store are not migrated.
+
 The package keeps the existing synchronous HAB operation boundary and moves broker I/O into a supervised pump. `HabJetStreamService` implements the same `submit`, `status`, `poll`, `ack`, address resolution, and optional discovery methods used by `HabMcpClient`. No Promise crosses `SQLiteHabRegistry.withRelay`, and the MCP executor's Promise rejection remains unchanged.
 
 ## Admission and authority
@@ -12,17 +14,15 @@ Public poll and ACK acquire a fresh `withRelay` scope and commit synchronously. 
 
 The considered alternative was a Promise-returning replacement inside the existing guard. The Registry rejects that return value. Awaiting a copied authorization after publication cannot undo a publication. A synchronous façade also preserves the HTTP cancellation boundary because background prefetch cannot create a late user lease.
 
-## Owners, replies, and capacity
+## Replies, capacity, and the delivery audit
 
-Each accepted `(sender_id, message_id)` belongs to the store that holds its receipt. The router checks both stores before selecting a route for a new ID. Exact retries, status, and ACK return to that owner. Duplicate ownership fails closed. Legacy ownership has epoch zero. New NATS records retain their admission epoch.
+Each store-level rule from the retired SQLite store lives in the journal transaction that changes the state. A reply must reference a message its recipient sent to its sender in the same pair-scoped thread. A third agent cannot reuse another pair's thread name. Admission checks the global record, pending, recipient, and body limits and the required per-sender quotas and reservations before it inserts. An exact retry needs no new capacity. A recipient has at most one application lease, and fair poll alternates senders over the cached candidates.
 
-New replies follow their parent's persisted owner. Each store still validates the reciprocal sender, recipient, and thread reference. Disabling new NATS routes does not strand a NATS reply chain or translate a reference into an unrelated backend.
+The journal keeps a redacted delivery audit (`nats_delivery_audit`: sender, message ID, time, and one of `accepted`, `leased`, `requeued`, `quarantined`, `expired`, `acked`) with no body or token. Each event is inserted in the same transaction as the state change it records. An audit failure rolls back that admission, lease, or ACK, including its capacity use. `nats_maintenance_totals` counts expired and purged records. If its row is missing, expiry and collection fail closed with `maintenance_state_unavailable` instead of losing the counts. Purging a record also removes its audit events.
 
-The configured routing epoch increases monotonically. Reusing an epoch with different selectors is rejected. A stale running router cannot admit new work after a newer policy is installed. Epoch changes reopen the backend with the new epoch.
+### Visibility latency
 
-The Registry lock covers both stores' live-lease checks and the selected lease commit. A recipient has at most one application lease across SQLite and NATS. A durable poll turn alternates the preferred store after a successful lease. Forbidden peer candidates remain available for later reactivation and do not authorize a user delivery.
-
-Admission capacity is service-wide. The router sums pending bodies, retained records, recipient use, and sender use across both stores under the Registry guard. The existing per-sender quotas and reservations apply to that total. An exact retry needs no new capacity. Saved ACK request IDs remain unique for each recipient across both stores; a collision with another message is rejected before either store commits.
+Admission commits synchronously, but a message becomes pollable only after the pump publishes and caches it. A poll right after a submit can therefore return no delivery for up to one pump cycle (`delivery.pump.interval_ms`, 100 ms in the example config) plus broker round trips. The retired SQLite store made an accepted message pollable immediately. Clients already poll repeatedly, so no contract changes. Tests that need the old immediacy run the production pump to completion before polling.
 
 ## Broker policy and recovery
 
@@ -38,7 +38,7 @@ Application leases retain generation, token, expiry, retry visibility, and bound
 
 Runtime reconnection is explicit when `reconnect:true`. The client transport itself has reconnect disabled, so old timed-out PUB frames cannot flush from an offline buffer. The next pump replaces a failed connection, checks the pinned version and stream configuration, and reconciles the same journal. It never creates a missing replacement stream during reconnect.
 
-Unknown journals are refused. A v1 or v2 journal requires explicit `migrate_journal:true` for the v3 migration. The migration preserves receipts and the next-store turn while adding the fair sender and within-sender message positions. A changed key, stream binding, or subject prefix is refused. Existing consumer settings must match the configured lease and prefetch policy. Consumer-policy migration is not automatic.
+Unknown journals are refused. A v1, v2, or v3 journal requires explicit `migrate_journal:true` for the v4 migration. The migration preserves receipts and the fair sender and within-sender message positions, drops the retired routing state and next-store turn, and adds the delivery audit and maintenance totals. Schema 4 records only events after the migration. A changed key, stream binding, or subject prefix is refused. Existing consumer settings must match the configured lease and prefetch policy. Consumer-policy migration is not automatic.
 
 ## Saved receipt and body disposal
 

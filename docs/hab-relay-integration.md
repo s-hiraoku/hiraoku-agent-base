@@ -24,7 +24,7 @@ npm run test:hab-integration
 配送経路は次の実装を実際に接続する。
 
 1. 専用`SQLiteEnrollmentJournal`と`SQLiteHabRegistry`へ登録・確認・bindingを保存する。
-2. `HabRelayService`がregistryの現在の認可とRelayの永続storeを組み合わせる。
+2. `HabJetStreamService`がregistryの現在の認可とJetStream journal（実nats-server）を組み合わせる。
 3. `HabHttpGateway`とNode callbackを、新規の`127.0.0.1`一時portにmountする。
 4. `HabMcpClient`がnative HTTPでlookup・submit・status・poll・ACKを呼ぶ。
 5. `DurableSender`／`DurableReceiver`が、それぞれ個体IDにboundされたprivate outbox／inboxへ保存する。

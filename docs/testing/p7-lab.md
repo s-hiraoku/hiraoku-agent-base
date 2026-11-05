@@ -21,7 +21,7 @@ The historical f19 delivery runner and its 168-input guard remain unchanged. The
 
 ## Real protocol and restore boundaries
 
-P7-01 uses the official SDK, private native Card, real HAB HTTP, current Registry guards, and the actual P6 service factory. A transparent fixture wrapper captures the real Registry and preserves the factory's preflight, extension marker, volume checks, owner checks, and automatic pump. Registry and routing permit the three execution kinds explicitly. The test reads each actual broker body before request, accepted, and result ACK cleanup, and finds no SQLite shadow row.
+P7-01 uses the official SDK, private native Card, real HAB HTTP, current Registry guards, and the host's actual JetStream delivery factory. A transparent fixture wrapper captures the real Registry and preserves the factory's preflight, volume checks, owner checks, and automatic pump. The Registry permits the three execution kinds explicitly. The test reads each actual broker body before request, accepted, and result ACK cleanup, and finds no retired SQLite delivery store.
 
 The independent pre-ACK connection sees the committed recipient body and original core ACK request. HTTP address-selection fields are checked separately. Saved delivery leaves the native Task submitted and engine count 0. Explicit acceptance creates one engine Task. Engine completion stays private until matching confirmed durable result delivery and authorized closed evidence release one Artifact.
 
@@ -31,9 +31,9 @@ The fixture closes native admissions and awaits in-flight handlers, then closes 
 
 P7-03 refuses a missing broker block or application store before traffic. Guard tests also reject unsafe paths, duplicate entries, symlinks, byte/mode drift, an image inside its source, and restore into the image itself. These are restore-validator results. The separate producer broker_store_missing case remains actual product evidence.
 
-P7-04 renames the pending recipient through the existing same-ID Registry API. Stale configuration fails closed. Explicit address refresh preserves the ID. A higher routing epoch disables only new NATS routes. Original request IDs and both reply chains remain NATS; a new unrelated native Task uses SQLite and stays unexecuted. The ordinary SQLite entry refuses the extension marker after the real host closes. Same-epoch policy changes and older epochs are rejected.
+P7-04 renames the pending recipient through the existing same-ID Registry API. Stale configuration fails closed. Explicit address refresh preserves the ID. After a cold host restart the original request ID, receipt, deadline, and both reply chains remain on NATS, and a new unrelated native Task is admitted to the same journal and stays unexecuted. Routing epochs and the SQLite fallback were retired with the SQLite delivery store.
 
-P7-05 stops only the owned broker while HAB stays active. A native request retains its original pending admission and never appears in SQLite. The same broker store restarts, the original identity and receipt recover, and explicit execution produces one Task and Artifact. The JetStream entry still needs its broker during restart and drain.
+P7-05 stops only the owned broker while HAB stays active. A native request retains its original pending admission; there is no SQLite fallback. The same broker store restarts, the original identity and receipt recover, and explicit execution produces one Task and Artifact. The JetStream entry still needs its broker during restart and drain.
 
 Completed cases separately inspect outbox, bridge, submission-receipt, admission, quarantine, and body-cleanup counts. They also read actual stream info and require logical messages 0. Storage, retention, and actual consumer count are recorded. The P5 synchronous path uses stream reads and tracked body deletion after HAB ACK; the tests do not claim a pull-consumer ACK that did not occur. Logical deletion does not establish physical byte erasure or power durability. P7-04's new SDK Task intentionally stays submitted and is distinct from unknown RPC or delivery intents.
 

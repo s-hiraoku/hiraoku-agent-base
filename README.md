@@ -62,7 +62,7 @@ flowchart LR
 | 永続タスクキュー、HTTP MCP、lease/fencing、監査・outbox、停止・照合                        | **実装済み**。SQLiteとローカルD1で失敗系を検証                                                                                   |
 | 固定テキストの`connectivity_check`、固定候補metadataの`shift_log_inventory`、診断ping/pong | **実装済み**。信頼済みpolicyで個別に許可する限定契約。自由入力・任意shellなし                                                    |
 | JWT/Auth0 resource-server、OAuth discovery、Events、限定キー管理、Hermes隔離bridge         | **実装済み**。通常runtimeと専用inventory入口の認証配線をfixtureで検証。本番の主体・設定・実接続は未確認                          |
-| Relayの独立契約・SQLite受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。本文はテキスト・構造化データ。添付partは廃止し、SQLite／NATSとも契約検証で拒否。配送受領だけでTaskを実行しない |
+| Relayの独立契約・JetStream受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はNATS JetStreamのみ（SQLite配送storeは廃止、旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
 | Relayの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
 | Relay専用MCP 4ツール・HTTP adapter | **実装済み／既存runtimeへ未配線**。`relay_submit/status/poll/ack`を一時loopback HTTPでも検証。Bearer検証port・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | Relay専用MCPクライアント | **実装済み／模擬検証済み**。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
@@ -129,7 +129,7 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 登録からHTTP配送・停止・復旧までの一連の模擬検証は`npm run test:hab-integration`で再現できます。[試験matrix](docs/hab-relay-integration.md)には、17件の結果と障害注入の方法、本番接続に進む前の未確認範囲を記録しています。
 
-配送置換の[現行の隔離テスト](docs/testing/p7-lab.md)は `npm run test:p7 -- --nats-server /absolute/path/to/official/nats-server --full` で実行します。A2Aから実JetStream配送、明示引受け後のTaskと結果、バックアップ復元、改名、切り戻し、障害復旧を合成主体で検証します。[公開とCIの範囲](docs/testing/publication.md)に、固定依存の準備と残る移設ゲートを記載しています。
+配送置換の[現行の隔離テスト](docs/testing/p7-lab.md)は `npm run test:p7 -- --nats-server /absolute/path/to/official/nats-server --full` で実行します。A2Aから実JetStream配送、明示引受け後のTaskと結果、バックアップ復元、改名と再起動、broker障害復旧を合成主体で検証します。[公開とCIの範囲](docs/testing/publication.md)に、固定依存の準備と残る移設ゲートを記載しています。
 
 通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
 

@@ -3,7 +3,8 @@
 This optional integration owns HAB names, product enrollment and individual
 authorization. The reusable Relay core never imports `src/hab`, parses `.hab`
 addresses or queries registry tables. The four-method `DeliveryService` port lets
-the existing HTTP/MCP adapters accept the composed `HabRelayService`. No existing
+the existing HTTP/MCP adapters accept the composed `HabJetStreamService`
+([packages/relay-nats](../../packages/relay-nats/DESIGN.md)), the only delivery backend. No existing
 runtime, route, credential, Hermes setting or process is changed by this module.
 
 ## Names and enrollment
@@ -69,9 +70,9 @@ explicit fresh grants. Retirement revokes all live bindings and cannot be undone
 
 ## Current authorization and transaction order
 
-`HabRelayService` composes the existing `StoreDeliveryService` with the registry. Each
+`HabJetStreamService` composes the JetStream journal with the registry. Each
 operation obtains the registry's `BEGIN IMMEDIATE` write guard **before** the
-Relay transaction, and holds it until the synchronous Relay call/commit finishes.
+journal transaction, and holds it until the synchronous journal call/commit finishes.
 Every admin mutation uses that same registry write lock. A stop/block/revoke
 therefore serializes before or after the delivery operation; another process
 cannot commit revocation between its authorization check and Relay commit.

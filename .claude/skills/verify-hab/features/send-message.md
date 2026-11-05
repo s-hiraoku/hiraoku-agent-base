@@ -30,7 +30,7 @@ Preconditions:
 - **Non-sender status.** Run `$S/mcp.sh "$RUN" c relay_status "{\"message_id\":\"$ID\"}"`. `{"error":"not_found"}`.
 - **Thread scope.** Run `T=$(jq -r .thread_id <<<"$MSG")`, then `$S/mcp.sh "$RUN" c relay_submit "$($S/new-message.sh "$RUN" b "same name" | jq -c --arg t "$T" '.thread_id=$t')"` and `$S/mcp.sh "$RUN" c relay_submit "$($S/new-message.sh "$RUN" a "same name" | jq -c --arg t "$T" '.thread_id=$t')"`. Both return `state: "pending"`, and `a` can still submit to `b` on `$T`.
 - **Attachment refused.** Run `ATT=$($S/new-message.sh "$RUN" b "with file" | jq -c '.body.parts += [{"type":"attachment","attachment_id":"file-1","media_type":"text/plain","size_bytes":1,"sha256":("a"*64)}]')` then `$S/mcp.sh "$RUN" a relay_submit "$ATT"`. HTTP 200 with `"isError":true`, no `structuredContent`, and text starting `Input validation error` with `Expected 'text' | 'data'`. Then `$S/mcp.sh "$RUN" a relay_status "{\"message_id\":\"$(jq -r .message_id <<<"$ATT")\"}"` returns `{"error":"not_found"}`.
-- **Proof.** Run `node $S/inspect.mjs "$RUN" after-send`. Exactly one `messages` row for `$ID`, one `deliveries` row with `state: "pending"`, `generation: 0`, and one `accepted` audit event (the replay added none). `inspect.mjs` shows the plain `thread_id` name even though the store keys threads by agent pair.
+- **Proof.** Run `node $S/inspect.mjs "$RUN" after-send`. Exactly one `messages` row for `$ID`, one `deliveries` row with `state: "pending"`, `generation: 0`, and one `accepted` audit event (the replay added none). `inspect.mjs` shows the plain `thread_id` name even though the journal keys threads by agent pair.
 
 ## Gotchas
 

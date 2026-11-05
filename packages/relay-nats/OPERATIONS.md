@@ -8,7 +8,7 @@ Put the canonical private service state directory on that volume. Store `volume.
 
 The host validates the marker location, logical ID, file privacy, and device before creating state files. It repeats the storage check before commits and pump cycles. A missing or changed volume stops those operations. These checks do not constitute a physical unplug or power-failure test.
 
-Use separate named files for Registry, legacy Relay, NATS admission journal, Task Store, and recipient checkpoints. Keep the broker store on the selected persistent volume. Use the current host entry point when draining old ownership. Do not bypass `service-extension.local.json` or use an older binary that ignores it.
+Use separate named files for Registry, NATS admission journal, Task Store, and recipient checkpoints. Keep the broker store on the selected persistent volume. A state directory from the retired SQLite delivery store may still contain `relay.sqlite`; the host ignores it and never migrates its messages.
 
 ## Configure the private broker
 
@@ -36,11 +36,9 @@ Store encrypted backups outside the source volume. Restore into an isolated dire
 
 The independent restore exercise is not implemented by this P5/P6 package. A broker snapshot alone is insufficient to restore the whole HAB state.
 
-## Roll back routes
+## Roll back
 
-Increase the routing epoch, disable new NATS routes, and restart through the same JetStream entry point. Keep NATS available for its existing IDs and reply chains. Drain and reconcile that ownership before retiring any component.
-
-Return only new unrelated requests to SQLite. Preserve the original ID and expiry for uncertain requests. Do not delete the NATS journal, replay uncertain work under new IDs, or claim Task completion from a broker ACK.
+There is no SQLite delivery fallback. To roll back a release, stop the host and restart the earlier build with the same journal and broker store. Preserve the original ID and expiry for uncertain requests. Do not delete the NATS journal, replay uncertain work under new IDs, or claim Task completion from a broker ACK.
 
 ## Interpret platform evidence
 
