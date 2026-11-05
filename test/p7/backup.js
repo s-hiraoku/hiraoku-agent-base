@@ -86,9 +86,12 @@ function directories(root, prefix = "") {
 }
 function copyImage(source, target, manifest) {
   mkdirSync(target, { mode: manifest.root_mode });
-  for (const entry of manifest.directories)
-    mkdirSync(join(target, entry.path), { recursive: true, mode: entry.mode });
-  cpSync(source, target, { recursive: true, errorOnExist: true, force: false });
+  for (const name of readdirSync(source))
+    cpSync(join(source, name), join(target, name), {
+      recursive: true,
+      errorOnExist: true,
+      force: false,
+    });
   chmodSync(target, manifest.root_mode);
   for (const entry of manifest.directories)
     chmodSync(join(target, entry.path), entry.mode);
