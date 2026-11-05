@@ -92,7 +92,7 @@ control・inbox・outbox・budget・任意の質問返信journal・Task journal�
 
 ## ローカル再現
 
-Node 24以上で次を実行します。fixtureは一時DB・模擬認証だけを使い、native HTTP試験のlistenerも127.0.0.1の動的portに限定して終了時に停止します。
+Node 26以上で次を実行します。fixtureは一時DB・模擬認証だけを使い、native HTTP試験のlistenerも127.0.0.1の動的portに限定して終了時に停止します。
 
 ```sh
 npm ci

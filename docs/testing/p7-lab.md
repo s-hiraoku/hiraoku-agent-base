@@ -1,6 +1,6 @@
 # Run the isolated A2A and JetStream acceptance
 
-Use Node 24.12.0, the pinned root and relay-nats dependencies, and an official nats-server 2.15.2 file. The P7 command verifies the binary's size and SHA256 before making an exclusive executable copy. It starts private loopback brokers with synthetic credentials and removes its private state afterward.
+Use Node 26.13.0, the pinned root and relay-nats dependencies, and an official nats-server 2.15.2 file. The P7 command verifies the binary's size and SHA256 before making an exclusive executable copy. It starts private loopback brokers with synthetic credentials and removes its private state afterward.
 
 ```sh
 npm run test:p7 -- --nats-server /absolute/path/to/official/nats-server

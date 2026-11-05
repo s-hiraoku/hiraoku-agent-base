@@ -20,7 +20,7 @@ The shipped Relay (`npm run relay:local -- --config …`) refuses a bad start wi
 
 Preconditions:
 
-- `npm ci` with Node ≥ 24. A fresh `RUN=/tmp/hab-verify/<id>` (do not reuse a stack.mjs run dir).
+- `npm ci` with Node ≥ 26. A fresh `RUN=/tmp/hab-verify/<id>` (do not reuse a stack.mjs run dir).
 
 - **Start.** `$S/configured.sh "$RUN" start` writes example-based config, random keys and two synthetic 15-minute credentials under `$RUN/instance/`, starts `scripts/hab-relay.mjs`, runs `relay:admin connect` for `a` = `codex@codex.hab` and `b` = `hermes@hermes.hab`, and prints `CONFIGURED_READY <url>`. `instance/state.json` has the same shape as the stack's, so `mcp.sh` and `new-message.sh` work unchanged. Connect output is saved as `evidence/admin-connect-{a,b}.json` (`steps` lists what was created).
 - **Roundtrip.** Use the minimal round trip from `SKILL.md` with agents `a` and `b` (target `hermes@hermes.hab`). Sender `relay_status` ends `"acked"`.

@@ -20,7 +20,7 @@ jobs:
           python-version: '3.11'
       - name: Prepare HAB native dependencies
         run: |
-          test "$(npm --version)" = 11.6.2
+          test "$(npm --version)" = 11.20.0
           npm ci
           npm ci --prefix packages/relay-nats --ignore-scripts
       - name: Read pinned generic coordinator only

@@ -4,7 +4,7 @@ The P2/P3 preview connects the official A2A client to the current HAB Registry, 
 
 ## Run the finite proof
 
-Use Node24.12 or a compatible Node24 runtime. Install the locked dependencies, then run:
+Use Node 26.13 or a compatible Node 26 runtime. Install the locked dependencies, then run:
 
 ```sh
 npm ci

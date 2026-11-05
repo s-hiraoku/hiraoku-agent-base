@@ -6,7 +6,7 @@
 
 ## 再現
 
-Node 24以上で、repo直下から実行する。
+Node 26以上で、repo直下から実行する。
 
 ```sh
 npm ci

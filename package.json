@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "scripts": {
     "demo:hab-enrollment": "node scripts/hab-enrollment-demo.mjs",
@@ -60,5 +60,5 @@
       "undici": "7.30.1"
     }
   },
-  "packageManager": "npm@11.6.2"
+  "packageManager": "npm@11.20.0"
 }

@@ -4,7 +4,7 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 
 ## Baseline preconditions
 
-- `npm ci` has been run with Node ≥ 24.
+- `npm ci` has been run with Node ≥ 26.
 - `$S/launch.sh "$RUN"` printed `DOCTOR_OK <url>` for a fresh `RUN=/tmp/hab-verify/<id>`.
 - Baseline state: three active agents `a` = `verify-a@grok-bot.hab`, `b` = `verify-b@dot.hab`, `c` = `verify-c@hermes.hab`, each allowed `submit,status,poll,ack,resolve`, and no messages. Their ids and tokens are in `$RUN/instance/state.json`.
 - Never drive a run dir or a port this verification run did not start.

@@ -20,7 +20,7 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 
 ## ローカルMVPを確認する
 
-Node 24以上で、次の有限コマンドから[15段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DBと模擬3個体のloopback通信だけを使い、終了時に停止・削除します。
+Node 26以上で、次の有限コマンドから[15段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DBと模擬3個体のloopback通信だけを使い、終了時に停止・削除します。
 
 ```sh
 npm ci
@@ -109,7 +109,7 @@ flowchart LR
 
 ## ローカル再現
 
-Node 24以上で実行します。fixtureは実エージェントや本番callbackへ接続しません。
+Node 26以上で実行します。fixtureは実エージェントや本番callbackへ接続しません。
 
 試験は非rootユーザーで実行してください。rootは書込み拒否をすり抜けるため、コード改ざん検査やpilot／inventory inspectorの権限系試験は検証できず、root実行時は理由付きでskipされます（Dockerなどのroot CIでは非rootユーザーに切り替えます）。
 

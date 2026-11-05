@@ -15,12 +15,12 @@ The repo now ships a configured Relay CLI (`npm run relay:local`) and an operato
 
 For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
 
-All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 24 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`. `tmux` is needed only for the enrollment terminal.
+All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 26 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`. `tmux` is needed only for the enrollment terminal.
 
 ## Launch
 
 ```sh
-npm ci                                   # once per checkout (Node >= 24)
+npm ci                                   # once per checkout (Node >= 26)
 RUN=/tmp/hab-verify/$(date +%Y%m%d-%H%M%S)   # one run dir per verification run
 S=.claude/skills/verify-hab/scripts
 $S/launch.sh "$RUN"                      # optional 2nd arg: fixed port (default: free port)
