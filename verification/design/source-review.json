@@ -24,8 +24,9 @@
       "supplemental": [
         {
           "path": "docs/relay-auth-groups.md",
-          "sha256": "72b6db302257c2b19c8b0219fd82d3cbbbc3d08f8875678a35a4b4790d97a7f7",
-          "review": "reviewed"
+          "sha256": "63f1d64429aaa54031f0d242862a40e5284e92b89fe7dfa067e03985f6595484",
+          "review": "reviewed",
+          "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
         },
         {
           "path": "docs/implementation/generic-nats-dispatch.md",
@@ -54,8 +55,9 @@
         },
         {
           "path": "docs/persistent-mcp-auth.md",
-          "sha256": "6efcae470aa423b3942daee474015c262f4bb6fe88680afe2cd41adc140bb08f",
-          "review": "reviewed"
+          "sha256": "62add971e001e4709ad51272beffdacf6fb9b89106470c756b4b156701dcf1c2",
+          "review": "reviewed",
+          "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
         }
       ],
       "method": [
@@ -78,7 +80,8 @@
       {
         "path": "docs/agent-address-rename.md",
         "scope": "full",
-        "sha256": "2ff8bc87b7fc4c051be7cca244cc03060facff15cb6dc026e6387b5cbfffe971"
+        "sha256": "44e9e9fd76b1470939f57e0d42c012a1acabd19fee62ce7c018c066c372a19f5",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/auth0-account-step.md",
@@ -93,7 +96,8 @@
       {
         "path": "docs/dots-hermes-connection-plan.md",
         "scope": "full",
-        "sha256": "f04c9e83d77a0527d9e790e51302d217b11336329e2aae9c39ba56be84b56135"
+        "sha256": "2ff86201e77bba7216f6d4228d596aff983dc7e54275d9514e02e88b82c42450",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/hab-security.md",
@@ -103,7 +107,8 @@
       {
         "path": "docs/local-integration.md",
         "scope": "full",
-        "sha256": "095ab372112e3d63fb6be4c3dc96e2d869ab844a6104dfa295f0a06a40b1f86d"
+        "sha256": "6ce9a02658c54107abfe3257075ce96c918e0e28cecf54b0cd01013a3dd550ac",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/local-relay-host.md",
@@ -118,7 +123,8 @@
       {
         "path": "docs/local-relay-service.md",
         "scope": "full",
-        "sha256": "678d07676887fdaa3575cfaa843ecf19d231dfca4115c54f4ed9bc11fc36e173"
+        "sha256": "2ca63d1ed8024de309db0aff86325bb6d49c5b39d8dac071df1119c303560e5f",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/mcp-agent-discovery.md",
@@ -133,12 +139,14 @@
       {
         "path": "docs/persistent-mcp-auth.md",
         "scope": "full",
-        "sha256": "6efcae470aa423b3942daee474015c262f4bb6fe88680afe2cd41adc140bb08f"
+        "sha256": "62add971e001e4709ad51272beffdacf6fb9b89106470c756b4b156701dcf1c2",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/relay-auth-groups.md",
         "scope": "full",
-        "sha256": "72b6db302257c2b19c8b0219fd82d3cbbbc3d08f8875678a35a4b4790d97a7f7"
+        "sha256": "63f1d64429aaa54031f0d242862a40e5284e92b89fe7dfa067e03985f6595484",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/relay-oauth-ingress.md",
@@ -153,7 +161,8 @@
       {
         "path": "src/hab/README.md",
         "scope": "full",
-        "sha256": "ba66ac5767d6ad80dfe6e90faf6e816b36a32d1d15c5b3cec8e9c9c8fb9febe1"
+        "sha256": "cb0c1a2c16567de99c11134d3c02db268afefe255ee291f00530c5eef26da967",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/hab/auth-groups.ts",
@@ -207,147 +216,173 @@
     "supplemental_sources": [
       {
         "path": "src/relay/receiver.ts",
-        "sha256": "c92ab1e2285981bbede97c2996ebda96286718049366d2b7de29fd203766bcf7",
+        "sha256": "f1b7093de7b4f2af67ddda53ef89e9b02a18413e52ccf9a6198fbd772ec5eec0",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual model-free receiveOnce, injected ReceiverStore/Transport API, save then ACK, stable pending journal flush and overlap guard.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/relay/sender.ts",
-        "sha256": "4200462d3a4219055d70a42d0116566310c8ee40f425fe6930269d966355e41a",
+        "sha256": "79524aac4b638006aee2d96d31a9cc074371e2a3849233ee2517e331266c14ce",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/relay/service.ts",
-        "sha256": "aa9a8dbf4780acf490709e197a469182e1a43da5589baea077949f628642c1b2",
+        "kind": "implementation/config/inline-sql",
+        "review": "retired",
+        "read_coverage": "full",
+        "summary": "Synchronous RelayOperations/auth/store types and actual submit/status/poll/ACK/maintenance identity mapping.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "aa9a8dbf4780acf490709e197a469182e1a43da5589baea077949f628642c1b2",
+        "disposition": "Split by the messaging move: the DeliveryService port, receipts and Authorization moved to src/messaging/delivery-service.ts (successor entry below); StoreDeliveryService was deleted with SQLite delivery."
+      },
+      {
+        "path": "src/messaging/delivery-service.ts",
+        "sha256": "6598b1e1bfaa844dc3d68f2e1c91a9205157966c6a8e2c865e0fd7a27c42d0f0",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Synchronous RelayOperations/auth/store types and actual submit/status/poll/ACK/maintenance identity mapping.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Successor of the port half of src/relay/service.ts: MessagingError, Receipt, Authorization (submit/status/poll/ack/maintenance), Delivery, AckReceipt and the four-method DeliveryService whose only implementation is the JetStream package.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/relay/index.ts",
-        "sha256": "ddd1ae09e722fdb61d44561abba8ad2a791a428f783cb2b4a085b1902f4500e4",
+        "sha256": "5efc38678fc54a2a88e6aa515ed54afdb25f320f7e51191a732029e5caa9a101",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Pure public exports, confirms sender/receiver ports independent of HTTP/SQLite/HAB/Task imports.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Pure public exports of the durable sender and receiver; contract and DeliveryService now come from src/messaging. No HTTP/SQLite/HAB/Task imports.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/relay/sqlite-inbox.ts",
-        "sha256": "84336e941c4890edf52a6369f109d8b7ea57830b6c4e0bb545d69c9f283c0890",
+        "sha256": "d258950ba4351d49ba088de9df569c03fb371a12841bfc408ab3e943a4c1e941",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-165,374-650,675-770",
-        "summary": "Inline SQL schema/migration, private file/owner options, transaction, body+stable ACK insertion, attachment gate/claim/confirm, HMAC-checked withEntry, raw inbox listing and explicit release. Other migration/GC sections not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Inline SQL schema/migration (schema 4 drops the schema-3 attachment columns and trigger), private file/owner options, transaction, body+stable ACK insertion, HMAC-checked withEntry, raw inbox listing and explicit release. Other migration/GC sections not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/relay/sqlite-outbox.ts",
-        "sha256": "3c9083abce5ac4297540bba70a689cc4e264f88a0045a40e471b7c8742c42359",
+        "sha256": "13d53c5241a3e46932a1e356d9ddf02f8c740851f078646780affe51bc485d35",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-60,353-445; explicit PRAGMA at167 and transaction location found by rg",
-        "summary": "Inline state/single-flight schema and guarded immutable enqueue/quota/attachment admission. Other claim/confirm/maintenance internals not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Inline state/single-flight schema and guarded immutable enqueue/quota; the attachment admission port was removed. Other claim/confirm/maintenance internals not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/relay/sqlite-store.ts",
-        "sha256": "83210c5ddc294a407d94809513ee994289ba0515d4cd55ac89c4b6cf5ac27603",
         "kind": "implementation/config/inline-sql",
-        "review": "partially-reviewed",
+        "review": "retired",
         "read_coverage": "1-150; explicit PRAGMA at248 found by rg",
         "summary": "Inline migrations3/4/5 and message/delivery/ACK/deletion/cursor SQL, one-live-lease index; poll/ACK implementation itself not fully read by this reader.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "83210c5ddc294a407d94809513ee994289ba0515d4cd55ac89c4b6cf5ac27603",
+        "disposition": "Deleted when JetStream became the only delivery backend; its store rules live in packages/relay-nats/src/journal.ts."
       },
       {
         "path": "src/relay/attachment-receiver.ts",
-        "sha256": "abd9fa72147e53692a896eb9a91b2e5e2703a5d7df83cddcbde4db5978f0585a",
         "kind": "implementation/config/inline-sql",
-        "review": "reviewed",
+        "review": "retired",
         "read_coverage": "full",
         "summary": "Finite checkpoint receiver actual one-RPC branches, durable save before complete, only inbox issues ACK; timeout/late-result fencing and actual settlement slot.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "abd9fa72147e53692a896eb9a91b2e5e2703a5d7df83cddcbde4db5978f0585a",
+        "disposition": "Deleted with managed attachments."
       },
       {
         "path": "src/relay/sqlite-attachment-inbox.ts",
-        "sha256": "c83bf01e3f3ba9a4faa8843b1ff95f20af6f7bc28671aee91cb3d8c2c1aea99d",
         "kind": "implementation/config/inline-sql",
-        "review": "partially-reviewed",
+        "review": "retired",
         "read_coverage": "53-59,137-172,570-638",
         "summary": "Inline chunks/message/file schema and synchronous transaction, full verify and withVerified/withRetained guard structure; scan helper internals not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "c83bf01e3f3ba9a4faa8843b1ff95f20af6f7bc28671aee91cb3d8c2c1aea99d",
+        "disposition": "Deleted with managed attachments."
       },
       {
         "path": "src/relay/sqlite-upload-journal.ts",
-        "sha256": "80f2a4d3b0fbfc6350317064d8180a9cb927461361dd0a20b97bd0926855bb37",
         "kind": "implementation/config/inline-sql",
-        "review": "partially-reviewed",
+        "review": "retired",
         "read_coverage": "62-84,809-847",
         "summary": "Inline source/progress/fence/single-running/immutable-trigger SQL and withFinalized synchronous local proof; worker and full schema migration not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "80f2a4d3b0fbfc6350317064d8180a9cb927461361dd0a20b97bd0926855bb37",
+        "disposition": "Deleted with managed attachments."
       },
       {
         "path": "src/relay/sqlite-attachment-store.ts",
-        "sha256": "b699758aae120fbb53173c6940931c0bf9f5c1e54c15a3592fabbac8fe0a6c08",
         "kind": "implementation/config/inline-sql",
-        "review": "partially-reviewed",
+        "review": "retired",
         "read_coverage": "75-101,234-267",
         "summary": "Inline upload/chunk/binding/ref SQL and immutable/terminal triggers, FULL/secure_delete and guarded transaction; full admission/read/deletion implementation not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "b699758aae120fbb53173c6940931c0bf9f5c1e54c15a3592fabbac8fe0a6c08",
+        "disposition": "Deleted with managed attachments."
       },
       {
         "path": "src/relay/sqlite-receive-checkpoint.ts",
-        "sha256": "1d625055e021bc7c784ac6e15dcc7df6bbe67cee420528f7c3b6bdfcb1a551ed",
         "kind": "implementation/config/inline-sql",
-        "review": "partially-reviewed",
+        "review": "retired",
         "read_coverage": "129-160,164-218,332-401",
         "summary": "Dedicated one-slot schema, owner/key, guarded transaction and actual claim/save/fence/message equality/current expiry checks; initial private file constructor not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "1d625055e021bc7c784ac6e15dcc7df6bbe67cee420528f7c3b6bdfcb1a551ed",
+        "disposition": "Deleted with managed attachments (receive checkpoint)."
       },
       {
         "path": "src/relay/sqlite-snapshot-bundle.ts",
-        "sha256": "56d6634832f20cc2c58169e92c4388acc9da698b8974996cf81b2e7d666d573b",
         "kind": "implementation/config/inline-sql",
-        "review": "partially-reviewed",
+        "review": "retired",
         "read_coverage": "401-440,638-696; backup locations found by rg",
         "summary": "All-writer-lock-before-copy setup and new-directory offline restore marker; full hashing/filesystem validation/backup API helper not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "56d6634832f20cc2c58169e92c4388acc9da698b8974996cf81b2e7d666d573b",
+        "disposition": "Deleted with managed attachments (snapshot bundle)."
       },
       {
         "path": "src/relay/mcp.ts",
-        "sha256": "aeff4951507e9a18ea3e436f774465add060bc4c41dd9e8dccd9a3b68f8d1c2b",
+        "sha256": "a555d31cf095b3e892640c2b1ddd45f6c7cb466af6b6f8adc4e8e3254420bd16",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "125-195; strict schema/catalog locations found by rg",
-        "summary": "Actual four-operation tool registration dispatch under resolver/gate; no general execution tool in factory switch.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Actual four-operation tool registration dispatch under resolver/gate; the attachment part schema was removed, so the published submit schema accepts only text and data parts. No general execution tool in factory switch.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "config/relay-service.example.json",
-        "sha256": "f3de14dd1ad1a62f94cf5c031b3921236831408b2f1f49c53fb4305d87e903f1",
+        "sha256": "eaad7ef7dd43ce42aa35a3d5198a20e70dcfdfb56f60a3d175e46b32698e99f2",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Public dummy host policy shape, finite limits/agent_capacity/fair_poll and allowed kinds. Not approved live policy; no private config read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Public dummy host policy shape: one `delivery` section (broker, pump, volume, queue with finite limits, agent_capacity, fair_poll) and allowed kinds; attachment limits and the `store` section are gone. Not approved live policy; no private config read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "packages/relay-nats/config/jetstream.example.json",
-        "sha256": "ee68d24e222d9488dd8c3e966a3df6ffc5a26762ab8d0d20edc02d1e64e1a803",
         "kind": "implementation/config/inline-sql",
-        "review": "reviewed",
+        "review": "retired",
         "read_coverage": "full",
         "summary": "Public opt-in routing disabled example, finite pump/broker and explicit volume identity fields, migration opt-in.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "retired_sha256": "ee68d24e222d9488dd8c3e966a3df6ffc5a26762ab8d0d20edc02d1e64e1a803",
+        "disposition": "Deleted: the separate JetStream config was folded into the `delivery` section of config/relay-service.example.json."
       },
       {
         "path": "packages/relay-nats/config/nats-server.example.conf",
@@ -360,39 +395,43 @@
       },
       {
         "path": "packages/relay-nats/src/hab-service.ts",
-        "sha256": "ef7dcd16f642c9f3641b0382bc99b3774b3d4c953132bf911ee5e72530f42958",
+        "sha256": "a5c0c1f6bf13780b19f9e6d402d40cdb02414fdf502da8dc14b7ae98cb9e3b1e",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Actual current Registry synchronous facade, dual-backend receipt ownership/reply route, capacity sums, cross-store single recipient lease and ACK request collision guard.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Read in full (84 lines): HabJetStreamService runs every operation inside a fresh Registry withRelay scope, rechecks the authorized agent ID and asserts volume currency; it rejects a prefetch window smaller than the admitted mailbox bound. No dual-backend ownership, router or cross-store state remains.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "packages/relay-nats/src/journal.ts",
-        "sha256": "2ec27df96b6b748f2321e8c83fb6bcc7bf51f9957e34449d5f2ba01e9a393a17",
+        "sha256": "6d85298443ab9dc379ed45eb9114bd487d9c19eac14174545f13e7f0993c82f1",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "72-115,227-270",
-        "summary": "Inline schema3 persisted outbox/cache/owner/ACK/state/cursor, unique lease, FULL/secure_delete transaction and explicit old-schema migrations; rest not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Re-read 70-95, 300-320, 360-395: schema 4 tables including nats_delivery_audit and nats_maintenance_totals, one-live-lease unique index, in-transaction audit insert, and admission capacity checks before insert; explicit v1-v3 to v4 migration drops routing state. Rest not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "packages/relay-nats/src/backend.ts",
-        "sha256": "173b9cc14212025671fdb04f17d6e1e7160efe8b298a2a9851f29f452afb98da",
+        "sha256": "c05e960de20b353dc9f943cccf0d83dfc0a67c0ca46f87b010180b1c72edc93d",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "74-123,252-315,720-752",
-        "summary": "Fixed broker 2.15.2 config/reconnect disabled, original outbox exact content/subject-sequence publication and tracked ackAck/explicit erase/absent-body cleanup. Other pump/auth/consumer code not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Diff reviewed: routing/poll-turn methods and the attachment refusal branch were removed (the contract now refuses attachment parts), errors moved to MessagingError. Fixed broker 2.15.2 publication/erase paths unchanged; other pump/auth/consumer code not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "packages/relay-nats/src/configured.ts",
-        "sha256": "73ab928b169af467c1f9f0f442bcbb085cdfcfcee5a7a8c944c9dc518b041def",
+        "sha256": "437c9032dd038de742a6a088e6b058cb3db1aafe9e51506e1f4f3a8b57e802bf",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-100,180-250",
-        "summary": "Strict host config, volume marker/device fail-closed setup and supervised explicit finite pump/owned close; intermediate factory wiring not fully read.",
-        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only."
+        "summary": "Diff reviewed: strict `delivery` schema (broker, pump, volume, queue) replaces the store plus routing/extension configuration; journal path is a private file; volume marker/device fail-closed setup retained. Intermediate factory wiring not fully read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       }
     ],
     "attestation": {
@@ -433,7 +472,8 @@
         "No real product/OAuth binding, deployment, model/approval execution, crash/power/disk fault, fleet SLO or complete operational restore proof.",
         "Inline SQLite schemas belong to separate Relay/private journals; unrelated Task drizzle migrations were only inventoried, not read or treated as communication requirements.",
         "Generic hirastack contract-format and architecture still contain HAB-specific examples; reported to coordinator, no hirastack edits made."
-      ]
+      ],
+      "maintenance_disposition": "Historical extraction attestation, kept unchanged. During design-contract maintenance ten included documents were deleted with managed attachments and the snapshot bundle (docs/attachment-*.md, docs/managed-attachments.md, docs/sqlite-snapshot-bundle.md, docs/upload-journal.md); their dispositions are in document-review.md and conflicts.md. The remaining eight were re-read against the diff from 3e203d7."
     }
   },
   {
@@ -471,7 +511,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "9815a917066bd2797d026e1a5cea3acaffbbc4cbb1b8104d8d7b714b826a77e9",
+        "sha256": "bdfc100921c7dbb2de1340d6fac2f4f30b9fd9ecace39641fe2347a3c1f66fe1",
         "read_ranges": [
           [
             1,
@@ -479,7 +519,8 @@
           ]
         ],
         "observation": "Read full package manifest. Native verification is Node test runner plus TS build/typecheck; Python exists for optional import/token executor boundaries.",
-        "full_file_read": true
+        "full_file_read": true,
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/server.ts",
@@ -531,7 +572,7 @@
       },
       {
         "path": "src/generic-nats/recipient.ts",
-        "sha256": "3b202768911424258165def9c62e1b6ebae792d99051cf920b41aebd71c7f509",
+        "sha256": "04ba5033ce11dadbc8380fc50dd49276514032366eb5123213dae13f6cc93df6",
         "read_ranges": [
           [
             300,
@@ -543,11 +584,12 @@
           ]
         ],
         "observation": "Read lookup/receive/execute sections. receive delegates only receiver; ready reservation CAS before createText, later states lookup existing key/id, independent executeOnce finite pages.",
-        "full_file_read": false
+        "full_file_read": false,
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "01e21dd66cba2c86cdca03a651aebfdc84cb3c80ff5955b554d5417f1b7becbb",
+        "sha256": "6534273e947b856bb194a5ee0be71fa77694f961c3ea2578290efae0e24130ef",
         "read_ranges": [
           [
             1,
@@ -559,7 +601,8 @@
           ]
         ],
         "observation": "Read commands/options and inbox_read branch. Explicit inbox_read copies existing entry under atomic wrapper; Task controls and answer operations separately named, no inferred native agent caller.",
-        "full_file_read": false
+        "full_file_read": false,
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "scripts/python_import_guard.py",
@@ -575,7 +618,7 @@
       },
       {
         "path": "scripts/inventory_token_input.py",
-        "sha256": "238f371f19b1780bc0f7d6db4bdd7037a7b4c41ca0874987b669a64d63371331",
+        "sha256": "0de1a3a19832524848f42d945e50352a9d961b3dc247986939649d28609957ba",
         "read_ranges": [
           [
             1,
@@ -583,7 +626,8 @@
           ]
         ],
         "observation": "Read full helper: hidden TTY, strict active config and fixed Node child/stdin/minimal environment; bounded stop, no token issuance or Task submit.",
-        "full_file_read": true
+        "full_file_read": true,
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "hermes_bridge/serve_inventory.py",
@@ -739,13 +783,15 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "0fa39eb8247db0bae039ac166286830a95ebb047b6baf277bfe5c1672d7e828d",
-        "mode": "full"
+        "sha256": "0bd8fbb8a888ec67979d600c268caa4d76c54be222ee5cd24d7eb7ed00a1cd99",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "a93f6465e505529556c298661ac2bda19b9297bb8e2dca5db1b57108cea2013e",
-        "mode": "full"
+        "sha256": "5d3f08120ce8f6f06e03c4b5f1edb9e28464cafb9cc58c636d949e178041e8d5",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/access-control.md",
@@ -759,18 +805,21 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/configured-relay.md",
-        "sha256": "0a3803be626690884d73a1ba996f0246314ea67865a8474dd7366428c17ef8e0",
-        "mode": "full"
+        "sha256": "270427e34b6a94622dee28e740a2bfe771743940f3786048cb412ecd3be083b2",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
-        "sha256": "e254b7e838a7cfc99e6e54040c52e9f47982a25cfa0182462c55f47b6751e2a1",
-        "mode": "full"
+        "sha256": "058c2e51545eac709469566bf9702c8e9935fddfc6146d5b44c3de0a9007b508",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/receive-ack.md",
-        "sha256": "7d4900165b8595396a7ada68fd9fa86a019eae89ecf49e644614f618d7dc0da5",
-        "mode": "full"
+        "sha256": "3444a313a476c1a70118c288efed6339c1c34d134582d7e3b17c607fb7ebd265",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
@@ -784,8 +833,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/send-message.md",
-        "sha256": "df7df1f2cf91b2e3f60b7b4e744f228c2d88ce6ec820427a1f248556de72feb3",
-        "mode": "full"
+        "sha256": "117d8d92fb6604e2dea38a0edd229ebf74fe658635800cd41d05a8479c2e7dc7",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/diagrams/manifest.json",
@@ -829,13 +879,15 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "b7a3dd665d324e1c4df1bb3f68e3f2b8057e3f9ba945387785576d9c43532a14",
-        "mode": "full"
+        "sha256": "c028d15f7882ce6915f99648470b4b7e47aee3e661ccbba4cb882e2f5bb80f51",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/testing/p7-ci.yml.example",
-        "sha256": "7876c2b16c95db47d669a79236e030528d2880bf8c77e4f063b942b5e8f27756",
-        "mode": "full"
+        "sha256": "d053a4edd99c92447310591235ddf6fcc1ca51b298a9f8ad8927e1921e4b88e1",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/testing/p7-independent-results.md",
@@ -844,8 +896,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "a28be165454f1321e5012bcf1bbb0b04864d1e5db8b12afc90211041d3c7c34e",
-        "mode": "full"
+        "sha256": "cab3792ad7c417261d05875d66f17367c4994b53bb4d228146d36ef3cdf25ec7",
+        "mode": "full",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/testing/plan.md",

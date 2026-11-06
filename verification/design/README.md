@@ -17,7 +17,7 @@ The existing [verify-hab feature map](../../.claude/skills/verify-hab/features/R
 
 ## Run
 
-Use the pinned Node/npm in this checkout, `npm ci`, and `npm ci --prefix packages/relay-nats --ignore-scripts`. Point `HIRASTACK_ROOT` at a separately reviewed hirastack checkout. Run these commands from HAB:
+Use the pinned Node/npm in this checkout, `npm ci`, `npm ci --prefix packages/relay-nats --ignore-scripts`, and the pinned broker (`mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`). JetStream is the only delivery backend, so delivery tests and the real helper start a private `nats-server` and fail when it is missing. Point `HIRASTACK_ROOT` at a separately reviewed hirastack checkout. Run these commands from HAB:
 
 ```sh
 PYTHONPATH="$HIRASTACK_ROOT" python3 -B -m hirastack audit --target "$PWD" --spec verification/design/contract.json
@@ -37,3 +37,15 @@ The HAB Design verification workflow checks out only the generic hirastack packa
 The complete native JS check explicitly sets `NODE_OPTIONS=--disable-warning=ExperimentalWarning`, matching existing P7 labEnvironment. CLI fixtures assert exact stderr. The first unsuppressed run failed nine such assertions and is retained separately; no product assertion or skip gate is weakened. This suppresses the entire ExperimentalWarning category and is recorded in the command evidence.
 
 The root JavaScript check passes `test/*.test.js` as a literal argv to the pinned Node runner, whose native glob discovery includes newly added top-level tests. The generic coordinator performs no shell expansion. Two-file/three-file controls confirmed this Node24.12.0 behavior; nested real-broker suites remain separately mapped.
+
+## Maintenance after JetStream-only delivery
+
+Draft PR #137 (reviewed at `d307da1ea3fa049fa79b66748f5ed4f16f19dfc0`) moved the runtime to Node 26, deleted managed attachments, the snapshot bundle and the receive checkpoint, moved the backend-neutral contract to `src/messaging`, and made NATS JetStream the only delivery backend. The audit drift was handled by rereading, not rehashing:
+
+- Retired as `historical` with their original statement kept: HAB-D08, HAB-D09, HAB-D10, HAB-D11 (attachments) and HAB-D14 (snapshot bundle). Their citations now point at the removal records.
+- Reclassified for JetStream-only delivery: HAB-D04, HAB-D07, HAB-D12, HAB-D13, HAB-D15, HAB-D16, HAB-D17, HAB-V13, plus attachment wording dropped from HAB-A03 and HAB-A05 scopes.
+- Added: HAB-D18 (attachment parts refused on every path) and HAB-D19 (atomic redacted journal delivery audit).
+- Opened HAB-C-D06: the product spec still calls JetStream adoption undecided while the implementation docs make it the only backend. HAB-D15/D16 stay blocked and HAB-F26 stays a proposal until the product owner decides.
+- Other citations whose text only moved were re-cited at the new lines after checking the excerpt bytes are unchanged. Ten deleted documents keep a disposition row in [document review](document-review.md).
+
+New and re-rendered source links pin to the reviewed commit above instead of the extraction baseline.

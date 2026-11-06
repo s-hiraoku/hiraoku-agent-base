@@ -38,9 +38,9 @@ Product0.1 labels A2A/JetStream proposal/not current; README later exposes actua
 
 Classification: history/adoption-versus-implementation. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
 
-Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority.
+Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded in part: JetStream later became the only delivery backend in code, which reopens the adoption question as HAB-C-D06.
 
-Sources: [docs/hab-product-spec.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-product-spec.md#L23-L29), [README.md:133](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/README.md#L133-L133), [docs/hab-product-spec.md:201](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-product-spec.md#L201-L207).
+Sources: [docs/hab-product-spec.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-product-spec.md#L23-L29), [README.md:132](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/README.md#L132-L132), [docs/hab-product-spec.md:201](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-product-spec.md#L201-L207).
 
 ## HAB-C-F05 — resolved
 
@@ -50,7 +50,7 @@ Classification: scope/explicit-authority. Requirements: HAB-F01, HAB-F02, HAB-F0
 
 Interpret G2 as optional execution-path gate, not ordinary communication prerequisite: Relay says ordinary question/answer Task unnecessary and ADR015 explicitly denies making optional Task mandatory. Native messaging capabilities and durable receipt still need G0/live evidence.
 
-Sources: [docs/hab-relay-spec.md:29](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-relay-spec.md#L29-L29), [docs/hab-relay-spec.md:525](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-relay-spec.md#L525-L533), [docs/hab-decisions.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L28-L31).
+Sources: [docs/hab-relay-spec.md:29](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-relay-spec.md#L29-L29), [docs/hab-relay-spec.md:515](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-relay-spec.md#L515-L523), [docs/hab-decisions.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-decisions.md#L28-L31).
 
 ## HAB-C-F06 — resolved
 
@@ -80,7 +80,7 @@ Classification: scope. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11
 
 No. Exclusive-binding language describes legacy1:1 enrollment/fixed-pilot scope. The explicit optional shared-group section and adopted group design allow group credential holders to select sibling names/mailboxes; preserve both modes and enforce group boundaries, never promote legacy exclusivity into universal requirement.
 
-Sources: [src/hab/README.md:49](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/src/hab/README.md#L49-L54), [src/hab/README.md:450](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/src/hab/README.md#L450-L480), [docs/local-relay-host.md:51](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/local-relay-host.md#L51-L58), [docs/relay-auth-groups.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-auth-groups.md#L50-L58).
+Sources: [src/hab/README.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L50-L55), [src/hab/README.md:339](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L339-L369).
 
 ## HAB-C-A02 — resolved
 
@@ -110,7 +110,7 @@ Classification: authority. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB
 
 No. Rename is an explicit proposal requiring adoption and opt-in migration. Keep immutable default and permanent reservations; do not silently decide forwarding, production rollout or rollback policy.
 
-Sources: [src/hab/README.md:26](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/src/hab/README.md#L26-L31), [docs/agent-address-rename.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/agent-address-rename.md#L3-L33).
+Sources: [src/hab/README.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L27-L32), [docs/agent-address-rename.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L3-L33).
 
 ## HAB-C-A05 — resolved
 
@@ -130,7 +130,7 @@ Classification: scope. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11
 
 No. Those constraints apply when opting into the fixed execution trial, preserving useful execution safety boundaries. Native transport retains recipient execution/approval and does not add a HAB product runner.
 
-Sources: [docs/local-relay-host.md:65](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/local-relay-host.md#L65-L102), [docs/local-relay-service.md:126](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/local-relay-service.md#L126-L140), [docs/hab-security.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-security.md#L5-L5).
+Sources: [docs/local-relay-host.md:65](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-host.md#L65-L102), [docs/local-relay-service.md:133](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-service.md#L133-L147), [docs/hab-security.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-security.md#L5-L5).
 
 ## HAB-C-D01 — resolved
 
@@ -138,9 +138,9 @@ Do early incremental pending statements mean attachment outbox/receiver/writer a
 
 Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
 
-No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified.
+No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in.
 
-Sources: [src/relay/README.md:49](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/src/relay/README.md#L49-L55), [src/relay/README.md:633](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/src/relay/README.md#L633-L655), [docs/managed-attachments.md:69](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/managed-attachments.md#L69-L71), [docs/upload-journal.md:65](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/upload-journal.md#L65-L67).
+Sources: [src/relay/README.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/relay/README.md#L27-L31), [src/relay/README.md:604](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/relay/README.md#L604-L608).
 
 ## HAB-C-D02 — resolved
 
@@ -148,19 +148,19 @@ Does fair polling or writer admission promise global recipient execution fairnes
 
 Classification: scope. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
 
-No. fair_poll guarantees bounded candidate rotation for a stable eligible set; WriterAdmission is shared single-process volatile rate/queue; attachment receiver has one checkpoint slot. Bytes/time/processing/SLO/fleet fairness remain excluded.
+No. fair_poll guarantees bounded candidate rotation for a stable eligible set; WriterAdmission is shared single-process volatile rate/queue. The attachment receiver's single checkpoint slot was deleted with attachments. Bytes/time/processing/SLO/fleet fairness remain excluded.
 
-Sources: [docs/relay-fair-poll.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-fair-poll.md#L15-L17), [docs/writer-admission.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/writer-admission.md#L23-L27), [docs/attachment-receiver.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/attachment-receiver.md#L28-L32).
+Sources: [docs/relay-fair-poll.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-fair-poll.md#L15-L17), [docs/writer-admission.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/writer-admission.md#L23-L27).
 
 ## HAB-C-D03 — resolved
 
 Does optional SQLite snapshot fulfill JetStream whole-deployment restore gate?
 
-Classification: scope. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
+Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
 
-No. SQLite profiles exclude Registry/authority/Task/config/keys and do not capture broker data; JetStream operations require broker stream/consumer, admission journal, authority/config and recipient state quiesced and reconciled. P5/P6 remaining proof statements are package-scope/time-bounded; later P7 evidence must be reviewed separately by coordinator.
+No, and the question is now moot: SQLiteSnapshotBundle was deleted. It never captured Registry/authority/Task/config/keys or broker data. JetStream operations require broker stream/consumer, admission journal, authority/config and recipient state quiesced and reconciled. P5/P6 remaining proof statements are package-scope/time-bounded; later P7 evidence must be reviewed separately by coordinator.
 
-Sources: [docs/sqlite-snapshot-bundle.md:7](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/sqlite-snapshot-bundle.md#L7-L17), [packages/relay-nats/OPERATIONS.md:31](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/packages/relay-nats/OPERATIONS.md#L31-L37), [packages/relay-nats/README.md:51](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/packages/relay-nats/README.md#L51-L55).
+Sources: [packages/relay-nats/OPERATIONS.md:31](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/packages/relay-nats/OPERATIONS.md#L31-L37), [packages/relay-nats/README.md:60](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/packages/relay-nats/README.md#L60-L60).
 
 ## HAB-C-D04 — open
 
@@ -170,7 +170,7 @@ Classification: unresolved. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HA
 
 Open: actual production host/policy/fault assumptions require an explicit concrete decision; local verification cannot invent them.
 
-Sources: [docs/attachment-capacity.md:36](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/attachment-capacity.md#L36-L42), [docs/hab-relay-integration.md:69](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-relay-integration.md#L69-L71), [docs/sqlite-snapshot-bundle.md:35](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/sqlite-snapshot-bundle.md#L35-L43), [packages/relay-nats/OPERATIONS.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/packages/relay-nats/OPERATIONS.md#L17-L19).
+Sources: [docs/hab-relay-integration.md:69](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-relay-integration.md#L69-L71), [packages/relay-nats/OPERATIONS.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/packages/relay-nats/OPERATIONS.md#L17-L19).
 
 ## HAB-C-D05 — resolved
 
@@ -230,7 +230,7 @@ Classification: resolved-version-scope. Requirements: HAB-E01, HAB-E03, HAB-E04,
 
 No. local-MVP99–108 explicitly keeps historical fixture while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.
 
-Sources: [docs/local-mvp.md:99](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/local-mvp.md#L99-L108).
+Sources: [docs/local-mvp.md:99](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-mvp.md#L99-L108).
 
 ## HAB-C-E06 — resolved
 
@@ -311,3 +311,13 @@ Classification: documentation-integrity artifact versus product authority. Requi
 Manifest hashes verify correspondence of two rendered images to Markdown Mermaid source, not running topology. Derive principles from the authoritative Markdown current/target scope; keep binary image access separate.
 
 Sources: [docs/diagrams/render-mermaid.mjs:1](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/diagrams/render-mermaid.mjs#L1-L1).
+
+## HAB-C-D06 — open
+
+The product spec still records JetStream formal adoption and production replacement as undecided and the NATS diagram as a proposal, not a current function. The implementation, package, Relay and README docs now make JetStream the only delivery backend and retire SQLite delivery. Is JetStream-only delivery the adopted product design?
+
+Classification: unresolved. Requirements: HAB-F26, HAB-D15, HAB-D16.
+
+Open: the product owner must decide whether the JetStream-only implementation is the adopted delivery design, then update hab-product-spec.md or restore the evaluation framing in the implementation docs. Verification cannot settle authority. HAB-D15/D16 stay blocked and HAB-F26 stays a not-enforced proposal until then.
+
+Sources: [docs/hab-product-spec.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-product-spec.md#L27-L27), [docs/hab-product-spec.md:137](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-product-spec.md#L137-L137), [packages/relay-nats/DESIGN.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/packages/relay-nats/DESIGN.md#L3-L3), [README.md:65](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/README.md#L65-L65).
