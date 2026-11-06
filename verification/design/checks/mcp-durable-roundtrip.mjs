@@ -195,8 +195,8 @@ async function roundtrip(target, out) {
   try {
     const load = (name) => import(pathToFileURL(join(target, name)).href);
     const { HabMcpClient } = await load("src/hab/mcp-client.ts");
-    const { SQLiteInbox } = await load("src/relay/sqlite-inbox.ts");
-    const { DurableReceiver } = await load("src/relay/receiver.ts");
+    const { SQLiteInbox } = await load("src/agent-sdk/sqlite-inbox.ts");
+    const { DurableReceiver } = await load("src/agent-sdk/receiver.ts");
     controller.signal.throwIfAborted();
     child = spawn(
       process.execPath,

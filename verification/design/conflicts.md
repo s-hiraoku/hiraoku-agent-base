@@ -138,9 +138,9 @@ Do early incremental pending statements mean attachment outbox/receiver/writer a
 
 Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
 
-No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in.
+No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in. The cumulative src/relay/README.md was itself deleted when the durable sender and receiver moved to src/agent-sdk; its successor README describes only the current agent SDK and has no stage claims, so the question is moot.
 
-Sources: [src/relay/README.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/relay/README.md#L27-L31), [src/relay/README.md:604](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/relay/README.md#L604-L608).
+Sources: [src/agent-sdk/README.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/src/agent-sdk/README.md#L3-L3), [docs/writer-admission.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/docs/writer-admission.md#L5-L5).
 
 ## HAB-C-D02 — resolved
 
@@ -284,13 +284,13 @@ Sources: [.claude/skills/verify-hab/features/receive-ack.md:22](https://github.c
 
 ## HAB-C-V05 — resolved
 
-P7 guides still name the original 1498 full-root cases and old group set, but current successor adds generic-nats/startup and implementation adds tests. Which numeric counts apply to this exact candidate?
+P7 guides still name the original 1498 full-root cases and old group set, but the current successor adds the broker-startup group and implementation adds tests. Which numeric counts apply to this exact candidate?
 
 Classification: stale operational count within historical reference guide. Requirements: HAB-V06, HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
 
-The unchanged source-pin is explicitly historical; test/p7/README.md specifies current successor catalogs and separate startup/generic-nats groups. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces full-root1692, guards8 and all current groups. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total.
+The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1150 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total.
 
-Sources: [docs/testing/p7-lab.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/testing/p7-lab.md#L10-L10), [docs/testing/publication.md:18](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/testing/publication.md#L18-L18), [test/p7/README.md:18](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/test/p7/README.md#L18-L22).
+Sources: [docs/testing/p7-lab.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/docs/testing/p7-lab.md#L10-L10), [docs/testing/publication.md:18](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/docs/testing/publication.md#L18-L18), [test/p7/README.md:20](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/test/p7/README.md#L20-L20).
 
 ## HAB-C-V06 — resolved
 
@@ -321,3 +321,13 @@ Classification: unresolved. Requirements: HAB-F26, HAB-D15, HAB-D16.
 Open: the product owner must decide whether the JetStream-only implementation is the adopted delivery design, then update hab-product-spec.md or restore the evaluation framing in the implementation docs. Verification cannot settle authority. HAB-D15/D16 stay blocked and HAB-F26 stays a not-enforced proposal until then.
 
 Sources: [docs/hab-product-spec.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-product-spec.md#L27-L27), [docs/hab-product-spec.md:137](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-product-spec.md#L137-L137), [packages/relay-nats/DESIGN.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/packages/relay-nats/DESIGN.md#L3-L3), [README.md:65](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/README.md#L65-L65).
+
+## HAB-C-E07 — resolved
+
+docs/implementation/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?
+
+Classification: historical. Requirements: HAB-E03, HAB-E11, HAB-E17.
+
+No. The Relay removal deleted src/generic-nats, packages/relay-nats/src/text-port.ts, their tests, scripts/prove-generic-nats.mjs, the proof:generic-nats script and the P7 generic-nats group. The port had no production caller, its transport used the JetStream backend's own authorization callback instead of the Registry, and its production auth and startup were never enabled. The dispatch document is unchanged and is now context describing removed code. HAB-E03, HAB-E11 and HAB-E17 no longer cite it and keep their TaskBridge, reply-journal and proof-label sources. Updating the document and the profile link is product-documentation work outside this contract.
+
+Sources: [docs/implementation/generic-nats-dispatch.md:41](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/docs/implementation/generic-nats-dispatch.md#L41-L41), [docs/profiles/async-text-v1.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/776dc8414a9c2bb2c7ec175f3f1cd23931877162/docs/profiles/async-text-v1.md#L50-L50).

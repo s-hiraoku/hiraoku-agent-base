@@ -63,3 +63,16 @@ Phase 4 (reviewed at `1f5b492664707fe60c007442bda6f24d1756ee3d`) moved the confi
 - The real roundtrip helper polled once right after submit. With JetStream the message is published on the next pump cycle, so the helper failed in 2 of 5 runs with an empty poll. It now repeats the poll every 25 ms for at most 5 seconds until the single delivery is saved. The pre-ACK observer, the one-observation assertion and the final empty poll are unchanged; 12 of 12 later runs passed, one of them after an empty first poll.
 
 New and re-rendered source links pin to the reviewed commit above.
+
+## Maintenance after the agent SDK move and the generic-nats removal
+
+Phase 5 (reviewed at `776dc8414a9c2bb2c7ec175f3f1cd23931877162`) moved the durable sender, receiver, SQLite outbox and inbox, the MCP client and their public entry point from `src/relay` to `src/agent-sdk`, replacing `src/relay/README.md` with a short `src/agent-sdk/README.md`. It deleted the generic-nats text port (`src/generic-nats`, `packages/relay-nats/src/text-port.ts`, its tests, `scripts/prove-generic-nats.mjs`, the `proof:generic-nats` script and the P7 `generic-nats` group) because it had no production caller and its transport bypassed Registry authorization. The audit drift was handled by rereading, not rehashing:
+
+- Re-cited after rereading the successor text: HAB-D01 to HAB-D07 now cite `src/agent-sdk/README.md`, the normative `docs/hab-relay-spec.md` sections (3.1 boundary, 5 envelope, 6 identity, 7 save points, 8 lease and ACK order, 9 resend, 13 retention, 15 MCP factory), `packages/relay-nats/DESIGN.md`, `docs/security-audit-limits.md:5` and the existing integration and writer-admission rows. The statements are unchanged. HAB-D04 and HAB-D07 scopes no longer point at the deleted historical SQLite step.
+- The retired HAB-D08 to HAB-D11 and HAB-D14, and HAB-D18, dropped their deleted `src/relay/README.md` citation and keep their other removal records. HAB-C-D01 is moot, since the cumulative README it asked about no longer exists.
+- No requirement was only about generic-nats, so none was retired. HAB-E03, HAB-E11 and HAB-E17 dropped their `docs/implementation/generic-nats-dispatch.md` citations and keep their TaskBridge, reply-journal and proof-label sources. HAB-E11's scope no longer names the generic NATS client and recipient. HAB-V06 and HAB-C-V05 no longer name the generic-nats group, and HAB-C-V05 records the current full-root count (1150).
+- Opened and resolved HAB-C-E07: the dispatch document and the async-text-v1 profile still present the deleted port as present. The document is unchanged and is now `context`; updating it is product-documentation work.
+- In source-review.json the five moved sources keep their entries at the `src/agent-sdk` paths after checking the bytes are identical, `src/generic-nats/recipient.ts` is retired, and `package.json`, `src/adapter-host/cycle.ts` and `test/p7/README.md` were rehashed after reading their diffs.
+- The real roundtrip helper loaded `SQLiteInbox` and `DurableReceiver` from `src/relay`, which no longer exists. It now loads them from `src/agent-sdk`; nothing else in the helper changed. helpers.md names the current enumerated directories and module paths.
+
+New and re-rendered source links pin to the reviewed commit above.

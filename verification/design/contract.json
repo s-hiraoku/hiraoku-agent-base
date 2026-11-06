@@ -240,7 +240,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "c59eed345e8067dea6563552a9036c861352d2929fd7dd404625881aaf58e91c",
+      "sha256": "abad33bb46ed4fe191826eeee7c934110eb45b24aa030ef0202254e7315f4179",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. Delivery now runs only through NATS JetStream; SQLite delivery and managed attachments are retired and attachment parts are refused. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
@@ -506,10 +506,10 @@
       "path": "docs/implementation/generic-nats-dispatch.md",
       "sha256": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
       "hash": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
-      "role": "normative",
+      "role": "context",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Opt-in NATS runtime port keeps TaskService authoritative and records a delivery handle before external admission. Receive only persists/ACKs; execute explicitly reserves then invokes runtime. Unknown create may query ID/key only, never resubmit because absence/timeout/retention elapsed. Stable TTL, MAC journals and finite capacity; real JetStream with synthetic runtimes proves no real LLM/native product acceptance."
+      "summary": "Historical: describes the opt-in generic NATS text port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs), which was deleted because it had no production caller and bypassed Registry authorization. The document text is unchanged and still reads as current; HAB-C-E07 records the disposition. No requirement cites it. Its execution rules survive only where TaskBridge, reply-journal and proof-label sources state them."
     },
     {
       "path": "docs/implementation/generic-text-preview.md",
@@ -900,23 +900,23 @@
       "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
     },
     {
-      "path": "src/relay/README.md",
-      "sha256": "1d0d31cfc475d473aa7bb242293c54cf427a2dcbe0dc0aa19f087377b9014a89",
+      "path": "src/agent-sdk/README.md",
+      "sha256": "0748542e9125e0a153cfb66408a4be6efd98952b0aaa03d8b4459b61ae300d6a",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Incremental architecture headed by a retirement note: JetStream is the only delivery backend and the SQLite store, StoreDeliveryService and router were removed, so the server acceptance/lease/ACK/capacity/fair-poll/audit/retention steps are historical text whose rules now live in the JetStream journal. Records pure language-neutral envelope from the messaging contract, exact one-hour TTL, durable sender and recipient journals, save-before-ACK and separate explicit application handoff, replay-safe retention/legacy safety holds, strict four-tool MCP and bounded fixed HTTP/client. Managed attachments were removed and attachment parts are refused. Appended quota, fair poll, writer, Task bridge and Adapter links supersede earlier pending descriptions locally."
+      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas and 30-day rm1-only collection. DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package."
     },
     {
       "path": "test/p7/README.md",
-      "sha256": "1f7c43efe3499d2a0dd65b928f16258f2d6aae47d89cf4dd4c5344fc5302fd4a",
+      "sha256": "f34327d5f116f370a5537292d68f106d87b0626fc0a074e00a306ee302df10f9",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; mandatory generic-NATS and broker-startup catalogs, finite real readiness/timeout and process-group closure are distinct from root suite.",
+      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
       "read_scope": "full"
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "1cd65fe20ecfb3773c77d36709ecbc66ef4317d69973c9e26b07d3369ec8bc39",
+      "sha256": "dca2489c57ae08e919914af84f66a491665079e75f18a9c71a76a5b54a19d296",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "01c448a5274b43cc5cf7885e1892e2da2fc02b0161179cc2ff2a2c38373e6297",
+      "sha256": "aa677c71674981e6294ecbbf1a93862f312c7a97301e47acd8f670e674ba63bd",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +932,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "94a8cdca78b71e6573e567f3d5885894b1d9441380a7609e42093df13b79f0ec",
+      "sha256": "83fd43cc61682ee87c5b71c2e1af02319797b7f53dd53eb28e2f03c9f9df495b",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +940,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "c087b9738afcab65aa01e618a90925b065a1c3852f206c26e521927ba983d53a",
+      "sha256": "f3f9b48d37e2cd535b9c774f40cf1c42d772d99d6f7536b35e4f8e4e69f116e8",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -948,7 +948,7 @@
     },
     {
       "path": "verification/design/helpers.md",
-      "sha256": "55526f03501d13f13881b3dd39d191de3be90161c81716287f842a8a2d346e74",
+      "sha256": "ce9cef54becb6c52f538b1b5cf17e3f31ddcb4d4800f407bd24204b569c03b50",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -956,7 +956,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "7612862e31d2da691065d6af842745f082805e3d3bb5819985d61e2dba9a6602",
+      "sha256": "ad7b12ab2ecb25ee920bc997ca0874704ba1ca20e0f24d91b54091cb41340c53",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -2327,28 +2327,28 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 10,
-          "end": 25,
-          "excerpt_sha256": "8425fdfa5e01a242cee938d411f98250df9236e0a8a9a6d93c74d9f6d9813986"
+          "path": "src/agent-sdk/README.md",
+          "start": 3,
+          "end": 5,
+          "excerpt_sha256": "72d8f186c790c753f7275ecea7d952641e77a82a7fa62759d5106eb94935d82e"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 48,
-          "end": 52,
-          "excerpt_sha256": "33408a3f83701880148dce816cc819ee901c0a8cf1430e6f4a7738f693c94d25"
+          "path": "src/agent-sdk/README.md",
+          "start": 9,
+          "end": 9,
+          "excerpt_sha256": "8d44fd686d17a730e650b39eb3bb175bc5cab4e7841d430ccfac2aa785e8c0b3"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 381,
-          "end": 388,
-          "excerpt_sha256": "a6baf7872dd0874be15052e09ca9a79dd5bcfbcd2c27bc4bb6ed3e592963d8c2"
+          "path": "docs/hab-relay-spec.md",
+          "start": 78,
+          "end": 87,
+          "excerpt_sha256": "ab879765544b87a837cabf41eb0274fb1214269a1c8bb0b035c1cfb9d1d8de9b"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 134,
-          "end": 137,
-          "excerpt_sha256": "c49b3629197ee26ba29f7140c68615cd25e3e59959ba5c81c58bddef88e5f1d4"
+          "path": "docs/hab-relay-spec.md",
+          "start": 437,
+          "end": 437,
+          "excerpt_sha256": "6f480c2b96488d99211c87919e7200c4bbca8e049bbf863f254f70a31cb4fa5d"
         }
       ]
     },
@@ -2366,16 +2366,28 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 132,
-          "end": 140,
-          "excerpt_sha256": "8339b991fe88e8853335b49b75d29e006662e882dd5616301ca6ccce8d3836d0"
+          "path": "src/agent-sdk/README.md",
+          "start": 9,
+          "end": 9,
+          "excerpt_sha256": "8d44fd686d17a730e650b39eb3bb175bc5cab4e7841d430ccfac2aa785e8c0b3"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 151,
-          "end": 168,
-          "excerpt_sha256": "03a41ebd367e5ccce2bf17d573779cf7b65680a6be1f0e5db31b6c88cceee7fa"
+          "path": "src/agent-sdk/README.md",
+          "start": 17,
+          "end": 17,
+          "excerpt_sha256": "c55b59519246310a7fe559f66ab8f9045dad669414c6ffebb07aa50f382ee709"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 258,
+          "end": 259,
+          "excerpt_sha256": "64b8bcc6106da45977852cbcf80348920e1b8f3089194adf165a4f6329e3c0c3"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 289,
+          "end": 289,
+          "excerpt_sha256": "3d06952c98d346a96204ffa3119946005d2291432b6b76be883a4afe6ed95fbe"
         },
         {
           "path": "docs/hab-relay-integration.md",
@@ -2397,16 +2409,28 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 34,
-          "end": 52,
-          "excerpt_sha256": "a41693aa1c8b87c1d229a5455066b179a0ebc421b25322afdc32ddf9deaa1bad"
+          "path": "docs/hab-relay-spec.md",
+          "start": 181,
+          "end": 192,
+          "excerpt_sha256": "34db17c2d84f78b2c3a96edac01c781f034bf6875d35bb930ef39ee99cd6462b"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 175,
-          "end": 186,
-          "excerpt_sha256": "0ffcd461f9d54130ed01abef7b1ffa1df2dac76e5aefde42de362829d88c3f61"
+          "path": "docs/hab-relay-spec.md",
+          "start": 217,
+          "end": 219,
+          "excerpt_sha256": "3c293d98a090dcd2b62180d8d0e2504261598beaac502788a8638cb3aea9f610"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 225,
+          "end": 229,
+          "excerpt_sha256": "d028594e0af5d41c29f59d44d0c7397611ab2a8035b48884db662db13ff0e2c5"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 370,
+          "end": 370,
+          "excerpt_sha256": "7efd6339c650850bf02aeb986be7f01943239d65cac2ca3283d423e71eaead69"
         }
       ]
     },
@@ -2415,23 +2439,23 @@
       "title": "Current authority and one fenced recipient lease",
       "statement": "Use current verified operation and sender/kind policy, at most one live recipient lease, bounded scan and original expiry. Initial ACK requires current generation/token/lease; exact committed retry recovers the same delivery receipt without granting execution, using current authority.",
       "rationale": "Stale credentials/leases and caller-selected identities must not cross an immutable individual boundary.",
-      "scope": "Server poll/ACK in the JetStream journal, HAB's only delivery backend. The historical SQLite step-3 text states the same rules, which the retirement note says now live in the journal.",
+      "scope": "Server poll/ACK in the JetStream journal, HAB's only delivery backend. The spec's lease and ACK order states the rules; DESIGN.md places them in the journal transaction.",
       "decision": "accepted",
       "checks": [
         "js-root"
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 3,
-          "end": 8,
-          "excerpt_sha256": "b0402150356717beefe98e69dbc0fe88dd9334d7bd171bd2be9ef311dcff3250"
+          "path": "docs/hab-relay-spec.md",
+          "start": 283,
+          "end": 285,
+          "excerpt_sha256": "4c38a82a67e1b6ca886c61bd7c9672e9d68603e856afe96c1ed3e61ee7eae962"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 104,
-          "end": 130,
-          "excerpt_sha256": "de05c08973d9446e7477f59dc349794f6d8c14f2e40188123610c833000b9842"
+          "path": "docs/hab-relay-spec.md",
+          "start": 289,
+          "end": 296,
+          "excerpt_sha256": "8aeb86a89be551671a4419d232db2eee3b130d7952ae48829a551d83756d622b"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
@@ -2465,22 +2489,40 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 194,
-          "end": 218,
-          "excerpt_sha256": "6aa5c8a5d4f7417aab8a2249a4a3ce4cd2bc7d8c91255e3f1c90534462c89b39"
+          "path": "src/agent-sdk/README.md",
+          "start": 11,
+          "end": 11,
+          "excerpt_sha256": "54a3b92daf91ff7bda669e9563a682ddb98a03eb54fb591d8492e8c6a8c4e56a"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 469,
-          "end": 479,
-          "excerpt_sha256": "591ecba26d8593aa1d209cb9209e8fc916e290473391eb0394c8cd626fbb04df"
+          "path": "src/agent-sdk/README.md",
+          "start": 23,
+          "end": 23,
+          "excerpt_sha256": "cee63e63e5c02ac39e97a9a1f4c9745caccd9b5cec2c13e49a607f48cb3e8607"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 550,
-          "end": 558,
-          "excerpt_sha256": "23e8d96b5de19bbb7900ab6a095bfea9feacdd682083dd1e6e30a9e133c3672d"
+          "path": "src/agent-sdk/README.md",
+          "start": 27,
+          "end": 27,
+          "excerpt_sha256": "f8f645c64da78ab64752d6a3cda4109c39f4a454e738b81908a8913b7fd16762"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 255,
+          "end": 256,
+          "excerpt_sha256": "3c27abf758e0da5e792b038f73c2ee8afd87b0d30bd3fa69f8e90f162bdf22a1"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 302,
+          "end": 304,
+          "excerpt_sha256": "3ac00765f5519440674f9926dbc90c685848ab5b6f5f1d1ed32e2977fc425aad"
+        },
+        {
+          "path": "docs/security-audit-limits.md",
+          "start": 5,
+          "end": 5,
+          "excerpt_sha256": "b8d31165c514f8b5f979d9d220c0d21634bfb461d4707ab341919b8fefa6723b"
         },
         {
           "path": "docs/writer-admission.md",
@@ -2503,16 +2545,22 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 164,
-          "end": 169,
-          "excerpt_sha256": "9c0dc9e93a32f2178c4e73a3d6f7b50c774618a9451f759087c19514caa2cfc6"
+          "path": "src/agent-sdk/README.md",
+          "start": 19,
+          "end": 19,
+          "excerpt_sha256": "606a5f1bfe13358c870e624bb47b2809a041b93e06df49f4ef0ee0f32e680c41"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 317,
-          "end": 346,
-          "excerpt_sha256": "e5cc981695a43a5a95eae76ac7ba982848e0c98f1e47c4d93789e8af3ca5459f"
+          "path": "docs/hab-relay-spec.md",
+          "start": 259,
+          "end": 259,
+          "excerpt_sha256": "2d42e4fb2ba0c0e68941be721aa335ffc0795ed81e8dbbb9b551df4a7e676549"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 390,
+          "end": 392,
+          "excerpt_sha256": "b8520dfe92aefb31f060f881ee62474fb493bbcbfef3c283916a2cc7ec5f7d67"
         }
       ]
     },
@@ -2521,7 +2569,7 @@
       "title": "Bounded metadata collection preserves replay safety",
       "statement": "Explicit finite maintenance erases expired server body and only collects terminal metadata after required original expiry/terminal/ACK or status retry horizons plus retention. Reads/exact retry do not renew dates. Time-bound rm1 IDs bind original timestamp; legacy or malformed opaque identities remain safety-held instead of opening a replay window. Logical deletion does not imply physical erase or backup removal.",
       "rationale": "Finite storage cannot erase dedup evidence while stale requests remain admissible.",
-      "scope": "JetStream journal (server), sender outbox and receiver inbox tombstone maintenance. Server rules are recorded in the historical SQLite step and carried into the journal.",
+      "scope": "JetStream journal (server, DESIGN.md), and the agent SDK's sender outbox and receiver inbox tombstone maintenance.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -2529,28 +2577,28 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 3,
-          "end": 8,
-          "excerpt_sha256": "b0402150356717beefe98e69dbc0fe88dd9334d7bd171bd2be9ef311dcff3250"
+          "path": "src/agent-sdk/README.md",
+          "start": 10,
+          "end": 12,
+          "excerpt_sha256": "b7b4b6f734996d161508be0259155fb2a35c829e95b20b1590c52cf736aeb32c"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 234,
-          "end": 268,
-          "excerpt_sha256": "6ba02892093f2f59ac4be25257dd10ca89445b7f119f258d5126c203a96a3c06"
+          "path": "src/agent-sdk/README.md",
+          "start": 19,
+          "end": 19,
+          "excerpt_sha256": "606a5f1bfe13358c870e624bb47b2809a041b93e06df49f4ef0ee0f32e680c41"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 278,
-          "end": 304,
-          "excerpt_sha256": "967ee7ddb8232659b9686ae98dc2b8d5d92eecec6f37cd97a2b243deccc0b945"
+          "path": "docs/hab-relay-spec.md",
+          "start": 384,
+          "end": 386,
+          "excerpt_sha256": "91969435fd9eaee1656f9ea026c244d9ec5d21c4d4a6e5eec3dc82eac247a7e2"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 348,
-          "end": 366,
-          "excerpt_sha256": "84b1aa31e75ab837d1f417f0866b2fa18d5d2bd24de549fd369d083c1d9a1598"
+          "path": "docs/hab-relay-spec.md",
+          "start": 394,
+          "end": 396,
+          "excerpt_sha256": "63c8e73c6bf810f4cfa9f799a59ff0c9c06d1e513f16bd275beeea4014b78c6f"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
@@ -2571,12 +2619,6 @@
         "js-root"
       ],
       "citations": [
-        {
-          "path": "src/relay/README.md",
-          "start": 27,
-          "end": 31,
-          "excerpt_sha256": "12fa09a6690d9b8137de80d668d2af66ce55ed80977f138a7275b75661102e18"
-        },
         {
           "path": "docs/hab-relay-spec.md",
           "start": 221,
@@ -2603,12 +2645,6 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 27,
-          "end": 31,
-          "excerpt_sha256": "12fa09a6690d9b8137de80d668d2af66ce55ed80977f138a7275b75661102e18"
-        },
-        {
           "path": "docs/hab-relay-spec.md",
           "start": 221,
           "end": 221,
@@ -2627,12 +2663,6 @@
         "js-root"
       ],
       "citations": [
-        {
-          "path": "src/relay/README.md",
-          "start": 27,
-          "end": 31,
-          "excerpt_sha256": "12fa09a6690d9b8137de80d668d2af66ce55ed80977f138a7275b75661102e18"
-        },
         {
           "path": "docs/hab-relay-spec.md",
           "start": 221,
@@ -2653,12 +2683,6 @@
         "production-operations"
       ],
       "citations": [
-        {
-          "path": "src/relay/README.md",
-          "start": 27,
-          "end": 31,
-          "excerpt_sha256": "12fa09a6690d9b8137de80d668d2af66ce55ed80977f138a7275b75661102e18"
-        },
         {
           "path": "docs/hab-relay-spec.md",
           "start": 221,
@@ -2731,12 +2755,6 @@
         "production-operations"
       ],
       "citations": [
-        {
-          "path": "src/relay/README.md",
-          "start": 3,
-          "end": 8,
-          "excerpt_sha256": "b0402150356717beefe98e69dbc0fe88dd9334d7bd171bd2be9ef311dcff3250"
-        },
         {
           "path": "packages/relay-nats/OPERATIONS.md",
           "start": 31,
@@ -2871,12 +2889,6 @@
       ],
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 27,
-          "end": 31,
-          "excerpt_sha256": "12fa09a6690d9b8137de80d668d2af66ce55ed80977f138a7275b75661102e18"
-        },
-        {
           "path": "docs/hab-relay-spec.md",
           "start": 221,
           "end": 221,
@@ -3003,12 +3015,6 @@
         "js-root"
       ],
       "citations": [
-        {
-          "path": "docs/implementation/generic-nats-dispatch.md",
-          "start": 19,
-          "end": 27,
-          "excerpt_sha256": "4d8f6288ea4bc901a25300cfd1538c3509687fba190ff8e2cedcdac10144a3ab"
-        },
         {
           "path": "docs/hermes-connection.md",
           "start": 25,
@@ -3216,18 +3222,12 @@
       "title": "Capacity does not evict active dedup evidence",
       "statement": "Private execution/reply journals reject binding/key/schema/corruption/capacity failures and preserve existing unknown/dedup records. Reopen does not extend original deadline or convert delivery expiry into failed/nonexistent execution. Independent restore needs quiescent reconciliation.",
       "rationale": "Freeing space or refreshing time cannot erase the only evidence preventing duplicate work.",
-      "scope": "Optional generic NATS client/recipient, TaskBridge and reply journals; exact numeric policies stay subsystem-specific.",
+      "scope": "TaskBridge and reply journals; exact numeric policies stay subsystem-specific. The optional generic NATS client/recipient was deleted, so its journals are no longer in scope.",
       "decision": "accepted",
       "checks": [
         "js-root"
       ],
       "citations": [
-        {
-          "path": "docs/implementation/generic-nats-dispatch.md",
-          "start": 31,
-          "end": 37,
-          "excerpt_sha256": "63c784aa344d947c4409b1e485a168c4c9331749f3382a620cebddac4d98c3b9"
-        },
         {
           "path": "docs/task-bridge.md",
           "start": 78,
@@ -3415,12 +3415,6 @@
           "excerpt_sha256": "e560d8fe60f24b345c314d582ab6bfd0c365a4de3b9d77ae6156e6b2d90c1952"
         },
         {
-          "path": "docs/implementation/generic-nats-dispatch.md",
-          "start": 54,
-          "end": 56,
-          "excerpt_sha256": "c0c47bb5d606d7b88ed53e69949b6b04afa1dab1e016d965fdd2ba704ca85541"
-        },
-        {
           "path": "docs/inventory-end-to-end.md",
           "start": 53,
           "end": 64,
@@ -3588,7 +3582,7 @@
       "title": "Generate reviewed successor pins from committed blobs",
       "statement": "Preserve the historical P7 pin, commit feature source, generate a separate successor from explicit committed Git blobs, review the manifest/archive/digest and rerun verification before committing pin updates.",
       "rationale": "Updating expected hashes from mutable source defeats provenance checking; root tests alone do not cover dedicated P7 guards.",
-      "scope": "P7 source profile, including current generic-NATS and broker-startup catalogs.",
+      "scope": "P7 source profile, including the current broker-startup catalog. The generic-nats group was removed with the generic-nats code.",
       "decision": "accepted",
       "checks": [
         "js-cli-guards",
@@ -3598,8 +3592,8 @@
         {
           "path": "test/p7/README.md",
           "start": 3,
-          "end": 18,
-          "excerpt_sha256": "b6f65a02de3247d93724fc3c271570f4f0033b9a33adef8c06b3b65126964620"
+          "end": 16,
+          "excerpt_sha256": "648d65f0b56734edeb27959107c1f5cfba0bb907826b2c3a66e117c5fecbe9b1"
         },
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
@@ -4611,20 +4605,20 @@
         "HAB-D16",
         "HAB-D17"
       ],
-      "resolution": "No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in.",
+      "resolution": "No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in. The cumulative src/relay/README.md was itself deleted when the durable sender and receiver moved to src/agent-sdk; its successor README describes only the current agent SDK and has no stage claims, so the question is moot.",
       "classification": "historical",
       "citations": [
         {
-          "path": "src/relay/README.md",
-          "start": 27,
-          "end": 31,
-          "excerpt_sha256": "12fa09a6690d9b8137de80d668d2af66ce55ed80977f138a7275b75661102e18"
+          "path": "src/agent-sdk/README.md",
+          "start": 3,
+          "end": 3,
+          "excerpt_sha256": "2657aa004eb4086d0bbb3c5ef09d4bbe8976d2542211443628905d3909854ac6"
         },
         {
-          "path": "src/relay/README.md",
-          "start": 604,
-          "end": 608,
-          "excerpt_sha256": "943f86e077eac97af71fefcefb8253db62e06e2a247dd895df570d10e0779677"
+          "path": "docs/writer-admission.md",
+          "start": 5,
+          "end": 5,
+          "excerpt_sha256": "f1029ab5dd752c376e8a9445ce2dccb9f7e7ac2ae1dc13097a08390eaf687965"
         }
       ]
     },
@@ -5045,7 +5039,7 @@
     },
     {
       "status": "resolved",
-      "question": "P7 guides still name the original 1498 full-root cases and old group set, but current successor adds generic-nats/startup and implementation adds tests. Which numeric counts apply to this exact candidate?",
+      "question": "P7 guides still name the original 1498 full-root cases and old group set, but the current successor adds the broker-startup group and implementation adds tests. Which numeric counts apply to this exact candidate?",
       "id": "HAB-C-V05",
       "requirements": [
         "HAB-V06",
@@ -5072,12 +5066,12 @@
         },
         {
           "path": "test/p7/README.md",
-          "start": 18,
-          "end": 22,
-          "excerpt_sha256": "c3a45b46ad294f885d9b8e86e2aee0bf811c46c7f18097eea5bf687ebec3f1f5"
+          "start": 20,
+          "end": 20,
+          "excerpt_sha256": "3788c40149e0a265b9df7ddcf99db0b575b7c49d807d688899499aba9d6410c5"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies current successor catalogs and separate startup/generic-nats groups. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces full-root1692, guards8 and all current groups. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1150 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
     },
     {
       "status": "resolved",
@@ -5167,6 +5161,32 @@
           "start": 65,
           "end": 65,
           "excerpt_sha256": "7dec615a6b5f37308841a8c01f42d1550f418aa3a0e4d8a904bef0a4395d3ef6"
+        }
+      ]
+    },
+    {
+      "status": "resolved",
+      "question": "docs/implementation/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?",
+      "id": "HAB-C-E07",
+      "requirements": [
+        "HAB-E03",
+        "HAB-E11",
+        "HAB-E17"
+      ],
+      "resolution": "No. The Relay removal deleted src/generic-nats, packages/relay-nats/src/text-port.ts, their tests, scripts/prove-generic-nats.mjs, the proof:generic-nats script and the P7 generic-nats group. The port had no production caller, its transport used the JetStream backend's own authorization callback instead of the Registry, and its production auth and startup were never enabled. The dispatch document is unchanged and is now context describing removed code. HAB-E03, HAB-E11 and HAB-E17 no longer cite it and keep their TaskBridge, reply-journal and proof-label sources. Updating the document and the profile link is product-documentation work outside this contract.",
+      "classification": "historical",
+      "citations": [
+        {
+          "path": "docs/implementation/generic-nats-dispatch.md",
+          "start": 41,
+          "end": 41,
+          "excerpt_sha256": "7d8a119b619ac72ad9750833520090bf301553276f0603e1f4dac4646e18c074"
+        },
+        {
+          "path": "docs/profiles/async-text-v1.md",
+          "start": 50,
+          "end": 50,
+          "excerpt_sha256": "1e2a6d0cec09ea6c7d8041785007d68168166f8360fdcf88a36a78bff3dbe52a"
         }
       ]
     }

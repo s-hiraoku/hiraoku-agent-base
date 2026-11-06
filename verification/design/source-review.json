@@ -31,7 +31,8 @@
         {
           "path": "docs/implementation/generic-nats-dispatch.md",
           "sha256": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
-          "review": "reviewed"
+          "review": "reviewed",
+          "maintenance": "Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the document is unchanged, but the code it describes was deleted; it is now historical context (HAB-C-E07)."
         },
         {
           "path": "docs/implementation/generic-job-application.md",
@@ -248,24 +249,24 @@
     "read_files": null,
     "supplemental_sources": [
       {
-        "path": "src/relay/receiver.ts",
+        "path": "src/agent-sdk/receiver.ts",
         "sha256": "f1b7093de7b4f2af67ddda53ef89e9b02a18413e52ccf9a6198fbd772ec5eec0",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual model-free receiveOnce, injected ReceiverStore/Transport API, save then ACK, stable pending journal flush and overlap guard.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/receiver.ts; the recorded observation still holds."
       },
       {
-        "path": "src/relay/sender.ts",
+        "path": "src/agent-sdk/sender.ts",
         "sha256": "79524aac4b638006aee2d96d31a9cc074371e2a3849233ee2517e331266c14ce",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds."
       },
       {
         "path": "src/relay/service.ts",
@@ -288,34 +289,34 @@
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
-        "path": "src/relay/index.ts",
+        "path": "src/agent-sdk/index.ts",
         "sha256": "5efc38678fc54a2a88e6aa515ed54afdb25f320f7e51191a732029e5caa9a101",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Pure public exports of the durable sender and receiver; contract and DeliveryService now come from src/messaging. No HTTP/SQLite/HAB/Task imports.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/index.ts; the recorded observation still holds."
       },
       {
-        "path": "src/relay/sqlite-inbox.ts",
+        "path": "src/agent-sdk/sqlite-inbox.ts",
         "sha256": "d258950ba4351d49ba088de9df569c03fb371a12841bfc408ab3e943a4c1e941",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-165,374-650,675-770",
         "summary": "Inline SQL schema/migration (schema 4 drops the schema-3 attachment columns and trigger), private file/owner options, transaction, body+stable ACK insertion, HMAC-checked withEntry, raw inbox listing and explicit release. Other migration/GC sections not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-inbox.ts; the recorded observation still holds."
       },
       {
-        "path": "src/relay/sqlite-outbox.ts",
+        "path": "src/agent-sdk/sqlite-outbox.ts",
         "sha256": "13d53c5241a3e46932a1e356d9ddf02f8c740851f078646780affe51bc485d35",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-60,353-445; explicit PRAGMA at167 and transaction location found by rg",
         "summary": "Inline state/single-flight schema and guarded immutable enqueue/quota; the attachment admission port was removed. Other claim/confirm/maintenance internals not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds."
       },
       {
         "path": "src/relay/sqlite-store.ts",
@@ -544,7 +545,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "bdfc100921c7dbb2de1340d6fac2f4f30b9fd9ecace39641fe2347a3c1f66fe1",
+        "sha256": "1879a49cf04004f508ae0e5898ebe0372348d20253fb40f4cccc102942554ec6",
         "read_ranges": [
           [
             1,
@@ -553,7 +554,7 @@
         ],
         "observation": "Read full package manifest. Native verification is Node test runner plus TS build/typecheck; Python exists for optional import/token executor boundaries.",
         "full_file_read": true,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds."
       },
       {
         "path": "src/server.ts",
@@ -605,7 +606,6 @@
       },
       {
         "path": "src/generic-nats/recipient.ts",
-        "sha256": "04ba5033ce11dadbc8380fc50dd49276514032366eb5123213dae13f6cc93df6",
         "read_ranges": [
           [
             300,
@@ -618,11 +618,14 @@
         ],
         "observation": "Read lookup/receive/execute sections. receive delegates only receiver; ready reservation CAS before createText, later states lookup existing key/id, independent executeOnce finite pages.",
         "full_file_read": false,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise.",
+        "retired_sha256": "04ba5033ce11dadbc8380fc50dd49276514032366eb5123213dae13f6cc93df6",
+        "review": "retired",
+        "disposition": "Deleted with the generic-nats text port (src/generic-nats, packages/relay-nats/src/text-port.ts, its tests and scripts/prove-generic-nats.mjs): no production caller, and its transport bypassed Registry authorization. HAB-C-E07 records the disposition."
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "6534273e947b856bb194a5ee0be71fa77694f961c3ea2578290efae0e24130ef",
+        "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2",
         "read_ranges": [
           [
             1,
@@ -635,7 +638,7 @@
         ],
         "observation": "Read commands/options and inbox_read branch. Explicit inbox_read copies existing entry under atomic wrapper; Task controls and answer operations separately named, no inferred native agent caller.",
         "full_file_read": false,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only renames the durable sender, receiver, inbox and outbox imports to ../agent-sdk; the recorded observation still holds."
       },
       {
         "path": "scripts/python_import_guard.py",
@@ -960,8 +963,9 @@
       },
       {
         "path": "test/p7/README.md",
-        "sha256": "1f7c43efe3499d2a0dd65b928f16258f2d6aae47d89cf4dd4c5344fc5302fd4a",
-        "mode": "full"
+        "sha256": "f34327d5f116f370a5537292d68f106d87b0626fc0a074e00a306ee302df10f9",
+        "mode": "full",
+        "maintenance": "Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes the mandatory generic-nats group paragraph; the rest of the procedure is unchanged."
       }
     ],
     "supplemental_sources": [
