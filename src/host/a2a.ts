@@ -15,18 +15,19 @@
  * - Durability: outbox, inbox and SDK Task store are private SQLite files in the host
  *   directory. Delivery of a saved intent happens only inside its owner's authorized
  *   request (SendMessage, repeated to retry); a background retry would send without a
- *   current owner check. Only the receiver loop (poll, save, then ACK) runs in background.
+ *   current owner check. Only the receiver loop runs in background: it saves then ACKs
+ *   a reply to a host message, and ACKs anything else without saving it.
  */
 import { createHmac, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import type { Server } from "node:http";
 import { once } from "node:events";
 import { DurableReceiver } from "../agent-sdk/receiver.ts";
-import type { InboxEntry } from "../agent-sdk/receiver.ts";
 import { DurableSender } from "../agent-sdk/sender.ts";
 import { SQLiteOutbox } from "../agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../agent-sdk/sqlite-inbox.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
+import type { Delivery } from "../messaging/delivery-service.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { HabMcpService } from "../hab/mcp.ts";
@@ -321,32 +322,41 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       submit: async (message) => service.submit(hostContext, message),
       status: async (messageId) => service.status(hostContext, messageId),
     });
+    // Only replies from the recipient a host message went to are kept.
+    const correlated = (message: Delivery["message"]) => {
+      const reference = message.in_reply_to;
+      if (
+        !["execution_accepted", "execution_result"].includes(message.kind) ||
+        reference?.sender_id !== identity.agent_id
+      )
+        return false;
+      try {
+        return box.get(reference.message_id).recipient_id === message.sender_id;
+      } catch {
+        return false;
+      }
+    };
     let received = false;
     const receiver = new DurableReceiver(mail, {
       poll: async () => {
         const delivery = service.poll(hostContext);
         received = delivery !== null;
-        return delivery;
+        if (!delivery || correlated(delivery.message)) return delivery;
+        // Anything else is ACKed without an inbox record, so unrelated senders spend
+        // none of the record or ACK history capacity that replies need. Dropping it
+        // again on a redelivery is harmless, so it needs no dedup record.
+        const { sender_id, message_id } = delivery.message;
+        await service.ack(hostContext, {
+          sender_id,
+          message_id,
+          generation: delivery.generation,
+          lease_token: delivery.lease_token,
+          request_id: randomUUID(),
+        });
+        return null;
       },
       ack: async (input) => service.ack(hostContext, input),
     });
-    // Only replies from the recipient a host message went to are kept; anything else
-    // is released so that unrelated senders cannot fill the host mailbox.
-    const correlated = (entry: InboxEntry) => {
-      const reference = entry.message.in_reply_to;
-      if (
-        !["execution_accepted", "execution_result"].includes(
-          entry.message.kind,
-        ) ||
-        reference?.sender_id !== identity.agent_id
-      )
-        return false;
-      try {
-        return box.get(reference.message_id).recipient_id === entry.sender_id;
-      } catch {
-        return false;
-      }
-    };
     let maintainedAt = 0;
     const receive = async () => {
       try {
@@ -354,9 +364,6 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           received = false;
           await receiver.receiveOnce();
           if (!received) break;
-          for (const entry of mail.inbox())
-            if (!correlated(entry))
-              mail.releaseBody(entry.sender_id, entry.message.message_id);
         }
         if (Date.now() - maintainedAt >= 60000) {
           maintainedAt = Date.now();

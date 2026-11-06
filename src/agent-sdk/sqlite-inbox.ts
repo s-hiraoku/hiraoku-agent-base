@@ -327,7 +327,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       if (!existing) {
         const usage = this.#db
           .prepare(
-            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_inbox",
+            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_inbox WHERE released_at IS NULL",
           )
           .get()!;
         const body = JSON.stringify(message);

@@ -278,6 +278,18 @@ async function untilState(read, state) {
   return task;
 }
 
+/** Reads a sent message's relay status slowly enough to stay under the MCP rate limit. */
+async function untilAcked(client, messageId) {
+  for (let i = 0; i < 40; i++) {
+    const state = await client.status(messageId).then(
+      (receipt) => receipt.state,
+      () => undefined,
+    );
+    if (state === "acked") return state;
+    await new Promise((done) => setTimeout(done, 200));
+  }
+}
+
 async function connected(t, options) {
   const f = await a2aHost(t, options);
   const caller = f.connect("caller", "caller@caller.hab");
@@ -583,36 +595,25 @@ test("A2A refuses unauthenticated, wrong-audience, unauthorized and cross-owner 
     result: "spoofed",
   });
   assert.equal(forged.record.state, "quarantined");
-  assert.equal(
-    (await spoofer.send(hostMessage, "notice", null)).record.state,
-    "accepted",
-  );
+  const notice = await spoofer.send(hostMessage, "notice", null);
+  assert.equal(notice.record.state, "accepted");
   await recipient.receiver.receiveOnce();
-  const hostInbox = () => {
-    const db = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
-      readOnly: true,
-    });
-    try {
-      return db
-        .prepare(
-          "SELECT body,receipt_confirmed acked,released_at IS NOT NULL released FROM relay_inbox",
-        )
-        .all()
-        .map((row) => ({ ...row }));
-    } finally {
-      db.close();
-    }
-  };
-  assert.deepEqual(
-    await eventually(() => {
-      const rows = hostInbox();
-      return rows.length && rows.every((row) => row.released && row.acked)
-        ? rows
-        : undefined;
-    }),
-    [{ body: "", acked: 1, released: 1 }],
-    "the unsolicited notice was saved, ACKed and released",
+  assert.equal(
+    await untilAcked(spoofer.client, notice.message.message_id),
+    "acked",
   );
+  const inbox = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    assert.equal(
+      inbox.prepare("SELECT count(*) n FROM relay_inbox").get().n,
+      0,
+      "the unsolicited notice was ACKed without an inbox record",
+    );
+  } finally {
+    inbox.close();
+  }
   assert.equal(
     (await client.get(task.id)).status.state,
     TaskState.TASK_STATE_SUBMITTED,
@@ -645,16 +646,6 @@ test("after unrelated notices reach the cap, a valid reply is still saved and AC
     "spoofer",
     f.connect("spoofer", "spoofer@spoofer.hab").agent_id,
   );
-  const acked = async (client, messageId) => {
-    for (let i = 0; i < 40; i++) {
-      const state = await client.status(messageId).then(
-        (receipt) => receipt.state,
-        () => undefined,
-      );
-      if (state === "acked") return state;
-      await new Promise((done) => setTimeout(done, 200));
-    }
-  };
   const hostEntry = {
     sender_id: identity.agent_id,
     message: { thread_id: "unrelated", message_id: "unrelated" },
@@ -663,7 +654,7 @@ test("after unrelated notices reach the cap, a valid reply is still saved and AC
     for (let i = 0; i < count; i++) {
       const { message } = await spoofer.send(hostEntry, "notice", null);
       assert.equal(
-        await acked(spoofer.client, message.message_id),
+        await untilAcked(spoofer.client, message.message_id),
         "acked",
         "the host consumed the unrelated notice",
       );
@@ -687,7 +678,7 @@ test("after unrelated notices reach the cap, a valid reply is still saved and AC
       result: "connectivity_ok",
     });
     assert.equal(
-      await acked(recipient.client, result.message_id),
+      await untilAcked(recipient.client, result.message_id),
       "acked",
       "the host saved and ACKed the valid reply",
     );
