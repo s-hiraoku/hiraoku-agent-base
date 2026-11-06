@@ -168,6 +168,12 @@ export class NatsJournal {
       closeSync(fd);
     }
     this.#db = new DatabaseSync(path, { timeout: 5000 });
+    this.#db.function(
+      "nats_gc_safe",
+      { deterministic: true },
+      (messageId, expiresAt) =>
+        isReplayBoundMessageId(messageId, expiresAt) ? 1 : 0,
+    );
     try {
       const check = this.hash("key", "nats-journal-v1:" + binding);
       const inspect = () => {
@@ -798,18 +804,19 @@ export class NatsJournal {
       )
         throw new MessagingError("maintenance_state_unavailable");
       this.#db.prepare("DELETE FROM nats_pulls WHERE until<=?").run(now);
+      const due =
+        "FROM nats_messages WHERE state IN ('acked','expired') AND cleaned=1 AND retain_until<=? AND nats_gc_safe(message_id,expires_at)=?";
+      // Held IDs never take a batch slot, so a held backlog cannot starve purgeable records.
       const rows = this.#db
         .prepare(
-          "SELECT * FROM nats_messages WHERE state IN ('acked','expired') AND cleaned=1 AND retain_until<=? LIMIT ?",
+          `SELECT sender_id,message_id ${due} ORDER BY retain_until,sender_id,message_id LIMIT ?`,
         )
-        .all(now, limit) as unknown as Row[];
-      let purged = 0,
-        safety_held = 0;
+        .all(now, 1, limit) as Array<{ sender_id: string; message_id: string }>;
+      const safety_held = Number(
+        this.#db.prepare(`SELECT count(*) n ${due}`).get(now, 0)!.n,
+      );
+      let purged = 0;
       for (const row of rows) {
-        if (!isReplayBoundMessageId(row.message_id, row.expires_at)) {
-          safety_held++;
-          continue;
-        }
         this.#db
           .prepare(
             "DELETE FROM nats_delivery_audit WHERE sender_id=? AND message_id=?",
