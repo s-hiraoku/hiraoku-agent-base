@@ -330,13 +330,30 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
             "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_inbox WHERE released_at IS NULL",
           )
           .get()!;
+        const retained = this.#db
+          .prepare(
+            "SELECT count(*) n,coalesce(sum(relay_inbox_gc_safe(message_id,expires_at)=0),0) held FROM relay_inbox",
+          )
+          .get()!;
         const body = JSON.stringify(message);
         if (
           Number(usage.n) >= this.#options.max_records ||
           Number(usage.bytes) + Buffer.byteLength(body) >
-            this.#options.max_body_bytes
+            this.#options.max_body_bytes ||
+          Number(retained.n) >=
+            this.#options.max_records + this.#options.max_ack_records
         )
           throw new MessagingError("inbox_capacity_exceeded");
+        // A legacy ID's tombstone is never collected, so legacy rows get the dedup
+        // budget only and the body budget stays open to replay-bound IDs.
+        if (
+          !isReplayBoundMessageId(
+            message.message_id,
+            Date.parse(message.expires_at),
+          ) &&
+          Number(retained.held) >= this.#options.max_ack_records
+        )
+          throw new MessagingError("inbox_legacy_id_capacity_exceeded");
         this.#db
           .prepare(
             "INSERT INTO relay_inbox(sender_id,message_id,body,fingerprint,received_at,expires_at,ack_retry_until,retain_until) VALUES(?,?,?,?,?,?,?,?)",
