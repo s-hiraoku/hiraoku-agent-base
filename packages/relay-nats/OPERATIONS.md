@@ -8,7 +8,7 @@ Put the canonical private service state directory on that volume. Store `volume.
 
 The host validates the marker location, logical ID, file privacy, and device before creating state files. It repeats the storage check before commits and pump cycles. A missing or changed volume stops those operations. These checks do not constitute a physical unplug or power-failure test.
 
-Use separate named files for Registry, NATS admission journal, Task Store, and recipient checkpoints. Keep the broker store on the selected persistent volume. A state directory from the retired SQLite delivery store may still contain `relay.sqlite`; the host ignores it and never migrates its messages.
+Use separate named files for Registry, NATS admission journal, Task Store, and recipient checkpoints. Keep the broker store on the selected persistent volume. A state directory from the retired SQLite delivery store may still contain `relay.sqlite`. The host starts without a warning, ignores the file and never migrates or delivers its messages. Before upgrading, check each state directory for `relay.sqlite`: any message still pending in it is lost to recipients unless its sender resends it. Reconcile those senders first, then archive or delete the file.
 
 ## Configure the private broker
 

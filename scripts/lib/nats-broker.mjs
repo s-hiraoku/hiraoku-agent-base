@@ -9,17 +9,25 @@ import { setTimeout as delay } from "node:timers/promises";
 
 const repo = new URL("../../", import.meta.url);
 
+/** The fixed, secret-free refusal printed when no pinned nats-server binary can be found. */
+export const NATS_SERVER_REQUIRED =
+  "nats_server_required: set HAB_NATS_SERVER to the pinned nats-server 2.15.2, or run `mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`";
+
 /** The pinned nats-server binary: HAB_NATS_SERVER, else the repo's `.runtime/nats-install.json`. */
 export function natsServerBinary(environment = process.env) {
-  if (environment.HAB_NATS_SERVER) return environment.HAB_NATS_SERVER;
-  const record = new URL(".runtime/nats-install.json", repo);
-  if (existsSync(record)) {
-    const { binary } = JSON.parse(readFileSync(record, "utf8"));
-    if (typeof binary === "string" && existsSync(binary)) return binary;
+  if (environment.HAB_NATS_SERVER) {
+    if (existsSync(environment.HAB_NATS_SERVER))
+      return environment.HAB_NATS_SERVER;
+  } else {
+    const record = new URL(".runtime/nats-install.json", repo);
+    if (existsSync(record)) {
+      const { binary } = JSON.parse(readFileSync(record, "utf8"));
+      if (typeof binary === "string" && existsSync(binary)) return binary;
+    }
   }
-  throw Error(
-    "nats_server_required: set HAB_NATS_SERVER to the pinned nats-server 2.15.2, or run `mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`",
-  );
+  throw Object.assign(Error(NATS_SERVER_REQUIRED), {
+    code: "nats_server_required",
+  });
 }
 
 async function freePort() {

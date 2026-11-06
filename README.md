@@ -20,10 +20,12 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 
 ## ローカルMVPを確認する
 
-Node 26以上で、次の有限コマンドから[15段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DBと模擬3個体のloopback通信だけを使い、終了時に停止・削除します。
+Node 26以上で、次の有限コマンドから[15段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DB、一時ディレクトリ内の専用loopback nats-server、模擬3個体のloopback通信だけを使い、終了時に停止・削除します。固定版のnats-server 2.15.2が必要です。`HAB_NATS_SERVER`で指定するか、次のinstall手順で用意します。見つからない場合は`nats_server_required`とinstall手順を表示して終了します。
 
 ```sh
 npm ci
+npm ci --prefix packages/relay-nats --ignore-scripts
+mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
 npm run demo:hab-mvp -- --simulate
 ```
 
