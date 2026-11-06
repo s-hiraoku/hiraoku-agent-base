@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "7370e04c30d2d9da14e993ef5ed4cea4031d9365",
+  "source_ref": "eeff349696c534ddf3fb0dac43200e3448171013",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -83,7 +83,7 @@
     },
     "packages/relay-nats/src/journal.ts": {
       "previous_sha256": "2ec27df96b6b748f2321e8c83fb6bcc7bf51f9957e34449d5f2ba01e9a393a17",
-      "sha256": "fc2d8ae9d0db920d9a8bf2bb0418e888eae8179e0cad592396419a036f28f45e"
+      "sha256": "f6cc227fe1aaba475bf338e67558f08cdec9ba27d006b7378359b3bfc62b1afd"
     },
     "packages/relay-nats/test/backend.test.js": {
       "previous_sha256": "3f67358f76d406b91f93f4bb59a80fd2cbb26114d8e4623c3a1013e29dbbec7e",
@@ -95,7 +95,7 @@
     },
     "packages/relay-nats/test/delivery-semantics.test.js": {
       "previous_sha256": null,
-      "sha256": "697303239da6737e8650d39e4ed5eb88ce6faace7b57540f197ef48b5f7133bf"
+      "sha256": "5cff0ae234c987ff3f1f685498e1532eb29a91c94a9e2c577626efc44d27e02f"
     },
     "packages/relay-nats/test/fixture.js": {
       "previous_sha256": "75bc9335f5461a80aea0522ac2b0b69f182ba4695b8dba8ac7db2f7573a6a2d6",
@@ -679,7 +679,7 @@
     },
     "test/p7/README.md": {
       "previous_sha256": null,
-      "sha256": "8e99d8f35a9102e9cf127b6e30892d6580301c27358914611da5d7af6b468e88"
+      "sha256": "e02760ec316842857c0dbbe6e30875b109be6f488d8ffc182c1ec85854880406"
     },
     "test/p7/manifest.js": {
       "previous_sha256": null,
