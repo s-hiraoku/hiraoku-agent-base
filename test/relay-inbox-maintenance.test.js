@@ -668,3 +668,69 @@ test("a released body frees its record slot while its tombstone still deduplicat
     "ACK history, not released bodies, bounds what the inbox retains",
   );
 });
+
+test("legacy IDs cannot grow the retained rows past the dedup bound across retention cycles", (t) => {
+  const bound = { max_records: 1, max_ack_records: 1 };
+  const f = fixture(t, bound);
+  const rows = () =>
+    f.raw.prepare("SELECT count(*) n FROM relay_inbox").get().n;
+  const age = () => {
+    const shift = RECORD_RETENTION_MS + 10 * day;
+    f.raw
+      .prepare(
+        "UPDATE relay_inbox SET received_at=received_at-?,released_at=released_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift, shift, shift, shift);
+    f.raw
+      .prepare(
+        "UPDATE relay_receiver_acks SET retry_until=retry_until-?,terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift);
+  };
+  const cycle = (m) => {
+    f.store.save(delivery(m));
+    const req = f.store.claimAck();
+    f.store.confirmAck(req, receipt(req));
+    assert.equal(f.store.releaseBody("a", m.message_id), true);
+    age();
+    f.store.maintain(1000);
+  };
+  const legacy = (i) => ({
+    ...message(Date.now() - 100, String(i).repeat(32)),
+    message_id: `legacy-${i}`,
+  });
+  const held = legacy(1);
+  cycle(held);
+  const refused = [];
+  for (let i = 2; i <= 5; i++) {
+    try {
+      cycle(legacy(i));
+    } catch (error) {
+      if (error.code !== "inbox_legacy_id_capacity_exceeded") throw error;
+      refused.push(i);
+    }
+    assert.ok(
+      rows() <= bound.max_records + bound.max_ack_records,
+      `cycle ${i} keeps the retained rows within the bound, found ${rows()}`,
+    );
+  }
+  assert.deepEqual(refused, [2, 3, 4, 5], "new legacy IDs are refused");
+  f.store.save(delivery(held, 2));
+  assert.deepEqual(
+    f.store.inbox(),
+    [],
+    "a replay of the held ID is not handed off again",
+  );
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  age();
+  f.store.maintain(1000);
+  const bound_id = delivery(message(Date.now() - 100, "6".repeat(32)));
+  f.store.save(bound_id);
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [bound_id.message.message_id],
+    "a replay-bound ID still saves once legacy IDs are refused",
+  );
+  assert.ok(rows() <= bound.max_records + bound.max_ack_records);
+});
