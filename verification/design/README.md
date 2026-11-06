@@ -89,3 +89,14 @@ Phase 6 (reviewed at `135d9ca3a6fb93b9c2ce435f5674ede56bb0a338`) recorded the si
 - Document review rows for the rewritten documents were re-read and updated.
 
 New and re-rendered source links pin to the reviewed commit above.
+
+## Maintenance after the restored delivery guarantees
+
+The restored delivery guarantees (reviewed at `49afd74750dad01e6e9ca51b97fadb9d7afd5f2a`) fixed JetStream journal maintenance in `packages/relay-nats/src/journal.ts`, added eight behavior tests to `packages/relay-nats/test/delivery-semantics.test.js`, and raised the NATS producer catalog from 60 to 68 cases. Before the fix, `collect()` selected `LIMIT n` purge-due rows and only then skipped safety-held IDs, so `n` held rows could starve every purgeable record. It now filters held IDs in SQL through a `nats_gc_safe` function, orders the batch by `retain_until`, and counts held rows separately. The ping fixture fix in `test/ping-suite.js` touches no cited source. The audit drift was handled by rereading, not rehashing:
+
+- HAB-D07 states the property the fix restores: safety-held records never take a maintenance batch slot, so a held backlog cannot starve collection of due replay-bound records. The requirement is stronger, not weaker. It now also maps to current-hosted-p7, because the new non-starvation, batch-limit and ACK-horizon tests run in the P7 NATS group and in no automated design check, as with HAB-D19.
+- HAB-C-V05 records 68 NATS producer cases (60 plus the eight restored delivery-guarantee cases) and the unchanged full-root count of 1151.
+- HAB-V07, HAB-V14 and the three HAB-C-V05 citations keep their ranges. Only the catalog count inside the excerpt changed, and each statement still holds against the reread text.
+- In source-review.json `packages/relay-nats/src/journal.ts` was re-reviewed with a new `collect()` summary. The three count-only document diffs were rehashed after reading them. The document review rows for `docs/testing/p7-lab.md` and `test/p7/README.md` now name the 68-case catalog.
+
+New and re-rendered source links pin to the reviewed commit above.

@@ -440,13 +440,13 @@
       },
       {
         "path": "packages/relay-nats/src/journal.ts",
-        "sha256": "fc2d8ae9d0db920d9a8bf2bb0418e888eae8179e0cad592396419a036f28f45e",
+        "sha256": "f6cc227fe1aaba475bf338e67558f08cdec9ba27d006b7378359b3bfc62b1afd",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
-        "read_coverage": "72-115,227-270",
-        "summary": "Re-read 70-95, 300-320, 360-395: schema 4 tables including nats_delivery_audit and nats_maintenance_totals, one-live-lease unique index, in-transaction audit insert, and admission capacity checks before insert; explicit v1-v3 to v4 migration drops routing state. Rest not fully read.",
+        "read_coverage": "72-115,227-270,collect()",
+        "summary": "Re-read 70-95, 300-320, 360-395: schema 4 tables including nats_delivery_audit and nats_maintenance_totals, one-live-lease unique index, in-transaction audit insert, and admission capacity checks before insert; explicit v1-v3 to v4 migration drops routing state. Re-read collect() in full after 9dc7565: a deterministic nats_gc_safe SQL function wraps isReplayBoundMessageId, the purge batch selects only due acked/expired cleaned rows that are replay-bound, ordered by retain_until then sender and message ID, so safety-held rows never take a LIMIT slot; safety_held is a separate count of all due held rows, and missing maintenance totals still fail closed. Rest not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: re-read the diff from 030a608 (9dc7565) in full; it changes only the constructor's SQL function registration and collect(). The schema, audit and admission observations still hold."
       },
       {
         "path": "packages/relay-nats/src/backend.ts",
@@ -935,9 +935,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "f21a28906f78b8aeee7d461a95392befaed202af5322306c9af840df717d42ed",
+        "sha256": "d737389eb90fff9295bc0ddf3a23d2d5d34093a4a03f30c17404a2f7e5280b6c",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases."
       },
       {
         "path": "docs/testing/plan.md",
@@ -946,9 +946,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "dfdd9da0c32b27c1187b79c100a5fa73fbb556bd8b9b5d55d2ef678a234b6976",
+        "sha256": "5b077c13e0f3d88aaaabed7b9d913b6204be8d85dc89b8378d2f60615e860dc1",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases."
       },
       {
         "path": "docs/testing/results.md",
@@ -967,9 +967,9 @@
       },
       {
         "path": "test/p7/README.md",
-        "sha256": "8e99d8f35a9102e9cf127b6e30892d6580301c27358914611da5d7af6b468e88",
+        "sha256": "e02760ec316842857c0dbbe6e30875b109be6f488d8ffc182c1ec85854880406",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only replaces the stale 55-case sentence with the current 60-case producer catalog path."
+        "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only replaces the stale 55-case sentence with the current 60-case producer catalog path. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases."
       }
     ],
     "supplemental_sources": [

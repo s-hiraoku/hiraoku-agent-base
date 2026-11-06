@@ -634,15 +634,15 @@ Sources: [src/agent-sdk/README.md:19](https://github.com/s-hiraoku/hiraoku-agent
 
 ### HAB-D07 — Bounded metadata collection preserves replay safety
 
-Explicit finite maintenance erases expired server body and only collects terminal metadata after required original expiry/terminal/ACK or status retry horizons plus retention. Reads/exact retry do not renew dates. Time-bound rm1 IDs bind original timestamp; legacy or malformed opaque identities remain safety-held instead of opening a replay window. Logical deletion does not imply physical erase or backup removal.
+Explicit finite maintenance erases expired server body and only collects terminal metadata after required original expiry/terminal/ACK or status retry horizons plus retention. Reads/exact retry do not renew dates. Time-bound rm1 IDs bind original timestamp; legacy or malformed opaque identities remain safety-held instead of opening a replay window. Safety-held records never take a maintenance batch slot, so a held backlog cannot starve collection of due replay-bound records. Logical deletion does not imply physical erase or backup removal.
 
 Reason: Finite storage cannot erase dedup evidence while stale requests remain admissible.
 
 Scope: JetStream journal (server, DESIGN.md), and the agent SDK's sender outbox and receiver inbox tombstone maintenance. Decision: **accepted**.
 
-Checks: js-root, production-operations.
+Checks: js-root, current-hosted-p7, production-operations.
 
-Sources: [src/agent-sdk/README.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L10-L12), [src/agent-sdk/README.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L19-L19), [docs/hab-relay-spec.md:386](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L386-L388), [docs/hab-relay-spec.md:396](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L396-L398), [packages/relay-nats/DESIGN.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/DESIGN.md#L53-L53).
+Sources: [src/agent-sdk/README.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/src/agent-sdk/README.md#L10-L12), [src/agent-sdk/README.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/src/agent-sdk/README.md#L19-L19), [docs/hab-relay-spec.md:386](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/hab-relay-spec.md#L386-L388), [docs/hab-relay-spec.md:396](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/hab-relay-spec.md#L396-L398), [packages/relay-nats/DESIGN.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/packages/relay-nats/DESIGN.md#L53-L53).
 
 ### HAB-D08 — Attachments are explicit bounded optional composition
 
@@ -1102,7 +1102,7 @@ Scope: Current required local P7/native profile; historical permitted skips rema
 
 Checks: js-cli-guards, current-hosted-p7, report-gate-controls.
 
-Sources: [docs/testing/p7-lab.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/testing/p7-lab.md#L10-L12), [docs/testing/a2a-native-acceptance.md:37](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/testing/a2a-native-acceptance.md#L37-L37), [docs/testing/publication.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/testing/publication.md#L28-L28).
+Sources: [docs/testing/p7-lab.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/testing/p7-lab.md#L10-L12), [docs/testing/a2a-native-acceptance.md:37](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/testing/a2a-native-acceptance.md#L37-L37), [docs/testing/publication.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/testing/publication.md#L28-L28).
 
 ### HAB-V08 — Owned isolation and retained evidence
 
@@ -1186,4 +1186,4 @@ Scope: Reports/PR verification claims, all languages and protocol suites. Decisi
 
 Checks: current-hosted-p7.
 
-Sources: [docs/testing/publication.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/testing/publication.md#L3-L3), [docs/testing/publication.md:16](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/testing/publication.md#L16-L18), [docs/testing/publication.md:24](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/testing/publication.md#L24-L28).
+Sources: [docs/testing/publication.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/testing/publication.md#L3-L3), [docs/testing/publication.md:16](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/testing/publication.md#L16-L18), [docs/testing/publication.md:24](https://github.com/s-hiraoku/hiraoku-agent-base/blob/49afd74750dad01e6e9ca51b97fadb9d7afd5f2a/docs/testing/publication.md#L24-L28).

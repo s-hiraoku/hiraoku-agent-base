@@ -818,10 +818,10 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "f21a28906f78b8aeee7d461a95392befaed202af5322306c9af840df717d42ed",
+      "sha256": "d737389eb90fff9295bc0ddf3a23d2d5d34093a4a03f30c17404a2f7e5280b6c",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 60, broker startup 5, runner guards 8, full root 1151) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 68, broker startup 5, runner guards 8, full root 1151) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full"
     },
     {
@@ -834,7 +834,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "dfdd9da0c32b27c1187b79c100a5fa73fbb556bd8b9b5d55d2ef678a234b6976",
+      "sha256": "5b077c13e0f3d88aaaabed7b9d913b6204be8d85dc89b8378d2f60615e860dc1",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -908,15 +908,15 @@
     },
     {
       "path": "test/p7/README.md",
-      "sha256": "8e99d8f35a9102e9cf127b6e30892d6580301c27358914611da5d7af6b468e88",
+      "sha256": "e02760ec316842857c0dbbe6e30875b109be6f488d8ffc182c1ec85854880406",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, the 60-case producer catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
+      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, the 68-case producer catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
       "read_scope": "full"
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "1ac23cb7a3301fe9da1197f669872b38761af4db7bb4490c805f5401b42584c7",
+      "sha256": "e58ba908d603857ba6519a2cab101c54ade71a61116e2d38862c2ec64e9958d1",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "4c9b007e1717c48b005abc4d5e7e596f6b8dcd1677f2fff083a945a6d8d8eddb",
+      "sha256": "1587265867a124826a0799117b6bc5aafac14672f8aa3e8c3f9d8dd7a1cee548",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +932,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "d1bcc1d0f411983638c6e78a22ed5c499f73932ceeb295a612e2f7f2badafe0e",
+      "sha256": "fc0429c6eda34f1fc7ae092e31df127108bcf62cdd5a7c97b23d7a8221759825",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +940,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "b55acf5e9b6c91e4c5b4cff3cdc7197d609c3cbbfd677364b519bee921fb5678",
+      "sha256": "36f09bb2a77423aba8ec61b86dafcf7366626b395d5caffae7cda24673683bfb",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -2573,12 +2573,13 @@
     {
       "id": "HAB-D07",
       "title": "Bounded metadata collection preserves replay safety",
-      "statement": "Explicit finite maintenance erases expired server body and only collects terminal metadata after required original expiry/terminal/ACK or status retry horizons plus retention. Reads/exact retry do not renew dates. Time-bound rm1 IDs bind original timestamp; legacy or malformed opaque identities remain safety-held instead of opening a replay window. Logical deletion does not imply physical erase or backup removal.",
+      "statement": "Explicit finite maintenance erases expired server body and only collects terminal metadata after required original expiry/terminal/ACK or status retry horizons plus retention. Reads/exact retry do not renew dates. Time-bound rm1 IDs bind original timestamp; legacy or malformed opaque identities remain safety-held instead of opening a replay window. Safety-held records never take a maintenance batch slot, so a held backlog cannot starve collection of due replay-bound records. Logical deletion does not imply physical erase or backup removal.",
       "rationale": "Finite storage cannot erase dedup evidence while stale requests remain admissible.",
       "scope": "JetStream journal (server, DESIGN.md), and the agent SDK's sender outbox and receiver inbox tombstone maintenance.",
       "decision": "accepted",
       "checks": [
         "js-root",
+        "current-hosted-p7",
         "production-operations"
       ],
       "citations": [
@@ -3626,7 +3627,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "c37e7c3f56cd53e4b0aa7ada0632658e6f79d864bf10c7a62b4cd9b8fe00dbf1"
+          "excerpt_sha256": "26459cddba088a41803b97fb1cec7e279793c03a3d4c4932695326e973127c23"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -3824,7 +3825,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "517a35dc781d32d6308cb45a8e70cf356b0916f7863ff10e2756b7c0fd41633d"
+          "excerpt_sha256": "1c4e4e34cc5779f1fbf126bb409e2ef36c7360c0663f5be0995a84e4c8f27a69"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5068,22 +5069,22 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "4b2ebbe5cd42c1433c8a860fd25a82ff672cb7447bf958afca1c122c9be5f8c4"
+          "excerpt_sha256": "5b2a209f92c3dbd81b2f6e5289c288453f78fec1a2ff021c3448fa2a62dd1fba"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "21a3223d9ef3578b92313972293145e33eaa60297cbafd7279e72f71a64d2f04"
+          "excerpt_sha256": "c161bbaf8a23cda77a4ae73213c50d16054f6cb7cb268f0f730d76172e25124e"
         },
         {
           "path": "test/p7/README.md",
           "start": 20,
           "end": 20,
-          "excerpt_sha256": "28927ffa07a94a49a193a30546552e428babff75733ce5860309233e873377f0"
+          "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 60 cases after the unused asynchronous relay operations were deleted. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1151 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 68 cases: 60 after the unused asynchronous relay operations were deleted, plus eight restored delivery-guarantee cases. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1151 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
     },
     {
       "status": "resolved",
