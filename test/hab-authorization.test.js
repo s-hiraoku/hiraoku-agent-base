@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HabJetStreamService } from "../packages/relay-nats/src/hab-service.ts";
+import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
 import { queue } from "./jetstream-delivery.js";
 import {
   fixture,

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../../../src/hab/sqlite-registry.ts";
-import { HabJetStreamService } from "../src/hab-service.ts";
+import { HabJetStreamService } from "../../../src/host/hab-delivery-service.ts";
 import { fixture } from "./fixture.js";
 import {
   options as registryOptions,

@@ -5,11 +5,11 @@ import type {
   RegistryAuthority,
   IndividualPrincipal,
 } from "../hab/registry.ts";
-import type { RelayHttpVerifier } from "../relay/http.ts";
+import type { RelayHttpVerifier } from "./mcp/http.ts";
 import {
   RelayOAuthResource,
   RELAY_OAUTH_SCOPES,
-} from "../relay/oauth-resource.ts";
+} from "./mcp/oauth-resource.ts";
 const claim = z
   .string()
   .min(1)
@@ -82,9 +82,7 @@ const schema = z
   .refine((value) => !value.enabled || value.keys.length > 0);
 type Config = z.infer<typeof schema>;
 /** Normalizes operator permission dates, never an access/refresh token lifetime. */
-export function relayOAuthConnectionWindow(
-  entry: Config["connections"][number],
-) {
+export function oauthConnectionWindow(entry: Config["connections"][number]) {
   return "approved_at" in entry
     ? {
         starts_at: entry.approved_at,
@@ -98,7 +96,7 @@ export function relayOAuthConnectionWindow(
       };
 }
 /** Shared structural validation for the verifier and trusted operator management. */
-export function parseRelayOAuthConfig(input: unknown): Config {
+export function parseOAuthConfig(input: unknown): Config {
   const config = schema.parse(input);
   new RelayOAuthResource(config.issuer, config.resource);
   const kids = new Set<string>(),
@@ -145,7 +143,7 @@ const claims = z.object({
   exp: z.number().int().positive(),
   nbf: z.number().int().nonnegative().optional(),
 });
-export class PinnedRelayOAuthAuthority {
+export class PinnedOAuthAuthority {
   readonly #load: () => unknown;
   readonly #now: () => number;
   #last = -Infinity;
@@ -169,7 +167,7 @@ export class PinnedRelayOAuthAuthority {
   static async create(load: () => unknown, now: () => number = Date.now) {
     if (typeof load !== "function" || typeof now !== "function")
       throw Error("invalid_relay_oauth_config");
-    const auth = new PinnedRelayOAuthAuthority(load, now);
+    const auth = new PinnedOAuthAuthority(load, now);
     try {
       await auth.#importKeys(auth.#current());
     } catch {
@@ -181,7 +179,7 @@ export class PinnedRelayOAuthAuthority {
     const now = this.#now();
     if (!Number.isSafeInteger(now) || now < this.#last) throw Error();
     this.#last = now;
-    const config = parseRelayOAuthConfig(this.#load());
+    const config = parseOAuthConfig(this.#load());
     const material = createHash("sha256")
       .update(JSON.stringify(config))
       .digest("hex");
@@ -258,7 +256,7 @@ export class PinnedRelayOAuthAuthority {
         (x) => x.subject === value.sub && x.client_id === clientId,
       );
       if (!binding) return null;
-      const window = relayOAuthConnectionWindow(binding),
+      const window = oauthConnectionWindow(binding),
         approved = Date.parse(window.starts_at),
         approvedUntil = Date.parse(window.ends_at),
         maxTokenLifetime =

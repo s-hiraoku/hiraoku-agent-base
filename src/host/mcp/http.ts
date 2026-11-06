@@ -2,14 +2,14 @@
 import { WriterAdmission, WriterAdmissionError } from "./writer-admission.ts";
 import type { WriterOperation } from "./writer-admission.ts";
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import type { AuditSink, AuditCategory } from "../security.ts";
-import { protocolAdmission } from "../protocol.ts";
-import { createRelayMcpServer, relayMcpSchemas } from "./mcp.ts";
-import type { RelayMcpGate } from "./mcp.ts";
-import type { RelayContextResolver } from "./mcp.ts";
+import type { AuditSink, AuditCategory } from "../../security.ts";
+import { protocolAdmission } from "../../protocol.ts";
+import { createRelayMcpServer, relayMcpSchemas } from "./server.ts";
+import type { RelayMcpGate } from "./server.ts";
+import type { RelayContextResolver } from "./server.ts";
 import type { z } from "zod";
 import { RelayOAuthResource, RELAY_OAUTH_SCOPES } from "./oauth-resource.ts";
-import type { DeliveryService } from "../messaging/delivery-service.ts";
+import type { DeliveryService } from "../../messaging/delivery-service.ts";
 export interface RelayHttpPolicy {
   resource_url: string;
   /** Explicit opt-in, fixed issuer discovery and tool consent metadata. */

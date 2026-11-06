@@ -373,7 +373,7 @@ and backup expiry remain separate work.
 
 ## Implementation step 9: isolated MCP tool catalog
 
-Import `createRelayMcpServer` and `relayMcpSchemas` explicitly from `./mcp.ts`.
+Import `createRelayMcpServer` and `relayMcpSchemas` explicitly from `../host/mcp/server.ts`.
 The pure `./index.ts` does not import the SDK. This optional adapter uses the
 repository's pinned `@modelcontextprotocol/server` 2.3.1 and Zod 4; no dependency
 or deployed Task/ping catalog is changed. See the [official SDK](https://github.com/modelcontextprotocol/typescript-sdk).
@@ -425,7 +425,7 @@ production agent connections remain later work.
 
 ## Implementation step 10: bounded HTTP host adapters
 
-`./http.ts` exports `RelayHttpGateway`; `./http-node.ts` exports
+`../host/mcp/http.ts` exports `RelayHttpGateway`; `../host/mcp/http-node.ts` exports
 `createRelayNodeHandler(gateway)`. They are explicit infrastructure imports;
 the pure Relay entry does not import either. Constructing them never starts a
 listener, installs a plugin, issues a credential or edits existing runtime config.

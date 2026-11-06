@@ -18,11 +18,11 @@ import type { HabMcpService } from "../hab/mcp.ts";
 import { HabHttpGateway } from "../hab/http.ts";
 import { validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
-import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
-import { createRelayNodeHandler } from "../relay/http-node.ts";
+import type { RelayHttpPolicy, RelayHttpVerifier } from "./mcp/http.ts";
+import { createRelayNodeHandler } from "./mcp/http-node.ts";
 import type { AuditSink } from "../security.ts";
 
-export interface LocalRelayOptions {
+export interface HostServerOptions {
   /** Existing canonical, owner-only directory dedicated to this host. */
   directory: string;
   /** 0 selects an ephemeral loopback port for a supervised test. */
@@ -97,7 +97,7 @@ function prepareFile(path: string) {
  * No credentials, enrollment, outbound IO, model, background cycles or launchd.
  * A trusted operator composition must separately supply verified auth and policy.
  */
-export async function startLocalRelay(options: LocalRelayOptions) {
+export async function startHostServer(options: HostServerOptions) {
   if (
     !options ||
     !isAbsolute(options.directory) ||

@@ -421,7 +421,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 ## 15. API／MCPの追加契約案
 
-正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/relay/mcp.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。いずれも既存runtime・公開HTTP APIへは未配線であり、`relay_extend`は未実装。
+正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。いずれも既存runtime・公開HTTP APIへは未配線であり、`relay_extend`は未実装。
 
 `relay_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address, as_address?, expected_agent_id?}`とする。相手側の`address`と自分側の名義を分け、期待IDは`as_address`との一致確認だけに使う。sender・group・mailbox・URL等の未知引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
 
@@ -434,7 +434,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 | `relay_status`                 | 受付・配送状態と不達の取得           | 元送信者または明示した受信者・管理者に限定              |
 | `relay_extend`（必要性未決定） | inbox保存中の有限lease延長           | 現token、期限、延長上限。業務処理のために保持し続けない |
 
-MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は、Relayの4 tool／HABの5 toolのいずれにも含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/relay/http.ts)と[Node callback](../src/relay/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。HAB adapterも同じ入口制限と共通MCP executorを使う。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
+MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は、Relayの4 tool／HABの5 toolのいずれにも含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/host/mcp/http.ts)と[Node callback](../src/host/mcp/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。HAB adapterも同じ入口制限と共通MCP executorを使う。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
 
 HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCPより広い認可にしない。registry管理や隔離解除は通常agentのtoolに混ぜない。message ID、thread ID、agent IDが分かるだけでは操作できない。既存Taskのsubmit/claim等、診断ping、discovery-only入口は互換性を維持し、Relayを配線するまでは従来どおり拒否する。
 

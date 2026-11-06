@@ -16,7 +16,7 @@ import {
   receiveMessageOnPort,
 } from "node:worker_threads";
 import { JetStreamRelay } from "../packages/relay-nats/src/backend.ts";
-import { HabJetStreamService } from "../packages/relay-nats/src/hab-service.ts";
+import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
 import {
   natsServerBinary,
   startLocalBroker,

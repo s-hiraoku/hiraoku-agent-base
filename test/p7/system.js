@@ -23,8 +23,8 @@ import { ClientFactory, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
 import { connect } from "../../packages/relay-nats/node_modules/@nats-io/transport-node/lib/mod.js";
 import { jetstreamManager } from "../../packages/relay-nats/node_modules/@nats-io/jetstream/lib/mod.js";
 import { SQLiteHabRegistry } from "../../src/hab/sqlite-registry.ts";
-import { startLocalRelay } from "../../src/relay-host/local.ts";
-import { createJetStreamDelivery } from "../../packages/relay-nats/src/configured.ts";
+import { startHostServer } from "../../src/host/server.ts";
+import { createJetStreamDelivery } from "../../src/host/delivery.ts";
 import { HabMcpClient } from "../../src/hab/mcp-client.ts";
 import { SQLiteOutbox } from "../../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
@@ -411,7 +411,7 @@ export async function openP7System(t, { root, brokerOnly = false } = {}) {
       { preflight: delivery.preflight },
     );
     assert.equal(capture.preflight, delivery.preflight);
-    host = await startLocalRelay({ ...hostOptions(), delivery: capture });
+    host = await startHostServer({ ...hostOptions(), delivery: capture });
     config.urls.hab = host.url;
     for (const name of [
       "engine.sqlite",

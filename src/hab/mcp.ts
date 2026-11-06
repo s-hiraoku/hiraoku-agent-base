@@ -4,8 +4,8 @@ import {
   createRelayMcpServer,
   executeRelayMcpOperation,
   relayMcpSchemas,
-} from "../relay/mcp.ts";
-import type { RelayContextResolver, RelayMcpGate } from "../relay/mcp.ts";
+} from "../host/mcp/server.ts";
+import type { RelayContextResolver, RelayMcpGate } from "../host/mcp/server.ts";
 import type { DeliveryService } from "../messaging/delivery-service.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";

@@ -12,7 +12,7 @@ import { SQLiteEnrollmentJournal } from "../../src/hab/sqlite-enrollment-journal
 import { runHabEnrollment } from "../../src/hab/enrollment.ts";
 import { HabHttpGateway } from "../../src/hab/http.ts";
 import { HabMcpClient } from "../../src/hab/mcp-client.ts";
-import { createRelayNodeHandler } from "../../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../../src/host/mcp/http-node.ts";
 import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
 import { SQLiteOutbox } from "../../src/relay/sqlite-outbox.ts";
 import { makeReplayBoundMessageId } from "../../src/messaging/contract.ts";
@@ -26,7 +26,7 @@ import { ConnectivityTaskPort } from "../../src/task-bridge/task-port.ts";
 import { Hub } from "../../src/sqlite.ts";
 import { RESPONSE } from "../../src/types.ts";
 import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
-import { HabJetStreamService } from "../../packages/relay-nats/src/hab-service.ts";
+import { HabJetStreamService } from "../../src/host/hab-delivery-service.ts";
 import { startLocalBroker } from "./nats-broker.mjs";
 
 const limits = Object.freeze({

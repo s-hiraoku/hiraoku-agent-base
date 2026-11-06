@@ -8,7 +8,7 @@ import { code } from "./task-bridge-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
 import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 
 async function receive(f) {
   f.resume();

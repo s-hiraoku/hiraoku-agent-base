@@ -3,14 +3,11 @@ import { randomUUID } from "node:crypto";
 import { isAbsolute, join, dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
-import { readRuntimeConfig } from "../../../src/runtime-config.ts";
-import type {
-  DeliveryFactory,
-  DeliveryDependencies,
-} from "../../../src/relay-host/local.ts";
-import { MessagingError } from "../../../src/messaging/delivery-service.ts";
-import { JetStreamRelay } from "./backend.ts";
-import { HabJetStreamService } from "./hab-service.ts";
+import { readRuntimeConfig } from "../runtime-config.ts";
+import type { DeliveryFactory, DeliveryDependencies } from "./server.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
+import { HabJetStreamService } from "./hab-delivery-service.ts";
 
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);

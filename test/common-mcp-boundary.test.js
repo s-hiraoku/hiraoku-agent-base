@@ -7,7 +7,7 @@ import { hostFixture } from "./adapter-host-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
 import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 
 const bodies = {
   question: {

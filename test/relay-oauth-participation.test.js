@@ -5,9 +5,9 @@ import {
   resource,
 } from "./relay-oauth-fixtures.js";
 import {
-  PinnedRelayOAuthAuthority,
-  parseRelayOAuthConfig,
-} from "../src/relay-host/oauth-auth.ts";
+  PinnedOAuthAuthority,
+  parseOAuthConfig,
+} from "../src/host/oauth-auth.ts";
 
 test("persistent participation accepts a refreshed short token after the old trial window without rebinding", async () => {
   const f = await persistentFixture();
@@ -111,16 +111,16 @@ test("explicit persistent config rejects implicit upgrades, unbounded dates and 
     ].map((patch) => ({ ...config, connections: [{ ...record, ...patch }] })),
     { ...config, connections: [record, { ...record, connection_id: "other" }] },
   ]) {
-    assert.throws(() => parseRelayOAuthConfig(invalid));
+    assert.throws(() => parseOAuthConfig(invalid));
     await assert.rejects(
-      PinnedRelayOAuthAuthority.create(() => invalid),
+      PinnedOAuthAuthority.create(() => invalid),
       /invalid_relay_oauth_config/,
     );
   }
   // The code requires explicit finite dates; it does not choose a deployment duration.
   for (const days of [1, 7, 30, 365])
     assert.equal(
-      parseRelayOAuthConfig({
+      parseOAuthConfig({
         ...config,
         connections: [
           {
@@ -171,7 +171,7 @@ test("restart reuses the saved participation policy, not old opaque contexts or 
   const now = f.start + 1200000;
   let saved = JSON.stringify(f.getConfig());
   const restart = () =>
-    PinnedRelayOAuthAuthority.create(
+    PinnedOAuthAuthority.create(
       () => JSON.parse(saved),
       () => now,
     );

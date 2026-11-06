@@ -1,11 +1,11 @@
-import { MessagingError } from "../../../src/messaging/delivery-service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 import type {
   Authorization,
   DeliveryService,
-} from "../../../src/messaging/delivery-service.ts";
-import type { SQLiteHabRegistry } from "../../../src/hab/sqlite-registry.ts";
-import type { HabDirectory } from "../../../src/hab/directory.ts";
-import type { JetStreamRelay } from "./backend.ts";
+} from "../messaging/delivery-service.ts";
+import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
+import type { HabDirectory } from "../hab/directory.ts";
+import type { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
 
 /** HAB composition: the Registry authorizes each operation and JetStream delivers. Public operations stay synchronous. */
 export class HabJetStreamService implements DeliveryService, HabDirectory {

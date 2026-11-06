@@ -11,7 +11,7 @@ import {
   principal,
 } from "./hab-registry-fixtures.js";
 import { policy, request, decode } from "./relay-http-fixtures.js";
-import { WriterAdmission } from "../src/relay/writer-admission.ts";
+import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 
 const discovery = { availability_namespaces: ["grok-bot"] };
 async function group(t, patch = {}) {

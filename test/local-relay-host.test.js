@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { startLocalRelay } from "../src/relay-host/local.ts";
+import { startHostServer } from "../src/host/server.ts";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import {
@@ -22,7 +22,7 @@ import {
   operations,
 } from "./hab-registry-fixtures.js";
 import { limits, policy, message, envelope } from "./relay-http-fixtures.js";
-import { createJetStreamDelivery } from "../packages/relay-nats/src/configured.ts";
+import { createJetStreamDelivery } from "../src/host/delivery.ts";
 import { deliverySection, pollUntilDelivered } from "./jetstream-delivery.js";
 
 async function fixture(t, enroll = true) {
@@ -105,7 +105,7 @@ async function fixture(t, enroll = true) {
   };
   const hosts = [];
   const start = async (patch = {}) => {
-    const host = await startLocalRelay({ ...options, ...patch });
+    const host = await startHostServer({ ...options, ...patch });
     hosts.push(host);
     return host;
   };

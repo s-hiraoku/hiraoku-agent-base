@@ -1,7 +1,7 @@
 /** Local opaque credentials only. No issuance, secret persistence, OAuth or IO on import. */
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { RelayHttpVerifier } from "../relay/http.ts";
+import type { RelayHttpVerifier } from "./mcp/http.ts";
 import type { RegistryAuthority } from "../hab/registry.ts";
 const claim = z
   .string()

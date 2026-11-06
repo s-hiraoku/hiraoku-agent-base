@@ -15,7 +15,7 @@ import {
   DELIVERY_TTL_MS,
   RECORD_RETENTION_MS,
 } from "../src/messaging/contract.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 const body = () => ({
   parts: [{ type: "text", text: "synthetic durable answer" }],
 });

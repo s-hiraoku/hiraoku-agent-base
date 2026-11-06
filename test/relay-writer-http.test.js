@@ -2,11 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { WriterAdmission } from "../src/relay/writer-admission.ts";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import {
   fixture as httpFixture,
   policy,

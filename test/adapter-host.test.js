@@ -11,7 +11,7 @@ import {
   HOST_LEASE_MS,
 } from "./adapter-host-fixtures.js";
 import { code, worker, RESPONSE } from "./task-bridge-fixtures.js";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function question(f) {
   const source = f.submit();

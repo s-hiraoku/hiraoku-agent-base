@@ -13,10 +13,10 @@ import { tmpdir } from "node:os";
 import { createServer, request } from "node:http";
 import { once } from "node:events";
 import { randomUUID } from "node:crypto";
-import { startLocalRelay } from "../src/relay-host/local.ts";
+import { startHostServer } from "../src/host/server.ts";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { RELAY_OAUTH_SCOPES } from "../src/relay/oauth-resource.ts";
+import { RELAY_OAUTH_SCOPES } from "../src/host/mcp/oauth-resource.ts";
 import {
   options as registryOptions,
   operations,
@@ -24,7 +24,7 @@ import {
 } from "./hab-registry-fixtures.js";
 import { limits, policy, envelope, message } from "./relay-http-fixtures.js";
 import { oauthFixture, issuer, resource } from "./relay-oauth-fixtures.js";
-import { createJetStreamDelivery } from "../packages/relay-nats/src/configured.ts";
+import { createJetStreamDelivery } from "../src/host/delivery.ts";
 import {
   deliverySection,
   eventually,
@@ -117,7 +117,7 @@ async function fixture(t) {
   };
   const hosts = [];
   const start = async (patch) => {
-    const h = await startLocalRelay({ ...options, ...patch });
+    const h = await startHostServer({ ...options, ...patch });
     hosts.push(h);
     return h;
   };

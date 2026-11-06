@@ -1,6 +1,6 @@
 # Local Relay host and supervised connection plan
 
-`startLocalRelay` in `src/relay-host/local.ts` is the explicit, product-independent
+`startHostServer` in `src/host/server.ts` is the explicit, product-independent
 programmatic startup entry point. Importing it performs no IO. Calling it opens
 only its dedicated HAB registry, Relay store and process ownership database, then
 listens on IPv4 `127.0.0.1`. All capacity/transport limits, stable integrity keys,

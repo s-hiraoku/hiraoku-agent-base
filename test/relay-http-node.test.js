@@ -4,7 +4,7 @@ import { createServer, request as nodeRequest } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import {
   fixture,
   limits,

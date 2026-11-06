@@ -25,6 +25,9 @@ const shared = new Set(["src/protocol.ts", "src/security.ts"]);
 const slash = (path) => path.split(sep).join("/");
 const relayPath = (name) => `src/relay/${name}`;
 const messagingPath = (name) => `src/messaging/${name}`;
+const hostMcpPath = (name) => `src/host/mcp/${name}`;
+// Registry-owned sender capacity policy, used by the JetStream journal.
+const registryCore = ["src/hab/agent-capacity.ts"];
 // docs/hab-relay-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
 const coreModules = new Set([
@@ -37,19 +40,16 @@ const coreModules = new Set([
     "receiver.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
-    "agent-capacity.ts",
-    "writer-admission.ts",
   ].map(relayPath),
+  hostMcpPath("writer-admission.ts"),
+  ...registryCore,
 ]);
-const outerModules = new Set(
-  [
-    "mcp.ts",
-    "mcp-client.ts",
-    "http.ts",
-    "http-node.ts",
-    "oauth-resource.ts",
-  ].map(relayPath),
-);
+const outerModules = new Set([
+  relayPath("mcp-client.ts"),
+  ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
+    hostMcpPath,
+  ),
+]);
 const corePackages = new Set([
   "node:buffer",
   "node:crypto",
@@ -63,6 +63,8 @@ const communicationPolicy = {
   allowsModule: (name) =>
     name.startsWith("src/relay/") ||
     name.startsWith("src/messaging/") ||
+    name.startsWith("src/host/mcp/") ||
+    registryCore.includes(name) ||
     shared.has(name),
   allowsPackage: (name) =>
     name.startsWith("node:") ||
@@ -281,6 +283,8 @@ if (mode === "--self-test") {
   const entries = [
     ...relayEntries(target),
     ...relayEntries(target, "src/messaging"),
+    ...relayEntries(target, "src/host/mcp"),
+    ...registryCore,
   ];
   assert(entries.length > 0, "empty communication source set");
   for (const name of entries)

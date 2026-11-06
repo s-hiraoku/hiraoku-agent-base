@@ -5,11 +5,11 @@ import { MessagingError } from "../../../src/messaging/delivery-service.ts";
 import {
   agentCapacityPolicy,
   assertAgentCapacity,
-} from "../../../src/relay/agent-capacity.ts";
+} from "../../../src/hab/agent-capacity.ts";
 import type {
   AgentCapacityPolicy,
   SenderCapacityUsage,
-} from "../../../src/relay/agent-capacity.ts";
+} from "../../../src/hab/agent-capacity.ts";
 import type {
   Receipt,
   Delivery,

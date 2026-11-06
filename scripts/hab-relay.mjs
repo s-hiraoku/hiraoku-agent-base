@@ -1,19 +1,17 @@
 /** Operator-selected local service. No defaults, credential generation, enrollment or worker. */
 import { pathToFileURL } from "node:url";
-import {
-  startConfiguredLocalRelay,
-  LocalRelayStartError,
-} from "../src/relay-host/configured.ts";
+import { HostStartError } from "../src/host/config.ts";
+import { startHost } from "../src/host/start.ts";
 export async function main(args = process.argv.slice(2)) {
   if (args.length !== 2 || args[0] !== "--config")
-    throw new LocalRelayStartError("config_required");
+    throw new HostStartError("config_required");
   const abort = new AbortController();
   const stop = () => abort.abort();
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
   let host;
   try {
-    host = await startConfiguredLocalRelay(args[1]);
+    host = await startHost(args[1]);
     if (!abort.signal.aborted) {
       process.stdout.write(
         JSON.stringify({
@@ -43,7 +41,7 @@ if (
   main().catch((error) => {
     // Fixed reason codes and config field paths only; never values or file paths.
     const reason =
-      error instanceof LocalRelayStartError
+      error instanceof HostStartError
         ? ` reason=${error.reason}${error.fields.length ? ` fields=${error.fields.join(",")}` : ""}`
         : "";
     process.stderr.write(`local_relay_start_rejected${reason}\n`);

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
 export const limits = {
   envelope_bytes: 32768,

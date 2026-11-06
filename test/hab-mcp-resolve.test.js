@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { executeRelayMcpOperation } from "../src/relay/mcp.ts";
+import { executeRelayMcpOperation } from "../src/host/mcp/server.ts";
 import { createHabMcpServer } from "../src/hab/mcp.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import {

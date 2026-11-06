@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { LocalBearerAuthority } from "../src/relay-host/local-auth.ts";
+import { LocalBearerAuthority } from "../src/host/local-auth.ts";
 const token = "a".repeat(64),
   resource = "http://127.0.0.1:8792/mcp",
   start = Date.parse("2026-01-01T00:00:00.000Z");

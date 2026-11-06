@@ -1,10 +1,10 @@
-import { RELAY_OAUTH_SCOPES } from "../relay/oauth-resource.ts";
-import type { WriterAdmission } from "../relay/writer-admission.ts";
+import { RELAY_OAUTH_SCOPES } from "../host/mcp/oauth-resource.ts";
+import type { WriterAdmission } from "../host/mcp/writer-admission.ts";
 /** Explicit HAB HTTP composition; constructing starts no listener or connection. */
-import { RelayHttpGateway } from "../relay/http.ts";
-import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
+import { RelayHttpGateway } from "../host/mcp/http.ts";
+import type { RelayHttpPolicy, RelayHttpVerifier } from "../host/mcp/http.ts";
 import type { AuditSink } from "../security.ts";
-import type { RelayContextResolver, RelayMcpGate } from "../relay/mcp.ts";
+import type { RelayContextResolver, RelayMcpGate } from "../host/mcp/server.ts";
 import {
   createHabMcpServer,
   habMcpSchemas,

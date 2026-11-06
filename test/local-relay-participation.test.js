@@ -13,12 +13,12 @@ import {
   persistentOAuthFixture,
   resource,
 } from "./relay-oauth-fixtures.js";
-import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
+import { startHost } from "../src/host/start.ts";
 import {
-  relayAdminConnect,
-  relayAdminDisconnect,
-  relayAdminStatus,
-} from "../src/relay-host/admin.ts";
+  hostAdminConnect,
+  hostAdminDisconnect,
+  hostAdminStatus,
+} from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 import { DurableReceiver } from "../src/relay/receiver.ts";
@@ -75,7 +75,7 @@ async function setup(t, oauth, groups = true) {
     allowed_origins: [],
   };
   f.write("service.local.json", f.config);
-  let host = await startConfiguredLocalRelay(f.configPath);
+  let host = await startHost(f.configPath);
   t.after(() => host.close());
   f.config.port = Number(new URL(host.url).port);
   f.config.ingress.port = host.ingress_port;
@@ -98,11 +98,11 @@ async function setup(t, oauth, groups = true) {
       },
     ],
   });
-  const local = relayAdminConnect(f.configPath, {
+  const local = hostAdminConnect(f.configPath, {
     address: "receiver@local.hab",
     connection_id: "local-connection",
   }).address;
-  const remote = relayAdminConnect(f.configPath, {
+  const remote = hostAdminConnect(f.configPath, {
     address: "sender@remote.hab",
     connection_id: oauth.record.connection_id,
   }).address;
@@ -139,7 +139,7 @@ async function setup(t, oauth, groups = true) {
     stop: () => host.close(),
     restart: async () => {
       await host.close();
-      host = await startConfiguredLocalRelay(f.configPath);
+      host = await startHost(f.configPath);
     },
   };
 }
@@ -151,7 +151,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
     oauth.start - 3600000,
   ).toISOString();
   const f = await setup(t, oauth);
-  const sibling = relayAdminConnect(f.configPath, {
+  const sibling = hostAdminConnect(f.configPath, {
     address: "sibling@remote.hab",
     connection_id: oauth.record.connection_id,
   }).address;
@@ -170,7 +170,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
     (await remote.resolve(f.local.address)).recipient_id,
     f.local.agent_id,
   );
-  const status = relayAdminStatus(f.configPath);
+  const status = hostAdminStatus(f.configPath);
   const permission = status.credentials.find(
     (c) => c.connection_id === oauth.record.connection_id,
   );
@@ -263,7 +263,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
   );
   assert.equal((await remote.submit(sent)).receipt_id, accepted.receipt_id);
   assert.equal(
-    relayAdminConnect(f.configPath, {
+    hostAdminConnect(f.configPath, {
       address: f.remote.address,
       connection_id: oauth.record.connection_id,
     }).address.agent_id,
@@ -280,19 +280,19 @@ test("persistent configured MCP keeps groups and durable receipts across host to
   await assert.rejects(remote.poll());
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: f.remote.address,
         connection_id: oauth.record.connection_id,
       }),
     { code: "participation_revoked" },
   );
   assert.ok(
-    relayAdminStatus(f.configPath).problems.some(
+    hostAdminStatus(f.configPath).problems.some(
       (p) => p.code === "participation_revoked",
     ),
   );
   assert.equal(
-    relayAdminDisconnect(f.configPath, f.remote.address).revoked_bindings,
+    hostAdminDisconnect(f.configPath, f.remote.address).revoked_bindings,
     1,
   );
   f.write("remote-auth.local.json", oauth.getConfig());
@@ -300,7 +300,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
   await assert.rejects(remote.poll(), { code: "forbidden" });
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: f.remote.address,
         connection_id: oauth.record.connection_id,
       }),
@@ -351,7 +351,7 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
   };
   apply(v2, true);
   await f.restart();
-  assert.equal(relayAdminStatus(f.configPath).authentication_groups, true);
+  assert.equal(hostAdminStatus(f.configPath).authentication_groups, true);
   // Roll back only before this candidate accepts new work. Keep DBs and keys together.
   await f.stop();
   rmSync(f.config.directory, { recursive: true });
@@ -359,7 +359,7 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
   chmodSync(f.config.directory, 0o700);
   apply(v1, false);
   await f.restart();
-  assert.equal(relayAdminStatus(f.configPath).authentication_groups, false);
+  assert.equal(hostAdminStatus(f.configPath).authentication_groups, false);
   assert.equal((await remote.status(sent.message_id)).state, "acked");
   assert.equal(
     (
@@ -376,7 +376,7 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
   await f.stop();
   apply(v2, true);
   await f.restart();
-  const status = relayAdminStatus(f.configPath);
+  const status = hostAdminStatus(f.configPath);
   assert.equal(status.authentication_groups, true);
   assert.equal(
     status.addresses.find((a) => a.address === f.remote.address).agent_id,
@@ -384,7 +384,7 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
   );
   assert.equal((await remote.status(sent.message_id)).state, "acked");
   assert.deepEqual(
-    relayAdminConnect(f.configPath, {
+    hostAdminConnect(f.configPath, {
       address: f.remote.address,
       connection_id: identity.connection_id,
     }).steps,
@@ -408,11 +408,11 @@ test("admin separates participation expiry and not-yet-approved state from token
     c.connections[0].approved_until = new Date(end).toISOString();
     f.write("remote-auth.local.json", c);
     assert.ok(
-      relayAdminStatus(f.configPath).problems.some((p) => p.code === code),
+      hostAdminStatus(f.configPath).problems.some((p) => p.code === code),
     );
     assert.throws(
       () =>
-        relayAdminConnect(f.configPath, {
+        hostAdminConnect(f.configPath, {
           address: f.remote.address,
           connection_id: oauth.record.connection_id,
         }),
@@ -483,7 +483,7 @@ test("participation status uses the same exact expiry boundary as admission", as
     [0, true, 0],
     [1, true, 0],
   ]) {
-    const status = relayAdminStatus(f.configPath, end + offset);
+    const status = hostAdminStatus(f.configPath, end + offset);
     const entry = status.credentials.find(
       (c) => c.connection_id === oauth.record.connection_id,
     );

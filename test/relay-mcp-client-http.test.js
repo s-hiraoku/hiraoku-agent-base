@@ -8,7 +8,7 @@ import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
 import { RelayMcpClient } from "../src/relay/mcp-client.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import { fixture, message, limits } from "./relay-http-fixtures.js";
 
 async function listening(t, f) {

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import { createRelayMcpServer } from "../src/relay/mcp.ts";
+import { createRelayMcpServer } from "../src/host/mcp/server.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
 import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";

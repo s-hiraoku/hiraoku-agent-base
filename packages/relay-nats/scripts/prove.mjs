@@ -176,9 +176,11 @@ for (const dir of ["src", "test", "scripts"]) {
   }
 }
 for (const path of [
-  "src/relay-host/local.ts",
-  "src/relay-host/configured.ts",
-  "src/relay/sqlite-store.ts",
+  "src/host/server.ts",
+  "src/host/config.ts",
+  "src/host/start.ts",
+  "src/host/delivery.ts",
+  "src/host/hab-delivery-service.ts",
 ])
   hashes["repo/" + path] = createHash("sha256")
     .update(readFileSync(join(repo, path)))

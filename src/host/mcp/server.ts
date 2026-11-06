@@ -1,10 +1,10 @@
 /** Optional SDK boundary. Importing/constructing starts no listener or external connection. */
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { ContractError } from "../messaging/contract.ts";
-import { MessagingError } from "../messaging/delivery-service.ts";
-import { isPublicToolError } from "../messaging/tool-errors.ts";
-import type { DeliveryService } from "../messaging/delivery-service.ts";
+import { ContractError } from "../../messaging/contract.ts";
+import { MessagingError } from "../../messaging/delivery-service.ts";
+import { isPublicToolError } from "../../messaging/tool-errors.ts";
+import type { DeliveryService } from "../../messaging/delivery-service.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 const part = z.discriminatedUnion("type", [

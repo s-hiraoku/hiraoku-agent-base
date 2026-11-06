@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WriterAdmission } from "../src/relay/writer-admission.ts";
+import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 const policy = {
   max_individuals: 3,
   max_waiting_per_individual: 4,

@@ -42,9 +42,9 @@ const { SQLiteEnrollmentJournal } = await import(
 );
 const { runHabEnrollment } = await import(src("hab/enrollment.ts"));
 const { HabHttpGateway } = await import(src("hab/http.ts"));
-const { createRelayNodeHandler } = await import(src("relay/http-node.ts"));
+const { createRelayNodeHandler } = await import(src("host/mcp/http-node.ts"));
 const { createJetStreamDelivery } = await import(
-  join(repo, "packages/relay-nats/src/configured.ts")
+  join(repo, "src/host/delivery.ts")
 );
 const { startLocalBroker } = await import(
   join(repo, "scripts/lib/nats-broker.mjs")

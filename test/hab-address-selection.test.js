@@ -12,10 +12,10 @@ import {
   decode,
 } from "./relay-http-fixtures.js";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { WriterAdmission } from "../src/relay/writer-admission.ts";
+import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";

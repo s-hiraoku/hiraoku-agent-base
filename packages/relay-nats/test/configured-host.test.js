@@ -16,9 +16,9 @@ import { SQLiteHabRegistry } from "../../../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../../../src/hab/mcp-client.ts";
 import { SQLiteInbox } from "../../../src/relay/sqlite-inbox.ts";
 import { DurableReceiver } from "../../../src/relay/receiver.ts";
-import { startConfiguredLocalRelay } from "../../../src/relay-host/configured.ts";
-import { startLocalRelay } from "../../../src/relay-host/local.ts";
-import { createJetStreamDelivery } from "../src/configured.ts";
+import { startHost } from "../../../src/host/start.ts";
+import { startHostServer } from "../../../src/host/server.ts";
+import { createJetStreamDelivery } from "../../../src/host/delivery.ts";
 import {
   options as registryOptions,
   principal,
@@ -143,7 +143,7 @@ test("explicit private config serves the existing five MCP operations, survives 
     http,
   };
   const serviceFile = write("service", serviceConfig);
-  host = await startConfiguredLocalRelay(serviceFile);
+  host = await startHost(serviceFile);
   const tokens = { a: "a".repeat(64), b: "b".repeat(64) };
   const now = Date.now();
   const credentials = [];
@@ -269,7 +269,7 @@ test("explicit private config serves the existing five MCP operations, survives 
   serviceConfig.port = Number(new URL(firstUrl).port);
   write("service", serviceConfig);
   await host.close();
-  host = await startConfiguredLocalRelay(serviceFile);
+  host = await startHost(serviceFile);
   assert.equal(host.url, firstUrl);
   assert.equal(
     (await client("a").status(message.message_id)).receipt_id,
@@ -285,7 +285,7 @@ test("explicit private config serves the existing five MCP operations, survives 
 test("missing and unknown delivery configuration fails without fallback or leaking values", async (t) => {
   const f = await fixture(t);
   await assert.rejects(
-    startConfiguredLocalRelay(join(f.dir, "missing.local.json")),
+    startHost(join(f.dir, "missing.local.json")),
     /local_relay_start_rejected/,
   );
   const path = join(f.dir, "invalid.local.json");
@@ -298,7 +298,7 @@ test("missing and unknown delivery configuration fails without fallback or leaki
     { mode: 0o600 },
   );
   await assert.rejects(
-    startConfiguredLocalRelay(path),
+    startHost(path),
     (error) =>
       error.reason === "config_invalid" &&
       error.fields.includes("delivery.secret") &&
@@ -367,7 +367,7 @@ test("volume preflight rejects a foreign marker or device before creating any st
   delete options.http.resource_url;
   delete options.http.allowed_origins;
   await assert.rejects(
-    startLocalRelay({
+    startHostServer({
       ...options,
       delivery: createJetStreamDelivery(config, key),
     }),
@@ -381,16 +381,16 @@ test("volume preflight rejects a foreign marker or device before creating any st
   config.volume.identity_file = inside;
   config.volume.expected_device++;
   await assert.rejects(
-    startLocalRelay({
+    startHostServer({
       ...options,
       delivery: createJetStreamDelivery(config, key),
     }),
     { code: "local_relay_extension_storage_unavailable" },
   );
   assert.deepEqual(readdirSync(directory), ["volume.local.json"]);
-  await assert.rejects(startLocalRelay(options), /invalid_local_relay_options/);
+  await assert.rejects(startHostServer(options), /invalid_local_relay_options/);
   await assert.rejects(
-    startLocalRelay({
+    startHostServer({
       ...options,
       delivery: Object.assign(async () => ({}), {
         preflight: async () => undefined,

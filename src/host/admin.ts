@@ -7,12 +7,9 @@ import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { readLocalRelayConfig, LocalRelayStartError } from "./configured.ts";
+import { readHostConfig, HostStartError } from "./config.ts";
 import { localCredentialsSchema } from "./local-auth.ts";
-import {
-  parseRelayOAuthConfig,
-  relayOAuthConnectionWindow,
-} from "./oauth-auth.ts";
+import { parseOAuthConfig, oauthConnectionWindow } from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
@@ -22,11 +19,11 @@ import {
 } from "../hab/registry.ts";
 import type { AgentOperation, IndividualPrincipal } from "../hab/registry.ts";
 
-export class RelayAdminError extends Error {
+export class HostAdminError extends Error {
   readonly code: string;
   constructor(code: string) {
     super(code);
-    this.name = "RelayAdminError";
+    this.name = "HostAdminError";
     this.code = code;
   }
 }
@@ -61,16 +58,16 @@ const same = (a: readonly string[], b: readonly string[]) =>
 function open(configPath: string) {
   let loaded;
   try {
-    loaded = readLocalRelayConfig(configPath);
+    loaded = readHostConfig(configPath);
   } catch (error) {
-    throw new RelayAdminError(
-      error instanceof LocalRelayStartError ? error.reason : "config_invalid",
+    throw new HostAdminError(
+      error instanceof HostStartError ? error.reason : "config_invalid",
     );
   }
   const { config } = loaded;
   const path = join(config.directory, "registry.sqlite");
   // Schema upgrades belong to the explicitly configured Relay start, never an admin command.
-  if (!existsSync(path)) throw new RelayAdminError("relay_not_initialized");
+  if (!existsSync(path)) throw new HostAdminError("relay_not_initialized");
   let version: unknown;
   try {
     const raw = new DatabaseSync(path, { readOnly: true });
@@ -82,7 +79,7 @@ function open(configPath: string) {
       raw.close();
     }
   } catch {
-    throw new RelayAdminError("relay_not_initialized");
+    throw new HostAdminError("relay_not_initialized");
   }
   if (
     (version === 1 && config.registry.authentication_groups === true) ||
@@ -90,7 +87,7 @@ function open(configPath: string) {
       version < 3 &&
       config.registry.agent_rename === true)
   )
-    throw new RelayAdminError("registry_upgrade_pending");
+    throw new HostAdminError("registry_upgrade_pending");
   const registry = new SQLiteHabRegistry(
     path,
     { ...config.registry, fingerprint_key: loaded.registry_fingerprint_key },
@@ -114,22 +111,22 @@ function open(configPath: string) {
     try {
       parsed = localCredentialsSchema.safeParse(loaded.readCredentials());
     } catch {
-      throw new RelayAdminError("credentials_file_rejected");
+      throw new HostAdminError("credentials_file_rejected");
     }
-    if (!parsed.success) throw new RelayAdminError("credentials_invalid");
+    if (!parsed.success) throw new HostAdminError("credentials_invalid");
     const records: ManagedCredential[] = [...parsed.data.credentials];
     if (config.ingress) {
       let remote;
       try {
-        remote = parseRelayOAuthConfig(loaded.readOAuth());
+        remote = parseOAuthConfig(loaded.readOAuth());
       } catch {
-        throw new RelayAdminError("oauth_invalid");
+        throw new HostAdminError("oauth_invalid");
       }
       if (remote.resource !== config.ingress.resource_url)
-        throw new RelayAdminError("oauth_resource_mismatch");
+        throw new HostAdminError("oauth_resource_mismatch");
       if (remote.enabled) {
         for (const connection of remote.connections) {
-          const window = relayOAuthConnectionWindow(connection);
+          const window = oauthConnectionWindow(connection);
           records.push({
             principal: {
               issuer: remote.issuer,
@@ -164,7 +161,7 @@ function open(configPath: string) {
 }
 
 /** Explicit operator action, with caller-journaled request ID and optimistic concurrency. */
-export function relayAdminRename(configPath: string, input: RenameInput) {
+export function hostAdminRename(configPath: string, input: RenameInput) {
   const { registry } = open(configPath);
   try {
     return {
@@ -202,7 +199,7 @@ function summary(agent: Agent) {
 }
 
 /** Read-only view plus the checks that most often explain a 401/forbidden. */
-export function relayAdminStatus(configPath: string, now = Date.now()) {
+export function hostAdminStatus(configPath: string, now = Date.now()) {
   return withRegistry(configPath, ({ registry, resources, credentials }) => {
     const view = registry.overview(operator);
     const byId = new Map(view.agents.map((agent) => [agent.agent_id, agent]));
@@ -305,8 +302,8 @@ function principalFor(
       .filter((record) => record.principal.connection_id === connectionId)
       .map((record) => [JSON.stringify(record.principal), record.principal]),
   );
-  if (matches.size === 0) throw new RelayAdminError("credential_not_found");
-  if (matches.size > 1) throw new RelayAdminError("credential_ambiguous");
+  if (matches.size === 0) throw new HostAdminError("credential_not_found");
+  if (matches.size > 1) throw new HostAdminError("credential_ambiguous");
   const [principal] = matches.values();
   // Only the v2 participation policy changes enrollment behavior; v1 stays compatible.
   const now = Date.now();
@@ -314,14 +311,14 @@ function principalFor(
     (r) => r.principal.connection_id === connectionId && r.participation,
   )) {
     if (record.participation!.state !== "active")
-      throw new RelayAdminError("participation_revoked");
+      throw new HostAdminError("participation_revoked");
     if (Date.parse(record.issued_at) > now)
-      throw new RelayAdminError("participation_not_yet_active");
+      throw new HostAdminError("participation_not_yet_active");
     if (Date.parse(record.expires_at) <= now)
-      throw new RelayAdminError("participation_expired");
+      throw new HostAdminError("participation_expired");
   }
   if (resources.length && !resources.includes(principal.audience))
-    throw new RelayAdminError("credential_audience_mismatch");
+    throw new HostAdminError("credential_audience_mismatch");
   return principal;
 }
 
@@ -330,7 +327,7 @@ function principalFor(
  * grants operations. Each step reads the current epoch first and skips work that is
  * already in place, so rerunning after a partial failure converges.
  */
-export function relayAdminConnect(configPath: string, input: ConnectInput) {
+export function hostAdminConnect(configPath: string, input: ConnectInput) {
   const address = parseHabAddress(input.address);
   const operations = [
     ...new Set(input.operations ?? relayOperations),
@@ -341,7 +338,7 @@ export function relayAdminConnect(configPath: string, input: ConnectInput) {
       (op) => !(relayOperations as readonly string[]).includes(op),
     )
   )
-    throw new RelayAdminError("invalid_operations");
+    throw new HostAdminError("invalid_operations");
   return withRegistry(
     configPath,
     ({ registry, resources, credentials, groups }) => {
@@ -376,19 +373,19 @@ export function relayAdminConnect(configPath: string, input: ConnectInput) {
       }
       let agent = find()!;
       if (agent.state === "retired")
-        throw new RelayAdminError("address_retired");
+        throw new HostAdminError("address_retired");
       const reservation = registry.findPrincipal(operator, principal);
       if (reservation && reservation.state !== "active")
         // Revoked connection descriptors stay reserved forever by design.
-        throw new RelayAdminError("credential_revoked_use_new_connection_id");
+        throw new HostAdminError("credential_revoked_use_new_connection_id");
       const legacy =
         !groups ||
         agent.active_binding_ids.length > 0 ||
         reservation?.kind === "agent";
       if (legacy) {
         if (reservation && reservation.owner_id !== agent.agent_id)
-          throw new RelayAdminError("credential_bound_elsewhere");
-        if (agent.group_id) throw new RelayAdminError("address_in_group");
+          throw new HostAdminError("credential_bound_elsewhere");
+        if (agent.group_id) throw new HostAdminError("address_in_group");
         if (!reservation) {
           registry.bind(operator, {
             request_id: request(),
@@ -401,7 +398,7 @@ export function relayAdminConnect(configPath: string, input: ConnectInput) {
       } else {
         let groupId = reservation?.owner_id ?? agent.group_id;
         if (agent.group_id && groupId !== agent.group_id)
-          throw new RelayAdminError("address_in_other_group");
+          throw new HostAdminError("address_in_other_group");
         if (!groupId) {
           groupId = registry.createGroup(operator, {
             request_id: request(),
@@ -483,13 +480,13 @@ export function relayAdminConnect(configPath: string, input: ConnectInput) {
  * Safe to rerun and independent of whether the token mapping was already deleted.
  * For a shared group this disconnects every member address, which is reported.
  */
-export function relayAdminDisconnect(configPath: string, addressInput: string) {
+export function hostAdminDisconnect(configPath: string, addressInput: string) {
   const address = parseHabAddress(addressInput).address;
   return withRegistry(configPath, ({ registry }) => {
     const agent = registry
       .overview(operator)
       .agents.find((value) => value.address === address);
-    if (!agent) throw new RelayAdminError("address_not_found");
+    if (!agent) throw new HostAdminError("address_not_found");
     let revoked = 0;
     for (const bindingId of agent.active_binding_ids) {
       registry.revoke(operator, {
@@ -527,8 +524,8 @@ export function relayAdminDisconnect(configPath: string, addressInput: string) {
   });
 }
 
-export function relayAdminErrorCode(error: unknown): string {
-  if (error instanceof RelayAdminError || error instanceof RegistryError)
+export function hostAdminErrorCode(error: unknown): string {
+  if (error instanceof HostAdminError || error instanceof RegistryError)
     return error.code;
   return "relay_admin_failed";
 }

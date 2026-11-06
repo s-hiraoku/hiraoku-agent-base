@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReadableStream } from "node:stream/web";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import {
   fixture,
   policy,

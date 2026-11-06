@@ -6,13 +6,13 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { request } from "node:http";
 import { createHash } from "node:crypto";
-import { startConfiguredLocalRelay } from "../src/relay-host/configured.ts";
+import { startHost } from "../src/host/start.ts";
 import {
-  relayAdminStatus,
-  relayAdminConnect,
-  relayAdminDisconnect,
-  relayAdminRename,
-} from "../src/relay-host/admin.ts";
+  hostAdminStatus,
+  hostAdminConnect,
+  hostAdminDisconnect,
+  hostAdminRename,
+} from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
 import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
@@ -39,7 +39,7 @@ async function started(t, patch = {}, oauthConfig) {
     };
   }
   f.write("service.local.json", f.config);
-  const host = await startConfiguredLocalRelay(f.configPath);
+  const host = await startHost(f.configPath);
   t.after(() => host.close());
   // The operator config names the fixed port the clients use as audience.
   f.config.port = Number(new URL(host.url).port);
@@ -88,7 +88,7 @@ async function started(t, patch = {}, oauthConfig) {
 
 test("admin refuses a registry the Relay has not created", async (t) => {
   const f = await fixture(t);
-  assert.throws(() => relayAdminStatus(f.configPath), {
+  assert.throws(() => hostAdminStatus(f.configPath), {
     code: "relay_not_initialized",
   });
 });
@@ -96,10 +96,10 @@ test("admin refuses a registry the Relay has not created", async (t) => {
 test("connect registers, binds and grants two addresses for a real roundtrip; rerun is a no-op", async (t) => {
   const f = await started(t);
   assert.deepEqual(
-    relayAdminStatus(f.configPath).problems.map((p) => p.code),
+    hostAdminStatus(f.configPath).problems.map((p) => p.code),
     ["credential_unbound", "credential_unbound", "credential_unbound"],
   );
-  const codex = relayAdminConnect(f.configPath, {
+  const codex = hostAdminConnect(f.configPath, {
     address: "codex@codex.hab",
     connection_id: "conn-c",
   });
@@ -109,19 +109,19 @@ test("connect registers, binds and grants two addresses for a real roundtrip; re
     "connection_bound",
     "address_access_granted",
   ]);
-  const hermes = relayAdminConnect(f.configPath, {
+  const hermes = hostAdminConnect(f.configPath, {
     address: "hermes@hermes.hab",
     connection_id: "conn-h",
   });
   assert.equal(hermes.address.state, "active");
   assert.deepEqual(
-    relayAdminConnect(f.configPath, {
+    hostAdminConnect(f.configPath, {
       address: "hermes@hermes.hab",
       connection_id: "conn-h",
     }).steps,
     [],
   );
-  const status = relayAdminStatus(f.configPath);
+  const status = hostAdminStatus(f.configPath);
   assert.deepEqual(status.problems, [
     { code: "credential_unbound", subject: "conn-x" },
   ]);
@@ -162,38 +162,37 @@ test("connect registers, binds and grants two addresses for a real roundtrip; re
 
 test("disconnect revokes with current epochs, is rerunnable and needs no token mapping", async (t) => {
   const f = await started(t);
-  relayAdminConnect(f.configPath, {
+  hostAdminConnect(f.configPath, {
     address: "hermes@hermes.hab",
     connection_id: "conn-h",
   });
   // Cleanup order must not matter: the mapping is already gone.
   f.write("credentials.local.json", { version: 1, credentials: [] });
-  const first = relayAdminDisconnect(f.configPath, "hermes@hermes.hab");
+  const first = hostAdminDisconnect(f.configPath, "hermes@hermes.hab");
   assert.equal(first.revoked_bindings, 1);
   assert.equal(first.address.state, "stopped");
   assert.equal(
-    relayAdminDisconnect(f.configPath, "hermes@hermes.hab")
-      .already_disconnected,
+    hostAdminDisconnect(f.configPath, "hermes@hermes.hab").already_disconnected,
     true,
   );
   f.credentials();
   assert.deepEqual((await f.call(tokens.h, "relay_poll")).error, "forbidden");
   assert.ok(
-    relayAdminStatus(f.configPath).problems.some(
+    hostAdminStatus(f.configPath).problems.some(
       (p) => p.code === "credential_revoked" && p.subject === "conn-h",
     ),
   );
   // A revoked descriptor stays reserved; a fresh connection id rebinds the address.
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: "hermes@hermes.hab",
         connection_id: "conn-h",
       }),
     { code: "credential_revoked_use_new_connection_id" },
   );
   assert.deepEqual(
-    relayAdminConnect(f.configPath, {
+    hostAdminConnect(f.configPath, {
       address: "hermes@hermes.hab",
       connection_id: "conn-x",
     }).steps,
@@ -208,7 +207,7 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
     ["sender@client-a.hab", "c"],
     ["receiver@client-b.hab", "h"],
   ].map(([address, name]) => {
-    const connected = relayAdminConnect(f.configPath, {
+    const connected = hostAdminConnect(f.configPath, {
       address,
       connection_id: `conn-${name}`,
     });
@@ -335,11 +334,11 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
     assert.equal(response.status, 401);
     await response.body?.cancel();
     assert.equal(
-      relayAdminDisconnect(f.configPath, participant.address).revoked_bindings,
+      hostAdminDisconnect(f.configPath, participant.address).revoked_bindings,
       1,
     );
   }
-  const status = relayAdminStatus(f.configPath);
+  const status = hostAdminStatus(f.configPath);
   assert.ok(
     status.groups.every(
       (group) => group.state === "stopped" && group.active_bindings === 0,
@@ -353,7 +352,7 @@ test("connect rejects unknown, mismatched-audience and foreign-bound connections
   const f = await started(t);
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: "codex@codex.hab",
         connection_id: "conn-missing",
       }),
@@ -361,20 +360,20 @@ test("connect rejects unknown, mismatched-audience and foreign-bound connections
   );
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: "codex@codex.hab",
         connection_id: "conn-c",
         operations: ["poll", "execute"],
       }),
     { code: "invalid_operations" },
   );
-  relayAdminConnect(f.configPath, {
+  hostAdminConnect(f.configPath, {
     address: "codex@codex.hab",
     connection_id: "conn-c",
   });
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: "hermes@hermes.hab",
         connection_id: "conn-c",
       }),
@@ -383,14 +382,14 @@ test("connect rejects unknown, mismatched-audience and foreign-bound connections
   f.credentials("http://localhost:1/mcp");
   assert.throws(
     () =>
-      relayAdminConnect(f.configPath, {
+      hostAdminConnect(f.configPath, {
         address: "hermes@hermes.hab",
         connection_id: "conn-h",
       }),
     { code: "credential_audience_mismatch" },
   );
   assert.ok(
-    relayAdminStatus(f.configPath).problems.some(
+    hostAdminStatus(f.configPath).problems.some(
       (p) => p.code === "credential_audience_mismatch",
     ),
   );
@@ -404,20 +403,20 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
     oauth.getConfig(),
   );
   const connectionId = oauth.record.connection_id;
-  const local = relayAdminConnect(f.configPath, {
+  const local = hostAdminConnect(f.configPath, {
     address: "receiver@local.hab",
     connection_id: "conn-h",
   });
-  const first = relayAdminConnect(f.configPath, {
+  const first = hostAdminConnect(f.configPath, {
     address: "first@remote.hab",
     connection_id: connectionId,
   });
-  const second = relayAdminConnect(f.configPath, {
+  const second = hostAdminConnect(f.configPath, {
     address: "second@remote.hab",
     connection_id: connectionId,
   });
   assert.equal(first.address.group_id, second.address.group_id);
-  const status = relayAdminStatus(f.configPath);
+  const status = hostAdminStatus(f.configPath);
   const remote = status.credentials.find(
     (record) => record.connection_id === connectionId,
   );
@@ -586,7 +585,7 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
     connections: [],
   });
   await call("relay_poll", selection, 401);
-  const revoked = relayAdminDisconnect(f.configPath, first.address.address);
+  const revoked = hostAdminDisconnect(f.configPath, first.address.address);
   assert.equal(revoked.revoked_bindings, 1);
   assert.deepEqual(revoked.affected_addresses.sort(), [
     first.address.address,
@@ -595,7 +594,7 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
   f.write("remote-auth.local.json", oauth.getConfig());
   assert.equal((await call("relay_poll", selection)).error, "forbidden");
   assert.ok(
-    relayAdminStatus(f.configPath).problems.some(
+    hostAdminStatus(f.configPath).problems.some(
       (p) => p.code === "credential_revoked" && p.subject === connectionId,
     ),
   );
@@ -606,7 +605,7 @@ test("admin refuses disabled, mismatched and ambiguous OAuth connection registra
   const original = oauth.getConfig();
   const f = await started(t, { authentication_groups: true }, original);
   const connect = (connection_id = oauth.record.connection_id) =>
-    relayAdminConnect(f.configPath, {
+    hostAdminConnect(f.configPath, {
       address: "first@remote.hab",
       connection_id,
     });
@@ -628,12 +627,12 @@ test("admin refuses disabled, mismatched and ambiguous OAuth connection registra
   });
   assert.throws(() => connect("conn-h"), { code: "credential_ambiguous" });
   f.write("remote-auth.local.json", original);
-  assert.equal(relayAdminStatus(f.configPath).addresses.length, 0);
+  assert.equal(hostAdminStatus(f.configPath).addresses.length, 0);
 });
 
 test("group mode shares one connection between addresses; disconnect reports every member", async (t) => {
   const f = await started(t, { authentication_groups: true });
-  const research = relayAdminConnect(f.configPath, {
+  const research = hostAdminConnect(f.configPath, {
     address: "research@hermes.hab",
     connection_id: "conn-h",
   });
@@ -646,7 +645,7 @@ test("group mode shares one connection between addresses; disconnect reports eve
     "group_access_granted",
     "address_access_granted",
   ]);
-  const calendar = relayAdminConnect(f.configPath, {
+  const calendar = hostAdminConnect(f.configPath, {
     address: "calendar@hermes.hab",
     connection_id: "conn-h",
     operations: ["poll", "ack"],
@@ -661,16 +660,13 @@ test("group mode shares one connection between addresses; disconnect reports eve
     "calendar@hermes.hab",
     "research@hermes.hab",
   ]);
-  const disconnected = relayAdminDisconnect(
-    f.configPath,
-    "calendar@hermes.hab",
-  );
+  const disconnected = hostAdminDisconnect(f.configPath, "calendar@hermes.hab");
   assert.equal(disconnected.revoked_bindings, 1);
   assert.deepEqual(disconnected.affected_addresses.sort(), [
     "calendar@hermes.hab",
     "research@hermes.hab",
   ]);
-  const status = relayAdminStatus(f.configPath);
+  const status = hostAdminStatus(f.configPath);
   assert.equal(status.groups[0].state, "stopped");
 });
 
@@ -713,7 +709,7 @@ test("admin status cannot implicitly upgrade a v2 registry for rename", async (t
   const f = await started(t, { authentication_groups: true });
   f.config.registry.agent_rename = true;
   f.write("service.local.json", f.config);
-  assert.throws(() => relayAdminStatus(f.configPath), {
+  assert.throws(() => hostAdminStatus(f.configPath), {
     code: "registry_upgrade_pending",
   });
   const raw = new DatabaseSync(join(f.config.directory, "registry.sqlite"), {
@@ -735,7 +731,7 @@ test("journaled admin rename CLI keeps the credential and exposes the current na
     agent_rename: true,
     discovery: { availability_namespaces: ["hermes"] },
   });
-  const before = relayAdminConnect(f.configPath, {
+  const before = hostAdminConnect(f.configPath, {
     address: "old@hermes.hab",
     connection_id: "conn-h",
   }).address;
@@ -775,7 +771,7 @@ test("journaled admin rename CLI keeps the credential and exposes the current na
   assert.equal(result.agent.agent_id, before.agent_id);
   assert.equal(result.agent.address, "new@hermes.hab");
   assert.equal(result.forwarding_alias, false);
-  assert.deepEqual(relayAdminRename(f.configPath, input), result);
+  assert.deepEqual(hostAdminRename(f.configPath, input), result);
   const who = await f.call(tokens.h, "hab_discover", {
     action: "whoami",
     as_address: result.agent.address,
@@ -784,7 +780,7 @@ test("journaled admin rename CLI keeps the credential and exposes the current na
   assert.equal(who.selected_identity.agent_id, before.agent_id);
   assert.equal(who.selected_identity.address, "new@hermes.hab");
   assert.equal(
-    relayAdminStatus(f.configPath).addresses.find(
+    hostAdminStatus(f.configPath).addresses.find(
       (a) => a.agent_id === before.agent_id,
     ).address,
     "new@hermes.hab",
