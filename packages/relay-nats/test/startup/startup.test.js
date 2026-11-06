@@ -213,7 +213,7 @@ const cases = [
       assert.equal(result.child.signalCode, null);
       const message = result.value.message();
       assert.equal(
-        (await result.value.backend.submit("a", message)).state,
+        (await result.value.submit("a", message)).state,
         "pending",
       );
       const info = await result.value.manager.streams.info("HAB");
