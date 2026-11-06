@@ -114,3 +114,15 @@ The A2A host wiring (reviewed at `e772a7c6959a3bf9ef367870278f1aa363470a7e`) wir
 - In source-review.json the changed sources were re-read and rehashed. `src/host/config.ts` and `src/agent-sdk/sender.ts` have new summaries. The ledger adds `src/host/a2a.ts` and `src/host/server.ts` under authority, `src/a2a/hab-contract.ts` and `src/a2a/hab-adapter.ts` under execution, and `test/a2a-host.test.js` under verification.
 
 New and re-rendered source links pin to the reviewed commit above.
+
+## Maintenance after the review fixes
+
+The review fixes (reviewed at `74c02b7e8e4b59d3c41eefe9c8949ddd554bd472`) count only unreleased bodies against the agent SDK inbox's record and byte quotas, make the A2A host ACK every delivery that is not a reply to a host message without an inbox or ACK record, require `group_bind` and `group_member` in `createBoundGroup`, let a nested `withRelay` join the enclosing transaction so the host submit runs inside the caller's check, and rewrite the rollback procedure. `test/a2a-host.test.js`, `test/hab-auth-groups.test.js` and `test/relay-inbox-maintenance.test.js` cover the fixes. The audit drift was handled by rereading, not rehashing:
+
+- Opened and resolved HAB-C-D07. OPERATIONS.md and the product spec said a rollback restarts the earlier build on the same journal, while DESIGN.md makes the v4 journal migration one-way and earlier builds refuse schema 4. The procedure is now a whole pre-upgrade backup restore with original-ID reconciliation, and same-journal rollback is allowed only to builds that open schema 4. No requirement statement claimed the same-journal rollback. The OPERATIONS.md document summary did, and it is corrected.
+- Sharpened, not weakened: HAB-F24 states the schema bound, the whole-generation restore and the reconciliation, and cites the roll-back section. HAB-A20 requires every right of the three separate operations in the one transaction. HAB-A21 states that the host submit shares the transaction that rechecks the caller, so a revocation lands before the check or after admission. HAB-D20 states that only replies to host messages are saved before ACK and other deliveries are ACKed without records, plus the `max_records` and three-times ACK history caps. HAB-D06 states that the inbox quotas count unreleased bodies and that a separate ACK-record bound limits dedup history.
+- Re-cited after rereading the changed text: HAB-A05, HAB-A12, HAB-D07, HAB-D15, HAB-E20, HAB-F26, HAB-C-F01 and HAB-C-D06. Their statements still hold. Fourteen citations whose excerpt bytes only moved were relocated mechanically.
+- HAB-V07, HAB-V14, HAB-C-V01 and HAB-C-V05 keep their ranges after the count-only change. HAB-C-V05 records the full-root count of 1163.
+- In source-review.json the changed sources were re-read and rehashed. `src/hab/sqlite-registry.ts`, `src/host/a2a.ts` and `src/agent-sdk/sqlite-inbox.ts` have new summaries. `test/hab-auth-groups.test.js` and `test/relay-inbox-maintenance.test.js` were added under verification.
+
+New and re-rendered source links pin to the reviewed commit above.
