@@ -32,7 +32,7 @@ HAB_NATS_SERVER=/absolute/path/to/verified/nats-server npm test --prefix package
 npm run check --prefix packages/relay-nats
 ```
 
-The actual Registry-backed common adapter is `test/hab-lab-adapter.js`. Its `guardedJetStreamBackend(t, { serverBinary })` accepts an explicit verified path. The earlier synthetic broker adapter remains in `test/lab-adapter.js` for the isolated P4 checks.
+The actual Registry-backed common adapter is `test/hab-lab-adapter.js`. Its `guardedJetStreamBackend(t, { serverBinary })` accepts an explicit verified path. The synthetic broker adapter in `test/lab-adapter.js` runs the same contracts against the backend alone, without a Registry.
 
 ## Start the Relay
 

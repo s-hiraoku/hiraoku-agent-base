@@ -19,7 +19,7 @@ const stages = {
   p4: { files: ["backend.test.js"], count: 21 },
   p5: {
     files: ["backend.test.js", "guarded-commits.test.js"],
-    count: 35,
+    count: 34,
   },
   p6: {
     files: [
@@ -29,7 +29,7 @@ const stages = {
       "guarded-commits.test.js",
       "hab-integration.test.js",
     ],
-    count: 61,
+    count: 60,
     shared: true,
   },
 };

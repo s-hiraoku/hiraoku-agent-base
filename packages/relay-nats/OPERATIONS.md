@@ -18,7 +18,7 @@ Set File storage, replicas one, and `sync_interval: always`. Audit the actual br
 
 Keep server, account, stream, outbox, sender, recipient, and retained-record budgets finite. Reserve disk space for transactions, compaction, logs, and snapshots. Choose numbers from the actual workload and recovery requirements. This work does not measure a production sizing target.
 
-Keep cache bounds finite and large enough to cover the admitted mailbox. Synchronous HAB prefetch reads verified stream messages directly. If using the earlier asynchronous P4 consumer adapter, keep its consumer lease and prefetch policy when reopening retained data; it refuses mismatched consumers. Plan and test consumer-policy migrations separately.
+Keep cache bounds finite and large enough to cover the admitted mailbox. Synchronous HAB prefetch reads verified stream messages directly.
 
 ## Observe failures
 
@@ -30,7 +30,7 @@ If the volume is unavailable, the host does not write health data into a fallbac
 
 ## Back up and restore
 
-Stop new admissions and quiesce the relevant services before taking a consistent backup. Include the broker stream and consumer snapshots, admission and ACK journal, Registry, Task Store, binding configuration, and recipient checkpoints. Keep credentials under a separate secret-management policy.
+Stop new admissions and quiesce the relevant services before taking a consistent backup. Include the broker stream snapshot, admission and ACK journal, Registry, Task Store, binding configuration, and recipient checkpoints. Keep credentials under a separate secret-management policy.
 
 Store encrypted backups outside the source volume. Restore into an isolated directory or host. Update the expected device only after verifying the restored volume. Compare accepted IDs, body digests, saved receipts, engine request keys, and Task results before routing traffic.
 

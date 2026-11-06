@@ -4,9 +4,6 @@ import type { NatsConnection } from "@nats-io/transport-node";
 import {
   jetstream,
   jetstreamManager,
-  AckPolicy,
-  DeliverPolicy,
-  ReplayPolicy,
   RetentionPolicy,
   StorageType,
   DiscardPolicy,
@@ -14,7 +11,6 @@ import {
 import type {
   JetStreamClient,
   JetStreamManager,
-  JsMsg,
   StreamConfig,
 } from "@nats-io/jetstream";
 import {
@@ -49,12 +45,6 @@ export interface JetStreamRelayOptions extends JournalOptions {
   limits: ContractLimits;
   authorization: Authorization;
   reconnect?: boolean;
-}
-export interface AsyncRelayOperations {
-  submit(context: unknown, input: unknown): Promise<Receipt>;
-  status(context: unknown, messageId: string): Promise<Receipt>;
-  poll(context: unknown): Promise<Delivery | null>;
-  ack(context: unknown, input: unknown): Promise<AckReceipt>;
 }
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -145,13 +135,12 @@ async function openBroker(
   }
 }
 
-export class JetStreamRelay implements AsyncRelayOperations {
+export class JetStreamRelay {
   readonly #options: JetStreamRelayOptions;
   readonly #journal: NatsJournal;
   #nc: NatsConnection;
   #js: JetStreamClient;
   #manager: JetStreamManager;
-  readonly #deliveries = new Map<string, JsMsg>();
   #pumping: Promise<void> | undefined;
   #connecting: Promise<void> | undefined;
   #closing: Promise<void> | undefined;
@@ -356,24 +345,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
     );
     return this.#journal.receipt(row);
   }
-  async submit(context: unknown, input: unknown): Promise<Receipt> {
-    const receipt = this.admit(context, input);
-    try {
-      const row = await this.#publish(
-        this.#journal.row(receipt.sender_id, receipt.message_id)!,
-      );
-      return this.#journal.receipt(row);
-    } catch (error) {
-      throw safeError(error);
-    }
-  }
-  async status(context: unknown, messageId: string): Promise<Receipt> {
-    return this.statusWithAuthorization(
-      context,
-      messageId,
-      this.#options.authorization,
-    );
-  }
   statusWithAuthorization(
     context: unknown,
     messageId: string,
@@ -404,63 +375,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
     return this.#journal.lookupReceipt(senderId, messageId);
   }
 
-  async #consumer(recipient: string) {
-    const name = "mailbox_" + hash(recipient);
-    const config = {
-      durable_name: name,
-      filter_subject: `${this.#options.subject_prefix}.${hash(recipient)}.>`,
-      ack_policy: AckPolicy.Explicit,
-      deliver_policy: DeliverPolicy.All,
-      replay_policy: ReplayPolicy.Instant,
-      ack_wait: nanos(this.#options.lease_ms),
-      max_ack_pending: this.#options.prefetch_per_recipient ?? 1,
-      max_deliver: -1,
-      max_waiting: 16,
-      max_batch: 1,
-    };
-    let actual;
-    try {
-      actual = (await this.#manager.consumers.info(this.#options.stream, name))
-        .config;
-    } catch (error) {
-      if (apiCode(error) !== 10014) throw error;
-      actual = (await this.#manager.consumers.add(this.#options.stream, config))
-        .config;
-    }
-    for (const [key, value] of Object.entries(config)) {
-      if (
-        JSON.stringify(actual[key as keyof typeof actual]) !==
-        JSON.stringify(value)
-      )
-        throw new MessagingError("consumer_configuration_mismatch");
-    }
-    return this.#js.consumers.get(this.#options.stream, name);
-  }
-  #decode(msg: JsMsg) {
-    if (msg.data.byteLength > this.#options.broker_max_message_bytes)
-      throw new MessagingError("broker_integrity_failed");
-    const body = msg.json<{ sender_id: string; message: unknown }>();
-    if (
-      !body ||
-      !id(body.sender_id) ||
-      Object.keys(body).sort().join(",") !== "message,sender_id"
-    )
-      throw new MessagingError("broker_integrity_failed");
-    const message = parseSubmission(body.message, this.#options.limits);
-    const row = this.#journal.row(body.sender_id, message.message_id);
-    if (
-      !row ||
-      row.recipient_id !== message.recipient_id ||
-      msg.subject !== row.subject ||
-      row.fingerprint !==
-        this.#journal.hash(
-          "submission",
-          comparisonMaterial(body.sender_id, message, this.#options.limits),
-        )
-    )
-      throw new MessagingError("broker_integrity_failed");
-    return { sender: body.sender_id, message, row };
-  }
   #cachedMessage(row: Row) {
     try {
       const envelope = JSON.parse(row.candidate!);
@@ -577,7 +491,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
     if (this.#closing) throw new MessagingError("broker_unavailable");
     if (this.#connecting) return this.#connecting;
     const work = (async () => {
-      this.#deliveries.clear();
       await this.#nc.close();
       const broker = await openBroker(this.#options, this.#journal, false);
       if (this.#closing) {
@@ -595,16 +508,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
       await work;
     } finally {
       if (this.#connecting === work) this.#connecting = undefined;
-    }
-  }
-  async reconnectBroker(): Promise<void> {
-    if (this.#options.reconnect !== true)
-      throw new MessagingError("broker_reconnect_disabled");
-    if (this.#pumping) throw new MessagingError("broker_pump_busy");
-    try {
-      await this.#replaceBroker();
-    } catch (error) {
-      throw safeError(error);
     }
   }
   async pumpOnce(limit = 100): Promise<void> {
@@ -648,76 +551,8 @@ export class JetStreamRelay implements AsyncRelayOperations {
       if (this.#pumping === work) this.#pumping = undefined;
     }
   }
-  async poll(context: unknown): Promise<Delivery | null> {
-    const recipient = this.#identity(context, "poll");
-    const pull = this.#journal.claimPull(
-      recipient,
-      this.#options.request_timeout_ms * 5 + 2000,
-    );
-    if (!pull) return null;
-    try {
-      const consumer = await this.#consumer(recipient);
-      const msg = await consumer.next({ expires: 1000 });
-      if (!msg) return null;
-      let decoded;
-      try {
-        decoded = this.#decode(msg);
-      } catch (error) {
-        msg.nak(this.#options.retry_cap_ms);
-        throw error;
-      }
-      const { sender, message } = decoded;
-      const current = this.#journal.row(sender, message.message_id)!;
-      if (["acked", "expired"].includes(current.state)) {
-        await this.#cleanup(current);
-        return null;
-      }
-      if (current.state === "quarantined") {
-        msg.term("HAB retry exhausted");
-        return null;
-      }
-      if (current.state === "staging") {
-        msg.nak(this.#options.retry_base_ms);
-        return null;
-      }
-      const authorize = () => {
-        if (
-          message.recipient_id !== recipient ||
-          this.#identity(context, "poll", sender, message.kind) !== recipient
-        )
-          throw new MessagingError("forbidden");
-      };
-      try {
-        const delivery = this.#journal.lease(
-          sender,
-          message,
-          msg.seq,
-          authorize,
-        );
-        if (delivery) this.#deliveries.set(current.subject, msg);
-        if (!delivery)
-          msg.nak(
-            Math.max(
-              this.#options.retry_base_ms,
-              current.next_visible_at - Date.now(),
-            ),
-          );
-        return delivery;
-      } catch (error) {
-        msg.nak(this.#options.retry_base_ms);
-        throw error;
-      }
-    } catch (error) {
-      throw safeError(error);
-    } finally {
-      this.#journal.releasePull(recipient, pull);
-    }
-  }
   async #cleanup(row: Row): Promise<void> {
     if (row.cleaned) return;
-    const delivery = this.#deliveries.get(row.subject);
-    if (row.state === "acked" && delivery)
-      await delivery.ackAck({ timeout: this.#options.request_timeout_ms });
     const stored = await this.#stored(row.subject);
     if (stored)
       await this.#manager.streams.deleteMessage(
@@ -728,7 +563,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
     if (await this.#stored(row.subject))
       throw new MessagingError("broker_cleanup_pending");
     this.#journal.cleaned(row);
-    this.#deliveries.delete(row.subject);
   }
   ackWithAuthorization(
     context: unknown,
@@ -756,20 +590,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
         throw new MessagingError("forbidden");
     });
     return this.#journal.ackReceipt(row);
-  }
-  async ack(context: unknown, input: unknown): Promise<AckReceipt> {
-    const receipt = this.ackWithAuthorization(
-      context,
-      input,
-      this.#options.authorization,
-    );
-    const row = this.#journal.row(receipt.sender_id, receipt.message_id)!;
-    try {
-      await this.#cleanup(row);
-    } catch {
-      return receipt;
-    }
-    return receipt;
   }
   private async maintainInternal(limit: number) {
     for (const row of this.#journal.pendingCleanup(limit))
@@ -822,7 +642,6 @@ export class JetStreamRelay implements AsyncRelayOperations {
     this.#closing = (async () => {
       await this.#pumping?.catch(() => undefined);
       await this.#connecting?.catch(() => undefined);
-      this.#deliveries.clear();
       await this.#nc.close();
       this.#journal.close();
     })();

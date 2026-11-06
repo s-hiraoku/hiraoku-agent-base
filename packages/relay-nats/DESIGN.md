@@ -26,25 +26,25 @@ Admission commits synchronously, but a message becomes pollable only after the p
 
 ## Broker policy and recovery
 
-The fixed server is [NATS Server 2.15.2](https://github.com/nats-io/nats-server/releases/tag/v2.15.2). The stream uses File storage, one replica, Limits retention, DiscardNew, one stored message per unique subject, and finite message, byte, size, and consumer limits. Limits retention keeps consumer ACK separate from tracked explicit erasure.
+The fixed server is [NATS Server 2.15.2](https://github.com/nats-io/nats-server/releases/tag/v2.15.2). The stream uses File storage, one replica, Limits retention, DiscardNew, one stored message per unique subject, and finite message, byte, size, and consumer limits. The backend creates no consumer; HAB disposes of a body by tracked explicit erasure.
 
 Subjects contain hashes of immutable IDs and message keys. A journal HMAC detects changed content for the same ID. A unique subject and expected sequence zero reconcile publication beyond the broker's two-minute deduplication window. HAB's retained receipt remains the longer-lived deduplication record.
 
-The synchronous HAB pump selects only uncached pending journal rows and reads their unique subjects through the official stream message API. It verifies the exact sequence, subject, size, original expiry, and content fingerprint before caching. Missing or replaced published bodies fail closed without republishing. Broker consumer redelivery cannot consume this prefetch budget.
+The synchronous HAB pump selects only uncached pending journal rows and reads their unique subjects through the official stream message API. It verifies the exact sequence, subject, size, original expiry, and content fingerprint before caching. Missing or replaced published bodies fail closed without republishing.
 
-The HAB cache bound covers the entire admitted mailbox bound, so a stopped sender cannot hide all other candidates. Durable sender and within-sender message positions advance even over denied candidates while each poll scans at most `poll_scan_limit` rows. The Registry and journal still permit only one HAB lease. The earlier asynchronous P4 adapter retains its durable explicit-ACK consumer; consumer policy validation applies when that adapter is used.
+The HAB cache bound covers the entire admitted mailbox bound, so a stopped sender cannot hide all other candidates. Durable sender and within-sender message positions advance even over denied candidates while each poll scans at most `poll_scan_limit` rows. The Registry and journal still permit only one HAB lease. The earlier asynchronous submit, status, poll and ACK operations, which read through a durable explicit-ACK consumer, were deleted because no production caller used them; the host has only this synchronous path.
 
-Application leases retain generation, token, expiry, retry visibility, and bounded attempt checks. Retry exhaustion persists as quarantine. The Limits stream retains quarantined bodies until TTL. The P4 consumer terminates its delivery without erasing that retained body. A broker-capacity error does not prevent cached accepted work from reaching the recipient and freeing space through saved ACKs.
+Application leases retain generation, token, expiry, retry visibility, and bounded attempt checks. Retry exhaustion persists as quarantine. The Limits stream retains quarantined bodies until TTL. A broker-capacity error does not prevent cached accepted work from reaching the recipient and freeing space through saved ACKs.
 
 Runtime reconnection is explicit when `reconnect:true`. The client transport itself has reconnect disabled, so old timed-out PUB frames cannot flush from an offline buffer. The next pump replaces a failed connection, checks the pinned version and stream configuration, and reconciles the same journal. It never creates a missing replacement stream during reconnect.
 
-Unknown journals are refused. A v1, v2, or v3 journal requires explicit `migrate_journal:true` for the v4 migration. The migration preserves receipts and the fair sender and within-sender message positions, drops the retired routing state and next-store turn, and adds the delivery audit and maintenance totals. Schema 4 records only events after the migration. A changed key, stream binding, or subject prefix is refused. Existing consumer settings must match the configured lease and prefetch policy. Consumer-policy migration is not automatic.
+Unknown journals are refused. A v1, v2, or v3 journal requires explicit `migrate_journal:true` for the v4 migration. The migration preserves receipts and the fair sender and within-sender message positions, drops the retired routing state and next-store turn, and adds the delivery audit and maintenance totals. Schema 4 records only events after the migration. A changed key, stream binding, or subject prefix is refused.
 
 ## Saved receipt and body disposal
 
 The recipient's existing `DurableReceiver` saves the body, deduplication key, and original ACK request first. HAB then validates the current lease and commits its saved receipt. A response loss retrieves that exact receipt. Broker ACK and erasure can finish later without another user delivery.
 
-The HAB pump uses tracked explicit erasure after the saved receipt rather than a consumer ACK. The P4 adapter also uses the official `ackAck` API while it holds a consumer delivery object. Recovery after a gateway restart uses the same explicit erase API for an already-saved message. No private client reply field or raw broker ACK subject is given to a product.
+The HAB pump uses tracked explicit erasure after the saved receipt rather than a consumer ACK. Recovery after a gateway restart uses the same explicit erase API for an already-saved message. No private client reply field or raw broker ACK subject is given to a product.
 
 After saved ACK, the journal removes its body cache and leaves cleanup pending. Explicit `deleteMessage(..., true)` and a follow-up absent-body read finish broker cleanup. Failed cleanup remains durable. The private health file records fixed-code ready or degraded transitions, including publication and integrity failures. The file is a transition record, not a heartbeat.
 

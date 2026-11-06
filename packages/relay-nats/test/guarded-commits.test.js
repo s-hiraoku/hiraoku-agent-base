@@ -376,7 +376,7 @@ test("owner-enabled recovery reconnects the same backend without offline PUB buf
   const f = await fixture(t, { reconnect: true, request_timeout_ms: 300 });
   const backend = f.backend;
   const first = f.message();
-  const firstReceipt = await backend.submit("a", first);
+  const firstReceipt = await f.ops(backend).submit("a", first);
   await f.stop();
   const second = f.message();
   const secondReceipt = admit(backend, "a", second);
@@ -531,7 +531,7 @@ test("direct prefetch fails closed on missing or replaced broker sequence withou
   for (const replacement of [false, true]) {
     const f = await fixture(t);
     const message = f.message();
-    const accepted = await f.backend.submit("a", message);
+    const accepted = await f.submit("a", message);
     const journal = raw(t, f.options.journal_path);
     const row = journal
       .prepare("SELECT subject,sequence FROM nats_messages")
@@ -557,7 +557,7 @@ test("direct prefetch fails closed on missing or replaced broker sequence withou
       code: "broker_integrity_failed",
     });
     assert.equal(
-      (await f.backend.status("a", message.message_id)).receipt_id,
+      (await f.status("a", message.message_id)).receipt_id,
       accepted.receipt_id,
     );
     assert.equal(

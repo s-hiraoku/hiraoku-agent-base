@@ -11,7 +11,7 @@ import { fixture, ackRequest, gatePubAck } from "./fixture.js";
 test("pinned file stream preserves UTF-8 and save-before-ACK, then erases broker body", async (t) => {
   const f = await fixture(t);
   const message = f.message();
-  const accepted = await f.backend.submit("a", message);
+  const accepted = await f.submit("a", message);
   assert.equal(accepted.state, "pending");
   const info = await f.manager.streams.info("HAB");
   assert.equal(info.config.storage, "file");
@@ -24,15 +24,12 @@ test("pinned file stream preserves UTF-8 and save-before-ACK, then erases broker
         witness.inbox().map((entry) => entry.message),
         [message],
       );
-      return f.backend.ack("b", request);
+      return f.ack("b", request);
     },
   });
   await receiver.once();
   assert.equal(receiver.entries()[0].receipt_confirmed, true);
-  assert.equal(
-    (await f.backend.status("a", message.message_id)).state,
-    "acked",
-  );
+  assert.equal((await f.status("a", message.message_id)).state, "acked");
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 0);
   const raw = new DatabaseSync(f.options.journal_path);
   t.after(() => raw.close());
@@ -49,13 +46,13 @@ test("pinned file stream preserves UTF-8 and save-before-ACK, then erases broker
 test("duplicate admission, including after broker dedup expires, retains original receipt and rejects changes", async (t) => {
   const f = await fixture(t);
   const message = f.message();
-  const receipt = await f.backend.submit("a", message);
+  const receipt = await f.submit("a", message);
   await f.manager.streams.update("HAB", { duplicate_window: 100_000_000 });
   await delay(150);
-  assert.deepEqual(await f.backend.submit("a", message), receipt);
+  assert.deepEqual(await f.submit("a", message), receipt);
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 1);
   await assert.rejects(
-    f.backend.submit("a", {
+    f.submit("a", {
       ...message,
       body: { parts: [{ type: "text", text: "changed" }] },
     }),
@@ -65,42 +62,45 @@ test("duplicate admission, including after broker dedup expires, retains origina
 
 test("two independent gateway instances sharing a journal obtain only one active lease", async (t) => {
   const f = await fixture(t, { lease_ms: 2000 });
-  await f.backend.submit("a", f.message());
+  await f.submit("a", f.message());
   const other = await f.open();
   const original = await JetStreamRelay.open(f.options);
   t.after(() => original.close());
-  const results = await Promise.all([original.poll("b"), other.poll("b")]);
+  const results = await Promise.all([
+    f.ops(original).poll("b"),
+    f.ops(other).poll("b"),
+  ]);
   assert.equal(results.filter(Boolean).length, 1);
-  await other.ack("b", ackRequest(results.find(Boolean)));
+  await f.ops(other).ack("b", ackRequest(results.find(Boolean)));
 });
 
 test("redelivery increments application fence, enforces backoff, and rejects a stale ACK", async (t) => {
   const f = await fixture(t);
   const message = f.message();
-  await f.backend.submit("a", message);
-  const first = await f.backend.poll("b");
-  assert.equal(await f.backend.poll("b"), null);
+  await f.submit("a", message);
+  const first = await f.poll("b");
+  assert.equal(await f.poll("b"), null);
   await delay(f.options.lease_ms + f.options.retry_base_ms + 20);
-  const second = await f.backend.poll("b");
+  const second = await f.poll("b");
   assert.ok(second);
   assert.equal(second.generation, first.generation + 1);
-  await assert.rejects(f.backend.ack("b", ackRequest(first)), {
+  await assert.rejects(f.ack("b", ackRequest(first)), {
     code: "invalid_ack",
   });
-  await f.backend.ack("b", ackRequest(second));
+  await f.ack("b", ackRequest(second));
 });
 
 test("lost application ACK response survives backend and broker restart with the exact receipt", async (t) => {
   const f = await fixture(t, { lease_ms: 2000 });
   const message = f.message();
-  await f.backend.submit("a", message);
-  const delivery = await f.backend.poll("b");
+  await f.submit("a", message);
+  const delivery = await f.poll("b");
   const request = ackRequest(delivery);
-  const receipt = await f.backend.ack("b", request);
+  const receipt = await f.ack("b", request);
   await f.restart();
-  assert.deepEqual(await f.backend.ack("b", request), receipt);
-  assert.equal(await f.backend.poll("b"), null);
-  await assert.rejects(f.backend.ack("b", { ...request, generation: 2 }), {
+  assert.deepEqual(await f.ack("b", request), receipt);
+  assert.equal(await f.poll("b"), null);
+  await assert.rejects(f.ack("b", { ...request, generation: 2 }), {
     code: "ack_idempotency_conflict",
   });
 });
@@ -108,13 +108,13 @@ test("lost application ACK response survives backend and broker restart with the
 test("accepted pending message survives abrupt broker process exit", async (t) => {
   const f = await fixture(t);
   const message = f.message();
-  const accepted = await f.backend.submit("a", message);
+  const accepted = await f.submit("a", message);
   await f.restart();
   const receiver = f.receiver("b");
   await receiver.once();
   assert.deepEqual(receiver.entries()[0].message, message);
   assert.equal(
-    (await f.backend.status("a", message.message_id)).receipt_id,
+    (await f.status("a", message.message_id)).receipt_id,
     accepted.receipt_id,
   );
 });
@@ -122,7 +122,7 @@ test("accepted pending message survives abrupt broker process exit", async (t) =
 test("receiver save failure cannot ACK and redelivery remains available", async (t) => {
   const f = await fixture(t);
   const message = f.message();
-  await f.backend.submit("a", message);
+  await f.submit("a", message);
   let acks = 0;
   const receiver = new DurableReceiver(
     {
@@ -132,19 +132,16 @@ test("receiver save failure cannot ACK and redelivery remains available", async 
       claimAck: () => null,
     },
     {
-      poll: () => f.backend.poll("b"),
+      poll: () => f.poll("b"),
       ack: async (request) => {
         acks++;
-        return f.backend.ack("b", request);
+        return f.ack("b", request);
       },
     },
   );
   await assert.rejects(receiver.receiveOnce(), /synthetic full inbox/);
   assert.equal(acks, 0);
-  assert.equal(
-    (await f.backend.status("a", message.message_id)).state,
-    "leased",
-  );
+  assert.equal((await f.status("a", message.message_id)).state, "leased");
   await delay(350);
   const recovered = f.receiver("b");
   await recovered.once();
@@ -158,60 +155,54 @@ test("absolute TTL expires without refreshing on retry, refuses ACK, and removes
     first_sent_at: new Date(expiry - 3600000).toISOString(),
     expires_at: new Date(expiry).toISOString(),
   });
-  await f.backend.submit("a", message);
-  const delivery = await f.backend.poll("b");
+  await f.submit("a", message);
+  const delivery = await f.poll("b");
   assert.ok(delivery);
   assert.equal(delivery.lease_until, message.expires_at);
   await delay(550);
-  await assert.rejects(f.backend.ack("b", ackRequest(delivery)), {
+  await assert.rejects(f.ack("b", ackRequest(delivery)), {
     code: "invalid_ack",
   });
   await f.backend.maintain("admin");
-  assert.equal(
-    (await f.backend.status("a", message.message_id)).state,
-    "expired",
-  );
-  assert.equal((await f.backend.submit("a", message)).state, "expired");
+  assert.equal((await f.status("a", message.message_id)).state, "expired");
+  assert.equal((await f.submit("a", message)).state, "expired");
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 0);
 });
 
 test("finite application delivery attempts quarantine instead of silently discarding", async (t) => {
   const f = await fixture(t, { max_attempts: 2 });
   const message = f.message();
-  await f.backend.submit("a", message);
-  assert.equal((await f.backend.poll("b")).generation, 1);
+  await f.submit("a", message);
+  assert.equal((await f.poll("b")).generation, 1);
   await delay(350);
-  assert.equal((await f.backend.poll("b")).generation, 2);
+  assert.equal((await f.poll("b")).generation, 2);
   await delay(450);
-  assert.equal(await f.backend.poll("b"), null);
-  assert.equal(
-    (await f.backend.status("a", message.message_id)).state,
-    "quarantined",
-  );
+  assert.equal(await f.poll("b"), null);
+  assert.equal((await f.status("a", message.message_id)).state, "quarantined");
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 1);
 });
 
 test("identity, mailbox, operation, and stopped sender permissions fail closed", async (t) => {
   const f = await fixture(t);
   const message = f.message();
-  await assert.rejects(f.backend.submit("unknown", message), {
+  await assert.rejects(f.submit("unknown", message), {
     code: "forbidden",
   });
-  await f.backend.submit("a", message);
-  await assert.rejects(f.backend.status("c", message.message_id), {
+  await f.submit("a", message);
+  await assert.rejects(f.status("c", message.message_id), {
     code: "not_found",
   });
-  assert.equal(await f.backend.poll("c"), null);
-  const delivery = await f.backend.poll("b");
-  await assert.rejects(f.backend.ack("c", ackRequest(delivery)), {
+  assert.equal(await f.poll("c"), null);
+  const delivery = await f.poll("b");
+  await assert.rejects(f.ack("c", ackRequest(delivery)), {
     code: "invalid_ack",
   });
   await assert.rejects(f.backend.maintain("b"), { code: "forbidden" });
   f.revoke();
-  await assert.rejects(f.backend.ack("b", ackRequest(delivery)), {
+  await assert.rejects(f.ack("b", ackRequest(delivery)), {
     code: "forbidden",
   });
-  await assert.rejects(f.backend.submit("a", f.message()), {
+  await assert.rejects(f.submit("a", f.message()), {
     code: "forbidden",
   });
 });
@@ -219,15 +210,12 @@ test("identity, mailbox, operation, and stopped sender permissions fail closed",
 test("journal and broker capacity reject new work without evicting accepted work", async (t) => {
   const f = await fixture(t, { max_pending: 1, max_pending_per_recipient: 1 });
   const first = f.message();
-  await f.backend.submit("a", first);
-  await assert.rejects(f.backend.submit("a", f.message()), {
+  await f.submit("a", first);
+  await assert.rejects(f.submit("a", f.message()), {
     code: "capacity_exceeded",
   });
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 1);
-  assert.equal(
-    (await f.backend.poll("b")).message.message_id,
-    first.message_id,
-  );
+  assert.equal((await f.poll("b")).message.message_id, first.message_id);
 });
 
 test("synchronous durable admission survives a publisher that has not run", async (t) => {
@@ -236,15 +224,12 @@ test("synchronous durable admission survives a publisher that has not run", asyn
   const receipt = f.backend.admit("a", message);
   assert.equal(receipt instanceof Promise, false);
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 0);
-  assert.equal(
-    (await f.backend.status("a", message.message_id)).state,
-    "pending",
-  );
+  assert.equal((await f.status("a", message.message_id)).state, "pending");
   await f.restart();
-  const delivery = await f.backend.poll("b");
+  const delivery = await f.poll("b");
   assert.deepEqual(delivery.message, { ...message, sender_id: "a" });
   assert.equal(
-    (await f.backend.status("a", message.message_id)).receipt_id,
+    (await f.status("a", message.message_id)).receipt_id,
     receipt.receipt_id,
   );
 });
@@ -259,12 +244,12 @@ test("lost PubAck is reconciled against the unique subject without duplicate pub
   });
   t.after(() => backend.close());
   const message = f.message();
-  const sending = backend.submit("a", message);
+  const sending = f.ops(backend).submit("a", message);
   await proxy.gated;
   proxy.release(true);
   assert.equal((await sending).state, "pending");
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 1);
-  assert.deepEqual((await backend.poll("b")).message, {
+  assert.deepEqual((await f.ops(backend).poll("b")).message, {
     ...message,
     sender_id: "a",
   });
@@ -279,18 +264,23 @@ test("revocation during publish respects the earlier committed admission and den
   });
   t.after(() => backend.close());
   const message = f.message();
-  const sending = backend.submit("a", message);
+  const receipt = backend.admitWithAuthorization(
+    "a",
+    message,
+    f.options.authorization,
+  );
+  const publishing = backend.publishPending();
   await proxy.gated;
-  const before = await backend.status("a", message.message_id);
+  const before = await f.ops(backend).status("a", message.message_id);
   assert.equal(before.state, "pending");
+  assert.equal(receipt.receipt_id, before.receipt_id);
   f.revoke();
   proxy.release();
-  const receipt = await sending;
-  assert.equal(receipt.receipt_id, before.receipt_id);
-  await assert.rejects(backend.poll("b"), { code: "forbidden" });
+  await publishing;
+  assert.equal(await f.ops(backend).poll("b"), null);
   f.revoke(false);
   await delay(100);
-  assert.ok(await backend.poll("b"));
+  assert.ok(await f.ops(backend).poll("b"));
 });
 
 test("raw broker credentials cannot read another subject or use JetStream APIs", async (t) => {
@@ -326,7 +316,7 @@ test("unsupported payload and nonloopback broker reject before touching producti
     { code: "loopback_broker_required" },
   );
   await assert.rejects(
-    f.backend.submit(
+    f.submit(
       "a",
       f.message("b", {
         body: {
@@ -346,71 +336,47 @@ test("unsupported payload and nonloopback broker reject before touching producti
   );
 });
 
-test("committed receiver receipt recovers when the broker ACK never arrives", async (t) => {
+test("committed receiver receipt recovers when broker cleanup is interrupted", async (t) => {
   const f = await fixture(t, { lease_ms: 2000 });
-  const proxy = await gatePubAck(t, f.options.server, "ack-request");
-  const backend = f.track(
-    await JetStreamRelay.open({
-      ...f.options,
-      server: proxy.server,
-      request_timeout_ms: 300,
-    }),
-  );
   const message = f.message();
-  await backend.submit("a", message);
-  const delivery = await backend.poll("b");
+  await f.submit("a", message);
+  const delivery = await f.poll("b");
   const request = ackRequest(delivery);
-  const acknowledging = backend.ack("b", request);
-  await proxy.gated;
-  assert.equal((await backend.status("a", message.message_id)).state, "acked");
-  assert.equal((await f.manager.streams.info("HAB")).state.messages, 1);
-  proxy.release(true);
-  const saved = await acknowledging;
+  await f.stop();
+  const saved = f.backend.ackWithAuthorization(
+    "b",
+    request,
+    f.options.authorization,
+  );
   assert.equal(saved.state, "acked");
-  assert.equal(backend.diagnostics("admin").pending_cleanup, 1);
-  await f.close(backend);
+  await assert.rejects(f.backend.pumpOnce(), { code: "broker_unavailable" });
+  assert.equal(f.backend.diagnostics("admin").pending_cleanup, 1);
   await f.restart();
-  const receipt = await f.backend.ack("b", request);
-  assert.deepEqual(receipt, saved);
   assert.equal(f.backend.diagnostics("admin").pending_cleanup, 0);
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 0);
-  assert.equal(await f.backend.poll("b"), null);
+  assert.deepEqual(await f.ack("b", request), saved);
+  assert.equal(await f.poll("b"), null);
 });
 
 test("broker byte limit retains the unconfirmed intent and every earlier accepted message", async (t) => {
   const f = await fixture(t, { broker_max_bytes: 1200 });
   const first = f.message();
-  await f.backend.submit("a", first);
+  await f.submit("a", first);
   const second = f.message("b", {
     body: { parts: [{ type: "text", text: "x".repeat(1000) }] },
   });
-  await assert.rejects(f.backend.submit("a", second), {
+  await assert.rejects(f.submit("a", second), {
     code: "capacity_exceeded",
   });
-  assert.equal(
-    (await f.backend.status("a", second.message_id)).state,
-    "pending",
-  );
+  assert.equal((await f.status("a", second.message_id)).state, "pending");
   assert.equal((await f.manager.streams.info("HAB")).state.messages, 1);
-  const delivery = await f.backend.poll("b");
+  const delivery = await f.poll("b");
   assert.equal(delivery.message.message_id, first.message_id);
-});
-
-test("receiver policy revocation during broker pull prevents the lease commit", async (t) => {
-  const f = await fixture(t);
-  const polling = f.backend.poll("b");
-  await delay(30);
-  f.backend.admit("a", f.message());
-  f.revoke();
-  await f.backend.publishPending();
-  await assert.rejects(polling, { code: "forbidden" });
-  f.revoke(false);
-  assert.equal((await f.backend.poll("b")).generation, 1);
 });
 
 test("missing accepted broker store fails closed instead of creating an empty replacement", async (t) => {
   const f = await fixture(t);
-  await f.backend.submit("a", f.message());
+  await f.submit("a", f.message());
   await f.manager.streams.delete("HAB");
   await assert.rejects(JetStreamRelay.open(f.options), {
     code: "broker_store_missing",
