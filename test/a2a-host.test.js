@@ -14,6 +14,7 @@ import {
   hostAdminStatus,
 } from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
+import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
@@ -690,4 +691,51 @@ test("after unrelated notices reach the cap, a valid reply is still saved and AC
   // The host inbox keeps three ACK records per record slot; spend all of them too.
   await notices(max * 3);
   await roundtrip("after_ack_cap");
+});
+
+test("a caller revoked from another connection between its check and the host submit never reaches the recipient", async (t) => {
+  const { f, recipient } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  // Runs a real operator disconnect, on its own Registry connection, at the moment
+  // the host identity submits: after the route checked the caller.
+  const submit = HabJetStreamService.prototype.submit;
+  let revoked;
+  HabJetStreamService.prototype.submit = function (context, input) {
+    if (revoked === undefined && input?.kind === "execution_request") {
+      try {
+        hostAdminDisconnect(f.configPath, "caller@caller.hab");
+        revoked = true;
+      } catch {
+        revoked = false;
+      }
+    }
+    return submit.call(this, context, input);
+  };
+  t.after(() => {
+    HabJetStreamService.prototype.submit = submit;
+  });
+  await client.send("revoked_in_gap").catch(() => undefined);
+  assert.notEqual(revoked, undefined, "the host reached its submit");
+  await recipient.receiver.receiveOnce();
+  const delivered = recipient.receiver
+    .inbox()
+    .some((entry) => entry.message.kind === "execution_request");
+  assert.ok(
+    !(revoked && delivered),
+    "a revocation that committed before admission blocks delivery",
+  );
+  assert.equal(
+    revoked,
+    false,
+    "the revocation waits for the admission's Registry transaction",
+  );
+  hostAdminDisconnect(f.configPath, "caller@caller.hab");
+  assert.equal(
+    (
+      await raw(f, "SendMessage", sendParams("after_revoke"), {
+        Authorization: `Bearer ${tokens.caller}`,
+      })
+    ).status,
+    403,
+  );
 });
