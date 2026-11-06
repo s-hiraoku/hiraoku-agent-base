@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "f1a4f6e94fbe09f5ffc1e71822b9884c4f40234c",
+  "source_ref": "246af659941c8aee66e3655596379fbd6db185bd",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -43,7 +43,7 @@
     },
     "packages/relay-nats/OPERATIONS.md": {
       "previous_sha256": "4b5e0040932f3a699179e922df0a6f6f7fc6afc4f141cdd83aa44ad6cbd8535c",
-      "sha256": "389377517322f55ad85926abf68e29b91c2796623389a560e649f99fc3e85c0c"
+      "sha256": "28010550a4d143dac00955462b082dd7c6503f2828ae0513dc83b78e8777b2a1"
     },
     "packages/relay-nats/README.md": {
       "previous_sha256": "7f8d3a4d4d01e647ff9076492250be285089b6bde4a1302d7d8c35e00fcb6037",
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "d0508ffa62b283a473dce430d8ea1ed27d89dc04471273685135b515d77c1142"
+      "sha256": "e266f235f3ba6247c2bafd916c70b9fab9ef9c65a36bb98cf648524dd34e8a7e"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -191,7 +191,7 @@
     },
     "src/agent-sdk/README.md": {
       "previous_sha256": null,
-      "sha256": "c0643889c6fbde0aeb96ace9b49a9430fa5d3d5d9c55bc0b3a3c56f264614a55"
+      "sha256": "d00e857e1f6b0f5b9f34cd1d04fa809f714ffaf71411e3ff96d9316a9bcd8b09"
     },
     "src/agent-sdk/index.ts": {
       "previous_sha256": null,
@@ -211,7 +211,7 @@
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
-      "sha256": "7d83d0334c3e3f1e6aa2a4f2ba5dab0ea6aca886878c4a8a2c7f8df5ba9e554a"
+      "sha256": "6bca8b7849dfbcb1e74222a5455e3ad560f52025fce73fb02c26f7f22bdc143a"
     },
     "src/agent-sdk/sqlite-outbox.ts": {
       "previous_sha256": null,
@@ -295,7 +295,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "e7036d538890bc215b448efeb6192dd1a9558cbd3342b1527cba5e291e525605"
+      "sha256": "b0227f38f5158bd66fc5b6aa67af8fb77a60b933aa3ce7c78a02086c42574c1c"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
@@ -595,7 +595,7 @@
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "67cb9b5fa13a69bcf34630f290a7dbd8f73c75eab4d63b246a3bdae0971b94e5"
+      "sha256": "08e12bd563748da5c09868a8d870d749fe218b6d98d00c43b3b9305d89c520bf"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
