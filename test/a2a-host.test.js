@@ -740,3 +740,69 @@ test("a caller revoked from another connection between its check and the host su
     403,
   );
 });
+
+/** Sends `count` Tasks and returns each with the request the recipient received for it. */
+async function inFlight(client, recipient, prefix, count) {
+  const sent = [];
+  for (let i = 0; i < count; i++)
+    sent.push(await client.send(`${prefix}_${i}`));
+  const requests = await eventually(async () => {
+    await recipient.receiver.receiveOnce();
+    const found = sent.map((task) =>
+      recipient.receiver
+        .inbox()
+        .find(
+          (entry) =>
+            entry.message.message_id ===
+            task.metadata.hab_relay.source.message_id,
+        ),
+    );
+    return found.every(Boolean) ? found : undefined;
+  }, 8000);
+  assert.ok(requests, "the recipient received every request");
+  return sent.map((task, i) => ({ task, request: requests[i] }));
+}
+const accepted = (name) => ({
+  task_type: "connectivity_check",
+  task_id: `engine-${name}`,
+});
+const succeeded = (name) => ({
+  ...accepted(name),
+  state: "succeeded",
+  result: "connectivity_ok",
+});
+
+test("even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes", async (t) => {
+  const max = 2;
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: max }),
+  });
+  const client = await a2aClient(f, "caller");
+  const flights = await inFlight(client, recipient, "accepted_cap", max);
+  for (const [i, { request }] of flights.entries()) {
+    const reply = await recipient.reply(
+      request,
+      "execution_accepted",
+      accepted(i),
+    );
+    assert.equal(
+      await untilAcked(recipient.client, reply.message_id),
+      "acked",
+      "the host saved and ACKed the accepted reply",
+    );
+  }
+  for (const [i, { request }] of flights.entries()) {
+    const reply = await recipient.reply(
+      request,
+      "execution_result",
+      succeeded(i),
+    );
+    assert.equal(
+      await untilAcked(recipient.client, reply.message_id),
+      "acked",
+      "the host saved and ACKed the result while accepted replies filled the cap",
+    );
+  }
+  for (const { task } of flights)
+    await untilState(() => client.get(task.id), TaskState.TASK_STATE_COMPLETED);
+});
