@@ -75,7 +75,7 @@ export function createHabA2aGateway(options: {
       status,
       headers: { "Cache-Control": "no-store", "A2A-Version": "1.0" },
     });
-  return async (request: Request): Promise<Response> => {
+  const serve = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     if (url.origin !== endpoint.origin || request.headers.has("origin"))
       return reply(403, { error: "origin_denied" });
@@ -161,4 +161,19 @@ export function createHabA2aGateway(options: {
       reader.releaseLock();
     }
   };
+  /** Applies saved replies to a stored Task in its own scope, outside any request. */
+  const apply = (
+    task: { tenant: string; owner: string; id: string },
+    route: HabA2aRoute,
+  ) =>
+    handler.apply(
+      task.id,
+      new ServerCallContext({
+        requestedVersion: "1.0",
+        tenant: task.tenant,
+        user: { isAuthenticated: true, userName: task.owner },
+      }),
+      route,
+    );
+  return Object.assign(serve, { apply });
 }

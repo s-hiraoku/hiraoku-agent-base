@@ -16,7 +16,8 @@
  *   directory. Delivery of a saved intent happens only inside its owner's authorized
  *   request (SendMessage, repeated to retry); a background retry would send without a
  *   current owner check. Only the receiver loop runs in background: it saves then ACKs
- *   a reply to a host message, and ACKs anything else without saving it.
+ *   a reply to a host message, applies it to that message's Task and releases it, and
+ *   ACKs anything else without saving it.
  */
 import { createHmac, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
@@ -26,6 +27,8 @@ import { DurableReceiver } from "../agent-sdk/receiver.ts";
 import { DurableSender } from "../agent-sdk/sender.ts";
 import { SQLiteOutbox } from "../agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../agent-sdk/sqlite-inbox.ts";
+import { RequestMalformedError } from "@a2a-js/sdk/errors";
+import { ZodError } from "zod";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { Delivery } from "../messaging/delivery-service.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
@@ -372,6 +375,46 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       },
       ack: async (input) => service.ack(hostContext, input),
     });
+    const store = tasks;
+    const wired: { gateway?: ReturnType<typeof createHabA2aGateway> } = {};
+    // Each ACKed reply is applied to its Task here, not on the caller's next read, and
+    // its body is released once the Task store holds the result. A Task nobody reads
+    // therefore never keeps a slot, even after its outbox record is purged.
+    const applyReplies = async () => {
+      for (const entry of mail.inbox()) {
+        const gateway = wired.gateway;
+        if (stopped || !gateway) return;
+        if (!entry.receipt_confirmed) continue;
+        const source = entry.message.in_reply_to?.message_id;
+        const task = source ? store.findBySource(source) : undefined;
+        try {
+          if (task)
+            await gateway.apply(task, {
+              ownerId: task.owner,
+              senderId: identity.agent_id,
+              recipientId: task.tenant.slice("hab-a2a:".length),
+              assertCurrent() {},
+              enqueue() {
+                throw new MessagingError("forbidden");
+              },
+              delivery: (messageId) => box.get(messageId),
+              async flush() {
+                throw new MessagingError("forbidden");
+              },
+              replies: () => [entry],
+            });
+        } catch (error) {
+          // A reply the Task refuses (a conflict, a malformed body) is rejected; any
+          // other failure keeps the body for the next cycle.
+          if (
+            !(error instanceof RequestMalformedError) &&
+            !(error instanceof ZodError)
+          )
+            continue;
+        }
+        mail.releaseBody(entry.sender_id, entry.message.message_id);
+      }
+    };
     let maintainedAt = 0;
     const receive = async () => {
       try {
@@ -380,13 +423,18 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           await receiver.receiveOnce();
           if (!received) break;
         }
+      } catch {
+        // A failed cycle keeps its durable state; the next cycle retries it.
+      }
+      try {
+        await applyReplies();
         if (Date.now() - maintainedAt >= 60000) {
           maintainedAt = Date.now();
           box.maintain(100);
           mail.maintain(100);
         }
       } catch {
-        // A failed cycle keeps its durable state; the next cycle retries it.
+        // As above: the replies stay saved and the next cycle applies them.
       }
     };
     const schedule = () => {
@@ -425,7 +473,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
     if (!bound || typeof bound === "string" || bound.address !== "127.0.0.1")
       throw Error("local_relay_listener_rejected");
     const endpoint = `http://127.0.0.1:${bound.port}/a2a`;
-    const gateway = createHabA2aGateway({
+    const gateway = (wired.gateway = createHabA2aGateway({
       endpoint,
       card: habHostAgentCard(endpoint),
       store: tasks.store,
@@ -449,7 +497,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           inbox: mail,
         });
       },
-    });
+    }));
     serving.handler = createA2aNodeHandler(endpoint, gateway);
     schedule();
     return Object.freeze({ url: endpoint, close });

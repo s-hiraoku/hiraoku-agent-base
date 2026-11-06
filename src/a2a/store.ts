@@ -41,9 +41,20 @@ export function openA2aTaskStore(path: string) {
       );
       sqlite.transaction(() => sqlite.exec(schema))();
     }
+    const source = "json_extract(metadata,'$.hab_relay.source.message_id')";
+    sqlite.exec(
+      `CREATE INDEX IF NOT EXISTS hab_a2a_tasks_source ON hab_a2a_tasks(${source})`,
+    );
+    const bySource = sqlite.prepare(
+      `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE ${source}=?`,
+    );
     const db = new Kysely({ dialect: new SqliteDialect({ database: sqlite }) });
     return {
       store: new DatabaseTaskStore(db, { tableName: "hab_a2a_tasks" }),
+      /** The stored Task whose relay request has this message ID, without a caller scope. */
+      findBySource: (messageId: string) =>
+        bySource.get(messageId) as
+          { tenant: string; owner: string; id: string } | undefined,
       close: () => db.destroy(),
     };
   } catch (error) {

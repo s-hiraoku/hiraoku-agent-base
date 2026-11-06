@@ -381,7 +381,10 @@ export class HabA2aHandler extends DefaultRequestHandler {
     if (JSON.stringify(next) !== JSON.stringify(task))
       await this.#store.save(next, context);
     route.assertCurrent();
-    if (terminal(next) && matches.length) route.settle?.(matches);
+    // A reply-attested Task now holds everything its replies carried; an evidence route
+    // re-verifies the engine on each read until the Task is terminal.
+    if ((terminal(next) || !route.evidence) && matches.length)
+      route.settle?.(matches);
     return next;
   }
   async #wait(
@@ -511,6 +514,17 @@ export class HabA2aHandler extends DefaultRequestHandler {
         context,
         route,
       );
+    });
+  }
+  /** Applies the route's saved replies to a stored Task outside any caller request. */
+  apply(
+    taskId: string,
+    context: ServerCallContext,
+    route: HabA2aRoute,
+  ): Promise<Task | undefined> {
+    return this.#serial(async () => {
+      const task = await this.#store.load(taskId, context);
+      return task && this.#observe(task, context, route);
     });
   }
   override getTask(

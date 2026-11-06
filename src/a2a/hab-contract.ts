@@ -25,7 +25,7 @@ export interface HabA2aRoute {
   /** Sends the saved intent; a route may send only this message. */
   flush(messageId: string): Promise<void>;
   replies(): InboxEntry[];
-  /** Called after a terminal Task is saved with the replies it consumed; may release their bodies. */
+  /** Called once the saved Task holds what these replies carried; may release their bodies. */
   settle?(replies: InboxEntry[]): void;
   /**
    * Independent read-only engine evidence. Without it the route is reply-attested:
