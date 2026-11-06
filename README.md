@@ -2,9 +2,9 @@
 
 HABは、Dots（スタローン）、Grok Bot、Hermes、Claude Code・Codex・Cursorなどのエージェントを、共通MCPでつなぐメッセージ基盤です。受信側のhostがモデルを使わず定期poll・永続保存・ACKを行い、受信エージェントが内容を判断して既存の権限・承認機構で処理します。配送の許可と、開発・業務を実行する権限は別に管理します。
 
-標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。既存の固定Task、汎用テキストTask、A2A/NATS実行portは明示的に構成する任意機能であり、Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を記録します。
+標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。既存の固定Task、汎用テキストTask、A2A入口は明示的に構成する任意機能であり、Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を、ADR-016に現在の構成（単一host、NATS JetStreamだけの配送、エージェントSDK）を記録します。
 
-GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品仕様](docs/hab-product-spec.md)では、登録・宛先選択・状態表示・privateなPC/モバイル利用と、A2A/JetStreamの採用評価範囲を定義します。確定要件と実装状況は区別しています。
+GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品仕様](docs/hab-product-spec.md)では、登録・宛先選択・状態表示・privateなPC/モバイル利用と、A2Aの採用評価範囲を定義します。配送のNATS JetStreamは採用済みです。確定要件と実装状況は区別しています。
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
@@ -64,8 +64,8 @@ flowchart LR
 | JWT/Auth0 resource-server、OAuth discovery、Events、限定キー管理、Hermes隔離bridge         | **実装済み**。通常runtimeと専用inventory入口の認証配線をfixtureで検証。本番の主体・設定・実接続は未確認                          |
 | Relayの独立契約・JetStream受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はNATS JetStreamのみ（SQLite配送storeは廃止、旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
 | Relayの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
-| Relay専用MCP 4ツール・HTTP adapter | **実装済み／既存runtimeへ未配線**。`relay_submit/status/poll/ack`を一時loopback HTTPでも検証。Bearer検証port・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
-| Relay専用MCPクライアント | **実装済み／模擬検証済み**。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
+| Relay専用MCP 4ツール・HTTP adapter | **実装済み／既存Task runtimeへ未配線**。`src/host/mcp`がhostのMCP serverを持つ。`relay_submit/status/poll/ack`を一時loopback HTTPでも検証。Bearer検証port・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
+| Relay専用MCPクライアント | **実装済み／模擬検証済み**。`src/agent-sdk`に置く。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
 | HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、変更／再利用禁止、権限分離、有効化・失効・blockを実装。HAB専用catalogの`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復。既存runtimeへは未配線 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
 | 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
@@ -121,9 +121,9 @@ python3 -B -m unittest discover -s hermes_bridge -p 'test_*.py'
 python3 -B -m unittest scripts.test_inventory_token_input
 ```
 
-`node src/server.ts` はloopback HTTP MCPを起動しますが、既定の認証は全件拒否です。Auth0・peer registry・必要なserviceを明示的に配線するまで本番Hubとして公開しません。`npm run build` はWorker版を生成します。D1/Workerは移植性の検証対象で、現在の本番方針はMac＋SQLiteです。
+`node src/server.ts` はloopback HTTP MCPを起動しますが、既定の認証は全件拒否です。Auth0・peer registry・必要なserviceを明示的に配線するまで本番Hubとして公開しません。`npm run build` はWorker版を生成します。D1/Workerは移植性の検証対象で、既存Task Hubの現在の本番方針はMac＋SQLiteです。メッセージ配送はNATS JetStreamだけを使います。
 
-上記のserverは既存Task用で、Relay専用HTTP adapterは別moduleとして存在し、このserverへは未配線です。Relayだけの模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
+上記のserverは既存Task用です。Relayのhost（`src/host`、MCP serverは`src/host/mcp`）は別のentrypointで、このserverへは未配線です。Relayだけの模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
 
 人向け登録フローは`npm run demo:hab-enrollment -- --simulate`で、中断→DB再起動→有効化を再現できます。対話操作は`--interactive`を指定します。どちらも新規の一時DB・模擬主体のみを使い、終了時に削除します。実Botを登録するコマンドではありません。実hostへの組込み条件と再開時の扱いは[登録フロー](src/hab/README.md#human-enrollment-workflow)を参照してください。
 

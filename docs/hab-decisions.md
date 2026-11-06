@@ -18,12 +18,12 @@
 | ADR-010 / 採用 | 既存jobは元の担当に残す。費用・停止・照合を先に決める                                                                    | cronの重複作成、有料fallback、不明admissionの無制限retryは当面不採用                                                             |
 | ADR-011 / 保留 | Claude Code・Codex・CursorとCuaを限定executor候補にする                                                                  | Hub adapter、workspace reservation、権限、費用、result provenanceを検証後に選定                                                  |
 | ADR-012 / 保留 | 競合は設計参考として保存し、部品単位で比較する                                                                           | 導入・置換・migrationは未決定。browser本人sessionによるdot代理操作は初期HAB接続に採用しない                                      |
-| ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-relay-spec.md)を通信設計に採用。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
+| ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-relay-spec.md)を通信設計に採用。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014、配送storeと構成はADR-016で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
 | ADR-014 / 採用 | 2026-10-25 JST：[認証は参加グループ単位、Botの切り分けはアドレス単位](relay-auth-groups.md)。1認証主体に1件または複数の所属個体を紐付ける | グループ内のBot本人性は要求しない。グループ外の名義使用・受信箱閲覧を拒否。Registryのopt-in拡張を実装。基本5操作のMCP名義選択を実装。常用token更新は未実装で、稼働設定やgrantを変更しない |
 
 ## ADR-015 / 採用：共通MCP通信と受信側の判断を分離する
 
-2026-11-04 UTC。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receive-supervisor.md)、[Relay責務](hab-relay-spec.md#3-構成と責務)とする。
+2026-11-04 UTC。標準経路の構成（Relay、NATS実行port）はADR-016で改訂した。受信側の判断・承認の分担は引き続き有効である。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receive-supervisor.md)、[Relay責務](hab-relay-spec.md#3-構成と責務)とする。
 
 - HABは認証・名義・宛先・配送・相関を担当する。受信側hostが定期poll・重複排除・永続保存後ACKを行う。ACKは表示・引受け・実行・承認・完了を証明しない。
 - 内容の判断、返信、作業の実行、既存の権限・承認の適用は受信エージェント側が担当する。HABは製品専用モデルrunnerや承認実装を標準接続へ組み込まない。
@@ -34,12 +34,26 @@
 
 通常通信を任意Task実行に統合する案と、全エージェントへ新たな共通承認UIを必須にする案は採用しない。受信側既存機構へ権限と判断を残すためである。回帰検証は[設計境界の照合記録](implementation/design-boundary-alignment.md)を参照。
 
+## ADR-016 / 採用：単一host、JetStream配送、エージェントSDKで標準接続を構成する
+
+2026-11-06 UTC。ADR-015の受信側の判断・承認の分担は維持し、標準経路の構成と配送storeをこの判断で改訂する。基準は[JetStream配送設計](../packages/relay-nats/DESIGN.md)、[エージェントSDK](../src/agent-sdk/README.md)、[HAB登録・認可境界](../src/hab/README.md)、[ローカルRelayサービス](local-relay-service.md)とする。
+
+- 配送はNATS JetStreamだけで行う。SQLite配送storeは廃止し、保存済みの旧messageは移行しない。host設定の配送sectionは`delivery`で、旧`store` sectionを含む設定は`config_invalid`で拒否する。
+- `src/messaging`がmessage契約と`DeliveryService` interfaceを持つ。`src/hab`のRegistryが名義・認証group・権限・容量を判定する。配送backendは名義や権限を判断しない。
+- `src/host`が唯一のhostである。設定、HTTP、監査、管理CLI、MCP server（`src/host/mcp`）を組み立て、JetStream配送を`DeliveryService`として注入する。起動は`npm run relay:local`、管理は`npm run relay:admin`を使う。
+- エージェント側は`src/agent-sdk`の永続sender／outbox、保存後ACKのreceiver／inbox、MCP clientを使う。MCP tool名`relay_*`は既存の接続設定との互換のため維持する。
+- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。A2A gatewayをhostへ配線するかは未決定で、ownerの判断待ちである。本判断はその配線を含まない。
+- 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
+
+配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。本判断は本番接続・公開・credential発行の承認を兼ねない。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。
 2. Auth0 issuer、正確なcallback、主体/clientと最小scope、無料条件、秘密保管とrevocation。
 3. 今回のHermes inventoryの実行環境とprivate binding、$0モデル枠、単発停止・回収条件。
 4. Dots/Grokの実MCP呼出し・結果取得と、wakeまたはEventsを追加する必要性。
+5. A2A gatewayをhostへ配線するか（ADR-016。ownerの判断待ち）。
 
 個別のtechnical contractは[Hub内部設計](architecture.md)、[Auth0](auth0-boundary.md)、[import境界](hermes-import-boundary.md)を参照してください。重複する設定表を増やさず、そちらを更新します。
 

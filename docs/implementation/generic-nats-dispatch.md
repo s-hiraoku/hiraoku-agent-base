@@ -1,5 +1,7 @@
 # 汎用テキストの NATS 配送と再起動復旧
 
+**履歴文書（削除済みの実装）**：本書が説明する `src/generic-nats/`、`packages/relay-nats/src/text-port.ts`、`scripts/prove-generic-nats.mjs`、P7の generic-nats 群は削除しました。本番の呼出し元がなく、送信の認可を Registry ではなく JetStream backend 自身の認可 callback で判断していたためです。以下は削除前の契約の記録であり、現在のコードや手順を表しません。現在の配送は[JetStream配送設計](../../packages/relay-nats/DESIGN.md)、標準接続は[ADR-016](../hab-decisions.md)を参照してください。
+
 この文書は明示構成する任意Task連携の契約です。標準の[共通MCP接続](../common-mcp-connection.md)と[受信supervisor](../receive-supervisor.md)はTaskなしで使えます。内容判断・実行・既存の権限や承認は受信エージェント側に残し、Hermes固有runnerを接続条件にしません。
 
 この経路は、[汎用 A2A/MCP profile](../profiles/async-text-v1.md)の Task を、既存の JetStream 配送で受信 runtime へ接続する opt-in の実行ポートです。TaskService が Task の正本です。broker や配送 journal に別の Task エンジンを追加しません。本番の認証・起動設定、実 Hermes、所有者承認、保護対象 tool、自動返信は有効化しません。

@@ -14,9 +14,11 @@
 
 「必須」「禁止」は採用した設計の実装要件を示す。「推奨初期値」は未合意の設定案であり、実装開始時の確認と負荷試験が必要。「未検証」は実サービスで証明していないことを示す。追加予定の型・table・API・ファイル名は、明記のない限り**計画であり未実装**である。
 
-実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
+実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[エージェントSDK](../src/agent-sdk/README.md)、[JetStream配送設計](../packages/relay-nats/DESIGN.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
 **2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可をopt-inで実装し、MCPの名義選択v1と通常サービスのopt-in配線も実装した。15分の試験用OAuth入口から常用方式への移行と実製品の受入れは未検証であり、認証設定・公開・自動更新を有効化したとは扱わない。
+
+**2026-11-06の改訂（[ADR-016](hab-decisions.md)）：配送はNATS JetStreamだけで行う。** SQLite配送storeは廃止し、旧messageは移行しない。message契約と`DeliveryService` interfaceは`src/messaging`、名義・認可・容量はRegistry（`src/hab`）、唯一のhostは`src/host`（MCP serverは`src/host/mcp`）、送信outbox・保存後ACKの受信inboxとMCP clientは`src/agent-sdk`が持つ。第1章・第3章・第3.1節・第16章の「単一Node + SQLite」「SQLiteは最初の正本」「brokerを増やさない」は初期構成の記述であり、配送storeについてはこの改訂が優先する。Registry、登録journal、配送journal、client側outbox／inboxは引き続きSQLiteを使う。
 
 ## 1. 目的と非目標
 
@@ -51,7 +53,7 @@ flowchart LR
   A["Agent A"] --> OA["Adapter A: durable outbox"]
   OA --> AUTH["Verified binding and ACL"]
   AUTH --> R["HAB Relay"]
-  R --> DB["SQLite: message + delivery + receipts"]
+  R --> DB["NATS JetStream + delivery journal: message + delivery + receipts"]
   R -->|"Poll response; durable inbox before ACK"| IB["Adapter B: durable inbox + dedup"]
   IB --> B["Agent B"]
   IB -->|"Explicit allowed execution acceptance"| TB["Task bridge"]
@@ -218,7 +220,7 @@ threadは登録された2個体にscopeを固定する。返信先は元の送�
 
 **Relayの責務はデータの保存・配送・取得認可・整合性・削除である。受信者の理解、表示、解析、実行能力は責務の範囲外とし、それらの能力判定を配送条件にしない。** transport／wire versionの非対応や容量超過は明示エラーにし、受信者のmodel能力を推測して配送を制限しない。第4.5節の受信・実行ガードレールは利用側integrationの責務であり、coreの内容審査機能ではない。
 
-管理添付（画像・音声・任意ファイル等のbytes転送）は廃止した。契約は添付partを持たず、添付partを含む送信はSQLite／NATSのどちらの経路でも契約検証で拒否する。旧DBの添付参照・削除outbox table（Relay schema 4）と受信inboxの添付列（inbox schema 3）は、明示migrationで削除して開き続ける。
+管理添付（画像・音声・任意ファイル等のbytes転送）は廃止した。契約は添付partを持たず、添付partを含む送信は配送前の契約検証で拒否する。受信inboxの添付列（inbox schema 3）は、明示migrationで削除して開き続ける。旧SQLite配送storeの添付table（Relay schema 4）は、配送storeごと廃止した。
 
 ## 6. 同一性、時刻、期限
 
@@ -393,7 +395,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 送信側retry／ACK retryの最大horizonは有限の契約として設定し、Relayと受信側のdedup保持期間がそれより先に切れないようにする。dedup削除条件は、少なくとも元message期限、terminal時刻、ACK再試行期限のうち最も遅い時刻に保持期間を加えたものとする。本文の期限切れ・削除を、dedupや処理済み印の同時削除に直結させない。
 
-契約horizonを越えたIDは無条件に新規送信として通さない。初回送信時刻を内包する`rm1.<UTC milliseconds>.<32 hex>`形式を追加し、`first_sent_at`とID中の時刻の一致、一律1時間のexpiryを検証する。producerは128 bitの新しい乱数をsuffixへ与える。同じIDで期限を書き換えられないため、tombstone削除後も元の要求は期限切れとなる。従来のopaque message IDも互換性のため受け付けるが、そのtombstoneは自動回収せず、有限容量と明示的な照合・移行の対象にする。旧形式の回収を解決済みとは扱わない。詳しい実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。
+契約horizonを越えたIDは無条件に新規送信として通さない。初回送信時刻を内包する`rm1.<UTC milliseconds>.<32 hex>`形式を追加し、`first_sent_at`とID中の時刻の一致、一律1時間のexpiryを検証する。producerは128 bitの新しい乱数をsuffixへ与える。同じIDで期限を書き換えられないため、tombstone削除後も元の要求は期限切れとなる。従来のopaque message IDも互換性のため受け付けるが、そのtombstoneは自動回収せず、有限容量と明示的な照合・移行の対象にする。旧形式の回収を解決済みとは扱わない。詳しい実装範囲は[JetStream配送設計](../packages/relay-nats/DESIGN.md)と[エージェントSDK](../src/agent-sdk/README.md)を参照する。
 
 クライアント側の送信・受信retentionも同じ契約を満たす必要がある。実製品が保持を制御できなければG0未達。本文の個人データ削除要求とdedup証拠の最小保持が両立しない場合は、削除後の再送を止める運用と保証の縮小を明示する。
 
@@ -470,7 +472,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 - client側：送信outbox、受信inbox/dedup、ACK待ちと処理journal。実個体がこの保存点を持つかはG0対象。
 - 運用：redacted delivery audit、任意wake outbox、thread budget／容量の集計。業務本文を監査tableへ複写しない。
 
-SQLiteは最初の正本であり、別broker・D1とのdual-writeを導入しない。client側DBは送受信責任のための別保存点であって、Relay正本の無制御replicaではない。
+SQLiteは最初の正本であり、別broker・D1とのdual-writeを導入しない（初期案。配送の正本はADR-016でNATS JetStreamと配送journalへ移し、SQLiteとのdual-writeやroute切替は持たない）。client側DBは送受信責任のための別保存点であって、Relay正本の無制御replicaではない。
 
 ## 17. Adapter拡張契約
 
