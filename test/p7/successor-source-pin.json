@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "44dd67e03a7de8a11677e0087d613f355eeba035",
+  "source_ref": "3c8b545502b520677ba8ca2d524326034ed3e65a",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "bd9b78728e752c5dd1c3181d3185ad1e1be65a16d49d32f800079d649519842e"
+      "sha256": "e55594c3a69cbdfa900ff8df1ed184a12149e649b3ed033c34aad02a5ff2f346"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -303,7 +303,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "16ae6c5ba9b5ee92039f442fa0ad1c3cf7a35db8066158d8461f52e5cce7ca39"
+      "sha256": "91047e2cef18fcab3196c43612ea8e4202ee4f21dc26546d36f6ffd488c99609"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
@@ -603,7 +603,7 @@
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "7cdfa55ab8990c98850f0d7669eb234f73468d70e83930617017ff8022faa54e"
+      "sha256": "12e78ab113c6ae9350cc753a0f52896bb482c0a3cad9891b56f8d47e24117f48"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
