@@ -18,7 +18,10 @@ import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
-import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
+import {
+  makeReplayBoundMessageId,
+  RECORD_RETENTION_MS,
+} from "../src/messaging/contract.ts";
 import { limits } from "./relay-http-fixtures.js";
 import { fixture } from "./local-relay-service-fixtures.js";
 import { eventually, pollUntilDelivered } from "./jetstream-delivery.js";
@@ -874,4 +877,91 @@ test("Tasks that complete but are never read free their inbox slots, so new Task
     await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
     "a late reply to a terminal Task is released at once",
   );
+});
+
+/** The first time outbox maintenance may delete this record. */
+const purgeHorizon = (record) =>
+  Math.max(
+    record.retain_until,
+    record.status_until + RECORD_RETENTION_MS,
+    record.expires_at + RECORD_RETENTION_MS,
+    record.terminal_at + RECORD_RETENTION_MS,
+  );
+
+test("a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply", async (t) => {
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: 1 }),
+  });
+  const client = await a2aClient(f, "caller");
+  const [old] = await inFlight(client, recipient, "late_source", 1);
+  const source = old.task.metadata.hab_relay.source.message_id;
+  const day = 86400000;
+  const outbox = new DatabaseSync(
+    join(f.config.directory, "a2a-outbox.sqlite"),
+  );
+  // The request was sent two days ago, so the replies below come long after it expired.
+  outbox
+    .prepare(
+      "UPDATE relay_outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+    )
+    .run(2 * day, 2 * day, 2 * day, 2 * day, 2 * day, source);
+  for (const [kind, value] of [
+    ["execution_accepted", accepted("late")],
+    ["execution_result", succeeded("late")],
+  ]) {
+    const reply = await recipient.reply(old.request, kind, value);
+    assert.equal(await untilAcked(recipient.client, reply.message_id), "acked");
+  }
+
+  // Maintenance at the first moment it may purge that outbox record: it deletes the
+  // record and every ACK row whose own retention has also ended by then.
+  const record = outbox
+    .prepare("SELECT * FROM relay_outbox WHERE message_id=?")
+    .get(source);
+  const purgeAt = purgeHorizon(record);
+  outbox.prepare("DELETE FROM relay_outbox WHERE message_id=?").run(source);
+  outbox.close();
+  const inbox = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
+  inbox
+    .prepare(
+      "DELETE FROM relay_receiver_acks WHERE state!='pending' AND retain_until<=? AND retry_until+?<=?",
+    )
+    .run(purgeAt, RECORD_RETENTION_MS, purgeAt);
+  inbox.close();
+
+  const [next] = await inFlight(client, recipient, "after_purge", 1);
+  for (const [kind, value] of [
+    ["execution_accepted", accepted("next")],
+    ["execution_result", succeeded("next")],
+  ]) {
+    const reply = await recipient.reply(next.request, kind, value);
+    assert.equal(
+      await untilAcked(recipient.client, reply.message_id),
+      "acked",
+      `the host saved and ACKed the admitted Task's ${kind}`,
+    );
+  }
+  await untilState(
+    () => client.get(next.task.id),
+    TaskState.TASK_STATE_COMPLETED,
+  );
+
+  const db = new DatabaseSync(join(f.config.directory, "a2a-outbox.sqlite"), {
+    readOnly: true,
+  });
+  const horizon = purgeHorizon(
+    db
+      .prepare("SELECT * FROM relay_outbox WHERE message_id=?")
+      .get(next.task.metadata.hab_relay.source.message_id),
+  );
+  db.close();
+  const acks = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
+    readOnly: true,
+  });
+  assert.ok(
+    acks.prepare("SELECT max(retain_until) n FROM relay_receiver_acks").get()
+      .n <= horizon,
+    "on-time replies' ACK history is collectable before their outbox record",
+  );
+  acks.close();
 });
