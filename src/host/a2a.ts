@@ -267,6 +267,10 @@ export async function startHostA2a(deps: HostA2aDependencies) {
   const key = (purpose: string) =>
     createHmac("sha256", deps.fingerprintKey).update(purpose).digest();
   const bodyBytes = config.max_records * deps.limits.envelope_bytes;
+  // The outbox holds at most max_records host messages, and each one gets an
+  // execution_accepted and an execution_result reply. With two body slots per message
+  // an accepted reply never holds the slot its own result needs to finish the Task.
+  const replySlots = config.max_records * 2;
   let outbox: SQLiteOutbox | undefined,
     inbox: SQLiteInbox | undefined,
     tasks: ReturnType<typeof openA2aTaskStore> | undefined,
@@ -315,8 +319,8 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       agent_id: identity.agent_id,
       fingerprint_key: key("hab-host-a2a-inbox-v1"),
       limits: deps.limits,
-      max_records: config.max_records,
-      max_body_bytes: bodyBytes,
+      max_records: replySlots,
+      max_body_bytes: replySlots * deps.limits.envelope_bytes,
       max_ack_records: config.max_records * 3,
       ack_retry_ms: 86400000,
       retry_base_ms: 1000,
