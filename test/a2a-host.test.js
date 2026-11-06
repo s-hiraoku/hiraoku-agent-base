@@ -806,3 +806,72 @@ test("even when accepted replies fill the cap, the matching results are saved an
   for (const { task } of flights)
     await untilState(() => client.get(task.id), TaskState.TASK_STATE_COMPLETED);
 });
+
+const unreleasedReplies = (f) => {
+  const db = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    return db
+      .prepare("SELECT count(*) n FROM relay_inbox WHERE released_at IS NULL")
+      .get().n;
+  } finally {
+    db.close();
+  }
+};
+
+test("Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge", async (t) => {
+  const max = 2;
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: max }),
+  });
+  const client = await a2aClient(f, "caller");
+  const finish = async (flights, prefix) => {
+    for (const [i, { request }] of flights.entries())
+      for (const [kind, value] of [
+        ["execution_accepted", accepted(`${prefix}${i}`)],
+        ["execution_result", succeeded(`${prefix}${i}`)],
+      ]) {
+        const reply = await recipient.reply(request, kind, value);
+        assert.equal(
+          await untilAcked(recipient.client, reply.message_id),
+          "acked",
+          `the host saved and ACKed ${prefix} ${kind} ${i}`,
+        );
+      }
+  };
+  const unread = await inFlight(client, recipient, "unread", max);
+  await finish(unread, "unread");
+
+  // Maintenance purges outbox records and confirmed ACK history about 30 days after
+  // expiry; delete them as it would. Unreleased bodies are never collected.
+  const outbox = new DatabaseSync(
+    join(f.config.directory, "a2a-outbox.sqlite"),
+  );
+  outbox.exec("DELETE FROM relay_outbox");
+  outbox.close();
+  const inbox = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
+  inbox.exec("DELETE FROM relay_receiver_acks WHERE state='confirmed'");
+  inbox.close();
+
+  const fresh = await inFlight(client, recipient, "fresh", max);
+  await finish(fresh, "fresh");
+  for (const { task } of [...unread, ...fresh]) {
+    const done = await untilState(
+      () => client.get(task.id),
+      TaskState.TASK_STATE_COMPLETED,
+    );
+    assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
+  }
+
+  const late = await recipient.reply(
+    fresh[0].request,
+    "execution_accepted",
+    accepted("fresh0"),
+  );
+  assert.equal(await untilAcked(recipient.client, late.message_id), "acked");
+  assert.ok(
+    await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
+    "a late reply to a terminal Task is released at once",
+  );
+});
