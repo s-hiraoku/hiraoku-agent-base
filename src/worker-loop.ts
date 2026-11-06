@@ -13,6 +13,7 @@ export async function workerLoop(options: {
     !Number.isInteger(limit) ||
     limit < 1 ||
     limit > 10000 ||
+    !Number.isFinite(idle) ||
     idle < 100 ||
     idle > 60000
   )
