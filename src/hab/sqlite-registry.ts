@@ -1111,31 +1111,37 @@ export class SQLiteHabRegistry {
   }
   /**
    * Creates a group, binds the connection and adds the address in one transaction,
-   * so a refused step (such as binding capacity) leaves no group behind.
+   * so a refused step (such as binding capacity) leaves no group behind. The context
+   * needs every right the three separate operations need.
    */
   createBoundGroup(context: unknown, value: unknown) {
     const input = parse(boundGroupInput, value);
     this.#requireGroups();
-    return this.#mutate(context, "group_create", input, () => {
-      this.#expected(input.agent_id, input.expected_epoch);
-      const groupId = this.#insertGroup();
-      const binding = this.#createGroupBinding({
-        request_id: input.request_id,
-        group_id: groupId,
-        expected_epoch: this.#group(groupId).epoch,
-        principal: input.principal,
-      }).result;
-      const member = this.#addMember({
-        request_id: input.request_id,
-        group_id: groupId,
-        expected_group_epoch: this.#group(groupId).epoch,
-        agent_id: input.agent_id,
-        expected_epoch: input.expected_epoch,
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "group_bind");
+      this.#admin(context, "group_member");
+      return this.#mutateLocked(context, "group_create", input, () => {
+        this.#expected(input.agent_id, input.expected_epoch);
+        const groupId = this.#insertGroup();
+        const binding = this.#createGroupBinding({
+          request_id: input.request_id,
+          group_id: groupId,
+          expected_epoch: this.#group(groupId).epoch,
+          principal: input.principal,
+        }).result;
+        const member = this.#addMember({
+          request_id: input.request_id,
+          group_id: groupId,
+          expected_group_epoch: this.#group(groupId).epoch,
+          agent_id: input.agent_id,
+          expected_epoch: input.expected_epoch,
+        });
+        return {
+          result: { binding_id: binding.binding_id, ...member },
+          object_id: groupId,
+        };
       });
-      return {
-        result: { binding_id: binding.binding_id, ...member },
-        object_id: groupId,
-      };
     });
   }
   inspectGroup(context: unknown, groupId: string): AuthenticationGroup {
