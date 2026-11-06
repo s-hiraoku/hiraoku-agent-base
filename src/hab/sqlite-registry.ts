@@ -57,6 +57,35 @@ export interface RegistryOptions {
   allowed_kinds: readonly string[];
 }
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
+const bounded = z.number().int().min(1).max(1000000);
+/**
+ * Every RegistryOptions field except `fingerprint_key`. The constructor and the
+ * host config both parse with it, so a config the host accepts opens the Registry.
+ */
+export const registryOptionsSchema = z
+  .strictObject({
+    authentication_groups: z.boolean().optional(),
+    agent_rename: z.boolean().optional(),
+    discovery: habDiscoveryPolicySchema.optional(),
+    max_products: bounded,
+    max_agents: bounded,
+    max_bindings: bounded,
+    max_requests: bounded,
+    max_blocks: bounded,
+    max_audit_records: bounded,
+    max_context_ms: bounded.max(300000),
+    busy_timeout_ms: bounded.max(1000),
+    allowed_kinds: z
+      .array(id)
+      .min(1)
+      .max(64)
+      .refine((kinds) => new Set(kinds).size === kinds.length),
+  })
+  .refine(
+    (options) =>
+      options.agent_rename !== true || options.authentication_groups === true,
+    { path: ["agent_rename"] },
+  );
 const slug = z.string().refine((value) => {
   try {
     habSlug(value);
@@ -133,6 +162,12 @@ const groupMemberInput = z.strictObject({
   expected_group_epoch: epoch,
   agent_id: id,
   expected_epoch: epoch,
+});
+const boundGroupInput = z.strictObject({
+  request_id: id,
+  agent_id: id,
+  expected_epoch: epoch,
+  principal: principalSchema,
 });
 const blockInput = z.strictObject({
   request_id: id,
@@ -225,52 +260,12 @@ export class SQLiteHabRegistry {
     authority: RegistryAuthority = {},
   ) {
     try {
+      const { fingerprint_key: fingerprintKey, ...limits } = options;
+      registryOptionsSchema.parse(limits);
       if (
-        (options.agent_rename !== undefined &&
-          typeof options.agent_rename !== "boolean") ||
-        (options.agent_rename === true &&
-          options.authentication_groups !== true)
-      )
-        throw Error();
-      if (
-        options.authentication_groups !== undefined &&
-        typeof options.authentication_groups !== "boolean"
-      )
-        throw Error();
-      if (options.discovery !== undefined) {
-        parse(habDiscoveryPolicySchema, options.discovery);
-      }
-      if (
-        !(options.fingerprint_key instanceof Uint8Array) ||
-        options.fingerprint_key.byteLength < 32 ||
-        options.fingerprint_key.byteLength > 128
-      )
-        throw Error();
-      for (const key of [
-        "max_products",
-        "max_agents",
-        "max_bindings",
-        "max_requests",
-        "max_blocks",
-        "max_audit_records",
-        "max_context_ms",
-        "busy_timeout_ms",
-      ] as const) {
-        if (
-          !Number.isSafeInteger(options[key]) ||
-          options[key] < 1 ||
-          options[key] > 1000000
-        )
-          throw Error();
-      }
-      if (
-        options.max_context_ms > 300000 ||
-        options.busy_timeout_ms > 1000 ||
-        !Array.isArray(options.allowed_kinds) ||
-        !options.allowed_kinds.length ||
-        options.allowed_kinds.length > 64 ||
-        new Set(options.allowed_kinds).size !== options.allowed_kinds.length ||
-        options.allowed_kinds.some((v) => !id.safeParse(v).success)
+        !(fingerprintKey instanceof Uint8Array) ||
+        fingerprintKey.byteLength < 32 ||
+        fingerprintKey.byteLength > 128
       )
         throw Error();
       if (
@@ -1100,14 +1095,47 @@ export class SQLiteHabRegistry {
     const input = parse(z.strictObject({ request_id: id }), value);
     this.#requireGroups();
     return this.#mutate(context, "group_create", input, () => {
-      this.#capacity("hab_auth_groups", this.#options.max_agents);
-      const groupId = randomUUID();
-      this.#db
-        .prepare(
-          "INSERT INTO hab_auth_groups VALUES(?,'waiting_connection',1,'[]',?)",
-        )
-        .run(groupId, this.#iso());
+      const groupId = this.#insertGroup();
       return { result: this.#group(groupId), object_id: groupId };
+    });
+  }
+  #insertGroup(): string {
+    this.#capacity("hab_auth_groups", this.#options.max_agents);
+    const groupId = randomUUID();
+    this.#db
+      .prepare(
+        "INSERT INTO hab_auth_groups VALUES(?,'waiting_connection',1,'[]',?)",
+      )
+      .run(groupId, this.#iso());
+    return groupId;
+  }
+  /**
+   * Creates a group, binds the connection and adds the address in one transaction,
+   * so a refused step (such as binding capacity) leaves no group behind.
+   */
+  createBoundGroup(context: unknown, value: unknown) {
+    const input = parse(boundGroupInput, value);
+    this.#requireGroups();
+    return this.#mutate(context, "group_create", input, () => {
+      this.#expected(input.agent_id, input.expected_epoch);
+      const groupId = this.#insertGroup();
+      const binding = this.#createGroupBinding({
+        request_id: input.request_id,
+        group_id: groupId,
+        expected_epoch: this.#group(groupId).epoch,
+        principal: input.principal,
+      }).result;
+      const member = this.#addMember({
+        request_id: input.request_id,
+        group_id: groupId,
+        expected_group_epoch: this.#group(groupId).epoch,
+        agent_id: input.agent_id,
+        expected_epoch: input.expected_epoch,
+      });
+      return {
+        result: { binding_id: binding.binding_id, ...member },
+        object_id: groupId,
+      };
     });
   }
   inspectGroup(context: unknown, groupId: string): AuthenticationGroup {
@@ -1203,36 +1231,49 @@ export class SQLiteHabRegistry {
   addGroupMember(context: unknown, value: unknown) {
     const input = parse(groupMemberInput, value);
     this.#requireGroups();
-    return this.#mutate(context, "group_member", input, () => {
-      this.#expectedGroup(input.group_id, input.expected_group_epoch);
-      this.#expected(input.agent_id, input.expected_epoch);
-      if (
-        this.#db
-          .prepare("SELECT 1 FROM hab_auth_group_members WHERE agent_id=?")
-          .get(input.agent_id) ||
-        this.#db
-          .prepare(
-            "SELECT 1 FROM hab_bindings WHERE agent_id=? AND state='active'",
-          )
-          .get(input.agent_id)
-      )
-        throw new RegistryError("registry_binding_reserved");
-      this.#capacity("hab_auth_group_members", this.#options.max_agents);
+    return this.#mutate(context, "group_member", input, () => ({
+      result: this.#addMember(input),
+      object_id: input.agent_id,
+    }));
+  }
+  #addMember(input: z.infer<typeof groupMemberInput>) {
+    this.#expectedGroup(input.group_id, input.expected_group_epoch);
+    this.#expected(input.agent_id, input.expected_epoch);
+    if (
       this.#db
-        .prepare("INSERT INTO hab_auth_group_members VALUES(?,?,?)")
-        .run(input.agent_id, input.group_id, this.#iso());
-      this.#bump(input.agent_id);
-      this.#bumpGroup(input.group_id);
-      return {
-        result: {
-          group_id: input.group_id,
-          agent_id: input.agent_id,
-          agent_epoch: this.#agent(input.agent_id).epoch,
-          group_epoch: this.#group(input.group_id).epoch,
-        },
-        object_id: input.agent_id,
-      };
-    });
+        .prepare("SELECT 1 FROM hab_auth_group_members WHERE agent_id=?")
+        .get(input.agent_id) ||
+      this.#db
+        .prepare(
+          "SELECT 1 FROM hab_bindings WHERE agent_id=? AND state='active'",
+        )
+        .get(input.agent_id)
+    )
+      throw new RegistryError("registry_binding_reserved");
+    this.#capacity("hab_auth_group_members", this.#options.max_agents);
+    this.#db
+      .prepare("INSERT INTO hab_auth_group_members VALUES(?,?,?)")
+      .run(input.agent_id, input.group_id, this.#iso());
+    this.#bump(input.agent_id);
+    this.#bumpGroup(input.group_id);
+    return {
+      group_id: input.group_id,
+      agent_id: input.agent_id,
+      agent_epoch: this.#agent(input.agent_id).epoch,
+      group_epoch: this.#group(input.group_id).epoch,
+    };
+  }
+  /**
+   * A stopped group stops every active member and clears its grants, as revoking an
+   * individual binding does, so a later group binding re-grants only the addresses
+   * the operator activates again.
+   */
+  #stopMembers(groupId: string) {
+    this.#db
+      .prepare(
+        "UPDATE hab_agents SET state='stopped',operations='[]',epoch=epoch+1 WHERE state='active' AND agent_id IN (SELECT agent_id FROM hab_auth_group_members WHERE group_id=?)",
+      )
+      .run(groupId);
   }
   setGroupAccess(context: unknown, value: unknown): AuthenticationGroup {
     const input = parse(groupAccessInput, value);
@@ -1261,6 +1302,7 @@ export class SQLiteHabRegistry {
           "UPDATE hab_auth_groups SET state=?,operations=?,epoch=epoch+1 WHERE group_id=?",
         )
         .run(input.state, JSON.stringify(input.operations), input.group_id);
+      if (input.state !== "active") this.#stopMembers(input.group_id);
       return { result: this.#group(input.group_id), object_id: input.group_id };
     });
   }
@@ -1284,12 +1326,14 @@ export class SQLiteHabRegistry {
             "SELECT 1 FROM hab_auth_group_bindings WHERE group_id=? AND state='active'",
           )
           .get(binding.group_id)
-      )
+      ) {
         this.#db
           .prepare(
             "UPDATE hab_auth_groups SET state='stopped',operations='[]' WHERE group_id=?",
           )
           .run(binding.group_id);
+        this.#stopMembers(binding.group_id);
+      }
       return {
         result: this.#groupBinding(input.binding_id),
         object_id: input.binding_id,
@@ -1431,7 +1475,7 @@ export class SQLiteHabRegistry {
               .all(group.group_id, selected.address)
           : this.#db
               .prepare(
-                "SELECT agent_id FROM hab_auth_group_members WHERE group_id=? LIMIT 2",
+                `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.state='active' LIMIT 2`,
               )
               .all(group.group_id);
         if (members.length !== 1) throw new MessagingError("forbidden");

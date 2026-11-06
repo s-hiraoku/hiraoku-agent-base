@@ -455,7 +455,13 @@ test("retired member groups and foreign host address attestations cannot be bypa
   );
   f.access("retired");
   assert.throws(
-    () => renamed(f, current, "later", "after-retire"),
+    () =>
+      renamed(
+        f,
+        f.registry.inspect(f.admin, current.agent_id),
+        "later",
+        "after-retire",
+      ),
     code("registry_retired"),
   );
   assert.equal(

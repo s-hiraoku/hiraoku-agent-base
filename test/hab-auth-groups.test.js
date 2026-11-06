@@ -68,6 +68,15 @@ test("address stop affects one name; group stop affects both and incoming resolu
     code("forbidden"),
   );
   f.access("active", operations);
+  // The group stop stopped its members; reactivating the group re-grants no address.
+  assert.throws(() => f.hab.poll(f.select(f.second)), code("forbidden"));
+  f.registry.setAccess(f.admin, {
+    request_id: f.request(),
+    agent_id: f.second.agent_id,
+    expected_epoch: f.registry.inspect(f.admin, f.second.agent_id).epoch,
+    state: "active",
+    operations,
+  });
   assert.equal(f.hab.poll(f.select(f.second)), null);
   assert.throws(() => f.hab.poll(saved), code("forbidden"));
 });

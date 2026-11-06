@@ -2,7 +2,7 @@
 import { lstatSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { z } from "zod";
-import { habDiscoveryPolicySchema } from "../hab/discovery.ts";
+import { registryOptionsSchema } from "../hab/sqlite-registry.ts";
 import { readRuntimeConfig } from "../runtime-config.ts";
 import { deliverySchema } from "./delivery.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -36,20 +36,7 @@ const schema = z.strictObject({
     json_depth: positive,
     json_nodes: positive,
   }),
-  registry: z.strictObject({
-    authentication_groups: z.boolean().optional(),
-    agent_rename: z.boolean().optional(),
-    discovery: habDiscoveryPolicySchema.optional(),
-    max_products: positive,
-    max_agents: positive,
-    max_bindings: positive,
-    max_requests: positive,
-    max_blocks: positive,
-    max_audit_records: positive,
-    max_context_ms: positive,
-    busy_timeout_ms: positive,
-    allowed_kinds: z.array(z.string()).min(1),
-  }),
+  registry: registryOptionsSchema,
   delivery: deliverySchema,
   http: z.strictObject({
     max_request_bytes: positive,

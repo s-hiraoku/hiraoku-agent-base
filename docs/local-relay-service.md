@@ -72,7 +72,10 @@ cannot be reliably zeroized.
 
 The CLI emits only `{state:"ready",url}` and `{state:"stopped"}`. A refused start
 prints one line, `local_relay_start_rejected reason=<code>[ fields=<config paths>]`,
-for example `reason=config_invalid fields=delivery.queue.agent_capacity`. Codes are fixed
+for example `reason=config_invalid fields=delivery.queue.agent_capacity`. The `registry`
+section is parsed with the Registry's own options schema, so an out-of-range limit
+names its field (`reason=config_invalid fields=registry.busy_timeout_ms` for a value
+above 1000). Codes are fixed
 (`config_required`, `config_file_rejected`, `config_invalid`, `keys_file_rejected`,
 `keys_invalid`, `credentials_invalid`, `oauth_invalid`, `oauth_resource_mismatch`,
 `port_in_use`, `state_in_use`, `local_relay_private_path_required`,
@@ -115,7 +118,12 @@ npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect 
 - `disconnect` revokes every live binding that authenticates the address using the
   current epochs. It does not need the token mapping, so cleanup order does not
   matter, and a rerun reports `already_disconnected`. For a group it revokes the
-  group binding and lists every affected address.
+  group binding, stops every member address and lists them. A later `connect` with a
+  new connection id re-grants only the address it names; reconnect each other member
+  explicitly. A refused group `connect` (for example `registry_capacity_exceeded`)
+  creates no group, so a retry converges. `--operations ""` is refused as
+  `invalid_operations`. Group mode follows `registry.authentication_groups` in the
+  config, not the registry schema version.
 - `status` lists addresses, groups and each mapped credential's remaining lifetime,
   audience and binding, plus `problems` such as `credential_expired`,
   `credential_audience_mismatch`, `credential_unbound`, `credential_revoked` and

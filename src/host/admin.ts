@@ -156,7 +156,7 @@ function open(configPath: string) {
     registry,
     resources,
     credentials,
-    groups: version === 2 || version === 3,
+    groups: config.registry.authentication_groups === true,
   };
 }
 
@@ -400,30 +400,35 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
         if (agent.group_id && groupId !== agent.group_id)
           throw new HostAdminError("address_in_other_group");
         if (!groupId) {
-          groupId = registry.createGroup(operator, {
+          // No reservation and no membership: create, bind and join atomically.
+          groupId = registry.createBoundGroup(operator, {
             request_id: request(),
-          }).group_id;
-          steps.push("group_created");
-        }
-        if (!reservation) {
-          registry.bindGroup(operator, {
-            request_id: request(),
-            group_id: groupId,
-            expected_epoch: registry.inspectGroup(operator, groupId).epoch,
-            principal,
-          });
-          steps.push("connection_bound");
-        }
-        if (!agent.group_id) {
-          registry.addGroupMember(operator, {
-            request_id: request(),
-            group_id: groupId,
-            expected_group_epoch: registry.inspectGroup(operator, groupId)
-              .epoch,
             agent_id: agent.agent_id,
             expected_epoch: registry.inspect(operator, agent.agent_id).epoch,
-          });
-          steps.push("group_member_added");
+            principal,
+          }).group_id;
+          steps.push("group_created", "connection_bound", "group_member_added");
+        } else {
+          if (!reservation) {
+            registry.bindGroup(operator, {
+              request_id: request(),
+              group_id: groupId,
+              expected_epoch: registry.inspectGroup(operator, groupId).epoch,
+              principal,
+            });
+            steps.push("connection_bound");
+          }
+          if (!agent.group_id) {
+            registry.addGroupMember(operator, {
+              request_id: request(),
+              group_id: groupId,
+              expected_group_epoch: registry.inspectGroup(operator, groupId)
+                .epoch,
+              agent_id: agent.agent_id,
+              expected_epoch: registry.inspect(operator, agent.agent_id).epoch,
+            });
+            steps.push("group_member_added");
+          }
         }
         const group = registry.inspectGroup(operator, groupId);
         if (

@@ -638,6 +638,14 @@ export async function createA2aRelayFixture(t, overrides = {}) {
         state: "active",
         operations,
       });
+      // A group stop stopped its member; the operator re-grants the address too.
+      registry.setAccess(admin, {
+        request_id: req(),
+        agent_id: origin.agent_id,
+        expected_epoch: registry.inspect(admin, origin.agent_id).epoch,
+        state: "active",
+        operations,
+      });
     },
     async restart() {
       await sdk.close();

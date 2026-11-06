@@ -74,7 +74,7 @@ export function main(args = process.argv.slice(2)) {
     return hostAdminConnect(config, {
       address: options["--address"],
       connection_id: options["--connection-id"],
-      ...(options["--operations"]
+      ...(Object.hasOwn(options, "--operations")
         ? { operations: options["--operations"].split(",") }
         : {}),
     });
