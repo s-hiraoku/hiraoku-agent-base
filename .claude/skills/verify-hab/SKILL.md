@@ -62,7 +62,7 @@ Build a valid message (replay-bound id `rm1.<ms>.<32hex>`, one-hour deadline):
 MSG=$($S/new-message.sh "$RUN" b "hello from a")       # to agent b; optional 4th arg kind: question|answer|notice
 ```
 
-The following raw round trip proves Relay wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses DurableReceiver, SQLiteInbox and an independent SQLite read before network ACK.
+The following raw round trip proves Relay wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses the agent SDK's DurableReceiver and SQLiteInbox (`src/agent-sdk/receiver.ts`, `src/agent-sdk/sqlite-inbox.ts`) and an independent SQLite read before network ACK.
 
 Raw wire round trip (a → b):
 
@@ -83,7 +83,7 @@ Feature-by-feature recipes: [`features/README.md`](features/README.md).
 ## Evidence
 
 - Where: `$RUN/evidence/` (numbered `NNN-*` in call order, plus `audit.jsonl`, `stack.log`).
-- Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real client and SQLiteInbox with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
+- Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real agent SDK client and SQLiteInbox (`src/agent-sdk`) with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
 - Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `relay_status` after receiver `relay_ack`) and `inspect.mjs` (read-only snapshot of the Registry and the JetStream journal: agents, bindings, messages, deliveries with state/generation/broker sequence, delivery audit events, ack receipt count; bodies omitted).
 - Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
 - Mocks: only identity is synthetic (static bearer → synthetic verified connection), because Auth0/production identity binding is not built yet. Storage, HTTP, MCP framing, registry authorization and enrollment are the real code.

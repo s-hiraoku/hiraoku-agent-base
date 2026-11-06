@@ -4,7 +4,7 @@ A recipient polls for at most one message at a time; the Relay leases it for 30 
 
 ## Sub-features
 
-- `recv-durable-save` uses the boundary recipe to observe committed receiver body and original ACK request through an independent SQLite connection before the network ACK.
+- `recv-durable-save` uses the boundary recipe to observe the agent SDK receiver's committed body and original ACK request (`src/agent-sdk`) through an independent SQLite connection before the network ACK.
 
 - `recv-poll` returns `{delivery: {message, generation, lease_token, lease_until}}` for the recipient.
 - `recv-empty` returns `{delivery: null}` when nothing is deliverable (including while the only message is leased).

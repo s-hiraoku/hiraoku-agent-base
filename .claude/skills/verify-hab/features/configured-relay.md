@@ -34,7 +34,7 @@ Preconditions:
 - **Start reason.** Copy `instance/service.local.json` to `instance/bad.local.json` (0600) with `delivery.queue.agent_capacity` removed and run `node scripts/hab-relay.mjs --config "$RUN/instance/bad.local.json"`: exit 1, the single stderr line above.
 - **Retired config.** `jq '.store = .delivery.queue | del(.delivery) | .port = 0' instance/service.local.json > instance/old.local.json` (0600), then start with it: exit 1, `local_relay_start_rejected reason=config_invalid fields=delivery,store`.
 - **Host.** `curl -s -o /dev/null -w '%{http_code}' -H "Host: localhost:<port>" -H "Authorization: Bearer $(jq -r .agents.a.token "$RUN/instance/state.json")" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' "$(jq -r .url "$RUN/instance/state.json")" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'` → `403`.
-- **Stop.** `$S/configured.sh "$RUN" stop` stops the Relay and then its broker (each by pid + cmdline), then `rm -rf "$RUN/instance"`. `evidence/relay.log` keeps `ready`/`stopped`; `evidence/broker.log` keeps the broker output.
+- **Stop.** `$S/configured.sh "$RUN" stop` stops the Relay and then its broker (each by pid + cmdline) and prints `stopped <pid>` and `stopped broker <pid>`. It leaves `$RUN/instance`; run `rm -rf "$RUN/instance"` yourself afterwards. `evidence/relay.log` keeps `ready`/`stopped`; `evidence/broker.log` keeps the broker output.
 
 ## Gotchas
 
