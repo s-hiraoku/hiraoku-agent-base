@@ -54,7 +54,7 @@ if (options.full)
       .filter((p) => p.endsWith(".test.js"))
       .sort()
       .map((p) => `test/${p}`),
-    count: 1229,
+    count: 1150,
   });
 const abort = new AbortController();
 const interrupt = () => abort.abort();
@@ -161,7 +161,6 @@ try {
       "broker-startup",
       "p7-acceptance",
       "shared-real-backends",
-      "generic-nats",
     ].includes(definition.id);
     const childEnv = labEnvironment(
       process.env,

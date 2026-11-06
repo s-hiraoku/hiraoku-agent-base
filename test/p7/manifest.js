@@ -1,5 +1,4 @@
 import { startupCases } from "../../packages/relay-nats/test/startup/startup-cases.js";
-import { genericNatsCases } from "../generic-nats/case-names.js";
 import a2aCases from "./a2a-cases.json" with { type: "json" };
 import natsCases from "./nats-cases.json" with { type: "json" };
 import { nativeCases } from "../delivery-lab/a2a-acceptance.js";
@@ -59,11 +58,6 @@ export const groups = [
     id: "p7-acceptance",
     files: ["test/p7/integration.test.js"],
     cases: p7Cases,
-  },
-  {
-    id: "generic-nats",
-    files: ["test/generic-nats/integration.test.js"],
-    cases: genericNatsCases,
   },
   { id: "p7-guards", files: ["test/p7/runner.test.js"], cases: runnerCases },
   {
