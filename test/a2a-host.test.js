@@ -699,14 +699,15 @@ test("a caller revoked from another connection between its check and the host su
   // Runs a real operator disconnect, on its own Registry connection, at the moment
   // the host identity submits: after the route checked the caller.
   const submit = HabJetStreamService.prototype.submit;
-  let revoked;
+  let revoked, refusal;
   HabJetStreamService.prototype.submit = function (context, input) {
     if (revoked === undefined && input?.kind === "execution_request") {
       try {
         hostAdminDisconnect(f.configPath, "caller@caller.hab");
         revoked = true;
-      } catch {
+      } catch (error) {
         revoked = false;
+        refusal = error.code;
       }
     }
     return submit.call(this, context, input);
@@ -724,10 +725,10 @@ test("a caller revoked from another connection between its check and the host su
     !(revoked && delivered),
     "a revocation that committed before admission blocks delivery",
   );
-  assert.equal(
-    revoked,
-    false,
-    "the revocation waits for the admission's Registry transaction",
+  assert.deepEqual(
+    { revoked, refusal },
+    { revoked: false, refusal: "registry_unavailable" },
+    "the revocation cannot take the Registry lock the admission holds",
   );
   hostAdminDisconnect(f.configPath, "caller@caller.hab");
   assert.equal(

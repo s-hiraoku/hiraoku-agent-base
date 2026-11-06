@@ -157,10 +157,11 @@ function hostRoute(options: {
   identity: AgentRecord;
   recipient: string;
   outbox: SQLiteOutbox;
-  sender: DurableSender;
+  /** A sender whose host submit runs inside `guard`. */
+  sender(guard: <T>(admit: () => T) => T): DurableSender;
   inbox: SQLiteInbox;
 }): HabA2aRoute {
-  const { registry, context, identity, outbox, sender, inbox } = options;
+  const { registry, context, identity, outbox, inbox } = options;
   const recipientId = registry.resolve(context, options.recipient).recipient_id;
   const caller = () =>
     registry.withRelay(context, "submit", (authorization, agentId) => {
@@ -185,6 +186,14 @@ function hostRoute(options: {
     )
       throw new MessagingError("forbidden");
   };
+  // The host identity's admission joins this Registry transaction, so a revocation
+  // commits either before the caller check here or after the message is admitted.
+  const sender = options.sender((admit) =>
+    registry.withRelay(context, "submit", () => {
+      assertCurrent();
+      return admit();
+    }),
+  );
   return Object.freeze<HabA2aRoute>({
     ownerId,
     senderId: identity.agent_id,
@@ -318,10 +327,12 @@ export async function startHostA2a(deps: HostA2aDependencies) {
     tasks = openA2aTaskStore(deps.privateFile("a2a-tasks.sqlite"));
     const box = outbox,
       mail = inbox;
-    const sender = new DurableSender(box, {
-      submit: async (message) => service.submit(hostContext, message),
-      status: async (messageId) => service.status(hostContext, messageId),
-    });
+    const sender = (guard: <T>(admit: () => T) => T) =>
+      new DurableSender(box, {
+        submit: async (message) =>
+          guard(() => service.submit(hostContext, message)),
+        status: async (messageId) => service.status(hostContext, messageId),
+      });
     // Only replies from the recipient a host message went to are kept.
     const correlated = (message: Delivery["message"]) => {
       const reference = message.in_reply_to;

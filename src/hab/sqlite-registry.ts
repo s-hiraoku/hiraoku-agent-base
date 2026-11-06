@@ -254,6 +254,7 @@ export class SQLiteHabRegistry {
     { context: unknown; address: string; expected_agent_id?: string }
   >();
   #inside = false;
+  #relayDepth = 0;
   constructor(
     path: string,
     options: RegistryOptions,
@@ -1413,6 +1414,21 @@ export class SQLiteHabRegistry {
       return { stopped: true, stopped_at: at, epoch: current + 1 };
     });
   }
+  /**
+   * A withRelay called inside another's action joins its transaction, so a guard that
+   * checks one context and the operation it admits for another share one Registry lock.
+   */
+  #relayTx<T>(action: () => T): T {
+    if (this.#relayDepth) return action();
+    return this.#tx(() => {
+      this.#relayDepth++;
+      try {
+        return action();
+      } finally {
+        this.#relayDepth--;
+      }
+    });
+  }
   /** Registry lock precedes Relay's write lock and remains held through Relay COMMIT. */
   withRelay<T>(
     context: unknown,
@@ -1420,7 +1436,7 @@ export class SQLiteHabRegistry {
     action: (authorization: Authorization, agentId: string) => T,
   ): T {
     this.#assertReady();
-    return this.#tx(() => {
+    return this.#relayTx(() => {
       try {
         if (this.#stopRecord().stopped !== 0)
           throw new MessagingError("forbidden");
