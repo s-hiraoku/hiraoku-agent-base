@@ -147,6 +147,8 @@ python3 -B -m unittest scripts.test_inventory_token_input
 
 OAuthを使う共通MCP公開入口は[接続手順](docs/relay-oauth-ingress.md)を参照してください。任意の第2loopback入口とローカルMCPは同じRegistry・キューを使い、既定は全拒否です。公開経路・OAuth登録・実Dots往復は別途検証します。
 
+A2A入口は既定で無効です。サービス設定に[`a2a` section](config/relay-a2a.example.json)を加えると、hostは専用のloopback listenerを開き、host所有のA2A名義と永続mailboxを起動時に用意します。A2A Taskはその名義から設定済みの受信者へ送られ、呼出し元の権限はRegistryが毎回確認します。設定・認可・状態対応は[A2A host配線](docs/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)を参照してください。
+
 自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
 任意の[エージェント照会契約](docs/mcp-agent-discovery.md)を明示的に有効化します。
 

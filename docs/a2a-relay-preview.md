@@ -52,4 +52,78 @@ This read-only verifier is an explicit integration requirement. This preview doe
 
 CancelTask returns the formal task-not-cancelable error. It never reports stopped execution. Default blocking SendMessage waits up to five seconds for a terminal or interrupted observation. A transport timeout preserves the queryable Task. It does not set execution failure or extend delivery expiry.
 
-The preview supports one handler instance per Task database. It does not add multi-host writer coordination, production retention, capacity management, remote evidence authentication, product wake, or a GUI. Delivery runs through the JetStream backend behind the HAB Registry; the SQLite delivery route was deleted. The preview's A2A gateway is not wired into the host (`src/host`); whether to wire it awaits an owner decision (ADR-016). Production replacement acceptance remains a separate gate.
+The preview supports one handler instance per Task database. It does not add multi-host writer coordination, production retention, capacity management, remote evidence authentication, product wake, or a GUI. Delivery runs through the JetStream backend behind the HAB Registry; the SQLite delivery route was deleted. Production replacement acceptance remains a separate gate.
+
+## Host wiring with a host-owned identity
+
+The owner decided on 2026-11-06 (ADR-016, decision item 5) to wire the gateway into the single host with its own A2A identity. The host cannot read the calling agent's mailbox for the replies. That agent's own save-then-ACK receiver already holds the single lease on it. The host therefore has its own Registry address and durable mailbox. A2A Tasks are sent from that address, and recipients reply to it. The `DeliveryService` contract, the lease rules and the `relay_*` MCP tools are unchanged. The code is `src/host/a2a.ts`, and `test/a2a-host.test.js` covers it through the real host and real JetStream.
+
+### Configuration
+
+A2A is off unless the host config has an `a2a` section. With no section there is no listener, mailbox file or host identity.
+
+```json
+"a2a": {
+  "port": 8793,
+  "identity": "a2a@hab-host.hab",
+  "recipient": "worker@worker.hab",
+  "poll_interval_ms": 1000,
+  "max_active_requests": 4,
+  "max_records": 100
+}
+```
+
+`port` is a separate `127.0.0.1` listener serving `http://127.0.0.1:<port>/a2a` and its Card at `/.well-known/agent-card.json`. It must differ from `port` and the ingress port. A separate listener keeps a five-second blocking SendMessage from taking the MCP listener's `max_active_requests` slots. The gateway's existing checks still apply. These are the exact Host header, refusal of an `Origin` header, the A2A-Version header, JSON-only bodies of at most 16 KiB, and the fixed connectivity skill. `recipient` is the one address every Task goes to. `max_records` caps the host outbox and inbox. Accepted records are kept for 30 days, so it also caps how many Tasks fit in that window.
+
+### Identity provisioning
+
+At start the host converges `identity` to an active agent, using an administrator port that answers only during this step and only for inspect, product, enroll, bind and access. Each step reads the current Registry state and applies only the difference. It registers the product if it is missing, enrolls the address if it is missing, binds the host principal, and grants `submit/status/poll/ack`. A restart or a crash partway through therefore ends at the same agent ID, with no change on a repeat run. The host refuses to start rather than repair the identity in these cases:
+
+| Reason | State found |
+| --- | --- |
+| `a2a_identity_conflict` | The address has another live binding, is in an authentication group, or the host principal is bound elsewhere. |
+| `a2a_identity_revoked` | The host principal's binding was revoked. Descriptors stay reserved forever. |
+| `a2a_identity_stopped` | The agent was stopped. The host never re-enables it silently. |
+| `a2a_identity_retired` | The address was retired. |
+
+To recover from any of these, configure a new identity address. `relay:admin connect` refuses the configured identity address with `a2a_identity_reserved`. `relay:admin disconnect` on it is the permanent off switch for that identity.
+
+### Credentials
+
+The host identity has no bearer token, OAuth client or file credential. It is an in-process context object that only the host holds. The host's Registry authority attests it as the reserved principal `{issuer: "urn:hab:host", audience: "urn:hab:host:a2a", subject: "a2a-identity", client_id: "hab-host", connection_id: "host-a2a"}`, with a context lifetime of at most one second. It calls `HabJetStreamService` directly. Every operation still runs the Registry's `withRelay` check, and nothing reaches it over HTTP. The host drops any operator or OAuth principal whose issuer is `urn:hab:host`, so a credentials file entry cannot impersonate the identity even if someone binds it.
+
+A2A callers authenticate with the existing local bearer file. Their credential's audience must be the A2A endpoint `http://127.0.0.1:<a2a port>/a2a`, so an MCP credential is refused there with 401. `relay:admin connect` lists the A2A endpoint among its resources and binds such a credential to the caller's address as usual.
+
+### Authorization and the confused deputy
+
+Each request is verified with the caller's own credential. The route then checks the caller through the Registry. The caller must currently hold `resolve` and `submit`, resolve the configured recipient, and be allowed to send `execution_request` to it. Directional blocks, stopped peers, group state, kind allowlists and the emergency stop apply as if the caller sent the message directly. The enqueue repeats that check inside the Registry guard that commits the outbox record. The host identity then submits under its own rights, so the recipient and its policies see the host address as the sender. The caller never chooses the sender, recipient, kind or body. The body is the fixed `connectivity_check` request.
+
+Tasks are stored per caller (the SDK store's owner is the caller's agent ID) and per recipient (tenant). Another caller's GetTask finds nothing. The host mailbox is readable only through a Task. A reply counts only when the configured recipient sent it, it references that Task's own source message from the host, its thread matches, and its schema is exact. The Relay itself refuses a reply reference to a message the sender never received. The receiver loop releases every other inbound body after saving and ACKing it, so unrelated senders cannot fill the host inbox.
+
+### Durability, retry and the receiver loop
+
+The outbox (`a2a-outbox.sqlite`), inbox (`a2a-inbox.sqlite`) and SDK Task store (`a2a-tasks.sqlite`) are private 0600 files in the host state directory. Their HMAC keys are derived from the Registry fingerprint key. A saved Task, its send intent and received replies survive a host restart. The original message ID and one-hour expiry are reused on replay.
+
+Delivery of a saved intent happens only inside its owner's authorized request. SendMessage sends that one record (`DurableSender.sendOnce(messageId)`), never another caller's. To retry after a failure or a restart, the A2A client repeats SendMessage with the same `messageId`. There is deliberately no background submit retry. A background retry would send under the host identity without a current check of the caller who asked for it. The only background work is the receiver loop. Every `poll_interval_ms` it polls the host mailbox, saves each delivery, then ACKs it (up to 16 per cycle), and it runs inbox and outbox maintenance at most once a minute. The host identity is the only consumer of its mailbox, so it holds the single receiver lease.
+
+### Task state
+
+The host route has no engine evidence port, because the host cannot read a remote recipient's engine. Its Tasks are reply-attested, and their public metadata says `attestation: "recipient_reply"`.
+
+| Observation | A2A state |
+| --- | --- |
+| Request saved and queued, or recipient storage ACK | `SUBMITTED` |
+| Durable `execution_accepted` reply | `WORKING` |
+| Durable `execution_result` reply with `succeeded` | `COMPLETED`, with the result text as the Artifact |
+| `failed` / `cancelled` result reply | `FAILED` / `CANCELED` |
+| Original deadline passed or delivery quarantined with no reply | `INPUT_REQUIRED` with a fixed message |
+
+A different engine Task ID in a later reply, or a second terminal result with another state, is refused without replacing the saved Task. `COMPLETED` here means the recipient reported a result. HAB does not verify the recipient's execution. The preview composition with `HabExecutionEvidence` keeps its stronger verified semantics.
+
+### Shutdown
+
+On close the host stops accepting A2A requests with 503 and closes the listener. It waits for in-flight A2A requests and the current receiver cycle, then closes the Task store, outbox and inbox before closing delivery and the Registry. Unsent intents, unACKed deliveries and saved Tasks stay on disk for the next start.
+
+### Not covered
+
+Only the local bearer verifier is accepted. The OAuth ingress does not serve A2A. A caller authenticated through a group with several addresses has no address selector and is refused. Reply bodies are released when their Task is saved as terminal. A reply that arrives after that stays until the Task is read again. A2A requests are not written to the redacted HTTP audit.

@@ -182,6 +182,20 @@ describes pinned public keys, finite individual connections, private configurati
 exact metadata routing and the limited save-before-ACK gate. This code does not
 publish a route, register a client, issue a token or start an agent.
 
+## Optional A2A entry
+
+A2A is off by default. Merging the `a2a` section from
+[the A2A example](../config/relay-a2a.example.json) into the service config adds a
+third `127.0.0.1` listener at `http://127.0.0.1:<a2a.port>/a2a`. At start the host
+creates or rebinds its own Registry address (`a2a.identity`) and a private
+outbox, inbox and Task store in the state directory. A2A Tasks are sent from that
+address to `a2a.recipient`. A2A callers need a credential whose audience is the
+A2A endpoint. Bind it to the caller's address with `relay:admin connect` as usual.
+The ready line printed by `relay:local` then includes `a2a_url`.
+[Host wiring](a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)
+describes identity provisioning, authorization, retry, Task states and the startup
+refusal reasons.
+
 
 ## 認証グループの明示opt-in
 

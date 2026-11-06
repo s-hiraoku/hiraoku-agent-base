@@ -22,9 +22,16 @@ export interface HabA2aRoute {
   assertCurrent(): void;
   enqueue(message: Submission): OutboxRecord;
   delivery(messageId: string): OutboxRecord;
-  flush(): Promise<void>;
+  /** Sends the saved intent; a route may send only this message. */
+  flush(messageId: string): Promise<void>;
   replies(): InboxEntry[];
-  readonly evidence: HabExecutionEvidence;
+  /** Called after a terminal Task is saved with the replies it consumed; may release their bodies. */
+  settle?(replies: InboxEntry[]): void;
+  /**
+   * Independent read-only engine evidence. Without it the route is reply-attested:
+   * Task state reports the recipient's durable replies and claims no engine verification.
+   */
+  readonly evidence?: HabExecutionEvidence;
 }
 export const HAB_A2A_LIMITS: Readonly<ContractLimits> = Object.freeze({
   envelope_bytes: 16384,

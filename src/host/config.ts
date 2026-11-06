@@ -5,8 +5,28 @@ import { z } from "zod";
 import { registryOptionsSchema } from "../hab/sqlite-registry.ts";
 import { readRuntimeConfig } from "../runtime-config.ts";
 import { deliverySchema } from "./delivery.ts";
+import { HAB_ADDRESS_PATTERN } from "../hab/registry.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const absolute = z.string().refine(isAbsolute);
+const address = z.string().max(101).regex(new RegExp(HAB_ADDRESS_PATTERN));
+/** The optional host A2A entry (src/host/a2a.ts). */
+const a2aConfigSchema = z
+  .strictObject({
+    /** Separate loopback listener; 0 selects an ephemeral port. */
+    port: z.number().int().min(0).max(65535),
+    /** The host-owned address. No operator credential may be bound to it. */
+    identity: address,
+    /** The one recipient every A2A Task is sent to. */
+    recipient: address,
+    poll_interval_ms: z.number().int().min(10).max(60000),
+    max_active_requests: z.number().int().min(1).max(64),
+    /** Outbox and inbox record cap; accepted records are retained for 30 days. */
+    max_records: z.number().int().min(1).max(10000),
+  })
+  .refine((value) => value.identity !== value.recipient, {
+    path: ["recipient"],
+  });
+export type HostA2aConfig = z.infer<typeof a2aConfigSchema>;
 const keys = z.strictObject({
   version: z.literal(1),
   registry_fingerprint_key: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
@@ -38,6 +58,8 @@ const schema = z.strictObject({
   }),
   registry: registryOptionsSchema,
   delivery: deliverySchema,
+  /** Absent means A2A is off: no listener, mailbox or host identity. */
+  a2a: a2aConfigSchema.optional(),
   http: z.strictObject({
     max_request_bytes: positive,
     max_response_bytes: positive,

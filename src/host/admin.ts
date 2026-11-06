@@ -105,6 +105,7 @@ function open(configPath: string) {
   const resources = [
     ...(config.port ? [`http://127.0.0.1:${config.port}/mcp`] : []),
     ...(config.ingress ? [config.ingress.resource_url] : []),
+    ...(config.a2a?.port ? [`http://127.0.0.1:${config.a2a.port}/a2a`] : []),
   ];
   const credentials = () => {
     let parsed;
@@ -157,6 +158,7 @@ function open(configPath: string) {
     resources,
     credentials,
     groups: config.registry.authentication_groups === true,
+    a2aIdentity: config.a2a?.identity,
   };
 }
 
@@ -341,7 +343,10 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
     throw new HostAdminError("invalid_operations");
   return withRegistry(
     configPath,
-    ({ registry, resources, credentials, groups }) => {
+    ({ registry, resources, credentials, groups, a2aIdentity }) => {
+      // A second credential on the host identity could read every A2A reply.
+      if (address.address === a2aIdentity)
+        throw new HostAdminError("a2a_identity_reserved");
       const principal = principalFor(
         credentials(),
         input.connection_id,

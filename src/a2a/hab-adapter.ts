@@ -53,6 +53,22 @@ export function habRelayAgentCard(endpoint: string): AgentCard {
   };
 }
 
+/** Card for the host-wired, reply-attested route (no engine evidence port). */
+export function habHostAgentCard(endpoint: string): AgentCard {
+  const card = habRelayAgentCard(endpoint);
+  return {
+    ...card,
+    name: "HAB host connectivity check",
+    description:
+      "Deliver a fixed connectivity_check from the HAB host's A2A identity. Recipient storage ACK does not accept execution. The recipient must reply with an explicit acceptance and a durable result. Completion reports that result reply; HAB does not verify the recipient's engine.",
+    skills: card.skills.map((skill) => ({
+      ...skill,
+      description:
+        "Send connectivity_check from the host identity. Repeat SendMessage with the same messageId to retry delivery. Use returnImmediately=true to poll, or wait up to five seconds for the result reply. Cancellation and execution deadlines are unsupported.",
+    })),
+  };
+}
+
 const linkSchema = z.strictObject({
   version: z.literal(1),
   owner_id: identifier,
@@ -61,8 +77,10 @@ const linkSchema = z.strictObject({
   message_id: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
   payload_hash: z.string().regex(/^[a-f0-9]{64}$/),
   source: z.unknown(),
-  binding: bindingSchema,
+  // Absent exactly when the route has no engine evidence port (reply-attested).
+  binding: bindingSchema.optional(),
   execution: taskSchema.optional(),
+  reply_task_id: identifier.optional(),
   result_message_id: identifier.optional(),
 });
 const acceptedSchema = z.strictObject({
@@ -84,6 +102,14 @@ const terminal = (task: Task) =>
     TaskState.TASK_STATE_CANCELED,
     TaskState.TASK_STATE_REJECTED,
   ].includes(task.status?.state ?? TaskState.TASK_STATE_UNSPECIFIED);
+const closedState = (state: "succeeded" | "failed" | "cancelled") =>
+  state === "succeeded"
+    ? TaskState.TASK_STATE_COMPLETED
+    : state === "failed"
+      ? TaskState.TASK_STATE_FAILED
+      : TaskState.TASK_STATE_CANCELED;
+const routeBinding = (route: HabA2aRoute) =>
+  route.evidence ? bindingSchema.parse(route.evidence.binding) : undefined;
 function publicTask(task: Task, length: number | undefined): Task {
   const link = linkSchema.parse(task.metadata?.hab_relay);
   return {
@@ -98,6 +124,7 @@ function publicTask(task: Task, length: number | undefined): Task {
         ...(link.result_message_id
           ? { result_message_id: link.result_message_id }
           : {}),
+        ...(link.binding ? {} : { attestation: "recipient_reply" }),
       },
     },
     history:
@@ -157,8 +184,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
       source.kind !== "execution_request" ||
       source.thread_id === task.id ||
       source.thread_id === task.contextId ||
-      JSON.stringify(link.binding) !==
-        JSON.stringify(bindingSchema.parse(route.evidence.binding))
+      JSON.stringify(link.binding) !== JSON.stringify(routeBinding(route))
     )
       throw new RequestMalformedError("HAB route binding changed");
     return { ...link, source };
@@ -212,74 +238,82 @@ export class HabA2aHandler extends DefaultRequestHandler {
         reply.kind === "execution_result"
           ? resultSchema.parse(part.value)
           : acceptedSchema.parse(part.value);
-      if (link.execution && link.execution.id !== value.task_id)
+      const knownTaskId = link.execution?.id ?? link.reply_task_id;
+      if (knownTaskId && knownTaskId !== value.task_id)
         throw new RequestMalformedError("Engine task identity conflict");
       if (reply.kind === "execution_accepted" && terminal(next)) continue;
-      const observed = await route.evidence.verify(
-        sourceKey,
-        route.recipientId,
-        value.task_id,
-      );
-      route.assertCurrent();
-      const evidence = taskEvidence(
-        observed.task,
-        link.binding,
-        observed.request_key,
-      );
-      if (
-        evidence.id !== value.task_id ||
-        (link.execution &&
-          (evidence.fence < link.execution.fence ||
-            (closedTask(link.execution) &&
-              JSON.stringify(evidence) !== JSON.stringify(link.execution))))
-      )
-        throw new RequestMalformedError("Engine evidence regressed");
       let state: TaskState;
-      if (reply.kind === "execution_result") {
-        const result = resultSchema.parse(value);
+      let result: string | null = null;
+      if (route.evidence) {
+        const observed = await route.evidence.verify(
+          sourceKey,
+          route.recipientId,
+          value.task_id,
+        );
+        route.assertCurrent();
+        const evidence = taskEvidence(
+          observed.task,
+          bindingSchema.parse(link.binding),
+          observed.request_key,
+        );
         if (
-          !closedTask(evidence) ||
-          evidence.state !== result.state ||
-          evidence.result !== result.result
+          evidence.id !== value.task_id ||
+          (link.execution &&
+            (evidence.fence < link.execution.fence ||
+              (closedTask(link.execution) &&
+                JSON.stringify(evidence) !== JSON.stringify(link.execution))))
         )
-          throw new RequestMalformedError(
-            "Execution result is not confirmed closed",
-          );
-        state =
-          evidence.state === "succeeded"
-            ? TaskState.TASK_STATE_COMPLETED
-            : evidence.state === "failed"
-              ? TaskState.TASK_STATE_FAILED
-              : TaskState.TASK_STATE_CANCELED;
-        if (terminal(next) && next.status?.state !== state)
-          throw new RequestMalformedError("Terminal result conflict");
+          throw new RequestMalformedError("Engine evidence regressed");
+        if (reply.kind === "execution_result") {
+          const claimed = resultSchema.parse(value);
+          if (
+            !closedTask(evidence) ||
+            evidence.state !== claimed.state ||
+            evidence.result !== claimed.result
+          )
+            throw new RequestMalformedError(
+              "Execution result is not confirmed closed",
+            );
+          state = closedState(evidence.state);
+          if (evidence.state === "succeeded") result = evidence.result ?? "";
+        } else {
+          state = ["running", "succeeded", "failed"].includes(evidence.state)
+            ? TaskState.TASK_STATE_WORKING
+            : ["waiting_approval", "cancelled"].includes(evidence.state)
+              ? TaskState.TASK_STATE_INPUT_REQUIRED
+              : TaskState.TASK_STATE_SUBMITTED;
+        }
+        link = { ...link, execution: evidence };
       } else {
-        state = ["running", "succeeded", "failed"].includes(evidence.state)
-          ? TaskState.TASK_STATE_WORKING
-          : ["waiting_approval", "cancelled"].includes(evidence.state)
-            ? TaskState.TASK_STATE_INPUT_REQUIRED
-            : TaskState.TASK_STATE_SUBMITTED;
+        // Reply-attested route: the recipient's own durable reply is the only evidence.
+        if (reply.kind === "execution_result") {
+          const claimed = resultSchema.parse(value);
+          state = closedState(claimed.state);
+          if (claimed.state === "succeeded") result = claimed.result ?? "";
+        } else state = TaskState.TASK_STATE_WORKING;
+        link = { ...link, reply_task_id: value.task_id };
       }
-      link = {
-        ...link,
-        execution: evidence,
-        ...(reply.kind === "execution_result"
-          ? { result_message_id: reply.message_id }
-          : {}),
-      };
+      if (
+        reply.kind === "execution_result" &&
+        terminal(next) &&
+        next.status?.state !== state
+      )
+        throw new RequestMalformedError("Terminal result conflict");
+      if (reply.kind === "execution_result")
+        link = { ...link, result_message_id: reply.message_id };
       const artifacts =
-        reply.kind === "execution_result" && evidence.state === "succeeded"
-          ? [
+        result === null
+          ? []
+          : [
               {
                 artifactId: "connectivity-result",
                 name: "Connectivity result",
-                description: "Confirmed closed recipient execution",
+                description: route.evidence
+                  ? "Confirmed closed recipient execution"
+                  : "Recipient result reply",
                 parts: [
                   {
-                    content: {
-                      $case: "text" as const,
-                      value: evidence.result ?? "",
-                    },
+                    content: { $case: "text" as const, value: result },
                     mediaType: "text/plain",
                     filename: "",
                     metadata: undefined,
@@ -288,8 +322,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
                 extensions: [],
                 metadata: undefined,
               },
-            ]
-          : [];
+            ];
       next = {
         ...next,
         status: {
@@ -321,7 +354,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
         ))
           throw error;
       }
-      if (expired && !link.execution)
+      if (expired && !link.execution && !link.reply_task_id)
         next = {
           ...next,
           status: {
@@ -348,6 +381,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
     if (JSON.stringify(next) !== JSON.stringify(task))
       await this.#store.save(next, context);
     route.assertCurrent();
+    if (terminal(next) && matches.length) route.settle?.(matches);
     return next;
   }
   async #wait(
@@ -457,7 +491,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
               message_id: message.messageId,
               payload_hash: payloadHash,
               source,
-              binding: bindingSchema.parse(route.evidence.binding),
+              ...(route.evidence ? { binding: routeBinding(route) } : {}),
             },
           },
         });
@@ -468,7 +502,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
       const link = this.#link(task, route);
       if (!terminal(task) && Date.parse(link.source.expires_at) > Date.now()) {
         route.enqueue(link.source);
-        await route.flush();
+        await route.flush(link.source.message_id);
         route.assertCurrent();
       }
       return this.#wait(

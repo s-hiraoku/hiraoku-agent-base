@@ -369,7 +369,10 @@ export class SQLiteOutbox implements SenderStore {
     if (!row) throw new MessagingError("not_found");
     return view(row);
   }
-  claim(): SendJob | null {
+  /** With `messageId`, claims only that record, so a shared outbox never sends another caller's intent. */
+  claim(messageId?: string): SendJob | null {
+    if (messageId !== undefined && !identifier(messageId))
+      throw new MessagingError("invalid_request");
     return this.#tx(() => {
       const now = this.#now();
       this.#cleanup(now);
@@ -386,9 +389,9 @@ export class SQLiteOutbox implements SenderStore {
         return null;
       const rows = this.#db
         .prepare(
-          "SELECT * FROM relay_outbox WHERE state='queued' AND next_retry_at<=? ORDER BY next_retry_at,message_id",
+          "SELECT * FROM relay_outbox WHERE state='queued' AND next_retry_at<=? AND (? IS NULL OR message_id=?) ORDER BY next_retry_at,message_id",
         )
-        .all(now) as Row[];
+        .all(now, messageId ?? null, messageId ?? null) as Row[];
       for (const row of rows) {
         const operation =
           row.status_only ||

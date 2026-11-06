@@ -20,6 +20,7 @@ export async function main(args = process.argv.slice(2)) {
           ...(host.ingress_url
             ? { ingress_url: host.ingress_url, ingress_port: host.ingress_port }
             : {}),
+          ...(host.a2a_url ? { a2a_url: host.a2a_url } : {}),
         }) + "\n",
       );
       await new Promise((resolve) => {

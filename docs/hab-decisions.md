@@ -42,7 +42,7 @@
 - `src/messaging`がmessage契約と`DeliveryService` interfaceを持つ。`src/hab`のRegistryが名義・認証group・権限・容量を判定する。配送backendは名義や権限を判断しない。
 - `src/host`が唯一のhostである。設定、HTTP、監査、管理CLI、MCP server（`src/host/mcp`）を組み立て、JetStream配送を`DeliveryService`として注入する。起動は`npm run relay:local`、管理は`npm run relay:admin`を使う。
 - エージェント側は`src/agent-sdk`の永続sender／outbox、保存後ACKのreceiver／inbox、MCP clientを使う。MCP tool名`relay_*`は既存の接続設定との互換のため維持する。
-- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。A2A gatewayをhostへ配線するかは未決定で、ownerの判断待ちである。本判断はその配線を含まない。
+- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
 - 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
 
 配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。本判断は本番接続・公開・credential発行の承認を兼ねない。
@@ -53,7 +53,7 @@
 2. Auth0 issuer、正確なcallback、主体/clientと最小scope、無料条件、秘密保管とrevocation。
 3. 今回のHermes inventoryの実行環境とprivate binding、$0モデル枠、単発停止・回収条件。
 4. Dots/Grokの実MCP呼出し・結果取得と、wakeまたはEventsを追加する必要性。
-5. A2A gatewayをhostへ配線するか（ADR-016。ownerの判断待ち）。
+5. ~~A2A gatewayをhostへ配線するか~~ 決定済み：host所有のA2A名義で配線する（ADR-016、owner判断 2026-11-06）。既定は無効。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）で、受信者engineの独立検証ではない。
 
 個別のtechnical contractは[Hub内部設計](architecture.md)、[Auth0](auth0-boundary.md)、[import境界](hermes-import-boundary.md)を参照してください。重複する設定表を増やさず、そちらを更新します。
 

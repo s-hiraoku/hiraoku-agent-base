@@ -29,7 +29,7 @@ export interface SenderTransport {
 export interface SenderStore {
   enqueue(input: unknown): OutboxRecord;
   get(messageId: string): OutboxRecord;
-  claim(): SendJob | null;
+  claim(messageId?: string): SendJob | null;
   confirm(job: SendJob, receipt: Receipt): void;
   defer(job: SendJob, forceStatus?: boolean): void;
   quarantine(job: SendJob, reason: string): void;
@@ -49,11 +49,15 @@ export class DurableSender {
   get(messageId: string): OutboxRecord {
     return this.#store.get(messageId);
   }
-  async sendOnce(): Promise<void> {
+  /** With `messageId`, attempts only that record's due job. */
+  async sendOnce(messageId?: string): Promise<void> {
     if (this.#running) throw new MessagingError("sender_busy");
     this.#running = true;
     try {
-      const job = this.#store.claim();
+      const job =
+        messageId === undefined
+          ? this.#store.claim()
+          : this.#store.claim(messageId);
       if (!job) return;
       let receipt: Receipt;
       try {
