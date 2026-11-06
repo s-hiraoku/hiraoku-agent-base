@@ -76,6 +76,14 @@ export class HostA2aError extends Error {
 
 const request = () => `host-a2a-${randomUUID()}`;
 
+/** A reply is saved only until this long after its request's own expiry. */
+const REPLY_WINDOW_MS = 86400000;
+const ACK_RETRY_MS = 86400000;
+// An outbox record outlives the ACK history of every reply it can still receive
+// (window, ACK retry, the reply's own one-hour expiry and slack), so a slot it frees
+// never leaves ACK rows behind that a newly admitted Task's replies would need.
+const STATUS_RETRY_MS = REPLY_WINDOW_MS + ACK_RETRY_MS + 2 * 3600000;
+
 /**
  * Converges the configured address onto an active agent whose only live binding is the
  * host principal. A retired, stopped or revoked identity, or one an operator credential
@@ -315,7 +323,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       retry_cap_ms: 60000,
       max_submit_attempts: 3,
       max_status_attempts: 3,
-      status_retry_ms: 86400000,
+      status_retry_ms: STATUS_RETRY_MS,
     });
     outbox.migrate();
     inbox = new SQLiteInbox(deps.privateFile("a2a-inbox.sqlite"), {
@@ -325,7 +333,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       max_records: replySlots,
       max_body_bytes: replySlots * deps.limits.envelope_bytes,
       max_ack_records: config.max_records * 3,
-      ack_retry_ms: 86400000,
+      ack_retry_ms: ACK_RETRY_MS,
       retry_base_ms: 1000,
       retry_cap_ms: 60000,
       max_attempts: 5,
@@ -340,7 +348,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           guard(() => service.submit(hostContext, message)),
         status: async (messageId) => service.status(hostContext, messageId),
       });
-    // Only replies from the recipient a host message went to are kept.
+    // Only replies from the recipient a host message went to, within its reply window, are kept.
     const correlated = (message: Delivery["message"]) => {
       const reference = message.in_reply_to;
       if (
@@ -349,7 +357,11 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       )
         return false;
       try {
-        return box.get(reference.message_id).recipient_id === message.sender_id;
+        const record = box.get(reference.message_id);
+        return (
+          record.recipient_id === message.sender_id &&
+          Date.now() < Date.parse(record.expires_at) + REPLY_WINDOW_MS
+        );
       } catch {
         return false;
       }
