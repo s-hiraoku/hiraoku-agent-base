@@ -4,6 +4,8 @@
 # The Relay delivers only through JetStream, so start also runs a private nats-server
 # (HAB_NATS_SERVER or .runtime/nats-install.json) with its store under instance/broker.
 # Usage: configured.sh <run-dir> start [port]   -> instance/state.json usable by mcp.sh/new-message.sh
+#        HAB_VERIFY_GROUPS=1 configured.sh <run-dir> start -> registry.authentication_groups on, plus an
+#          unconnected spare credential "c" (state.agents.c.connection_id) for group reconnects
 #        configured.sh <run-dir> admin <args...> -> runs relay:admin with this run's config
 #        configured.sh <run-dir> stop            -> SIGTERM the relay, then the broker, this run started (by pid + cmdline)
 set -euo pipefail
@@ -17,12 +19,13 @@ start)
   freeport() { node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
   port=${3:-$(freeport)}; nport=$(freeport)
   nats=$(cd "$repo" && node --input-type=module -e 'import { natsServerBinary } from "./scripts/lib/nats-broker.mjs"; console.log(natsServerBinary())')
-  node - "$repo" "$inst" "$port" "$nport" <<'JS'
-const fs = require("fs"), c = require("crypto"), [repo, inst, port, nport] = process.argv.slice(2);
+  node - "$repo" "$inst" "$port" "$nport" "${HAB_VERIFY_GROUPS:-}" <<'JS'
+const fs = require("fs"), c = require("crypto"), [repo, inst, port, nport, groups] = process.argv.slice(2);
 const w = (p, o) => fs.writeFileSync(`${inst}/${p}`, JSON.stringify(o), { mode: 0o600 });
 const cfg = JSON.parse(fs.readFileSync(`${repo}/config/relay-service.example.json`, "utf8"));
 Object.assign(cfg, { directory: `${inst}/state`, port: Number(port), keys_file: `${inst}/keys.local.json`,
   credentials_file: `${inst}/individuals.local.json`, audit_directory: `${inst}/audit` });
+if (groups === "1") cfg.registry.authentication_groups = true;
 // Private broker for this run only: random password, loopback port, file store under instance/broker.
 const password = c.randomBytes(24).toString("hex");
 fs.writeFileSync(`${inst}/broker/broker.conf`, `host: 127.0.0.1\nport: ${nport}\njetstream {\n store_dir: ${JSON.stringify(`${inst}/broker/store`)}\n max_file_store: 256MB\n max_memory_store: 0\n sync_interval: always\n}\naccounts { HAB {\n jetstream: enabled\n users: [{user: backend, password: ${JSON.stringify(password)}}]\n} }\n`, { mode: 0o600 });
@@ -34,14 +37,15 @@ w("service.local.json", cfg);
 w("keys.local.json", { version: 1, registry_fingerprint_key: c.randomBytes(32).toString("hex"),
   relay_fingerprint_key: c.randomBytes(32).toString("hex") });
 const now = Date.now(), agents = { a: "codex@codex.hab", b: "hermes@hermes.hab" }, tokens = {};
-w("individuals.local.json", { version: 1, credentials: Object.entries(agents).map(([k]) => {
+const spare = groups === "1" ? ["c"] : [];
+w("individuals.local.json", { version: 1, credentials: [...Object.keys(agents), ...spare].map((k) => {
   tokens[k] = c.randomBytes(32).toString("hex");
   return { sha256: c.createHash("sha256").update(tokens[k]).digest("hex"),
     principal: { issuer: "urn:verify-hab:local", audience: `http://127.0.0.1:${port}/mcp`,
       subject: `verify-${k}`, client_id: `verify-${k}`, connection_id: `verify-${k}-${now}` },
     issued_at: new Date(now).toISOString(), expires_at: new Date(now + 899000).toISOString() };
 }) });
-w("pending.local.json", { agents, tokens, now });
+w("pending.local.json", { agents, tokens, now, spare });
 JS
   "$nats" -c "$inst/broker/broker.conf" > "$run/evidence/broker.log" 2>&1 &
   echo $! > "$inst/broker.pid"
@@ -59,6 +63,9 @@ JS
     printf '%s\n' "$out" > "$run/evidence/admin-connect-$k.json"
     state=$(jq --arg k "$k" --argjson o "$out" --arg t "$(jq -r --arg k "$k" '.tokens[$k]' "$pend")" \
       '.agents[$k]={agent_id:$o.address.agent_id,address:$o.address.address,token:$t}' <<<"$state")
+  done
+  for k in $(jq -r '.spare[]' "$pend"); do
+    state=$(jq --arg k "$k" --arg t "$(jq -r --arg k "$k" '.tokens[$k]' "$pend")" --arg c "verify-$k-$now"       '.agents[$k]={token:$t,connection_id:$c}' <<<"$state")
   done
   rm -f "$pend"; (umask 077; printf '%s\n' "$state" > "$inst/state.json")
   echo "CONFIGURED_READY $url" ;;
