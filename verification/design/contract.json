@@ -160,10 +160,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "0bd8fbb8a888ec67979d600c268caa4d76c54be222ee5cd24d7eb7ed00a1cd99",
+      "sha256": "66ef8652cad2148e22784a2fec5721cd0384de0e3273d5471d32cd71bc77cc73",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over a private owned nats-server and the JetStream journal, synthetic enrolled identities, terminal enrollment, deny-all Hub and configured CLI; launch/doctor/drive/evidence/cleanup/helper ownership. Explicitly separates raw wire ACK from committed receiver evidence and production identity/native execution. Reuse, do not create a competing map.",
+      "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over a private owned nats-server and the JetStream journal, synthetic enrolled identities, terminal enrollment, deny-all Hub and configured CLI; launch/doctor/drive/evidence/cleanup/helper ownership. Explicitly separates raw wire ACK from committed receiver evidence (agent SDK DurableReceiver and SQLiteInbox in src/agent-sdk) and production identity/native execution. Reuse, do not create a competing map.",
       "read_scope": "full"
     },
     {
@@ -184,18 +184,18 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "c011708b997e03dccebde2531ce80b03b900d463b563ac069270eeb8db7274f7",
+      "sha256": "b24e8e9683ee2038c31c97f5de1e35a35db00e7176cb6d0c7b48773ba34c9a5a",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof.",
+      "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-relay.md",
-      "sha256": "a3d2995de9a089b46cee59cd9b68a9152b4a2d5584bf7138a9c22d8213fe3342",
+      "sha256": "26d8512153193bd786ae123d69782c1bf49075db181c97b7826b60a07d65a1b5",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Shipped Relay, private broker and operator CLI recipe: fixed redacted refusal codes including retired-config and out-of-range registry limits, idempotent connect, credential/binding health, epoch-aware disconnect, a group disconnect that stops every member while a reconnect re-grants only the named address, refusal of empty `--operations`, an atomic refused group connect, two-agent synthetic JetStream roundtrip with attachment-part refusal and exact Host. Separate launcher (with an optional group mode) and cleanup that stops the owned broker; credential expiry and no real client/model guarantee are explicit.",
+      "summary": "Shipped Relay, private broker and operator CLI recipe: fixed redacted refusal codes including retired-config and out-of-range registry limits, idempotent connect, credential/binding health, epoch-aware disconnect, a group disconnect that stops every member while a reconnect re-grants only the named address, refusal of empty `--operations`, an atomic refused group connect, two-agent synthetic JetStream roundtrip with attachment-part refusal and exact Host. Separate launcher (with an optional group mode) and a stop that ends the owned Relay and broker but leaves the instance directory for the driver to remove; credential expiry and no real client/model guarantee are explicit.",
       "read_scope": "full"
     },
     {
@@ -208,7 +208,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/receive-ack.md",
-      "sha256": "3444a313a476c1a70118c288efed6339c1c34d134582d7e3b17c607fb7ebd265",
+      "sha256": "df11d3503f50afc50fc201210bd41a3451f131d3d1a99dddd76aecf2daf2de58",
       "role": "normative",
       "review": "reviewed",
       "summary": "Lease/poll/ACK wire cases, replay/refusal/redelivery, server audit and sender status. Separate recv-durable-save points to receiver commit-before-network-ACK proof; raw poll.json cannot establish durable inbox or processing.",
@@ -240,19 +240,19 @@
     },
     {
       "path": "README.md",
-      "sha256": "abad33bb46ed4fe191826eeee7c934110eb45b24aa030ef0202254e7315f4179",
+      "sha256": "7c32fd4fe84d8a216c42a4a1a0853296c1607c8aa04b3c254ddfebaf2bf3a051",
       "role": "context",
       "review": "reviewed",
-      "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. Delivery now runs only through NATS JetStream; SQLite delivery and managed attachments are retired and attachment parts are refused. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
+      "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
     },
     {
       "path": "docs/a2a-relay-preview.md",
-      "sha256": "c1a7777d108036aad51e43c8a8ea413712fa79177aab3aa05106cb5cd43746e0",
+      "sha256": "84cebe80081764fa9217a438523516b2020c71316b769dbae810d560e2658611",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Timeouts/cancel errors never claim stopped execution; no production/JetStream/native-agent claim."
+      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend; the preview gateway is not wired into the host, pending an owner decision. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim."
     },
     {
       "path": "docs/a2a-sdk-preview.md",
@@ -327,7 +327,7 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "86193c8a9be2112234ae73c4936f7b9c1eb16131695d6f7e962185a1eb516149",
+      "sha256": "63453d41165800afbfb8dd6b25bf13af04170dd01ecb189cebf58e8f09061fb6",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
@@ -393,17 +393,17 @@
     },
     {
       "path": "docs/generic-agent-async-design.md",
-      "sha256": "980c4f01eff5eeb736a77cc672e4bb9c414681283084fef403024d88ad639230",
+      "sha256": "41313f111ec95f01016db1b139c189d998980003592191777ab74b29b772b5a7",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional Task integration additional design, explicitly not standard messaging prerequisite. Separates delivery/display/work and preserves conversation correlation, recipient-owner authority, real effective operation boundaries, stable execution keys and unknown-outcome reconciliation. working is coordinator claim and not model start. Proposed A2A approval profile, long approval/job deadlines, cross-owner and T01-T13 requirements remain optional future integration work, not implementation/deployment evidence."
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "bf5564ec2d55ed8fd4aa1859b4100e306153b0e36cf87bb82f7b9b82a86968f3",
+      "sha256": "fda581def613cdb76315cd8e5111bb1d39a6ba0c874ff8afea26a3127260ef29",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records A2A gateway wiring as pending owner decision and leaves task-bridge, answer-intents and adapter-host deferred. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented."
     },
     {
       "path": "docs/hab-principles.md",
@@ -414,10 +414,10 @@
     },
     {
       "path": "docs/hab-product-spec.md",
-      "sha256": "41f4f8ad569b88e035a6e832fdcae5d2682b6b340fc6607fa3db1ab0bced65b6",
+      "sha256": "a7ae7566d99aaa04e2a603db74511d00dcd1a1d84bcf3e12abfa86804197e613",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned, A2A/JetStream evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive transport replacement; many product/live acceptance conditions remain unverified."
+      "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. JetStream-only delivery is adopted (ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; many product/live acceptance conditions remain unverified."
     },
     {
       "path": "docs/hab-relay-integration.md",
@@ -428,10 +428,10 @@
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "c641ed697451c4091f57f6966ed362c7a42985bbf20c21192d9d114cefae2a9a",
+      "sha256": "8a942695a0c8e5f3d3b24d8d1ad0ec5afb03dbb47dbf20ac6e11fd6b022eaeba",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
+      "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) makes NATS JetStream the only delivery store and names the current modules; earlier single-Node+SQLite wording is the initial plan. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
     },
     {
       "path": "docs/hab-roadmap.md",
@@ -504,12 +504,12 @@
     },
     {
       "path": "docs/implementation/generic-nats-dispatch.md",
-      "sha256": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
+      "sha256": "8ac25f65817af93181f37beb64ab3f6c172036d16ad3243599f3b84a4dadaae9",
       "hash": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
       "role": "context",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Historical: describes the opt-in generic NATS text port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs), which was deleted because it had no production caller and bypassed Registry authorization. The document text is unchanged and still reads as current; HAB-C-E07 records the disposition. No requirement cites it. Its execution rules survive only where TaskBridge, reply-journal and proof-label sources state them."
+      "summary": "Historical record of the deleted opt-in generic NATS text port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs). An opening note says the code was removed because it had no production caller and bypassed Registry authorization, and points at the current JetStream design and ADR-016. HAB-C-E07 records the disposition. No requirement cites it. Its execution rules survive only where TaskBridge, reply-journal and proof-label sources state them."
     },
     {
       "path": "docs/implementation/generic-text-preview.md",
@@ -574,12 +574,12 @@
     },
     {
       "path": "docs/local-mvp.md",
-      "sha256": "e8a29f69c61290751cdc041ef5486b815fc57cd8eda719ed3f1c9a9dadc6b014",
+      "sha256": "c14c4fd5bcbdb6d0320293b2bb4c0dda8e34e57868568611b193c24ee69d77b1",
       "hash": "316f9286a7a0ea1951063ce4ff6062130a0bfc759531d40bb4a6c3f29966bd04",
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Synthetic Node loopback local-MVP15-stage CLI combines durable delivery, ACK ambiguity, stable recovery, explicit fixed Task boundary and reply loop denial. Close/reopen is not kill9/power/disk/independent restore proof. Legacy1:1 auth fixture remains while actual connection may use approved shared groups without exclusive Bot identity. Tests include Node/TS and auxiliary Python; production/G1 stays unaccepted."
+      "summary": "Synthetic Node loopback local-MVP15-stage CLI combines durable delivery, ACK ambiguity, stable recovery, explicit fixed Task boundary and reply loop denial. It needs the pinned nats-server (HAB_NATS_SERVER or the installer record) and refuses with a fixed nats_server_required line and install hint before creating state; it starts and removes its own loopback broker. Close/reopen is not kill9/power/disk/independent restore proof. Legacy1:1 auth fixture remains while actual connection may use approved shared groups without exclusive Bot identity. Tests include Node/TS and auxiliary Python; production/G1 stays unaccepted."
     },
     {
       "path": "docs/local-relay-host.md",
@@ -670,7 +670,7 @@
     },
     {
       "path": "docs/profiles/async-text-v1.md",
-      "sha256": "ddecab54237ebd41b62832278b4fb6c757bd3ea7b14bad42d2739f5921603798",
+      "sha256": "a277320db4e089d93b12fdc087b64cece649cf35173ed43cc49b366ca922d5a1",
       "hash": "ddecab54237ebd41b62832278b4fb6c757bd3ea7b14bad42d2739f5921603798",
       "role": "normative",
       "review": "reviewed",
@@ -737,7 +737,7 @@
     },
     {
       "path": "docs/task-bridge.md",
-      "sha256": "de33807668de97a595cdd4c5bade9259b233e29f6a2a543b0a31547b97a282c6",
+      "sha256": "a48a0a5a652fc4f10e190046522b578a7045e541c344c58861c38228609dc80b",
       "hash": "de33807668de97a595cdd4c5bade9259b233e29f6a2a543b0a31547b97a282c6",
       "role": "normative",
       "review": "reviewed",
@@ -794,10 +794,10 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "c028d15f7882ce6915f99648470b4b7e47aee3e661ccbba4cb882e2f5bb80f51",
+      "sha256": "5d3ac9e318ced0089f66f1bd6b3d899b1358548c9144fbeb115d0fafac2a087c",
       "role": "context",
       "review": "reviewed",
-      "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
+      "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full"
     },
     {
@@ -818,10 +818,10 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "cab3792ad7c417261d05875d66f17367c4994b53bb4d228146d36ef3cdf25ec7",
+      "sha256": "f21a28906f78b8aeee7d461a95392befaed202af5322306c9af840df717d42ed",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, no shadow ownership, closed-image semantic restore and owned cleanup. Describes original 218-input/1498-case reference, current hosted status separate; use current successor catalog for present counts.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 60, broker startup 5, runner guards 8, full root 1151) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full"
     },
     {
@@ -834,10 +834,10 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "903628ddffe87ad31a5addde227d6ebea2483e12a0003f99d83ec47023411341",
+      "sha256": "dfdd9da0c32b27c1187b79c100a5fa73fbb556bd8b9b5d55d2ef678a234b6976",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain. Historical numeric catalogs need current successor reconciliation.",
+      "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full"
     },
     {
@@ -873,21 +873,21 @@
     },
     {
       "path": "packages/relay-nats/DESIGN.md",
-      "sha256": "001baca2d3e2c3f30d949a2ab667a5a9dbecf1c8c37b0df4fa654ad639ebe60a",
+      "sha256": "95ee9cfba972e7853cc8e86f3dc9ee0f801890cebebb74bbe5bbcae6b9679d14",
       "role": "normative",
       "review": "reviewed",
-      "summary": "JetStream is HAB's only delivery backend: one start path, one `delivery` section, no SQLite store, router or routing epoch, and no migration of retired SQLite messages. Synchronous current Registry authorization surrounds durable admission/outbox acceptance before async supervised publication/cache. Former store rules (replies, capacity, single lease, fair poll) and a redacted delivery audit commit in journal transactions; schema 4 migration is explicit. Pinned finite File/one-replica/Limits broker with verified unique-subject exact publication, original HAB deadline and fenced quarantine separates broker ACK, recipient save and Task completion. Saved ACK drives later tracked erasure; deployment/restore/effect-exactly-once/power fault claims remain limited."
+      "summary": "JetStream is HAB's only delivery backend: one start path, one `delivery` section, no SQLite store, router or routing epoch, and no migration of retired SQLite messages. Synchronous current Registry authorization surrounds durable admission/outbox acceptance before async supervised publication/cache; the backend creates no consumer, and the earlier asynchronous submit/status/poll/ACK operations over a durable consumer were deleted for lack of a production caller. Former store rules (replies, capacity, single lease, fair poll) and a redacted delivery audit commit in journal transactions; schema 4 migration is explicit. Pinned finite File/one-replica/Limits broker with verified unique-subject exact publication, original HAB deadline and fenced quarantine separates broker ACK, recipient save and Task completion. Saved ACK drives later tracked erasure; deployment/restore/effect-exactly-once/power fault claims remain limited."
     },
     {
       "path": "packages/relay-nats/OPERATIONS.md",
-      "sha256": "74c830b92f6ab94875e62362c67edb088183331ced79155c4a7d268b9bf37278",
+      "sha256": "4d45419c52e35e3e9215826303cd32e2399b9a8a02b0f8f333db027221b1f1d2",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Operator-selected private persistent volume and device/marker checks fail closed before state writes and each pump. Pinned loopback broker requires audited fsync policy and finite capacity; health file is a transition record, not heartbeat. Whole-state quiesced backup includes broker, journal, current authority/config and recipient state with separately protected secrets; broker-only snapshot insufficient. There is no SQLite fallback; rollback restarts an earlier build on the same journal and broker store without replacement IDs. Single-host/container evidence does not prove VPS fault independence."
+      "summary": "Operator-selected private persistent volume and device/marker checks fail closed before state writes and each pump. A leftover relay.sqlite from the retired store is silently ignored, so its pending messages must be reconciled with senders before upgrade. Pinned loopback broker requires audited fsync policy and finite capacity; health file is a transition record, not heartbeat. Whole-state quiesced backup includes the broker stream, journal, current authority/config and recipient state with separately protected secrets; broker-only snapshot insufficient. There is no SQLite fallback; rollback restarts an earlier build on the same journal and broker store without replacement IDs. Single-host/container evidence does not prove VPS fault independence."
     },
     {
       "path": "packages/relay-nats/README.md",
-      "sha256": "4874f1230a8b46f76537c9ecd8ae4fae8fde5fcf5d46e6519bb13f610490e61e",
+      "sha256": "7f7388e1655027ff440ce85d91d560aaea4ecfd2012ca4c54cafc9697aa9692a",
       "role": "context",
       "review": "reviewed",
       "summary": "The JetStream package is HAB's only delivery backend and preserves the five-tool API. Describes fixed dependency/server installer and byte-verified proof entrypoint, the `delivery` configuration parts, private volume marker startup and refusal of the retired `store`/`delivery.routing` sections. Commands are documentation only in this read-only task. Referenced independent full restore and combined Task integration gates belong to later integration scope."
@@ -908,15 +908,15 @@
     },
     {
       "path": "test/p7/README.md",
-      "sha256": "f34327d5f116f370a5537292d68f106d87b0626fc0a074e00a306ee302df10f9",
+      "sha256": "8e99d8f35a9102e9cf127b6e30892d6580301c27358914611da5d7af6b468e88",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
+      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, the 60-case producer catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
       "read_scope": "full"
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "eec04745196b3e2f67ff55665ed0913e9cafc633a13ee27db596778a9b8173e8",
+      "sha256": "1ac23cb7a3301fe9da1197f669872b38761af4db7bb4490c805f5401b42584c7",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "aa677c71674981e6294ecbbf1a93862f312c7a97301e47acd8f670e674ba63bd",
+      "sha256": "4c9b007e1717c48b005abc4d5e7e596f6b8dcd1677f2fff083a945a6d8d8eddb",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +932,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "83fd43cc61682ee87c5b71c2e1af02319797b7f53dd53eb28e2f03c9f9df495b",
+      "sha256": "d1bcc1d0f411983638c6e78a22ed5c499f73932ceeb295a612e2f7f2badafe0e",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +940,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "f3f9b48d37e2cd535b9c774f40cf1c42d772d99d6f7536b35e4f8e4e69f116e8",
+      "sha256": "b55acf5e9b6c91e4c5b4cff3cdc7197d609c3cbbfd677364b519bee921fb5678",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1074,14 +1074,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 255,
-          "end": 259,
+          "start": 257,
+          "end": 261,
           "excerpt_sha256": "e074360c4ad50e9710b877ac87bc0b501bbb3fcf2aca586e818bd1505f316a2a"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 166,
-          "end": 166,
+          "start": 165,
+          "end": 165,
           "excerpt_sha256": "ca7d62c15ba64c0753294c8d43d38d152f1c38ca1b71e2b20e37a90b2646ccdd"
         }
       ]
@@ -1105,8 +1105,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 137,
-          "end": 137,
+          "start": 139,
+          "end": 139,
           "excerpt_sha256": "8b1ad508506b9547729542777d766b5855f260badb3c0efd928f85e0c9f4d5b2"
         },
         {
@@ -1132,8 +1132,8 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 97,
-          "end": 109,
+          "start": 98,
+          "end": 110,
           "excerpt_sha256": "3ff61784d4b5b8e74c054c88509bff0d7af3e3efb5526382160bb5f5458d9774"
         },
         {
@@ -1253,8 +1253,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 91,
-          "end": 95,
+          "start": 93,
+          "end": 97,
           "excerpt_sha256": "d9e964830759292cf626358c1b15dfcf7e89396b48896289aa73df57c1a1f390"
         },
         {
@@ -1284,8 +1284,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 143,
-          "end": 149,
+          "start": 145,
+          "end": 151,
           "excerpt_sha256": "b8a1d5bc2549270e2bfe78d1eef5e8bc44b6dec50c85230bdeb5a505506e5610"
         }
       ]
@@ -1305,8 +1305,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 76,
-          "end": 97,
+          "start": 78,
+          "end": 99,
           "excerpt_sha256": "cccb8d81e3e312da329dd3e35bb15e2e6be2b56db4e2646c5b7ecf9799dcacfd"
         }
       ]
@@ -1325,14 +1325,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 225,
-          "end": 231,
+          "start": 227,
+          "end": 233,
           "excerpt_sha256": "dbec7255dab3e0892b40e1619e04baca1e3dd1fe101fad1f6bcc64398095f699"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 283,
-          "end": 298,
+          "start": 285,
+          "end": 300,
           "excerpt_sha256": "4fd2b012e5129090ed90632050f7d9e9a802c81a9bb5f1fe4eb38a7a05c04dba"
         }
       ]
@@ -1351,9 +1351,9 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 370,
-          "end": 396,
-          "excerpt_sha256": "60f160ac38190c44ad5b426fd449efbc08226ba13f74abbbe9b68f2704011387"
+          "start": 372,
+          "end": 398,
+          "excerpt_sha256": "7c6a982ecd058f2416ff9bf52b02f05fffcab3a9aa1a7212b4a0cdd0a5d52f16"
         }
       ]
     },
@@ -1416,13 +1416,13 @@
           "path": "docs/generic-agent-async-design.md",
           "start": 110,
           "end": 112,
-          "excerpt_sha256": "51f7030ed76982ddcbbb9fe722de99b85c9bf42f70708bd43e2f6c1ce72fefe3"
+          "excerpt_sha256": "26454a174f8acf5e57268422a616a26fb68f2dfdd9ce387d1ba4d9cfc07ae4ae"
         },
         {
           "path": "docs/generic-agent-async-design.md",
           "start": 142,
           "end": 142,
-          "excerpt_sha256": "411d8a55a5ae07c8090800efc536bdb3a1691ae0285adeb987fd9c9fcaaeb907"
+          "excerpt_sha256": "7764fe05c9bdba5931d15d12bc3f94e3e907ca09f9cd10589259ecd60ffd6948"
         }
       ]
     },
@@ -1446,14 +1446,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 301,
-          "end": 307,
+          "start": 303,
+          "end": 309,
           "excerpt_sha256": "e06fae3c55e3980f54ce2e2997880b5e29378afd3bc2eee8cc477670105dd488"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 326,
-          "end": 330,
+          "start": 328,
+          "end": 332,
           "excerpt_sha256": "d68c403a1e66c1129a4e74b7bf1cf71577ebbd1fefbeb9cef6739c4204bd2808"
         }
       ]
@@ -1478,8 +1478,8 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 67,
-          "end": 68,
+          "start": 68,
+          "end": 69,
           "excerpt_sha256": "515c810e8cded70e915f4a1b9e63b25d6ff2cb40c53b4bd8962eff5bb8f73231"
         }
       ]
@@ -1510,9 +1510,9 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 201,
-          "end": 207,
-          "excerpt_sha256": "d4b818fad536333e130e85571db20c84ca3e93dd5f0d1c3e44999cbf87d51565"
+          "start": 200,
+          "end": 206,
+          "excerpt_sha256": "5f2c24cba721aac20208ed5ab6a4ab5ad96ce5be2be12963c2540125eb8dc0ce"
         }
       ]
     },
@@ -1535,14 +1535,14 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 34,
-          "end": 46,
+          "start": 35,
+          "end": 47,
           "excerpt_sha256": "d22c176471eda1c96a6d2a5ddc7f4f2991e8081b6450e64c0700c9e5bbc363f5"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 89,
-          "end": 93,
+          "start": 90,
+          "end": 94,
           "excerpt_sha256": "8ba250e210b6b70f368c1e05b37a2628d33a9db4a4a475d4d987eb27995e1c4c"
         }
       ]
@@ -1592,15 +1592,15 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 493,
-          "end": 499,
+          "start": 495,
+          "end": 501,
           "excerpt_sha256": "ae634ca31940762ed56ee03bedbe82a682be1afc5f80df703353970051281de5"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 170,
-          "end": 172,
-          "excerpt_sha256": "12a20c9e6072c36c304cc33aa6053c8d59449eb6a45f02a916d6cae4e4f1605c"
+          "start": 169,
+          "end": 171,
+          "excerpt_sha256": "e665a121659b75d9ae6128f0200b21a58c39aeec30c7419711928b6629222202"
         }
       ]
     },
@@ -1619,7 +1619,7 @@
           "path": "docs/generic-agent-async-design.md",
           "start": 100,
           "end": 122,
-          "excerpt_sha256": "0e7019f11b4d7851d816d796b23f08c643f3fea32f976ca6b08faee3985887ea"
+          "excerpt_sha256": "b82d441e58bf1b160db50e0927a820a7dae162c44e6cd6f275491a09237ac982"
         },
         {
           "path": "docs/generic-agent-async-design.md",
@@ -1638,9 +1638,9 @@
     {
       "id": "HAB-F26",
       "title": "Transport adoption is separate",
-      "statement": "Evaluate A2A/JetStream replacement using isolated compatible failure/recovery/migration/value tests before formal adoption; do not dual-send same request or infer closed-product wake/input capabilities from a standard.",
+      "statement": "JetStream delivery is adopted as the only delivery backend (ADR-016), with no dual-send to a second store and no migration of messages held by the retired SQLite store. Evaluate A2A transport adoption using isolated compatible failure/recovery/migration/value tests before formal adoption; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.",
       "rationale": "Existing optional code and a successful lab do not decide production adoption.",
-      "scope": "Product0.1 future transport adoption and rollout",
+      "scope": "Product0.1 transport adoption and rollout: JetStream delivery is adopted; A2A transport adoption remains future.",
       "decision": "proposed",
       "checks": [
         "proposal-review",
@@ -1649,15 +1649,21 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 137,
-          "end": 160,
-          "excerpt_sha256": "3aadc9aed9878807682e09ebff5eff0bdd8dbe9d9a45cf2a9b702784a34ae5d8"
+          "start": 136,
+          "end": 159,
+          "excerpt_sha256": "38ac4194953aba6537eecf1ef7a00e8adb3bc7a80c62a740c6cd04e15210587e"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 201,
-          "end": 207,
-          "excerpt_sha256": "d4b818fad536333e130e85571db20c84ca3e93dd5f0d1c3e44999cbf87d51565"
+          "start": 200,
+          "end": 206,
+          "excerpt_sha256": "5f2c24cba721aac20208ed5ab6a4ab5ad96ce5be2be12963c2540125eb8dc0ce"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 37,
+          "end": 48,
+          "excerpt_sha256": "e8d2897f7ca77c36db1e522a29d0db5c34b1571e9bf58eb176076f83360caa21"
         }
       ]
     },
@@ -2340,14 +2346,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 78,
-          "end": 87,
+          "start": 80,
+          "end": 89,
           "excerpt_sha256": "ab879765544b87a837cabf41eb0274fb1214269a1c8bb0b035c1cfb9d1d8de9b"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 437,
-          "end": 437,
+          "start": 439,
+          "end": 439,
           "excerpt_sha256": "6f480c2b96488d99211c87919e7200c4bbca8e049bbf863f254f70a31cb4fa5d"
         }
       ]
@@ -2379,14 +2385,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 258,
-          "end": 259,
+          "start": 260,
+          "end": 261,
           "excerpt_sha256": "64b8bcc6106da45977852cbcf80348920e1b8f3089194adf165a4f6329e3c0c3"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 289,
-          "end": 289,
+          "start": 291,
+          "end": 291,
           "excerpt_sha256": "3d06952c98d346a96204ffa3119946005d2291432b6b76be883a4afe6ed95fbe"
         },
         {
@@ -2410,26 +2416,26 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 181,
-          "end": 192,
+          "start": 183,
+          "end": 194,
           "excerpt_sha256": "34db17c2d84f78b2c3a96edac01c781f034bf6875d35bb930ef39ee99cd6462b"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 217,
-          "end": 219,
+          "start": 219,
+          "end": 221,
           "excerpt_sha256": "3c293d98a090dcd2b62180d8d0e2504261598beaac502788a8638cb3aea9f610"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 225,
-          "end": 229,
+          "start": 227,
+          "end": 231,
           "excerpt_sha256": "d028594e0af5d41c29f59d44d0c7397611ab2a8035b48884db662db13ff0e2c5"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 370,
-          "end": 370,
+          "start": 372,
+          "end": 372,
           "excerpt_sha256": "7efd6339c650850bf02aeb986be7f01943239d65cac2ca3283d423e71eaead69"
         }
       ]
@@ -2447,14 +2453,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 283,
-          "end": 285,
+          "start": 285,
+          "end": 287,
           "excerpt_sha256": "4c38a82a67e1b6ca886c61bd7c9672e9d68603e856afe96c1ed3e61ee7eae962"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 289,
-          "end": 296,
+          "start": 291,
+          "end": 298,
           "excerpt_sha256": "8aeb86a89be551671a4419d232db2eee3b130d7952ae48829a551d83756d622b"
         },
         {
@@ -2473,7 +2479,7 @@
           "path": "packages/relay-nats/DESIGN.md",
           "start": 37,
           "end": 37,
-          "excerpt_sha256": "31da8ca2260b22f9cbb3a7e7778a33de076992c2903fe24b9d561b3d67bacdbf"
+          "excerpt_sha256": "6441174afb998356b5263648ccf255c4dde821d8e60bc8fdc26ee92d4ad0291c"
         }
       ]
     },
@@ -2508,14 +2514,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 255,
-          "end": 256,
+          "start": 257,
+          "end": 258,
           "excerpt_sha256": "3c27abf758e0da5e792b038f73c2ee8afd87b0d30bd3fa69f8e90f162bdf22a1"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 302,
-          "end": 304,
+          "start": 304,
+          "end": 306,
           "excerpt_sha256": "3ac00765f5519440674f9926dbc90c685848ab5b6f5f1d1ed32e2977fc425aad"
         },
         {
@@ -2552,14 +2558,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 259,
-          "end": 259,
+          "start": 261,
+          "end": 261,
           "excerpt_sha256": "2d42e4fb2ba0c0e68941be721aa335ffc0795ed81e8dbbb9b551df4a7e676549"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 390,
-          "end": 392,
+          "start": 392,
+          "end": 394,
           "excerpt_sha256": "b8520dfe92aefb31f060f881ee62474fb493bbcbfef3c283916a2cc7ec5f7d67"
         }
       ]
@@ -2590,15 +2596,15 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 384,
-          "end": 386,
+          "start": 386,
+          "end": 388,
           "excerpt_sha256": "91969435fd9eaee1656f9ea026c244d9ec5d21c4d4a6e5eec3dc82eac247a7e2"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 394,
-          "end": 396,
-          "excerpt_sha256": "63c8e73c6bf810f4cfa9f799a59ff0c9c06d1e513f16bd275beeea4014b78c6f"
+          "start": 396,
+          "end": 398,
+          "excerpt_sha256": "f2419f080bc596ca45548dad40913984ae168384b60a25e3bcf05c6f651a4ba2"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
@@ -2621,14 +2627,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 221,
-          "end": 221,
-          "excerpt_sha256": "1bc203fec9d8753f4cbce5c40ba5f58b97098470f78faebd1688b60b42268207"
+          "start": 223,
+          "end": 223,
+          "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         },
         {
           "path": "README.md",
-          "start": 85,
-          "end": 85,
+          "start": 87,
+          "end": 87,
           "excerpt_sha256": "191704a9f43a004d1b6fd38d44dc44d97e78362dc2ce9af298406c6dda0d3597"
         }
       ]
@@ -2646,9 +2652,9 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 221,
-          "end": 221,
-          "excerpt_sha256": "1bc203fec9d8753f4cbce5c40ba5f58b97098470f78faebd1688b60b42268207"
+          "start": 223,
+          "end": 223,
+          "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
     },
@@ -2665,9 +2671,9 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 221,
-          "end": 221,
-          "excerpt_sha256": "1bc203fec9d8753f4cbce5c40ba5f58b97098470f78faebd1688b60b42268207"
+          "start": 223,
+          "end": 223,
+          "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
     },
@@ -2685,9 +2691,9 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 221,
-          "end": 221,
-          "excerpt_sha256": "1bc203fec9d8753f4cbce5c40ba5f58b97098470f78faebd1688b60b42268207"
+          "start": 223,
+          "end": 223,
+          "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
     },
@@ -2759,7 +2765,7 @@
           "path": "packages/relay-nats/OPERATIONS.md",
           "start": 31,
           "end": 37,
-          "excerpt_sha256": "af1a43c95249f242ec1d8cafdb8c1d69b7c54b64e9196b239329964bd5e8224c"
+          "excerpt_sha256": "5d19d453a3e09e699d08eb7ee3d88def418fad732b64ee8ec2a2d3207aeb63d2"
         }
       ]
     },
@@ -2797,7 +2803,7 @@
           "path": "packages/relay-nats/DESIGN.md",
           "start": 43,
           "end": 59,
-          "excerpt_sha256": "f9257c615f97b43a951c39907c14e746df0564c56430f9b534e48ad6b4d8d626"
+          "excerpt_sha256": "40076c3447f4436c7c17abd052ef6c74528c40899c078ea2d23a0e417dd96b09"
         },
         {
           "path": "packages/relay-nats/OPERATIONS.md",
@@ -2829,7 +2835,7 @@
           "path": "packages/relay-nats/DESIGN.md",
           "start": 29,
           "end": 41,
-          "excerpt_sha256": "2c2b5e75b045fdd8562bc0358ae42fb86c6d5b824560fcf39f21fbc09dfd07f7"
+          "excerpt_sha256": "ec54ad81eb39176b825ea6441ace274252f9f012da8fc35e1763a31518862898"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
@@ -2841,7 +2847,7 @@
           "path": "packages/relay-nats/OPERATIONS.md",
           "start": 7,
           "end": 37,
-          "excerpt_sha256": "6ef9fc77e85732290f98e902185892072865a5746d4429aef365a911600b0594"
+          "excerpt_sha256": "7c274fc5a892a66ede28e1b226fb773e48b9716c03ddc2a8aef1b7c7ab7d60dc"
         },
         {
           "path": "packages/relay-nats/OPERATIONS.md",
@@ -2890,14 +2896,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 221,
-          "end": 221,
-          "excerpt_sha256": "1bc203fec9d8753f4cbce5c40ba5f58b97098470f78faebd1688b60b42268207"
+          "start": 223,
+          "end": 223,
+          "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 550,
-          "end": 550,
+          "start": 552,
+          "end": 552,
           "excerpt_sha256": "e3ebd5e5f0569550960ffdd5f3c2f69cffbb089d6d01245994b55ebc02a4ae34"
         },
         {
@@ -2930,7 +2936,7 @@
           "path": "packages/relay-nats/DESIGN.md",
           "start": 41,
           "end": 41,
-          "excerpt_sha256": "30237abe48012d924ea1d7baffa32501f1a5b7ff84cae524fbca43b2072360ef"
+          "excerpt_sha256": "8a577a443af6dcbe19435672dd26dfc09271093de07901f9d0b01e34006ec06c"
         },
         {
           "path": ".claude/skills/verify-hab/features/README.md",
@@ -3404,8 +3410,8 @@
       "citations": [
         {
           "path": "docs/local-mvp.md",
-          "start": 72,
-          "end": 76,
+          "start": 76,
+          "end": 80,
           "excerpt_sha256": "cf9d87e414f5bf76d6d7c35733282c9864dbe3e309579bdd204526026f816935"
         },
         {
@@ -3483,7 +3489,7 @@
           "path": ".claude/skills/verify-hab/SKILL.md",
           "start": 85,
           "end": 90,
-          "excerpt_sha256": "fa9e8a371645ba18bc46ba9a647afecaadf7d52aedd64ea0d57cc79d3db384bb"
+          "excerpt_sha256": "32ccd93cfe2c647213336bc33cd944711323d1e869dfa9fc1dcb3c7f04125f87"
         },
         {
           "path": ".claude/skills/verify-hab/features/README.md",
@@ -3510,7 +3516,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 7,
           "end": 9,
-          "excerpt_sha256": "aeb867ee6eb976f4860be0ed7e8246f946f849236f0d7c27f7264de73885a927"
+          "excerpt_sha256": "77a03b069164c29e7bb59f8bd69c0014e8ae2bd548ae45f6ee28aff2c87390ff"
         },
         {
           "path": ".claude/skills/verify-hab/features/receive-ack.md",
@@ -3535,7 +3541,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 3,
           "end": 16,
-          "excerpt_sha256": "8e7c38372616cb621271f18763d9e1ac96d31fb001062ea30d2c95fe602e06e2"
+          "excerpt_sha256": "4a75cf4088fd2c01dfe63812340995d6640f4ac6107b69e1643a4c728311f5b2"
         }
       ]
     },
@@ -3620,7 +3626,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "98172b15847155616bf9a1819628dc468cf5f85c193ce972775beee7112e8ab8"
+          "excerpt_sha256": "c37e7c3f56cd53e4b0aa7ada0632658e6f79d864bf10c7a62b4cd9b8fe00dbf1"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -3688,8 +3694,8 @@
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 28,
-          "end": 36,
-          "excerpt_sha256": "d8f220ea6335ac7649d19234320411793ca41aa2d8df9137f7b695a82d905500"
+          "end": 37,
+          "excerpt_sha256": "134164ea1a70b361d56afdb25f8d125c723a66d568cf8a1014595890a0f17c40"
         }
       ]
     },
@@ -3818,7 +3824,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "70c059466c79db96115f3e9eabf626c01681faa0e2503545dfcca69a6005d42c"
+          "excerpt_sha256": "517a35dc781d32d6308cb45a8e70cf356b0916f7863ff10e2756b7c0fd41633d"
         },
         {
           "path": "docs/testing/publication.md",
@@ -4132,7 +4138,7 @@
         "HAB-F18",
         "HAB-F21"
       ],
-      "resolution": "No. Architecture/workflow explicitly own optional limited Task path, and ADR015/common-MCP explicitly retain Tasks optional and recipient existing authority. Diagram remains dated historical Task integration rather than standard communication target.",
+      "resolution": "No. Architecture/workflow explicitly own optional limited Task path, and ADR015/common-MCP explicitly retain Tasks optional and recipient existing authority; ADR-016 revises the standard composition and keeps that division. Diagram remains dated historical Task integration rather than standard communication target.",
       "classification": "scope/history/explicit-authority",
       "citations": [
         {
@@ -4156,8 +4162,14 @@
         {
           "path": "docs/hab-decisions.md",
           "start": 24,
-          "end": 37,
-          "excerpt_sha256": "d8b9501a1b7121219a06eb654b268b9b221e876ddeebc60ddae86145fb00f325"
+          "end": 36,
+          "excerpt_sha256": "4d3fcfd4c3c5b9f2343640f8bd583c0c6b5c4856f0683950e853c26759dcf723"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 37,
+          "end": 48,
+          "excerpt_sha256": "e8d2897f7ca77c36db1e522a29d0db5c34b1571e9bf58eb176076f83360caa21"
         }
       ]
     },
@@ -4180,8 +4192,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 79,
-          "end": 87,
+          "start": 81,
+          "end": 89,
           "excerpt_sha256": "709eb46db18a18cd4c1f2443a8423af4b565876703fa4472b497c54737a04a5c"
         },
         {
@@ -4261,26 +4273,26 @@
         "HAB-F18",
         "HAB-F21"
       ],
-      "resolution": "Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded in part: JetStream later became the only delivery backend in code, which reopens the adoption question as HAB-C-D06.",
+      "resolution": "Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). A2A formal adoption and production deployment remain undecided.",
       "classification": "history/adoption-versus-implementation",
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
           "start": 23,
-          "end": 29,
-          "excerpt_sha256": "83ea9b3371315b3417c680c9d359f298c389c62a6d294c2d554a113b4501946f"
+          "end": 30,
+          "excerpt_sha256": "0dfcbc2d78b8daee461387005be3b8eb25c9705b14480cae9641c4932386d657"
         },
         {
           "path": "README.md",
-          "start": 132,
-          "end": 132,
+          "start": 134,
+          "end": 134,
           "excerpt_sha256": "7ca7aba05f423c6b663ea5b90abdd9c367a97ed7c5d44fb3a639874f9d4dd326"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 201,
-          "end": 207,
-          "excerpt_sha256": "d4b818fad536333e130e85571db20c84ca3e93dd5f0d1c3e44999cbf87d51565"
+          "start": 200,
+          "end": 206,
+          "excerpt_sha256": "5f2c24cba721aac20208ed5ab6a4ab5ad96ce5be2be12963c2540125eb8dc0ce"
         }
       ]
     },
@@ -4303,14 +4315,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 29,
-          "end": 29,
+          "start": 31,
+          "end": 31,
           "excerpt_sha256": "6b502cf29a3b47d05e7de0a53c298f23eb9c79f5a650263e81c4bf31a054b271"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 515,
-          "end": 523,
+          "start": 517,
+          "end": 525,
           "excerpt_sha256": "b2b9d12db178026be9050c4f02398db07d9d229c39045a53193b90281a45e2de"
         },
         {
@@ -4348,7 +4360,7 @@
           "path": "docs/generic-agent-async-design.md",
           "start": 142,
           "end": 142,
-          "excerpt_sha256": "411d8a55a5ae07c8090800efc536bdb3a1691ae0285adeb987fd9c9fcaaeb907"
+          "excerpt_sha256": "7764fe05c9bdba5931d15d12bc3f94e3e907ca09f9cd10589259ecd60ffd6948"
         },
         {
           "path": "docs/implementation/generic-job-application.md",
@@ -4670,7 +4682,7 @@
           "path": "packages/relay-nats/OPERATIONS.md",
           "start": 31,
           "end": 37,
-          "excerpt_sha256": "af1a43c95249f242ec1d8cafdb8c1d69b7c54b64e9196b239329964bd5e8224c"
+          "excerpt_sha256": "5d19d453a3e09e699d08eb7ee3d88def418fad732b64ee8ec2a2d3207aeb63d2"
         },
         {
           "path": "packages/relay-nats/README.md",
@@ -4882,8 +4894,8 @@
       "citations": [
         {
           "path": "docs/local-mvp.md",
-          "start": 99,
-          "end": 108,
+          "start": 105,
+          "end": 114,
           "excerpt_sha256": "a0824786d6ed7c5ad1d2b11155bab26e78f1b794b0225783b918b7c8592e8d5c"
         }
       ]
@@ -4936,8 +4948,8 @@
         {
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
-          "end": 7,
-          "excerpt_sha256": "02bc27a86e31cce6efa18ffa14240160e2dd61600a8f63a36b0f7dccff10c102"
+          "end": 9,
+          "excerpt_sha256": "ebe9f4126f1adf7f2ad06f076531e2ae4b75a6b370d08338c810da080612f2b0"
         },
         {
           "path": "docs/testing/publication.md",
@@ -4995,8 +5007,8 @@
       "citations": [
         {
           "path": "docs/testing/delivery-lab.md",
-          "start": 56,
-          "end": 56,
+          "start": 58,
+          "end": 58,
           "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a"
         },
         {
@@ -5033,7 +5045,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 7,
           "end": 9,
-          "excerpt_sha256": "aeb867ee6eb976f4860be0ed7e8246f946f849236f0d7c27f7264de73885a927"
+          "excerpt_sha256": "77a03b069164c29e7bb59f8bd69c0014e8ae2bd548ae45f6ee28aff2c87390ff"
         }
       ]
     },
@@ -5056,26 +5068,26 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "ef0729bbc9d29eeb064f3e600f36455db78ed8ff1abe4f48aca8e66f4c3966dc"
+          "excerpt_sha256": "4b2ebbe5cd42c1433c8a860fd25a82ff672cb7447bf958afca1c122c9be5f8c4"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "05a2ae4cb5a7b8b1ed136410b108db7565e281f17763f95a70ec20e4ed5f959a"
+          "excerpt_sha256": "21a3223d9ef3578b92313972293145e33eaa60297cbafd7279e72f71a64d2f04"
         },
         {
           "path": "test/p7/README.md",
           "start": 20,
           "end": 20,
-          "excerpt_sha256": "3788c40149e0a265b9df7ddcf99db0b575b7c49d807d688899499aba9d6410c5"
+          "excerpt_sha256": "28927ffa07a94a49a193a30546552e428babff75733ce5860309233e873377f0"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1150 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 60 cases after the unused asynchronous relay operations were deleted. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1151 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
     },
     {
       "status": "resolved",
-      "question": "Can native A2A acceptance or hybrid JetStream D01 stand in for arbitrary six-direction backend behavior?",
+      "question": "Can native A2A acceptance or the shared JetStream D01 stand in for arbitrary six-direction backend behavior?",
       "id": "HAB-C-V06",
       "requirements": [
         "HAB-V06",
@@ -5086,7 +5098,7 @@
         "HAB-V12",
         "HAB-V14"
       ],
-      "resolution": "No. A2A has a fixed SDK route with no generic poll/ACK API; native relationships do not verify generic requirements. Shared JetStream adapter selects one recipient and other directions use SQLite. Keep both scopes visible.",
+      "resolution": "No for native A2A: it has a fixed SDK route with no generic poll/ACK API, and native relationships do not verify generic requirements. The hybrid D01 is gone: both shared backends now run D01 to D08 through JetStream, so D01 covers six directed synthetic round trips on JetStream only. That is still a synthetic three-agent contract, not arbitrary product traffic. Keep both scopes visible.",
       "classification": "generic compatibility-versus-native protocol scope",
       "citations": [
         {
@@ -5099,7 +5111,7 @@
           "path": "docs/testing/publication.md",
           "start": 20,
           "end": 20,
-          "excerpt_sha256": "e2e5ec3707461760ecbb1f6211550ec4c0dbf7d9517894d73038ca4b9f75f38f"
+          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc"
         }
       ]
     },
@@ -5128,7 +5140,7 @@
       ]
     },
     {
-      "status": "open",
+      "status": "resolved",
       "question": "The product spec still records JetStream formal adoption and production replacement as undecided and the NATS diagram as a proposal, not a current function. The implementation, package, Relay and README docs now make JetStream the only delivery backend and retire SQLite delivery. Is JetStream-only delivery the adopted product design?",
       "id": "HAB-C-D06",
       "requirements": [
@@ -5136,33 +5148,40 @@
         "HAB-D15",
         "HAB-D16"
       ],
-      "classification": "unresolved",
+      "classification": "explicit-authority",
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 27,
-          "end": 27,
-          "excerpt_sha256": "bf35e75507252d54299c7354b00469b54bb4c69536fb66926bc92fe0b2ce1fb5"
+          "start": 28,
+          "end": 28,
+          "excerpt_sha256": "02ffa61363ca27cb666584c29881678929b89903f5737560e69640a16066cf82"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 137,
-          "end": 137,
-          "excerpt_sha256": "cbb0f995713f2655cd94f77f2ba04093d1fa910c8598e540cc57e4b7b3662de8"
+          "start": 136,
+          "end": 136,
+          "excerpt_sha256": "02ffd0f4cb0f792af52c243062f32586ed578d58a9380a25b3a1a43f9ee1c85b"
+        },
+        {
+          "path": "docs/hab-product-spec.md",
+          "start": 153,
+          "end": 155,
+          "excerpt_sha256": "0a56ddae0451acc27afef25b958a75a25e1301c0f8e49a98c3e9b717bdda42bc"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 37,
+          "end": 48,
+          "excerpt_sha256": "e8d2897f7ca77c36db1e522a29d0db5c34b1571e9bf58eb176076f83360caa21"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
           "start": 3,
           "end": 3,
           "excerpt_sha256": "fe09127f70c4eb0e4c9a5a3644989af16b6ddef7e2ae22ac97de1e710be27479"
-        },
-        {
-          "path": "README.md",
-          "start": 65,
-          "end": 65,
-          "excerpt_sha256": "7dec615a6b5f37308841a8c01f42d1550f418aa3a0e4d8a904bef0a4395d3ef6"
         }
-      ]
+      ],
+      "resolution": "Yes. The product owner approved JetStream-only delivery. ADR-016 records the decision, and the product spec now records JetStream as the adopted delivery (section 2 row, the section 8 diagram and note, section 8.2, the section 10 stage, A-12 and section 12), with no SQLite delivery store, no dual-send and no migration of retired messages. HAB-D15 and HAB-D16 are no longer blocked by the adoption question. HAB-F26 keeps only A2A transport adoption as a proposal. Production deployment, real storage failure behavior and whole-deployment restore remain separate gates (HAB-D16, HAB-C-D04)."
     },
     {
       "status": "resolved",
@@ -5173,20 +5192,26 @@
         "HAB-E11",
         "HAB-E17"
       ],
-      "resolution": "No. The Relay removal deleted src/generic-nats, packages/relay-nats/src/text-port.ts, their tests, scripts/prove-generic-nats.mjs, the proof:generic-nats script and the P7 generic-nats group. The port had no production caller, its transport used the JetStream backend's own authorization callback instead of the Registry, and its production auth and startup were never enabled. The dispatch document is unchanged and is now context describing removed code. HAB-E03, HAB-E11 and HAB-E17 no longer cite it and keep their TaskBridge, reply-journal and proof-label sources. Updating the document and the profile link is product-documentation work outside this contract.",
+      "resolution": "No. The Relay removal deleted src/generic-nats, packages/relay-nats/src/text-port.ts, their tests, scripts/prove-generic-nats.mjs, the proof:generic-nats script and the P7 generic-nats group. The port had no production caller, its transport used the JetStream backend's own authorization callback instead of the Registry, and its production auth and startup were never enabled. The dispatch document now opens with a note that it is a historical record of removed code, and the async-text-v1 profile links it as that record. It stays context. HAB-E03, HAB-E11 and HAB-E17 no longer cite it and keep their TaskBridge, reply-journal and proof-label sources.",
       "classification": "historical",
       "citations": [
         {
           "path": "docs/implementation/generic-nats-dispatch.md",
-          "start": 41,
-          "end": 41,
+          "start": 3,
+          "end": 3,
+          "excerpt_sha256": "322b710b7c2c03a438d049a8a581a1cebc88e6a1adac116aed6188f6b8dc61c0"
+        },
+        {
+          "path": "docs/implementation/generic-nats-dispatch.md",
+          "start": 43,
+          "end": 43,
           "excerpt_sha256": "7d8a119b619ac72ad9750833520090bf301553276f0603e1f4dac4646e18c074"
         },
         {
           "path": "docs/profiles/async-text-v1.md",
           "start": 50,
           "end": 50,
-          "excerpt_sha256": "1e2a6d0cec09ea6c7d8041785007d68168166f8360fdcf88a36a78bff3dbe52a"
+          "excerpt_sha256": "24ec3bef16cdb5255d1a34e6e69a0f30e34d84e2dedb310d74f985702a66d8bd"
         }
       ]
     }

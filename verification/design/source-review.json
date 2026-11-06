@@ -30,9 +30,9 @@
         },
         {
           "path": "docs/implementation/generic-nats-dispatch.md",
-          "sha256": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
+          "sha256": "8ac25f65817af93181f37beb64ab3f6c172036d16ad3243599f3b84a4dadaae9",
           "review": "reviewed",
-          "maintenance": "Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the document is unchanged, but the code it describes was deleted; it is now historical context (HAB-C-E07)."
+          "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only adds an opening note that the document is a historical record of the deleted port; the body is unchanged."
         },
         {
           "path": "docs/implementation/generic-job-application.md",
@@ -41,8 +41,9 @@
         },
         {
           "path": "docs/task-bridge.md",
-          "sha256": "de33807668de97a595cdd4c5bade9259b233e29f6a2a543b0a31547b97a282c6",
-          "review": "reviewed"
+          "sha256": "a48a0a5a652fc4f10e190046522b578a7045e541c344c58861c38228609dc80b",
+          "review": "reviewed",
+          "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only repoints the deleted src/relay README link to src/agent-sdk/README.md."
         },
         {
           "path": "docs/hab-security.md",
@@ -449,13 +450,13 @@
       },
       {
         "path": "packages/relay-nats/src/backend.ts",
-        "sha256": "c05e960de20b353dc9f943cccf0d83dfc0a67c0ca46f87b010180b1c72edc93d",
+        "sha256": "fbe0d35f733edf2f421f96f7aae6ec81efb66d1e53f842fc700d5a4acaf8d4b6",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
-        "read_coverage": "74-123,252-315,720-752",
-        "summary": "Diff reviewed: routing/poll-turn methods and the attachment refusal branch were removed (the contract now refuses attachment parts), errors moved to MessagingError. Fixed broker 2.15.2 publication/erase paths unchanged; other pump/auth/consumer code not fully read.",
+        "read_coverage": "full diff from 0bf74ef",
+        "summary": "Diff from 0bf74ef reviewed in full: the AsyncRelayOperations interface and its async submit/status/poll/ack, the durable consumer setup, broker message decode, the delivery-object map and the unused reconnectBroker were deleted. The remaining public surface is open, admit/status/poll/ackWithAuthorization, lookupReceipt, pumpOnce, publishPending, maintain, diagnostics, prefetchWindow and close; cleanup is tracked explicit erasure only. Earlier routing and attachment removals stand. Other pump/auth code not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": "src/host/delivery.ts",
@@ -715,7 +716,7 @@
       },
       {
         "path": "docs/generic-agent-async-design.md",
-        "sha256": "980c4f01eff5eeb736a77cc672e4bb9c414681283084fef403024d88ad639230",
+        "sha256": "41313f111ec95f01016db1b139c189d998980003592191777ab74b29b772b5a7",
         "read_ranges": [
           [
             1,
@@ -723,7 +724,8 @@
           ]
         ],
         "observation": "Read supplemental prefix including current optional-only scope and working coordinator semantics; complete file is assigned to another reader, so no full-file review attestation here.",
-        "full_file_read": false
+        "full_file_read": false,
+        "maintenance": "Phase 6 maintenance: the diff from 0bf74ef drops the deleted NATS path from the working-state row and links the generic-nats record as historical; working remains coordinator state."
       }
     ],
     "attestation": {
@@ -819,9 +821,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "0bd8fbb8a888ec67979d600c268caa4d76c54be222ee5cd24d7eb7ed00a1cd99",
+        "sha256": "66ef8652cad2148e22784a2fec5721cd0384de0e3273d5471d32cd71bc77cc73",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
@@ -836,14 +838,15 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-        "sha256": "c011708b997e03dccebde2531ce80b03b900d463b563ac069270eeb8db7274f7",
-        "mode": "full"
+        "sha256": "b24e8e9683ee2038c31c97f5de1e35a35db00e7176cb6d0c7b48773ba34c9a5a",
+        "mode": "full",
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/configured-relay.md",
-        "sha256": "a3d2995de9a089b46cee59cd9b68a9152b4a2d5584bf7138a9c22d8213fe3342",
+        "sha256": "26d8512153193bd786ae123d69782c1bf49075db181c97b7826b60a07d65a1b5",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
@@ -853,9 +856,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/receive-ack.md",
-        "sha256": "3444a313a476c1a70118c288efed6339c1c34d134582d7e3b17c607fb7ebd265",
+        "sha256": "df11d3503f50afc50fc201210bd41a3451f131d3d1a99dddd76aecf2daf2de58",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
@@ -915,9 +918,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "c028d15f7882ce6915f99648470b4b7e47aee3e661ccbba4cb882e2f5bb80f51",
+        "sha256": "5d3ac9e318ced0089f66f1bd6b3d899b1358548c9144fbeb115d0fafac2a087c",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": "docs/testing/p7-ci.yml.example",
@@ -932,9 +935,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "cab3792ad7c417261d05875d66f17367c4994b53bb4d228146d36ef3cdf25ec7",
+        "sha256": "f21a28906f78b8aeee7d461a95392befaed202af5322306c9af840df717d42ed",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": "docs/testing/plan.md",
@@ -943,8 +946,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "903628ddffe87ad31a5addde227d6ebea2483e12a0003f99d83ec47023411341",
-        "mode": "full"
+        "sha256": "dfdd9da0c32b27c1187b79c100a5fa73fbb556bd8b9b5d55d2ef678a234b6976",
+        "mode": "full",
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": "docs/testing/results.md",
@@ -963,9 +967,9 @@
       },
       {
         "path": "test/p7/README.md",
-        "sha256": "f34327d5f116f370a5537292d68f106d87b0626fc0a074e00a306ee302df10f9",
+        "sha256": "8e99d8f35a9102e9cf127b6e30892d6580301c27358914611da5d7af6b468e88",
         "mode": "full",
-        "maintenance": "Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes the mandatory generic-nats group paragraph; the rest of the procedure is unchanged."
+        "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only replaces the stale 55-case sentence with the current 60-case producer catalog path."
       }
     ],
     "supplemental_sources": [

@@ -76,3 +76,16 @@ Phase 5 (reviewed at `776dc8414a9c2bb2c7ec175f3f1cd23931877162`) moved the durab
 - The real roundtrip helper loaded `SQLiteInbox` and `DurableReceiver` from `src/relay`, which no longer exists. It now loads them from `src/agent-sdk`; nothing else in the helper changed. helpers.md names the current enumerated directories and module paths.
 
 New and re-rendered source links pin to the reviewed commit above.
+
+## Maintenance after Phase 6 (ADR-016 and the async-operation removal)
+
+Phase 6 (reviewed at `135d9ca3a6fb93b9c2ce435f5674ede56bb0a338`) recorded the single-host, JetStream-only architecture as ADR-016 in `docs/hab-decisions.md`, rewrote the product and Relay specs to match, marked `docs/implementation/generic-nats-dispatch.md` historical, deleted the uncalled asynchronous `AsyncRelayOperations` surface (async submit/status/poll/ack, the P4 consumer and `reconnectBroker`) from `packages/relay-nats/src/backend.ts`, and made `demo:hab-mvp` print a fixed `nats_server_required` reason with the install hint. The audit drift was handled by rereading, not rehashing:
+
+- Resolved HAB-C-D06 as `explicit-authority`: the product owner approved JetStream-only delivery, ADR-016 records it and the product spec now calls JetStream adopted. HAB-D15 and HAB-D16 are no longer blocked by the adoption question; their statements are unchanged and they keep the separate production and physical-fault gates.
+- Rewrote HAB-F26's statement and scope: JetStream delivery is adopted with no dual-send and no migration of retired messages; A2A transport adoption stays `proposed`. Its decision is unchanged.
+- Updated resolutions: HAB-C-F01 and HAB-C-F04 cite ADR-016; HAB-C-E07 cites the new historical banner of the dispatch document; HAB-C-V05 records the current counts (60 NATS producer cases, 1151 full-root tests); HAB-C-V06 no longer describes a hybrid store and its question was reworded to match.
+- Re-cited at new lines after checking the excerpt bytes are unchanged: the HAB-F, HAB-D, HAB-E17 and HAB-V citations into `docs/hab-product-spec.md`, `docs/hab-relay-spec.md`, `docs/hab-decisions.md`, `README.md` and `packages/relay-nats/DESIGN.md`, plus the other conflict citations listed by the contract diff. No requirement was retired or added, and no check was weakened.
+- In source-review.json `packages/relay-nats/src/backend.ts` was re-reviewed with a new summary (synchronous admission, poll and ACK plus `pumpOnce` only); the other changed sources were rehashed after reading their diffs. The deleted asynchronous operations had no production caller: `src/host` and `scripts/lib/local-mvp.mjs` use only the `*WithAuthorization` methods and `pumpOnce`.
+- Document review rows for the rewritten documents were re-read and updated.
+
+New and re-rendered source links pin to the reviewed commit above.
