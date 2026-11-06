@@ -168,7 +168,7 @@ ACK後のRelay本文解放、brokerの論理除去、file上書き、SSD/backup/
 
 単一host/外付けstorageは単一障害点である。同期設定だけで停電・device故障後の無損失を約束しない。mount消失時の空store作成を防ぎ、別保存先への整合backupと一時環境へのrestore照合を行う。同一hostの複数processを別故障domainとみなさない。
 
-復旧はpause/drain、元IDと実行状態の照合、必要な再接続、同一要求の再開を基本にする。code rollback時は新規受付を止め、未確定要求を同じJetStream配送journalで照合する。別backendや別IDで同じ要求を流さず、新schemaや受付済みjournalを削除しない。
+復旧はpause/drain、元IDと実行状態の照合、必要な再接続、同一要求の再開を基本にする。同じ配送journalを使うcode rollbackは、そのjournalのschemaを開けるbuildに限る。JetStream専用releaseはjournal schema 4を書き、それ以前のbuildは開けない。schema versionの書換えやjournal単独の巻戻しはしない。それ以前へ戻す場合は、新規受付を止めてdrainし、移行直前に停止状態で取った整合backupの全部を同じ世代で復元する。新releaseが受け付けたmessageはschema 4 journalの写しから一覧にし、元IDごとに受信者のinbox・Task結果と照合してから経路を戻す（[手順](../packages/relay-nats/OPERATIONS.md#roll-back)）。別backendや別IDで同じ要求を流さず、照合が終わるまで新schemaのjournalを削除しない。
 
 ## 10. 段階的提供
 

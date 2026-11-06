@@ -38,7 +38,20 @@ The independent restore exercise is not implemented by this P5/P6 package. A bro
 
 ## Roll back
 
-There is no SQLite delivery fallback. To roll back a release, stop the host and restart the earlier build with the same journal and broker store. Preserve the original ID and expiry for uncertain requests. Do not delete the NATS journal, replay uncertain work under new IDs, or claim Task completion from a broker ACK.
+There is no SQLite delivery fallback. A code-only rollback keeps the same journal and broker store, so it works only to a build that opens the schemas this release wrote. This release writes delivery journal schema 4 and agent SDK inbox schema 4. Builds before the JetStream-only release (`3e203d7` and earlier) open journal schemas 1 to 3 only. They refuse a schema 4 journal with `journal_key_or_version_mismatch`, with or without `migrate_journal`, and there is no downgrade migration. Never rewrite a schema version to make an older build start.
+
+Rolling back past a schema change means restoring the consistent backup taken while stopped, immediately before the upgrade started with `migrate_journal: true`. Prefer a forward fix. If a rollback is still required, reconcile the work the new release accepted, because the backup does not contain it.
+
+1. Stop new admissions and drain. Keep recipients polling until no message is `pending` or `leased`, or until the one-hour expiry of the last accepted message has passed.
+2. Stop the host. Copy the schema 4 journal aside and export each `nats_messages` row accepted after the backup time, with its sender ID, message ID, expiry and `state`. The export is the reconciliation list.
+3. Restore every part of that one backup generation together. That is the broker stream snapshot, the journal, the Registry, the Task Store, the binding configuration and the recipient checkpoints. Never restore the journal alone or the broker store alone. A journal older than its stream rewinds receipts and ACKs, so the old build would deliver ACKed messages again and recipients could execute them twice.
+4. Start the earlier build on the restored state with admissions still stopped. Reconcile every exported message before routing traffic.
+   - `acked`: the recipient saved it. Do not resend it. The restored relay no longer knows the ID, so its sender's status lookup returns `not_found`, and the export is the record of delivery.
+   - `expired` or `quarantined`: it was not delivered. Tell its sender. A new attempt is a new request that the sender decides on. It is not an automatic replay.
+   - `pending` or `leased` (the journal was not drained): the outcome is unknown. Check the recipient's inbox and Task results by the original sender and message ID first. Resubmit only the original message with its original ID and expiry, and only before that expiry. The recipient's inbox deduplicates by sender and message ID only while it keeps its own records.
+5. A2A Tasks created after the backup are not in the restored state, and builds without host wiring ignore the `a2a-*.sqlite` files. Tell those Tasks' callers.
+
+Do not delete the schema 4 journal copy until reconciliation is complete. Do not replay uncertain work under new IDs, or claim Task completion from a broker ACK.
 
 ## Interpret platform evidence
 

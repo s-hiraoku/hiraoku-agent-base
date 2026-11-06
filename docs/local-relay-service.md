@@ -19,6 +19,9 @@ Delivery runs only through NATS JetStream: start a private loopback broker first
 section with `broker`, `pump`, `volume` and `queue` parts. The retired SQLite
 `store` section, and `delivery.routing`, are refused with `config_invalid` and the
 field paths; messages held by the retired SQLite store are not migrated.
+The delivery journal is schema 4, which earlier builds refuse, so rolling back to
+one means restoring a pre-upgrade backup and reconciling the messages this release
+accepted ([procedure](../packages/relay-nats/OPERATIONS.md#roll-back)).
 
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all
