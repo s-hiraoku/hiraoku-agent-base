@@ -126,8 +126,8 @@
       {
         "path": "docs/local-relay-service.md",
         "scope": "full",
-        "sha256": "d9f46997b51406a08068c6267437a1cb5c845f07fc4342f1e7f9ae12f8842e2a",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a-relay-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds."
+        "sha256": "f713b4ed96cd41c241e218cd64c414462a11626b20647243680f50d46a609399",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a-relay-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); the rollback sentence now also reconciles IDs incomplete in the backup, lets the recipient's records decide expired or quarantined rows, and keeps the earlier build stopped until every restored ID has expired. The recorded observation still holds."
       },
       {
         "path": "docs/mcp-agent-discovery.md",
@@ -238,13 +238,13 @@
       },
       {
         "path": "src/host/a2a.ts",
-        "sha256": "e7036d538890bc215b448efeb6192dd1a9558cbd3342b1527cba5e291e525605",
+        "sha256": "91047e2cef18fcab3196c43612ea8e4202ee4f21dc26546d36f6ffd488c99609",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "provisionHostA2aIdentity converges the identity address (register product, enroll, bind the frozen urn:hab:host principal, setAccess to active ack/poll/status/submit) and throws a2a_identity_retired/conflict/revoked/stopped instead of repairing. hostRoute resolves the configured recipient and, through registry.withRelay, requires the caller to be someone other than the host identity and authorized to submit execution_request to that recipient; assertCurrent repeats this before enqueue, delivery, flush (before and after sendOnce(messageId)) and replies, and enqueue re-checks inside outbox.enqueueGuarded. The route builds its DurableSender with a guard that runs the host's service.submit inside registry.withRelay(caller context) after assertCurrent, so the caller check and the admission commit share one Registry transaction. The route's ownerId is the caller's agent ID and senderId the host identity. startHostA2a opens private outbox, inbox (max_ack_records three times max_records) and Task store files with HMAC keys derived from the fingerprint key, and a DurableReceiver whose poll passes on only an execution_accepted or execution_result replying to a host outbox record from that record's recipient; any other delivery is ACKed there with a fresh request ID and never reaches the inbox. The receiver loop runs up to 16 receiveOnce per poll_interval_ms plus maintenance at most once a minute. There is no background submit. The listener is 127.0.0.1 only, answers 503 while stopping, and close() waits for in-flight requests and the current cycle before closing the stores.",
+        "summary": "provisionHostA2aIdentity converges the identity address (register product, enroll, bind the frozen urn:hab:host principal, setAccess to active ack/poll/status/submit) and throws a2a_identity_retired/conflict/revoked/stopped instead of repairing. hostRoute resolves the configured recipient and, through registry.withRelay, requires the caller to be someone other than the host identity and authorized to submit execution_request to that recipient; assertCurrent repeats this before enqueue, delivery, flush (before and after sendOnce(messageId)) and replies, and enqueue re-checks inside outbox.enqueueGuarded. The route builds its DurableSender with a guard that runs the host's service.submit inside registry.withRelay(caller context) after assertCurrent, so the caller check and the admission commit share one Registry transaction. The route's ownerId is the caller's agent ID and senderId the host identity. startHostA2a opens private outbox (max_records, status_retry_ms = REPLY_WINDOW_MS + ACK_RETRY_MS + 2h, both one day), inbox (max_records and max_body_bytes for 2 × max_records reply bodies, max_ack_records three times max_records, ack_retry_ms one day) and Task store files with HMAC keys derived from the fingerprint key, and a DurableReceiver whose poll passes on only an execution_accepted or execution_result replying to a host outbox record from that record's recipient while Date.now() < record expires_at + REPLY_WINDOW_MS; any other or later delivery is ACKed there with a fresh request ID and never reaches the inbox. Each receive cycle runs up to 16 receiveOnce per poll_interval_ms, then applyReplies: for each receipt-confirmed inbox entry it finds the Task by its in_reply_to source message ID (store.findBySource), applies the one reply through gateway.apply with a route that cannot enqueue or flush, and releases the body; a RequestMalformedError or ZodError (a refused reply) also releases it, any other error keeps it for the next cycle, and an entry with no Task is released. Maintenance runs at most once a minute. There is no background submit. The listener is 127.0.0.1 only, answers 503 while stopping, and close() waits for in-flight requests and the current cycle before closing the stores.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withRelay."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withRelay. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release."
       },
       {
         "path": "src/host/server.ts",
@@ -321,13 +321,13 @@
       },
       {
         "path": "src/agent-sdk/sqlite-inbox.ts",
-        "sha256": "7d83d0334c3e3f1e6aa2a4f2ba5dab0ea6aca886878c4a8a2c7f8df5ba9e554a",
+        "sha256": "6bca8b7849dfbcb1e74222a5455e3ad560f52025fce73fb02c26f7f22bdc143a",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
-        "read_coverage": "1-165,374-650,675-770; capacity check at 320-345 after efa2435",
-        "summary": "Inline SQL schema/migration (schema 4 drops the schema-3 attachment columns and trigger), private file/owner options, transaction, body+stable ACK insertion, HMAC-checked withEntry, raw inbox listing and explicit release. A new message is refused with inbox_capacity_exceeded when the ACK records reach max_ack_records, or when unreleased rows (released_at IS NULL) reach max_records or their body bytes would exceed max_body_bytes; a released tombstone still matches an existing (sender_id, message_id). Other migration/GC sections not fully read.",
+        "read_coverage": "1-165,374-650,675-770; capacity check at 320-345 after efa2435; total-row and legacy-ID bounds after 599c1f2",
+        "summary": "Inline SQL schema/migration (schema 4 drops the schema-3 attachment columns and trigger), private file/owner options, transaction, body+stable ACK insertion, HMAC-checked withEntry, raw inbox listing and explicit release. A new message is refused with inbox_capacity_exceeded when the ACK records reach max_ack_records, when unreleased rows (released_at IS NULL) reach max_records or their body bytes would exceed max_body_bytes, or when all rows reach max_records + max_ack_records; a new non-replay-bound ID is refused with inbox_legacy_id_capacity_exceeded once non-replay-bound rows (relay_inbox_gc_safe = 0) reach max_ack_records. A released tombstone still matches an existing (sender_id, message_id). Other migration/GC sections not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-inbox.ts; the recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the record and byte capacity query now counts only rows with released_at IS NULL. The max_ack_records check and the tombstone dedup are unchanged."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-inbox.ts; the recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the record and byte capacity query now counts only rows with released_at IS NULL. The max_ack_records check and the tombstone dedup are unchanged. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the total-row and legacy-ID bounds to the capacity check."
       },
       {
         "path": "src/agent-sdk/sqlite-outbox.ts",
@@ -487,6 +487,16 @@
         "summary": "Diff reviewed: strict `delivery` schema (broker, pump, volume, queue) replaces the store plus routing/extension configuration; journal path is a private file; volume marker/device fail-closed setup retained. Intermediate factory wiring not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from packages/relay-nats/src/configured.ts to src/host/delivery.ts in b5168ce; the diff only rewrites relative import paths, so the summary still holds and read_coverage was shifted to the new line numbers."
+      },
+      {
+        "path": "scripts/relay-rollback-reconcile.mjs",
+        "sha256": "2800f9e26e8b2837054e8091fcdfc92a94967f4cf5bc80987d48e15126462f50",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Read-only rollback listing. Opens the upgraded schema 4 journal copy, the backup journal and each --inbox copy with node:sqlite readOnly and prints no bodies. Lists every upgraded nats_messages row absent from the backup or staging/pending/leased/quarantined in it, with backup_state, final_state and recipient_record (saved, absent or no_inbox_copy by the inbox's relay_inbox_meta agent_id). action is delivered for acked or saved; not_saved only for an expired or quarantined row absent from its recipient's inbox copy before expires_at + RECORD_RETENTION_MS; otherwise unknown. restored_incomplete_expire_by is the latest expiry among backup rows still incomplete. The CLI accepts --upgraded-journal and --backup-journal once each and --inbox repeated.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-F24 and HAB-C-D07."
       }
     ],
     "attestation": {
@@ -566,7 +576,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "f2ff21968eb39a40ad22e5ffc01558497f13305c94f46b04529423f7d72c8ab3",
+        "sha256": "cf7abdda3ee74c56c74fce10e8c4b2b6c45ee3a7ebb11726eca509110597bc42",
         "read_ranges": [
           [
             1,
@@ -575,7 +585,7 @@
         ],
         "observation": "Read full package manifest. Native verification is Node test runner plus TS build/typecheck; Python exists for optional import/token executor boundaries.",
         "full_file_read": true,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); test:a2a-relay now also runs test/a2a-host.test.js. The recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); test:a2a-relay now also runs test/a2a-host.test.js. The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); lint now also covers scripts/relay-rollback-reconcile.mjs. The recorded observation still holds."
       },
       {
         "path": "src/server.ts",
@@ -749,23 +759,43 @@
       },
       {
         "path": "src/a2a/hab-contract.ts",
-        "sha256": "15af06d4b89b89c18d6896f085803e9817d8e48b016b065d67c876d55cafcdb3",
+        "sha256": "41a88ab4cb2a1cdc4c2fc877a91c618f656ab0fd695abdeac26f68c0dcc2a565",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "HabA2aRoute: flush(messageId) sends only the saved intent, optional settle(replies) after a terminal save, and an optional evidence port; without it the route is reply-attested and Task state reports the recipient's durable replies without claiming engine verification.",
+        "summary": "HabA2aRoute: flush(messageId) sends only the saved intent, optional settle(replies) once the saved Task holds what those replies carried, and an optional evidence port; without it the route is reply-attested and Task state reports the recipient's durable replies without claiming engine verification.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); only the settle comment changed, to \"once the saved Task holds what these replies carried\"."
       },
       {
         "path": "src/a2a/hab-adapter.ts",
-        "sha256": "7264247f3a531c0263673d42e5b54f7d408791a672cb9e0295f38e9a7e64542c",
+        "sha256": "2479e41f84ad89c77716f6b48f15783f43083a51f0243b22726710fb487a97fe",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
-        "read_coverage": "diff from cddd9f4 (habHostAgentCard, link schema, reply handling, publicTask, enqueue/flush)",
-        "summary": "habHostAgentCard describes completion as the recipient's result reply. The Task link stores a binding only when the route has an evidence port. With evidence, results still require verified closed engine evidence that matches the claimed state and result. Without it, execution_accepted gives WORKING and execution_result gives COMPLETED/FAILED/CANCELED from the reply, recording reply_task_id; a different engine Task ID or a conflicting second terminal state is refused. publicTask adds attestation: \"recipient_reply\" when no binding is stored. Expiry with no reply stays INPUT_REQUIRED. SendMessage enqueues and flushes only the Task's own source message ID. Rest of the handler not re-read.",
+        "read_coverage": "diff from cddd9f4 (habHostAgentCard, link schema, reply handling, publicTask, enqueue/flush); diff from 599c1f2 (settle condition, apply)",
+        "summary": "habHostAgentCard describes completion as the recipient's result reply. The Task link stores a binding only when the route has an evidence port. With evidence, results still require verified closed engine evidence that matches the claimed state and result. Without it, execution_accepted gives WORKING and execution_result gives COMPLETED/FAILED/CANCELED from the reply, recording reply_task_id; a different engine Task ID or a conflicting second terminal state is refused. publicTask adds attestation: \"recipient_reply\" when no binding is stored. Expiry with no reply stays INPUT_REQUIRED. SendMessage enqueues and flushes only the Task's own source message ID. After a save, an evidence route settles its matched replies only once the Task is terminal; a reply-attested route settles them after any save. apply(taskId, context, route) loads the stored Task and observes the route's replies under the handler's serial lock, outside any caller request. Rest of the handler not re-read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds apply(taskId, context, route) and settles a reply-attested route's replies after any save, not only a terminal one."
+      },
+      {
+        "path": "src/a2a/store.ts",
+        "sha256": "4bb3fa58a4b5d99bb65d35f4968704483470bdd34c2ada16c33b317583c424bc",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "diff from 599c1f2 (findBySource and its index)",
+        "summary": "openA2aTaskStore creates an index on json_extract(metadata,'$.hab_relay.source.message_id') and exposes findBySource(messageId), which returns the stored Task's tenant, owner and id with no caller scope. Rest of the store not re-read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-D20."
+      },
+      {
+        "path": "src/a2a/hab-http.ts",
+        "sha256": "5f964c336f4d72f289fc4c8e85bdd28b57083e4ba88b0469825126ba967bb351",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "diff from 599c1f2 (apply)",
+        "summary": "createHabA2aGateway returns the request handler with an apply(task, route) property that calls handler.apply in a ServerCallContext built from the stored Task's tenant and owner, so saved replies are applied in that Task's own scope outside any request. Request handling not re-read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-D20."
       }
     ],
     "attestation": {
@@ -958,9 +988,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "9d5e95443662cf8dec2232bd154b253ea2c290dc515e69b258b0b089d72d355d",
+        "sha256": "c2b2ff2e649ea8e3b9886babf0f12161666fbab30288f6c866f5e0c9f369aedf",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); it only raises the full-root count from 1163 to 1168."
       },
       {
         "path": "docs/testing/p7-ci.yml.example",
@@ -975,9 +1005,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "9070cc937ea01d973dd6b30897cd3b9567e239534c308d531a4d807e175516b1",
+        "sha256": "c4439cb95680b924a29f03f57639d1bed3c55a7d8814ea06124acc0d6cf8fc8b",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); it only raises the full-root count from 1163 to 1168."
       },
       {
         "path": "docs/testing/plan.md",
@@ -986,9 +1016,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "d57e645b56becde029f66590fe2030aed19c4113a2a5002756885354b7953353",
+        "sha256": "c438e42c31b2e590ad12958c9b0597bd4828454a807efda2d6fd26a0c5a9e0c7",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); it only raises the full-root count from 1163 to 1168."
       },
       {
         "path": "docs/testing/results.md",
@@ -1063,9 +1093,9 @@
       },
       {
         "path": "test/a2a-host.test.js",
-        "sha256": "67cb9b5fa13a69bcf34630f290a7dbd8f73c75eab4d63b246a3bdae0971b94e5",
+        "sha256": "12e78ab113c6ae9350cc753a0f52896bb482c0a3cad9891b56f8d47e24117f48",
         "mode": "test titles and assertions",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes\", \"Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge\" and \"a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply\" (evidence for HAB-D20 and HAB-E20). The last ACKs two replies sent two days after their request's expiry but does not read that Task's state."
       },
       {
         "path": "test/hab-auth-groups.test.js",
@@ -1075,9 +1105,15 @@
       },
       {
         "path": "test/relay-inbox-maintenance.test.js",
-        "sha256": "a05d6a3079ff9b9c3bbb0fd5cb04b2ef5ce950a8e4911b9095e790f3782f7a11",
+        "sha256": "268824691c2a3692876cc364a2d70c6fec16ae3304bba5924a7fca67e446d591",
         "mode": "test titles and assertions",
-        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-D06. Runs in js-root (test/*.test.js). New case: with max_records 1 a second message is refused until releaseBody frees the slot, a redelivery of the released message is deduplicated by its tombstone, and with max_ack_records 3 a third distinct message is refused once three ACK records exist, although every body is released. The other inbox cases were not re-read."
+        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-D06. Runs in js-root (test/*.test.js). New case: with max_records 1 a second message is refused until releaseBody frees the slot, a redelivery of the released message is deduplicated by its tombstone, and with max_ack_records 3 a third distinct message is refused once three ACK records exist, although every body is released. The other inbox cases were not re-read. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"legacy IDs cannot grow the retained rows past the dedup bound across retention cycles\" (evidence for HAB-D06): new legacy IDs past max_ack_records are refused with inbox_legacy_id_capacity_exceeded, held ones stay deduplicated, and total rows stay within max_records + max_ack_records."
+      },
+      {
+        "path": "test/relay-rollback-reconcile.test.js",
+        "sha256": "0b9c9de9476fd48ad88fb881878e4566b504860911375010217320bff7a44684",
+        "mode": "test titles and assertions",
+        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-F24. Runs in js-root (test/*.test.js). Case: on a real JetStream journal and agent SDK inboxes, the drill lists an ID staged before the backup and saved after it with its ACK lost, an ACK lost after a save, an acked ID, an unsaved ID and a recipient without an inbox copy, with delivered, not_saved and unknown actions. It marks unfinished rows expired in place of the one-hour drain and does not start an earlier build, restore a broker snapshot or wait out the hold."
       }
     ],
     "attestation": {
