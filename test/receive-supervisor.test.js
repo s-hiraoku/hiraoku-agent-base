@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { hostFixture, deferred, limits } from "./adapter-host-fixtures.js";
 
 const policy = {

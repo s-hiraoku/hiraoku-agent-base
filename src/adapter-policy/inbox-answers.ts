@@ -1,8 +1,8 @@
 /** Explicit automatic answers to confirmed durable inbox entries. No model, Task or network IO. */
 import { parseSubmission, validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
-import type { InboxEntry } from "../relay/receiver.ts";
-import type { OutboxRecord } from "../relay/sender.ts";
+import type { InboxEntry } from "../agent-sdk/receiver.ts";
+import type { OutboxRecord } from "../agent-sdk/sender.ts";
 import { ReplyBudgetError, sourceKey, authorizationGuard } from "./contract.ts";
 import type { ReplySourceKey, ReplyAuthorization } from "./contract.ts";
 import type { SQLiteReplyBudget } from "./sqlite-reply-budget.ts";

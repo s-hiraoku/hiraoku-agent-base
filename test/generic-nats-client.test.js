@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { Hub } from "../src/sqlite.ts";
 import { Adapter } from "../src/adapter.ts";
 import { Journal } from "../src/journal.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { TextNatsJournal } from "../src/generic-nats/journal.ts";
 import { NatsTextClient } from "../src/generic-nats/client.ts";
 import { createTextTaskGate } from "../src/generic-nats/task-gate.ts";

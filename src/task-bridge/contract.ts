@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { parseSubmission, validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
-import type { InboxEntry } from "../relay/receiver.ts";
+import type { InboxEntry } from "../agent-sdk/receiver.ts";
 import { RESPONSE } from "../types.ts";
 export class TaskBridgeError extends Error {
   readonly code: string;

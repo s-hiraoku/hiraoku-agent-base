@@ -23,7 +23,7 @@ const target = resolve(targetArg);
 const ts = createRequire(join(target, "package.json"))("typescript");
 const shared = new Set(["src/protocol.ts", "src/security.ts"]);
 const slash = (path) => path.split(sep).join("/");
-const relayPath = (name) => `src/relay/${name}`;
+const sdkPath = (name) => `src/agent-sdk/${name}`;
 const messagingPath = (name) => `src/messaging/${name}`;
 const hostMcpPath = (name) => `src/host/mcp/${name}`;
 // Registry-owned sender capacity policy, used by the JetStream journal.
@@ -40,12 +40,12 @@ const coreModules = new Set([
     "receiver.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
-  ].map(relayPath),
+  ].map(sdkPath),
   hostMcpPath("writer-admission.ts"),
   ...registryCore,
 ]);
 const outerModules = new Set([
-  relayPath("mcp-client.ts"),
+  sdkPath("mcp-client.ts"),
   ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
     hostMcpPath,
   ),
@@ -61,7 +61,7 @@ const corePackages = new Set([
 const communicationPolicy = {
   name: "communication",
   allowsModule: (name) =>
-    name.startsWith("src/relay/") ||
+    name.startsWith("src/agent-sdk/") ||
     name.startsWith("src/messaging/") ||
     name.startsWith("src/host/mcp/") ||
     registryCore.includes(name) ||
@@ -157,7 +157,7 @@ function inspect(root, entries, policy = communicationPolicy) {
   return { files: [...seen].sort(), edges };
 }
 
-function relayEntries(root, directory = "src/relay") {
+function sourceEntries(root, directory = "src/agent-sdk") {
   return readdirSync(join(root, directory), { withFileTypes: true }).flatMap(
     (entry) => {
       const name = `${directory}/${entry.name}`;
@@ -166,7 +166,7 @@ function relayEntries(root, directory = "src/relay") {
         `source symlink requires review: ${name}`,
       );
       return entry.isDirectory()
-        ? relayEntries(root, name)
+        ? sourceEntries(root, name)
         : entry.isFile() && name.endsWith(".ts")
           ? [name]
           : [];
@@ -177,10 +177,10 @@ function relayEntries(root, directory = "src/relay") {
 if (mode === "--self-test") {
   const scratch = mkdtempSync(join(tmpdir(), "hab-boundary-"));
   try {
-    mkdirSync(join(scratch, "src/relay"), { recursive: true });
+    mkdirSync(join(scratch, "src/agent-sdk"), { recursive: true });
     mkdirSync(join(scratch, "src/messaging"), { recursive: true });
     mkdirSync(join(scratch, "src/host/mcp"), { recursive: true });
-    const entry = join(scratch, "src/relay/index.ts");
+    const entry = join(scratch, "src/agent-sdk/index.ts");
     // A deliberately isolated optional adapter must not contaminate the communication closure.
     writeFileSync(
       join(scratch, "src/optional-hermes.ts"),
@@ -190,8 +190,8 @@ if (mode === "--self-test") {
       entry,
       "// Hermes and Task are allowed words in comments.\nexport const text = 'openai';\n",
     );
-    assert.deepEqual(inspect(scratch, relayEntries(scratch)).files, [
-      "src/relay/index.ts",
+    assert.deepEqual(inspect(scratch, sourceEntries(scratch)).files, [
+      "src/agent-sdk/index.ts",
     ]);
     const controls = [
       ["direct product import", 'import "../hermes-run-driver.ts";'],
@@ -210,18 +210,18 @@ if (mode === "--self-test") {
     for (const [name, text] of controls) {
       writeFileSync(entry, text);
       assert.throws(
-        () => inspect(scratch, ["src/relay/index.ts"]),
+        () => inspect(scratch, ["src/agent-sdk/index.ts"]),
         undefined,
         name,
       );
     }
     writeFileSync(entry, 'import "./helper.ts";');
     writeFileSync(
-      join(scratch, "src/relay/helper.ts"),
+      join(scratch, "src/agent-sdk/helper.ts"),
       'export * from "../generic-jobs.ts";',
     );
     assert.throws(
-      () => inspect(scratch, ["src/relay/index.ts"]),
+      () => inspect(scratch, ["src/agent-sdk/index.ts"]),
       /forbidden communication dependency/,
     );
     const service = join(scratch, "src/messaging/delivery-service.ts");
@@ -238,9 +238,9 @@ if (mode === "--self-test") {
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "../relay/sender.ts";');
+    writeFileSync(service, 'import "../agent-sdk/sender.ts";');
     writeFileSync(
-      join(scratch, "src/relay/sender.ts"),
+      join(scratch, "src/agent-sdk/sender.ts"),
       'export * from "../host/mcp/server.ts";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
@@ -282,9 +282,9 @@ if (mode === "--self-test") {
   }
 } else {
   const entries = [
-    ...relayEntries(target),
-    ...relayEntries(target, "src/messaging"),
-    ...relayEntries(target, "src/host/mcp"),
+    ...sourceEntries(target),
+    ...sourceEntries(target, "src/messaging"),
+    ...sourceEntries(target, "src/host/mcp"),
     ...registryCore,
   ];
   assert(entries.length > 0, "empty communication source set");

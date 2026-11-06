@@ -9,7 +9,7 @@ import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
 import { fixture as brokerFixture } from "../../packages/relay-nats/test/fixture.js";
 import { jetStreamTextPort } from "../../packages/relay-nats/src/text-port.ts";
-import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
+import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
 import { NatsTextClient } from "../../src/generic-nats/client.ts";
 import { NatsTextRecipient } from "../../src/generic-nats/recipient.ts";
 import { TextNatsJournal } from "../../src/generic-nats/journal.ts";

@@ -1,6 +1,6 @@
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
-import type { SQLiteOutbox } from "../relay/sqlite-outbox.ts";
-import type { InboxEntry } from "../relay/receiver.ts";
+import type { SQLiteOutbox } from "../agent-sdk/sqlite-outbox.ts";
+import type { InboxEntry } from "../agent-sdk/receiver.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { HabA2aRoute, HabExecutionEvidence } from "./hab-contract.ts";
 

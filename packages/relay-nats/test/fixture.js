@@ -9,8 +9,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import { connect } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
 import { JetStreamRelay } from "../src/backend.ts";
-import { SQLiteInbox } from "../../../src/relay/sqlite-inbox.ts";
-import { DurableReceiver } from "../../../src/relay/receiver.ts";
+import { SQLiteInbox } from "../../../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../../../src/agent-sdk/receiver.ts";
 
 export const limits = {
   envelope_bytes: 32768,

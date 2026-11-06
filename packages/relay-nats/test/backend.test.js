@@ -5,7 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { connect } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
 import { JetStreamRelay } from "../src/backend.ts";
-import { DurableReceiver } from "../../../src/relay/receiver.ts";
+import { DurableReceiver } from "../../../src/agent-sdk/receiver.ts";
 import { fixture, ackRequest, gatePubAck } from "./fixture.js";
 
 test("pinned file stream preserves UTF-8 and save-before-ACK, then erases broker body", async (t) => {

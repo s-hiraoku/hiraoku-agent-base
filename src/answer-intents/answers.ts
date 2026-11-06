@@ -5,7 +5,7 @@ import {
   validateLimits,
 } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
-import type { OutboxRecord } from "../relay/sender.ts";
+import type { OutboxRecord } from "../agent-sdk/sender.ts";
 import type {
   AnswerInbox,
   AnswerOutbox,

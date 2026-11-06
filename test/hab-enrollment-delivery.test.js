@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { journey } from "./hab-journey-fixtures.js";
 import { code, operations } from "./hab-registry-fixtures.js";
 import { decode, request } from "./relay-http-fixtures.js";

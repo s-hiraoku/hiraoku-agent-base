@@ -5,9 +5,9 @@ import { fixture, limits } from "./task-bridge-fixtures.js";
 import { message as sourceMessage, policy } from "./relay-http-fixtures.js";
 import { SQLiteHostControl } from "../src/adapter-host/sqlite-control.ts";
 import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
-import { RelayMcpClient } from "../src/relay/mcp-client.ts";
+import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 export { limits };
 export function deferred() {

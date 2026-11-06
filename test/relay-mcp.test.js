@@ -9,7 +9,7 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createRelayMcpServer } from "../src/host/mcp/server.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,

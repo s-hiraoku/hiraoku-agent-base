@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReadableStream } from "node:stream/web";
-import { RelayMcpClient } from "../src/relay/mcp-client.ts";
+import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
 import { limits, fixture, message, tick } from "./relay-http-fixtures.js";
 
 const policy = {

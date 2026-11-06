@@ -6,7 +6,7 @@ import process from "node:process";
 import { randomUUID } from "node:crypto";
 import { NatsTextRecipient } from "../src/generic-nats/recipient.ts";
 import { TextNatsJournal } from "../src/generic-nats/journal.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import {
   defineRoute,
   executePacket,

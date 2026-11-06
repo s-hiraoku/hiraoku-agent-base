@@ -10,7 +10,7 @@ import {
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
 } from "../src/messaging/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 
 const day = 86400000;
 const limits = {

@@ -15,8 +15,8 @@ import {
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
 import { InboxAnswers } from "../src/adapter-policy/inbox-answers.ts";
 import { TaskReplies } from "../src/task-bridge/replies.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { DurableSender } from "../src/relay/sender.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { DurableSender } from "../src/agent-sdk/sender.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 const context = Symbol("reply-operator");
 async function setup(t, patch = {}) {

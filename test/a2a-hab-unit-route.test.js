@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { groupFixture } from "./hab-group-fixtures.js";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { createHabRelayRoute } from "../src/a2a/hab-route.ts";
 import { message, limits } from "./relay-http-fixtures.js";
 

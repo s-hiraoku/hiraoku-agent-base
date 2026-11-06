@@ -10,8 +10,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
-import { DurableReceiver } from "../../src/relay/index.ts";
+import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../../src/agent-sdk/index.ts";
 import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
 import { limits, message } from "../relay-http-fixtures.js";
 import { authorizedDelivery } from "../jetstream-delivery.js";
@@ -255,11 +255,11 @@ test(
     const delivery = f.service.poll("b");
     f.closeInbox();
     const inboxModule = new URL(
-      "../../src/relay/sqlite-inbox.ts",
+      "../../src/agent-sdk/sqlite-inbox.ts",
       import.meta.url,
     ).href;
     const receiverModule = new URL(
-      "../../src/relay/receiver.ts",
+      "../../src/agent-sdk/receiver.ts",
       import.meta.url,
     ).href;
     const options = { ...f.inboxOptions, fingerprint_key: undefined };

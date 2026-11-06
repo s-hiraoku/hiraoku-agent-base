@@ -1,5 +1,5 @@
 import { journey } from "../hab-journey-fixtures.js";
-import { DurableReceiver } from "../../src/relay/index.ts";
+import { DurableReceiver } from "../../src/agent-sdk/index.ts";
 
 import { pendingBackends } from "./manifest.js";
 

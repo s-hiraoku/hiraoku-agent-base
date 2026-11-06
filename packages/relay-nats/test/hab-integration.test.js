@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HabHttpGateway } from "../../../src/hab/http.ts";
-import { DurableReceiver } from "../../../src/relay/receiver.ts";
+import { DurableReceiver } from "../../../src/agent-sdk/receiver.ts";
 import { policy, call } from "../../../test/relay-http-fixtures.js";
 import { habFixture } from "./hab-fixture.js";
 import { ackRequest, gatePubAck } from "./fixture.js";

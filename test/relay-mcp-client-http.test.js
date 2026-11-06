@@ -4,10 +4,10 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { RelayMcpClient } from "../src/relay/mcp-client.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
 import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import { fixture, message, limits } from "./relay-http-fixtures.js";
 

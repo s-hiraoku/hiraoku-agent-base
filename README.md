@@ -8,7 +8,7 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
-通信部分の**HAB Relay**は、HAB固有の登録・アドレス、Task Engine、製品別Adapterから独立した再利用可能なコンポーネントとして実装しています。[正式仕様](docs/hab-relay-spec.md)でstore-and-forward、個体認証、受信ACK、Task Engineとの境界、受入れ条件を管理し、[実装手順と検証範囲](src/relay/README.md)に現在の到達点を記録します。
+通信部分の**HAB Relay**は、HAB固有の登録・アドレス、Task Engine、製品別Adapterから独立した再利用可能なコンポーネントとして実装しています。[正式仕様](docs/hab-relay-spec.md)でstore-and-forward、個体認証、受信ACK、Task Engineとの境界、受入れ条件を管理し、[実装手順と検証範囲](src/agent-sdk/README.md)に現在の到達点を記録します。
 
 **現在はテキスト・構造化データの配送基盤、MCP送受信・アドレス解決、人向けの登録フローを模擬認証と一時DB／loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 本番の認証binding・管理入口、runtimeへの配線・運用整備などが残っています。
 
@@ -73,7 +73,7 @@ flowchart LR
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-質問返信intentの統合までのローカル検証では、Node **1310件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/relay/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+質問返信intentの統合までのローカル検証では、Node **1310件**・Python **47件**（34件＋13件）、lint・typecheck・buildが成功しました。CIではRuffも確認します。これは本番接続の受入れではありません。Relayの実装範囲は[実装手順](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## Relayの残りタスク
 

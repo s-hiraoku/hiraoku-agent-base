@@ -12,7 +12,7 @@ import {
   isReplayBoundMessageId,
 } from "../messaging/contract.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
-import type { OutboxRecord } from "../relay/sender.ts";
+import type { OutboxRecord } from "../agent-sdk/sender.ts";
 import {
   replyKindSchema,
   replyRecordSchema,
@@ -20,7 +20,7 @@ import {
 } from "./reply-contract.ts";
 import type { BridgeReply, ReplyKind } from "./reply-contract.ts";
 import type { Submission, ContractLimits } from "../messaging/contract.ts";
-import type { InboxEntry } from "../relay/receiver.ts";
+import type { InboxEntry } from "../agent-sdk/receiver.ts";
 import {
   TaskBridgeError,
   identifier,

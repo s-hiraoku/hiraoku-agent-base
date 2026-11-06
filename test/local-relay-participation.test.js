@@ -20,8 +20,8 @@ import {
   hostAdminStatus,
 } from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { DurableReceiver } from "../src/relay/receiver.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
 import { envelope, limits, message } from "./relay-http-fixtures.js";
 
 // Synthetic reverse proxy transport. It accepts exactly one public resource and

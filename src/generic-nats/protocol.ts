@@ -8,7 +8,7 @@ import {
   type Submission,
   type ContractLimits,
 } from "../messaging/contract.ts";
-import type { InboxEntry, ReceiverTransport } from "../relay/receiver.ts";
+import type { InboxEntry, ReceiverTransport } from "../agent-sdk/receiver.ts";
 import type { Receipt } from "../messaging/delivery-service.ts";
 
 export const TEXT_NATS_CONTRACT = "hab-generic-nats-text-v1";

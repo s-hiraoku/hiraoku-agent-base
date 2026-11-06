@@ -10,8 +10,8 @@ import {
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
 } from "../src/messaging/index.ts";
-import { DurableReceiver } from "../src/relay/index.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
 const day = 86400000;
 const limits = {

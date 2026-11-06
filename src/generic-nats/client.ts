@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { DELIVERY_TTL_MS } from "../messaging/contract.ts";
 import type { Run, Runs } from "../types.ts";
-import { DurableReceiver, type InboxEntry } from "../relay/receiver.ts";
-import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
+import { DurableReceiver, type InboxEntry } from "../agent-sdk/receiver.ts";
+import type { SQLiteInbox } from "../agent-sdk/sqlite-inbox.ts";
 import { TextNatsJournal } from "./journal.ts";
 import {
   TEXT_NATS_CONTRACT,

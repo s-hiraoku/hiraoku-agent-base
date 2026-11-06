@@ -3,7 +3,7 @@ import { setup } from "./hab-http-fixtures.js";
 import { test } from "node:test";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { fixture, code, operations } from "./hab-registry-fixtures.js";
 import { message, decode, request } from "./relay-http-fixtures.js";
 

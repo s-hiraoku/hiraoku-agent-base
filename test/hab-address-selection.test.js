@@ -14,7 +14,7 @@ import {
 import { HabHttpGateway } from "../src/hab/http.ts";
 import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
 import { DatabaseSync } from "node:sqlite";

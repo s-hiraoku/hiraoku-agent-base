@@ -14,9 +14,9 @@ import {
   hostAdminRename,
 } from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { envelope, message, limits, decode } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
 import { eventually, pollUntilDelivered } from "./jetstream-delivery.js";

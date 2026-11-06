@@ -11,9 +11,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { DurableReceiver } from "../src/relay/index.ts";
+import { DurableReceiver } from "../src/agent-sdk/index.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,

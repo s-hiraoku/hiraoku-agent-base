@@ -12,8 +12,8 @@ import {
   limits,
 } from "./task-bridge-fixtures.js";
 import { TaskReplies } from "../src/task-bridge/replies.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { DurableSender } from "../src/relay/sender.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { DurableSender } from "../src/agent-sdk/sender.ts";
 
 const accepted = "execution_accepted",
   result = "execution_result";
@@ -634,7 +634,7 @@ test("Task replies: native competing writers converge on one prepared reply and 
     "../src/task-bridge/sqlite-journal.ts",
     import.meta.url,
   ).href;
-  const outboxUrl = new URL("../src/relay/sqlite-outbox.ts", import.meta.url)
+  const outboxUrl = new URL("../src/agent-sdk/sqlite-outbox.ts", import.meta.url)
     .href;
   const repliesUrl = new URL("../src/task-bridge/replies.ts", import.meta.url)
     .href;

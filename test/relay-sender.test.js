@@ -13,9 +13,9 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { MessagingError } from "../src/messaging/index.ts";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
 const limits = {
   envelope_bytes: 32768,
@@ -484,7 +484,7 @@ test("concurrent SQLite connections claim only one sender job", async (t) => {
         workerData: {
           path: f.path,
           options,
-          url: new URL("../src/relay/sqlite-outbox.ts", import.meta.url).href,
+          url: new URL("../src/agent-sdk/sqlite-outbox.ts", import.meta.url).href,
         },
       }),
   );
