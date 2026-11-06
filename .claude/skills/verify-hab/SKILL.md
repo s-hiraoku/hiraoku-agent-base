@@ -109,7 +109,9 @@ It kills only the pid in `stack.pid`, and only if that pid's command line is `st
 | `inspect.mjs`    | `node $S/inspect.mjs <run-dir> [label]`                                  | read-only DB snapshot, saved as evidence       |
 | `cleanup.sh`     | `$S/cleanup.sh <run-dir> [--stop-only]`                                  | stop what this run started, keep evidence      |
 | `stack.mjs`      | (via `launch.sh`) `node $S/stack.mjs <run-dir> [port]`                   | the scaffolding host and its private broker    |
-| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| stop`        | shipped Relay + broker + operator CLI          |
+| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| restart \| stop` | shipped Relay + broker + operator CLI (`HAB_VERIFY_A2A=1` adds A2A) |
+| `a2a.sh`         | `$S/a2a.sh <run-dir> <x\|a\|b\|none\|BAD> <SendMessage\|GetTask\|card> ['<json>']` | one A2A call to the configured Relay, saved as evidence |
+| `new-reply.sh`   | `$S/new-reply.sh <poll-file> <execution_accepted\|execution_result> <task-id> [state] [result]` | print `relay_submit` arguments replying to a polled request |
 
 ## Other surfaces
 
