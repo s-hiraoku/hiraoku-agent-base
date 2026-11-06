@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "6e4a1e9b44b524c8ad6da6a8d6e890b7aed11489",
+  "source_ref": "f1a4f6e94fbe09f5ffc1e71822b9884c4f40234c",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -43,7 +43,7 @@
     },
     "packages/relay-nats/OPERATIONS.md": {
       "previous_sha256": "4b5e0040932f3a699179e922df0a6f6f7fc6afc4f141cdd83aa44ad6cbd8535c",
-      "sha256": "4d45419c52e35e3e9215826303cd32e2399b9a8a02b0f8f333db027221b1f1d2"
+      "sha256": "389377517322f55ad85926abf68e29b91c2796623389a560e649f99fc3e85c0c"
     },
     "packages/relay-nats/README.md": {
       "previous_sha256": "7f8d3a4d4d01e647ff9076492250be285089b6bde4a1302d7d8c35e00fcb6037",
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "6eede8929465a0b3bff0ce0482d988a2643c4729d4e6d873829061c82a3f3b7d"
+      "sha256": "d0508ffa62b283a473dce430d8ea1ed27d89dc04471273685135b515d77c1142"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -191,7 +191,7 @@
     },
     "src/agent-sdk/README.md": {
       "previous_sha256": null,
-      "sha256": "0748542e9125e0a153cfb66408a4be6efd98952b0aaa03d8b4459b61ae300d6a"
+      "sha256": "c0643889c6fbde0aeb96ace9b49a9430fa5d3d5d9c55bc0b3a3c56f264614a55"
     },
     "src/agent-sdk/index.ts": {
       "previous_sha256": null,
@@ -211,7 +211,7 @@
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
-      "sha256": "d258950ba4351d49ba088de9df569c03fb371a12841bfc408ab3e943a4c1e941"
+      "sha256": "7d83d0334c3e3f1e6aa2a4f2ba5dab0ea6aca886878c4a8a2c7f8df5ba9e554a"
     },
     "src/agent-sdk/sqlite-outbox.ts": {
       "previous_sha256": null,
@@ -239,7 +239,7 @@
     },
     "src/hab/README.md": {
       "previous_sha256": "ba66ac5767d6ad80dfe6e90faf6e816b36a32d1d15c5b3cec8e9c9c8fb9febe1",
-      "sha256": "28f8c5d25249b5bb00940a1ec8eac816a7e284564d7e5a71180ec13a05ace151"
+      "sha256": "4b823586b54d995e3d8534083aa43552678e0ba9c0c3f782ac8f9b9a09bc8d82"
     },
     "src/hab/agent-capacity.ts": {
       "previous_sha256": null,
@@ -287,7 +287,7 @@
     },
     "src/hab/sqlite-registry.ts": {
       "previous_sha256": "afc82290685ff010e77cdb2d92c15f3a5f23ee73d78d400e236d579791b82c7a",
-      "sha256": "9693cdbdb453407906eb8873f0b81aa35ca5e0d4fc82b07d0b35929fb8f06fef"
+      "sha256": "9117ccd6311fa3733b009b78205ff52d91a9c29284d3e409f9ea8225818c149b"
     },
     "src/hab/writer-admission.ts": {
       "previous_sha256": "ec192ebf379766120d5bd73b77b798944697f7bbeafbd441f72241c1b80479ac",
@@ -295,7 +295,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "f603160e08e16a2fba2c230bcd2bc21feec7b1c581d82300c1d5ff32eb69f467"
+      "sha256": "e7036d538890bc215b448efeb6192dd1a9558cbd3342b1527cba5e291e525605"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
@@ -595,7 +595,7 @@
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "cee94ccd2ab289a4cf54e9f1be69b7f6673a7b3d8e36a3ad9ccd73e6f257c080"
+      "sha256": "67cb9b5fa13a69bcf34630f290a7dbd8f73c75eab4d63b246a3bdae0971b94e5"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
