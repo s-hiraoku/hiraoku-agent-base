@@ -13,7 +13,7 @@ Source extraction baseline: [`c67711e2bb79670402e3b2cac10452344db7df00`](https:/
 - [Helpers](helpers.md): finite argv, side effects and proof limits.
 - [Codex skill](../../.agents/skills/verify-hab-design/SKILL.md): Launch, Doctor, Drive, Evidence, Cleanup, Helpers.
 
-The existing [verify-hab feature map](../../.claude/skills/verify-hab/features/README.md) remains the one public feature map. It covers communication boundaries, resolve, send, receive/ACK, access, graceful restart, enrollment terminal and configured Relay/operator CLI. The new real helper exercises one bounded subset; other entries keep their existing recipes and are not automatically claimed as manually driven.
+The existing [verify-hab feature map](../../.claude/skills/verify-hab/features/README.md) remains the one public feature map. It covers communication boundaries, resolve, send, receive/ACK, access, graceful restart, enrollment terminal, configured Relay/operator CLI and the configured Relay's A2A entry. The new real helper exercises one bounded subset; other entries keep their existing recipes and are not automatically claimed as manually driven.
 
 ## Run
 
@@ -98,5 +98,19 @@ The restored delivery guarantees (reviewed at `49afd74750dad01e6e9ca51b97fadb9d7
 - HAB-C-V05 records 68 NATS producer cases (60 plus the eight restored delivery-guarantee cases) and the unchanged full-root count of 1151.
 - HAB-V07, HAB-V14 and the three HAB-C-V05 citations keep their ranges. Only the catalog count inside the excerpt changed, and each statement still holds against the reread text.
 - In source-review.json `packages/relay-nats/src/journal.ts` was re-reviewed with a new `collect()` summary. The three count-only document diffs were rehashed after reading them. The document review rows for `docs/testing/p7-lab.md` and `test/p7/README.md` now name the 68-case catalog.
+
+New and re-rendered source links pin to the reviewed commit above.
+
+## Maintenance after the A2A host wiring
+
+The A2A host wiring (reviewed at `e772a7c6959a3bf9ef367870278f1aa363470a7e`) wires the HAB A2A gateway into the host, as the owner decided on 2026-11-06 (ADR-016, decision item 5). A2A stays off unless the host config has an `a2a` section. When enabled, the host provisions its own Registry identity idempotently, attests it in-process as `urn:hab:host` and drops impostor principals with that issuer. It checks each caller through the Registry with the caller's own credential and scopes Tasks per caller. It sends a saved intent only inside its owner's SendMessage, with no background submit retry, and runs a save-then-ACK receiver loop. Host-routed Tasks are reply-attested. The new code is `src/host/a2a.ts`, covered by `test/a2a-host.test.js`, and verify-hab gained the `a2a-host` feature. The audit drift was handled by rereading, not rehashing:
+
+- Opened and resolved HAB-C-E08 as `explicit-authority`. The bundle said the gateway was not wired and that A2A `COMPLETED` needs independently verified closed engine evidence. Host-routed `COMPLETED` means only that the configured recipient replied with an `execution_result`, and the Task metadata says `attestation: "recipient_reply"`. The evidence rule is not weakened. HAB-E02 and HAB-V12 keep their statements, and their scopes now name the preview composition with `HabExecutionEvidence` that they govern.
+- Added three accepted requirements, all mapped to js-root, where `test/a2a-host.test.js` runs. HAB-A21 covers the host identity, per-caller authorization and Task scoping that keep the host identity from acting as a confused deputy. HAB-D20 covers durability, owner-only send with no background retry, and the save-then-ACK receiver. HAB-E20 covers the reply-attested states and their label. HAB-E20 also maps to native-recipient, because no actual product recipient's reply is exercised.
+- HAB-F26 stays `proposed`. The entry is opt-in, and the product spec still lists formal A2A adoption as undecided. Its ADR-016 citation keeps its range, as do HAB-C-F01 and HAB-C-D06. Only line 45 inside that excerpt changed, and each statement still holds against the reread text.
+- HAB-A07 was re-cited at `docs/local-relay-service.md:200-212` after checking that the excerpt bytes are unchanged. The new A2A section moved it down.
+- HAB-V07, HAB-V14, HAB-C-V01 and HAB-C-V05 keep their ranges after the count-only change. HAB-C-V05 records the full-root count of 1159.
+- The contract now lists `.claude/skills/verify-hab/features/a2a-host.md` as a normative document. The rows for the A2A preview, ADR, local Relay service, README, verify-hab skill and feature map, and P7 guide were rewritten from their new summaries.
+- In source-review.json the changed sources were re-read and rehashed. `src/host/config.ts` and `src/agent-sdk/sender.ts` have new summaries. The ledger adds `src/host/a2a.ts` and `src/host/server.ts` under authority, `src/a2a/hab-contract.ts` and `src/a2a/hab-adapter.ts` under execution, and `test/a2a-host.test.js` under verification.
 
 New and re-rendered source links pin to the reviewed commit above.

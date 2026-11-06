@@ -160,18 +160,26 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "66ef8652cad2148e22784a2fec5721cd0384de0e3273d5471d32cd71bc77cc73",
+      "sha256": "212a38fec7d2e903d301119fd3ddb35723b5b5ce3dd9457a01ea452273bc2f11",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over a private owned nats-server and the JetStream journal, synthetic enrolled identities, terminal enrollment, deny-all Hub and configured CLI; launch/doctor/drive/evidence/cleanup/helper ownership. Explicitly separates raw wire ACK from committed receiver evidence (agent SDK DurableReceiver and SQLiteInbox in src/agent-sdk) and production identity/native execution. Reuse, do not create a competing map.",
+      "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over a private owned nats-server and the JetStream journal, synthetic enrolled identities, terminal enrollment, deny-all Hub and configured CLI (with restart and an optional A2A mode, plus the a2a.sh and new-reply.sh helpers); launch/doctor/drive/evidence/cleanup/helper ownership. Explicitly separates raw wire ACK from committed receiver evidence (agent SDK DurableReceiver and SQLiteInbox in src/agent-sdk) and production identity/native execution. Reuse, do not create a competing map.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "9274d56c7ecf106d08e2f3e69da3c69f5ff7b0a4bbc7d2483f879bf656110fc5",
+      "sha256": "02b7339bf05b953b03e1d352d4cfb05e296203649eb70005afbe28086e0eac4f",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative maintained feature map with eight entries and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting.",
+      "summary": "Authoritative maintained feature map with nine entries (the ninth is the configured Relay's A2A entry) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting.",
+      "read_scope": "full"
+    },
+    {
+      "path": ".claude/skills/verify-hab/features/a2a-host.md",
+      "sha256": "f3a2ae3ebc96a331f1dbe3440dfb830af45c8cf55b6e37d927e3d00f8f158005",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "Configured Relay A2A recipe: no listener, mailbox or identity without an `a2a` section; host identity provisioning with one binding, unchanged agent ID and epoch across restart and the a2a_identity_reserved connect refusal; Card; 401 for missing, unknown and MCP-audience bearers and 403 for Origin or a wrong Host; SendMessage from the host identity staying SUBMITTED after storage ACK and restart; WORKING and COMPLETED from the recipient's replies with the result Artifact. Gotchas state there is no background resend and that COMPLETED is the recipient's report, not engine verification. Synthetic identities only.",
       "read_scope": "full"
     },
     {
@@ -240,19 +248,19 @@
     },
     {
       "path": "README.md",
-      "sha256": "7c32fd4fe84d8a216c42a4a1a0853296c1607c8aa04b3c254ddfebaf2bf3a051",
+      "sha256": "ff6b1d4ba36daee4b0d4a93c775e368809aaa83a4759b81dbb329260d9d31e66",
       "role": "context",
       "review": "reviewed",
-      "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
+      "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
     },
     {
       "path": "docs/a2a-relay-preview.md",
-      "sha256": "84cebe80081764fa9217a438523516b2020c71316b769dbae810d560e2658611",
+      "sha256": "fbb1058e7d4ee92d6b786c4f9ddcf31e0acabbc9f7073f9ff35b423724ba691a",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend; the preview gateway is not wired into the host, pending an owner decision. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim."
+      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend. That evidence-verified rule governs the preview composition with HabExecutionEvidence. A separate section records the owner's ADR-016 decision to wire the gateway into the host: off unless the config has an `a2a` section, a separate loopback listener, a host-owned Registry identity attested in-process as `urn:hab:host` with startup refusal codes, per-caller Registry checks of resolve/submit/execution_request with Tasks scoped per caller, private outbox/inbox/Task store, send only inside the owner's SendMessage with no background submit retry, a save-then-ACK receiver loop, and reply-attested Task states labelled `attestation: \"recipient_reply\"` that claim no engine verification. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim."
     },
     {
       "path": "docs/a2a-sdk-preview.md",
@@ -400,10 +408,10 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "fda581def613cdb76315cd8e5111bb1d39a6ba0c874ff8afea26a3127260ef29",
+      "sha256": "9430b0ddabb4ab98fc0f59e0cf05aeedef826549ab7dcb61dd7edc4812620b18",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records A2A gateway wiring as pending owner decision and leaves task-bridge, answer-intents and adapter-host deferred. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and leaves task-bridge, answer-intents and adapter-host deferred. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented."
     },
     {
       "path": "docs/hab-principles.md",
@@ -597,10 +605,10 @@
     },
     {
       "path": "docs/local-relay-service.md",
-      "sha256": "064926635b175c26968c3edbb40c6d82c2bc4c13adf5b8cc735e0ac9f1b94b15",
+      "sha256": "63d97afa9f4f3f92c09689a76fbcd25bc28362fea24f075c87d75d42717f901d",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect, explicit v1→v2 migration and reserved revoked descriptors. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; group mode follows `registry.authentication_groups`, not the schema version. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services."
+      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect, explicit v1→v2 migration and reserved revoked descriptors. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; group mode follows `registry.authentication_groups`, not the schema version. An optional `a2a` section adds a third loopback listener, a host-owned identity and private A2A stores; A2A callers need an A2A-audience credential bound through relay:admin connect. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services."
     },
     {
       "path": "docs/manual-ping-runner.md",
@@ -794,7 +802,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "5d3ac9e318ced0089f66f1bd6b3d899b1358548c9144fbeb115d0fafac2a087c",
+      "sha256": "ffcaa1cfa5f45f8bcc6e2fee229785d939cc06730a33fc1a159ce4ab87c278c5",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -818,10 +826,10 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "d737389eb90fff9295bc0ddf3a23d2d5d34093a4a03f30c17404a2f7e5280b6c",
+      "sha256": "6fa96b9292dc9e69be9944b00ed0c9111369f8e43b032d4b4f8388c02b73e33e",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 68, broker startup 5, runner guards 8, full root 1151) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 68, broker startup 5, runner guards 8, full root 1159) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full"
     },
     {
@@ -834,7 +842,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "5b077c13e0f3d88aaaabed7b9d913b6204be8d85dc89b8378d2f60615e860dc1",
+      "sha256": "9458e0775d9b488ab1602ba92f06cd3298a8803881ce51563f638b1f0c989659",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -916,7 +924,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "e58ba908d603857ba6519a2cab101c54ade71a61116e2d38862c2ec64e9958d1",
+      "sha256": "5b1c3743844382e5daea9c5d2285612c4b4557f3b70771763dac95b0c528d297",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -924,7 +932,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "1587265867a124826a0799117b6bc5aafac14672f8aa3e8c3f9d8dd7a1cee548",
+      "sha256": "36869ba48ecf34cd50666d3cc0cce0a24a3de9afa4f29dee1c20146cefad15f6",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +940,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "fc0429c6eda34f1fc7ae092e31df127108bcf62cdd5a7c97b23d7a8221759825",
+      "sha256": "44fa926fc4fc8698a8d0b3cd1717a413db5c1310560ded12c76492191cb059ba",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +948,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "36f09bb2a77423aba8ec61b86dafcf7366626b395d5caffae7cda24673683bfb",
+      "sha256": "ecd5ed37b6595f1d175d1a61171a0d475441b25b127e8078b1ac5b775d48341c",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -956,7 +964,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "ad7b12ab2ecb25ee920bc997ca0874704ba1ca20e0f24d91b54091cb41340c53",
+      "sha256": "82a19515f656d3475065a7f48dabe75eb1167ec7feb1ef0d5db93bc9e1fcd8d3",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1663,7 +1671,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "e8d2897f7ca77c36db1e522a29d0db5c34b1571e9bf58eb176076f83360caa21"
+          "excerpt_sha256": "7bb79098bb629d8101825da521264120d57afc5e632d9b7986359f25ac4cb3d8"
         }
       ]
     },
@@ -1868,8 +1876,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 186,
-          "end": 198,
+          "start": 200,
+          "end": 212,
           "excerpt_sha256": "14dfb0c27be0a82595462117208b023b31608f370d89abd1eee216a04c1e9f40"
         },
         {
@@ -2317,6 +2325,55 @@
           "start": 13,
           "end": 13,
           "excerpt_sha256": "bbbbd9aa7271847339555a253c9217a52abff34d4d744c3490d8c9c2ad012a7b"
+        }
+      ]
+    },
+    {
+      "id": "HAB-A21",
+      "title": "Host A2A identity cannot act as a confused deputy",
+      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and relay:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable.",
+      "rationale": "The host identity submits under its own rights. Without a current per-request check of the caller it could deliver to a recipient the caller cannot reach, or expose another caller's replies.",
+      "scope": "Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier only; the OAuth ingress does not serve A2A, and a group-authenticated caller with several addresses is refused. Covered in js-root by test/a2a-host.test.js.",
+      "decision": "accepted",
+      "checks": [
+        "js-root"
+      ],
+      "citations": [
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 63,
+          "end": 63,
+          "excerpt_sha256": "c4994ed768511e1c52d6b2dbcdc1499fe928ffcbd54c4c4d5091e80264b59b82"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 80,
+          "end": 89,
+          "excerpt_sha256": "f63dde7702eadd1cc5fa83ae444f1166d2ae1d869054470c7860c58fa1d0a474"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 93,
+          "end": 95,
+          "excerpt_sha256": "b1fab60858895b83b2d79efb90bb9861e5839b55f417c431de0cf8c66c97c03b"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 99,
+          "end": 101,
+          "excerpt_sha256": "3898cef56e0d85e16b17989d5d8c40bee78484c83dd83da7c4e047533a54664e"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 45,
+          "end": 45,
+          "excerpt_sha256": "dcbfda184c06d23ffe5c56380a797d797905a41f6d6ce9ff3c27d5867b08c57e"
+        },
+        {
+          "path": "docs/local-relay-service.md",
+          "start": 187,
+          "end": 197,
+          "excerpt_sha256": "69c438c8131dee4d231748702c68872fb7bcd115f1fdb50446ee890b80142fb0"
         }
       ]
     },
@@ -2948,6 +3005,37 @@
       ]
     },
     {
+      "id": "HAB-D20",
+      "title": "Host A2A sends only inside the owner's request",
+      "statement": "The host A2A outbox, inbox and SDK Task store are private 0600 files in the host state directory; a saved Task, its send intent and received replies survive a host restart, and a replay reuses the original message ID and one-hour expiry. A saved intent is sent only inside its owner's authorized SendMessage, which claims only that message ID from the shared outbox. There is no background submit retry; a retry is a repeated SendMessage with the same messageId. The only background work is the receiver loop, which polls the host mailbox, saves each delivery before ACK, releases bodies not correlated to a host request, and runs bounded maintenance. On close the host refuses new A2A requests with 503 and waits for in-flight requests and the current receiver cycle before closing its stores, leaving unsent intents, unACKed deliveries and saved Tasks on disk.",
+      "rationale": "A background resend under the host identity would send without a current check of the caller who asked for it; save-before-ACK keeps replies recoverable across a crash.",
+      "scope": "Opt-in host A2A entry, one host process per state directory. Not multi-host writer coordination, production retention or capacity design. Covered in js-root by test/a2a-host.test.js.",
+      "decision": "accepted",
+      "checks": [
+        "js-root"
+      ],
+      "citations": [
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 105,
+          "end": 107,
+          "excerpt_sha256": "c2a42d348580ade5a73a258067793fdd3658a9f689d206034d28682ae5390017"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 125,
+          "end": 125,
+          "excerpt_sha256": "4dd4e672adaa76ee9d0e90441ac5cc517f038bf15a52e3fc5b05ec60e76e65bb"
+        },
+        {
+          "path": ".claude/skills/verify-hab/features/a2a-host.md",
+          "start": 36,
+          "end": 36,
+          "excerpt_sha256": "93fefc97b35e7ec9b21195d9955d57a24446d424a04a7902c19986449379c290"
+        }
+      ]
+    },
+    {
       "id": "HAB-E01",
       "title": "Optional execution must not become messaging prerequisite",
       "statement": "Ordinary common-MCP messaging and receive-only supervisor work without Task, fixed Runs or a Hermes-specific model/approval adapter; receiving agents retain content, execution and existing approval decisions.",
@@ -2985,7 +3073,7 @@
       "title": "Storage receipt is not Task or completion",
       "statement": "Receiving and ACK do not create a Task; separate current local accept and independently authenticated Task submit are required. Completion/result emission requires saved matching terminal evidence with execution_open=0.",
       "rationale": "Avoid interpreting transportation success as authorization or execution success.",
-      "scope": "Explicit fixed TaskBridge and A2A Relay preview only; ordinary message receive stays Task-free.",
+      "scope": "Explicit fixed TaskBridge and the A2A Relay preview composed with HabExecutionEvidence only; the host-routed A2A entry is reply-attested under HAB-E20 and never satisfies this completion rule; ordinary message receive stays Task-free.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -3475,6 +3563,50 @@
       ]
     },
     {
+      "id": "HAB-E20",
+      "title": "Host-routed A2A completion is reply-attested and labelled",
+      "statement": "The host-routed A2A entry has no engine evidence port. Recipient storage ACK leaves the Task SUBMITTED. A durable execution_accepted reply makes it WORKING, and a durable execution_result reply makes it COMPLETED (succeeded, with the result text as the only Artifact), FAILED or CANCELED; an expired or quarantined request with no reply becomes INPUT_REQUIRED. A reply counts only when the configured recipient sent it, it references that Task's own host source message, its thread matches and its schema is exact. A later reply with another engine Task ID, or a second terminal result with another state, is refused without replacing the saved Task. Every such Task's public metadata carries `attestation: \"recipient_reply\"`, and the Card and Artifact describe the result as the recipient's report. COMPLETED here claims no verification of the recipient's engine and never satisfies the evidence-verified rule of HAB-E02 and HAB-V12.",
+      "rationale": "The host cannot read a remote recipient's engine. The label keeps a recipient's self-report from passing as independently verified execution.",
+      "scope": "Opt-in host A2A entry only. The preview composition with HabExecutionEvidence keeps HAB-E02 and HAB-V12. Covered in js-root by test/a2a-host.test.js; an actual product recipient's reply is not exercised.",
+      "decision": "accepted",
+      "checks": [
+        "js-root",
+        "native-recipient"
+      ],
+      "citations": [
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 101,
+          "end": 101,
+          "excerpt_sha256": "1325734776df4d8f24560b95b116a8d3052d716774159e408c2e3ba151d95020"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 111,
+          "end": 121,
+          "excerpt_sha256": "fc61539d4a7f08658ef2a80ab6d9b51faf71036dd4945679dfca8f129df05f08"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 56,
+          "end": 56,
+          "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
+        },
+        {
+          "path": ".claude/skills/verify-hab/features/a2a-host.md",
+          "start": 3,
+          "end": 3,
+          "excerpt_sha256": "50539739f8bb5f7ba404a9a6fc4a869a0d960c4b5319a84f5777ff1cd4c7ca15"
+        },
+        {
+          "path": ".claude/skills/verify-hab/features/a2a-host.md",
+          "start": 39,
+          "end": 39,
+          "excerpt_sha256": "bcb8d40e75bb5104c7083f56113a1b2c2dbcd259d8bcc23c6a06503e6768b9b7"
+        }
+      ]
+    },
+    {
       "id": "HAB-V01",
       "title": "Observe action and resulting state",
       "statement": "A mapped feature claim must retain the actual protocol/terminal action, its result and an independent state or peer observation, labeled by sub-feature ID.",
@@ -3627,7 +3759,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "26459cddba088a41803b97fb1cec7e279793c03a3d4c4932695326e973127c23"
+          "excerpt_sha256": "7f0505caee58be2961b713cc1fbf2e6ba421d53dfb9ee829e4522e220024ab29"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -3757,7 +3889,7 @@
       "title": "Optional A2A delivery and completion are separate",
       "statement": "In the fixed optional A2A route, recipient storage ACK leaves engine count unchanged and Task submitted; explicit acceptance creates one execution Task and a confirmed correlated execution result plus authorized closed evidence releases the Artifact.",
       "rationale": "Delivery/coordination progress must not masquerade as executed user work or published completion.",
-      "scope": "Optional fixed connectivity route only, not an ordinary-message Task requirement.",
+      "scope": "Optional fixed connectivity route composed with HabExecutionEvidence (P7 producer and native A2A groups) only; the host-routed entry is reply-attested under HAB-E20 and never satisfies this requirement. It is not an ordinary-message Task requirement.",
       "decision": "accepted",
       "checks": [
         "current-hosted-p7",
@@ -3825,7 +3957,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "1c4e4e34cc5779f1fbf126bb409e2ef36c7360c0663f5be0995a84e4c8f27a69"
+          "excerpt_sha256": "c67cbc14e49dda096c723d5bad0be27a5aa449baa954b79e8452a35b32cbdb2f"
         },
         {
           "path": "docs/testing/publication.md",
@@ -4170,7 +4302,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "e8d2897f7ca77c36db1e522a29d0db5c34b1571e9bf58eb176076f83360caa21"
+          "excerpt_sha256": "7bb79098bb629d8101825da521264120d57afc5e632d9b7986359f25ac4cb3d8"
         }
       ]
     },
@@ -4950,7 +5082,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "ebe9f4126f1adf7f2ad06f076531e2ae4b75a6b370d08338c810da080612f2b0"
+          "excerpt_sha256": "5ff97066e64cb8ae47f7ded58aa165faa91a03788a39436a23f4ca63269490ea"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5069,13 +5201,13 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "5b2a209f92c3dbd81b2f6e5289c288453f78fec1a2ff021c3448fa2a62dd1fba"
+          "excerpt_sha256": "9a60768f0039b8854e6eb8283643477a30e484485078560c909a14ebbb87b9f1"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "c161bbaf8a23cda77a4ae73213c50d16054f6cb7cb268f0f730d76172e25124e"
+          "excerpt_sha256": "28d006d41a36dfc4e9941cc551cfad976b860a609f386c93ffff54019baf6c94"
         },
         {
           "path": "test/p7/README.md",
@@ -5084,7 +5216,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 68 cases: 60 after the unused asynchronous relay operations were deleted, plus eight restored delivery-guarantee cases. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1151 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 68 cases: 60 after the unused asynchronous relay operations were deleted, plus eight restored delivery-guarantee cases. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1159 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
     },
     {
       "status": "resolved",
@@ -5173,7 +5305,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "e8d2897f7ca77c36db1e522a29d0db5c34b1571e9bf58eb176076f83360caa21"
+          "excerpt_sha256": "7bb79098bb629d8101825da521264120d57afc5e632d9b7986359f25ac4cb3d8"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
@@ -5213,6 +5345,65 @@
           "start": 50,
           "end": 50,
           "excerpt_sha256": "24ec3bef16cdb5255d1a34e6e69a0f30e34d84e2dedb310d74f985702a66d8bd"
+        }
+      ]
+    },
+    {
+      "status": "resolved",
+      "question": "The bundle said the A2A gateway is not wired into the host, pending an owner decision, and that A2A COMPLETED needs a correlated durable result plus independently verified closed engine evidence. Since 4d34aa1 the host wires the gateway with a host-owned identity, and host-routed Tasks become COMPLETED from the configured recipient's durable execution_result reply with no engine evidence. Does the host route weaken the evidence rule?",
+      "id": "HAB-C-E08",
+      "requirements": [
+        "HAB-E02",
+        "HAB-V12",
+        "HAB-E20",
+        "HAB-A21",
+        "HAB-D20",
+        "HAB-F26"
+      ],
+      "resolution": "No, the two routes carry different, labelled claims. The owner decided on 2026-11-06 (ADR-016, decision item 5) to wire the gateway into the host with a host-owned A2A identity, off by default, and recorded that its result is the recipient's durable reply report (`attestation: \"recipient_reply\"`), not an independent verification of the recipient's engine. The not-wired text is replaced. The preview composition with HabExecutionEvidence is unchanged and keeps its rule: HAB-E02 and HAB-V12 keep their statements and their scopes now name that composition. HAB-E20 states the reply-attested semantics and the label; HAB-A21 states the identity, per-caller authorization and Task scoping that keep the host identity from acting as a confused deputy; HAB-D20 states the durability, owner-only send and save-then-ACK receiver properties. test/a2a-host.test.js runs in js-root and covers them, including the attestation label, provisioning idempotence, the refused impostor and reserved address, the 401/403 refusals, the cross-owner GetTask, the quarantined forged reply, the named-intent claim and restart completion. HAB-F26 stays proposed: the entry is opt-in and the product spec still lists formal A2A adoption as undecided.",
+      "classification": "explicit-authority",
+      "citations": [
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 27,
+          "end": 27,
+          "excerpt_sha256": "664d63f4c445860de323e09b09a76e5d417a588b8227c5deda62bac1d2e2230a"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 55,
+          "end": 55,
+          "excerpt_sha256": "bbc0380fb2b56ba4bde7942ea793d7876dc922777991b1e072042c64828d19d0"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 59,
+          "end": 59,
+          "excerpt_sha256": "29d57d0c769ab769bdd5692297f6bd02b4d19409e2b3c7a3f9289833c38c5b93"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 111,
+          "end": 111,
+          "excerpt_sha256": "adc663ccbac56e809219537514af6d2f60f61c58008f45f8a95203c7f7d2f82d"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 121,
+          "end": 121,
+          "excerpt_sha256": "6e1083f4541b49ab4215539e526d0b07132347862f3213da11a4ec82d1b5d101"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 45,
+          "end": 45,
+          "excerpt_sha256": "dcbfda184c06d23ffe5c56380a797d797905a41f6d6ce9ff3c27d5867b08c57e"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 56,
+          "end": 56,
+          "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]
     }

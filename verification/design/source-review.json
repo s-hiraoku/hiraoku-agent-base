@@ -126,8 +126,8 @@
       {
         "path": "docs/local-relay-service.md",
         "scope": "full",
-        "sha256": "064926635b175c26968c3edbb40c6d82c2bc4c13adf5b8cc735e0ac9f1b94b15",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
+        "sha256": "63d97afa9f4f3f92c09689a76fbcd25bc28362fea24f075c87d75d42717f901d",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a-relay-preview.md. The recorded observation still holds."
       },
       {
         "path": "docs/mcp-agent-discovery.md",
@@ -218,23 +218,43 @@
       },
       {
         "path": "src/host/admin.ts",
-        "sha256": "d2083fba20bae1c2b19a067c1a837b4259648389285099941a873675a210c086",
+        "sha256": "22518e601c6ee8b9a8f8855a77239e168262ed14002536b2c68a21c30d2a3c22",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (open(), hostAdminConnect group branch, operations parsing)",
         "summary": "Group mode is config.registry.authentication_groups === true, not the registry schema version. A connect with no existing group calls createBoundGroup and reports group_created, connection_bound and group_member_added together; an existing group keeps the separate bind and member steps. hostAdminConnect refuses an empty operation list or any unknown name with invalid_operations, and scripts/hab-relay-admin.mjs now passes `--operations \"\"` through (one empty name) instead of dropping it to the all-operations default. Status/disconnect paths not re-read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); open() lists the A2A endpoint among credential resources and passes a2aIdentity, and hostAdminConnect refuses the configured identity address with a2a_identity_reserved before any binding."
       },
       {
         "path": "src/host/config.ts",
-        "sha256": "2524ffeb369599baa01b083e2bb0d08457866e57e1b3c2232759f5e4ace98813",
+        "sha256": "c1df6a21fa57dc75be42ab2f4f74aaac8816b61dd2280520d4d1743db33be198",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-100",
-        "summary": "The host config parses its `registry` section with registryOptionsSchema from src/hab/sqlite-registry.ts and its `delivery` section with deliverySchema from src/host/delivery.ts, so an out-of-range Registry limit is a config_invalid field error before any store opens.",
+        "summary": "The host config parses its `registry` section with registryOptionsSchema from src/hab/sqlite-registry.ts and its `delivery` section with deliverySchema from src/host/delivery.ts, so an out-of-range Registry limit is a config_invalid field error before any store opens. The optional strict `a2a` section (port, identity and recipient addresses that must differ, poll_interval_ms, max_active_requests, max_records) is absent by default, which means no A2A listener, mailbox or host identity.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the optional strict a2a section."
+      },
+      {
+        "path": "src/host/a2a.ts",
+        "sha256": "f603160e08e16a2fba2c230bcd2bc21feec7b1c581d82300c1d5ff32eb69f467",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "provisionHostA2aIdentity converges the identity address (register product, enroll, bind the frozen urn:hab:host principal, setAccess to active ack/poll/status/submit) and throws a2a_identity_retired/conflict/revoked/stopped instead of repairing. hostRoute resolves the configured recipient and, through registry.withRelay, requires the caller to be someone other than the host identity and authorized to submit execution_request to that recipient; assertCurrent repeats this before enqueue, delivery, flush (before and after sendOnce(messageId)) and replies, and enqueue re-checks inside outbox.enqueueGuarded. The route's ownerId is the caller's agent ID and senderId the host identity. startHostA2a opens private outbox, inbox and Task store files with HMAC keys derived from the fingerprint key, a DurableSender over service.submit/status with the host context, a DurableReceiver over service.poll/ack, and a receiver loop of up to 16 receiveOnce per poll_interval_ms that releases bodies not replying to a host outbox record from its recipient, plus maintenance at most once a minute. There is no background submit. The listener is 127.0.0.1 only, answers 503 while stopping, and close() waits for in-flight requests and the current cycle before closing the stores.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
+      },
+      {
+        "path": "src/host/server.ts",
+        "sha256": "81da0abf6b6407a10ee126ecd616e3d8353ad37d6c6a6d76a4db3fdf30a24401",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "diff from cddd9f4 (a2a option validation, hostContext and provisioner contexts, Registry administrator and individual callbacks, provisioning, startHostA2a wiring, close order)",
+        "summary": "The a2a port must be 0 or at least 1024 and differ from the MCP and ingress ports. Two frozen in-process objects are the host A2A context and the provisioning administrator; the Registry administrator callback answers only while provisioning is true, for that object and the five provisioning operations. The individual callback returns the host principal only for hostContext and drops any operator or ingress individual whose issuer is urn:hab:host. Provisioning runs after registry.migrate() and before delivery opens; the A2A entry starts after the listeners and closes before delivery and the Registry. Rest of the host not re-read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
       }
     ],
     "attestation": {
@@ -261,13 +281,13 @@
       },
       {
         "path": "src/agent-sdk/sender.ts",
-        "sha256": "79524aac4b638006aee2d96d31a9cc074371e2a3849233ee2517e331266c14ce",
+        "sha256": "98881e0ede8cfac4cbb7412efd5333f248eda64b003ebcfcb48137e2e25c5d02",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation.",
+        "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation. sendOnce(messageId) attempts only that record's due job; without an argument it claims the next due job as before.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); sendOnce(messageId) claims only that record's due job."
       },
       {
         "path": "src/relay/service.ts",
@@ -311,13 +331,13 @@
       },
       {
         "path": "src/agent-sdk/sqlite-outbox.ts",
-        "sha256": "13d53c5241a3e46932a1e356d9ddf02f8c740851f078646780affe51bc485d35",
+        "sha256": "b9dba4e1b77aea7025b225c924b72ce7a87804aa3440ee8c758be6c59cf98e2a",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-60,353-445; explicit PRAGMA at167 and transaction location found by rg",
         "summary": "Inline state/single-flight schema and guarded immutable enqueue/quota; the attachment admission port was removed. Other claim/confirm/maintenance internals not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); claim(messageId) validates the identifier and selects only that queued record, so a shared outbox never sends another caller's intent."
       },
       {
         "path": "src/relay/sqlite-store.ts",
@@ -546,7 +566,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "1879a49cf04004f508ae0e5898ebe0372348d20253fb40f4cccc102942554ec6",
+        "sha256": "f2ff21968eb39a40ad22e5ffc01558497f13305c94f46b04529423f7d72c8ab3",
         "read_ranges": [
           [
             1,
@@ -555,7 +575,7 @@
         ],
         "observation": "Read full package manifest. Native verification is Node test runner plus TS build/typecheck; Python exists for optional import/token executor boundaries.",
         "full_file_read": true,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); test:a2a-relay now also runs test/a2a-host.test.js. The recorded observation still holds."
       },
       {
         "path": "src/server.ts",
@@ -726,6 +746,26 @@
         "observation": "Read supplemental prefix including current optional-only scope and working coordinator semantics; complete file is assigned to another reader, so no full-file review attestation here.",
         "full_file_read": false,
         "maintenance": "Phase 6 maintenance: the diff from 0bf74ef drops the deleted NATS path from the working-state row and links the generic-nats record as historical; working remains coordinator state."
+      },
+      {
+        "path": "src/a2a/hab-contract.ts",
+        "sha256": "15af06d4b89b89c18d6896f085803e9817d8e48b016b065d67c876d55cafcdb3",
+        "kind": "implementation/config/inline-sql",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "HabA2aRoute: flush(messageId) sends only the saved intent, optional settle(replies) after a terminal save, and an optional evidence port; without it the route is reply-attested and Task state reports the recipient's durable replies without claiming engine verification.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
+      },
+      {
+        "path": "src/a2a/hab-adapter.ts",
+        "sha256": "7264247f3a531c0263673d42e5b54f7d408791a672cb9e0295f38e9a7e64542c",
+        "kind": "implementation/config/inline-sql",
+        "review": "partially-reviewed",
+        "read_coverage": "diff from cddd9f4 (habHostAgentCard, link schema, reply handling, publicTask, enqueue/flush)",
+        "summary": "habHostAgentCard describes completion as the recipient's result reply. The Task link stores a binding only when the route has an evidence port. With evidence, results still require verified closed engine evidence that matches the claimed state and result. Without it, execution_accepted gives WORKING and execution_result gives COMPLETED/FAILED/CANCELED from the reply, recording reply_task_id; a different engine Task ID or a conflicting second terminal state is refused. publicTask adds attestation: \"recipient_reply\" when no binding is stored. Expiry with no reply stays INPUT_REQUIRED. SendMessage enqueues and flushes only the Task's own source message ID. Rest of the handler not re-read.",
+        "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
       }
     ],
     "attestation": {
@@ -821,15 +861,15 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "66ef8652cad2148e22784a2fec5721cd0384de0e3273d5471d32cd71bc77cc73",
+        "sha256": "212a38fec7d2e903d301119fd3ddb35723b5b5ce3dd9457a01ea452273bc2f11",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "9274d56c7ecf106d08e2f3e69da3c69f5ff7b0a4bbc7d2483f879bf656110fc5",
+        "sha256": "02b7339bf05b953b03e1d352d4cfb05e296203649eb70005afbe28086e0eac4f",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md)."
       },
       {
         "path": ".claude/skills/verify-hab/features/access-control.md",
@@ -918,9 +958,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "5d3ac9e318ced0089f66f1bd6b3d899b1358548c9144fbeb115d0fafac2a087c",
+        "sha256": "ffcaa1cfa5f45f8bcc6e2fee229785d939cc06730a33fc1a159ce4ab87c278c5",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159."
       },
       {
         "path": "docs/testing/p7-ci.yml.example",
@@ -935,9 +975,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "d737389eb90fff9295bc0ddf3a23d2d5d34093a4a03f30c17404a2f7e5280b6c",
+        "sha256": "6fa96b9292dc9e69be9944b00ed0c9111369f8e43b032d4b4f8388c02b73e33e",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159."
       },
       {
         "path": "docs/testing/plan.md",
@@ -946,9 +986,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "5b077c13e0f3d88aaaabed7b9d913b6204be8d85dc89b8378d2f60615e860dc1",
+        "sha256": "9458e0775d9b488ab1602ba92f06cd3298a8803881ce51563f638b1f0c989659",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159."
       },
       {
         "path": "docs/testing/results.md",
@@ -1020,6 +1060,12 @@
       {
         "path": "external immutable tool checkout/docs/architecture.md",
         "mode": "full"
+      },
+      {
+        "path": "test/a2a-host.test.js",
+        "sha256": "cee94ccd2ab289a4cf54e9f1be69b7f6673a7b3d8e36a3ad9ccd73e6f257c080",
+        "mode": "test titles and assertions",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect."
       }
     ],
     "attestation": {
