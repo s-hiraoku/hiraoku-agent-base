@@ -57,6 +57,14 @@
   "replies stay inside their agent pair; forged or cross-pair references fail",
   "wrong token, foreign inbox and ACK after expiry never confirm receipt",
   "maintenance needs its own authorization and purges the message with its audit trail",
+  "maintenance keeps an ACKed record through its committed ACK retry horizon and retention",
+  "unbound message IDs are safety-held without starving a purgeable ID in the same batch",
+  "maintenance purges at most its batch limit and leaves pending work deliverable",
   "fair poll alternates eligible senders despite one sender's older backlog",
-  "expiry frees a sender's pending allowance but keeps the record and its receipt"
+  "fair poll opt-out keeps arrival order on the pump-cached path",
+  "expiry frees a sender's pending allowance but keeps the record and its receipt",
+  "leased and quarantined messages still consume the sender's pending allowance",
+  "a recipient's live bytes and retained records are bounded independently",
+  "invalid, duplicate or infeasible capacity reservations refuse to open before the journal changes",
+  "concurrent gateway processes cannot spend the same last unreserved slot"
 ]
