@@ -179,6 +179,7 @@ if (mode === "--self-test") {
   try {
     mkdirSync(join(scratch, "src/relay"), { recursive: true });
     mkdirSync(join(scratch, "src/messaging"), { recursive: true });
+    mkdirSync(join(scratch, "src/host/mcp"), { recursive: true });
     const entry = join(scratch, "src/relay/index.ts");
     // A deliberately isolated optional adapter must not contaminate the communication closure.
     writeFileSync(
@@ -231,28 +232,28 @@ if (mode === "--self-test") {
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /unreviewed core package dependency/);
-    writeFileSync(service, 'import "../relay/mcp.ts";');
+    writeFileSync(service, 'import "../host/mcp/server.ts";');
     writeFileSync(
-      join(scratch, "src/relay/mcp.ts"),
+      join(scratch, "src/host/mcp/server.ts"),
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import "../relay/sender.ts";');
     writeFileSync(
       join(scratch, "src/relay/sender.ts"),
-      'export * from "./mcp.ts";',
+      'export * from "../host/mcp/server.ts";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "../relay/oauth-resource.ts";');
+    writeFileSync(service, 'import "../host/mcp/oauth-resource.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "../relay/http.ts";');
+    writeFileSync(service, 'import "../host/mcp/http.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import type { AuditSink } from "../security.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import "node:http";');
     assert.throws(coreCheck, /unreviewed core package dependency/);
-    assert.deepEqual(inspect(scratch, ["src/relay/mcp.ts"]).files, [
-      "src/relay/mcp.ts",
+    assert.deepEqual(inspect(scratch, ["src/host/mcp/server.ts"]).files, [
+      "src/host/mcp/server.ts",
     ]);
     console.log(
       JSON.stringify({

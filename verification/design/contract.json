@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "5d3f08120ce8f6f06e03c4b5f1edb9e28464cafb9cc58c636d949e178041e8d5",
+      "sha256": "9274d56c7ecf106d08e2f3e69da3c69f5ff7b0a4bbc7d2483f879bf656110fc5",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with eight entries and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting.",
@@ -192,10 +192,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-relay.md",
-      "sha256": "270427e34b6a94622dee28e740a2bfe771743940f3786048cb412ecd3be083b2",
+      "sha256": "a3d2995de9a089b46cee59cd9b68a9152b4a2d5584bf7138a9c22d8213fe3342",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Shipped Relay, private broker and operator CLI recipe: fixed redacted refusal codes including retired-config, idempotent connect, credential/binding health, epoch-aware disconnect, two-agent synthetic JetStream roundtrip with attachment-part refusal and exact Host. Separate launcher and cleanup that stops the owned broker; credential expiry and no real client/model guarantee are explicit.",
+      "summary": "Shipped Relay, private broker and operator CLI recipe: fixed redacted refusal codes including retired-config and out-of-range registry limits, idempotent connect, credential/binding health, epoch-aware disconnect, a group disconnect that stops every member while a reconnect re-grants only the named address, refusal of empty `--operations`, an atomic refused group connect, two-agent synthetic JetStream roundtrip with attachment-part refusal and exact Host. Separate launcher (with an optional group mode) and cleanup that stops the owned broker; credential expiry and no real client/model guarantee are explicit.",
       "read_scope": "full"
     },
     {
@@ -428,7 +428,7 @@
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "cb41b14509a19427f8f7df2bac19832a0d00541fe98715e400e398e14535083d",
+      "sha256": "c641ed697451c4091f57f6966ed362c7a42985bbf20c21192d9d114cefae2a9a",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
@@ -583,10 +583,10 @@
     },
     {
       "path": "docs/local-relay-host.md",
-      "sha256": "36452ca5c75cfeb4b36387a7695bcec92b22a30da29977a68a8664d3f7b9d03c",
+      "sha256": "4fbf9a8851c9dbac73c29e19f44d3b9e7f8d413859b725aef8c3caf147584755",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Product-independent loopback startup performs no import-time IO, requires explicit trusted auth/limits/audit/keys and private canonical files, acquires ownership before stores, refuses competing hosts and preserves accepted state on stop/reopen. Proposed fixed-pilot individual bearers and one-task Hermes Runs plan are distinct from adopted shared-group/native MCP mode and do not authorize actual execution."
+      "summary": "Product-independent loopback startup (`startHostServer` in `src/host/server.ts`) performs no import-time IO, requires explicit trusted auth/limits/audit/keys and private canonical files, acquires ownership before stores, refuses competing hosts and preserves accepted state on stop/reopen. Proposed fixed-pilot individual bearers and one-task Hermes Runs plan are distinct from adopted shared-group/native MCP mode and do not authorize actual execution."
     },
     {
       "path": "docs/local-relay-launchagent.md",
@@ -597,10 +597,10 @@
     },
     {
       "path": "docs/local-relay-service.md",
-      "sha256": "2ca63d1ed8024de309db0aff86325bb6d49c5b39d8dac071df1119c303560e5f",
+      "sha256": "064926635b175c26968c3edbb40c6d82c2bc4c13adf5b8cc735e0ac9f1b94b15",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect including shared-group impact, explicit v1→v2 migration and reserved revoked descriptors. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services."
+      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect, explicit v1→v2 migration and reserved revoked descriptors. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; group mode follows `registry.authentication_groups`, not the schema version. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services."
     },
     {
       "path": "docs/manual-ping-runner.md",
@@ -613,7 +613,7 @@
     },
     {
       "path": "docs/mcp-agent-discovery.md",
-      "sha256": "f38128e60939dc4162e81d20577ddc8176e741ccac7a9331e79663b0bde95867",
+      "sha256": "ec465854645a666ab6513c3dd43b25ffef7d15040fa8f579c13b9fa45f8db53c",
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in read-only sixth tool distinguishes authenticated group, selected address and host-attested session identity. Directory is confined to own binding/group with filtered MAC live-keyset cursors; availability optionally leaks only occupancy in approved namespaces and never reserves/grants. Unknown/stale host evidence remains unknown, presence is unobserved, callback is trusted read-only host code. No inferred online state, registration or identity from profile paths."
@@ -894,14 +894,14 @@
     },
     {
       "path": "src/hab/README.md",
-      "sha256": "cb0c1a2c16567de99c11134d3c02db268afefe255ee291f00530c5eef26da967",
+      "sha256": "28f8c5d25249b5bb00940a1ec8eac816a7e284564d7e5a71180ec13a05ace151",
       "role": "normative",
       "review": "reviewed",
-      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
+      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
     },
     {
       "path": "src/relay/README.md",
-      "sha256": "e6bc807a16a60ffb429e683aa58126e0d201dbcbab036fb30661c9b75ea70a81",
+      "sha256": "1d0d31cfc475d473aa7bb242293c54cf427a2dcbe0dc0aa19f087377b9014a89",
       "role": "normative",
       "review": "reviewed",
       "summary": "Incremental architecture headed by a retirement note: JetStream is the only delivery backend and the SQLite store, StoreDeliveryService and router were removed, so the server acceptance/lease/ACK/capacity/fair-poll/audit/retention steps are historical text whose rules now live in the JetStream journal. Records pure language-neutral envelope from the messaging contract, exact one-hour TTL, durable sender and recipient journals, save-before-ACK and separate explicit application handoff, replay-safe retention/legacy safety holds, strict four-tool MCP and bounded fixed HTTP/client. Managed attachments were removed and attachment parts are refused. Appended quota, fair poll, writer, Task bridge and Adapter links supersede earlier pending descriptions locally."
@@ -916,7 +916,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "de7e304a8b836389c030092b331b58b9d5c7456fe9f695826b9d89229222a368",
+      "sha256": "1cd65fe20ecfb3773c77d36709ecbc66ef4317d69973c9e26b07d3369ec8bc39",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "3ab5d2dcf61bb76e3b57e9bc470ed9e07985513fa69c8cd77055f6e510e0c2f0",
+      "sha256": "01c448a5274b43cc5cf7885e1892e2da2fc02b0161179cc2ff2a2c38373e6297",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +932,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "18c979594a17d2e4726081f98b7ae59c3f1c7ef897cc842d806948ea203932ee",
+      "sha256": "94a8cdca78b71e6573e567f3d5885894b1d9441380a7609e42093df13b79f0ec",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +940,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "882feac5563cc05644b358bbc70116f6c407d0af16f0f336fc778db462b9f083",
+      "sha256": "c087b9738afcab65aa01e618a90925b065a1c3852f206c26e521927ba983d53a",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -948,7 +948,7 @@
     },
     {
       "path": "verification/design/helpers.md",
-      "sha256": "ab4e49357c891f281ef74b4956ca681f451f18af8fcfc326a5c03c5139176713",
+      "sha256": "55526f03501d13f13881b3dd39d191de3be90161c81716287f842a8a2d346e74",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -956,7 +956,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "2900a8caa42911bc8593835ac6d0488bc750009bd72c2e2b0bcd69a1a82c3852",
+      "sha256": "7612862e31d2da691065d6af842745f082805e3d3bb5819985d61e2dba9a6602",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1681,8 +1681,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 133,
-          "end": 147,
+          "start": 141,
+          "end": 155,
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {
@@ -1719,8 +1719,8 @@
         {
           "path": "src/hab/README.md",
           "start": 339,
-          "end": 360,
-          "excerpt_sha256": "e4cb594a72e376dbc7251b391ae70c94d44abdf823a923746bed58cd51f581d5"
+          "end": 364,
+          "excerpt_sha256": "7c048d38338b59f230b0ccfacc9e31d8b4fc3cb0c74b0809fde81ceed156edde"
         }
       ]
     },
@@ -1862,8 +1862,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 178,
-          "end": 190,
+          "start": 186,
+          "end": 198,
           "excerpt_sha256": "14dfb0c27be0a82595462117208b023b31608f370d89abd1eee216a04c1e9f40"
         },
         {
@@ -2005,7 +2005,7 @@
     {
       "id": "HAB-A12",
       "title": "Explicit fail-closed local startup",
-      "statement": "Start only with explicit canonical owner-private bounded config/state/keys, required finite capacities and a verifier/audit. Missing/invalid configuration fails before usable operation; empty credential sets deny all. No fixture fallback, automatic public bind, credential generation or product execution occurs.",
+      "statement": "Start only with explicit canonical owner-private bounded config/state/keys, required finite capacities and a verifier/audit. Missing/invalid configuration fails before usable operation; empty credential sets deny all. An out-of-range limit, including a `registry` limit, is refused at start as `config_invalid` naming its field, using the same schema the component itself enforces. No fixture fallback, automatic public bind, credential generation or product execution occurs.",
       "rationale": "Prevents accidental anonymous service, secret exposure and unbounded acceptance from example configuration.",
       "scope": "Configured local Relay with its single `delivery` section, and optional ingress.",
       "decision": "accepted",
@@ -2017,7 +2017,7 @@
           "path": "docs/local-relay-host.md",
           "start": 3,
           "end": 18,
-          "excerpt_sha256": "edb4ea4aafbba0fcee844fdd2524edfb0b84b92e815fbf16ed2ace57eec2b9e9"
+          "excerpt_sha256": "6652a4f0376df5dfa9d1fa59270496cf70329d83530d5cc145b919985a566629"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -2030,6 +2030,12 @@
           "start": 17,
           "end": 40,
           "excerpt_sha256": "ad2f27e43195f17fc7cd1feaa5e21ea7a8447bc64deda98455c56cb75de9b375"
+        },
+        {
+          "path": "docs/local-relay-service.md",
+          "start": 73,
+          "end": 78,
+          "excerpt_sha256": "1ccd4b29f822d62ee78a96eb4d41b851cb014d7c1454bdc2402c8d3a2b7daec6"
         },
         {
           "path": "docs/relay-oauth-ingress.md",
@@ -2117,7 +2123,7 @@
           "path": "docs/mcp-agent-discovery.md",
           "start": 136,
           "end": 148,
-          "excerpt_sha256": "07998c0e2d1970b1d579ed615b9e514dd1ea907b96255e111e504bfa0e1b22a9"
+          "excerpt_sha256": "87277c7e28ad09db976f50c644932f324729abe5bbf7993b94edb0a7bd03207c"
         }
       ]
     },
@@ -2237,6 +2243,74 @@
           "start": 78,
           "end": 86,
           "excerpt_sha256": "b22355cf06a11842df28422f77f2063aa3808eb02fac0c08737d37202d0923bf"
+        }
+      ]
+    },
+    {
+      "id": "HAB-A19",
+      "title": "Group stop is total and re-grants nothing",
+      "statement": "Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction, as revoking an individual binding does. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.",
+      "rationale": "A group stop revokes shared authority. Members that stay active, or that a later reconnect of one address silently revives, would undo an operator's disconnect.",
+      "scope": "Registry authentication-group mode and the relay:admin group disconnect and reconnect.",
+      "decision": "accepted",
+      "checks": [
+        "js-root"
+      ],
+      "citations": [
+        {
+          "path": "docs/relay-auth-groups.md",
+          "start": 56,
+          "end": 56,
+          "excerpt_sha256": "4007e0d6654d728999f7527ae1b6f35d6bfdad6d5635fc32c223e5f770fbd6c6"
+        },
+        {
+          "path": "src/hab/README.md",
+          "start": 352,
+          "end": 359,
+          "excerpt_sha256": "9aa92bf64f733c53ec27c02b359aa114bdc67bc3108de312a975d3569592206b"
+        },
+        {
+          "path": "docs/local-relay-service.md",
+          "start": 118,
+          "end": 123,
+          "excerpt_sha256": "0a438b645c0df5a6d82cb127b2ba3e7e4190eb5fb8df290af48c8a046c710be5"
+        },
+        {
+          "path": ".claude/skills/verify-hab/features/configured-relay.md",
+          "start": 12,
+          "end": 12,
+          "excerpt_sha256": "3ac5d8b81ff97a8474fd99235be7ca293fc912353f9b1a70951f39002b0a8958"
+        }
+      ]
+    },
+    {
+      "id": "HAB-A20",
+      "title": "Management connect is atomic and explicit",
+      "statement": "A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. The management CLI takes group mode from `registry.authentication_groups` in the config, not from the stored registry schema version.",
+      "rationale": "Management requests change authority. A partial or misread request must fail without orphan state and must never grant more than the operator named.",
+      "scope": "Operator management CLI (`relay:admin connect`) and the Registry `createBoundGroup` port.",
+      "decision": "accepted",
+      "checks": [
+        "js-root"
+      ],
+      "citations": [
+        {
+          "path": "src/hab/README.md",
+          "start": 360,
+          "end": 361,
+          "excerpt_sha256": "969a9270b131c237557f3469d47a00925c9902562e54750403511d9c8dde4f96"
+        },
+        {
+          "path": "docs/local-relay-service.md",
+          "start": 123,
+          "end": 126,
+          "excerpt_sha256": "6a2f650797f823d0aea505e5ffd291909ad0571357840789d5c435cd0261a53a"
+        },
+        {
+          "path": ".claude/skills/verify-hab/features/configured-relay.md",
+          "start": 13,
+          "end": 13,
+          "excerpt_sha256": "bbbbd9aa7271847339555a253c9217a52abff34d4d744c3490d8c9c2ad012a7b"
         }
       ]
     },
@@ -4345,8 +4419,8 @@
         {
           "path": "src/hab/README.md",
           "start": 339,
-          "end": 369,
-          "excerpt_sha256": "9aedf97680be9c1777e655938e15094f7075ae5961717094a431225c29e94444"
+          "end": 373,
+          "excerpt_sha256": "37e5e1b3b3bf67ee191998b2edcaebfde70220b9e471d9ffc3dc61daa827de60"
         }
       ]
     },
@@ -4513,8 +4587,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 133,
-          "end": 147,
+          "start": 141,
+          "end": 155,
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {

@@ -371,7 +371,18 @@ async function roundtrip(target, out) {
         observerReadOnly: true,
       });
     });
-    await new DurableReceiver(inbox, receiverClient).receiveOnce();
+    const receiver = new DurableReceiver(inbox, receiverClient);
+    // JetStream publishes accepted messages on the pump's next cycle, so a poll right after submit can be empty.
+    const receiveDeadline = Date.now() + 5000;
+    await receiver.receiveOnce();
+    while (
+      observed === 0 &&
+      receiver.inbox().length === 0 &&
+      Date.now() < receiveDeadline
+    ) {
+      await delay(25);
+      await receiver.receiveOnce();
+    }
     assert.equal(observed, 1);
     const readEntry = () =>
       inbox.withEntry(state.agents.a.agent_id, message.message_id, (entry) =>

@@ -328,7 +328,7 @@ Scope: Standard common MCP Relay; legacy Task integration remains optional. Deci
 
 Checks: js-common-mcp, native-recipient.
 
-Sources: [docs/hab-security.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-security.md#L5-L5), [docs/local-relay-service.md:133](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-service.md#L133-L147), [docs/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/persistent-mcp-auth.md#L3-L6).
+Sources: [docs/hab-security.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/hab-security.md#L5-L5), [docs/local-relay-service.md:141](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L141-L155), [docs/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/persistent-mcp-auth.md#L3-L6).
 
 ### HAB-A02 — Approved authentication groups
 
@@ -340,7 +340,7 @@ Scope: Explicit authentication_groups mode; retain legacy1:1 behavior when disab
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L5-L19), [docs/relay-auth-groups.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L50-L60), [src/hab/README.md:339](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L339-L360).
+Sources: [docs/relay-auth-groups.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/relay-auth-groups.md#L5-L19), [docs/relay-auth-groups.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/relay-auth-groups.md#L50-L60), [src/hab/README.md:339](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/src/hab/README.md#L339-L364).
 
 ### HAB-A03 — Authorized own-side selection
 
@@ -400,7 +400,7 @@ Scope: Registry groupv1→v2 migration and deployment/recovery; proposed renamev
 
 Checks: js-root, production-operations.
 
-Sources: [docs/relay-auth-groups.md:94](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L94-L94), [docs/local-relay-service.md:178](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-service.md#L178-L190), [docs/persistent-mcp-auth.md:93](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/persistent-mcp-auth.md#L93-L108).
+Sources: [docs/relay-auth-groups.md:94](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/relay-auth-groups.md#L94-L94), [docs/local-relay-service.md:186](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L186-L198), [docs/persistent-mcp-auth.md:93](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/persistent-mcp-auth.md#L93-L108).
 
 ### HAB-A08 — Participation is separate from token lifetime
 
@@ -452,7 +452,7 @@ Sources: [docs/relay-oauth-ingress.md:53](https://github.com/s-hiraoku/hiraoku-a
 
 ### HAB-A12 — Explicit fail-closed local startup
 
-Start only with explicit canonical owner-private bounded config/state/keys, required finite capacities and a verifier/audit. Missing/invalid configuration fails before usable operation; empty credential sets deny all. No fixture fallback, automatic public bind, credential generation or product execution occurs.
+Start only with explicit canonical owner-private bounded config/state/keys, required finite capacities and a verifier/audit. Missing/invalid configuration fails before usable operation; empty credential sets deny all. An out-of-range limit, including a `registry` limit, is refused at start as `config_invalid` naming its field, using the same schema the component itself enforces. No fixture fallback, automatic public bind, credential generation or product execution occurs.
 
 Reason: Prevents accidental anonymous service, secret exposure and unbounded acceptance from example configuration.
 
@@ -460,7 +460,7 @@ Scope: Configured local Relay with its single `delivery` section, and optional i
 
 Checks: js-root.
 
-Sources: [docs/local-relay-host.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-host.md#L3-L18), [docs/local-relay-service.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-service.md#L3-L7), [docs/local-relay-service.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-service.md#L17-L40), [docs/relay-oauth-ingress.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-oauth-ingress.md#L40-L49).
+Sources: [docs/local-relay-host.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-host.md#L3-L18), [docs/local-relay-service.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L3-L7), [docs/local-relay-service.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L17-L40), [docs/local-relay-service.md:73](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L73-L78), [docs/relay-oauth-ingress.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/relay-oauth-ingress.md#L40-L49).
 
 ### HAB-A13 — Owned release and service lifecycle
 
@@ -484,7 +484,7 @@ Scope: Optional hab_discover; basic five-tool behavior remains default. Decision
 
 Checks: js-root, native-recipient.
 
-Sources: [docs/mcp-agent-discovery.md:20](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mcp-agent-discovery.md#L20-L36), [docs/mcp-agent-discovery.md:44](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mcp-agent-discovery.md#L44-L63), [docs/mcp-agent-discovery.md:75](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mcp-agent-discovery.md#L75-L99), [docs/mcp-agent-discovery.md:107](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mcp-agent-discovery.md#L107-L115), [docs/mcp-agent-discovery.md:136](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mcp-agent-discovery.md#L136-L148).
+Sources: [docs/mcp-agent-discovery.md:20](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/mcp-agent-discovery.md#L20-L36), [docs/mcp-agent-discovery.md:44](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/mcp-agent-discovery.md#L44-L63), [docs/mcp-agent-discovery.md:75](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/mcp-agent-discovery.md#L75-L99), [docs/mcp-agent-discovery.md:107](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/mcp-agent-discovery.md#L107-L115), [docs/mcp-agent-discovery.md:136](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/mcp-agent-discovery.md#L136-L148).
 
 ### HAB-A15 — Limited trial durable ACK evidence
 
@@ -533,6 +533,30 @@ Scope: Optional proposed registryv3 rename only. Decision: **proposed**.
 Checks: proposal-review.
 
 Sources: [docs/agent-address-rename.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L3-L26), [docs/agent-address-rename.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L28-L44), [docs/agent-address-rename.md:78](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L78-L86).
+
+### HAB-A19 — Group stop is total and re-grants nothing
+
+Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction, as revoking an individual binding does. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.
+
+Reason: A group stop revokes shared authority. Members that stay active, or that a later reconnect of one address silently revives, would undo an operator's disconnect.
+
+Scope: Registry authentication-group mode and the relay:admin group disconnect and reconnect. Decision: **accepted**.
+
+Checks: js-root.
+
+Sources: [docs/relay-auth-groups.md:56](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/relay-auth-groups.md#L56-L56), [src/hab/README.md:352](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/src/hab/README.md#L352-L359), [docs/local-relay-service.md:118](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L118-L123), [.claude/skills/verify-hab/features/configured-relay.md:12](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/.claude/skills/verify-hab/features/configured-relay.md#L12-L12).
+
+### HAB-A20 — Management connect is atomic and explicit
+
+A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. The management CLI takes group mode from `registry.authentication_groups` in the config, not from the stored registry schema version.
+
+Reason: Management requests change authority. A partial or misread request must fail without orphan state and must never grant more than the operator named.
+
+Scope: Operator management CLI (`relay:admin connect`) and the Registry `createBoundGroup` port. Decision: **accepted**.
+
+Checks: js-root.
+
+Sources: [src/hab/README.md:360](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/src/hab/README.md#L360-L361), [docs/local-relay-service.md:123](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/docs/local-relay-service.md#L123-L126), [.claude/skills/verify-hab/features/configured-relay.md:13](https://github.com/s-hiraoku/hiraoku-agent-base/blob/1f5b492664707fe60c007442bda6f24d1756ee3d/.claude/skills/verify-hab/features/configured-relay.md#L13-L13).
 
 ## Delivery
 

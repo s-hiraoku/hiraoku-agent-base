@@ -49,3 +49,17 @@ Draft PR #137 (reviewed at `d307da1ea3fa049fa79b66748f5ed4f16f19dfc0`) moved the
 - Other citations whose text only moved were re-cited at the new lines after checking the excerpt bytes are unchanged. Ten deleted documents keep a disposition row in [document review](document-review.md).
 
 New and re-rendered source links pin to the reviewed commit above instead of the extraction baseline.
+
+## Maintenance after host consolidation and the Registry fixes
+
+Phase 4 (reviewed at `1f5b492664707fe60c007442bda6f24d1756ee3d`) moved the configured host into `src/host` (`config`, `start`, `server`, `local-auth`, `oauth-auth`, `admin`, `delivery`, `hab-delivery-service`), the MCP server, HTTP gateway, Node handler, OAuth resource and writer admission into `src/host/mcp`, and sender capacity policy into `src/hab/agent-capacity.ts`. It also fixed five Registry and admin defects. The audit drift was handled by rereading, not rehashing:
+
+- Added: HAB-A19 (a group stop or last binding revocation stops every member and clears its operations; reactivation re-grants no address) and HAB-A20 (an atomic group connect, refusal of an empty `--operations`, and group mode taken from `registry.authentication_groups`).
+- Sharpened HAB-A12: an out-of-range limit, including a `registry` limit, is refused at start as `config_invalid` naming its field. It now also cites docs/local-relay-service.md:73.
+- Re-cited after only a path or symbol rename (`startLocalRelay` to `startHostServer`): HAB-A12 (docs/local-relay-host.md:3) and HAB-A14 (docs/mcp-agent-discovery.md:136). Re-cited HAB-A02 and HAB-C-A01 at the longer src/hab/README.md group section, whose added text matches both statements.
+- Re-cited at new lines after checking the excerpt bytes are unchanged: HAB-A01, HAB-A07 and HAB-C-A06 (docs/local-relay-service.md).
+- In source-review.json the three moved supplemental sources keep their entries under the new paths (`src/host/mcp/server.ts`, `src/host/hab-delivery-service.ts`, `src/host/delivery.ts`), since their diffs only rewrite imports. The Registry fix sources (`src/hab/sqlite-registry.ts`, `src/host/admin.ts`, `src/host/config.ts`) joined the authority scope.
+- The communication-boundary check and helpers.md were already updated by the move to cover `src/host/mcp` and `src/hab/agent-capacity.ts`. Its self-test fixtures still placed the outer MCP, OAuth and HTTP modules at their old `src/relay` names, so a core policy that wrongly admitted `src/host/mcp/oauth-resource.ts` still passed. The fixtures now use the `src/host/mcp` paths and that mutation fails the self-test. No check argv names a moved file.
+- The real roundtrip helper polled once right after submit. With JetStream the message is published on the next pump cycle, so the helper failed in 2 of 5 runs with an empty poll. It now repeats the poll every 25 ms for at most 5 seconds until the single delivery is saved. The pre-ACK observer, the one-observation assertion and the final empty poll are unchanged; 12 of 12 later runs passed, one of them after an empty first poll.
+
+New and re-rendered source links pin to the reviewed commit above.
