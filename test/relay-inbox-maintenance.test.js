@@ -644,3 +644,27 @@ UPDATE relay_inbox_meta SET version=3;`);
   assert.deepEqual(upgraded.inbox()[0].message, messageFrom(d));
   assert.equal(JSON.stringify(upgraded.claimAck()), pending);
 });
+
+test("a released body frees its record slot while its tombstone still deduplicates and ACK history stays bounded", (t) => {
+  const f = fixture(t, { max_records: 1, max_ack_records: 3 }),
+    first = delivery(message(Date.now() - 100, "3".repeat(32))),
+    second = delivery(message(Date.now() - 100, "4".repeat(32))),
+    third = delivery(message(Date.now() - 100, "5".repeat(32)));
+  f.store.save(first);
+  code(() => f.store.save(second), "inbox_capacity_exceeded");
+  assert.equal(f.store.releaseBody("a", first.message.message_id), true);
+  f.store.save(second);
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [second.message.message_id],
+  );
+  f.store.save({ ...first, generation: 2 });
+  assert.equal(f.store.inbox().length, 1, "the tombstone still deduplicates");
+  assert.equal(f.store.releaseBody("a", second.message.message_id), true);
+  code(() => f.store.save(third), "inbox_capacity_exceeded");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
+    3,
+    "ACK history, not released bodies, bounds what the inbox retains",
+  );
+});

@@ -633,3 +633,70 @@ test("A2A refuses unauthenticated, wrong-audience, unauthorized and cross-owner 
     403,
   );
 });
+
+test("after unrelated notices reach the cap, a valid reply is still saved and ACKed", async (t) => {
+  const max = 2;
+  const { f, recipient, identity } = await connected(t, {
+    a2a: a2aSection({ max_records: max }),
+  });
+  const spoofer = agent(
+    t,
+    f,
+    "spoofer",
+    f.connect("spoofer", "spoofer@spoofer.hab").agent_id,
+  );
+  const acked = async (client, messageId) => {
+    for (let i = 0; i < 40; i++) {
+      const state = await client.status(messageId).then(
+        (receipt) => receipt.state,
+        () => undefined,
+      );
+      if (state === "acked") return state;
+      await new Promise((done) => setTimeout(done, 200));
+    }
+  };
+  const hostEntry = {
+    sender_id: identity.agent_id,
+    message: { thread_id: "unrelated", message_id: "unrelated" },
+  };
+  const notices = async (count) => {
+    for (let i = 0; i < count; i++) {
+      const { message } = await spoofer.send(hostEntry, "notice", null);
+      assert.equal(
+        await acked(spoofer.client, message.message_id),
+        "acked",
+        "the host consumed the unrelated notice",
+      );
+    }
+  };
+  const client = await a2aClient(f, "caller");
+  const roundtrip = async (name) => {
+    const task = await client.send(name);
+    await recipient.receiver.receiveOnce();
+    const request = recipient.receiver
+      .inbox()
+      .find(
+        (entry) =>
+          entry.message.message_id ===
+          task.metadata.hab_relay.source.message_id,
+      );
+    const result = await recipient.reply(request, "execution_result", {
+      task_type: "connectivity_check",
+      task_id: `engine-${name}`,
+      state: "succeeded",
+      result: "connectivity_ok",
+    });
+    assert.equal(
+      await acked(recipient.client, result.message_id),
+      "acked",
+      "the host saved and ACKed the valid reply",
+    );
+    await untilState(() => client.get(task.id), TaskState.TASK_STATE_COMPLETED);
+  };
+
+  await notices(max);
+  await roundtrip("after_record_cap");
+  // The host inbox keeps three ACK records per record slot; spend all of them too.
+  await notices(max * 3);
+  await roundtrip("after_ack_cap");
+});
