@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "eeff349696c534ddf3fb0dac43200e3448171013",
+  "source_ref": "6e4a1e9b44b524c8ad6da6a8d6e890b7aed11489",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "c2f4b3d2f3107c647b35d5efe6f1cf57f6ac9f2688e122bf374e9b96b43aaef6"
+      "sha256": "6eede8929465a0b3bff0ce0482d988a2643c4729d4e6d873829061c82a3f3b7d"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -155,11 +155,11 @@
     },
     "src/a2a/hab-adapter.ts": {
       "previous_sha256": "9f191223fb851a001cacac5ed9676d73ab65df820ff1c8bdd90d3b3695cc7e65",
-      "sha256": "4d4424d48117b6e6939f29498d3c5deb92f969c4686156e7a75761e2667cb0d4"
+      "sha256": "7264247f3a531c0263673d42e5b54f7d408791a672cb9e0295f38e9a7e64542c"
     },
     "src/a2a/hab-contract.ts": {
       "previous_sha256": "bcd35e4caaa038e1312f752232e814186fb9bc763b66fa94313709a839ed0854",
-      "sha256": "64bf0c807e7395677954391273cc6f8754573b543c454be54480621392bab26b"
+      "sha256": "15af06d4b89b89c18d6896f085803e9817d8e48b016b065d67c876d55cafcdb3"
     },
     "src/a2a/hab-route.ts": {
       "previous_sha256": "2636d36a80ea12af65f0e9ec10376bd61434f1258d0340fd311b735a26e0244c",
@@ -207,7 +207,7 @@
     },
     "src/agent-sdk/sender.ts": {
       "previous_sha256": null,
-      "sha256": "79524aac4b638006aee2d96d31a9cc074371e2a3849233ee2517e331266c14ce"
+      "sha256": "98881e0ede8cfac4cbb7412efd5333f248eda64b003ebcfcb48137e2e25c5d02"
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
@@ -215,7 +215,7 @@
     },
     "src/agent-sdk/sqlite-outbox.ts": {
       "previous_sha256": null,
-      "sha256": "13d53c5241a3e46932a1e356d9ddf02f8c740851f078646780affe51bc485d35"
+      "sha256": "b9dba4e1b77aea7025b225c924b72ce7a87804aa3440ee8c758be6c59cf98e2a"
     },
     "src/answer-intents/answers.ts": {
       "previous_sha256": "0a518833a4af974d41d6159d1bb83358f8d74f2cd80a880e75994511aab73d93",
@@ -293,13 +293,17 @@
       "previous_sha256": "ec192ebf379766120d5bd73b77b798944697f7bbeafbd441f72241c1b80479ac",
       "sha256": "552533a5b7c6f15642358ee6fed1e11ac7ecab79e04e8ba96bcd7fa9f0ba8545"
     },
+    "src/host/a2a.ts": {
+      "previous_sha256": null,
+      "sha256": "f603160e08e16a2fba2c230bcd2bc21feec7b1c581d82300c1d5ff32eb69f467"
+    },
     "src/host/admin.ts": {
       "previous_sha256": null,
-      "sha256": "d2083fba20bae1c2b19a067c1a837b4259648389285099941a873675a210c086"
+      "sha256": "22518e601c6ee8b9a8f8855a77239e168262ed14002536b2c68a21c30d2a3c22"
     },
     "src/host/config.ts": {
       "previous_sha256": null,
-      "sha256": "2524ffeb369599baa01b083e2bb0d08457866e57e1b3c2232759f5e4ace98813"
+      "sha256": "c1df6a21fa57dc75be42ab2f4f74aaac8816b61dd2280520d4d1743db33be198"
     },
     "src/host/delivery.ts": {
       "previous_sha256": null,
@@ -339,11 +343,11 @@
     },
     "src/host/server.ts": {
       "previous_sha256": null,
-      "sha256": "a1adbbd76010df99dcb6cab06933798f2d6b5c574059adf92dc188b84abb7ac9"
+      "sha256": "81da0abf6b6407a10ee126ecd616e3d8353ad37d6c6a6d76a4db3fdf30a24401"
     },
     "src/host/start.ts": {
       "previous_sha256": null,
-      "sha256": "f5b11e39125cce1f519a56c13093e91307bc02fe5888aa16511b9b4a3e7c55c8"
+      "sha256": "2de446ebb94969ef87b11802584aafacfe9d955265f7450b08bb50be3172577b"
     },
     "src/messaging/contract.ts": {
       "previous_sha256": null,
@@ -588,6 +592,10 @@
     "test/a2a-hab-unit-route.test.js": {
       "previous_sha256": "393fa2d023be7aad06e87c55e0405c1c09595faa854863a3fdeeacc5a1063547",
       "sha256": "6bc92452efe071c6a808e2fab9cf258c6ed77ac30d76688b9b03a5857feda5f3"
+    },
+    "test/a2a-host.test.js": {
+      "previous_sha256": null,
+      "sha256": "cee94ccd2ab289a4cf54e9f1be69b7f6673a7b3d8e36a3ad9ccd73e6f257c080"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
