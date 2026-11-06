@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "ce8aaf0cf3320275d6a793c54b1aca363521338d",
+  "source_ref": "0eebc73bfece9d91bc22923d0175bb128b7410fd",
   "inputs": {
     "db/schema.ts": {
       "previous_sha256": null,
@@ -58,7 +58,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "90d304b4c46a33b9555b75cf85415951897bbf99c33780eeb997e8f52247cf04"
+      "sha256": "3ef4e25beadfac955b8824b40c137f3fa8176e46cb15d3fdc6122520730c6ea0"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -115,6 +115,14 @@
     "src/generic-nats/task-gate.ts": {
       "previous_sha256": null,
       "sha256": "8a313f6104b9a2025f188fff7473c414fca8b4a094e3ab33d1db03980f66d878"
+    },
+    "src/recipient-messages/contract.ts": {
+      "previous_sha256": null,
+      "sha256": "ab8565649a280babfafd9640e81cfd317693e337192945ad6745e9f1397a6e2d"
+    },
+    "src/recipient-messages/messages.ts": {
+      "previous_sha256": null,
+      "sha256": "ae0caa73d896b94502bf754d8a7ad14d738e334d4b06209d6a98af75d16f7510"
     },
     "src/store.ts": {
       "previous_sha256": "7c534b9ab811a3358dc9a879a380c117d629a8c13a47eccf3fa5a7eed39bd043",
@@ -227,6 +235,14 @@
     "test/p7/runner.test.js": {
       "previous_sha256": null,
       "sha256": "0fc96bf08ab359301e7ef1a58e8315290fb9f7bf55513f2ad7ac1537f21be40b"
+    },
+    "test/recipient-messages-fixtures.js": {
+      "previous_sha256": null,
+      "sha256": "18994f6c6c8d785f9f53a68c6ceb09d411437a4adc1e07cc2ee8402199a5427e"
+    },
+    "test/recipient-messages.test.js": {
+      "previous_sha256": null,
+      "sha256": "f7536730e96247cbc5473c78fbcf435f339b3c72abdf98d02500294d3d32051d"
     }
   }
 }
