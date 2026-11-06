@@ -20,8 +20,12 @@ section with `broker`, `pump`, `volume` and `queue` parts. The retired SQLite
 `store` section, and `delivery.routing`, are refused with `config_invalid` and the
 field paths; messages held by the retired SQLite store are not migrated.
 The delivery journal is schema 4, which earlier builds refuse, so rolling back to
-one means restoring a pre-upgrade backup and reconciling the messages this release
-accepted ([procedure](../packages/relay-nats/OPERATIONS.md#roll-back)).
+one means restoring a pre-upgrade backup. Reconcile by original ID the messages this
+release accepted and those still incomplete in the backup. An `expired` or
+`quarantined` row may still have been saved by its recipient, so the recipient's
+records decide it. Keep the earlier build stopped until every restored ID has
+expired, so nothing executed after the backup is delivered again
+([procedure](../packages/relay-nats/OPERATIONS.md#roll-back)).
 
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all

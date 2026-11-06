@@ -45,7 +45,7 @@
 - A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
 - 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
 
-配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元し、新releaseが受け付けたmessageを元IDで照合する（[手順](../packages/relay-nats/OPERATIONS.md#roll-back)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
+配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元する。新releaseが受け付けたmessageと、backup時点で未完了だったmessageを元IDで照合する。journalの`expired`・`quarantined`は未配達の証明にならず、受信者のinbox・Task結果・実行記録で判断する。復元した状態のIDがすべて期限切れになるまで旧buildを起動しないので、新releaseで実行済みのIDは再配達されない（[手順](../packages/relay-nats/OPERATIONS.md#roll-back)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
 
 ## 次に決める内容
 
