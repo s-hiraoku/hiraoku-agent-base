@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "1162d000e60f8573368f98a09554b18f6c776a00",
+  "source_ref": "748178eee3d30c558d5f911a14f868764dd7abb9",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -19,7 +19,7 @@
     },
     "docs/implementation/generic-nats-dispatch.md": {
       "previous_sha256": null,
-      "sha256": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771"
+      "sha256": "8ac25f65817af93181f37beb64ab3f6c172036d16ad3243599f3b84a4dadaae9"
     },
     "docs/implementation/generic-text-preview.md": {
       "previous_sha256": null,
@@ -27,7 +27,7 @@
     },
     "docs/profiles/async-text-v1.md": {
       "previous_sha256": null,
-      "sha256": "ddecab54237ebd41b62832278b4fb6c757bd3ea7b14bad42d2739f5921603798"
+      "sha256": "a277320db4e089d93b12fdc087b64cece649cf35173ed43cc49b366ca922d5a1"
     },
     "drizzle/0009_generic_text.sql": {
       "previous_sha256": null,
@@ -39,15 +39,15 @@
     },
     "packages/relay-nats/DESIGN.md": {
       "previous_sha256": "9d314b356848e01d78ef65debc74c84e3ab40892d2519dc03c215dd789ee430c",
-      "sha256": "001baca2d3e2c3f30d949a2ab667a5a9dbecf1c8c37b0df4fa654ad639ebe60a"
+      "sha256": "95ee9cfba972e7853cc8e86f3dc9ee0f801890cebebb74bbe5bbcae6b9679d14"
     },
     "packages/relay-nats/OPERATIONS.md": {
       "previous_sha256": "4b5e0040932f3a699179e922df0a6f6f7fc6afc4f141cdd83aa44ad6cbd8535c",
-      "sha256": "74c830b92f6ab94875e62362c67edb088183331ced79155c4a7d268b9bf37278"
+      "sha256": "79c3ee36503ebb466e99f9011727df702197d07f41bf863e6d0094833ec2dcc0"
     },
     "packages/relay-nats/README.md": {
       "previous_sha256": "7f8d3a4d4d01e647ff9076492250be285089b6bde4a1302d7d8c35e00fcb6037",
-      "sha256": "4874f1230a8b46f76537c9ecd8ae4fae8fde5fcf5d46e6519bb13f610490e61e"
+      "sha256": "7f7388e1655027ff440ce85d91d560aaea4ecfd2012ca4c54cafc9697aa9692a"
     },
     "packages/relay-nats/config/jetstream.example.json": {
       "previous_sha256": "ee68d24e222d9488dd8c3e966a3df6ffc5a26762ab8d0d20edc02d1e64e1a803",
@@ -71,7 +71,7 @@
     },
     "packages/relay-nats/src/backend.ts": {
       "previous_sha256": "173b9cc14212025671fdb04f17d6e1e7160efe8b298a2a9851f29f452afb98da",
-      "sha256": "c05e960de20b353dc9f943cccf0d83dfc0a67c0ca46f87b010180b1c72edc93d"
+      "sha256": "fbe0d35f733edf2f421f96f7aae6ec81efb66d1e53f842fc700d5a4acaf8d4b6"
     },
     "packages/relay-nats/src/configured.ts": {
       "previous_sha256": "73ab928b169af467c1f9f0f442bcbb085cdfcfcee5a7a8c944c9dc518b041def",
@@ -87,7 +87,7 @@
     },
     "packages/relay-nats/test/backend.test.js": {
       "previous_sha256": "3f67358f76d406b91f93f4bb59a80fd2cbb26114d8e4623c3a1013e29dbbec7e",
-      "sha256": "c1ed9ff1bd9bf9f2f83eeb7f36ee0adb08e87c8629677fa2b83739244a4185f6"
+      "sha256": "f4ef5e5fb31285e9e7ff4050a58fbbbb74cfd60771b02f040c267364ac532fac"
     },
     "packages/relay-nats/test/configured-host.test.js": {
       "previous_sha256": "04cf0b02b65b9ab563ad9763051e25dcd128240551842066ec33aba7f1fd9d1f",
@@ -95,15 +95,15 @@
     },
     "packages/relay-nats/test/delivery-semantics.test.js": {
       "previous_sha256": null,
-      "sha256": "a5d12e9c5e58f880723215be7988eed0ab9501b8bc9643e739ae35143f1af3f2"
+      "sha256": "697303239da6737e8650d39e4ed5eb88ce6faace7b57540f197ef48b5f7133bf"
     },
     "packages/relay-nats/test/fixture.js": {
       "previous_sha256": "75bc9335f5461a80aea0522ac2b0b69f182ba4695b8dba8ac7db2f7573a6a2d6",
-      "sha256": "564ccbc01e30f5a7ee5c10ace85bb56adf4d5b8ed4b715ea96639de81d712345"
+      "sha256": "1c98c41f5fb00a33d60181be91c90aa3e6b593300a1c3d5627e30cb25fcbefc4"
     },
     "packages/relay-nats/test/guarded-commits.test.js": {
       "previous_sha256": "5afa9e4dcb48ce35ace76189aa6d1e50e97c3ab8fb401cab4454b09bca805875",
-      "sha256": "5b48d8822d416fbff4bf31b26ec9f155d7b245305a58af2547a64e9f65962554"
+      "sha256": "cf000fe8069c8441bc516a3ec40c85bc5b1b4c504608f7d15fb9e91c9272681d"
     },
     "packages/relay-nats/test/hab-fixture.js": {
       "previous_sha256": "12823d01e48168d33fb5eacbb1b859f8d4c82a2f5959e4adf9909e2847658884",
@@ -679,7 +679,7 @@
     },
     "test/p7/README.md": {
       "previous_sha256": null,
-      "sha256": "f34327d5f116f370a5537292d68f106d87b0626fc0a074e00a306ee302df10f9"
+      "sha256": "8e99d8f35a9102e9cf127b6e30892d6580301c27358914611da5d7af6b468e88"
     },
     "test/p7/manifest.js": {
       "previous_sha256": null,
