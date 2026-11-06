@@ -184,7 +184,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "c011708b997e03dccebde2531ce80b03b900d463b563ac069270eeb8db7274f7",
+      "sha256": "0f66b871f5ff1e798b0c25866fae19bf81c8eb6240a51e9b93ab6a4359aba94a",
       "role": "normative",
       "review": "reviewed",
       "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof.",
@@ -1010,7 +1010,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "6c3dc745a7a2d5118cd7e99354c000ec9176fc26aba9e520c7eca85341af8166",
+      "sha256": "d93ce06e21abe5d86e927ab951a2cc0c93315ef1f53001ef44de6be6b0529603",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1026,11 +1026,18 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "0b8ebc1f6308ef892829fe4d916e259916a138736ecb05434045dfaa00ee0862",
+      "sha256": "fe73e42f42f0a9b0fe19ed4a92d7e3f1fab8d48bef82cb13f098bb96febaed7d",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+    },
+    {
+      "path": "docs/recipient-messages.md",
+      "sha256": "0a00fe384ee6463c85babdbb4597e0d0cb6098b3d96bc17b47dc175533b8e95a",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Reviewed explicit recipient-local handoff and exact-reply composition against ADR-015. Reuses verified inbox/outbox and reply admission; native input/dedup/policy/approval remain trusted recipient prerequisites. Local synthetic native store and loopback MCP tests are not native model/approval/deployment evidence. PR137 path migration remains pending."
     }
   ],
   "requirements": [
@@ -1044,7 +1051,8 @@
       "checks": [
         "js-common-mcp",
         "ast-boundary",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1073,7 +1081,8 @@
         "build",
         "ast-boundary",
         "js-common-mcp",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1099,7 +1108,8 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "ast-boundary"
+        "ast-boundary",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1197,7 +1207,8 @@
       "checks": [
         "js-common-mcp",
         "js-root",
-        "gui-parity"
+        "gui-parity",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1312,7 +1323,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1390,7 +1402,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "mcp-durable-roundtrip"
+        "mcp-durable-roundtrip",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1505,7 +1518,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "production-operations"
+        "production-operations",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1563,7 +1577,8 @@
       "decision": "accepted",
       "checks": [
         "mcp-durable-roundtrip",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1740,7 +1755,8 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1852,7 +1868,8 @@
       "scope": "HAB Registry-composed Relay and optional attachment facade paths; separate IO already sent cannot be retracted.",
       "decision": "accepted",
       "checks": [
-        "js-root"
+        "js-root",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -2225,7 +2242,8 @@
       "scope": "Public repository and verification output; detailed audit formats remain subsystem-specific.",
       "decision": "accepted",
       "checks": [
-        "source-publication"
+        "source-publication",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -3530,8 +3548,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 32,
-          "end": 32,
+          "start": 34,
+          "end": 34,
           "excerpt_sha256": "052c00c877d07e3a61e3feb6ad246bf68b6d5f3e50f61a6ff60abd3995ed6d23"
         }
       ]
@@ -3594,8 +3612,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 34,
-          "end": 34,
+          "start": 36,
+          "end": 36,
           "excerpt_sha256": "1f35490845293eab70cdf8e80f965c5dfdda959901472a32f50c4081cf157895"
         }
       ]
@@ -3621,8 +3639,8 @@
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 28,
-          "end": 36,
-          "excerpt_sha256": "d8f220ea6335ac7649d19234320411793ca41aa2d8df9137f7b695a82d905500"
+          "end": 38,
+          "excerpt_sha256": "8a6b93e9a0188fa1c837eb65b4da6589721dad60fb80cd7584279e9dc76465ff"
         }
       ]
     },
@@ -3984,7 +4002,7 @@
       "tier": "manual",
       "proves": "Actual product caller/session, native MCP exposure, durable integration, display/wake, independent judgment and existing approvals.",
       "limitations": "Not executed or automatically satisfied by this harness. Requires scoped external evidence and review; remains unverified.",
-      "instructions": "Use docs/recipient-readiness.md and the existing common-MCP recipe. Record product/version, formal caller, trusted session/group/address binding, actual MCP transport, poll trigger and durable stores. Obtain concrete operational authority before live settings/grants/services/model execution. Send untrusted content and an execution_request; independently observe recipient interpretation/refusal/approval and unchanged existing approval rules. Unsupported APIs remain unsupported. Never substitute fixture/model-free success."
+      "instructions": "Use docs/recipient-readiness.md and the existing common-MCP recipe. Record product/version, formal caller, trusted session/group/address binding, actual MCP transport, poll trigger and durable stores. Obtain concrete operational authority before live settings/grants/services/model execution. Send untrusted content and an execution_request; independently observe recipient interpretation/refusal/approval and unchanged existing approval rules. Unsupported APIs remain unsupported. Never substitute fixture/model-free success. For optional RecipientMessages composition, also review docs/recipient-messages.md and independently verify durable same-key native admission, durable unknown, exact reply approval consumption and current policy at commit. The synthetic recipient port test cannot satisfy this manual check."
     },
     {
       "id": "production-operations",
@@ -4048,6 +4066,25 @@
       "protocol": "exit",
       "proves": "Nineteen negative controls reject missing/partial/forged/zero/skip/manual-pass/hash/cleanup/trace evidence; a complete internally consistent synthetic report passes without promoting manual scope.",
       "limitations": "CI report-consistency gate controls only. Synthetic artifacts establish no HAB behavior, signature/provenance authenticity or native/production compliance. Real report is checked after the run."
+    },
+    {
+      "id": "js-recipient-messages",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/recipient-messages.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Explicit confirmed-inbox handoff to synthetic durable native input, stable-key reconciliation, source/actor/epoch guards, recipient-owned policy/approval waits and exact reply revalidation through real SQLite budget/outbox; one owned loopback MCP receive-to-reply path with no Task links.",
+      "limitations": "Native input/policy store and owner are fixtures. No real product wake/input, model, native approval UI, atomic native production deduplication, backup rollback, residency or deployment is established. Same-process database close/reopen is not crash/powerloss proof.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
     }
   ],
   "conflicts": [
