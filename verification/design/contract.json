@@ -916,7 +916,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "dca2489c57ae08e919914af84f66a491665079e75f18a9c71a76a5b54a19d296",
+      "sha256": "eec04745196b3e2f67ff55665ed0913e9cafc633a13ee27db596778a9b8173e8",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
