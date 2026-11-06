@@ -632,3 +632,40 @@ test("group authorization records keep the newest entries instead of exhausting 
   assert.equal(rows.at(-1).id, 45);
   assert.equal(rows[0].id, 16);
 });
+
+test("createBoundGroup needs group_bind and group_member as well as group_create, and a refusal leaves nothing", async (t) => {
+  const f = await fixture(t, { authentication_groups: true });
+  const agent = f.enroll("research", false);
+  const count = (table) =>
+    f.registryRaw.prepare(`SELECT count(*) n FROM ${table}`).get().n;
+  const state = () => ({
+    groups: count("hab_auth_groups"),
+    bindings: count("hab_auth_group_bindings"),
+    members: count("hab_auth_group_members"),
+    epoch: f.registryRaw.prepare("SELECT epoch FROM hab_registry_meta").get()
+      .epoch,
+  });
+  const before = state();
+  const input = (request_id) => ({
+    request_id,
+    agent_id: agent.agent_id,
+    expected_epoch: agent.epoch,
+    principal: principal("a"),
+  });
+  for (const denied of [
+    ["group_bind", "group_member"],
+    ["group_bind"],
+    ["group_member"],
+  ]) {
+    f.mutable.denied = new Set(denied);
+    assert.throws(
+      () => f.registry.createBoundGroup(f.admin, input(denied.join("-"))),
+      code("registry_forbidden"),
+      `refused without ${denied}`,
+    );
+    assert.deepEqual(state(), before, `refused without ${denied}: no state`);
+  }
+  f.mutable.denied = new Set();
+  const created = f.registry.createBoundGroup(f.admin, input("bound-all"));
+  assert.equal(created.agent_id, agent.agent_id);
+});
