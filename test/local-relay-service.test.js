@@ -183,6 +183,28 @@ test("a config with the retired SQLite store section is refused before any state
   });
   assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
 });
+test("registry limits outside the registry's bounds are refused as config fields", async (t) => {
+  const f = await fixture(t);
+  for (const [patch, field] of [
+    [{ busy_timeout_ms: 5000 }, "registry.busy_timeout_ms"],
+    [{ max_context_ms: 300001 }, "registry.max_context_ms"],
+    [{ max_agents: 1000001 }, "registry.max_agents"],
+    [{ allowed_kinds: ["ok", "ok"] }, "registry.allowed_kinds"],
+  ]) {
+    f.write("service.local.json", {
+      ...f.config,
+      registry: { ...f.config.registry, ...patch },
+    });
+    await assert.rejects(startHost(f.configPath), (error) => {
+      assert.deepEqual(
+        { reason: error.reason, fields: error.fields },
+        { reason: "config_invalid", fields: [field] },
+      );
+      return true;
+    });
+  }
+  assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
+});
 test("CLI prints the refusal reason and offending fields only", async (t) => {
   const f = await fixture(t);
   f.write("service.local.json", withoutSenderCapacity(f));

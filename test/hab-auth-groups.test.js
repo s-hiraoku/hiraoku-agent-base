@@ -485,6 +485,58 @@ test("last group binding revocation stops retained contexts and preserves creden
   );
 });
 
+test("stopping a group stops every member; a new binding re-grants only the address it names", async (t) => {
+  for (const stop of ["revoke", "access"]) {
+    const f = await shared(t);
+    if (stop === "revoke") {
+      const binding = f.registryRaw
+        .prepare(
+          "SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=?",
+        )
+        .get(f.group.group_id);
+      f.registry.revokeGroupBinding(f.admin, {
+        request_id: f.request(),
+        binding_id: binding.binding_id,
+        expected_epoch: f.registry.inspectGroup(f.admin, f.group.group_id)
+          .epoch,
+      });
+    } else f.access("stopped");
+    for (const agent of [f.first, f.second]) {
+      const member = f.registry.inspect(f.admin, agent.agent_id);
+      assert.deepEqual([member.state, member.operations], ["stopped", []]);
+      assert.ok(member.epoch > agent.epoch, `${stop}: member epoch advances`);
+    }
+    f.registry.bindGroup(f.admin, {
+      request_id: f.request(),
+      group_id: f.group.group_id,
+      expected_epoch: f.registry.inspectGroup(f.admin, f.group.group_id).epoch,
+      principal: principal("c"),
+    });
+    f.access("active", operations);
+    assert.throws(
+      () => f.hab.poll(f.registry.selectAddress(f.contexts.c, f.first.address)),
+      code("forbidden"),
+    );
+    f.registry.setAccess(f.admin, {
+      request_id: f.request(),
+      agent_id: f.first.agent_id,
+      expected_epoch: f.registry.inspect(f.admin, f.first.agent_id).epoch,
+      state: "active",
+      operations,
+    });
+    assert.equal(
+      f.hab.poll(f.registry.selectAddress(f.contexts.c, f.first.address)),
+      null,
+    );
+    assert.throws(
+      () =>
+        f.hab.poll(f.registry.selectAddress(f.contexts.c, f.second.address)),
+      code("forbidden"),
+    );
+    assert.equal(f.hab.poll(f.contexts.c), null, `${stop}: one active member`);
+  }
+});
+
 test("overlapping verified credential rotation preserves the group and member identity", async (t) => {
   const f = await shared(t);
   const old = f.registryRaw

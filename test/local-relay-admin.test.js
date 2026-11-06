@@ -811,3 +811,118 @@ test("connect rejects rename-only flags before opening or changing a registry", 
       { code: "usage" },
     );
 });
+
+test("reconnecting one group address does not revive a sibling the operator disconnected", async (t) => {
+  const f = await started(t, { authentication_groups: true });
+  hostAdminConnect(f.configPath, {
+    address: "a@app.hab",
+    connection_id: "conn-c",
+  });
+  hostAdminConnect(f.configPath, {
+    address: "b@app.hab",
+    connection_id: "conn-c",
+  });
+  const disconnected = hostAdminDisconnect(f.configPath, "b@app.hab");
+  assert.deepEqual(disconnected.affected_addresses.sort(), [
+    "a@app.hab",
+    "b@app.hab",
+  ]);
+  const states = () =>
+    Object.fromEntries(
+      hostAdminStatus(f.configPath).addresses.map((a) => [
+        a.address,
+        [a.state, a.operations],
+      ]),
+    );
+  assert.deepEqual(states(), {
+    "a@app.hab": ["stopped", []],
+    "b@app.hab": ["stopped", []],
+  });
+  const reconnected = hostAdminConnect(f.configPath, {
+    address: "a@app.hab",
+    connection_id: "conn-h",
+  });
+  assert.deepEqual(reconnected.steps, [
+    "connection_bound",
+    "group_access_granted",
+    "address_access_granted",
+  ]);
+  assert.equal(states()["b@app.hab"][0], "stopped");
+  assert.deepEqual(
+    await f.call(tokens.h, "relay_poll", { as_address: "b@app.hab" }),
+    {
+      error: "forbidden",
+    },
+  );
+  assert.deepEqual(
+    await f.call(tokens.h, "relay_poll", { as_address: "a@app.hab" }),
+    {
+      delivery: null,
+    },
+  );
+  // Only the active member counts, so the reconnected address is the default.
+  assert.deepEqual(await f.call(tokens.h, "relay_poll", {}), {
+    delivery: null,
+  });
+});
+
+test("a failed group connect leaves no orphan group and a retry converges", async (t) => {
+  const f = await started(t, { authentication_groups: true, max_bindings: 1 });
+  hostAdminConnect(f.configPath, {
+    address: "a@app.hab",
+    connection_id: "conn-c",
+  });
+  for (let i = 0; i < 3; i++)
+    assert.throws(
+      () =>
+        hostAdminConnect(f.configPath, {
+          address: "b@app.hab",
+          connection_id: "conn-h",
+        }),
+      { code: "registry_capacity_exceeded" },
+    );
+  const status = hostAdminStatus(f.configPath);
+  assert.equal(status.groups.length, 1);
+  assert.equal(
+    status.addresses.find((a) => a.address === "b@app.hab").group_id,
+    null,
+  );
+});
+
+test("CLI --operations with an empty list is rejected instead of granting every operation", async (t) => {
+  const f = await started(t);
+  assert.throws(
+    () =>
+      runRelayAdmin([
+        "--config",
+        f.configPath,
+        "connect",
+        "--address",
+        "codex@codex.hab",
+        "--connection-id",
+        "conn-c",
+        "--operations",
+        "",
+      ]),
+    { code: "invalid_operations" },
+  );
+  assert.deepEqual(hostAdminStatus(f.configPath).addresses, []);
+});
+
+test("connect follows registry.authentication_groups, not the registry schema version", async (t) => {
+  const f = await started(t, { authentication_groups: true });
+  f.config.registry.authentication_groups = false;
+  f.write("service.local.json", f.config);
+  const connected = hostAdminConnect(f.configPath, {
+    address: "a@app.hab",
+    connection_id: "conn-c",
+  });
+  assert.deepEqual(connected.steps, [
+    "product_registered",
+    "address_enrolled",
+    "connection_bound",
+    "address_access_granted",
+  ]);
+  assert.equal(connected.address.state, "active");
+  assert.equal(connected.address.group_id, null);
+});
