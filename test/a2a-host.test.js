@@ -812,6 +812,72 @@ test("even when accepted replies fill the cap, the matching results are saved an
     await untilState(() => client.get(task.id), TaskState.TASK_STATE_COMPLETED);
 });
 
+const inboxRows = (f) => {
+  const db = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    return db.prepare("SELECT count(*) n FROM relay_inbox").get().n;
+  } finally {
+    db.close();
+  }
+};
+
+test("a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it", async (t) => {
+  const max = 2;
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: max }),
+  });
+  const client = await a2aClient(f, "caller");
+  const [{ task, request }] = await inFlight(client, recipient, "flood", 1);
+  const first = await recipient.reply(
+    request,
+    "execution_accepted",
+    accepted("flood"),
+  );
+  assert.equal(await untilAcked(recipient.client, first.message_id), "acked");
+  await untilState(() => client.get(task.id), TaskState.TASK_STATE_WORKING);
+
+  // More fresh IDs than the whole ACK history (3 × max_records) holds: repeats of the
+  // acceptance, an acceptance naming another engine Task, and results the Task refuses.
+  const flood = [];
+  for (let i = 0; i < max * 3 + 2; i++) {
+    const [kind, value] = [
+      ["execution_accepted", accepted("flood")],
+      ["execution_accepted", accepted(`other${i}`)],
+      ["execution_result", { ...succeeded("flood"), state: "unknown" }],
+    ][i % 3];
+    flood.push(await recipient.reply(request, kind, value));
+  }
+  const result = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("flood"),
+  );
+  assert.equal(
+    await untilAcked(recipient.client, result.message_id),
+    "acked",
+    "the host saved and ACKed the valid result behind the flood",
+  );
+  const done = await untilState(
+    () => client.get(task.id),
+    TaskState.TASK_STATE_COMPLETED,
+  );
+  assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
+  assert.equal(done.metadata.hab_relay.result_message_id, result.message_id);
+  for (const reply of flood)
+    assert.equal(
+      await untilAcked(recipient.client, reply.message_id),
+      "acked",
+      "every flood reply was ACKed",
+    );
+  assert.equal(
+    inboxRows(f),
+    2,
+    "only the acceptance and the result entered the inbox and its ACK history",
+  );
+});
+
 const unreleasedReplies = (f) => {
   const db = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
     readOnly: true,
