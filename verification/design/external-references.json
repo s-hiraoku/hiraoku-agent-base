@@ -1173,5 +1173,25 @@
     "role": "external release metadata for optional broker verification",
     "access_outcome": "pending_remote_unread",
     "reason": "No remote fetch or binary execution performed; historical local derivation report is not independent current source-reader verification."
+  },
+  {
+    "reader_scope": "recipient-host MCP proposal maintenance",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/website/docs/user-guide/features/mcp.md#L490-L503",
+    "referenced_by": [
+      "docs/implementation/recipient-host-mcp-proposal.md"
+    ],
+    "access_outcome": "Verified through the local source checkout at the exact revision; selected files have no working-tree modifications. Read only the cited configuration/stdio transport excerpt. No native client invocation, profile/configuration, credentials, running session or policy was inspected or changed. This establishes source support only, not installed product acceptance.",
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "6b22dc94e1a301f87b82b70a1e64c7d5fba445754e181647aa5525254986a105"
+  },
+  {
+    "reader_scope": "recipient-host MCP proposal maintenance",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L373-L414",
+    "referenced_by": [
+      "docs/implementation/recipient-host-mcp-proposal.md"
+    ],
+    "access_outcome": "Verified through the local source checkout at the exact revision; selected files have no working-tree modifications. Read only the cited configuration/stdio transport excerpt. No native client invocation, profile/configuration, credentials, running session or policy was inspected or changed. This establishes source support only, not installed product acceptance.",
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "fd3af967817a343158a7f0dc2dfd9485593dacf68d51e55ad11c91f81e7dded1"
   }
 ]

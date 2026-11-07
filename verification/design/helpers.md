@@ -6,7 +6,7 @@ Generation baseline: HAB `c67711e2bb79670402e3b2cac10452344db7df00`. The target'
 
 ## Prerequisites and argv
 
-Node >= 24, the HAB checkout's dependencies installed, and the checkout's existing `.claude/skills/verify-hab/scripts/stack.mjs` are required. TypeScript is resolved from `TARGET/package.json`, not the current working directory. No shell expansion occurs inside these helpers. Quote your absolute target/evidence paths in a shell.
+Pinned Node 26.13.0 (Node >= 26), the HAB checkout's dependencies installed, and the checkout's existing `.claude/skills/verify-hab/scripts/stack.mjs` are required. TypeScript is resolved from `TARGET/package.json`, not the current working directory. No shell expansion occurs inside these helpers. Quote your absolute target/evidence paths in a shell.
 
 ```sh
 node verification/design/checks/communication-boundary.mjs TARGET
@@ -91,3 +91,9 @@ The complete earlier examples `communication-boundary.mjs` and `mcp-durable-roun
 Compared with those examples: recursive source enumeration and symlink/triple-slash guards were added; the original broad communication closure is complemented by a stricter classified core/storage closure that rejects reverse dependencies on SDK/transport wrappers; negative/harmless AST controls were expanded; CLI argv is validated; temporary names are HAB-specific. The roundtrip now uses a strictly read-only pre-ACK observer, tests that observer against uncommitted/missing/wrong evidence, records the detailed rejection before the receiver wraps an error, and uses keyed `withEntry` reads after ACK/reopen. It also explicitly requests port `0`, validates the pidfile and URL, bounds doctor/request/stop operations, handles spawn failures/interruption, retains failure proof, and distinguishes forced/uncertain cleanup from a clean pass. The earlier potentially unbounded post-SIGKILL await is removed.
 
 Generation performed source review and file creation only. No helper, self-test, test suite, server, model or credentials were executed/read by the helper author. The coordinator must inspect and run these generated instructions before calling the harness proven.
+
+## Proposed recipient-host MCP focused check
+
+`node --test --test-reporter=tap test/recipient-host-mcp.test.js` drives the existing opt-in wrapper with the official SDK over in-memory transport and an owned stdio child (`test/recipient-host-stdio-fixture.js`). It uses synthetic identities, chosen replies and operator resume, private temporary SQLite stores and a private pinned NATS broker. The stdio child is bounded to 30 seconds, closes its server and fixture stores, stops its broker and emits `RECIPIENT_STDIO_CLEANUP_OK`; the parent requires that marker after closing the client. No agent profile, live credential, production configuration, product runner or public listener is loaded. A missing broker remains a prerequisite failure, not a skip.
+
+The Relay-side fixture calls its HTTP gateway in process. This check does not establish a deployed HTTP endpoint, installed Hermes/Dots/Codex client, native session/auth/approval/wake or production ownership. It observes confirmed saved receipt after receive; only the separate durable-roundtrip observer proves the exact independently visible pre-network ACK commit. Its finite test count overlaps the root suite. `ast-boundary` continues to protect its enumerated Relay/core closure; it does not inspect this adapter-host wrapper or falsely certify its native authority.
