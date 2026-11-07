@@ -59,6 +59,7 @@
   "maintenance needs its own authorization and purges the message with its audit trail",
   "maintenance keeps an ACKed record through its committed ACK retry horizon and retention",
   "unbound message IDs are safety-held without starving a purgeable ID in the same batch",
+  "replay-bound IDs cycle through the record cap every retention period, and a collected ID is never delivered again",
   "maintenance purges at most its batch limit and leaves pending work deliverable",
   "fair poll alternates eligible senders despite one sender's older backlog",
   "fair poll opt-out keeps arrival order on the pump-cached path",
