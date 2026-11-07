@@ -763,6 +763,50 @@ test("lease redeliveries of one message take one ACK history slot, so its reply 
   );
 });
 
+test("a body whose ACK can never be confirmed is released once it expires, and only then", async (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  const soon = (entropy) => message(Date.now() - 3600000 + 400, entropy);
+  const lost = soon("c".repeat(32)),
+    pending = soon("d".repeat(32));
+  f.store.save(delivery(lost));
+  f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  f.store.save(delivery(pending));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", lost.message_id),
+    false,
+    "an unexpired body may still get a new generation",
+  );
+  code(
+    () => f.store.save(delivery(message(Date.now() - 100, "e".repeat(32)))),
+    "inbox_capacity_exceeded",
+  );
+  await new Promise((done) => setTimeout(done, 500));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", pending.message_id),
+    false,
+    "a pending ACK may still confirm it",
+  );
+  assert.equal(f.store.releaseUnconfirmable("a", lost.message_id), true);
+  assert.equal(f.store.releaseUnconfirmable("a", lost.message_id), false);
+  const next = delivery(message(Date.now() - 100, "e".repeat(32)));
+  f.store.save(next);
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", next.message.message_id),
+    false,
+    "a confirmed body is the application's to release",
+  );
+  code(() => f.store.save(delivery(lost, 2)), "expired_delivery");
+  assert.deepEqual(
+    f.store
+      .inbox()
+      .map((entry) => entry.message.message_id)
+      .sort(),
+    [pending.message_id, next.message.message_id].sort(),
+  );
+});
+
 test("one message keeps at most max_attempts ACK generations", (t) => {
   const f = fixture(t, { max_attempts: 2 });
   const m = message(Date.now() - 100, "b".repeat(32));

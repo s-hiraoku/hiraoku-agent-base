@@ -22,6 +22,8 @@ export interface InboxMaintenanceResult {
 export interface InboxLifecycleStore {
   /** Caller has already saved the body durably using (sender_id,message_id) as its dedup key. */
   releaseBody(senderId: string, messageId: string): boolean;
+  /** Releases a body no ACK can confirm any more, without handing it to the application. */
+  releaseUnconfirmable(senderId: string, messageId: string): boolean;
   maintain(limit: number): InboxMaintenanceResult;
 }
 export interface ReceiverStore {

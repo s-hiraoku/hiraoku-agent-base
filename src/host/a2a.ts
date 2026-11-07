@@ -396,7 +396,12 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       for (const entry of mail.inbox()) {
         const gateway = wired.gateway;
         if (stopped || !gateway) return;
-        if (!entry.receipt_confirmed) continue;
+        // An unconfirmed reply is never applied. Once no ACK can confirm it, its body
+        // is released unread; its Task's outcome stays unknown until the reply window closes.
+        if (!entry.receipt_confirmed) {
+          mail.releaseUnconfirmable(entry.sender_id, entry.message.message_id);
+          continue;
+        }
         const source = entry.message.in_reply_to?.message_id;
         const task = source ? store.findBySource(source) : undefined;
         try {

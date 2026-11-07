@@ -634,6 +634,27 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       return true;
     });
   }
+  /**
+   * Releases a body whose receipt can no longer be confirmed: it is unconfirmed, it has
+   * expired, so no new generation can be saved, and no ACK request is still pending.
+   * Its tombstone keeps deduplicating. Returns false and changes nothing otherwise.
+   */
+  releaseUnconfirmable(senderId: string, messageId: string): boolean {
+    if (!identifier(senderId) || !identifier(messageId))
+      throw new MessagingError("invalid_request");
+    return this.#tx(() => {
+      const now = this.#now();
+      this.#expireAcks(now, this.#options.max_ack_records);
+      const released = this.#db
+        .prepare(
+          `UPDATE relay_inbox SET body='',released_at=?,retain_until=max(retain_until,?+?)
+        WHERE sender_id=? AND message_id=? AND released_at IS NULL AND receipt_confirmed=0 AND expires_at<=?
+        AND NOT EXISTS(SELECT 1 FROM relay_receiver_acks a WHERE a.sender_id=relay_inbox.sender_id AND a.message_id=relay_inbox.message_id AND a.state='pending')`,
+        )
+        .run(now, now, RECORD_RETENTION_MS, senderId, messageId, now);
+      return released.changes === 1;
+    });
+  }
   /** Local-only, bounded administration. Never deletes an unreleased inbox body. */
   maintain(limit: number): InboxMaintenanceResult {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
