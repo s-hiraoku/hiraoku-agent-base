@@ -151,7 +151,7 @@ def main(argv=None):
         "--config", required=True, help="Approved private active config path"
     )
     parser.add_argument(
-        "--node", required=True, help="Reviewed absolute Node 24+ executable path"
+        "--node", required=True, help="Reviewed absolute Node 26+ executable path"
     )
     try:
         args = parser.parse_args(argv)

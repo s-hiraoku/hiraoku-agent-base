@@ -16,7 +16,7 @@ Grok-origin requests are retrieved by Dots using explicit `ping_pending`, follow
 
 ## Local verification
 
-Run `npm ci`, `npm run lint`, `npm run typecheck`, and `npm test` with Node 24 or newer. SQLite and local D1 fixtures exercise both directions, expiry, correlation mismatch, scope/identity rejection, duplicate and concurrent requests/replies, durable stops, restart reconciliation, one-attempt wake delivery, HTTP 200 without completion, failed/lost acknowledgements, and bounded hung-transport waits. OAuth MCP tests use ephemeral mock signing keys and an in-process mocked issuer; no live provider is contacted.
+Run `npm ci`, `npm run lint`, `npm run typecheck`, and `npm test` with Node 26 or newer. SQLite and local D1 fixtures exercise both directions, expiry, correlation mismatch, scope/identity rejection, duplicate and concurrent requests/replies, durable stops, restart reconciliation, one-attempt wake delivery, HTTP 200 without completion, failed/lost acknowledgements, and bounded hung-transport waits. OAuth MCP tests use ephemeral mock signing keys and an in-process mocked issuer; no live provider is contacted.
 
 ## Proposed connection boundary
 

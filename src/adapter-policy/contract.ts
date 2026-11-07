@@ -1,6 +1,6 @@
 /** Receiver-side automatic-reply policy. No dependency on HAB or Task execution. */
 import { z } from "zod";
-import type { Submission } from "../relay/contract.ts";
+import type { Submission } from "../messaging/contract.ts";
 export class ReplyBudgetError extends Error {
   readonly code: string;
   constructor(code: string) {

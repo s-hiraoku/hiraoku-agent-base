@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { executeRelayMcpOperation } from "../src/relay/mcp.ts";
+import { executeRelayMcpOperation } from "../src/host/mcp/server.ts";
 import { createHabMcpServer } from "../src/hab/mcp.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import {
@@ -77,7 +77,7 @@ function rpc(id, value) {
 }
 
 test("HAB opts into exactly five tools; standalone Relay remains four even with a HAB service", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     a = f.enroll("a");
   const hab = await decode(await gateway(f).fetch(request()));
   assert.deepEqual(hab.result.tools.map((v) => v.name).sort(), [
@@ -105,14 +105,20 @@ test("HAB opts into exactly five tools; standalone Relay remains four even with 
     client(f, a, relay).resolve(a.address),
     code("relay_transport_failed"),
   );
+  const deliveryOnly = {
+    submit: (context, input) => f.hab.submit(context, input),
+    status: (context, id) => f.hab.status(context, id),
+    poll: (context) => f.hab.poll(context),
+    ack: (context, input) => f.hab.ack(context, input),
+  };
   assert.throws(
-    () => gateway(f, {}, f.service),
+    () => gateway(f, {}, deliveryOnly),
     code("invalid_hab_mcp_service"),
   );
 });
 
 test("authenticated resolve returns only fixed recipient/address/version and changes no registry or Relay data", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   const epoch = f.registryRaw
@@ -188,7 +194,7 @@ test("pure directory contract rejects foreign fields/accessors and preserves can
 });
 
 test("SDK refuses malformed address/foreign identity arguments before invoking directory", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.enroll("a");
   let calls = 0;
   const g = gateway(
@@ -216,7 +222,7 @@ test("SDK refuses malformed address/foreign identity arguments before invoking d
 });
 
 test("missing/throwing resolver, unverifiable context and absent HTTP verification all deny", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   const a = f.enroll("a"),
     b = f.enroll("b");
   for (const resolver of [
@@ -263,7 +269,7 @@ test("missing/throwing resolver, unverifiable context and absent HTTP verificati
 });
 
 test("unknown/stopped/retired/blocked targets share refusal and rights are current on each resolve", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   let a = f.enroll("a"),
     b = f.enroll("b");
   const c = client(f, a, gateway(f));
@@ -333,7 +339,7 @@ test("unknown/stopped/retired/blocked targets share refusal and rights are curre
 });
 
 test("revoking caller binding or setting durable emergency stop invalidates a previously working client", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b"),
     c = client(f, a, gateway(f));
@@ -355,7 +361,7 @@ test("revoking caller binding or setting durable emergency stop invalidates a pr
 });
 
 test("unexpected directory failures and malformed results are redacted, never redirected or retried", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b");
   let calls = 0;
@@ -402,7 +408,7 @@ test("unexpected directory failures and malformed results are redacted, never re
 });
 
 test("directory client validates before fetch and accepts bounded JSON/SSE on fixed metadata only", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   let calls = 0;
@@ -442,7 +448,7 @@ test("directory client validates before fetch and accepts bounded JSON/SSE on fi
 });
 
 test("directory client rejects changed addresses, versions, IDs and unknown fields in otherwise valid replies", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   for (const patch of [
@@ -479,7 +485,7 @@ test(
   "resolve shares request/response caps and the same active-request counter with delivery calls",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       a = f.enroll("a"),
       b = f.enroll("b");
     let calls = 0,
@@ -532,7 +538,7 @@ test(
   "resolve cannot dispatch after late tool-start audit, and stalled audit retains HTTP admission",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     f.enroll("a");
     const b = f.enroll("b");
     let calls = 0,

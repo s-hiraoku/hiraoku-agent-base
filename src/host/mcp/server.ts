@@ -1,0 +1,172 @@
+/** Optional SDK boundary. Importing/constructing starts no listener or external connection. */
+import { McpServer } from "@modelcontextprotocol/server";
+import { z } from "zod";
+import { ContractError } from "../../messaging/contract.ts";
+import { MessagingError } from "../../messaging/delivery-service.ts";
+import { isPublicToolError } from "../../messaging/tool-errors.ts";
+import type { DeliveryService } from "../../messaging/delivery-service.ts";
+
+const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
+const part = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("text"), text: z.string() }),
+  z.strictObject({
+    type: z.literal("data"),
+    schema_id: id,
+    schema_version: z.number().int().positive(),
+    // The core enforces finite JSON depth/node/byte limits, without recursion here.
+    value: z.unknown(),
+  }),
+]);
+export const relayMcpSchemas = Object.freeze({
+  relay_submit: z.strictObject({
+    version: z.literal(1),
+    message_id: id,
+    recipient_id: id,
+    kind: id,
+    body: z.strictObject({ parts: z.array(part).min(1) }),
+    thread_id: id,
+    in_reply_to: z.strictObject({ sender_id: id, message_id: id }).nullable(),
+    first_sent_at: z.string(),
+    expires_at: z.string(),
+  }),
+  relay_status: z.strictObject({ message_id: id }),
+  relay_poll: z.strictObject({}),
+  relay_ack: z.strictObject({
+    sender_id: id,
+    message_id: id,
+    generation: z.number().int().positive(),
+    lease_token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+    request_id: id,
+  }),
+});
+const descriptions = {
+  relay_submit:
+    "Persist a Relay message with its fixed ID, recipient and one-hour deadline. Acceptance is delivery only; it does not execute work.",
+  relay_status:
+    "Read the authenticated sender's acceptance receipt without body. Delivery state is not work completion.",
+  relay_poll:
+    "Lease at most one message for the authenticated receiver. Save it durably before acknowledging it.",
+  relay_ack:
+    "Confirm a durably saved delivery using its exact journaled ACK request. This removes the server body and does not execute work.",
+};
+/** Supplied by a trusted host per connection/request; never derived from tool arguments. */
+export type RelayContextResolver = () => unknown | Promise<unknown>;
+/** Optional transport admission/audit guard; it cannot grant identity or permissions. */
+export interface RelayMcpGate {
+  check(): void;
+  begin(): Promise<(success: boolean) => Promise<void>>;
+}
+/** Shared optional transport boundary. Operations stay synchronous after verified context resolution. */
+export async function executeRelayMcpOperation(
+  resolveContext: RelayContextResolver,
+  gate: RelayMcpGate | undefined,
+  operation: (context: unknown) => unknown,
+) {
+  let finish: ((success: boolean) => Promise<void>) | undefined;
+  try {
+    gate?.check();
+    finish = await gate?.begin();
+    let context: unknown;
+    try {
+      context = await resolveContext();
+    } catch {
+      throw new MessagingError("forbidden");
+    }
+    if (context === null || context === undefined || context === false)
+      throw new MessagingError("forbidden");
+    gate?.check();
+    const value = operation(context);
+    if (value && typeof value === "object" && "then" in value) {
+      void Promise.resolve(value).catch(() => {});
+      throw new MessagingError("relay_operation_failed");
+    }
+    const output = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    await finish?.(true);
+    gate?.check();
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(output) }],
+      structuredContent: output,
+    };
+  } catch (error) {
+    try {
+      await finish?.(false);
+    } catch {
+      /* A service may already have committed; never repeat it here. */
+    }
+    const code =
+      (error instanceof MessagingError || error instanceof ContractError) &&
+      isPublicToolError(error.code)
+        ? error.code
+        : "relay_operation_failed";
+    return {
+      isError: true,
+      content: [
+        { type: "text" as const, text: JSON.stringify({ error: code }) },
+      ],
+      structuredContent: { error: code },
+    };
+  }
+}
+/** Trusted transport composition only; a preparation hook cannot bypass service authorization. */
+export interface RelayMcpToolBinding {
+  schemas: Readonly<Record<keyof typeof relayMcpSchemas, z.ZodType>>;
+  prepare(
+    context: unknown,
+    tool: keyof typeof relayMcpSchemas,
+    input: unknown,
+  ): { context: unknown; input: unknown };
+}
+export function createRelayMcpServer(
+  service: DeliveryService,
+  resolveContext: RelayContextResolver = () => null,
+  gate?: RelayMcpGate,
+  oauthScopes?: readonly string[],
+  binding?: RelayMcpToolBinding,
+): McpServer {
+  const server = new McpServer({ name: "hab-relay", version: "0.1.0" });
+  server.server.registerCapabilities({ tools: { listChanged: false } });
+  for (const [name, schema] of Object.entries(relayMcpSchemas)) {
+    const tool = name as keyof typeof relayMcpSchemas;
+    server.registerTool(
+      tool,
+      {
+        description: descriptions[tool],
+        inputSchema: binding?.schemas[tool] ?? schema,
+        ...(oauthScopes
+          ? {
+              _meta: {
+                securitySchemes: [{ type: "oauth2", scopes: [...oauthScopes] }],
+              },
+            }
+          : {}),
+        // Even status may expire old records. These are hints, never authorization.
+        annotations: {
+          readOnlyHint: false,
+          idempotentHint: tool !== "relay_poll",
+        },
+      },
+      (input: unknown) =>
+        executeRelayMcpOperation(resolveContext, gate, (verified) => {
+          const { context, input: prepared } = binding?.prepare(
+            verified,
+            tool,
+            input,
+          ) ?? { context: verified, input };
+          switch (tool) {
+            case "relay_submit":
+              return service.submit(context, prepared);
+            case "relay_status":
+              return service.status(
+                context,
+                relayMcpSchemas.relay_status.parse(prepared).message_id,
+              );
+            case "relay_poll":
+              return { delivery: service.poll(context) };
+            case "relay_ack":
+              return service.ack(context, prepared);
+          }
+        }),
+    );
+  }
+  return server;
+}

@@ -6,7 +6,7 @@ import { bridgeGuard } from "./authority.ts";
 import { replyKindSchema } from "./reply-contract.ts";
 import type { ReplyKind } from "./reply-contract.ts";
 import type { SQLiteTaskBridgeJournal } from "./sqlite-journal.ts";
-import type { OutboxRecord } from "../relay/sender.ts";
+import type { OutboxRecord } from "../agent-sdk/sender.ts";
 export interface BridgeReplyOutbox {
   readonly agentId: string;
   enqueueGuarded(input: unknown, guard: () => void): OutboxRecord;

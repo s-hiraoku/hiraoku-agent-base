@@ -10,10 +10,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { SQLiteRelayStore } from "../../src/relay/sqlite-store.ts";
-import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
-import { RelayService, DurableReceiver } from "../../src/relay/index.ts";
+import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../../src/agent-sdk/index.ts";
+import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
 import { limits, message } from "../relay-http-fixtures.js";
+import { authorizedDelivery } from "../jetstream-delivery.js";
 import { ackRequest } from "./backends.js";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -21,21 +22,9 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { labEnvironment } from "../../scripts/lib/delivery-lab.mjs";
 
-const options = {
-  fingerprint_key: new Uint8Array(32).fill(83),
-  max_pending: 10,
-  max_records: 100,
-  max_pending_per_recipient: 10,
-  max_body_bytes: 100000,
-  max_clock_skew_ms: 1000,
-  lease_ms: 30000,
-  max_attempts: 5,
-  retry_base_ms: 1,
-  retry_cap_ms: 10,
-  poll_scan_limit: 10,
-};
-
-function fixture(t) {
+// SQLite failure seams of the delivery path: the JetStream journal on the Relay side and the
+// durable inbox on the receiver side.
+async function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "delivery-failure-"));
   chmodSync(dir, 0o700);
   const opened = new Set();
@@ -47,14 +36,24 @@ function fixture(t) {
     opened.add(store);
     return store;
   };
-  const path = join(dir, "relay.sqlite");
-  const store = track(new SQLiteRelayStore(path, options));
-  store.migrate();
-  const raw = track(new DatabaseSync(path));
-  const service = new RelayService(store, limits, {
-    authorize: (ctx) =>
-      ["a", "b", "c"].includes(ctx) ? { agent_id: ctx } : undefined,
+  const delivery = await authorizedDelivery(t, {
+    authorization: {
+      authorize: (ctx) =>
+        ["a", "b", "c"].includes(ctx) ? { agent_id: ctx } : undefined,
+    },
+    limits,
+    directory: dir,
+    queue: {
+      max_pending: 10,
+      max_pending_per_recipient: 10,
+      max_attempts: 5,
+      retry_base_ms: 1,
+      retry_cap_ms: 10,
+      poll_scan_limit: 10,
+    },
   });
+  const path = delivery.options.journal_path;
+  const raw = track(new DatabaseSync(path));
   const inboxPath = join(dir, "inbox.sqlite");
   const inboxOptions = {
     agent_id: "b",
@@ -74,9 +73,9 @@ function fixture(t) {
   return {
     dir,
     path,
-    store,
+    options: delivery.options,
     raw,
-    service,
+    service: delivery.service,
     inboxPath,
     inbox,
     openInbox,
@@ -132,19 +131,14 @@ function pageLimit(t, path) {
   };
 }
 
-test("F01 real SQLITE_FULL under a per-database page cap never returns acceptance; retry succeeds", (t) => {
-  const f = fixture(t);
+test("F01 real SQLITE_FULL under a per-database page cap never returns acceptance; retry succeeds", async (t) => {
+  const f = await fixture(t);
   const fault = pageLimit(t, f.path);
   const input = message();
   input.body.parts[0].text = "x".repeat(15000);
   assert.throws(() => f.service.submit("a", input));
   assert.equal(fault.fullErrors(), 1);
-  for (const table of [
-    "relay_messages",
-    "relay_deliveries",
-    "relay_delivery_audit",
-    "relay_threads",
-  ])
+  for (const table of ["nats_messages", "nats_delivery_audit"])
     assert.equal(f.raw.prepare(`SELECT count(*) n FROM ${table}`).get().n, 0);
   fault.recover();
   const receipt = f.service.submit("a", input);
@@ -153,7 +147,7 @@ test("F01 real SQLITE_FULL under a per-database page cap never returns acceptanc
 });
 
 test("F02 full durable inbox sends zero ACKs, retains server body and recovers with one inbox entry", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   const input = message();
   input.body.parts[0].text = "x".repeat(15000);
   f.service.submit("a", input);
@@ -170,10 +164,13 @@ test("F02 full durable inbox sends zero ACKs, retains server body and recovers w
   assert.equal(fault.fullErrors(), 1);
   assert.equal(acks, 0);
   assert.deepEqual(receiver.inbox(), []);
-  assert.ok(f.raw.prepare("SELECT body FROM relay_messages").get().body);
+  const body = () =>
+    f.raw.prepare("SELECT candidate,body_bytes FROM nats_messages").get();
+  assert.ok(body().candidate);
+  assert.ok(body().body_bytes > 0);
   assert.equal(f.service.status("a", input.message_id).state, "leased");
   fault.recover();
-  f.raw.exec("UPDATE relay_deliveries SET lease_until=0,next_visible_at=0");
+  f.raw.exec("UPDATE nats_messages SET lease_until=0,next_visible_at=0");
   await receiver.receiveOnce();
   assert.equal(acks, 1);
   assert.deepEqual(
@@ -181,19 +178,15 @@ test("F02 full durable inbox sends zero ACKs, retains server body and recovers w
     [input],
   );
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
-  assert.equal(
-    f.raw.prepare("SELECT body FROM relay_messages").get().body,
-    null,
-  );
+  assert.equal(body().candidate, null);
+  assert.equal(body().body_bytes, 0);
 });
 
-test("F03 exact database-clock TTL and skew boundaries fail closed without host clock changes", (t) => {
-  const f = fixture(t);
-  let clock = Math.floor(Date.now() / 1000) * 1000;
-  connectionHook(t, f.path, (db) => {
-    db.function("unixepoch", { varargs: true }, () => clock / 1000);
-  });
-  const at = clock;
+test("F03 exact journal-clock TTL and skew boundaries fail closed without host clock changes", async (t) => {
+  const f = await fixture(t);
+  const at = Math.floor(Date.now() / 1000) * 1000;
+  // Only this process's clock moves; the pump worker keeps real time and sees nothing expire.
+  t.mock.timers.enable({ apis: ["Date"], now: at });
   const input = message();
   input.first_sent_at = new Date(at).toISOString();
   input.expires_at = new Date(at + 3600000).toISOString();
@@ -217,20 +210,23 @@ test("F03 exact database-clock TTL and skew boundaries fail closed without host 
     { code: "clock_skew" },
   );
   f.service.submit("a", input);
-  clock = at + 3599999;
+  t.mock.timers.setTime(at + 3599999);
   const delivery = f.service.poll("b");
   assert.equal(delivery.message.message_id, input.message_id);
   assert.equal(Date.parse(delivery.lease_until), at + 3600000);
-  clock++;
+  t.mock.timers.setTime(at + 3600000);
   assert.throws(() => f.service.ack("b", ackRequest(delivery, "ttl-ack")), {
     code: "invalid_ack",
   });
   assert.equal(f.service.status("a", input.message_id).state, "expired");
-  assert.equal(
-    f.raw
-      .prepare("SELECT body FROM relay_messages WHERE message_id=?")
-      .get(input.message_id).body,
-    null,
+  const row = f.raw
+    .prepare(
+      "SELECT outbox,candidate,body_bytes FROM nats_messages WHERE message_id=?",
+    )
+    .get(input.message_id);
+  assert.deepEqual(
+    { ...row },
+    { outbox: null, candidate: null, body_bytes: 0 },
   );
   assert.throws(
     () => f.service.submit("a", { ...input, message_id: "expired-new" }),
@@ -238,12 +234,14 @@ test("F03 exact database-clock TTL and skew boundaries fail closed without host 
   );
 });
 
-test("F04 malformed SQLite file is rejected without overwriting the evidence", (t) => {
-  const f = fixture(t);
+test("F04 malformed SQLite file is rejected without overwriting the evidence", async (t) => {
+  const f = await fixture(t);
   const path = join(f.dir, "corrupt.sqlite");
   const bytes = Buffer.alloc(4096, 0x78);
   writeFileSync(path, bytes, { mode: 0o600 });
-  assert.throws(() => new SQLiteRelayStore(path, options));
+  await assert.rejects(
+    JetStreamRelay.open({ ...f.options, journal_path: path }),
+  );
   assert.deepEqual(readFileSync(path), bytes);
 });
 
@@ -251,17 +249,17 @@ test(
   "F05 SIGKILL after durable save before ACK recovers the saved request with one inbox entry",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     const input = message();
     f.service.submit("a", input);
     const delivery = f.service.poll("b");
     f.closeInbox();
     const inboxModule = new URL(
-      "../../src/relay/sqlite-inbox.ts",
+      "../../src/agent-sdk/sqlite-inbox.ts",
       import.meta.url,
     ).href;
     const receiverModule = new URL(
-      "../../src/relay/receiver.ts",
+      "../../src/agent-sdk/receiver.ts",
       import.meta.url,
     ).href;
     const options = { ...f.inboxOptions, fingerprint_key: undefined };

@@ -99,7 +99,7 @@ OAuthファイルのversionとRegistry DBのversionは別です。OAuth v2自体
 永続保管と再起動後の更新はhost側の受入れ項目です。
 
 既存runtimeへ反映する前に、停止したDBと対応する鍵・設定・releaseを整合した一組として
-backupし、`store.agent_capacity`と起動パスを照合します。新しい仕事を受け入れる前なら
+backupし、`delivery.queue.agent_capacity`と起動パスを照合します。新しい仕事を受け入れる前なら
 停止backupからDBと元設定を一緒に復元できます。Registry v2を旧binaryへ直接開かせたり、
 schema番号だけを戻したりしません。新規受付後に古いbackupを上書きし、受領/失効履歴を
 失うrollbackはしません。保全して照合またはforward fixします。

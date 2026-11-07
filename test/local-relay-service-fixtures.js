@@ -10,7 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { limits, policy, envelope } from "./relay-http-fixtures.js";
 import { options } from "./hab-registry-fixtures.js";
-export function fixture(t) {
+import { deliverySection } from "./jetstream-delivery.js";
+export async function fixture(t, queue = {}) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "local-relay-service-")));
   chmodSync(dir, 0o700);
   for (const sub of ["state", "audit"])
@@ -44,26 +45,7 @@ export function fixture(t) {
     audit_max_bytes: 262144,
     limits,
     registry,
-    store: {
-      max_pending: 20,
-      max_records: 100,
-      max_pending_per_recipient: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      max_attempts: 3,
-      retry_base_ms: 10,
-      retry_cap_ms: 100,
-      poll_scan_limit: 20,
-      agent_capacity: {
-        max_pending_per_sender: 10,
-        max_body_bytes_per_sender: 50000,
-        max_records_per_sender: 25,
-        max_body_bytes_per_recipient: 50000,
-        max_records_per_recipient: 50,
-        reservations: [],
-      },
-    },
+    delivery: await deliverySection(join(dir, "state"), { queue }),
     http,
   };
   const configPath = write("service.local.json", config);

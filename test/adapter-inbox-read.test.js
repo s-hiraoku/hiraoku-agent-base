@@ -8,7 +8,7 @@ import { code } from "./task-bridge-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
 import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 
 async function receive(f) {
   f.resume();
@@ -35,7 +35,7 @@ const read = (f, source, host = f.host) =>
   host.stepOnce(f.context, { op: "inbox_read", source });
 
 test("inbox read: exact saved external data is separate from metadata and repeatable without side effects", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const { key, message } = await receive(f);
   const metadata = await f.step({ op: "inbox" });
   assert.equal("message" in metadata.value[0], false);
@@ -63,7 +63,7 @@ test("inbox read: exact saved external data is separate from metadata and repeat
 });
 
 test("inbox read: metadata permission and body access never grant another source or a reply", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const { key } = await receive(f);
   let bodyAllowed = false;
   const host = f.makeHost({
@@ -105,7 +105,7 @@ test("inbox read: metadata permission and body access never grant another source
 });
 
 test("inbox read: saved ACK-pending content remains readable without retrying or confirming its ACK", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const { key, message } = f.submit();
   f.state.afterNetwork = async (tool) => {
@@ -141,7 +141,7 @@ test("inbox read: saved ACK-pending content remains readable without retrying or
 });
 
 test("inbox read: missing and released bodies return no partial data", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const { key } = await receive(f);
   for (const source of [{ ...key, message_id: "missing" }, key]) {
     if (source === key)
@@ -159,7 +159,7 @@ test("inbox read: missing and released bodies return no partial data", async (t)
 });
 
 test("inbox read: changed stored content fails integrity validation without disclosing the body", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const { key } = await receive(f);
   const row = f.inboxRaw.prepare("SELECT body FROM relay_inbox").get();
   const changed = JSON.parse(row.body);
@@ -178,7 +178,7 @@ test("inbox read: changed stored content fails integrity validation without disc
 });
 
 test("inbox read: pause and authority revocation prevent content return", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const { key } = await receive(f);
   f.pause();
   await assert.rejects(read(f, key), code("host_paused"));
@@ -201,7 +201,7 @@ test("inbox read: pause and authority revocation prevent content return", async 
 });
 
 test("inbox read: native HTTP periodic receive waits for explicit recipient read and reply", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   const owner = new SQLiteHostOwner(join(f.dir, "read-owner.sqlite"), {
     agent_id: "b",
     fingerprint_key: new Uint8Array(32).fill(91),

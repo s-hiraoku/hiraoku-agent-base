@@ -9,18 +9,16 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import {
-  readLocalRelayConfig,
-  startConfiguredLocalRelay,
-} from "../src/relay-host/configured.ts";
+import { readHostConfig } from "../src/host/config.ts";
+import { startHost } from "../src/host/start.ts";
 import { envelope } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
 const cli = resolve("scripts/hab-relay.mjs");
 test("explicit group configuration creates registry v2 and stays deny-all across restart", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.config.registry.authentication_groups = true;
   f.write("service.local.json", f.config);
-  const first = await startConfiguredLocalRelay(f.configPath);
+  const first = await startHost(f.configPath);
   try {
     assert.equal((await list(first.url)).status, 401);
   } finally {
@@ -41,7 +39,7 @@ test("explicit group configuration creates registry v2 and stays deny-all across
   } finally {
     raw.close();
   }
-  const next = await startConfiguredLocalRelay(f.configPath);
+  const next = await startHost(f.configPath);
   try {
     assert.equal((await list(next.url)).status, 401);
   } finally {
@@ -49,8 +47,8 @@ test("explicit group configuration creates registry v2 and stays deny-all across
   }
 });
 test("private explicit config starts deny-all; digest binding authenticates only until file revocation", async (t) => {
-  const f = fixture(t),
-    host = await startConfiguredLocalRelay(f.configPath);
+  const f = await fixture(t),
+    host = await startHost(f.configPath);
   t.after(() => host.close());
   assert.equal((await list(host.url)).status, 401);
   const token = "c".repeat(64),
@@ -81,97 +79,135 @@ test("private explicit config starts deny-all; digest binding authenticates only
   assert.ok(!audit.includes("synthetic-owner"));
 });
 test("missing credentials, malformed config or permissive key file never starts a fallback host", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.write("credentials.local.json", { version: 99 });
-  await assert.rejects(
-    startConfiguredLocalRelay(f.configPath),
-    /local_relay_start_rejected/,
-  );
-  assert.deepEqual(readdirSync(join(f.dir, "state")), []);
+  await assert.rejects(startHost(f.configPath), /local_relay_start_rejected/);
+  assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
   f.write("credentials.local.json", { version: 1, credentials: [] });
   chmodSync(f.keyPath, 0o644);
-  await assert.rejects(
-    startConfiguredLocalRelay(f.configPath),
-    /local_relay_start_rejected/,
-  );
+  await assert.rejects(startHost(f.configPath), /local_relay_start_rejected/);
 });
-test("configured store requires a per-sender capacity smaller than the shared pool", async (t) => {
-  const f = fixture(t);
-  const store = { ...f.config.store };
-  delete store.agent_capacity;
+test("configured delivery queue requires a per-sender capacity smaller than the shared pool", async (t) => {
+  const f = await fixture(t);
+  const queue = f.config.delivery.queue;
+  const missing = { ...queue };
+  delete missing.agent_capacity;
   for (const variant of [
-    store,
+    missing,
     {
-      ...f.config.store,
+      ...queue,
       agent_capacity: {
-        ...f.config.store.agent_capacity,
-        max_records_per_sender: f.config.store.max_records,
+        ...queue.agent_capacity,
+        max_records_per_sender: queue.max_records,
       },
     },
     {
-      ...f.config.store,
+      ...queue,
       agent_capacity: {
-        ...f.config.store.agent_capacity,
-        max_pending_per_sender: f.config.store.max_pending,
+        ...queue.agent_capacity,
+        max_pending_per_sender: queue.max_pending,
       },
     },
   ]) {
-    f.write("service.local.json", { ...f.config, store: variant });
-    await assert.rejects(
-      startConfiguredLocalRelay(f.configPath),
-      /local_relay_start_rejected/,
-    );
-    assert.deepEqual(readdirSync(join(f.dir, "state")), []);
+    f.write("service.local.json", {
+      ...f.config,
+      delivery: { ...f.config.delivery, queue: variant },
+    });
+    await assert.rejects(startHost(f.configPath), /local_relay_start_rejected/);
+    assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
   }
   f.write("service.local.json", f.config);
-  const host = await startConfiguredLocalRelay(f.configPath);
+  const host = await startHost(f.configPath);
   await host.close();
 });
+function withoutSenderCapacity(f) {
+  const queue = { ...f.config.delivery.queue };
+  delete queue.agent_capacity;
+  return { ...f.config, delivery: { ...f.config.delivery, queue } };
+}
 test("startup refusal names a fixed reason and config fields, never values", async (t) => {
-  const f = fixture(t);
-  const store = { ...f.config.store };
-  delete store.agent_capacity;
-  f.write("service.local.json", { ...f.config, store });
-  await assert.rejects(startConfiguredLocalRelay(f.configPath), (error) => {
+  const f = await fixture(t);
+  f.write("service.local.json", withoutSenderCapacity(f));
+  await assert.rejects(startHost(f.configPath), (error) => {
     assert.equal(error.message, "local_relay_start_rejected");
     assert.equal(error.reason, "config_invalid");
-    assert.deepEqual(error.fields, ["store.agent_capacity"]);
+    assert.deepEqual(error.fields, ["delivery.queue.agent_capacity"]);
     return true;
   });
   f.write("service.local.json", f.config);
   chmodSync(f.keyPath, 0o644);
-  await assert.rejects(startConfiguredLocalRelay(f.configPath), {
+  await assert.rejects(startHost(f.configPath), {
     reason: "keys_file_rejected",
   });
   chmodSync(f.keyPath, 0o600);
   f.write("credentials.local.json", { version: 99 });
-  await assert.rejects(startConfiguredLocalRelay(f.configPath), {
+  await assert.rejects(startHost(f.configPath), {
     reason: "credentials_invalid",
   });
   f.write("credentials.local.json", { version: 1, credentials: [] });
-  const host = await startConfiguredLocalRelay(f.configPath);
+  const host = await startHost(f.configPath);
   try {
     // The same state directory is owned by the running host.
-    await assert.rejects(startConfiguredLocalRelay(f.configPath), {
+    await assert.rejects(startHost(f.configPath), {
       reason: "state_in_use",
     });
   } finally {
     await host.close();
   }
-  const blocker = await startConfiguredLocalRelay(f.configPath);
+  const blocker = await startHost(f.configPath);
   t.after(() => blocker.close());
-  const other = fixture(t);
+  const other = await fixture(t);
   other.config.port = Number(new URL(blocker.url).port);
   other.write("service.local.json", other.config);
-  await assert.rejects(startConfiguredLocalRelay(other.configPath), {
+  await assert.rejects(startHost(other.configPath), {
     reason: "port_in_use",
   });
 });
+test("a config with the retired SQLite store section is refused before any state is created", async (t) => {
+  const f = await fixture(t);
+  const retired = { ...f.config, store: f.config.delivery.queue };
+  delete retired.delivery;
+  f.write("service.local.json", retired);
+  await assert.rejects(startHost(f.configPath), (error) => {
+    assert.equal(error.reason, "config_invalid");
+    assert.deepEqual(error.fields, ["delivery", "store"]);
+    return true;
+  });
+  f.write("service.local.json", {
+    ...f.config,
+    delivery: { ...f.config.delivery, routing: { epoch: 1, enabled: false } },
+  });
+  await assert.rejects(startHost(f.configPath), {
+    reason: "config_invalid",
+    fields: ["delivery.routing"],
+  });
+  assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
+});
+test("registry limits outside the registry's bounds are refused as config fields", async (t) => {
+  const f = await fixture(t);
+  for (const [patch, field] of [
+    [{ busy_timeout_ms: 5000 }, "registry.busy_timeout_ms"],
+    [{ max_context_ms: 300001 }, "registry.max_context_ms"],
+    [{ max_agents: 1000001 }, "registry.max_agents"],
+    [{ allowed_kinds: ["ok", "ok"] }, "registry.allowed_kinds"],
+  ]) {
+    f.write("service.local.json", {
+      ...f.config,
+      registry: { ...f.config.registry, ...patch },
+    });
+    await assert.rejects(startHost(f.configPath), (error) => {
+      assert.deepEqual(
+        { reason: error.reason, fields: error.fields },
+        { reason: "config_invalid", fields: [field] },
+      );
+      return true;
+    });
+  }
+  assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
+});
 test("CLI prints the refusal reason and offending fields only", async (t) => {
-  const f = fixture(t);
-  const store = { ...f.config.store };
-  delete store.agent_capacity;
-  f.write("service.local.json", { ...f.config, store });
+  const f = await fixture(t);
+  f.write("service.local.json", withoutSenderCapacity(f));
   const child = spawn(process.execPath, [cli, "--config", f.configPath], {
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -183,16 +219,16 @@ test("CLI prints the refusal reason and offending fields only", async (t) => {
   assert.equal(code, 1);
   assert.equal(
     output,
-    "local_relay_start_rejected reason=config_invalid fields=store.agent_capacity\n",
+    "local_relay_start_rejected reason=config_invalid fields=delivery.queue.agent_capacity\n",
   );
 });
 test("example relay config enables the per-sender capacity policy", () => {
   const example = JSON.parse(
     readFileSync(resolve("config/relay-service.example.json"), "utf8"),
   );
-  const capacity = example.store.agent_capacity;
-  assert.ok(capacity.max_records_per_sender < example.store.max_records);
-  assert.ok(capacity.max_pending_per_sender < example.store.max_pending);
+  const queue = example.delivery.queue;
+  assert.ok(queue.agent_capacity.max_records_per_sender < queue.max_records);
+  assert.ok(queue.agent_capacity.max_pending_per_sender < queue.max_pending);
 });
 test("CLI requires explicit config and prints no config contents", async () => {
   const child = spawn(process.execPath, [cli], {
@@ -207,7 +243,7 @@ test("CLI requires explicit config and prints no config contents", async () => {
   assert.equal(output, "local_relay_start_rejected reason=config_required\n");
 });
 test("CLI uses private state across SIGTERM/restart and closes its owned port", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   for (let attempt = 0; attempt < 2; attempt++) {
     const child = spawn(process.execPath, [cli, "--config", f.configPath], {
       stdio: ["ignore", "pipe", "pipe"],
@@ -268,7 +304,7 @@ function ingressList(host) {
   });
 }
 test("explicit disabled OAuth file starts an all-deny second ingress, separate from local auth", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     path = f.write("oauth.local.json", {
       version: 1,
       enabled: false,
@@ -284,7 +320,7 @@ test("explicit disabled OAuth file starts an all-deny second ingress, separate f
     allowed_origins: ["https://relay.example"],
   };
   f.write("service.local.json", f.config);
-  const host = await startConfiguredLocalRelay(f.configPath);
+  const host = await startHost(f.configPath);
   t.after(() => host.close());
   assert.equal(host.ingress_url, resource);
   const rejected = await ingressList(host);
@@ -293,7 +329,7 @@ test("explicit disabled OAuth file starts an all-deny second ingress, separate f
   assert.equal((await list(host.url)).status, 401);
 });
 test("missing, permissive, invalid or mismatched OAuth config never creates a fallback ingress", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     auth = await oauthFixture(),
     path = f.write("oauth.local.json", auth.getConfig());
   f.config.ingress = {
@@ -304,43 +340,33 @@ test("missing, permissive, invalid or mismatched OAuth config never creates a fa
   };
   f.write("service.local.json", f.config);
   chmodSync(path, 0o644);
-  await assert.rejects(
-    startConfiguredLocalRelay(f.configPath),
-    /local_relay_start_rejected/,
-  );
+  await assert.rejects(startHost(f.configPath), /local_relay_start_rejected/);
   chmodSync(path, 0o600);
   f.config.ingress.resource_url = "https://other.example/hab/mcp";
   f.write("service.local.json", f.config);
-  await assert.rejects(
-    startConfiguredLocalRelay(f.configPath),
-    /local_relay_start_rejected/,
-  );
+  await assert.rejects(startHost(f.configPath), /local_relay_start_rejected/);
   f.config.ingress.resource_url = resource;
   f.config.ingress.oauth_file = join(f.dir, "absent.local.json");
   f.write("service.local.json", f.config);
-  await assert.rejects(
-    startConfiguredLocalRelay(f.configPath),
-    /local_relay_start_rejected/,
-  );
+  await assert.rejects(startHost(f.configPath), /local_relay_start_rejected/);
   delete f.config.ingress;
   f.write("service.local.json", f.config);
-  const host = await startConfiguredLocalRelay(f.configPath);
+  const host = await startHost(f.configPath);
   t.after(() => host.close());
   assert.equal((await list(host.url)).status, 401);
 });
 
-test("configured discovery policy is explicit, bounded, and does not create registrations", (t) => {
-  const f = fixture(t);
+test("configured discovery policy is explicit, bounded, and does not create registrations", async (t) => {
+  const f = await fixture(t);
   assert.equal(
-    readLocalRelayConfig(f.configPath).config.registry.discovery,
+    readHostConfig(f.configPath).config.registry.discovery,
     undefined,
   );
   f.config.registry.discovery = { availability_namespaces: ["hermes"] };
   f.write("service.local.json", f.config);
-  assert.deepEqual(
-    readLocalRelayConfig(f.configPath).config.registry.discovery,
-    { availability_namespaces: ["hermes"] },
-  );
+  assert.deepEqual(readHostConfig(f.configPath).config.registry.discovery, {
+    availability_namespaces: ["hermes"],
+  });
   for (const invalid of [
     { availability_namespaces: ["Hermes"] },
     { availability_namespaces: ["hermes\n"] },
@@ -350,9 +376,9 @@ test("configured discovery policy is explicit, bounded, and does not create regi
     f.config.registry.discovery = invalid;
     f.write("service.local.json", f.config);
     assert.throws(
-      () => readLocalRelayConfig(f.configPath),
+      () => readHostConfig(f.configPath),
       /local_relay_start_rejected/,
     );
   }
-  assert.deepEqual(readdirSync(join(f.dir, "state")), []);
+  assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
 });

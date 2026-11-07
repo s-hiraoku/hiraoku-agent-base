@@ -13,7 +13,7 @@ const run = resolve(process.argv[2] ?? ""),
   label = process.argv[3] ?? "db";
 const open = (name) =>
   new DatabaseSync(join(run, "instance", `${name}.sqlite`), { readOnly: true });
-const relay = open("relay"),
+const relay = open("jetstream-journal"),
   registry = open("registry");
 const snapshot = {
   agents: registry
@@ -22,28 +22,30 @@ const snapshot = {
   bindings: registry
     .prepare("SELECT agent_id, state FROM hab_bindings ORDER BY agent_id")
     .all(),
-  // Stored thread keys are pair-scoped JSON [a, b, thread_id]; legacy rows keep the bare id.
+  // The JetStream journal stores pair-scoped thread keys as JSON [[a, b], thread_id].
   messages: relay
     .prepare(
-      "SELECT sender_id, message_id, recipient_id, thread_id FROM relay_messages ORDER BY message_id",
+      "SELECT sender_id, message_id, recipient_id, thread_key FROM nats_messages ORDER BY message_id",
     )
     .all()
-    .map((m) => ({
+    .map(({ thread_key, ...m }) => ({
       ...m,
-      thread_id: m.thread_id.startsWith("[")
-        ? JSON.parse(m.thread_id)[2]
-        : m.thread_id,
+      thread_id: JSON.parse(thread_key)[1],
     })),
   deliveries: relay
     .prepare(
-      "SELECT message_id, recipient_id, state, generation FROM relay_deliveries ORDER BY message_id",
+      "SELECT message_id, recipient_id, state, generation, sequence FROM nats_messages ORDER BY message_id",
     )
     .all(),
   delivery_audit: relay
-    .prepare("SELECT message_id, event FROM relay_delivery_audit ORDER BY id")
+    .prepare("SELECT message_id, event FROM nats_delivery_audit ORDER BY id")
     .all(),
   ack_receipts: Number(
-    relay.prepare("SELECT count(*) n FROM relay_ack_receipts").get().n,
+    relay
+      .prepare(
+        "SELECT count(*) n FROM nats_messages WHERE ack_receipt_id IS NOT NULL",
+      )
+      .get().n,
   ),
 };
 relay.close();

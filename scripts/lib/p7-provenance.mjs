@@ -42,7 +42,7 @@ export function validateOrigins(value) {
   }
 }
 export const successorManifestSha256 =
-  "01181f424c0e9c9b3dcfc815d99f2a647d1ffe1bd86be0b2e946e20369f2e5bb";
+  "048e60d16f7e08b5d731e29e67da46fcc35b0ad62ccc3b3af50d2dfdce4ca494";
 const canonical = (value) =>
   Array.isArray(value)
     ? value.map(canonical)
@@ -57,6 +57,24 @@ const safePath = (path) =>
   typeof path === "string" &&
   !path.includes("\\") &&
   path.split("/").every((part) => part && part !== "." && part !== "..");
+const validProjection = (value) =>
+  value === undefined ||
+  (value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length > 0 &&
+    Object.keys(value).every((field) =>
+      Object.hasOwn(pin.root_package_projection, field),
+    ));
+export function p7PackageProjection(profile = "current") {
+  if (profile === "historical") return pin.root_package_projection;
+  if (profile !== "current") throw Error("P7 source profile unknown");
+  validateSuccessor(successor);
+  return {
+    ...pin.root_package_projection,
+    ...successor.root_package_projection,
+  };
+}
 export function validateSuccessor(value) {
   if (
     value?.version !== 1 ||
@@ -69,6 +87,7 @@ export function validateSuccessor(value) {
     !value.inputs ||
     typeof value.inputs !== "object" ||
     Array.isArray(value.inputs) ||
+    !validProjection(value.root_package_projection) ||
     sha256(JSON.stringify(canonical(value))) !== successorManifestSha256
   )
     throw Error("P7 successor fixed manifest mismatch");
@@ -154,7 +173,7 @@ export function verifyP7Source(root, profile = "current") {
   }
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   for (const [field, expectedValue] of Object.entries(
-    pin.root_package_projection,
+    p7PackageProjection(profile),
   ))
     if (JSON.stringify(pkg[field]) !== JSON.stringify(expectedValue))
       throw Error(`P7 dependency mismatch: ${field}`);

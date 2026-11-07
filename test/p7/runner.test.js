@@ -26,6 +26,7 @@ import {
   validateOrigins,
   validateSuccessor,
   p7ExpectedInputs,
+  p7PackageProjection,
 } from "../../scripts/lib/p7-provenance.mjs";
 import { verifyA2aSource } from "../../scripts/lib/a2a-acceptance.mjs";
 import { parseP7Options } from "../../scripts/lib/p7-options.mjs";
@@ -72,6 +73,17 @@ test(runnerCases[0], (t) => {
   const current = sourceFixture(t, "current");
   assert.equal(verifyP7Source(current).source_profile, "current");
   assert.equal(verifyP7Source(repo).contents_match, true);
+  const rootPackage = JSON.parse(
+    readFileSync(join(repo, "package.json"), "utf8"),
+  );
+  assert.deepEqual(p7PackageProjection().engines, rootPackage.engines);
+  assert.deepEqual(
+    p7PackageProjection("historical").engines,
+    pin.root_package_projection.engines,
+  );
+  const stale = structuredClone(successor);
+  stale.root_package_projection = { unknown_field: true };
+  assert.throws(() => validateSuccessor(stale), /manifest/);
   assert.throws(() => p7ExpectedInputs("unknown"), /profile/);
   assert.deepEqual(validateSuccessor(successor), successor);
   const wrong = structuredClone(successor);
@@ -130,6 +142,10 @@ test(runnerCases[0], (t) => {
     readFileSync(join(generator, "test/p7/successor-source-pin.json"), "utf8"),
   );
   assert.equal(generated.source_ref, source);
+  assert.deepEqual(
+    generated.root_package_projection?.engines,
+    JSON.parse(readFileSync(join(generator, "package.json"), "utf8")).engines,
+  );
   assert.equal(
     generated.inputs[changed].previous_sha256,
     pin.inputs[changed].sha256,

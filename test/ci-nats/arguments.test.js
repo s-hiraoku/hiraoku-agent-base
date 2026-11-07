@@ -27,6 +27,7 @@ const catalog = {
   p6: [
     "backend.test.js",
     "configured-host.test.js",
+    "delivery-semantics.test.js",
     "guarded-commits.test.js",
     "hab-integration.test.js",
   ],

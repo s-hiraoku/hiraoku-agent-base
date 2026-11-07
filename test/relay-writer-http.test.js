@@ -2,27 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { WriterAdmission } from "../src/relay/writer-admission.ts";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { HabAttachmentHttpGateway } from "../src/hab/attachment-http.ts";
-import { AttachmentHttpGateway } from "../src/relay/attachment-http.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import {
   fixture as httpFixture,
   policy,
   call,
   request,
-  decode,
   message,
   tick,
 } from "./relay-http-fixtures.js";
 import { fixture as registryFixture } from "./hab-registry-fixtures.js";
-import {
-  fixture as attachmentFixture,
-  wire,
-} from "./relay-attachment-mcp-fixtures.js";
 const admissionPolicy = {
   max_individuals: 4,
   max_waiting_per_individual: 4,
@@ -44,8 +37,8 @@ async function until(predicate) {
   }
   assert.ok(predicate(), "fixture condition did not become ready");
 }
-function fixture(t, limits = {}, http = {}) {
-  const f = httpFixture(t),
+async function fixture(t, limits = {}, http = {}) {
+  const f = await httpFixture(t),
     lookups = [],
     state = { override: null };
   const admission = new WriterAdmission(
@@ -92,7 +85,7 @@ async function hold(admission, context) {
 const as = (who) => ({ headers: { Authorization: "Bearer fixture-" + who } });
 
 test("writer HTTP: explicit missing identity fails closed while omitted admission retains default behavior", async (t) => {
-  const f = httpFixture(t),
+  const f = await httpFixture(t),
     admission = new WriterAdmission(admissionPolicy);
   t.after(() => admission.close());
   const g = new RelayHttpGateway(
@@ -110,7 +103,7 @@ test("writer HTTP: explicit missing identity fails closed while omitted admissio
   );
 });
 test("writer HTTP: unauthenticated requests and forwarded identity cannot create another bucket", async (t) => {
-  const f = fixture(t, { requests_per_window: 1 });
+  const f = await fixture(t, { requests_per_window: 1 });
   const r = await call(
     f.g,
     "relay_poll",
@@ -131,7 +124,7 @@ test("writer HTTP: unauthenticated requests and forwarded identity cannot create
   );
 });
 test("writer HTTP: modern, legacy, operation switching and another gateway share one individual budget", async (t) => {
-  const f = fixture(t, { requests_per_window: 2 }),
+  const f = await fixture(t, { requests_per_window: 2 }),
     m = message();
   const first = await call(f.g, "relay_submit", m);
   assert.equal(first.body.result.structuredContent.sender_id, "a");
@@ -156,7 +149,7 @@ test("writer HTTP: modern, legacy, operation switching and another gateway share
   assert.equal(f.count(), 1);
 });
 test("writer HTTP: queued SDK calls rotate individuals before a hot sender's second turn", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     release = await hold(f.admission, f.contexts.c),
     order = [];
   const service = {
@@ -183,7 +176,7 @@ test("writer HTTP: queued SDK calls rotate individuals before a hot sender's sec
   assert.equal(f.count(), 3);
 });
 test("writer HTTP: per-individual queue overflow does not consume a peer's queue", async (t) => {
-  const f = fixture(t, { max_waiting_per_individual: 1 }),
+  const f = await fixture(t, { max_waiting_per_individual: 1 }),
     release = await hold(f.admission, f.contexts.c);
   const a = call(f.g, "relay_poll");
   await until(() => f.lookups.some((v) => v.id === "a"));
@@ -194,7 +187,7 @@ test("writer HTTP: per-individual queue overflow does not consume a peer's queue
   assert.equal((await b).response.status, 200);
 });
 test("writer HTTP: disconnect while queued removes the candidate without later storage effects", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     release = await hold(f.admission, f.contexts.c),
     controller = new AbortController();
   const pending = call(f.g, "relay_submit", message(), {
@@ -208,7 +201,7 @@ test("writer HTTP: disconnect while queued removes the candidate without later s
   assert.equal(f.count(), 0);
 });
 test("writer HTTP: request timeout while queued cannot later dispatch a tool", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     release = await hold(f.admission, f.contexts.c);
   const pending = call(
     f.gateway({ timeout_ms: 200 }),
@@ -222,7 +215,7 @@ test("writer HTTP: request timeout while queued cannot later dispatch a tool", a
   assert.equal(f.count(), 0);
 });
 test("writer HTTP: queue's own finite deadline returns backpressure before HTTP timeout", async (t) => {
-  const f = fixture(t, { max_wait_ms: 200 }),
+  const f = await fixture(t, { max_wait_ms: 200 }),
     release = await hold(f.admission, f.contexts.c);
   assert.equal(
     (await call(f.g, "relay_submit", message())).response.status,
@@ -232,7 +225,7 @@ test("writer HTTP: queue's own finite deadline returns backpressure before HTTP 
   assert.equal(f.count(), 0);
 });
 test("writer HTTP: current revocation after enqueue prevents SDK dispatch", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     release = await hold(f.admission, f.contexts.c);
   const pending = call(f.g, "relay_submit", message());
   await until(() => f.lookups.some((v) => v.id === "a"));
@@ -242,7 +235,7 @@ test("writer HTTP: current revocation after enqueue prevents SDK dispatch", asyn
   assert.equal(f.count(), 0);
 });
 test("writer HTTP: changed individual binding does not move a queued candidate into a new budget", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     release = await hold(f.admission, f.contexts.c);
   const pending = call(f.g, "relay_submit", message());
   await until(() => f.lookups.some((v) => v.id === "a"));
@@ -252,7 +245,7 @@ test("writer HTTP: changed individual binding does not move a queued candidate i
   assert.equal(f.count(), 0);
 });
 test("writer HTTP: closed scheduler rejects queued tools but catalog discovery remains authenticated", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     release = await hold(f.admission, f.contexts.c);
   const pending = call(f.g, "relay_poll");
   await until(() => f.lookups.some((v) => v.id === "a"));
@@ -268,7 +261,7 @@ for (const stage of ["tool_started", "tool_succeeded"]) {
       stage +
       " audit retains the shared slot until actual settlement",
     async (t) => {
-      const f = fixture(t),
+      const f = await fixture(t),
         auditHeld = deferred(),
         auditStarted = deferred();
       let once = true;
@@ -311,7 +304,7 @@ for (const stage of ["tool_started", "tool_succeeded"]) {
   );
 }
 test("writer HTTP: HAB queue holds no registry lock and independent revocation wins before commit", async (t) => {
-  const f = registryFixture(t),
+  const f = await registryFixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   f.enroll("c");
@@ -343,7 +336,7 @@ test("writer HTTP: HAB queue holds no registry lock and independent revocation w
   assert.equal(f.count(), 0);
 });
 test("writer HTTP: HAB identity port honors operation-specific rights without granting submit or resolve", async (t) => {
-  const f = registryFixture(t),
+  const f = await registryFixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   const current = f.registry.inspect(f.admin, b.agent_id);
@@ -378,113 +371,8 @@ test("writer HTTP: HAB identity port honors operation-specific rights without gr
     403,
   );
 });
-const attachmentCalls = [
-  "begin",
-  "status",
-  "put",
-  "finalize",
-  "cancel",
-  "read",
-];
-for (const tool of attachmentCalls) {
-  test(
-    "writer HTTP: optional attachment " +
-      tool +
-      " shares the verified individual's tool budget",
-    async (t) => {
-      const f = attachmentFixture(t),
-        admission = new WriterAdmission(
-          { ...admissionPolicy, requests_per_window: 1 },
-          habWriterIdentity(f.registry),
-        );
-      t.after(() => admission.close());
-      const g = new HabAttachmentHttpGateway(
-        f.service,
-        f.operations,
-        wire,
-        policy,
-        f.audit,
-        f.verifier,
-        admission,
-      );
-      const r = await f.begin(),
-        who = tool === "read" ? "b" : "a";
-      const args = {
-        begin: f.beginInput(),
-        status: f.ref(r),
-        put: {
-          ...f.ref(r),
-          offset: 0,
-          data_base64: "AP+AAQ==",
-        },
-        finalize: f.ref(r),
-        cancel: f.ref(r),
-        read: f.readInput(r),
-      };
-      assert.equal(
-        (await call(g, "relay_poll", {}, as(who))).response.status,
-        200,
-      );
-      assert.equal(
-        (await call(g, "relay_attachment_" + tool, args[tool], as(who)))
-          .response.status,
-        429,
-      );
-      assert.equal((await f.list(g)).length, 11);
-    },
-  );
-}
-test("writer HTTP: directory lookup and attachment uploads share the same HAB budget", async (t) => {
-  const f = attachmentFixture(t),
-    admission = new WriterAdmission(
-      { ...admissionPolicy, requests_per_window: 1 },
-      habWriterIdentity(f.registry),
-    );
-  t.after(() => admission.close());
-  const g = new HabAttachmentHttpGateway(
-    f.service,
-    f.operations,
-    wire,
-    policy,
-    f.audit,
-    f.verifier,
-    admission,
-  );
-  assert.equal(
-    (await call(g, "relay_resolve", { address: f.b.address })).response.status,
-    200,
-  );
-  assert.equal(
-    (await call(g, "relay_attachment_begin", f.beginInput())).response.status,
-    429,
-  );
-});
-test("writer HTTP: standalone Relay attachment catalog also enforces optional admission", async (t) => {
-  const f = attachmentFixture(t),
-    admission = new WriterAdmission(
-      { ...admissionPolicy, requests_per_window: 1 },
-      habWriterIdentity(f.registry),
-    );
-  t.after(() => admission.close());
-  const g = new AttachmentHttpGateway(
-    f.service,
-    f.operations,
-    wire,
-    policy,
-    f.audit,
-    f.verifier,
-    admission,
-  );
-  const first = await call(g, "relay_attachment_begin", f.beginInput());
-  assert.equal(first.body.result.structuredContent.owner_id, f.a.agent_id);
-  assert.equal((await call(g, "relay_poll")).response.status, 429);
-  assert.equal(
-    (await decode(await g.fetch(request()))).result.tools.length,
-    10,
-  );
-});
 test("writer HTTP: native loopback listener applies independent authenticated budgets", async (t) => {
-  const f = fixture(t, { requests_per_window: 1 });
+  const f = await fixture(t, { requests_per_window: 1 });
   let handle;
   const server = createServer((req, res) => {
     if (!handle) {
@@ -515,7 +403,7 @@ test("writer HTTP: native loopback listener applies independent authenticated bu
   assert.equal((await send("b")).status, 200);
 });
 test("writer HTTP: claimed sender argument consumes only the real verified individual's budget", async (t) => {
-  const f = fixture(t, { requests_per_window: 1 });
+  const f = await fixture(t, { requests_per_window: 1 });
   const invalid = await call(f.g, "relay_submit", {
     ...message(),
     sender_id: "b",
@@ -530,7 +418,7 @@ test("writer HTTP: claimed sender argument consumes only the real verified indiv
   );
 });
 test("writer HTTP: replacing volatile admission restores burst but replays the same durable receipt", async (t) => {
-  const f = fixture(t, { requests_per_window: 1 }),
+  const f = await fixture(t, { requests_per_window: 1 }),
     m = message(),
     first = await call(f.g, "relay_submit", m);
   assert.equal((await call(f.g, "relay_submit", m)).response.status, 429);

@@ -1,31 +1,33 @@
 import { DatabaseSync } from "node:sqlite";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
-import { RelayError } from "../../../src/relay/service.ts";
+import { MessagingError } from "../../../src/messaging/delivery-service.ts";
 import {
   agentCapacityPolicy,
   assertAgentCapacity,
-} from "../../../src/relay/agent-capacity.ts";
+} from "../../../src/hab/agent-capacity.ts";
 import type {
   AgentCapacityPolicy,
   SenderCapacityUsage,
-} from "../../../src/relay/agent-capacity.ts";
+} from "../../../src/hab/agent-capacity.ts";
 import type {
   Receipt,
   Delivery,
   AckReceipt,
-} from "../../../src/relay/service.ts";
-import type { Submission, AckRequest } from "../../../src/relay/contract.ts";
+} from "../../../src/messaging/delivery-service.ts";
+import type {
+  Submission,
+  AckRequest,
+} from "../../../src/messaging/contract.ts";
 import {
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
   isReplayBoundMessageId,
-} from "../../../src/relay/contract.ts";
+} from "../../../src/messaging/contract.ts";
 
 export interface JournalOptions {
   fair_poll?: boolean;
   poll_scan_limit?: number;
-  route_epoch?: number;
   prefetch_per_recipient?: number;
   migrate_journal?: boolean;
   agent_capacity?: AgentCapacityPolicy;
@@ -54,7 +56,6 @@ export interface Row {
   state: "staging" | Receipt["state"];
   outbox: string | null;
   candidate: string | null;
-  route_epoch: number;
   scan_order: number;
   body_bytes: number;
   sequence: number | null;
@@ -76,7 +77,7 @@ CREATE TABLE IF NOT EXISTS nats_messages(
  receipt_id TEXT NOT NULL UNIQUE,accepted_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,
  kind TEXT NOT NULL,thread_key TEXT NOT NULL,fingerprint TEXT NOT NULL,subject TEXT NOT NULL UNIQUE,
  state TEXT NOT NULL CHECK(state IN ('staging','pending','leased','acked','expired','quarantined')),
- outbox TEXT,candidate TEXT,route_epoch INTEGER NOT NULL DEFAULT 1,scan_order INTEGER NOT NULL DEFAULT 0,body_bytes INTEGER NOT NULL,sequence INTEGER,
+ outbox TEXT,candidate TEXT,scan_order INTEGER NOT NULL DEFAULT 0,body_bytes INTEGER NOT NULL,sequence INTEGER,
  generation INTEGER NOT NULL DEFAULT 0,token_hash TEXT,lease_until INTEGER NOT NULL DEFAULT 0,
  next_visible_at INTEGER NOT NULL DEFAULT 0,ack_request_id TEXT,
  ack_fingerprint TEXT,ack_receipt_id TEXT,acked_at INTEGER,retain_until INTEGER,
@@ -85,8 +86,10 @@ CREATE TABLE IF NOT EXISTS nats_messages(
 CREATE UNIQUE INDEX IF NOT EXISTS nats_one_live_lease ON nats_messages(recipient_id) WHERE state='leased';
 CREATE INDEX IF NOT EXISTS nats_terminal ON nats_messages(state,cleaned,retain_until);
 CREATE TABLE IF NOT EXISTS nats_pulls(recipient_id TEXT PRIMARY KEY,token TEXT NOT NULL,until INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS nats_routing(id INTEGER PRIMARY KEY CHECK(id=1),epoch INTEGER NOT NULL,digest TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS nats_poll_turns(recipient_id TEXT PRIMARY KEY,owner TEXT NOT NULL CHECK(owner IN ('sqlite','jetstream')),updated_at INTEGER NOT NULL,last_sender_id TEXT);
+CREATE TABLE IF NOT EXISTS nats_poll_turns(recipient_id TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,last_sender_id TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS nats_delivery_audit(id INTEGER PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,at INTEGER NOT NULL,event TEXT NOT NULL CHECK(event IN ('accepted','leased','requeued','quarantined','expired','acked')));
+CREATE INDEX IF NOT EXISTS nats_delivery_audit_message ON nats_delivery_audit(sender_id,message_id);
+CREATE TABLE IF NOT EXISTS nats_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired INTEGER NOT NULL,purged INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS nats_cached_candidates ON nats_messages(recipient_id,accepted_at) WHERE candidate IS NOT NULL AND state IN ('pending','leased');
 `;
 
@@ -105,7 +108,7 @@ export class NatsJournal {
       "retry_cap_ms",
     ] as const)
       if (!Number.isSafeInteger(options[key]) || options[key] < 1)
-        throw new RelayError("invalid_store_options");
+        throw new MessagingError("invalid_store_options");
     if (
       !(options.fingerprint_key instanceof Uint8Array) ||
       options.fingerprint_key.length < 32 ||
@@ -117,22 +120,19 @@ export class NatsJournal {
       options.retry_cap_ms > 3_600_000 ||
       options.max_attempts > 1000
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
       options.prefetch_per_recipient !== undefined &&
       (!Number.isSafeInteger(options.prefetch_per_recipient) ||
         options.prefetch_per_recipient < 1 ||
         options.prefetch_per_recipient > options.max_pending_per_recipient)
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
-      (options.route_epoch !== undefined &&
-        (!Number.isSafeInteger(options.route_epoch) ||
-          options.route_epoch < 1)) ||
-      (options.migrate_journal !== undefined &&
-        typeof options.migrate_journal !== "boolean")
+      options.migrate_journal !== undefined &&
+      typeof options.migrate_journal !== "boolean"
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     if (
       (options.fair_poll !== undefined &&
         typeof options.fair_poll !== "boolean") ||
@@ -140,13 +140,12 @@ export class NatsJournal {
         (!Number.isSafeInteger(options.poll_scan_limit) ||
           options.poll_scan_limit < 1))
     )
-      throw new RelayError("invalid_store_options");
+      throw new MessagingError("invalid_store_options");
     this.#options = {
       ...options,
       fair_poll: options.fair_poll ?? false,
       poll_scan_limit:
         options.poll_scan_limit ?? options.prefetch_per_recipient ?? 1,
-      route_epoch: options.route_epoch ?? 1,
       prefetch_per_recipient: options.prefetch_per_recipient ?? 1,
       agent_capacity:
         options.agent_capacity === undefined
@@ -154,7 +153,8 @@ export class NatsJournal {
           : agentCapacityPolicy(options.agent_capacity, options),
       fingerprint_key: Uint8Array.from(options.fingerprint_key),
     };
-    if (path === ":memory:") throw new RelayError("durable_journal_required");
+    if (path === ":memory:")
+      throw new MessagingError("durable_journal_required");
     const fd = openSync(
       path,
       constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW,
@@ -163,11 +163,17 @@ export class NatsJournal {
     try {
       const stat = fstatSync(fd);
       if (!stat.isFile() || (stat.mode & 0o077) !== 0)
-        throw new RelayError("insecure_journal_file");
+        throw new MessagingError("insecure_journal_file");
     } finally {
       closeSync(fd);
     }
     this.#db = new DatabaseSync(path, { timeout: 5000 });
+    this.#db.function(
+      "nats_gc_safe",
+      { deterministic: true },
+      (messageId, expiresAt) =>
+        isReplayBoundMessageId(messageId, expiresAt) ? 1 : 0,
+    );
     try {
       const check = this.hash("key", "nats-journal-v1:" + binding);
       const inspect = () => {
@@ -178,39 +184,47 @@ export class NatsJournal {
           .all()
           .map((row) => String(row.name))
           .sort();
-        const previous = ["nats_messages", "nats_meta", "nats_pulls"];
-        const expected = [
+        const v1 = ["nats_messages", "nats_meta", "nats_pulls"];
+        const v3 = [
           "nats_messages",
           "nats_meta",
           "nats_poll_turns",
           "nats_pulls",
           "nats_routing",
         ];
+        const current = [
+          "nats_delivery_audit",
+          "nats_maintenance_totals",
+          "nats_messages",
+          "nats_meta",
+          "nats_poll_turns",
+          "nats_pulls",
+        ];
         let version = 0;
         if (tables.length) {
           if (!tables.includes("nats_meta"))
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
           const meta = this.#db.prepare("SELECT * FROM nats_meta").all();
           if (meta.length !== 1 || meta[0].key_check !== check)
-            throw new RelayError("journal_key_or_version_mismatch");
+            throw new MessagingError("journal_key_or_version_mismatch");
           version = Number(meta[0].version);
-          if (![1, 2, 3].includes(version))
-            throw new RelayError("journal_key_or_version_mismatch");
+          if (![1, 2, 3, 4].includes(version))
+            throw new MessagingError("journal_key_or_version_mismatch");
           if (
             JSON.stringify(tables) !==
-            JSON.stringify(version === 1 ? previous : expected)
+            JSON.stringify(version === 1 ? v1 : version === 4 ? current : v3)
           )
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
           if (
-            version === 3 &&
+            version >= 3 &&
             !this.#db
               .prepare("PRAGMA table_info(nats_messages)")
               .all()
               .some((row) => row.name === "scan_order")
           )
-            throw new RelayError("unknown_journal_schema");
-          if (version < 3 && options.migrate_journal !== true)
-            throw new RelayError("journal_migration_required");
+            throw new MessagingError("unknown_journal_schema");
+          if (version < 4 && options.migrate_journal !== true)
+            throw new MessagingError("journal_migration_required");
           if (
             version === 3 &&
             !this.#db
@@ -218,7 +232,7 @@ export class NatsJournal {
               .all()
               .some((row) => row.name === "last_sender_id")
           )
-            throw new RelayError("unknown_journal_schema");
+            throw new MessagingError("unknown_journal_schema");
         }
         return version;
       };
@@ -228,18 +242,29 @@ export class NatsJournal {
       );
       this.#tx(() => {
         const version = inspect();
-        if (version === 1) {
+        if (version === 1)
           this.#db.exec(
-            "ALTER TABLE nats_messages ADD COLUMN candidate TEXT; ALTER TABLE nats_messages ADD COLUMN route_epoch INTEGER NOT NULL DEFAULT 1; ALTER TABLE nats_messages ADD COLUMN scan_order INTEGER NOT NULL DEFAULT 0; UPDATE nats_meta SET version=3",
+            "ALTER TABLE nats_messages ADD COLUMN candidate TEXT; ALTER TABLE nats_messages ADD COLUMN scan_order INTEGER NOT NULL DEFAULT 0",
           );
-        }
         if (version === 2)
           this.#db.exec(
-            "ALTER TABLE nats_poll_turns ADD COLUMN last_sender_id TEXT; ALTER TABLE nats_messages ADD COLUMN scan_order INTEGER NOT NULL DEFAULT 0; UPDATE nats_meta SET version=3",
+            "ALTER TABLE nats_messages ADD COLUMN scan_order INTEGER NOT NULL DEFAULT 0; ALTER TABLE nats_messages DROP COLUMN route_epoch; DROP TABLE nats_routing; DROP TABLE nats_poll_turns",
+          );
+        // Schema 4 retires the SQLite/JetStream routing state and keeps only the fair-poll cursor.
+        if (version === 3)
+          this.#db.exec(
+            "ALTER TABLE nats_messages DROP COLUMN route_epoch; DROP TABLE nats_routing; CREATE TABLE nats_poll_turns_v4(recipient_id TEXT PRIMARY KEY,updated_at INTEGER NOT NULL,last_sender_id TEXT NOT NULL); INSERT INTO nats_poll_turns_v4 SELECT recipient_id,updated_at,last_sender_id FROM nats_poll_turns WHERE last_sender_id IS NOT NULL; DROP TABLE nats_poll_turns; ALTER TABLE nats_poll_turns_v4 RENAME TO nats_poll_turns",
           );
         this.#db.exec(schema);
+        if (version < 4)
+          this.#db
+            .prepare(
+              "INSERT INTO nats_maintenance_totals(id,last_at,expired,purged) VALUES(1,0,0,0)",
+            )
+            .run();
         if (version === 0)
-          this.#db.prepare("INSERT INTO nats_meta VALUES(3,?)").run(check);
+          this.#db.prepare("INSERT INTO nats_meta VALUES(4,?)").run(check);
+        else if (version < 4) this.#db.exec("UPDATE nats_meta SET version=4");
       });
     } catch (error) {
       this.#db.close();
@@ -288,17 +313,47 @@ export class NatsJournal {
       state: row.state === "staging" ? "pending" : row.state,
     };
   }
+  #audit(sender: string, message: string, at: number, event: string) {
+    this.#db
+      .prepare(
+        "INSERT INTO nats_delivery_audit(sender_id,message_id,at,event) VALUES(?,?,?,?)",
+      )
+      .run(sender, message, at, event);
+  }
   #refresh(now: number) {
-    this.#db
+    const expired = this.#db
       .prepare(
-        "UPDATE nats_messages SET state='expired',outbox=NULL,candidate=NULL,body_bytes=0,token_hash=NULL,retain_until=expires_at+? WHERE state IN ('staging','pending','leased','quarantined') AND expires_at<=?",
+        "UPDATE nats_messages SET state='expired',outbox=NULL,candidate=NULL,body_bytes=0,token_hash=NULL,retain_until=expires_at+? WHERE state IN ('staging','pending','leased','quarantined') AND expires_at<=? RETURNING sender_id,message_id",
       )
-      .run(RECORD_RETENTION_MS, now);
-    this.#db
+      .all(RECORD_RETENTION_MS, now);
+    for (const row of expired)
+      this.#audit(
+        String(row.sender_id),
+        String(row.message_id),
+        now,
+        "expired",
+      );
+    if (
+      expired.length &&
+      this.#db
+        .prepare(
+          "UPDATE nats_maintenance_totals SET expired=expired+? WHERE id=1",
+        )
+        .run(expired.length).changes !== 1
+    )
+      throw new MessagingError("maintenance_state_unavailable");
+    const requeued = this.#db
       .prepare(
-        "UPDATE nats_messages SET state=CASE WHEN generation>=? THEN 'quarantined' ELSE 'pending' END,candidate=CASE WHEN generation>=? THEN NULL ELSE candidate END,token_hash=NULL WHERE state='leased' AND lease_until<=?",
+        "UPDATE nats_messages SET state=CASE WHEN generation>=? THEN 'quarantined' ELSE 'pending' END,candidate=CASE WHEN generation>=? THEN NULL ELSE candidate END,token_hash=NULL WHERE state='leased' AND lease_until<=? RETURNING sender_id,message_id,state",
       )
-      .run(this.#options.max_attempts, this.#options.max_attempts, now);
+      .all(this.#options.max_attempts, this.#options.max_attempts, now);
+    for (const row of requeued)
+      this.#audit(
+        String(row.sender_id),
+        String(row.message_id),
+        now,
+        row.state === "quarantined" ? "quarantined" : "requeued",
+      );
   }
   stage(
     sender: string,
@@ -315,21 +370,16 @@ export class NatsJournal {
       const existing = this.row(sender, message.message_id);
       if (existing) {
         if (existing.fingerprint !== fingerprint)
-          throw new RelayError("idempotency_conflict");
+          throw new MessagingError("idempotency_conflict");
         return existing;
       }
-      const routing = this.#db
-        .prepare("SELECT epoch FROM nats_routing WHERE id=1")
-        .get();
-      if (routing && routing.epoch !== this.#options.route_epoch)
-        throw new RelayError("routing_epoch_rejected");
       const expires = Date.parse(message.expires_at);
       if (
         Date.parse(message.first_sent_at) >
         now + this.#options.max_clock_skew_ms
       )
-        throw new RelayError("clock_skew");
-      if (expires <= now) throw new RelayError("expired_before_acceptance");
+        throw new MessagingError("clock_skew");
+      if (expires <= now) throw new MessagingError("expired_before_acceptance");
       const outbox = JSON.stringify({ sender_id: sender, message });
       const size = Buffer.byteLength(outbox);
       const usage = this.#db
@@ -343,7 +393,7 @@ export class NatsJournal {
         Number(usage.recipient) >= this.#options.max_pending_per_recipient ||
         Number(usage.bytes) + size > this.#options.max_body_bytes
       )
-        throw new RelayError("capacity_exceeded");
+        throw new MessagingError("capacity_exceeded");
       if (this.#options.agent_capacity) {
         const senders = this.#db
           .prepare(
@@ -382,11 +432,11 @@ export class NatsJournal {
           parent.recipient_id !== sender ||
           parent.thread_key !== thread
         )
-          throw new RelayError("invalid_reference");
+          throw new MessagingError("invalid_reference");
       }
       this.#db
         .prepare(
-          "INSERT INTO nats_messages(sender_id,message_id,recipient_id,receipt_id,accepted_at,expires_at,kind,thread_key,fingerprint,subject,state,outbox,body_bytes,route_epoch) VALUES(?,?,?,?,?,?,?,?,?,?,'staging',?,?,?)",
+          "INSERT INTO nats_messages(sender_id,message_id,recipient_id,receipt_id,accepted_at,expires_at,kind,thread_key,fingerprint,subject,state,outbox,body_bytes) VALUES(?,?,?,?,?,?,?,?,?,?,'staging',?,?)",
         )
         .run(
           sender,
@@ -401,8 +451,8 @@ export class NatsJournal {
           subject,
           outbox,
           size,
-          this.#options.route_epoch!,
         );
+      this.#audit(sender, message.message_id, now, "accepted");
       return this.row(sender, message.message_id)!;
     });
   }
@@ -426,7 +476,7 @@ export class NatsJournal {
       authorize();
       this.#refresh(Date.now());
       const row = this.row(sender, message);
-      if (!row) throw new RelayError("not_found");
+      if (!row) throw new MessagingError("not_found");
       return this.receipt(row);
     });
   }
@@ -445,50 +495,6 @@ export class NatsJournal {
           "SELECT 1 FROM nats_messages WHERE recipient_id=? AND state='leased'",
         )
         .get(recipient);
-    });
-  }
-  configureRouting(epoch: number, digest: string): void {
-    if (
-      !Number.isSafeInteger(epoch) ||
-      epoch < 1 ||
-      epoch !== this.#options.route_epoch ||
-      !/^[a-f0-9]{64}$/.test(digest)
-    )
-      throw new RelayError("routing_epoch_rejected");
-    this.#tx(() => {
-      const existing = this.#db
-        .prepare("SELECT epoch,digest FROM nats_routing WHERE id=1")
-        .get();
-      if (
-        existing &&
-        (Number(existing.epoch) > epoch ||
-          (existing.epoch === epoch && existing.digest !== digest))
-      )
-        throw new RelayError("routing_epoch_rejected");
-      if (existing && existing.epoch === epoch) return;
-      this.#db
-        .prepare("INSERT OR REPLACE INTO nats_routing VALUES(1,?,?)")
-        .run(epoch, digest);
-    });
-  }
-  pollTurn(recipient: string): "sqlite" | "jetstream" {
-    const row = this.#db
-      .prepare("SELECT owner FROM nats_poll_turns WHERE recipient_id=?")
-      .get(recipient);
-    return row?.owner === "jetstream" ? "jetstream" : "sqlite";
-  }
-  recordPollTurn(recipient: string, owner: "sqlite" | "jetstream"): void {
-    this.#tx(() => {
-      this.#db
-        .prepare(
-          "INSERT INTO nats_poll_turns(recipient_id,owner,updated_at) VALUES(?,?,?) ON CONFLICT(recipient_id) DO UPDATE SET owner=excluded.owner,updated_at=excluded.updated_at",
-        )
-        .run(recipient, owner, Date.now());
-      this.#db
-        .prepare(
-          "DELETE FROM nats_poll_turns WHERE recipient_id IN (SELECT recipient_id FROM nats_poll_turns ORDER BY updated_at DESC,recipient_id LIMIT -1 OFFSET ?)",
-        )
-        .run(this.#options.max_records);
     });
   }
   prefetchRecipients(limit: number): string[] {
@@ -599,7 +605,7 @@ export class NatsJournal {
         .run(recipient, recipient, sender, message);
       this.#db
         .prepare(
-          "INSERT INTO nats_poll_turns(recipient_id,owner,updated_at,last_sender_id) VALUES(?,'sqlite',?,?) ON CONFLICT(recipient_id) DO UPDATE SET last_sender_id=excluded.last_sender_id,updated_at=excluded.updated_at",
+          "INSERT INTO nats_poll_turns(recipient_id,updated_at,last_sender_id) VALUES(?,?,?) ON CONFLICT(recipient_id) DO UPDATE SET last_sender_id=excluded.last_sender_id,updated_at=excluded.updated_at",
         )
         .run(recipient, Date.now(), sender);
       this.#db
@@ -608,19 +614,6 @@ export class NatsJournal {
         )
         .run(this.#options.max_records);
     });
-  }
-  lookupAckRequest(
-    recipient: string,
-    requestId: string,
-  ): { sender_id: string; message_id: string } | null {
-    return (
-      (this.#db
-        .prepare(
-          "SELECT sender_id,message_id FROM nats_messages WHERE recipient_id=? AND ack_request_id=? AND state='acked'",
-        )
-        .get(recipient, requestId) as
-        { sender_id: string; message_id: string } | undefined) ?? null
-    );
   }
   claimPull(recipient: string, timeout: number): string | null {
     return this.#tx(() => {
@@ -672,7 +665,7 @@ export class NatsJournal {
           .get(message.recipient_id)
       )
         return null;
-      const token = randomBytes(32).toString("base64url");
+      const token = Buffer.from(randomBytes(32)).toString("base64url");
       const generation = row.generation + 1;
       const until = Math.min(now + this.#options.lease_ms, row.expires_at);
       const backoff = Math.min(
@@ -691,6 +684,7 @@ export class NatsJournal {
           sender,
           message.message_id,
         );
+      this.#audit(sender, message.message_id, now, "leased");
       return {
         message: { ...message, sender_id: sender },
         generation,
@@ -707,7 +701,7 @@ export class NatsJournal {
     return this.#tx(() => {
       const row = this.row(request.sender_id, request.message_id);
       if (!row || row.recipient_id !== recipient)
-        throw new RelayError("invalid_ack");
+        throw new MessagingError("invalid_ack");
       authorize(row);
       const fingerprint = this.hash("ack", JSON.stringify(request));
       const existing = this.#db
@@ -717,7 +711,7 @@ export class NatsJournal {
         .get(recipient, request.request_id) as unknown as Row | undefined;
       if (existing) {
         if (existing.ack_fingerprint !== fingerprint)
-          throw new RelayError("ack_idempotency_conflict");
+          throw new MessagingError("ack_idempotency_conflict");
         return existing;
       }
       const now = Date.now();
@@ -728,7 +722,7 @@ export class NatsJournal {
         row.lease_until <= now ||
         row.expires_at <= now
       )
-        throw new RelayError("invalid_ack");
+        throw new MessagingError("invalid_ack");
       this.#db
         .prepare(
           "UPDATE nats_messages SET state='acked',outbox=NULL,candidate=NULL,body_bytes=0,token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=?",
@@ -743,6 +737,7 @@ export class NatsJournal {
           row.sender_id,
           row.message_id,
         );
+      this.#audit(row.sender_id, row.message_id, now, "acked");
       return this.row(row.sender_id, row.message_id)!;
     });
   }
@@ -753,7 +748,7 @@ export class NatsJournal {
       row.ack_request_id === null ||
       row.ack_receipt_id === null
     )
-      throw new RelayError("invalid_ack");
+      throw new MessagingError("invalid_ack");
     return {
       recipient_id: row.recipient_id,
       sender_id: row.sender_id,
@@ -799,41 +794,34 @@ export class NatsJournal {
       quarantined: count("state='quarantined'"),
     };
   }
-  capacityUsage(recipientId: string) {
-    return this.#tx(() => {
-      this.#refresh(Date.now());
-      const senders = this.#db
-        .prepare(
-          "SELECT sender_id,count(*) records,sum(CASE WHEN state IN ('staging','pending','leased','quarantined') THEN 1 ELSE 0 END) pending,coalesce(sum(body_bytes),0) body_bytes FROM nats_messages GROUP BY sender_id",
-        )
-        .all() as unknown as SenderCapacityUsage[];
-      const recipient = this.#db
-        .prepare(
-          "SELECT count(*) records,coalesce(sum(CASE WHEN state IN ('staging','pending','leased','quarantined') THEN 1 ELSE 0 END),0) pending,coalesce(sum(body_bytes),0) body_bytes FROM nats_messages WHERE recipient_id=?",
-        )
-        .get(recipientId) as {
-        records: number;
-        pending: number;
-        body_bytes: number;
-      };
-      return { senders, recipient };
-    });
-  }
   collect(limit: number): { purged: number; safety_held: number } {
     return this.#tx(() => {
-      this.#db.prepare("DELETE FROM nats_pulls WHERE until<=?").run(Date.now());
+      const now = Date.now();
+      if (
+        !this.#db
+          .prepare("SELECT 1 FROM nats_maintenance_totals WHERE id=1")
+          .get()
+      )
+        throw new MessagingError("maintenance_state_unavailable");
+      this.#db.prepare("DELETE FROM nats_pulls WHERE until<=?").run(now);
+      const due =
+        "FROM nats_messages WHERE state IN ('acked','expired') AND cleaned=1 AND retain_until<=? AND nats_gc_safe(message_id,expires_at)=?";
+      // Held IDs never take a batch slot, so a held backlog cannot starve purgeable records.
       const rows = this.#db
         .prepare(
-          "SELECT * FROM nats_messages WHERE state IN ('acked','expired') AND cleaned=1 AND retain_until<=? LIMIT ?",
+          `SELECT sender_id,message_id ${due} ORDER BY retain_until,sender_id,message_id LIMIT ?`,
         )
-        .all(Date.now(), limit) as unknown as Row[];
-      let purged = 0,
-        safety_held = 0;
+        .all(now, 1, limit) as Array<{ sender_id: string; message_id: string }>;
+      const safety_held = Number(
+        this.#db.prepare(`SELECT count(*) n ${due}`).get(now, 0)!.n,
+      );
+      let purged = 0;
       for (const row of rows) {
-        if (!isReplayBoundMessageId(row.message_id, row.expires_at)) {
-          safety_held++;
-          continue;
-        }
+        this.#db
+          .prepare(
+            "DELETE FROM nats_delivery_audit WHERE sender_id=? AND message_id=?",
+          )
+          .run(row.sender_id, row.message_id);
         purged += Number(
           this.#db
             .prepare(
@@ -842,6 +830,11 @@ export class NatsJournal {
             .run(row.sender_id, row.message_id).changes,
         );
       }
+      this.#db
+        .prepare(
+          "UPDATE nats_maintenance_totals SET last_at=?,purged=purged+? WHERE id=1",
+        )
+        .run(now, purged);
       return { purged, safety_held };
     });
   }

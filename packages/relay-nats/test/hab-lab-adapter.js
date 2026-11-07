@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { SQLiteInbox } from "../../../src/relay/sqlite-inbox.ts";
-import { DurableReceiver } from "../../../src/relay/receiver.ts";
+import { SQLiteInbox } from "../../../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../../../src/agent-sdk/receiver.ts";
 import { habFixture } from "./hab-fixture.js";
 
 export async function guardedJetStreamBackend(t, { serverBinary } = {}) {

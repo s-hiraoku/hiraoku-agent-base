@@ -29,7 +29,7 @@
 | Hermes | MCP定義の残存/有効状態、モデル/認証経路、組込みツール/文脈の隔離 | tokenの保存先・0600/親0700・期限、名義、5操作、終了後に戻す設定 |
 | 有限往復 | 固定文・返信、単一consumer、保存と再読の実行主体 | model ID・最大呼出し数・既存費用枠・fallbackなし、秘密を含まない記録範囲 |
 
-既存設定に現行の`store.agent_capacity`がなければ、最新版を指すだけの再起動はしない。
+既存設定に現行の`delivery.queue.agent_capacity`がなければ、最新版を指すだけの再起動はしない。
 例の設定値も自動適用せず、既存の全体容量と保持済み記録に整合する上限を選ぶ。
 LaunchAgentのProgramArgumentsとWorkingDirectoryは同じ専用releaseへ揃える。
 KeepAliveはRelayプロセスの再起動であり、HermesやDotsの自動受信を意味しない。

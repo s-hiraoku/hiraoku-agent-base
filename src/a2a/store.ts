@@ -9,6 +9,12 @@ import {
 import { Kysely, SqliteDialect } from "kysely";
 import { DatabaseTaskStore } from "@a2a-js/sdk/server/database";
 
+interface StoredTaskKey {
+  tenant: string;
+  owner: string;
+  id: string;
+}
+
 export function openA2aTaskStore(path: string) {
   if (path !== ":memory:") {
     if (!existsSync(path)) closeSync(openSync(path, "wx", 0o600));
@@ -41,10 +47,47 @@ export function openA2aTaskStore(path: string) {
       );
       sqlite.transaction(() => sqlite.exec(schema))();
     }
+    const source = "json_extract(metadata,'$.hab_relay.source.message_id')";
+    sqlite.exec(
+      `CREATE INDEX IF NOT EXISTS hab_a2a_tasks_source ON hab_a2a_tasks(${source})`,
+    );
+    const bySource = sqlite.prepare(
+      `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE ${source}=?`,
+    );
+    const overdue = sqlite.prepare(
+      `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab_relay.source.expires_at')<=? AND (tenant,owner,id)>(?,?,?) ORDER BY tenant,owner,id LIMIT ?`,
+    );
+    const nextExpiry = sqlite.prepare(
+      `SELECT min(json_extract(metadata,'$.hab_relay.source.expires_at')) at FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab_relay.source.expires_at')>?`,
+    );
     const db = new Kysely({ dialect: new SqliteDialect({ database: sqlite }) });
     return {
       store: new DatabaseTaskStore(db, { tableName: "hab_a2a_tasks" }),
-      close: () => db.destroy(),
+      /** The stored Task whose relay request has this message ID, without a caller scope. */
+      findBySource: (messageId: string) =>
+        bySource.get(messageId) as
+          { tenant: string; owner: string; id: string } | undefined,
+      /** Bounded stable-key page; a failed apply need not block later overdue Tasks. */
+      overdue: (expiredBy: string, limit: number, after?: StoredTaskKey) =>
+        overdue.all(
+          expiredBy,
+          after?.tenant ?? "",
+          after?.owner ?? "",
+          after?.id ?? "",
+          limit,
+        ) as StoredTaskKey[],
+      /** The earliest relay request expiry after `after` among non-terminal Tasks. */
+      nextExpiry: (after: string) =>
+        (nextExpiry.get(after) as { at: string | null }).at ?? undefined,
+      close: async () => {
+        try {
+          await db.destroy();
+        } finally {
+          // Kysely initializes its driver lazily. Host maintenance can use the
+          // eager connection without any SDK load/save, so destroy alone may not close it.
+          if (sqlite.open) sqlite.close();
+        }
+      },
     };
   } catch (error) {
     sqlite.close();

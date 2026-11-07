@@ -1,6 +1,6 @@
 /** Fixed HAB directory client using the same bounded Relay transport/admission. */
-import { RelayMcpClient } from "../relay/mcp-client.ts";
-import type { RelayMcpClientOptions } from "../relay/mcp-client.ts";
+import { RelayMcpClient } from "../agent-sdk/mcp-client.ts";
+import type { RelayMcpClientOptions } from "../agent-sdk/mcp-client.ts";
 import { parseHabAddress } from "./registry.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabResolution } from "./directory.ts";

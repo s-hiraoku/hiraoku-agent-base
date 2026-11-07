@@ -3,16 +3,15 @@ import { setup } from "./hab-http-fixtures.js";
 import { test } from "node:test";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { HabRelayService } from "../src/hab/relay.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { fixture, code, operations } from "./hab-registry-fixtures.js";
-import { limits, message, decode, request } from "./relay-http-fixtures.js";
+import { message, decode, request } from "./relay-http-fixtures.js";
 
 test(
   "mock three-individual HTTP round trip resolves over MCP and retries durable send after restart without resolving again",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       a = f.enroll("a");
     const dot = f.registry.registerProduct(f.admin, {
       request_id: "product-dot",
@@ -26,7 +25,7 @@ test(
       c = f.enroll("c", true, hermes);
     const reopened = f.open();
     reopened.migrate();
-    const hab = new HabRelayService(reopened, f.store, limits),
+    const hab = f.habFor(reopened),
       net = await setup(t, f, hab);
     const ca = net.clients("a", a),
       cb = net.clients("b", b),
@@ -123,7 +122,7 @@ test(
   "cached address resolution never bypasses a later stop or silently redirects a stored outbox",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       a = f.enroll("a"),
       b = f.enroll("b"),
       net = await setup(t, f);
@@ -173,16 +172,12 @@ test(
   "HTTP verification cannot grant an individual when registry binding resolution is missing",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       a = f.enroll("a"),
       b = f.enroll("b");
     const missing = f.open({}, { administrator: f.authority.administrator });
     missing.migrate();
-    const net = await setup(
-      t,
-      f,
-      new HabRelayService(missing, f.store, limits),
-    );
+    const net = await setup(t, f, f.habFor(missing));
     await assert.rejects(
       net.clients("a", a).submit({ ...message(), recipient_id: b.agent_id }),
       code("forbidden"),
@@ -199,7 +194,7 @@ test(
   "lost directory response creates no message and a caller retry resolves the same reserved ID",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       a = f.enroll("a"),
       b = f.enroll("b"),
       net = await setup(t, f);

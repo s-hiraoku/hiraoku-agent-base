@@ -13,7 +13,11 @@ import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import pin from "./source-pin.json" with { type: "json" };
 import archive from "./predecessor-source-fixtures.json" with { type: "json" };
-import { sha256, p7ExpectedInputs } from "../../scripts/lib/p7-provenance.mjs";
+import {
+  sha256,
+  p7ExpectedInputs,
+  p7PackageProjection,
+} from "../../scripts/lib/p7-provenance.mjs";
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export function fixtureBytes(file, input, snapshots = archive) {
   let bytes = existsSync(join(repo, file))
@@ -38,9 +42,11 @@ export function sourceFixture(t, profile = "historical") {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     writeFileSync(join(root, file), fixtureBytes(file, input));
   }
+  const current = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
   writeFileSync(
     join(root, "package.json"),
-    readFileSync(join(repo, "package.json")),
+    JSON.stringify({ ...current, ...p7PackageProjection(profile) }, null, 2) +
+      "\n",
   );
   return root;
 }

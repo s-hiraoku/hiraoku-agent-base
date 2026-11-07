@@ -47,7 +47,7 @@ The opt-in MCP factory exposes `text_submit`, `text_get`, `text_list` and `text_
 
 `createGenericTextHost` in `src/generic-host.ts` composes both factories on an explicit `http://127.0.0.1:<port>` origin. It serves `/a2a`, `/mcp`, and `/.well-known/agent-card.json`, and rejects browser Origin headers and unexpected Host headers. The caller supplies one `GenericTextJobs<Request>` backed by its Task service and verified resolver. The host does not own or close the injected Task service. `close()` rejects new requests and drains MCP exchanges. A Node exchange has a twelve-second connection deadline.
 
-The opt-in [generic NATS dispatch port](../implementation/generic-nats-dispatch.md) provides a separate runtime transport. This profile supplies no production Auth0 resolver, invitation policy, protected-tool approval, real Hermes model execution or automatic reply delivery. Those require their own integration and acceptance evidence. HTTP SDK and SQLite tests here use synthetic verified principals and a synthetic runtime without LLM or external tools.
+The former opt-in generic NATS dispatch port was deleted; its [historical record](../implementation/generic-nats-dispatch.md) describes the removed code. This profile supplies no production Auth0 resolver, invitation policy, protected-tool approval, real Hermes model execution or automatic reply delivery. Those require their own integration and acceptance evidence. HTTP SDK and SQLite tests here use synthetic verified principals and a synthetic runtime without LLM or external tools.
 
 ## Reproduce
 

@@ -247,19 +247,32 @@ function roundtripEvidence(out, check, expand) {
   );
   const requests = events("request"),
     responses = events("response");
+  // JetStream publishes on the pump's next cycle, so the helper may repeat an empty first poll (bounded to 5 s at 25 ms).
+  const names = requests.map((row) => row.value.params?.name);
+  let polls = 0;
+  while (names[3 + polls] === "relay_poll") polls++;
+  assert(polls >= 1 && polls <= 201, "roundtrip poll retry count out of range");
   equal(
-    requests.map((row) => row.value.params?.name),
+    names,
     [
       "relay_resolve",
       "relay_submit",
       "relay_submit",
-      "relay_poll",
+      ...Array(polls).fill("relay_poll"),
       "relay_ack",
       "relay_status",
       "relay_poll",
     ],
     "roundtrip missing/extra/reordered MCP operations",
   );
+  for (let i = 3; i < 3 + polls - 1; i++)
+    assert.equal(
+      JSON.parse(responses[i].value.body).result?.structuredContent?.delivery,
+      null,
+      "roundtrip retried a poll that returned a delivery",
+    );
+  const ackAt = 3 + polls,
+    statusAt = ackAt + 1;
   assert.equal(
     responses.length,
     requests.length,
@@ -283,9 +296,10 @@ function roundtripEvidence(out, check, expand) {
   const messageId = requests[1].value.params.arguments.message_id;
   nonempty(messageId, "roundtrip submitted message ID");
   const beforeAck = one("independent_pre_ack_read"),
-    ack = requests[4].value.params.arguments;
+    ack = requests[ackAt].value.params.arguments;
   assert(
-    requests[4].index < beforeAck.index && beforeAck.index < responses[4].index,
+    requests[ackAt].index < beforeAck.index &&
+      beforeAck.index < responses[ackAt].index,
     "pre-ACK observation outside actual ACK boundary",
   );
   for (const key of ["committedBody", "originalPendingAck", "observerReadOnly"])
@@ -303,7 +317,7 @@ function roundtripEvidence(out, check, expand) {
   assert.equal(reopen.value.receiptConfirmed, true);
   assert.equal(reopen.value.keyedIntegrityRead, true);
   assert(
-    beforeAck.index < reopen.index && reopen.index < requests[5].index,
+    beforeAck.index < reopen.index && reopen.index < requests[statusAt].index,
     "receiver reopen trace order mismatch",
   );
   assert(
@@ -591,7 +605,7 @@ function selfTest() {
       typeof value === "string" ? value : JSON.stringify(value, null, 2) + "\n",
     );
   };
-  const fixture = () => {
+  const fixture = ({ emptyPolls = 0, retriedDelivery = false } = {}) => {
     rmSync(scratch, { recursive: true, force: true });
     mkdirSync(scratch, { recursive: true });
     const target = join(scratch, "target"),
@@ -776,11 +790,12 @@ function selfTest() {
       "relay_resolve",
       "relay_submit",
       "relay_submit",
-      "relay_poll",
+      ...Array(emptyPolls + 1).fill("relay_poll"),
       "relay_ack",
       "relay_status",
       "relay_poll",
     ];
+    let pollsSeen = 0;
     for (const name of names) {
       const args =
         name === "relay_submit"
@@ -804,7 +819,17 @@ function selfTest() {
             receiptConfirmed: false,
           },
         });
-      trace.push({ event: "response", value: { status: 200, body: "{}" } });
+      const retried = name === "relay_poll" && pollsSeen++ < emptyPolls;
+      const body = retried
+        ? JSON.stringify({
+            result: {
+              structuredContent: {
+                delivery: retriedDelivery ? { message_id: "x" } : null,
+              },
+            },
+          })
+        : "{}";
+      trace.push({ event: "response", value: { status: 200, body } });
       if (
         name === "relay_submit" &&
         trace.filter(
@@ -833,6 +858,8 @@ function selfTest() {
     return { report: json(reportPath), round, out, bundle };
   };
   try {
+    fixture({ emptyPolls: 2 });
+    assert.equal(inspect(reportPath, contractPath).status, "pass");
     fixture();
     assert.equal(inspect(reportPath, contractPath).status, "pass");
     const controls = [
@@ -926,6 +953,10 @@ function selfTest() {
         },
       ],
       ["missing trace", (f) => rmSync(join(f.round, "trace.jsonl"))],
+      [
+        "retried poll that returned a delivery",
+        () => fixture({ emptyPolls: 1, retriedDelivery: true }),
+      ],
       [
         "forged passed status over skipped TAP",
         (f) => {

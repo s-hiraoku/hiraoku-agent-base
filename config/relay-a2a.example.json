@@ -1,0 +1,10 @@
+{
+  "a2a": {
+    "port": 8793,
+    "identity": "a2a@hab-host.hab",
+    "recipient": "replace-with-recipient@replace-with-agent.hab",
+    "poll_interval_ms": 1000,
+    "max_active_requests": 4,
+    "max_records": 100
+  }
+}

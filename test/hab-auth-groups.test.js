@@ -9,8 +9,8 @@ import {
 import { message } from "./relay-http-fixtures.js";
 import { groupFixture as shared } from "./hab-group-fixtures.js";
 
-test("one verified group uses two addresses; another group cannot select them", (t) => {
-  const f = shared(t);
+test("one verified group uses two addresses; another group cannot select them", async (t) => {
+  const f = await shared(t);
   for (const agent of [f.first, f.second]) {
     const selected = f.select(agent);
     const sent = f.hab.submit(selected, {
@@ -31,8 +31,8 @@ test("one verified group uses two addresses; another group cannot select them", 
   );
 });
 
-test("shared receiver ACKs only the selected mailbox, with fixed retries", (t) => {
-  const f = shared(t),
+test("shared receiver ACKs only the selected mailbox, with fixed retries", async (t) => {
+  const f = await shared(t),
     input = { ...message(), recipient_id: f.first.agent_id };
   f.hab.submit(f.contexts.b, input);
   const delivery = f.hab.poll(f.select(f.first));
@@ -49,8 +49,8 @@ test("shared receiver ACKs only the selected mailbox, with fixed retries", (t) =
   assert.deepEqual(f.hab.ack(f.select(f.first), ack), receipt);
 });
 
-test("address stop affects one name; group stop affects both and incoming resolution", (t) => {
-  const f = shared(t),
+test("address stop affects one name; group stop affects both and incoming resolution", async (t) => {
+  const f = await shared(t),
     saved = f.select(f.first);
   f.registry.setAccess(f.admin, {
     request_id: f.request(),
@@ -68,12 +68,21 @@ test("address stop affects one name; group stop affects both and incoming resolu
     code("forbidden"),
   );
   f.access("active", operations);
+  // The group stop stopped its members; reactivating the group re-grants no address.
+  assert.throws(() => f.hab.poll(f.select(f.second)), code("forbidden"));
+  f.registry.setAccess(f.admin, {
+    request_id: f.request(),
+    agent_id: f.second.agent_id,
+    expected_epoch: f.registry.inspect(f.admin, f.second.agent_id).epoch,
+    state: "active",
+    operations,
+  });
   assert.equal(f.hab.poll(f.select(f.second)), null);
   assert.throws(() => f.hab.poll(saved), code("forbidden"));
 });
 
-test("group and address operation permissions intersect", (t) => {
-  const f = shared(t);
+test("group and address operation permissions intersect", async (t) => {
+  const f = await shared(t);
   f.access("active", ["poll"]);
   assert.equal(f.hab.poll(f.select(f.first)), null);
   assert.throws(
@@ -90,8 +99,8 @@ test("group and address operation permissions intersect", (t) => {
   );
 });
 
-test("membership and group binding survive reopen; refreshed credential retains group", (t) => {
-  const f = shared(t);
+test("membership and group binding survive reopen; refreshed credential retains group", async (t) => {
+  const f = await shared(t);
   f.close(f.registry);
   const reopened = f.open();
   reopened.migrate();
@@ -124,8 +133,8 @@ test("membership and group binding survive reopen; refreshed credential retains 
   );
 });
 
-test("ordinary clients cannot enroll groups, attach names or change permissions", (t) => {
-  const f = shared(t);
+test("ordinary clients cannot enroll groups, attach names or change permissions", async (t) => {
+  const f = await shared(t);
   assert.throws(
     () => f.registry.createGroup(f.contexts.a, { request_id: f.request() }),
     code("registry_forbidden"),
@@ -146,8 +155,8 @@ test("ordinary clients cannot enroll groups, attach names or change permissions"
   );
 });
 
-test("legacy credential and membership cannot silently be rebound to another group", (t) => {
-  const f = shared(t),
+test("legacy credential and membership cannot silently be rebound to another group", async (t) => {
+  const f = await shared(t),
     other = f.registry.createGroup(f.admin, { request_id: f.request() });
   assert.throws(
     () =>
@@ -183,8 +192,8 @@ test("legacy credential and membership cannot silently be rebound to another gro
   );
 });
 
-test("group authorization records distinguish authenticated group from selected name", (t) => {
-  const f = shared(t);
+test("group authorization records distinguish authenticated group from selected name", async (t) => {
+  const f = await shared(t);
   f.hab.poll(f.select(f.first));
   f.hab.poll(f.select(f.second));
   const rows = f.registry.groupAuthorizations(f.admin, {
@@ -211,8 +220,8 @@ test("group authorization records distinguish authenticated group from selected 
   );
 });
 
-test("legacy-only registry remains opt-out and accepts its original single mailbox", (t) => {
-  const f = fixture(t),
+test("legacy-only registry remains opt-out and accepts its original single mailbox", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   assert.throws(
@@ -229,8 +238,8 @@ test("legacy-only registry remains opt-out and accepts its original single mailb
   );
 });
 
-test("explicit schema upgrade preserves legacy bindings and prevents an old runtime from opening version 2", (t) => {
-  const f = fixture(t),
+test("explicit schema upgrade preserves legacy bindings and prevents an old runtime from opening version 2", async (t) => {
+  const f = await fixture(t),
     original = f.enroll("a");
   assert.equal(
     f.registryRaw.prepare("SELECT version FROM hab_registry_meta").get()
@@ -264,8 +273,8 @@ test("explicit schema upgrade preserves legacy bindings and prevents an old runt
   );
 });
 
-test("a group with one registered address needs no selector; extra members require an explicit selection", (t) => {
-  const f = fixture(t, { authentication_groups: true });
+test("a group with one registered address needs no selector; extra members require an explicit selection", async (t) => {
+  const f = await fixture(t, { authentication_groups: true });
   const group = f.registry.createGroup(f.admin, { request_id: "single-group" });
   const binding = f.registry.bindGroup(f.admin, {
     request_id: "single-bind",
@@ -298,8 +307,8 @@ test("a group with one registered address needs no selector; extra members requi
   assert.equal(f.hab.poll(f.contexts.a), null);
 });
 
-test("disabling groups after migration refuses shared members without releasing reservations", (t) => {
-  const f = shared(t),
+test("disabling groups after migration refuses shared members without releasing reservations", async (t) => {
+  const f = await shared(t),
     off = f.open({ authentication_groups: false });
   off.migrate();
   assert.throws(
@@ -328,8 +337,8 @@ test("disabling groups after migration refuses shared members without releasing 
   );
 });
 
-test("group changes are idempotent and reject stale epochs and changed requests", (t) => {
-  const f = fixture(t, { authentication_groups: true });
+test("group changes are idempotent and reject stale epochs and changed requests", async (t) => {
+  const f = await fixture(t, { authentication_groups: true });
   const group = f.registry.createGroup(f.admin, { request_id: "same-create" });
   assert.deepEqual(
     f.registry.createGroup(f.admin, { request_id: "same-create" }),
@@ -361,8 +370,8 @@ test("group changes are idempotent and reject stale epochs and changed requests"
   );
 });
 
-test("group binding requires a fresh verified connection matching the management checkpoint", (t) => {
-  const f = fixture(t, { authentication_groups: true });
+test("group binding requires a fresh verified connection matching the management checkpoint", async (t) => {
+  const f = await fixture(t, { authentication_groups: true });
   const group = f.registry.createGroup(f.admin, {
     request_id: "verified-group",
   });
@@ -391,8 +400,8 @@ test("group binding requires a fresh verified connection matching the management
   );
 });
 
-test("group binding quotas include legacy reservations and never store raw connection claims", (t) => {
-  const f = fixture(t, { authentication_groups: true, max_bindings: 1 });
+test("group binding quotas include legacy reservations and never store raw connection claims", async (t) => {
+  const f = await fixture(t, { authentication_groups: true, max_bindings: 1 });
   const group = f.registry.createGroup(f.admin, { request_id: "quota-group" });
   f.registry.bindGroup(f.admin, {
     request_id: "quota-group-bind",
@@ -425,8 +434,8 @@ test("group binding quotas include legacy reservations and never store raw conne
     assert.ok(!saved.includes(value));
 });
 
-test("group retirement is terminal and cannot move a reserved address to a new group", (t) => {
-  const f = shared(t),
+test("group retirement is terminal and cannot move a reserved address to a new group", async (t) => {
+  const f = await shared(t),
     retired = f.access("retired");
   assert.throws(
     () =>
@@ -452,8 +461,8 @@ test("group retirement is terminal and cannot move a reserved address to a new g
   );
 });
 
-test("last group binding revocation stops retained contexts and preserves credentials as tombstones", (t) => {
-  const f = shared(t),
+test("last group binding revocation stops retained contexts and preserves credentials as tombstones", async (t) => {
+  const f = await shared(t),
     selected = f.select(f.first);
   const binding = f.registryRaw
     .prepare("SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=?")
@@ -485,8 +494,60 @@ test("last group binding revocation stops retained contexts and preserves creden
   );
 });
 
-test("overlapping verified credential rotation preserves the group and member identity", (t) => {
-  const f = shared(t);
+test("stopping a group stops every member; a new binding re-grants only the address it names", async (t) => {
+  for (const stop of ["revoke", "access"]) {
+    const f = await shared(t);
+    if (stop === "revoke") {
+      const binding = f.registryRaw
+        .prepare(
+          "SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=?",
+        )
+        .get(f.group.group_id);
+      f.registry.revokeGroupBinding(f.admin, {
+        request_id: f.request(),
+        binding_id: binding.binding_id,
+        expected_epoch: f.registry.inspectGroup(f.admin, f.group.group_id)
+          .epoch,
+      });
+    } else f.access("stopped");
+    for (const agent of [f.first, f.second]) {
+      const member = f.registry.inspect(f.admin, agent.agent_id);
+      assert.deepEqual([member.state, member.operations], ["stopped", []]);
+      assert.ok(member.epoch > agent.epoch, `${stop}: member epoch advances`);
+    }
+    f.registry.bindGroup(f.admin, {
+      request_id: f.request(),
+      group_id: f.group.group_id,
+      expected_epoch: f.registry.inspectGroup(f.admin, f.group.group_id).epoch,
+      principal: principal("c"),
+    });
+    f.access("active", operations);
+    assert.throws(
+      () => f.hab.poll(f.registry.selectAddress(f.contexts.c, f.first.address)),
+      code("forbidden"),
+    );
+    f.registry.setAccess(f.admin, {
+      request_id: f.request(),
+      agent_id: f.first.agent_id,
+      expected_epoch: f.registry.inspect(f.admin, f.first.agent_id).epoch,
+      state: "active",
+      operations,
+    });
+    assert.equal(
+      f.hab.poll(f.registry.selectAddress(f.contexts.c, f.first.address)),
+      null,
+    );
+    assert.throws(
+      () =>
+        f.hab.poll(f.registry.selectAddress(f.contexts.c, f.second.address)),
+      code("forbidden"),
+    );
+    assert.equal(f.hab.poll(f.contexts.c), null, `${stop}: one active member`);
+  }
+});
+
+test("overlapping verified credential rotation preserves the group and member identity", async (t) => {
+  const f = await shared(t);
   const old = f.registryRaw
     .prepare("SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=?")
     .get(f.group.group_id);
@@ -512,8 +573,8 @@ test("overlapping verified credential rotation preserves the group and member id
   );
 });
 
-test("authorization audit storage failure denies delivery and leaves no receipt", (t) => {
-  const f = shared(t),
+test("authorization audit storage failure denies delivery and leaves no receipt", async (t) => {
+  const f = await shared(t),
     input = { ...message(), recipient_id: f.external.agent_id };
   f.registryRaw.exec(
     "CREATE TRIGGER reject_group_audit BEFORE INSERT ON hab_auth_group_authorizations BEGIN SELECT RAISE(ABORT,'fixture failure'); END;",
@@ -530,8 +591,8 @@ test("authorization audit storage failure denies delivery and leaves no receipt"
   );
 });
 
-test("scoped group authorization cannot escape, change address or permit a concurrent registry change", (t) => {
-  const f = shared(t),
+test("scoped group authorization cannot escape, change address or permit a concurrent registry change", async (t) => {
+  const f = await shared(t),
     selected = f.select(f.first),
     other = f.select(f.second),
     concurrent = f.open();
@@ -558,8 +619,8 @@ test("scoped group authorization cannot escape, change address or permit a concu
   assert.equal(saved.authorize(selected, "poll"), undefined);
 });
 
-test("group authorization records keep the newest entries instead of exhausting delivery", (t) => {
-  const f = shared(t, { max_audit_records: 30 });
+test("group authorization records keep the newest entries instead of exhausting delivery", async (t) => {
+  const f = await shared(t, { max_audit_records: 30 });
   for (let i = 0; i < 45; i++)
     assert.equal(f.hab.poll(f.select(f.first)), null);
   const rows = f.registry.groupAuthorizations(f.admin, {
@@ -570,4 +631,41 @@ test("group authorization records keep the newest entries instead of exhausting 
   assert.equal(rows.length, 30);
   assert.equal(rows.at(-1).id, 45);
   assert.equal(rows[0].id, 16);
+});
+
+test("createBoundGroup needs group_bind and group_member as well as group_create, and a refusal leaves nothing", async (t) => {
+  const f = await fixture(t, { authentication_groups: true });
+  const agent = f.enroll("research", false);
+  const count = (table) =>
+    f.registryRaw.prepare(`SELECT count(*) n FROM ${table}`).get().n;
+  const state = () => ({
+    groups: count("hab_auth_groups"),
+    bindings: count("hab_auth_group_bindings"),
+    members: count("hab_auth_group_members"),
+    epoch: f.registryRaw.prepare("SELECT epoch FROM hab_registry_meta").get()
+      .epoch,
+  });
+  const before = state();
+  const input = (request_id) => ({
+    request_id,
+    agent_id: agent.agent_id,
+    expected_epoch: agent.epoch,
+    principal: principal("a"),
+  });
+  for (const denied of [
+    ["group_bind", "group_member"],
+    ["group_bind"],
+    ["group_member"],
+  ]) {
+    f.mutable.denied = new Set(denied);
+    assert.throws(
+      () => f.registry.createBoundGroup(f.admin, input(denied.join("-"))),
+      code("registry_forbidden"),
+      `refused without ${denied}`,
+    );
+    assert.deepEqual(state(), before, `refused without ${denied}: no state`);
+  }
+  f.mutable.denied = new Set();
+  const created = f.registry.createBoundGroup(f.admin, input("bound-all"));
+  assert.equal(created.agent_id, agent.agent_id);
 });

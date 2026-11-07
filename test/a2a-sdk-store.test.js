@@ -88,3 +88,57 @@ test("A2A store refuses an existing engine database and public file permissions"
   chmodSync(path, 0o644);
   assert.throws(() => openA2aTaskStore(path), /private regular file/);
 });
+
+test("closing an unused A2A store closes its eager SQLite connection before a reopen", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "a2a-store-close-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "tasks.sqlite");
+  const unused = openA2aTaskStore(path);
+  // These host maintenance reads bypass Kysely; no SDK load/save has initialized it.
+  assert.equal(unused.findBySource("absent"), undefined);
+  assert.deepEqual(unused.overdue("9999-01-01T00:00:00.000Z", 100), []);
+  await unused.close();
+  assert.throws(() => unused.findBySource("absent"), /not open|closed/);
+  await unused.close();
+
+  const reopened = openA2aTaskStore(path);
+  assert.equal(
+    await reopened.store.load("absent", context("caller", "group")),
+    undefined,
+  );
+  await reopened.close();
+  assert.throws(() => reopened.findBySource("absent"), /not open|closed/);
+  await reopened.close();
+});
+
+test("overdue Task pages advance past retrying rows using the complete stable Task key", async () => {
+  const opened = openA2aTaskStore(":memory:");
+  const cutoff = "2026-11-01T00:00:00.000Z";
+  try {
+    for (let i = 0; i < 102; i++) {
+      const task = Task.fromJSON({
+        id: `task-${String(i % 100).padStart(3, "0")}`,
+        contextId: "context",
+        status: { state: "TASK_STATE_WORKING", timestamp: cutoff },
+        metadata: { hab_relay: { source: { expires_at: cutoff } } },
+      });
+      await opened.store.save(task, context(i < 100 ? "a" : "b", "tenant"));
+    }
+    const first = opened.overdue(cutoff, 100);
+    assert.equal(first.length, 100);
+    // Model a failed apply of each row: do not mutate/remove any of the first page.
+    const second = opened.overdue(cutoff, 100, first.at(-1));
+    assert.deepEqual(second, [
+      { tenant: "tenant", owner: "b", id: "task-000" },
+      { tenant: "tenant", owner: "b", id: "task-001" },
+    ]);
+    assert.deepEqual(opened.overdue(cutoff, 100, second.at(-1)), []);
+    assert.deepEqual(
+      opened.overdue(cutoff, 100),
+      first,
+      "a new pass retries the failed rows",
+    );
+  } finally {
+    await opened.close();
+  }
+});

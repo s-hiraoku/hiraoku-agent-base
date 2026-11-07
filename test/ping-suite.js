@@ -140,14 +140,13 @@ export async function pingSuite(t, h) {
           statements.some((s) => s.sql.includes("SET state='replied'"))
         ) {
           injected = true;
+          // One clock sample keeps the rewritten window exactly ttl_ms wide, as submit does.
           await original([
             {
               sql:
-                "UPDATE diagnostic_pings SET created=" +
+                "WITH c AS MATERIALIZED (SELECT " +
                 h.driver.nowSQL +
-                "-2000,expires=" +
-                h.driver.nowSQL +
-                "-1000 WHERE id=?",
+                " AS now) UPDATE diagnostic_pings SET created=(SELECT now FROM c)-2000,expires=(SELECT now FROM c)-1000 WHERE id=?",
               params: [task.id],
             },
           ]);

@@ -45,7 +45,7 @@ HABの全5操作に任意の`as_address`を追加した。既存の引数は維�
 
 選択fieldはHABのtransport／認可層で解釈・検証し、message envelopeや再利用するRelay coreの契約へ混ぜない。単独のRelay MCPは従来の4操作・入力schemaを維持する。serverが選択能力を提供しない場合や旧serverがfieldを拒否した場合、選択を削って再送するfallbackは行わない。製品ごとのtoolや配送APIは作らない。
 
-現在の名義選択はHABの基本5操作が対象。任意の添付upload／download toolへの複数名義の配線は未対応で、共有グループの曖昧な主体を許可しない。従来の単一名義による添付操作は維持する。
+現在の名義選択はHABの基本5操作が対象。共有グループの曖昧な主体を許可しない。
 
 ## 許容する共有範囲と停止
 
@@ -97,4 +97,4 @@ Registryの管理portは`createGroup / bindGroupVerified / addGroupMember / setG
 
 `node --test test/hab-address-selection.test.js test/local-relay-service.test.js`では、全5操作の名義選択・グループ外拒否・期待ID不一致の配送前拒否、writer受付、ネイティブHTTPによる永続送信・返信・保存後ACK、受付応答消失後のRegistry／listener再起動と同じ名義での復旧、明示opt-inでの全拒否起動を確認する。これは合成認証による試験であり、実Codex／Hermes等との往復を証明しない。
 
-残作業は添付toolへの名義選択拡張、グループschemaのbackup／restoreと監査保守、実製品での受入れ、常用token更新。既存サービス・本番DB・認証grant・公開経路は変更していない。
+残作業はグループschemaのbackup／restoreと監査保守、実製品での受入れ、常用token更新。既存サービス・本番DB・認証grant・公開経路は変更していない。

@@ -1,6 +1,6 @@
 # Local three-agent integration foundation
 
-The runnable Node and Worker servers still deny every request by default. This revision supplies injectable verification, notification and worker boundaries; it does not connect real agents or register a resident process. Run `npm ci && npm run lint && npm run typecheck && npm test` with Node 24 or newer. All token signing and callback key generation in tests are ephemeral fixtures. No real endpoint, credential, or agent is used.
+The runnable Node and Worker servers still deny every request by default. This revision supplies injectable verification, notification and worker boundaries; it does not connect real agents or register a resident process. Run `npm ci && npm run lint && npm run typecheck && npm test` with Node 26 or newer. All token signing and callback key generation in tests are ephemeral fixtures. No real endpoint, credential, or agent is used.
 
 ## Trust boundary
 

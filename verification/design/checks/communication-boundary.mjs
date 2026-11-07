@@ -23,60 +23,33 @@ const target = resolve(targetArg);
 const ts = createRequire(join(target, "package.json"))("typescript");
 const shared = new Set(["src/protocol.ts", "src/security.ts"]);
 const slash = (path) => path.split(sep).join("/");
-const relayPath = (name) => `src/relay/${name}`;
+const sdkPath = (name) => `src/agent-sdk/${name}`;
+const messagingPath = (name) => `src/messaging/${name}`;
+const hostMcpPath = (name) => `src/host/mcp/${name}`;
+// Registry-owned sender capacity policy, used by the JetStream journal.
+const registryCore = ["src/hab/agent-capacity.ts"];
 // docs/hab-relay-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
-const coreModules = new Set(
-  [
+const coreModules = new Set([
+  ...["index.ts", "contract.ts", "delivery-service.ts", "tool-errors.ts"].map(
+    messagingPath,
+  ),
+  ...[
     "index.ts",
-    "contract.ts",
-    "service.ts",
     "sender.ts",
     "receiver.ts",
-    "sqlite-store.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
-    "sqlite-upload-journal.ts",
-    "sqlite-attachment-store.ts",
-    "sqlite-attachment-inbox.ts",
-    "sqlite-receive-checkpoint.ts",
-    "sqlite-snapshot-bundle.ts",
-    "agent-capacity.ts",
-    "attachments.ts",
-    "attachment-acceptance.ts",
-    "attachment-bindings.ts",
-    "attachment-capacity.ts",
-    "attachment-deletion.ts",
-    "attachment-deletion-worker.ts",
-    "attachment-delivery.ts",
-    "attachment-inbox.ts",
-    "attachment-maintenance.ts",
-    "attachment-outbox.ts",
-    "attachment-read.ts",
-    "attachment-receiver.ts",
-    "attachment-stager.ts",
-    "receive-checkpoint.ts",
-    "upload-journal.ts",
-    "upload-sender.ts",
-    "writer-admission.ts",
-  ].map(relayPath),
-);
-const outerModules = new Set(
-  [
-    "mcp.ts",
-    "mcp-client.ts",
-    "mcp-errors.ts",
-    "http.ts",
-    "http-node.ts",
-    "oauth-resource.ts",
-    "attachment-mcp.ts",
-    "attachment-mcp-client.ts",
-    "attachment-http.ts",
-  ].map(relayPath),
-);
-// SQLiteUploadJournal shares strict receipt parsing with the transport layer.
-// This codec has no SDK/network/credential dependency; its closure stays checked.
-const coreShared = new Set([relayPath("attachment-wire.ts")]);
+  ].map(sdkPath),
+  hostMcpPath("writer-admission.ts"),
+  ...registryCore,
+]);
+const outerModules = new Set([
+  sdkPath("mcp-client.ts"),
+  ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
+    hostMcpPath,
+  ),
+]);
 const corePackages = new Set([
   "node:buffer",
   "node:crypto",
@@ -87,7 +60,12 @@ const corePackages = new Set([
 ]);
 const communicationPolicy = {
   name: "communication",
-  allowsModule: (name) => name.startsWith("src/relay/") || shared.has(name),
+  allowsModule: (name) =>
+    name.startsWith("src/agent-sdk/") ||
+    name.startsWith("src/messaging/") ||
+    name.startsWith("src/host/mcp/") ||
+    registryCore.includes(name) ||
+    shared.has(name),
   allowsPackage: (name) =>
     name.startsWith("node:") ||
     name === "zod" ||
@@ -95,7 +73,7 @@ const communicationPolicy = {
 };
 const corePolicy = {
   name: "core",
-  allowsModule: (name) => coreModules.has(name) || coreShared.has(name),
+  allowsModule: (name) => coreModules.has(name),
   allowsPackage: (name) => corePackages.has(name),
 };
 
@@ -179,7 +157,7 @@ function inspect(root, entries, policy = communicationPolicy) {
   return { files: [...seen].sort(), edges };
 }
 
-function relayEntries(root, directory = "src/relay") {
+function sourceEntries(root, directory = "src/agent-sdk") {
   return readdirSync(join(root, directory), { withFileTypes: true }).flatMap(
     (entry) => {
       const name = `${directory}/${entry.name}`;
@@ -188,7 +166,7 @@ function relayEntries(root, directory = "src/relay") {
         `source symlink requires review: ${name}`,
       );
       return entry.isDirectory()
-        ? relayEntries(root, name)
+        ? sourceEntries(root, name)
         : entry.isFile() && name.endsWith(".ts")
           ? [name]
           : [];
@@ -199,8 +177,10 @@ function relayEntries(root, directory = "src/relay") {
 if (mode === "--self-test") {
   const scratch = mkdtempSync(join(tmpdir(), "hab-boundary-"));
   try {
-    mkdirSync(join(scratch, "src/relay"), { recursive: true });
-    const entry = join(scratch, "src/relay/index.ts");
+    mkdirSync(join(scratch, "src/agent-sdk"), { recursive: true });
+    mkdirSync(join(scratch, "src/messaging"), { recursive: true });
+    mkdirSync(join(scratch, "src/host/mcp"), { recursive: true });
+    const entry = join(scratch, "src/agent-sdk/index.ts");
     // A deliberately isolated optional adapter must not contaminate the communication closure.
     writeFileSync(
       join(scratch, "src/optional-hermes.ts"),
@@ -210,8 +190,8 @@ if (mode === "--self-test") {
       entry,
       "// Hermes and Task are allowed words in comments.\nexport const text = 'openai';\n",
     );
-    assert.deepEqual(inspect(scratch, relayEntries(scratch)).files, [
-      "src/relay/index.ts",
+    assert.deepEqual(inspect(scratch, sourceEntries(scratch)).files, [
+      "src/agent-sdk/index.ts",
     ]);
     const controls = [
       ["direct product import", 'import "../hermes-run-driver.ts";'],
@@ -230,65 +210,50 @@ if (mode === "--self-test") {
     for (const [name, text] of controls) {
       writeFileSync(entry, text);
       assert.throws(
-        () => inspect(scratch, ["src/relay/index.ts"]),
+        () => inspect(scratch, ["src/agent-sdk/index.ts"]),
         undefined,
         name,
       );
     }
     writeFileSync(entry, 'import "./helper.ts";');
     writeFileSync(
-      join(scratch, "src/relay/helper.ts"),
+      join(scratch, "src/agent-sdk/helper.ts"),
       'export * from "../generic-jobs.ts";',
     );
     assert.throws(
-      () => inspect(scratch, ["src/relay/index.ts"]),
+      () => inspect(scratch, ["src/agent-sdk/index.ts"]),
       /forbidden communication dependency/,
     );
-    const service = join(scratch, "src/relay/service.ts");
+    const service = join(scratch, "src/messaging/delivery-service.ts");
     const coreCheck = () =>
-      inspect(scratch, ["src/relay/service.ts"], corePolicy);
+      inspect(scratch, ["src/messaging/delivery-service.ts"], corePolicy);
     writeFileSync(
       service,
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /unreviewed core package dependency/);
-    writeFileSync(service, 'import "./mcp.ts";');
+    writeFileSync(service, 'import "../host/mcp/server.ts";');
     writeFileSync(
-      join(scratch, "src/relay/mcp.ts"),
+      join(scratch, "src/host/mcp/server.ts"),
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "./sender.ts";');
+    writeFileSync(service, 'import "../agent-sdk/sender.ts";');
     writeFileSync(
-      join(scratch, "src/relay/sender.ts"),
-      'export * from "./mcp.ts";',
+      join(scratch, "src/agent-sdk/sender.ts"),
+      'export * from "../host/mcp/server.ts";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "./oauth-resource.ts";');
+    writeFileSync(service, 'import "../host/mcp/oauth-resource.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "./http.ts";');
+    writeFileSync(service, 'import "../host/mcp/http.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import type { AuditSink } from "../security.ts";');
     assert.throws(coreCheck, /forbidden core dependency/);
     writeFileSync(service, 'import "node:http";');
     assert.throws(coreCheck, /unreviewed core package dependency/);
-    // A permitted shared codec must not hide an outward SDK dependency.
-    writeFileSync(service, 'import "./attachment-wire.ts";');
-    writeFileSync(
-      join(scratch, "src/relay/attachment-wire.ts"),
-      'import "@modelcontextprotocol/server";',
-    );
-    assert.throws(coreCheck, /unreviewed core package dependency/);
-    writeFileSync(
-      join(scratch, "src/relay/attachment-wire.ts"),
-      'import { z } from "zod"; export const codec = z.string();',
-    );
-    assert.deepEqual(coreCheck().files, [
-      "src/relay/attachment-wire.ts",
-      "src/relay/service.ts",
-    ]);
-    assert.deepEqual(inspect(scratch, ["src/relay/mcp.ts"]).files, [
-      "src/relay/mcp.ts",
+    assert.deepEqual(inspect(scratch, ["src/host/mcp/server.ts"]).files, [
+      "src/host/mcp/server.ts",
     ]);
     console.log(
       JSON.stringify({
@@ -303,14 +268,12 @@ if (mode === "--self-test") {
           "core HTTP outer",
           "core outer shared security type",
           "core HTTP builtin",
-          "shared codec to SDK",
         ],
         harmlessControls: [
           "comments",
           "string literal",
           "optional execution adapter outside closure",
           "MCP outer to SDK",
-          "core to explicit SDK-free shared codec",
         ],
       }),
     );
@@ -318,31 +281,28 @@ if (mode === "--self-test") {
     rmSync(scratch, { recursive: true, force: true });
   }
 } else {
-  const entries = relayEntries(target);
+  const entries = [
+    ...sourceEntries(target),
+    ...sourceEntries(target, "src/messaging"),
+    ...sourceEntries(target, "src/host/mcp"),
+    ...registryCore,
+  ];
   assert(entries.length > 0, "empty communication source set");
   for (const name of entries)
     assert(
-      coreModules.has(name) || outerModules.has(name) || coreShared.has(name),
-      `unclassified Relay module requires role review: ${name}`,
+      coreModules.has(name) || outerModules.has(name),
+      `unclassified communication module requires role review: ${name}`,
     );
-  for (const name of [...coreModules, ...coreShared])
-    assert(
-      entries.includes(name),
-      `required core/shared source missing: ${name}`,
-    );
+  for (const name of coreModules)
+    assert(entries.includes(name), `required core source missing: ${name}`);
   console.log(
     JSON.stringify(
       {
         status: "pass",
         communicationBoundary: inspect(target, entries),
-        coreBoundary: inspect(
-          target,
-          [...coreModules, ...coreShared],
-          corePolicy,
-        ),
+        coreBoundary: inspect(target, [...coreModules], corePolicy),
         reviewedRoles: {
           core: [...coreModules].sort(),
-          sharedCodec: [...coreShared],
           outer: [...outerModules].sort(),
           outerOnlyShared: [...shared],
           corePackages: [...corePackages],

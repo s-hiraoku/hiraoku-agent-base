@@ -55,8 +55,6 @@ const pending = [
 ];
 const regressionFiles = [
   "relay-contract",
-  "relay-store",
-  "relay-delivery",
   "relay-receiver",
   "relay-sender",
   "hab-enrollment-delivery",
@@ -65,10 +63,6 @@ const regressionFiles = [
   "receive-supervisor",
   "relay-inbox-maintenance",
   "relay-outbox-maintenance",
-  "relay-maintenance",
-  "relay-attachment-delivery",
-  "relay-attachment-inbox",
-  "relay-snapshot-bundle",
   "task-bridge",
   "task-bridge-replies",
 ].map((name) => `test/${name}.test.js`);

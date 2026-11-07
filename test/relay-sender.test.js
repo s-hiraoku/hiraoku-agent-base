@@ -12,23 +12,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
-import {
-  DurableSender,
-  DurableReceiver,
-  RelayService,
-  RelayError,
-} from "../src/relay/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+import { MessagingError } from "../src/messaging/index.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { authorizedDelivery } from "./jetstream-delivery.js";
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -47,7 +40,7 @@ const options = {
   status_retry_ms: 86400000,
 };
 const relayOptions = {
-  fingerprint_key: new Uint8Array(32).fill(42),
+  agent_capacity: undefined,
   max_pending: 10,
   max_records: 100,
   max_pending_per_recipient: 5,
@@ -78,10 +71,10 @@ function message(key = "m-1") {
     expires_at: new Date(at + 3600000).toISOString(),
   };
 }
-function fixture(t, patch = {}) {
+async function fixture(t, patch = {}) {
   const dir = mkdtempSync(join(tmpdir(), "relay-sender-")),
     path = join(dir, "outbox.sqlite"),
-    serverPath = join(dir, "relay.sqlite"),
+    serverPath = join(dir, "jetstream-journal.sqlite"),
     stores = [];
   t.after(() => {
     for (const s of stores) {
@@ -93,10 +86,12 @@ function fixture(t, patch = {}) {
     }
     rmSync(dir, { recursive: true, force: true });
   });
-  const server = new SQLiteRelayStore(serverPath, relayOptions);
-  stores.push(server);
-  server.migrate();
-  const service = new RelayService(server, limits, policy);
+  const { service } = await authorizedDelivery(t, {
+    authorization: policy,
+    limits,
+    directory: dir,
+    queue: relayOptions,
+  });
   const open = () => {
     const s = new SQLiteOutbox(path, { ...options, ...patch });
     stores.push(s);
@@ -131,7 +126,7 @@ function expireLease(f) {
 }
 
 test("outbox commits before network, preserves immutable input, and removes body only after validated acceptance", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     original = message(),
     m = structuredClone(original);
   let sends = 0;
@@ -166,7 +161,7 @@ test("outbox commits before network, preserves immutable input, and removes body
   assert.equal(sends, 1);
 });
 test("lost acceptance response survives restart and resends the same ID, recipient, contents and deadline", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message(),
     seen = [];
   const failing = new DurableSender(f.outbox, {
@@ -200,12 +195,12 @@ test("lost acceptance response survives restart and resends the same ID, recipie
   assert.deepEqual(seen, [m, m]);
   assert.equal(sender.get(m.message_id).receipt.receipt_id, receipt.receipt_id);
   assert.equal(
-    f.relayRaw.prepare("SELECT count(*) n FROM relay_messages").get().n,
+    f.relayRaw.prepare("SELECT count(*) n FROM nats_messages").get().n,
     1,
   );
 });
 test("submission budget switches to status, recovering acceptance without another submission", async (t) => {
-  const f = fixture(t, { max_submit_attempts: 1 }),
+  const f = await fixture(t, { max_submit_attempts: 1 }),
     m = message();
   let sends = 0,
     lookups = 0;
@@ -229,7 +224,7 @@ test("submission budget switches to status, recovering acceptance without anothe
   assert.equal(lookups, 1);
 });
 test("restart after claim before transmission recovers the stable queued payload", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   f.outbox.enqueue(m);
   const abandoned = f.outbox.claim();
@@ -249,8 +244,8 @@ test("restart after claim before transmission recovers the stable queued payload
   assert.deepEqual(input, m);
   assert.equal(store.get(m.message_id).state, "accepted");
 });
-test("stale sender fence cannot confirm, defer or quarantine a newer lease", (t) => {
-  const f = fixture(t),
+test("stale sender fence cannot confirm, defer or quarantine a newer lease", async (t) => {
+  const f = await fixture(t),
     m = message();
   f.outbox.enqueue(m);
   const old = f.outbox.claim(),
@@ -269,7 +264,7 @@ test("stale sender fence cannot confirm, defer or quarantine a newer lease", (t)
   assert.equal(f.outbox.get(m.message_id).state, "accepted");
 });
 test("expired delivery attempts only status, clears payload and eventually records uncertain expiry", async (t) => {
-  const f = fixture(t, { max_status_attempts: 1 }),
+  const f = await fixture(t, { max_status_attempts: 1 }),
     m = message();
   let sends = 0,
     lookups = 0;
@@ -280,7 +275,7 @@ test("expired delivery attempts only status, clears payload and eventually recor
     },
     async status() {
       lookups++;
-      throw new RelayError("not_found");
+      throw new MessagingError("not_found");
     },
   });
   sender.enqueue(m);
@@ -293,12 +288,15 @@ test("expired delivery attempts only status, clears payload and eventually recor
   assert.equal(sends, 0);
   assert.equal(lookups, 1);
   assert.equal(
-    f.relayRaw.prepare("SELECT count(*) n FROM relay_messages").get().n,
+    f.relayRaw.prepare("SELECT count(*) n FROM nats_messages").get().n,
     0,
   );
 });
 test("status not found is retried finitely rather than interpreted as definitive non-delivery", async (t) => {
-  const f = fixture(t, { max_submit_attempts: 1, max_status_attempts: 2 }),
+  const f = await fixture(t, {
+      max_submit_attempts: 1,
+      max_status_attempts: 2,
+    }),
     m = message();
   let lookups = 0;
   const sender = new DurableSender(f.outbox, {
@@ -307,7 +305,7 @@ test("status not found is retried finitely rather than interpreted as definitive
     },
     async status() {
       lookups++;
-      throw new RelayError("not_found");
+      throw new MessagingError("not_found");
     },
   });
   sender.enqueue(m);
@@ -324,18 +322,18 @@ test("status not found is retried finitely rather than interpreted as definitive
   assert.equal(sender.get(m.message_id).reason, "status_retry_exhausted");
 });
 test("server expiry rejection forces status-only without extending the message deadline", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   let sends = 0,
     lookups = 0;
   const sender = new DurableSender(f.outbox, {
     async submit() {
       sends++;
-      throw new RelayError("expired_before_acceptance");
+      throw new MessagingError("expired_before_acceptance");
     },
     async status() {
       lookups++;
-      throw new RelayError("not_found");
+      throw new MessagingError("not_found");
     },
   });
   sender.enqueue(m);
@@ -347,14 +345,14 @@ test("server expiry rejection forces status-only without extending the message d
   assert.equal(sender.get(m.message_id).expires_at, m.expires_at);
 });
 test("permanent refusal quarantines without changing identity, credentials or recipient", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   let calls = 0;
   const sender = new DurableSender(f.outbox, {
     ...f.transport,
     async submit() {
       calls++;
-      throw new RelayError("forbidden");
+      throw new MessagingError("forbidden");
     },
   });
   sender.enqueue(m);
@@ -370,7 +368,7 @@ test("permanent refusal quarantines without changing identity, credentials or re
   assert.equal(f.raw.prepare("SELECT body FROM relay_outbox").get().body, null);
 });
 test("wrong receipt cannot clear body; successful local confirmation is transactional and recoverable", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   let corrupt = true;
   const sender = new DurableSender(f.outbox, {
@@ -396,12 +394,12 @@ test("wrong receipt cannot clear body; successful local confirmation is transact
   await sender.sendOnce();
   assert.equal(sender.get(m.message_id).state, "accepted");
   assert.equal(
-    f.relayRaw.prepare("SELECT count(*) n FROM relay_messages").get().n,
+    f.relayRaw.prepare("SELECT count(*) n FROM nats_messages").get().n,
     1,
   );
 });
 test("enqueue failure makes no transport call; record and byte capacity refuse without dropping accepted intents", async (t) => {
-  const f = fixture(t, { max_records: 1 }),
+  const f = await fixture(t, { max_records: 1 }),
     m = message();
   let sends = 0;
   const sender = new DurableSender(f.outbox, {
@@ -426,8 +424,8 @@ test("enqueue failure makes no transport call; record and byte capacity refuse w
   tiny.migrate();
   code(() => tiny.enqueue(m), "outbox_capacity_exceeded");
 });
-test("private file, immutable owner/key and explicit schema boundaries are enforced", (t) => {
-  const f = fixture(t);
+test("private file, immutable owner/key and explicit schema boundaries are enforced", async (t) => {
+  const f = await fixture(t);
   const other = new SQLiteOutbox(f.path, { ...options, agent_id: "c" });
   t.after(() => other.close());
   code(() => other.migrate(), "outbox_identity_mismatch");
@@ -449,7 +447,7 @@ test("private file, immutable owner/key and explicit schema boundaries are enfor
   assert.throws(() => new SQLiteOutbox(link, options));
 });
 test("transport cannot mutate the durable original; local overlapping send is refused", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     m = message();
   let release;
   const sender = new DurableSender(f.outbox, {
@@ -475,7 +473,7 @@ test("transport cannot mutate the durable original; local overlapping send is re
   assert.equal(sender.get(m.message_id).receipt.recipient_id, "b");
 });
 test("concurrent SQLite connections claim only one sender job", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.outbox.enqueue(message());
   f.outbox.enqueue(message("m-2"));
   const source = `const{parentPort,workerData}=await import('node:worker_threads');const{SQLiteOutbox}=await import(workerData.url);const s=new SQLiteOutbox(workerData.path,workerData.options);s.migrate();parentPort.postMessage('ready');parentPort.once('message',()=>{try{parentPort.postMessage(s.claim());}finally{s.close();}});`;
@@ -486,7 +484,7 @@ test("concurrent SQLite connections claim only one sender job", async (t) => {
         workerData: {
           path: f.path,
           options,
-          url: new URL("../src/relay/sqlite-outbox.ts", import.meta.url).href,
+          url: new URL("../src/agent-sdk/sqlite-outbox.ts", import.meta.url).href,
         },
       }),
   );
@@ -513,7 +511,7 @@ test("concurrent SQLite connections claim only one sender job", async (t) => {
   assert.equal((await Promise.all(results)).filter(Boolean).length, 1);
 });
 test("model-free durable sender to relay to durable receiver survives both response losses", async (t) => {
-  const f = fixture(t, { max_submit_attempts: 1 }),
+  const f = await fixture(t, { max_submit_attempts: 1 }),
     m = message();
   const sender = new DurableSender(f.outbox, {
     ...f.transport,
@@ -566,13 +564,15 @@ test("model-free durable sender to relay to durable receiver survives both respo
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
   assert.equal(f.raw.prepare("SELECT body FROM relay_outbox").get().body, null);
   assert.equal(
-    f.relayRaw.prepare("SELECT body FROM relay_messages").get().body,
+    f.relayRaw
+      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+      .get().body,
     null,
   );
 });
 
-test("acceptance receipt identity, deadline, state and UTC time are checked before payload deletion", (t) => {
-  const f = fixture(t),
+test("acceptance receipt identity, deadline, state and UTC time are checked before payload deletion", async (t) => {
+  const f = await fixture(t),
     m = message();
   f.outbox.enqueue(m);
   const job = f.outbox.claim(),
@@ -599,8 +599,8 @@ test("acceptance receipt identity, deadline, state and UTC time are checked befo
       .receipt.includes("must not persist"),
   );
 });
-test("expired/future enqueue and unavailable attachments fail closed; expired status horizon cannot send", async (t) => {
-  const f = fixture(t),
+test("expired/future enqueue and attachment parts fail closed; expired status horizon cannot send", async (t) => {
+  const f = await fixture(t),
     m = message();
   let calls = 0;
   const sender = new DurableSender(f.outbox, {
@@ -633,7 +633,7 @@ test("expired/future enqueue and unavailable attachments fail closed; expired st
     size_bytes: 10,
     sha256: "a".repeat(64),
   });
-  code(() => sender.enqueue(file), "attachment_store_unavailable");
+  code(() => sender.enqueue(file), "invalid_contract");
   sender.enqueue(m);
   f.raw.exec("UPDATE relay_outbox SET expires_at=0,status_until=0");
   await sender.sendOnce();

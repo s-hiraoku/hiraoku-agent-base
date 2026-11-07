@@ -2,18 +2,22 @@
 
 [README](../README.md) · [正式仕様のゲート](hab-relay-spec.md#20-導入と受入れゲート) · [受入れ表](mvp-acceptance.md)
 
-**このMVPの完了条件は、モデルなしの模擬3個体で登録→MCP配送→返信→停止→永続状態からの再開→固定Taskの結果配送を、一つの有限コマンドで再現できることです。** 実Grok・Dots・Hermesの接続や、管理添付・全DBの整合backupを含むG1全体の受入れとは分けます。
+**このMVPの完了条件は、モデルなしの模擬3個体で登録→MCP配送→返信→停止→永続状態からの再開→固定Taskの結果配送を、一つの有限コマンドで再現できることです。** 実Grok・Dots・Hermesの接続や、全DBの整合backupを含むG1全体の受入れとは分けます。
 
 ## 起動
 
-Node 24以上で、このrepoを新規cloneした作業ディレクトリから実行します。
+Node 26以上で、このrepoを新規cloneした作業ディレクトリから実行します。配送はNATS JetStreamだけで行うため、固定版のnats-server 2.15.2が必要です。`HAB_NATS_SERVER`にその実行ファイルを指定するか、最初に一度installします。
 
 ```sh
 npm ci
+npm ci --prefix packages/relay-nats --ignore-scripts
+mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
 npm run demo:hab-mvp -- --simulate
 ```
 
-成功時はexit 0でJSONを返します。コマンドは実行のたびに0700の新規一時ディレクトリを作り、明示migrationで専用DBを準備します。127.0.0.1の空きportで専用MCP listenerを起動し、終了時に停止・DBを削除します。固定portの既存server、Hermes、cron、認証、既存checkoutのruntime DBは変更しません。
+nats-serverが見つからない場合は、作業状態を作る前に`local_mvp_failed reason=nats_server_required: ...`とinstall手順を表示してexit 1を返します。demoはその一時ディレクトリ内で専用のloopback brokerを起動・停止します。
+
+成功時はexit 0でJSONを返します。コマンドは実行のたびに0700の新規一時ディレクトリを作り、明示migrationで専用DBを準備します。127.0.0.1の空きportで専用MCP listenerと専用nats-serverを起動し、終了時に停止・DBとbroker storeを削除します。固定portの既存server、Hermes、cron、認証、既存checkoutのruntime DBは変更しません。
 
 引数なし・未知引数・任意URL指定では、作業状態を作る前にUsageとexit 2を返します。30秒の有限deadlineがあり、Ctrl-C／SIGTERMでは開始済み処理を止め、自分のlistenerと一時状態を片付けてexit 1を返します。OSによる強制終了や電源断は一時ファイルの削除まで保証しません。専用ownerのOS lockはprocess終了で解放されます。
 
@@ -77,6 +81,8 @@ reopen時は新しいDB handle・host・clientを作り、登録checkpoint、永
 
 ## 継続検証
 
+`test:hab-mvp`と`npm test`も起動と同じnats-serverを使います（`HAB_NATS_SERVER`または`.runtime/nats-install.json`）。
+
 ```sh
 npm run test:hab-mvp
 npm run lint
@@ -86,7 +92,7 @@ python3 -B -m unittest discover -s hermes_bridge -p 'test_*.py'
 python3 -B -m unittest scripts.test_inventory_token_input
 ```
 
-MVPの5テストは、上記CLIそのものの15段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。既存の独立Relay、D1／Task、添付・公平性・snapshot等の回帰も続けます。補助的なRelay MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
+MVPの5テストは、上記CLIそのものの15段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。既存の独立Relay、D1／Task、公平性等の回帰も続けます。補助的なRelay MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
 
 ## 新規導入時の依存確認
 
@@ -105,7 +111,7 @@ Miniflareが固定していたUndiciは[修正版7.30.1](https://github.com/node
 | 最初の実通信 | 対象の個体と相手を特定し、無害な固定テキストのquestion／answer各1通、resolve／submit／status／poll／ackだけの権限、停止条件・保存場所を確認して承認 |
 | 新規認証・永続起動 | credential／OAuthの発行・scope、保存先・有効期限、実daemonやcron、既存設定変更は個別確認。MVP実行の承認から引き継がない |
 | 実Hermes Task | capabilities／auth／tool無効化を実境界で確認し、固定Task・対象Runs・送信データ・modelの追加費用0円・停止方法を個別に確定。MVPの模擬worker成功を代用しない |
-| G1全体・運用 | 管理添付の実runtime適用、全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |
+| G1全体・運用 | 全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |
 
 この一覧の未確定値を推測して接続・credential発行・課金・公開へ進めません。現在の完了は、ローカルMVPの再現手順・模擬往復・失敗復旧と、その検証済みコードです。
 

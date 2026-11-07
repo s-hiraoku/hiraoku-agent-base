@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { oauthFixture, issuer, resource } from "./relay-oauth-fixtures.js";
-import { PinnedRelayOAuthAuthority } from "../src/relay-host/oauth-auth.ts";
+import { PinnedOAuthAuthority } from "../src/host/oauth-auth.ts";
 import {
   RelayOAuthResource,
   RELAY_OAUTH_SCOPES,
-} from "../src/relay/oauth-resource.ts";
+} from "../src/host/mcp/oauth-resource.ts";
 
 test("pinned OAuth attests only the enrolled connection, never JWT agent/connection arguments", async () => {
   const f = await oauthFixture(),
@@ -145,7 +145,7 @@ test("empty disabled config denies all; absent, private, weak or ambiguous keys/
     keys: [],
     connections: [],
   };
-  const a = await PinnedRelayOAuthAuthority.create(() => disabled);
+  const a = await PinnedOAuthAuthority.create(() => disabled);
   assert.equal(
     await a.verify({
       authorization: "Bearer a.b.c",
@@ -174,7 +174,7 @@ test("empty disabled config denies all; absent, private, weak or ambiguous keys/
     },
   ])
     await assert.rejects(
-      PinnedRelayOAuthAuthority.create(() => patch),
+      PinnedOAuthAuthority.create(() => patch),
       /invalid_relay_oauth_config/,
     );
 });

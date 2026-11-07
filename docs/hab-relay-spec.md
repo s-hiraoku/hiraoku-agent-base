@@ -14,9 +14,11 @@
 
 「必須」「禁止」は採用した設計の実装要件を示す。「推奨初期値」は未合意の設定案であり、実装開始時の確認と負荷試験が必要。「未検証」は実サービスで証明していないことを示す。追加予定の型・table・API・ファイル名は、明記のない限り**計画であり未実装**である。
 
-実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[Relay実装手順](../src/relay/README.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、管理添付の転送・運用、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
+実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[エージェントSDK](../src/agent-sdk/README.md)、[JetStream配送設計](../packages/relay-nats/DESIGN.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
 **2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可をopt-inで実装し、MCPの名義選択v1と通常サービスのopt-in配線も実装した。15分の試験用OAuth入口から常用方式への移行と実製品の受入れは未検証であり、認証設定・公開・自動更新を有効化したとは扱わない。
+
+**2026-11-06の改訂（[ADR-016](hab-decisions.md)）：配送はNATS JetStreamだけで行う。** SQLite配送storeは廃止し、旧messageは移行しない。message契約と`DeliveryService` interfaceは`src/messaging`、名義・認可・容量はRegistry（`src/hab`）、唯一のhostは`src/host`（MCP serverは`src/host/mcp`）、送信outbox・保存後ACKの受信inboxとMCP clientは`src/agent-sdk`が持つ。第1章・第3章・第3.1節・第16章の「単一Node + SQLite」「SQLiteは最初の正本」「brokerを増やさない」は初期構成の記述であり、配送storeについてはこの改訂が優先する。Registry、登録journal、配送journal、client側outbox／inboxは引き続きSQLiteを使う。
 
 ## 1. 目的と非目標
 
@@ -51,7 +53,7 @@ flowchart LR
   A["Agent A"] --> OA["Adapter A: durable outbox"]
   OA --> AUTH["Verified binding and ACL"]
   AUTH --> R["HAB Relay"]
-  R --> DB["SQLite: message + delivery + receipts"]
+  R --> DB["NATS JetStream + delivery journal: message + delivery + receipts"]
   R -->|"Poll response; durable inbox before ACK"| IB["Adapter B: durable inbox + dedup"]
   IB --> B["Agent B"]
   IB -->|"Explicit allowed execution acceptance"| TB["Task bridge"]
@@ -185,7 +187,7 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 | `sender_id`     | Relayが認証済みグループと所属名義の検証後に付与。任意の未検証sender_idを入力として信用しない                                       |
 | `recipient_id`  | 最初の送信前に確定する個体ID。受付後は不変                                                                 |
 | `kind`          | 質問、回答、実行依頼、引受け、実行結果などの区別。kind別schemaとACLが必要                                  |
-| `body`          | kind別の厳密schema。テキスト・管理添付参照・構造化データを並べたversioned parts。制御fieldは厳密に検証する |
+| `body`          | kind別の厳密schema。テキスト・構造化データを並べたversioned parts。制御fieldは厳密に検証する |
 | `thread_id`     | 会話の相関ID。権限ではない。初期は固定した2個体間のみ                                                      |
 | `in_reply_to`   | rootではnull。返信は元の`sender_id`と`message_id`の組を参照する案とし、同じthread・許可された個体間か検証  |
 | `first_sent_at` | 初回送信前に確定するUTC時刻（ミリ秒を含むISO形式）。rm1 ID内の時刻と一致し、再送でも変えない               |
@@ -212,21 +214,13 @@ MCPは通信とtool呼出しの接点であり、プロトコル自体が本文�
 
 threadは登録された2個体にscopeを固定する。返信先は元の送信者との関係で検証し、in_reply_toのIDを知っているだけでは返信・読取権限を与えない。message_idは送信者scopeのため、返信参照にも送信者を含めて曖昧さを避ける。
 
-### 5.1 初版のマルチパートと管理添付
+### 5.1 マルチパート
 
-初版からテキスト、画像、音声、任意ファイル（動画、PDF、コード、成果物等）、構造化データを組み合わせて配送できる共通契約を持つ。順序付きparts、media type、byte長、整合性digest、管理添付ID、形式のversionを定義し、内容や順序を黙って変換・欠落させない。構造化データはversioned schema識別子とpayloadを持ち、業務的な意味の解釈は配送層へ持ち込まない。具体的なwire schemaは実装前に固定する。
+テキストと構造化データを順序付きpartsで配送する共通契約を持つ。内容や順序を黙って変換・欠落させない。構造化データはversioned schema識別子とpayloadを持ち、業務的な意味の解釈は配送層へ持ち込まない。
 
 **Relayの責務はデータの保存・配送・取得認可・整合性・削除である。受信者の理解、表示、解析、実行能力は責務の範囲外とし、それらの能力判定を配送条件にしない。** transport／wire versionの非対応や容量超過は明示エラーにし、受信者のmodel能力を推測して配送を制限しない。第4.5節の受信・実行ガードレールは利用側integrationの責務であり、coreの内容審査機能ではない。
 
-大きいデータはmessageのSQL行やMCP envelopeへinline埋込みせず、独立したmanaged attachment store interfaceへ分離する。HABは任意URLを取得・転送しない。upload開始、有限chunk／途中再開、整合性検証、finalize、認証付き取得、削除をversioned公開契約にする。添付IDだけで取得を許可せず、upload所有者と確定messageの宛先への紐付け、block・停止・失効、操作権限をサーバー側で検証する。認可を迂回する無期限の公開URLは発行しない。
-
-未finalize／digest不一致の添付を持つmessageは受付成功にしない。upload、finalize、message commit、削除の間で停止しても、部分的な添付を配信せず、同じ要求の再試行と照合で回復する。DBとblob storeにまたがる原子性を仮定せず、耐久manifestと状態遷移、参照の保護、有限期限の孤立upload回収を設計する。最初のmessage送信からの配送TTLは1時間で固定し、upload開始の期限・quotaは別に有限化する。再開や再uploadでmessage TTLを延長しない。
-
-受信側のdurable inboxは必要な添付bytesとmanifestの完全性を確認・保存してからACKする。RelayのACK確定で本文・添付の通常取得を終了し、添付を削除対象にする。blob削除はtransactional削除outboxから冪等に行い、失敗・再起動後も回収する。期限切れも同様に取得を停止し、本文と管理添付を回収する。初期はmessageごとの添付所有とし、別messageとの共有参照や重複排除で削除責任を複雑にしない。client側の保存はRelayの保存とは別責務である。
-
-本文、envelope、添付1個、添付個数、message総bytes、未finalize upload、個体別／全体容量、同時転送、転送時間にそれぞれ有限上限を設定する。旧16 KiB本文案は採用せず、数値はこの範囲を踏まえて別途決定する。全データを無制限に扱うという意味ではない。backup／restoreはDB manifestとblob世代を整合させ、削除済み添付の復活防止と孤立blob回収も試験する。storage backend、転送方法・上限、削除遅延、backup容量を追加設計事項とする。
-
-実装範囲：[独立upload・参照確定基盤](managed-attachments.md)でversion 1のmetadata、時刻拘束request ID、固定chunk再送、専用SQLite BLOB保存、digest finalize、容量予約、期限・30日receipt回収を実装した。これはupload単体のhost APIであり、HAB guardとの組立ても実装し、現在の個体binding・submit権限・宛先・kind・block・停止／失効とcommitをregistry → upload DBの順で保護する。さらに、finalized添付の原子的なmessage参照予約、Relay commit前のadmission検査、元receiptによる別DB間の受付再照合を任意のhost組立てとして実装した。prepare後の失敗・commit後の応答消失・両DBのreopenで同じ要求を回復し、期限を延長しない。HAB受付guardも別層で組み立て、registry lockをprepareからRelay commit・confirmまで保持する。受信者の現在poll権限と生きた元受付・確定参照を検証する有限chunk取得も独立host APIで実装した。HAB取得guardもregistry → Relay → upload DBの順で組み立てた。専用の受信添付journalでも部分保存・再開・全体SHA検証と同期readiness guardを実装した。通常inboxのsave／ACK claim前の検証gateと、本文handoff後も保持添付を再確認するschema 3 migrationも実装した。Relay schema 4では元参照とterminal時の削除outboxを原子的に保存し、lease・fencing・再照合と未完了時のGC保護も実装した。[単発削除workerと明示配送policy](attachment-deletion.md)も追加し、任意host組立てで実Relay lease、受信bytesの保存・検証、実server ACKと物理削除をin-processで確認した。ACK確定直後に通常取得を拒否し、別DBの削除失敗や応答消失は同じ元jobへ再照合する。既定の受付APIは添付参照を拒否し、admissionだけの構成ではpoll／ACKも未有効のままにする。[任意MCP／HTTP転送境界](attachment-transport.md)も追加した。固定client転送もnative HTTPで模擬検証した。添付送信journal・受信orchestration、孤立回収の運用、整合backupと本番配線は後続である。
+管理添付（画像・音声・任意ファイル等のbytes転送）は廃止した。契約は添付partを持たず、添付partを含む送信は配送前の契約検証で拒否する。受信inboxの添付列（inbox schema 3）は、明示migrationで削除して開き続ける。旧SQLite配送storeの添付table（Relay schema 4）は、配送storeごと廃止した。
 
 ## 6. 同一性、時刻、期限
 
@@ -327,9 +321,7 @@ wake/pushは「保存済みinboxをpollせよ」という補助通知とする�
 
 個体別に送信rate、保有message数・bytes、同時poll・lease、処理待ち数を制限する。全体容量上限と個体別quotaは別にし、1個体が他個体の枠をすべて消費しない予約／公平な受付を設ける。[message個体別容量](relay-agent-capacity.md)は任意のhost設定として実装し、verified senderごとのpending・本文bytes・保持record上限と、保護対象の未使用最低枠を受付transactionで検証する。予約は認証・宛先容量・blob容量を代替しない。
 
-[添付blobの最低予約枠](attachment-capacity.md)も任意host設定として実装した。verified ownerのlive upload件数・宣言bytes・全upload記録と、独立したbinding記録を同じwrite transactionで判定し、保護対象の未使用枠を他ownerが消費できないようにする。terminalでlive量を解放しても重複防止記録は既存retentionまで保持し、満杯でもexact replayを先に照合する。追加schemaや認証権限は作らず、すべてのwriterで同じpolicyを使う。
-
-処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をRelayのwriter内で実行しない。[公平pollと永続scan](relay-fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkind・添付保留で位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
+処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をRelayのwriter内で実行しない。[公平pollと永続scan](relay-fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkindで位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
 
 [検証済み個体のrateと公平writer受付](writer-admission.md)は任意の単一process構成として実装した。現在のbindingと操作権限から個体を確定し、単調token bucketと有限queueで全toolを共有する。DB guardを待機中に保持せず、待機後の認可を再確認し、HTTP timeout後も未完了tool監査がsettleするまで1 active枠を保持する。rate・queueは揮発性で、認証前の全体HTTP上限、複数process・保守writerを含む公平性や遅延SLOを代替しない。
 
@@ -403,7 +395,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 送信側retry／ACK retryの最大horizonは有限の契約として設定し、Relayと受信側のdedup保持期間がそれより先に切れないようにする。dedup削除条件は、少なくとも元message期限、terminal時刻、ACK再試行期限のうち最も遅い時刻に保持期間を加えたものとする。本文の期限切れ・削除を、dedupや処理済み印の同時削除に直結させない。
 
-契約horizonを越えたIDは無条件に新規送信として通さない。初回送信時刻を内包する`rm1.<UTC milliseconds>.<32 hex>`形式を追加し、`first_sent_at`とID中の時刻の一致、一律1時間のexpiryを検証する。producerは128 bitの新しい乱数をsuffixへ与える。同じIDで期限を書き換えられないため、tombstone削除後も元の要求は期限切れとなる。従来のopaque message IDも互換性のため受け付けるが、そのtombstoneは自動回収せず、有限容量と明示的な照合・移行の対象にする。旧形式の回収を解決済みとは扱わない。詳しい実装範囲は[Relay実装手順](../src/relay/README.md)を参照する。
+契約horizonを越えたIDは無条件に新規送信として通さない。初回送信時刻を内包する`rm1.<UTC milliseconds>.<32 hex>`形式を追加し、`first_sent_at`とID中の時刻の一致、一律1時間のexpiryを検証する。producerは128 bitの新しい乱数をsuffixへ与える。同じIDで期限を書き換えられないため、tombstone削除後も元の要求は期限切れとなる。従来のopaque message IDも互換性のため受け付けるが、そのtombstoneは自動回収せず、有限容量と明示的な照合・移行の対象にする。旧形式の回収を解決済みとは扱わない。詳しい実装範囲は[JetStream配送設計](../packages/relay-nats/DESIGN.md)と[エージェントSDK](../src/agent-sdk/README.md)を参照する。
 
 クライアント側の送信・受信retentionも同じ契約を満たす必要がある。実製品が保持を制御できなければG0未達。本文の個人データ削除要求とdedup証拠の最小保持が両立しない場合は、削除後の再送を止める運用と保証の縮小を明示する。
 
@@ -414,7 +406,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 | 設定候補            | 推奨初期値                                                             | 根拠・制約                                                               |
 | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | message TTL         | **一律1時間（採用済み）**                                              | agent不在時の蓄積と容量の上限。再送で延長しない                          |
-| body / envelope     | 旧16 KiB案は不採用。multipart・添付を含め別途決定                      | inline envelopeと添付bytesの上限を分離。既存入口の上限変更も明示設計する |
+| body / envelope     | 旧16 KiB案は不採用。multipartを含め別途決定                      | 既存入口の上限変更も明示設計する |
 | delivery lease      | 30秒、延長しても元期限まで                                             | 保存してACKするためのleaseであり、長い業務実行時間ではない               |
 | 1回poll / 同時lease | 1件 / 個体あたり1件                                                    | 最初の競合・復旧を単純化。Task並列1とは別設定                            |
 | 通常poll間隔        | 空時5秒、最大60秒までbackoff                                           | 低負荷と不在時の抑制。遅延を計測して調整                                 |
@@ -431,7 +423,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 ## 15. API／MCPの追加契約案
 
-正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/relay/mcp.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。いずれも既存runtime・公開HTTP APIへは未配線であり、`relay_extend`は未実装。
+正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。いずれも既存runtime・公開HTTP APIへは未配線であり、`relay_extend`は未実装。
 
 `relay_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address, as_address?, expected_agent_id?}`とする。相手側の`address`と自分側の名義を分け、期待IDは`as_address`との一致確認だけに使う。sender・group・mailbox・URL等の未知引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
 
@@ -444,7 +436,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 | `relay_status`                 | 受付・配送状態と不達の取得           | 元送信者または明示した受信者・管理者に限定              |
 | `relay_extend`（必要性未決定） | inbox保存中の有限lease延長           | 現token、期限、延長上限。業務処理のために保持し続けない |
 
-MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は、Relayの4 tool／HABの5 toolのいずれにも含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/relay/http.ts)と[Node callback](../src/relay/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。HAB adapterも同じ入口制限と共通MCP executorを使う。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
+MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は、Relayの4 tool／HABの5 toolのいずれにも含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/host/mcp/http.ts)と[Node callback](../src/host/mcp/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。HAB adapterも同じ入口制限と共通MCP executorを使う。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
 
 HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCPより広い認可にしない。registry管理や隔離解除は通常agentのtoolに混ぜない。message ID、thread ID、agent IDが分かるだけでは操作できない。既存Taskのsubmit/claim等、診断ping、discovery-only入口は互換性を維持し、Relayを配線するまでは従来どおり拒否する。
 
@@ -480,7 +472,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 - client側：送信outbox、受信inbox/dedup、ACK待ちと処理journal。実個体がこの保存点を持つかはG0対象。
 - 運用：redacted delivery audit、任意wake outbox、thread budget／容量の集計。業務本文を監査tableへ複写しない。
 
-SQLiteは最初の正本であり、別broker・D1とのdual-writeを導入しない。client側DBは送受信責任のための別保存点であって、Relay正本の無制御replicaではない。
+SQLiteは最初の正本であり、別broker・D1とのdual-writeを導入しない（初期案。配送の正本はADR-016でNATS JetStreamと配送journalへ移し、SQLiteとのdual-writeやroute切替は持たない）。client側DBは送受信責任のための別保存点であって、Relay正本の無制御replicaではない。
 
 ## 17. Adapter拡張契約
 
@@ -532,9 +524,9 @@ server commit、first poll、inbox commit/ACK、処理開始、引受け、Task�
 
 G0の実個体能力調査は先行させるが、実際の処理・受入れは**モデルなし → 固定Task → 実個体**の段階とする。G1成功をG3成功へ読み替えない。
 
-G1の部分的な証拠として、[登録からHTTP配送・停止・復旧までの17シナリオ](hab-relay-integration.md)を追加した。人向け登録フロー、模擬3個体のnative HTTP、専用DB／listenerのreopen、受付・ACK応答消失、不在、停止・失効・block、lease競合、本文引渡しを一連で確認する。注入方法と試験の限界を同文書に記録し、管理添付、公平性、実Adapterの返信budget、cold-start・backup restoreを含むG1全体の合格とは扱わない。
+G1の部分的な証拠として、[登録からHTTP配送・停止・復旧までの17シナリオ](hab-relay-integration.md)を追加した。人向け登録フロー、模擬3個体のnative HTTP、専用DB／listenerのreopen、受付・ACK応答消失、不在、停止・失効・block、lease競合、本文引渡しを一連で確認する。注入方法と試験の限界を同文書に記録し、公平性、実Adapterの返信budget、cold-start・backup restoreを含むG1全体の合格とは扱わない。
 
-[ローカルMVPの有限起動手順](local-mvp.md)では、同じ製品の2個体を含む模擬3個体で15段階を再現できる。送信／ACK応答消失、全DB・listenerのclose／reopen、質問返信intentの再開、running固定Taskのgate維持と結果配送を確認する。これはテキストMVPの合格条件であり、実個体のG0／G3、管理添付や全hostの整合backup／restoreを含むG1全体の昇格条件を置き換えない。
+[ローカルMVPの有限起動手順](local-mvp.md)では、同じ製品の2個体を含む模擬3個体で15段階を再現できる。送信／ACK応答消失、全DB・listenerのclose／reopen、質問返信intentの再開、running固定Taskのgate維持と結果配送を確認する。これはテキストMVPの合格条件であり、実個体のG0／G3や全hostの整合backup／restoreを含むG1全体の昇格条件を置き換えない。
 
 ### 必須受入れ試験
 
@@ -557,15 +549,14 @@ G1の部分的な証拠として、[登録からHTTP配送・停止・復旧ま�
 | 自動返信loop           | 相互自動返信、結果再送、不達通知の連鎖が有限上限で停止し、追加Taskや無限通知を生成しない                                                 |
 | Adapter拡張            | 新Adapterを本体改修なしで追加し、同一Adapterを複数個体設定で利用できる                                                                   |
 | 移行・rollback         | 既存API／Task・D1回帰を通し、追加型migrationとcode rollback／復元照合を試験                                                              |
-| 管理添付の障害回復     | chunk再送・切断再開・finalize前後停止・digest不一致・外国体取得拒否・ACK前添付保存・ACK消失・孤立回収・削除失敗再試行・backup復元を試験  |
-| マルチパート完全性     | テキスト・画像・音声・ファイル・構造化データのbytes／parts順序が維持され、未知wire／超過は明示エラー。本文や添付を黙って欠落させない     |
+| マルチパート完全性     | テキスト・構造化データのparts順序が維持され、未知wire／添付part／超過は明示エラー。本文を黙って欠落させない     |
 | クリーン導入           | 新規環境で秘密を同梱せず、設定検証→schema確認→registry/binding→モデルなし診断→停止・再開を再現できる                                     |
 
 導入文書にはNode/SQLiteの前提、private権限、必要な手動承認、schema backup/rollback、設定不備の固定エラー、個体別診断、停止・照合、残る非対応機能を含める。実際のcredentialや本番IDを例示しない。実サービスの登録が必要な段階は別途承認へ分け、文書作成を根拠に自動起動しない。
 
 ## 21. 工数・費用
 
-**以下の15〜25人日は、管理添付基盤を含めない旧スコープの参考概算である。現在の初版スコープの総見積もりではなく、再評価が必要。** upload／finalize／整合性、宛先別取得認可、切断・再開、ACK前の添付保存、孤立添付回収、容量・削除・backupの実装と障害試験が追加される。既存の幅へ収まるとは約束しない。
+**以下の15〜25人日は、管理添付基盤を含めない旧スコープの参考概算である。現在の初版スコープの総見積もりではなく、再評価が必要。** 既存の幅へ収まるとは約束しない。
 
 以下は**人による工数概算であり、納期保証ではない**。1人の経験あるエンジニア + AI支援を想定する。順序・並行性・G0結果で変動する。
 
@@ -584,8 +575,8 @@ G1の部分的な証拠として、[登録からHTTP配送・停止・復旧ま�
 ## 22. 未決定・未検証事項
 
 1. G0：実Grok/dotのグループbinding・所属アドレス選択・永続outbox/inbox・再送契機・poll/wake。現在の3者本番E2Eは未完了。
-2. Registryの認証グループ・所属選択・停止・監査はopt-inで実装済み。基本5操作のMCP配線と通常サービスの明示opt-inも実装した。添付toolの複数名義、実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
-3. multipart wire schema、管理添付store／upload・finalize・再開・削除、blob整合backup、各容量上限と更新見積もり。wire version、kind別schema、将来のアドレス正規化version更新、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
+2. Registryの認証グループ・所属選択・停止・監査はopt-inで実装済み。基本5操作のMCP配線と通常サービスの明示opt-inも実装した。実サービスのOAuth callback/client方式、必要scopeと保管・更新・失効方式。グループ内のBot本人性は要求せず、グループ外の名義使用・受信箱アクセスを拒否する。
+3. multipart wire schema、各容量上限と更新見積もり。wire version、kind別schema、将来のアドレス正規化version更新、返信参照表現、canonical fingerprint、従来opaque IDのtombstoneを安全に移行・回収する方式（新しい時刻拘束IDは実装済み）。
 4. 配送TTL一律1時間、ACK確定後のRelay本文削除、最小配送記録の30日保持は決定済み。その他の推奨初期値の採否、個体別最低予約枠、公平性/SLO、長期不在時のretentionと個人データ削除policy。
 5. long-poll／lease延長の要否、wake追加の要否と実receiverの能力。
 6. Task bridgeのPrincipalとlink commit/照合、追加migrationの具体schema、backup後の復旧epoch・照合手順。

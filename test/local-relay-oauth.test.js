@@ -13,10 +13,10 @@ import { tmpdir } from "node:os";
 import { createServer, request } from "node:http";
 import { once } from "node:events";
 import { randomUUID } from "node:crypto";
-import { startLocalRelay } from "../src/relay-host/local.ts";
+import { startHostServer } from "../src/host/server.ts";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { RELAY_OAUTH_SCOPES } from "../src/relay/oauth-resource.ts";
+import { RELAY_OAUTH_SCOPES } from "../src/host/mcp/oauth-resource.ts";
 import {
   options as registryOptions,
   operations,
@@ -24,6 +24,12 @@ import {
 } from "./hab-registry-fixtures.js";
 import { limits, policy, envelope, message } from "./relay-http-fixtures.js";
 import { oauthFixture, issuer, resource } from "./relay-oauth-fixtures.js";
+import { createJetStreamDelivery } from "../src/host/delivery.ts";
+import {
+  deliverySection,
+  eventually,
+  pollUntilDelivered,
+} from "./jetstream-delivery.js";
 
 async function fixture(t) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "relay-oauth-")));
@@ -89,19 +95,10 @@ async function fixture(t) {
     port: 0,
     limits,
     registry: registryOptions,
-    store: {
-      fingerprint_key: new Uint8Array(32).fill(89),
-      max_pending: 20,
-      max_records: 100,
-      max_pending_per_recipient: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      max_attempts: 3,
-      retry_base_ms: 10,
-      retry_cap_ms: 100,
-      poll_scan_limit: 20,
-    },
+    delivery: createJetStreamDelivery(
+      await deliverySection(dir),
+      new Uint8Array(32).fill(89),
+    ),
     http,
     authority: {
       individual: (ctx) => (ctx === local ? individual(ctx) : undefined),
@@ -120,7 +117,7 @@ async function fixture(t) {
   };
   const hosts = [];
   const start = async (patch) => {
-    const h = await startLocalRelay({ ...options, ...patch });
+    const h = await startHostServer({ ...options, ...patch });
     hosts.push(h);
     return h;
   };
@@ -298,7 +295,7 @@ test("same queue delivers across local and OAuth ingress, preserves IDs on resta
     await wire(h, { token: f.jwt, tool: "relay_submit", args: m }),
   );
   assert.equal(accepted.sender_id, f.remoteAgent.agent_id);
-  const delivery = await local.poll();
+  const delivery = await pollUntilDelivered(local);
   assert.equal(delivery.message.message_id, m.message_id);
   const ack = {
     sender_id: f.remoteAgent.agent_id,
@@ -334,9 +331,10 @@ test("same queue delivers across local and OAuth ingress, preserves IDs on resta
     },
   };
   await local.submit(reply);
-  const returned = value(
-    await wire(h, { token: f.jwt, tool: "relay_poll" }),
-  ).delivery;
+  const returned = await eventually(
+    async () =>
+      value(await wire(h, { token: f.jwt, tool: "relay_poll" })).delivery,
+  );
   assert.equal(returned.message.in_reply_to.message_id, m.message_id);
   assert.equal(returned.message.sender_id, f.localAgent.agent_id);
   const replyAck = {

@@ -10,17 +10,17 @@ import {
   parseSubmission,
   makeReplayBoundMessageId,
   isReplayBoundMessageId,
-} from "../relay/contract.ts";
-import { RelayError } from "../relay/service.ts";
-import type { OutboxRecord } from "../relay/sender.ts";
+} from "../messaging/contract.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type { OutboxRecord } from "../agent-sdk/sender.ts";
 import {
   replyKindSchema,
   replyRecordSchema,
   replyMessage,
 } from "./reply-contract.ts";
 import type { BridgeReply, ReplyKind } from "./reply-contract.ts";
-import type { Submission, ContractLimits } from "../relay/contract.ts";
-import type { InboxEntry } from "../relay/receiver.ts";
+import type { Submission, ContractLimits } from "../messaging/contract.ts";
+import type { InboxEntry } from "../agent-sdk/receiver.ts";
 import {
   TaskBridgeError,
   identifier,
@@ -720,7 +720,7 @@ export class SQLiteTaskBridgeJournal {
               ? error.code
               : "bridge_reply_budget_unavailable",
           );
-        if (error instanceof RelayError)
+        if (error instanceof MessagingError)
           throw new TaskBridgeError(
             error.code === "outbox_capacity_exceeded"
               ? "bridge_outbox_capacity_exceeded"

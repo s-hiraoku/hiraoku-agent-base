@@ -3,9 +3,9 @@ import {
   comparisonMaterial,
   parseSubmission,
   validateLimits,
-} from "../relay/contract.ts";
-import type { ContractLimits } from "../relay/contract.ts";
-import type { OutboxRecord } from "../relay/sender.ts";
+} from "../messaging/contract.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
+import type { OutboxRecord } from "../agent-sdk/sender.ts";
 import type {
   AnswerInbox,
   AnswerOutbox,

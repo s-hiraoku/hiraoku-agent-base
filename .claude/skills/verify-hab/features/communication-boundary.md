@@ -5,7 +5,7 @@ Agents receive through common MCP. Their host polls, saves the message and dedup
 ## Sub-features
 
 - `boundary-receive` uses native loopback HTTP MCP for question, notice, and structured execution_request deliveries.
-- `boundary-save-before-ack` observes committed message and ACK request records through an independent SQLite connection before the server handles ACK.
+- `boundary-save-before-ack` observes committed message and ACK request records of the agent SDK's receiver inbox (`src/agent-sdk/sqlite-inbox.ts`) through an independent SQLite connection before the server handles ACK.
 - `boundary-no-execution` preserves external content verbatim, calls only receive host operations, and leaves Task links, Tasks, and reply outbox empty even with the optional Task port configured.
 - `boundary-inbox-read` exercises explicit source-authorized saved-body reads, ACK-pending inspection, detached copies, missing/released/tampered records, revocation and an explicit recipient reply after native HTTP periodic reception. Reading creates no Task or reply and grants no action permission.
 - `boundary-task-state` observes working after the optional Task coordinator claims a job while its runtime ID is still absent. This does not prove model execution.
@@ -32,5 +32,6 @@ Require exit code zero and no failed, skipped, or canceled tests. The TAP names 
 - CI also runs [P7](../../../../docs/testing/p7-lab.md). Changes to files pinned by its successor manifest require a replacement manifest generated from reviewed committed source with `scripts/pin-p7-successor.mjs`, and the full-regression expectation must include added tests. A passing root `npm test` does not exercise the dedicated P7 guard.
 
 - Each test closes only its own listener and stores, then removes its temporary databases. The TAP evidence remains under the separate RUN directory. Confirm that the TAP still exists after completion.
+- The durable sender, receiver and MCP client live in `src/agent-sdk`; the host side (`src/host`, MCP server in `src/host/mcp`) only stores and delivers. The generic NATS text port and its proof script were deleted, so no recipe drives them.
 - This proves local communication boundaries. It does not verify a real product's model, tools, approval UI, credential refresh, inbox display, or deployment.
 - A body that mentions owner approval does not test or grant a real native approval. Changes to receiving agents' existing approval mechanisms require their own tests.

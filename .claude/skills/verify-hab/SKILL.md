@@ -11,29 +11,30 @@ HAB is a personal agent hub. Its user-facing surfaces today are:
 2. **Enrollment terminal** (`npm run demo:hab-enrollment -- --interactive`). A human picks a product, reserves `<bot>@<product>.hab`, binds and activates it.
 3. **Hub server** (`node src/server.ts`, fixed `127.0.0.1:8787`). Without an operator config it denies everything; only the deny-all boundary is drivable locally.
 
-The repo now ships a configured Relay CLI (`npm run relay:local`) and an operator CLI (`npm run relay:admin`); drive those with `configured.sh` per [features/configured-relay.md](features/configured-relay.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `SQLiteRelayStore`, `runHabEnrollment`, `HabRelayService`, `HabHttpGateway`, `createRelayNodeHandler`) exactly as `test/hab-journey-fixtures.js` does, enrolls three agents through the real enrollment workflow, and listens on a loopback port. Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
+The repo now ships a configured Relay CLI (`npm run relay:local`) and an operator CLI (`npm run relay:admin`); drive those with `configured.sh` per [features/configured-relay.md](features/configured-relay.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the JetStream delivery from `createJetStreamDelivery` that the host wires, `HabHttpGateway`, `createRelayNodeHandler`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. JetStream is the only delivery backend, so the stack and `configured.sh` each start their own private loopback `nats-server` with its store under `$RUN/instance`. Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
 
 For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
 
-All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 24 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`. `tmux` is needed only for the enrollment terminal.
+All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 26 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`, and the pinned `nats-server` 2.15.2: set `HAB_NATS_SERVER`, or install it once with `mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`. Without it the launch fails with `nats_server_required`. `tmux` is needed only for the enrollment terminal.
 
 ## Launch
 
 ```sh
-npm ci                                   # once per checkout (Node >= 24)
+npm ci                                   # once per checkout (Node >= 26)
+npm ci --prefix packages/relay-nats --ignore-scripts   # JetStream client, once per checkout
 RUN=/tmp/hab-verify/$(date +%Y%m%d-%H%M%S)   # one run dir per verification run
 S=.claude/skills/verify-hab/scripts
 $S/launch.sh "$RUN"                      # optional 2nd arg: fixed port (default: free port)
 ```
 
-`launch.sh` starts `stack.mjs` in the background from an empty run dir: it migrates three fresh SQLite DBs, registers products `grok-bot`, `dot`, `hermes`, enrolls `verify-a@grok-bot.hab` (agent `a`), `verify-b@dot.hab` (`b`), `verify-c@hermes.hab` (`c`) with all five operations, and listens. **Ready** means the log line `HAB_VERIFY_READY <url>` appeared **and** the doctor (run automatically) prints `DOCTOR_OK <url>`. Anything else exits non-zero with the log tail.
+`launch.sh` starts `stack.mjs` in the background from an empty run dir: it starts a private `nats-server`, migrates fresh SQLite DBs (Registry, enrollment, JetStream journal), registers products `grok-bot`, `dot`, `hermes`, enrolls `verify-a@grok-bot.hab` (agent `a`), `verify-b@dot.hab` (`b`), `verify-c@hermes.hab` (`c`) with all five operations, and listens. **Ready** means the log line `HAB_VERIFY_READY <url>` appeared **and** the doctor (run automatically) prints `DOCTOR_OK <url>`. Anything else exits non-zero with the log tail.
 
 Layout of a run dir:
 
-- `$RUN/instance/` — `state.json` (url, port, pid, agent ids/addresses/tokens), `stack.pid`, `registry.sqlite`, `relay.sqlite`, `enrollment.sqlite`. Disposable.
+- `$RUN/instance/` — `state.json` (url, port, pid, agent ids/addresses/tokens), `stack.pid`, `registry.sqlite`, `jetstream-journal.sqlite` (admission, lease, ACK and the redacted delivery audit), `enrollment.sqlite`, `volume.local.json`, `broker/` (the private broker's config and JetStream store). Disposable.
 - `$RUN/evidence/` — every request/response, DB snapshots, `audit.jsonl` (HTTP gateway audit categories), `stack.log`. Survives cleanup.
 
-Re-running `launch.sh "$RUN"` on a run dir whose instance was stopped with `cleanup.sh --stop-only` **reopens the same DBs on the same port** without re-enrolling (restart test).
+Re-running `launch.sh "$RUN"` on a run dir whose instance was stopped with `cleanup.sh --stop-only` **reopens the same DBs and broker store on the same port** without re-enrolling (restart test). The stack stops its broker when it stops.
 
 Isolation: each run dir is its own instance on its own port, so parallel runs are safe. Never drive a run dir you did not launch.
 
@@ -61,7 +62,7 @@ Build a valid message (replay-bound id `rm1.<ms>.<32hex>`, one-hour deadline):
 MSG=$($S/new-message.sh "$RUN" b "hello from a")       # to agent b; optional 4th arg kind: question|answer|notice
 ```
 
-The following raw round trip proves Relay wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses DurableReceiver, SQLiteInbox and an independent SQLite read before network ACK.
+The following raw round trip proves Relay wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses the agent SDK's DurableReceiver and SQLiteInbox (`src/agent-sdk/receiver.ts`, `src/agent-sdk/sqlite-inbox.ts`) and an independent SQLite read before network ACK.
 
 Raw wire round trip (a → b):
 
@@ -69,6 +70,7 @@ Raw wire round trip (a → b):
 $S/mcp.sh "$RUN" a relay_resolve '{"address":"verify-b@dot.hab"}'
 $S/mcp.sh "$RUN" a relay_submit "$MSG"                       # state "pending"
 ID=$(jq -r .message_id <<<"$MSG")
+sleep 0.1                                                     # the pump publishes on its next 20 ms cycle
 $S/mcp.sh "$RUN" b relay_poll '{}' | tee /dev/stderr | sed 1d > "$RUN/poll.json"
 ACK=$(jq -c '.result.structuredContent.delivery | {sender_id:.message.sender_id, message_id:.message.message_id, generation, lease_token, request_id:"verify-ack-1"}' "$RUN/poll.json")
 $S/mcp.sh "$RUN" b relay_ack "$ACK"                          # state "acked"
@@ -81,8 +83,8 @@ Feature-by-feature recipes: [`features/README.md`](features/README.md).
 ## Evidence
 
 - Where: `$RUN/evidence/` (numbered `NNN-*` in call order, plus `audit.jsonl`, `stack.log`).
-- Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real client and SQLiteInbox with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
-- Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `relay_status` after receiver `relay_ack`) and `inspect.mjs` (read-only DB snapshot: agents, bindings, messages, deliveries with state/generation, delivery audit events, ack receipt count; bodies omitted).
+- Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real agent SDK client and SQLiteInbox (`src/agent-sdk`) with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
+- Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `relay_status` after receiver `relay_ack`) and `inspect.mjs` (read-only snapshot of the Registry and the JetStream journal: agents, bindings, messages, deliveries with state/generation/broker sequence, delivery audit events, ack receipt count; bodies omitted).
 - Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
 - Mocks: only identity is synthetic (static bearer → synthetic verified connection), because Auth0/production identity binding is not built yet. Storage, HTTP, MCP framing, registry authorization and enrollment are the real code.
 - Report the feature/sub-feature ID and the evidence file names with every claim.
@@ -94,7 +96,7 @@ $S/cleanup.sh "$RUN"               # stop our stack (by pid file, never by name)
 $S/cleanup.sh "$RUN" --stop-only   # stop only; keep DBs for a restart test
 ```
 
-It kills only the pid in `stack.pid`, and only if that pid's command line is `stack.mjs <this run dir>`; a stale pid file is removed without killing anything. After cleanup, `ls "$RUN/evidence"` must still list the proof. Run cleanup after every failed attempt too. For the enrollment terminal, kill only the tmux session you named (`tmux kill-session -t <name>`); the demo deletes its own temp DB on exit.
+It kills only the pid in `stack.pid`, and only if that pid's command line is `stack.mjs <this run dir>`; a stale pid file is removed without killing anything. The stack stops its own `nats-server` on SIGTERM; `ps -eo args | grep "[n]ats-server -c $RUN"` must print nothing afterwards. After cleanup, `ls "$RUN/evidence"` must still list the proof. Run cleanup after every failed attempt too. For the enrollment terminal, kill only the tmux session you named (`tmux kill-session -t <name>`); the demo deletes its own temp DB on exit.
 
 ## Helpers
 
@@ -106,8 +108,10 @@ It kills only the pid in `stack.pid`, and only if that pid's command line is `st
 | `new-message.sh` | `$S/new-message.sh <run-dir> <to> [text] [kind]`                         | print valid `relay_submit` arguments           |
 | `inspect.mjs`    | `node $S/inspect.mjs <run-dir> [label]`                                  | read-only DB snapshot, saved as evidence       |
 | `cleanup.sh`     | `$S/cleanup.sh <run-dir> [--stop-only]`                                  | stop what this run started, keep evidence      |
-| `stack.mjs`      | (via `launch.sh`) `node $S/stack.mjs <run-dir> [port]`                   | the scaffolding host itself                    |
-| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| stop`        | shipped Relay + operator CLI, same state.json  |
+| `stack.mjs`      | (via `launch.sh`) `node $S/stack.mjs <run-dir> [port]`                   | the scaffolding host and its private broker    |
+| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| restart \| stop` | shipped Relay + broker + operator CLI (`HAB_VERIFY_A2A=1` adds A2A) |
+| `a2a.sh`         | `$S/a2a.sh <run-dir> <x\|a\|b\|none\|BAD> <SendMessage\|GetTask\|card> ['<json>']` | one A2A call to the configured Relay, saved as evidence |
+| `new-reply.sh`   | `$S/new-reply.sh <poll-file> <execution_accepted\|execution_result> <task-id> [state] [result]` | print `relay_submit` arguments replying to a polled request |
 
 ## Other surfaces
 

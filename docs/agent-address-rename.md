@@ -52,8 +52,7 @@ same management contract applies to all participating products.
 
 1. Quiesce the Relay, make an owner-only consistent registry backup, and record
    the deployed code/config and transport backup checkpoint. Do not copy raw keys
-   into commands or logs. The transport snapshot bundle intentionally excludes
-   Registry/auth state and is not a substitute for this backup.
+   into commands or logs.
 2. Deploy v3-capable code with the explicit flag and perform initialization.
    Existing v1/v2 handles refuse the changed schema and must reopen.
 3. Inspect `relay:admin status`; save the selected `agent_id`, address and `epoch`,

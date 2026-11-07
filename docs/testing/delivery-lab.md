@@ -2,6 +2,8 @@
 
 これは初期baselineとexact-f19専用runnerの記録です。現行の複合実装では、この固定runnerは意図的に拒否します。[P7実行手順](p7-lab.md)と[公開・CIの範囲](publication.md)を使用してください。
 
+現在の配送はNATS JetStreamだけです。下表の「現行Relay」列と`relay-store`等は、廃止したSQLite配送storeを指す当時の記録です。現在の必須群と件数（full-regression 1207件を含む）は[P7実行手順](p7-lab.md)を参照してください。
+
 For the exact-f19 A2A integration branch, see [native A2A acceptance](a2a-native-acceptance.md). It adds mandatory protocol groups and reclassifies the original A2A engine placeholders. Historical counts below describe the original lab baseline.
 
 現行Relayと将来の配送adapterを同じ契約で評価する。コードbaselineは `d83ad6e`、公開仕様PR114取り込み後のmainは `8322093`。[製品仕様](../hab-product-spec.md)のA-10とA-11を中心に検証する。実製品接続や本番の動作保証ではない。LLM、Auth0、実credential、本番設定は使わない。
@@ -46,7 +48,7 @@ timestampと暗号lease tokenは毎回変わる。合成agent名、本文、送�
 | TTL等号、未来時計skew境界                 | F03、relay-contract、relay-store                   | 実行対象             | 追加実装必要             |
 | 実SQLite FULL、安全な容量制限             | F01、F02                                           | 実行対象             | broker/adapter別注入必要 |
 | 書き込み失敗とtransaction rollback        | relay-store/delivery/receiver                      | 実行対象             | 追加実装必要             |
-| 破損DB、添付/保存manifest改変             | F04、relay-attachment-inbox、relay-snapshot-bundle | 実行対象             | 追加実装必要             |
+| 破損DB、保存manifest改変                  | F04                                                | 実行対象             | 追加実装必要             |
 | 保存直後の実process強制終了と復旧         | F05                                                | 実行対象             | broker/adapter別に必要   |
 | group、宛先/送信者偽装、権限取消          | hab-auth-groups、hab-enrollment-delivery           | 実行対象             | 同じRegistry policy必要  |
 | keyset paginationとscope漏洩              | hab-discovery                                      | 実行対象             | 共通Registryに再適用     |
