@@ -50,7 +50,7 @@ This read-only verifier is an explicit integration requirement. This preview doe
 
 ## Cancellation, timeouts and limits
 
-CancelTask returns the formal task-not-cancelable error. It never reports stopped execution. Default blocking SendMessage waits up to five seconds for a terminal or interrupted observation. A transport timeout preserves the queryable Task. It does not set execution failure or extend delivery expiry.
+CancelTask returns the formal task-not-cancelable error. It never reports stopped execution. Default blocking SendMessage waits up to five seconds for a terminal or interrupted observation. The wait takes the handler's Task serializer only for each 25 ms check, which reloads the stored Task, so the host receive loop can apply replies in between. A transport timeout preserves the queryable Task. It does not set execution failure or extend delivery expiry.
 
 The preview supports one handler instance per Task database. It does not add multi-host writer coordination, production retention, capacity management, remote evidence authentication, product wake, or a GUI. Delivery runs through the JetStream backend behind the HAB Registry; the SQLite delivery route was deleted. Production replacement acceptance remains a separate gate.
 

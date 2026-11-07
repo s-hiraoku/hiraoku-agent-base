@@ -404,16 +404,24 @@ export class HabA2aHandler extends DefaultRequestHandler {
       if (Date.now() >= until)
         throw Error("Transport wait exceeded; HAB Task remains queryable");
       await new Promise((resolve) => setTimeout(resolve, 25));
-      current = await this.#observe(current, context, route);
+      // The wait holds the serializer only per step, so a background apply() can save
+      // newer Task state in between; each step therefore reloads the stored Task.
+      const id = current.id;
+      current = await this.#serial(async () => {
+        const stored = await this.#store.load(id, context);
+        route.assertCurrent();
+        if (!stored) throw new TaskNotFoundError();
+        return this.#observe(stored, context, route);
+      });
     }
     route.assertCurrent();
     return publicTask(current, params.configuration?.historyLength);
   }
-  override sendMessage(
+  override async sendMessage(
     params: SendMessageRequest,
     context: ServerCallContext,
   ): Promise<Task | Message> {
-    return this.#serial(async () => {
+    const { task, route } = await this.#serial(async () => {
       const route = this.#route(context);
       const message = params.message;
       if (
@@ -508,13 +516,9 @@ export class HabA2aHandler extends DefaultRequestHandler {
         await route.flush(link.source.message_id);
         route.assertCurrent();
       }
-      return this.#wait(
-        await this.#observe(task, context, route),
-        params,
-        context,
-        route,
-      );
+      return { task: await this.#observe(task, context, route), route };
     });
+    return this.#wait(task, params, context, route);
   }
   /** Applies the route's saved replies to a stored Task outside any caller request. */
   apply(
