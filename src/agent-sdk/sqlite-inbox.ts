@@ -317,11 +317,25 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       // generation or unseen expired delivery must never recreate collected state.
       if (lease <= now || Date.parse(message.expires_at) <= now)
         throw new MessagingError("expired_delivery");
+      // ACK history is counted per message, so a lease redelivery takes no new slot;
+      // each message keeps at most max_attempts generations.
+      const generations = Number(
+        this.#db
+          .prepare(
+            "SELECT count(*) n FROM relay_receiver_acks WHERE sender_id=? AND message_id=?",
+          )
+          .get(sender_id, message.message_id)!.n,
+      );
       if (
-        Number(
-          this.#db.prepare("SELECT count(*) n FROM relay_receiver_acks").get()!
-            .n,
-        ) >= this.#options.max_ack_records
+        generations
+          ? generations >= this.#options.max_attempts
+          : Number(
+              this.#db
+                .prepare(
+                  "SELECT count(*) n FROM (SELECT DISTINCT sender_id,message_id FROM relay_receiver_acks)",
+                )
+                .get()!.n,
+            ) >= this.#options.max_ack_records
       )
         throw new MessagingError("inbox_capacity_exceeded");
       if (!existing) {

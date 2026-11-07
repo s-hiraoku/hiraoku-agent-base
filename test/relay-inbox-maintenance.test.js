@@ -646,7 +646,7 @@ UPDATE relay_inbox_meta SET version=3;`);
 });
 
 test("a released body frees its record slot while its tombstone still deduplicates and ACK history stays bounded", (t) => {
-  const f = fixture(t, { max_records: 1, max_ack_records: 3 }),
+  const f = fixture(t, { max_records: 1, max_ack_records: 2 }),
     first = delivery(message(Date.now() - 100, "3".repeat(32))),
     second = delivery(message(Date.now() - 100, "4".repeat(32))),
     third = delivery(message(Date.now() - 100, "5".repeat(32)));
@@ -665,7 +665,7 @@ test("a released body frees its record slot while its tombstone still deduplicat
   assert.equal(
     f.raw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
     3,
-    "ACK history, not released bodies, bounds what the inbox retains",
+    "ACK history of two messages, not released bodies, bounds what the inbox retains",
   );
 });
 
