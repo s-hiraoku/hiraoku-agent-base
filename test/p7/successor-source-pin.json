@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "0e931f74bc6753a5ca8065abe24d4b9b6933d4e3",
+  "source_ref": "6085738fc7f489c1372d6a5034732c8fb13ccd35",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "9151f47b762f59da23e88387b57802895b4f032ed441f5466bdbd11f97c58b04"
+      "sha256": "7133031196fb954b1a8f3b770394ee68fae333b12683bfff4cc8643815e2d08a"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -180,6 +180,10 @@
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
       "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2"
+    },
+    "src/adapter-host/mcp.ts": {
+      "previous_sha256": null,
+      "sha256": "38734ff11bbbcb08b82d89c9eb7b828e48bd3e691c1d0ef0ee01d9c3bf73ef3b"
     },
     "src/adapter-policy/contract.ts": {
       "previous_sha256": "46f6d5cb1fea588fa516b44ab273ed6f80df43ab235aabf96ad140c4ebdbc168",
@@ -732,6 +736,14 @@
     "test/p7/runner.test.js": {
       "previous_sha256": null,
       "sha256": "927bd21de1a32e0b279431b22c2ba280d114df64c4e896dab6cb2fd152d2d7dc"
+    },
+    "test/recipient-host-mcp.test.js": {
+      "previous_sha256": null,
+      "sha256": "4413def0c63f7f7146b6901ecbc6ee1a9dcfa1000e2a304d44f6497e42b3f329"
+    },
+    "test/recipient-host-stdio-fixture.js": {
+      "previous_sha256": null,
+      "sha256": "7173dfc55c84cc3e43a8ea675012d05358ca9158b835d28e61c2e5ff8c853046"
     },
     "test/recipient-messages-fixtures.js": {
       "previous_sha256": null,
