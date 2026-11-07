@@ -455,6 +455,13 @@ export async function startHostA2a(deps: HostA2aDependencies) {
     let maintainedAt = 0;
     const receive = async () => {
       try {
+        // Release what can be released before polling, so a full inbox does not
+        // refuse a new reply while it still holds bodies that no ACK can confirm.
+        await applyReplies();
+      } catch {
+        // The bodies stay saved; the apply after polling retries them.
+      }
+      try {
         for (let i = 0; i < 16 && !stopped; i++) {
           received = false;
           await receiver.receiveOnce();
