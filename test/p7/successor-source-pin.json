@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "52d7fdf35861500eb0e6d807de79f16fedf22db6",
+  "source_ref": "2cc396b59009883fdc2a0a185810b21ed6d5ab80",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "409ab05bca5970faeb1cc2d4cbcf753aad6d4d55a1a91674cd20927e708d3d2f"
+      "sha256": "3265cf91d8b0783f9472c34a6b54592b3a66256ac4115bbe5503b69534c4933d"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -232,6 +232,10 @@
     "src/answer-intents/sqlite-journal.ts": {
       "previous_sha256": "331e8082c7a774fb40cfd64711a1d76001b5ce1b6a3930689e522c43877b996d",
       "sha256": "ab6adc5fbada38a7044e4ba2a8dfe990b3830ec366bb076394ac9d547f8dcb25"
+    },
+    "src/events.ts": {
+      "previous_sha256": "897f9e75bcc0d76c1031b015f83e9bc19f3ed68c07980a246d6cc97a44e536ee",
+      "sha256": "a5cd7a63d1de11ac425e97e90ad9ab4e9cdaacd8c8e3c2844c07d7e180a9b9b4"
     },
     "src/generic-host.ts": {
       "previous_sha256": null,
@@ -593,6 +597,10 @@
       "previous_sha256": "5ed448109e226fa0612f571dd616e5be2cbb2691f560a6e207bc47b89c16aeac",
       "sha256": "c5e217f4b3ee7a19d2c73d758e260e3f71f220eb6e0ef1e2dff465327afdee54"
     },
+    "src/worker-loop.ts": {
+      "previous_sha256": "dacc3d2c1ad8ec12ff90efbb005625480e975397dbd760186516cf5617b8c86f",
+      "sha256": "81fc73d472e13fd1bb76713956d45c62a67f416c2e15fe4475c7f8ce349de348"
+    },
     "test/a2a-hab-unit-fixtures.js": {
       "previous_sha256": "660b242e12877391c115aeb7671afe2b11795f07ef5668ecddec84b49a0df94d",
       "sha256": "163a94911f06b87e5adcc095770036d919bd69f5176c2da76474095a28b19d21"
@@ -632,6 +640,10 @@
     "test/delivery-lab/sqlite-failures.test.js": {
       "previous_sha256": "2044a042d8485319eb617681325676b700ccfc1065ae3ded9ab5705f4e317c60",
       "sha256": "f7202e2e1dc73ef5c5b5a2549f1666a6cfecac8aca7fbfd1fe782e1d815d2a21"
+    },
+    "test/design-budget-boundaries.test.js": {
+      "previous_sha256": null,
+      "sha256": "904da9235935e20b8ea7ea80da38a32c62c6385c471505fcc8741942d30d0106"
     },
     "test/generic-a2a.test.js": {
       "previous_sha256": null,

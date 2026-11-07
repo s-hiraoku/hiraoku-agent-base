@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "936f5c7e2b5f8f69d4f42efe11238ac05033ff533f358a8a482f024804e08df2",
+      "sha256": "b74700e50dba08d7aff50861beafb959c4c37acb212d1ec6cdb44d35fc15e305",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +932,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "f319df52a9723bb458ecb33f2e39817841007206567969a1f1f0ef9a13974875",
+      "sha256": "80577001c03a5d2f6235094e5615de033de529a6a676c898bdc6225d5fa715a7",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -5288,7 +5288,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 68 cases: 60 after the unused asynchronous relay operations were deleted, plus eight restored delivery-guarantee cases. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1175 at this candidate) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 68 cases: 60 after the unused asynchronous relay operations were deleted, plus eight restored delivery-guarantee cases. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1178 after merging main at 86e567b) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total."
     },
     {
       "status": "resolved",

@@ -149,3 +149,9 @@ The third review fixes (reviewed at `4715b4ef2690b2d9ed4863d4fa023eeb4d06c553`) 
 - In source-review.json the changed sources were re-read and rehashed. `src/host/a2a.ts`, `src/agent-sdk/receiver.ts`, `src/agent-sdk/sqlite-inbox.ts`, `scripts/relay-rollback-reconcile.mjs`, `src/a2a/hab-contract.ts`, `src/a2a/hab-adapter.ts` and `src/a2a/store.ts` have new summaries, and the three tests record their new cases.
 
 New and re-rendered source links pin to the reviewed commit above.
+
+## Maintenance after merging main into PR #137
+
+Merge source `2cc396b59009883fdc2a0a185810b21ed6d5ab80` incorporates main `86e567b0681fdb9742a5a04ca0d2513004f94530` without changing ADR-016 or the JetStream-only delivery boundary. The imported `src/worker-loop.ts` change rejects non-finite and nonnumeric idle budgets before constructing an adapter. The imported `src/events.ts` change rechecks the subscription expiry after asynchronous authorization before issuing a callback. The three cases in `test/design-budget-boundaries.test.js` cover these guards and valid finite wait budgets. The existing `js-root` command discovers that new top-level file.
+
+The full-root P7 catalog is 1178 (the PR's 1175 plus the three main cases). HAB-C-V05 records this current count; earlier counts and their source-document summaries remain historical. The successor manifest was regenerated from the committed merge, including the new regression file, and both added predecessor blobs were independently decompressed and hash-checked. Existing historical fixture bytes and the frozen source pin are preserved. This maintenance changes no requirement scope, execution authority, manual-check status or product design. Current hosted CI and the separate PR review remain separate evidence.
