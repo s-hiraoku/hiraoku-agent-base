@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "2cc396b59009883fdc2a0a185810b21ed6d5ab80",
+  "source_ref": "2e2b392a9c8fbfe5281e63e080ab2a02af389a0e",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -307,7 +307,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "7f17a3b870b47c0a12bdf046348a4bf3a7024b7e83a0cc5c33e64cc54dcfc766"
+      "sha256": "277eca057d90bb054b38c047e8e2e947c8c3f9c0d4f844d7015ed6e83894989f"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
