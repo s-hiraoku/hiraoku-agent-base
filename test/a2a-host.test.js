@@ -243,11 +243,11 @@ async function a2aClient(f, name) {
   }).createFromUrl(new URL(f.host.a2a_url).origin);
   const options = { serviceParameters: { Authorization: authorization } };
   return {
-    send: (messageId, text = "connectivity_check") =>
+    send: (messageId, text = "connectivity_check", returnImmediately = true) =>
       client.sendMessage(
         SendMessageRequest.fromJSON({
           message: { messageId, role: "ROLE_USER", parts: [{ text }] },
-          configuration: { returnImmediately: true },
+          configuration: { returnImmediately },
         }),
         options,
       ),
@@ -1068,5 +1068,34 @@ test("saved replies whose ACK can never be confirmed release their slots, so a l
     (await client.get(flights[1].task.id)).status.state,
     TaskState.TASK_STATE_SUBMITTED,
     "an unconfirmed reply is never applied to its Task",
+  );
+});
+
+test("a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance", async (t) => {
+  const { f, recipient } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  const started = Date.now();
+  const blocking = client.send("blocking_cycles", "connectivity_check", false);
+  const request = await eventually(async () => {
+    await recipient.receiver.receiveOnce();
+    return recipient.receiver.inbox()[0];
+  }, 4000);
+  assert.ok(request, "the recipient received the request");
+  const acceptance = await recipient.reply(
+    request,
+    "execution_accepted",
+    accepted("blocking"),
+  );
+  assert.equal(
+    await untilAcked(recipient.client, acceptance.message_id),
+    "acked",
+  );
+  await recipient.reply(request, "execution_result", succeeded("blocking"));
+  const task = await blocking;
+  assert.equal(task.status.state, TaskState.TASK_STATE_COMPLETED);
+  assert.equal(task.artifacts[0].parts[0].content.value, "connectivity_ok");
+  assert.ok(
+    Date.now() - started < 4500,
+    `completed before the five-second wait ran out, after ${Date.now() - started} ms`,
   );
 });
