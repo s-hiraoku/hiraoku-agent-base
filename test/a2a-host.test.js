@@ -1152,6 +1152,56 @@ test("saved replies whose ACK can never be confirmed release their slots, so a l
   );
 });
 
+test("a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged", async (t) => {
+  const max = 1;
+  const { f, worker, recipient, identity } = await connected(t, {
+    a2a: a2aSection({ max_records: max }),
+  });
+  const client = await a2aClient(f, "caller");
+  const [{ task, request }] = await inFlight(client, recipient, "oversized", 1);
+  await f.restart(async () => {
+    // Saved and ACK-confirmed under the wider delivery limits, but its data part is
+    // over HAB_A2A_LIMITS, so applying it raises ContractError on every attempt.
+    const inbox = hostInbox(f, identity.agent_id, max);
+    try {
+      const m = expiringReply(
+        request,
+        "execution_result",
+        { ...succeeded("oversized"), result: "x".repeat(5000) },
+        3600000 - 1000,
+      );
+      inbox.save({
+        message: { ...m, sender_id: worker.agent_id },
+        generation: 1,
+        lease_token: "x".repeat(43),
+        lease_until: m.expires_at,
+      });
+      const ack = inbox.claimAck();
+      inbox.confirmAck(ack, {
+        state: "acked",
+        recipient_id: identity.agent_id,
+        sender_id: ack.sender_id,
+        message_id: ack.message_id,
+        request_id: ack.request_id,
+        receipt_id: "receipt-oversized",
+        acked_at: new Date().toISOString(),
+      });
+    } finally {
+      inbox.close();
+    }
+    assert.equal(unreleasedReplies(f), 1);
+  });
+  assert.ok(
+    await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
+    "the refused body is released instead of being retried every cycle",
+  );
+  assert.equal(
+    (await client.get(task.id)).status.state,
+    TaskState.TASK_STATE_SUBMITTED,
+    "a refused reply does not change its Task",
+  );
+});
+
 /**
  * Drops the running host's ACKs of the message whose replay-bound ID ends in `entropy`
  * at its delivery-service transport while that message is live, as a lost request
