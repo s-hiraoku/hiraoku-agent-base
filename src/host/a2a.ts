@@ -517,9 +517,11 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         try {
           if (task) await gateway.apply(task, storedRoute(task, [entry]));
         } catch (error) {
-          // A reply the Task refuses (a conflict, a malformed body) is rejected; any
-          // other failure keeps the body for the next cycle.
+          // A reply the Task refuses (a conflict, a malformed body, a body over the
+          // A2A contract limits) is rejected, as classifyReply discards it before save;
+          // any other failure keeps the body for the next cycle.
           if (
+            !(error instanceof ContractError) &&
             !(error instanceof RequestMalformedError) &&
             !(error instanceof ZodError)
           )
