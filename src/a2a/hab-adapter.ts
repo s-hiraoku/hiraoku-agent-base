@@ -196,6 +196,19 @@ export class HabA2aHandler extends DefaultRequestHandler {
     context: ServerCallContext,
     route: HabA2aRoute,
   ): Promise<Task> {
+    const { next, matches } = await this.#evaluate(task, route);
+    route.assertCurrent();
+    if (JSON.stringify(next) !== JSON.stringify(task))
+      await this.#store.save(next, context);
+    route.assertCurrent();
+    // A reply-attested Task now holds everything its replies carried; an evidence route
+    // re-verifies the engine on each read until the Task is terminal.
+    if ((terminal(next) || !route.evidence) && matches.length)
+      route.settle?.(matches);
+    return next;
+  }
+  /** The Task the route's confirmed replies make of `task`, without saving it. */
+  async #evaluate(task: Task, route: HabA2aRoute) {
     route.assertCurrent();
     let link = this.#link(task, route);
     let next = task;
@@ -407,15 +420,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
           },
         };
     }
-    route.assertCurrent();
-    if (JSON.stringify(next) !== JSON.stringify(task))
-      await this.#store.save(next, context);
-    route.assertCurrent();
-    // A reply-attested Task now holds everything its replies carried; an evidence route
-    // re-verifies the engine on each read until the Task is terminal.
-    if ((terminal(next) || !route.evidence) && matches.length)
-      route.settle?.(matches);
-    return next;
+    return { next, matches };
   }
   async #wait(
     task: Task,
@@ -559,6 +564,17 @@ export class HabA2aHandler extends DefaultRequestHandler {
     return this.#serial(async () => {
       const task = await this.#store.load(taskId, context);
       return task && this.#observe(task, context, route);
+    });
+  }
+  /** The stored Task as the route's replies would leave it; nothing is saved or settled. */
+  preview(
+    taskId: string,
+    context: ServerCallContext,
+    route: HabA2aRoute,
+  ): Promise<Task | undefined> {
+    return this.#serial(async () => {
+      const task = await this.#store.load(taskId, context);
+      return task && (await this.#evaluate(task, route)).next;
     });
   }
   override getTask(

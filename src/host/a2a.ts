@@ -368,15 +368,63 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         return false;
       }
     };
+    // A new reply ID is saved only if it would change its Task. One that repeats what
+    // the Task or a held reply already carries, or that the Task would refuse, changes
+    // nothing when dropped, so a recipient cannot fill the ACK history with fresh IDs.
+    // An ID the inbox still holds always reaches it, so its redelivery is deduplicated.
+    const changesTask = async (delivery: Delivery) => {
+      const { sender_id, ...message } = delivery.message;
+      const source = message.in_reply_to!.message_id;
+      const held = mail
+        .inbox()
+        .filter(
+          (entry) =>
+            entry.sender_id === sender_id &&
+            entry.message.in_reply_to?.message_id === source,
+        );
+      if (held.some((entry) => entry.message.message_id === message.message_id))
+        return true;
+      const task = store.findBySource(source);
+      const gateway = wired.gateway;
+      if (!task || !gateway) return false;
+      // A held reply counts as confirmed, so a copy under a new ID is not saved while
+      // the first one waits for its ACK.
+      const confirmed = held.map((entry) => ({
+        ...entry,
+        receipt_confirmed: true,
+      }));
+      const state = async (replies: InboxEntry[]) =>
+        (await gateway.preview(task, storedRoute(task, replies)))?.status
+          ?.state;
+      try {
+        const before = await state(confirmed).catch(() => state([]));
+        const after = await state([
+          ...confirmed,
+          {
+            sender_id,
+            message,
+            received_at: new Date().toISOString(),
+            receipt_confirmed: true,
+          },
+        ]);
+        return after !== before;
+      } catch {
+        return false;
+      }
+    };
     let received = false;
     const receiver = new DurableReceiver(mail, {
       poll: async () => {
         const delivery = service.poll(hostContext);
         received = delivery !== null;
-        if (!delivery || correlated(delivery.message)) return delivery;
-        // Anything else is ACKed without an inbox record, so unrelated senders spend
-        // none of the record or ACK history capacity that replies need. Dropping it
-        // again on a redelivery is harmless, so it needs no dedup record.
+        if (
+          !delivery ||
+          (correlated(delivery.message) && (await changesTask(delivery)))
+        )
+          return delivery;
+        // Anything else is ACKed without an inbox record, so it spends none of the
+        // record or ACK history capacity that replies need. Dropping it again on a
+        // redelivery is harmless, so it needs no dedup record.
         const { sender_id, message_id } = delivery.message;
         await service.ack(hostContext, {
           sender_id,
