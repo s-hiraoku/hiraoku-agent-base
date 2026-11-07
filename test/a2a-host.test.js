@@ -184,15 +184,21 @@ function agent(t, f, name, agentId) {
   return {
     client,
     receiver,
-    /** Sends `kind` to the entry's sender; a null kind value sends a text notice instead. */
-    async send(entry, kind, value) {
-      const at = new Date().toISOString();
+    /**
+     * Sends `kind` to the entry's sender; a null kind value sends a text notice instead.
+     * The message expires `expiresInMs` from now, its first send backdated to match.
+     */
+    async send(
+      entry,
+      kind,
+      value,
+      expiresInMs = 3600000,
+      entropy = randomUUID().replaceAll("-", ""),
+    ) {
+      const at = new Date(Date.now() - 3600000 + expiresInMs).toISOString();
       const message = {
         version: 1,
-        message_id: makeReplayBoundMessageId(
-          at,
-          randomUUID().replaceAll("-", ""),
-        ),
+        message_id: makeReplayBoundMessageId(at, entropy),
         recipient_id: entry.sender_id,
         kind,
         thread_id: entry.message.thread_id,
@@ -221,8 +227,14 @@ function agent(t, f, name, agentId) {
       await sender.sendOnce();
       return { message, record: outbox.get(message.message_id) };
     },
-    async reply(entry, kind, value) {
-      const { message, record } = await this.send(entry, kind, value);
+    async reply(entry, kind, value, expiresInMs, entropy) {
+      const { message, record } = await this.send(
+        entry,
+        kind,
+        value,
+        expiresInMs,
+        entropy,
+      );
       assert.equal(record.state, "accepted");
       return message;
     },
@@ -1135,6 +1147,125 @@ test("saved replies whose ACK can never be confirmed release their slots, so a l
     TaskState.TASK_STATE_SUBMITTED,
     "an unconfirmed reply is never applied to its Task",
   );
+});
+
+/**
+ * Drops the running host's ACKs of the message whose replay-bound ID ends in `entropy`
+ * at its delivery-service transport while that message is live, as a lost request
+ * would. Once it has expired, its ACKs reach the real relay again. Returns the drops.
+ */
+function loseHostAcks(t, entropy) {
+  const ack = HabJetStreamService.prototype.ack;
+  const dropped = [];
+  HabJetStreamService.prototype.ack = function (context, input) {
+    const [, first, tail] = String(input?.message_id).split(".");
+    if (tail === entropy && Date.now() < Number(first) + 3600000) {
+      dropped.push(input);
+      throw Error("ack lost in transport");
+    }
+    return ack.call(this, context, input);
+  };
+  t.after(() => {
+    HabJetStreamService.prototype.ack = ack;
+  });
+  return dropped;
+}
+
+const hostAck = (f, messageId) => {
+  const db = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    return {
+      inbox: db
+        .prepare(
+          "SELECT receipt_confirmed,released_at FROM relay_inbox WHERE message_id=?",
+        )
+        .get(messageId),
+      acks: db
+        .prepare(
+          "SELECT state,reason FROM relay_receiver_acks WHERE message_id=? ORDER BY generation",
+        )
+        .all(messageId),
+    };
+  } finally {
+    db.close();
+  }
+};
+
+test("when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task", async (t) => {
+  const { f, recipient } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  const [{ task, request }] = await inFlight(client, recipient, "lost", 1);
+  await recipient.reply(request, "execution_accepted", accepted("lost"));
+  await untilState(() => client.get(task.id), TaskState.TASK_STATE_WORKING);
+
+  const ttl = 6000;
+  const entropy = randomUUID().replaceAll("-", "");
+  const dropped = loseHostAcks(t, entropy);
+  const sent = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("lost"),
+    ttl,
+    entropy,
+  );
+  assert.ok(
+    await eventually(async () => dropped.length > 0 || undefined, 8000),
+    "the host saved the result and its ACK was lost",
+  );
+  assert.equal(
+    hostAck(f, sent.message_id).inbox?.receipt_confirmed,
+    0,
+    "the result is saved unconfirmed",
+  );
+  assert.ok(
+    await eventually(
+      async () =>
+        hostAck(f, sent.message_id).acks.every(
+          (row) => row.state !== "pending",
+        ) || undefined,
+      ttl + 20000,
+    ),
+    "every ACK attempt of the lost result ended",
+  );
+  const { inbox, acks } = hostAck(f, sent.message_id);
+  assert.ok(
+    acks.some((row) => row.state === "obsolete" && row.reason === "invalid_ack"),
+    `after the reply expired the relay refused the ACK as invalid_ack: ${JSON.stringify(acks)}`,
+  );
+  assert.equal(inbox.receipt_confirmed, 0);
+  assert.equal(
+    (await recipient.client.status(sent.message_id)).state,
+    "expired",
+    "the relay never recorded the lost result as acked",
+  );
+  assert.ok(
+    await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
+    "the unconfirmable result's body was released",
+  );
+  assert.equal(
+    (await client.get(task.id)).status.state,
+    TaskState.TASK_STATE_WORKING,
+    "an unconfirmed result is never applied",
+  );
+
+  const fresh = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("lost"),
+  );
+  assert.equal(
+    await untilAcked(recipient.client, fresh.message_id),
+    "acked",
+    "the host saved and ACKed the new result",
+  );
+  const done = await untilState(
+    () => client.get(task.id),
+    TaskState.TASK_STATE_COMPLETED,
+  );
+  assert.equal(done.metadata.hab_relay.result_message_id, fresh.message_id);
+  assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
 });
 
 test("a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance", async (t) => {
