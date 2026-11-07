@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -94,9 +94,11 @@ async function a2aHost(t, { a2a = a2aSection() } = {}) {
     get host() {
       return host;
     },
-    async restart() {
+    /** Restarts the host; `offline` runs while it is stopped. */
+    async restart(offline) {
       await host.close();
       host = undefined;
+      await offline?.();
       host = await startHost(f.configPath);
     },
     connect(name, address, operations) {
@@ -964,4 +966,107 @@ test("a Task admitted once an outbox record is purged still gets its replies sav
     "on-time replies' ACK history is collectable before their outbox record",
   );
   acks.close();
+});
+
+/** The host's own A2A inbox, opened with the key the host derives from the fixture's Registry key. */
+function hostInbox(f, agentId, maxRecords) {
+  const a2aKey = createHmac("sha256", Buffer.from("11".repeat(32), "hex"))
+    .update("hab-host-a2a-v1")
+    .digest();
+  const inbox = new SQLiteInbox(join(f.config.directory, "a2a-inbox.sqlite"), {
+    agent_id: agentId,
+    fingerprint_key: createHmac("sha256", a2aKey)
+      .update("hab-host-a2a-inbox-v1")
+      .digest(),
+    limits,
+    max_records: maxRecords * 2,
+    max_body_bytes: maxRecords * 2 * limits.envelope_bytes,
+    max_ack_records: maxRecords * 3,
+    ack_retry_ms: 86400000,
+    retry_base_ms: 1000,
+    retry_cap_ms: 60000,
+    max_attempts: 5,
+  });
+  inbox.migrate();
+  return inbox;
+}
+
+/** A reply to `entry` first sent almost an hour ago, so it expires in `msLeft`. */
+function expiringReply(entry, kind, value, msLeft) {
+  const at = new Date(Date.now() - 3600000 + msLeft).toISOString();
+  return {
+    version: 1,
+    message_id: makeReplayBoundMessageId(at, randomUUID().replaceAll("-", "")),
+    recipient_id: entry.sender_id,
+    kind,
+    thread_id: entry.message.thread_id,
+    in_reply_to: {
+      sender_id: entry.sender_id,
+      message_id: entry.message.message_id,
+    },
+    first_sent_at: at,
+    expires_at: new Date(Date.parse(at) + 3600000).toISOString(),
+    body: {
+      parts: [
+        { type: "data", schema_id: `task.${kind}`, schema_version: 1, value },
+      ],
+    },
+  };
+}
+
+test("saved replies whose ACK can never be confirmed release their slots, so a later reply is still saved and completes its Task", async (t) => {
+  const max = 2;
+  const { f, worker, recipient, identity } = await connected(t, {
+    a2a: a2aSection({ max_records: max }),
+  });
+  const client = await a2aClient(f, "caller");
+  const flights = await inFlight(client, recipient, "unconfirmable", max);
+  await f.restart(async () => {
+    // A previous run saved these replies, then its ACK came back invalid_ack and the
+    // replies expired, so no redelivery can confirm them. They fill every body slot.
+    const inbox = hostInbox(f, identity.agent_id, max);
+    try {
+      for (const [i, { request }] of flights.entries())
+        for (const [kind, value] of [
+          ["execution_accepted", accepted(`lost${i}`)],
+          ["execution_result", succeeded(`lost${i}`)],
+        ]) {
+          const m = expiringReply(request, kind, value, 1500);
+          inbox.save({
+            message: { ...m, sender_id: worker.agent_id },
+            generation: 1,
+            lease_token: "x".repeat(43),
+            lease_until: m.expires_at,
+          });
+          inbox.rejectAck(inbox.claimAck(), "invalid_ack");
+        }
+    } finally {
+      inbox.close();
+    }
+    assert.equal(unreleasedReplies(f), 2 * max);
+    await new Promise((done) => setTimeout(done, 1600));
+  });
+  const [{ task, request }] = flights;
+  for (const [kind, value] of [
+    ["execution_accepted", accepted("fresh")],
+    ["execution_result", succeeded("fresh")],
+  ]) {
+    const reply = await recipient.reply(request, kind, value);
+    assert.equal(
+      await untilAcked(recipient.client, reply.message_id),
+      "acked",
+      `the host saved and ACKed the new ${kind}`,
+    );
+  }
+  const done = await untilState(
+    () => client.get(task.id),
+    TaskState.TASK_STATE_COMPLETED,
+  );
+  assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
+  assert.equal(unreleasedReplies(f), 0);
+  assert.equal(
+    (await client.get(flights[1].task.id)).status.state,
+    TaskState.TASK_STATE_SUBMITTED,
+    "an unconfirmed reply is never applied to its Task",
+  );
 });
