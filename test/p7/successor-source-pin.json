@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "3c8b545502b520677ba8ca2d524326034ed3e65a",
+  "source_ref": "123e21cd839935179d53264d917baac24ffdf982",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -43,7 +43,7 @@
     },
     "packages/relay-nats/OPERATIONS.md": {
       "previous_sha256": "4b5e0040932f3a699179e922df0a6f6f7fc6afc4f141cdd83aa44ad6cbd8535c",
-      "sha256": "28010550a4d143dac00955462b082dd7c6503f2828ae0513dc83b78e8777b2a1"
+      "sha256": "ae40826c83ad950d0c702f9dc6bbaa579880096f38ea8a84fdff4978244434f9"
     },
     "packages/relay-nats/README.md": {
       "previous_sha256": "7f8d3a4d4d01e647ff9076492250be285089b6bde4a1302d7d8c35e00fcb6037",
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "e55594c3a69cbdfa900ff8df1ed184a12149e649b3ed033c34aad02a5ff2f346"
+      "sha256": "409ab05bca5970faeb1cc2d4cbcf753aad6d4d55a1a91674cd20927e708d3d2f"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -155,11 +155,11 @@
     },
     "src/a2a/hab-adapter.ts": {
       "previous_sha256": "9f191223fb851a001cacac5ed9676d73ab65df820ff1c8bdd90d3b3695cc7e65",
-      "sha256": "2479e41f84ad89c77716f6b48f15783f43083a51f0243b22726710fb487a97fe"
+      "sha256": "ef629e4c7cf6ae1c3c1136098b5d88edfa6a587067e18ea136f78d64f6e54487"
     },
     "src/a2a/hab-contract.ts": {
       "previous_sha256": "bcd35e4caaa038e1312f752232e814186fb9bc763b66fa94313709a839ed0854",
-      "sha256": "41a88ab4cb2a1cdc4c2fc877a91c618f656ab0fd695abdeac26f68c0dcc2a565"
+      "sha256": "c5c77f016f7a26c2a13e707ae1abe0b32dc616cf4f8d0feaf9255586a895587e"
     },
     "src/a2a/hab-http.ts": {
       "previous_sha256": "cb7427b8837694373b4642d25562be49c5454aec41140102142906aa2927adc9",
@@ -175,7 +175,7 @@
     },
     "src/a2a/store.ts": {
       "previous_sha256": "5e9a7b778e8db3fdb6c293be6d88b360c2d61693ff760319d2d3c4d373040942",
-      "sha256": "4bb3fa58a4b5d99bb65d35f4968704483470bdd34c2ada16c33b317583c424bc"
+      "sha256": "f0c0dfd9afdf20e1e039ac032ec9aafe53fba27494faa0d58f201dec6eda4549"
     },
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
@@ -199,7 +199,7 @@
     },
     "src/agent-sdk/README.md": {
       "previous_sha256": null,
-      "sha256": "d00e857e1f6b0f5b9f34cd1d04fa809f714ffaf71411e3ff96d9316a9bcd8b09"
+      "sha256": "e6d2e78bdb3294a5e25f61bf00067c64818193a760a85d97588266a04bc55962"
     },
     "src/agent-sdk/index.ts": {
       "previous_sha256": null,
@@ -211,7 +211,7 @@
     },
     "src/agent-sdk/receiver.ts": {
       "previous_sha256": null,
-      "sha256": "f1b7093de7b4f2af67ddda53ef89e9b02a18413e52ccf9a6198fbd772ec5eec0"
+      "sha256": "08ccace866166f43b450bafd0e72f6210c7d1ebec6ec807163c239176b653149"
     },
     "src/agent-sdk/sender.ts": {
       "previous_sha256": null,
@@ -219,7 +219,7 @@
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
-      "sha256": "6bca8b7849dfbcb1e74222a5455e3ad560f52025fce73fb02c26f7f22bdc143a"
+      "sha256": "6676deb53fcdb0b49a2f50f5ad8247cda14df643eba321b6448954ea11a91c2c"
     },
     "src/agent-sdk/sqlite-outbox.ts": {
       "previous_sha256": null,
@@ -303,7 +303,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "91047e2cef18fcab3196c43612ea8e4202ee4f21dc26546d36f6ffd488c99609"
+      "sha256": "5a6a62fbd85fcf31de588cb1eac51fcad7423567e375f80de9065491111d7ac8"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
@@ -603,7 +603,7 @@
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "12e78ab113c6ae9350cc753a0f52896bb482c0a3cad9891b56f8d47e24117f48"
+      "sha256": "20a7dff25b8ef927ffabbeb549c7766a1a1342acb4e7640b5d506c4d49d77ffc"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
