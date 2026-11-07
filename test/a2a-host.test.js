@@ -1244,3 +1244,65 @@ test("a WORKING Task whose reply window closes without a result fails as result_
   assert.deepEqual(after.status, failed.status, "the late result changes nothing");
   assert.equal(unreleasedReplies(f), 0, "the late result was ACKed without a record");
 });
+
+test("a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance", async (t) => {
+  const { f, recipient } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  const [{ task, request }] = await inFlight(client, recipient, "due", 1);
+  await recipient.reply(request, "execution_accepted", accepted("due"));
+  await untilState(() => client.get(task.id), TaskState.TASK_STATE_WORKING);
+
+  const day = 86400000;
+  const lead = 5000;
+  let due;
+  await f.restart(() => {
+    // The request is aged so that its reply window closes `lead` ms after the host
+    // restarts, which is after the restart's first maintenance pass has run.
+    due = Date.now() + lead;
+    const at = due - day - 3600000;
+    const tasks = new DatabaseSync(
+      join(f.config.directory, "a2a-tasks.sqlite"),
+    );
+    tasks
+      .prepare(
+        "UPDATE hab_a2a_tasks SET metadata=json_set(metadata,'$.hab_relay.source.message_id',?,'$.hab_relay.source.first_sent_at',?,'$.hab_relay.source.expires_at',?) WHERE id=?",
+      )
+      .run(
+        makeReplayBoundMessageId(
+          new Date(at).toISOString(),
+          randomUUID().replaceAll("-", ""),
+        ),
+        new Date(at).toISOString(),
+        new Date(at + 3600000).toISOString(),
+        task.id,
+      );
+    tasks.close();
+    const outbox = new DatabaseSync(
+      join(f.config.directory, "a2a-outbox.sqlite"),
+    );
+    const shift =
+      outbox
+        .prepare("SELECT expires_at FROM relay_outbox WHERE message_id=?")
+        .get(request.message.message_id).expires_at -
+      (at + 3600000);
+    outbox
+      .prepare(
+        "UPDATE relay_outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+      )
+      .run(shift, shift, shift, shift, shift, request.message.message_id);
+    outbox.close();
+  });
+  if (Date.now() < due)
+    assert.equal(storedState(f, task.id), "TASK_STATE_WORKING");
+  assert.ok(
+    await eventually(
+      async () => storedState(f, task.id) === "TASK_STATE_FAILED" || undefined,
+      lead + 20000,
+    ),
+    "the host fails the Task without a caller read",
+  );
+  const lag = Date.now() - due;
+  assert.ok(lag < 20000, `failed ${lag} ms after the window closed`);
+  const failed = await client.get(task.id);
+  assert.equal(failed.metadata.hab_relay.reason, "result_window_expired");
+});
