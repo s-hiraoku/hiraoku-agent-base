@@ -127,21 +127,8 @@ test("real host MCP: durable receive/read, current permission, fixed answer enqu
 });
 
 test("real stdio process: official MCP client can receive, read and queue a fixed reply without a native runner", async (t) => {
-  const process = (await import("node:process")).default;
-  const { fileURLToPath } = await import("node:url");
-  const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
-  const { natsServerBinary } = await import("./jetstream-delivery.js");
-  const transport = new StdioClientTransport({
-    command: process.execPath,
-    args: [fileURLToPath(new URL("./recipient-host-stdio-fixture.js", import.meta.url))],
-    env: { HAB_NATS_SERVER: natsServerBinary(), NODE_NO_WARNINGS: "1" },
-    stderr: "pipe",
-  });
-  let diagnostics = "";
-  transport.stderr.on("data", (chunk) => { diagnostics += chunk.toString(); });
-  const client = new Client({ name: "synthetic-stdio-recipient", version: "1" });
-  t.after(async () => { await client.close(); });
-  await client.connect(transport);
+  const { recipientStdio } = await import("./recipient-host-stdio-parent.js");
+  const { client, close, diagnostics } = await recipientStdio(t);
   const call = async (op, args = {}) => {
     const result = await client.callTool({ name: `recipient_${op}`, arguments: args });
     assert.equal(result.isError, false);
@@ -161,7 +148,26 @@ test("real stdio process: official MCP client can receive, read and queue a fixe
   await call("answer_enqueue", { source });
   await call("answer_inspect", { source });
   await call("send");
-  await client.close();
-  assert.match(diagnostics, /RECIPIENT_STDIO_CLEANUP_OK/);
-  assert.doesNotMatch(diagnostics, /RECIPIENT_STDIO_CLEANUP_FAILED/);
+  await close();
+  assert.match(diagnostics(), /RECIPIENT_STDIO_CLEANUP_OK/);
+  assert.doesNotMatch(diagnostics(), /RECIPIENT_STDIO_CLEANUP_FAILED/);
+});
+
+test("stdio parent reclaims broker and scratch after interrupted child cleanup", async (t) => {
+  const { recipientStdio } = await import("./recipient-host-stdio-parent.js");
+  const { existsSync } = await import("node:fs");
+  const { createConnection } = await import("node:net");
+  const f = await recipientStdio(t, { blockCleanup: true });
+  assert.equal((await f.client.listTools()).tools.length, 7);
+  await f.close();
+  assert.match(f.diagnostics(), /RECIPIENT_STDIO_CLEANUP_BLOCKED/);
+  assert.doesNotMatch(f.diagnostics(), /RECIPIENT_STDIO_CLEANUP_OK/);
+  assert.equal(existsSync(f.directory), false);
+  await new Promise((resolve, reject) => {
+    const url = new URL(f.brokerServer);
+    const socket = createConnection({ host: url.hostname, port: Number(url.port) });
+    socket.setTimeout(2000, () => { socket.destroy(); reject(Error("broker_probe_timeout")); });
+    socket.once("connect", () => { socket.destroy(); reject(Error("owned_broker_still_running")); });
+    socket.once("error", (error) => error.code === "ECONNREFUSED" ? resolve() : reject(error));
+  });
 });

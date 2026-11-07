@@ -2,11 +2,14 @@
 import process from "node:process";
 import { setInterval } from "node:timers";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createRecipientHostMcpServer } from "../src/adapter-host/mcp.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 import { hostFixture, limits } from "./adapter-host-fixtures.js";
-import { startBroker } from "./jetstream-delivery.js";
+import { useParentTestBroker } from "./jetstream-delivery.js";
+// A private descriptor created by the owning test, never a product configuration.
+useParentTestBroker(JSON.parse(readFileSync(process.env.HAB_TEST_BROKER_FILE, "utf8")));
 const cleanup = [];
 let server, stopping = false;
 const stop = async () => {
@@ -15,8 +18,11 @@ const stop = async () => {
   setInterval(() => {}, 1000); // Keep cleanup alive after stdin EOF and unref workers.
   try {
     await server?.close();
+    if (process.env.HAB_TEST_BLOCK_CLEANUP === "1") {
+      process.stderr.write("RECIPIENT_STDIO_CLEANUP_BLOCKED\n");
+      await new Promise(() => {}); // Fault injection: SDK must terminate this owned child.
+    }
     for (const action of cleanup.reverse()) await action();
-    await (await startBroker()).stop();
     process.stderr.write("RECIPIENT_STDIO_CLEANUP_OK\n", () => process.exit(0));
   } catch {
     process.stderr.write("RECIPIENT_STDIO_CLEANUP_FAILED\n", () => process.exit(1));
@@ -24,7 +30,7 @@ const stop = async () => {
 };
 process.once("SIGTERM", stop);
 process.stdin.once("end", stop);
-// Bound a broken test child; the broker's existing exit hook stops only its owned child.
+// Bound a broken test child; the parent independently owns broker and scratch cleanup.
 setTimeout(() => process.exit(2), 30000).unref();
 const f = await hostFixture({ after: (action) => cleanup.push(action) });
 const journal = new SQLiteAnswerJournal(join(f.dir, "recipient-answers.sqlite"), {

@@ -71,6 +71,48 @@ is no honest production launch command until the real binding, current policy,
 store configuration and transport are verified. The test-only fixture below
 must not be installed as a production entry point.
 
+## Read response size and transport composition
+
+`maxInboxReadResultBytes` is an owner-selected budget for the serialized MCP
+CallToolResult of `inbox_read`, including UTF-8 encoding and the JSON escaping of
+the nested message. The default is 1 MiB; the minimum is 1 KiB so the bounded
+error fits. This is not a Relay message-size policy, an authentication setting,
+or a tool argument. The existing host/store ContractLimits remain authoritative.
+
+An oversized read returns `recipient_inbox_read_too_large` and
+`required_result_bytes`, with no message body or partial success. The source is
+not changed or consumed. Successful reads still return the complete unchanged
+HostStepResult with the external-agent provenance label. Mutating operations are
+not subject to this guard: a committed write's result is never replaced with a
+read-size error, and the wrapper never retries a write.
+
+The composition owner must align the read budget, permitted stored message sizes,
+and the actual client transport limit before enabling this surface. The budget
+excludes JSON-RPC framing, request IDs and any additional transport envelope.
+In particular, arbitrary string request IDs require their own bounded framing
+policy; this factory does not claim an absolute cap on all wire bytes. The
+TypeScript SDK 1.32.0 stdio client defaults to a 10 MiB read buffer and exposes
+`maxBufferSize`. Other clients may have different limits. Discovery results and
+other operation results also require transport sizing; this guard is specific
+to source-message reads, not a universal output-size limit.
+
+If a read is refused, an authorized owner can recompose the server with a larger
+read budget and configure a compatible client buffer, then read the same source
+again under current recipient authorization. Neither the server nor external
+message content can authorize that change. The original body is returned in full
+when the resulting serialized response fits. If the intended product cannot
+support the required buffer, leave that integration blocked: this change does
+not introduce paging, silently truncate content, or claim that every client can
+read every permitted message. A common paged host contract would need a separate
+design decision rather than an MCP-only message schema.
+
+`test/recipient-host-mcp-size.test.js` verifies exact byte-boundary behavior with
+Unicode/escaping, rejection of tool-controlled budgets, renewed authorization,
+unchanged mutating results, and an actual isolated stdio client. A refused large
+read leaves the connection usable; a newly owner-configured client/server pair
+retrieves the complete same source. This uses synthetic content and no product
+configuration, authority expansion, broker or live agent.
+
 ## Relationship to RecipientMessagePort
 
 This is a pull route and does not implement or replace RecipientMessagePort.
@@ -111,12 +153,20 @@ performed for this preparation. ACK remains storage receipt, not execution.
 
 ## Evidence
 
-`test/recipient-host-mcp.test.js` uses the official MCP SDK client/server over
-in-memory transport and an owned separate stdio process. The real-host cases use
+`test/recipient-host-mcp.test.js` and `test/recipient-host-mcp-size.test.js` use the
+official MCP SDK client/server over in-memory transport and owned separate stdio
+processes. The real-host cases use
 existing SQLite inbox/outbox/answer journals and private NATS brokers. They cover
 receive/ACK, saved source reads, revocation, fixed reply enqueue and separate
-send. The stdio case observes `RECIPIENT_STDIO_CLEANUP_OK` after closing its client
-and cleaning up owned stores and broker. Recipient identity, decisions and
+send. The real-host stdio test parent owns its broker and temporary directory;
+the fixture child only borrows a private synthetic broker descriptor. Closing
+the client waits for child stderr to finish before checking the child-store
+cleanup marker `RECIPIENT_STDIO_CLEANUP_OK`. The parent then independently stops
+its broker and removes its directory. A fault-injection case blocks child cleanup
+and verifies that the parent still reclaims its directory and closes the owned
+broker endpoint; it does not label the missing child marker as clean child
+shutdown. These are cleanup tests, not crash-durability evidence.
+Recipient identity, decisions and
 operator resume are synthetic. The Relay-side fixture uses an in-process gateway;
 this is not an HTTP deployment or real product test. Native wake, human approval,
 session binding, full restoration and production access control remain unverified.
