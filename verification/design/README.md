@@ -191,3 +191,13 @@ Source review compares `ab66bd7` with the integrated `d6c67f7` changes and expec
 The 17 new cases make the expected root inventory 1207; four enter the A2A producer inventory, now 53. Source inspection and inventory maintenance are not test-execution evidence. Synthetic cohort aging does not refresh fingerprints and proves maintenance/capacity behavior, not whole-state recovery. Per-Task injected faults do not prove API-reachable database corruption or repair globally failed databases. Source-index parse counts are bounded synthetic work measurements, not production MCP-starvation evidence. Existing independent-engine, live-recipient and production-operation limits remain unchanged.
 
 A final arithmetic refinement budgets usable slots after collection as max(0, M - T + p), including when an operator lowers the cap M below the retained count T. Its extra assertion belongs to an existing test, so inventories stay 1207/53. The earlier integrated 113-case result predates this refinement; affected-test rerun and final-head checks must supply its execution evidence. A full-root run started before that edit is not an unchanged-final-snapshot claim.
+
+## Maintenance after releasing contract-refused host replies
+
+The follow-up (reviewed at `af7c769c0167230bf11809f326488ff0e1348186`) makes the host receiver release a saved, ACK-confirmed reply whose apply raises `ContractError`, as it already did for a conflict or a malformed body, so a body over the A2A contract limits is no longer retried every cycle and its Task does not change. `classifyReply` already discarded such a reply before save, so this covers only a saved body that reaches apply anyway, which the new test saves offline under the wider delivery limits. One new case in `test/a2a-host.test.js` covers it, so the expected root inventory is now 1208; the A2A producer inventory stays 53. The 1207 counts above describe the nine-candidate snapshot. The audit drift was reread, not rehashed:
+
+- Strengthened, not weakened: HAB-D20 adds a reply over the A2A contract limits to the refusals the receiver releases, and its scope names the new test. HAB-C-V05 records the current expected root of 1208.
+- HAB-V07, HAB-V14, HAB-C-V01 and HAB-C-V05 keep their ranges after the count-only change and were re-cited. No citation moved.
+- In source-review.json the changed sources were re-read and rehashed. `src/host/a2a.ts` extends its summary with the refusal set, `test/a2a-host.test.js` records the new case, and the count summaries for the three testing documents, `scripts/p7-lab.mjs` and `test/p7/a2a-cases.json` state 1208.
+
+Re-rendered source links are relative, as in the latest sections. This maintenance changes no execution authority, manual-check status or product design.
