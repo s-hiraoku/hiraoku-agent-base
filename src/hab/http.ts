@@ -1,10 +1,10 @@
-import { RELAY_OAUTH_SCOPES } from "../relay/oauth-resource.ts";
-import type { WriterAdmission } from "../relay/writer-admission.ts";
+import { RELAY_OAUTH_SCOPES } from "../host/mcp/oauth-resource.ts";
+import type { WriterAdmission } from "../host/mcp/writer-admission.ts";
 /** Explicit HAB HTTP composition; constructing starts no listener or connection. */
-import { RelayHttpGateway } from "../relay/http.ts";
-import type { RelayHttpPolicy, RelayHttpVerifier } from "../relay/http.ts";
+import { RelayHttpGateway } from "../host/mcp/http.ts";
+import type { RelayHttpPolicy, RelayHttpVerifier } from "../host/mcp/http.ts";
 import type { AuditSink } from "../security.ts";
-import type { RelayContextResolver, RelayMcpGate } from "../relay/mcp.ts";
+import type { RelayContextResolver, RelayMcpGate } from "../host/mcp/server.ts";
 import {
   createHabMcpServer,
   habMcpSchemas,
@@ -12,7 +12,7 @@ import {
 } from "./mcp.ts";
 import type { HabMcpService } from "./mcp.ts";
 import { habDiscoverySchema } from "./discovery.ts";
-import { RelayError } from "../relay/service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 export class HabHttpGateway extends RelayHttpGateway {
   readonly #hab: HabMcpService;
   constructor(
@@ -23,7 +23,7 @@ export class HabHttpGateway extends RelayHttpGateway {
     admission?: WriterAdmission,
   ) {
     if (typeof service?.resolve !== "function")
-      throw new RelayError("invalid_hab_mcp_service");
+      throw new MessagingError("invalid_hab_mcp_service");
     super(service, policy, audit, verify, admission);
     this.#hab = service;
   }

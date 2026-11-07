@@ -1,13 +1,13 @@
 /** Operator management for the configured local Relay. Prints no secrets. */
 import { pathToFileURL } from "node:url";
 import {
-  relayAdminStatus,
-  relayAdminConnect,
-  relayAdminDisconnect,
-  relayAdminRename,
-  relayAdminErrorCode,
-  RelayAdminError,
-} from "../src/relay-host/admin.ts";
+  hostAdminStatus,
+  hostAdminConnect,
+  hostAdminDisconnect,
+  hostAdminRename,
+  hostAdminErrorCode,
+  HostAdminError,
+} from "../src/host/admin.ts";
 
 const usage = `usage:
   hab-relay-admin --config <service.local.json> status
@@ -17,7 +17,7 @@ const usage = `usage:
 
 function parse(args) {
   if (args[0] !== "--config" || !args[1] || !args[2])
-    throw new RelayAdminError("usage");
+    throw new HostAdminError("usage");
   const [, config, command, ...rest] = args;
   const options = {};
   for (let i = 0; i < rest.length; i += 2) {
@@ -37,7 +37,7 @@ function parse(args) {
       value === undefined ||
       Object.hasOwn(options, key)
     )
-      throw new RelayAdminError("usage");
+      throw new HostAdminError("usage");
     options[key] = value;
   }
   return { config, command, options };
@@ -46,7 +46,7 @@ function parse(args) {
 export function main(args = process.argv.slice(2)) {
   const { config, command, options } = parse(args);
   if (command === "status" && !Object.keys(options).length)
-    return relayAdminStatus(config);
+    return hostAdminStatus(config);
   if (
     command === "rename" &&
     Object.keys(options).length === 5 &&
@@ -56,7 +56,7 @@ export function main(args = process.argv.slice(2)) {
     options["--expected-epoch"] &&
     options["--request-id"]
   )
-    return relayAdminRename(config, {
+    return hostAdminRename(config, {
       agent_id: options["--agent-id"],
       expected_address: options["--expected-address"],
       bot_name: options["--bot-name"],
@@ -71,10 +71,10 @@ export function main(args = process.argv.slice(2)) {
       ["--address", "--connection-id", "--operations"].includes(key),
     )
   )
-    return relayAdminConnect(config, {
+    return hostAdminConnect(config, {
       address: options["--address"],
       connection_id: options["--connection-id"],
-      ...(options["--operations"]
+      ...(Object.hasOwn(options, "--operations")
         ? { operations: options["--operations"].split(",") }
         : {}),
     });
@@ -83,8 +83,8 @@ export function main(args = process.argv.slice(2)) {
     options["--address"] &&
     Object.keys(options).length === 1
   )
-    return relayAdminDisconnect(config, options["--address"]);
-  throw new RelayAdminError("usage");
+    return hostAdminDisconnect(config, options["--address"]);
+  throw new HostAdminError("usage");
 }
 
 if (
@@ -94,7 +94,7 @@ if (
   try {
     process.stdout.write(JSON.stringify(main(), null, 2) + "\n");
   } catch (error) {
-    const code = relayAdminErrorCode(error);
+    const code = hostAdminErrorCode(error);
     process.stderr.write(
       `relay_admin_rejected ${code}\n${code === "usage" ? usage + "\n" : ""}`,
     );

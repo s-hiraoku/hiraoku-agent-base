@@ -1,6 +1,6 @@
 # HAB製品仕様書
 
-仕様版：0.1。更新日：2026-11-01 UTC。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
+仕様版：0.1。更新日：2026-11-06 UTC。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
 
 [README](../README.md) · [Relay契約](hab-relay-spec.md) · [認証group](relay-auth-groups.md) · [discovery](mcp-agent-discovery.md) · [Task bridge](task-bridge.md)
 
@@ -24,7 +24,8 @@ HAB専用GUIは通信基盤の登録・接続・状態・設定・復旧を扱�
 | 現行コード基準 | PR #113 merge `d83ad6e`。Registry、基本MCP5操作、Relay保存配送、任意のhab_discover、限定Task bridge。本書の追加だけで配備済みとはしない |
 | ローカル候補 | 対話登録、session/bot binding、継続poll、inbox/sidecarと表示consumerの統合。mainへの適用・常用受入れとは別 |
 | GUIの現在の範囲 | 既存のread-only成果は登録一覧、検索、状態filter、pagination、宛先copyに限定。登録・割当変更・テスト送信等のmutationは将来実装。本repoへの同梱・配備状況とは別に追跡する |
-| 新規技術の評価 | A2A組込、NATS JetStreamによる配送内部置換、SDK/driver/版、通知方式、複数host。**正式採用と本番置換は未決** |
+| 新規技術の評価 | A2A組込、SDK/driver/版、通知方式、複数host。**A2Aの正式採用と本番配備は未決** |
+| 採用済みの配送 | 2026-11-06 UTCの[ADR-016](hab-decisions.md)で、配送をNATS JetStreamだけにした。SQLite配送storeは廃止し、旧messageは移行しない。本番配備・実storageの故障挙動の受入れは別に残る |
 
 既存roadmapにある「初期版ではA2A不採用」は、その時点の初期範囲を示す。本書は将来拡張として再評価する仕様であり、既存の通信を即時廃止する決定ではない。
 
@@ -126,21 +127,19 @@ flowchart LR
   A --> H[HAB: 登録 / 名義 / 割当 / 認可 / 相関]
   H <--> T[Task状態と結果のport]
   H <--> D[配送port]
-  D <--> S[現行SQLite Relay]
-  D -. 置換PoC .-> N[NATS JetStream]
-  S <--> I[受信host / durable inbox / 製品表示]
-  N <--> I
+  D <--> N[NATS JetStream]
+  N <--> I[受信host / durable inbox / 製品表示]
   I --> E[agentの判断 / 独立実行runtime]
   E --> T
 ```
 
-SQLiteとNATSへ同じ要求を二重に実行配信しない。図のA2A/NATSは提案で、現行機能ではない。
+配送はNATS JetStreamだけで行い、廃止したSQLite配送storeへ同じ要求を二重に配信しない。図のA2Aは提案で、現行機能ではない。
 
 | 部分 | 委ねるもの | HABに残すもの |
 | --- | --- | --- |
 | MCP | 公式SDKによるtool接続/呼出し | 共通業務操作、名義、認可、製品差のadapter |
 | A2A候補 | 公式SDKのAgentCard/Message/Task/Artifact/transport | 登録・宛先、既存形式との変換、権限、Taskと実行の相関 |
-| JetStream候補 | stream/consumer、保存queue、再配送 | HAB期限、receipt/dedup、失効/lease、本文保持、製品binding |
+| JetStream（採用） | stream、保存queue、再配送 | HAB期限、receipt/dedup、失効/lease、本文保持、製品binding |
 | GUI | 標準のUI部品や認証部品 | 日常フロー、状態の意味、復旧、設定/管理の権限境界 |
 
 独自の汎用broker、A2Aと重複するTask engine、独自SSE/webhook engineを追加する前に標準実装を評価する。一方、標準を導入してもDots等の閉じた製品に正式な常時受信・起動・表示APIが新たに生まれるわけではない。
@@ -151,9 +150,9 @@ A2Aは1.0系と公式JS/TS SDKを候補にし、既存MCP入口を維持する�
 
 最小PoCは合成2主体と固定connectivity_check。Cardに対応していないstreaming/push/任意実行を広告しない。A2A Task Storeと既存実行engineの正本を分け、配送受付をTask完了にしない。具体SDK版、driver、commit境界、取消port、Task履歴保持は未決。
 
-### 8.2 NATS JetStream評価方針
+### 8.2 NATS JetStreamの採用と前提
 
-Core NATSだけでは不在時保存の要件を満たさない。候補はFile storageのJetStream。NATS採否を利用者の設定に露出させず、現行Relay APIを境界として内部置換を評価する。
+Core NATSだけでは不在時保存の要件を満たさない。File storageのJetStreamを配送に採用した（[ADR-016](hab-decisions.md)）。NATSを利用者の設定に露出させず、`DeliveryService` interfaceを境界とする。
 
 2026-10-31時点で公式latestはv2.15.2。Jepsenが調べた2.12.1の#7549/#7556/#7564/#7567はopenであり、最新版の全面解決確認は未完。一方、snapshot/WAL不整合の起動拒否は2.14.0で部分対策が記載され、SyncAlwaysを無視するcompaction不具合は2.14.6で修正が記載される。最新版と具体設定を組にして隔離試験する。[公式release](https://github.com/nats-io/nats-server/releases/tag/v2.15.2)、[2.14.0](https://github.com/nats-io/nats-server/releases/tag/v2.14.0)、[2.14.6](https://github.com/nats-io/nats-server/releases/tag/v2.14.6)、[Jepsen](https://jepsen.io/analyses/nats-2.12.1)
 
@@ -169,16 +168,16 @@ ACK後のRelay本文解放、brokerの論理除去、file上書き、SSD/backup/
 
 単一host/外付けstorageは単一障害点である。同期設定だけで停電・device故障後の無損失を約束しない。mount消失時の空store作成を防ぎ、別保存先への整合backupと一時環境へのrestore照合を行う。同一hostの複数processを別故障domainとみなさない。
 
-復旧はpause/drain、元IDと実行状態の照合、必要な再接続、同一要求の再開を基本にする。rollback時は新規受付を止め、未確定要求を元backendで照合する。新旧backendへ別IDで同じ要求を流さず、新schemaや受付済みjournalを削除しない。
+復旧はpause/drain、元IDと実行状態の照合、必要な再接続、同一要求の再開を基本にする。同じ配送journalを使うcode rollbackは、そのjournalのschemaを開けるbuildに限る。JetStream専用releaseはjournal schema 4を書き、それ以前のbuildは開けない。schema versionの書換えやjournal単独の巻戻しはしない。それ以前へ戻す場合は、新規受付を止めてdrainし、移行直前に停止状態で取った整合backupの全部を同じ世代で復元する。照合の対象は、新releaseが受け付けたmessageと、backup時点で`staging`・`pending`・`leased`・`quarantined`だったmessageである。後者はbackup後に配達・実行された可能性があり、新journalから保持期限で行が消えていても対象に残す。backup後の新規IDも、journalから回収されていても受信inboxや実行記録に残る証拠から一覧へ加える。どの写しにもないIDは一覧だけで列挙できず、送信者やアプリの独立した記録で補う。さらに、backupの受信inboxに未解放で残る本文と、新inboxの写しだけに未解放で残る本文も対象にする。ACKは保存の証明にすぎず、backup時に`acked`でも新releaseで実行済みの場合がある。復元前にschema 4 journalと、受信者inbox・Task Store・実行記録の写しを取り、`scripts/relay-rollback-reconcile.mjs`で元IDごとの一覧を作る。保存後にACKが届かなかったmessageはjournalで`expired`か`quarantined`になるため、journalの状態だけで未配達とは判断しない。`acked`か受信者inboxの記録があれば配達済み、inboxの写しに記録がなく、その記録がまだ回収され得ない期間の`expired`・`quarantined`行だけを未保存とし、それ以外や写しがなければ結果不明として受信者側の記録を確認する。復元した状態のIDはすべてbackup前に送信されたので、backup時刻から1時間とclock skew上限が過ぎるまで旧buildを起動しない。旧buildは期限切れのmessageを配達せず、受信inboxも期限切れの未見配達を拒否するため、新releaseで実行済みのIDがRelayから復元後の受信者へ再び届くことはない。復元inboxに保存済みの本文は期限に関係なく渡されるので、受信者の再開前に写しの実行記録と照合し、実行済みの本文はアプリへ渡さず記録・解放する。新inboxの写しだけにある保存済み本文は、drainや期限待ちでは復元先へ戻らない。実行記録・Task状態と照合し、未引渡しと確認できる場合だけ元のsender/message ID・Task/run・重複排除を保つアプリ固有のローカル復旧で引き継ぐ。写しを保全し、networkへ再送したり`inbox.save`へ期限切れ本文を注入したりせず、不明な副作用や復旧手順がない場合は受信者を停止したままにする。そのうえで一覧の各IDを処理してから経路を戻す（[手順](../packages/relay-nats/OPERATIONS.md#roll-back)）。別backendや別IDで同じ要求を流さず、照合が終わるまで新schemaのjournalと各写しを削除しない。
 
 ## 10. 段階的提供
 
 | 段階 | 提供・検証内容 | 完了条件 |
 | --- | --- | --- |
-| 初期MVP | 既存read-only GUIに接続/登録案内、宛先picker、明示メッセージ送信/返信、受付/相手保存/問題表示を追加する。最初は管理者が用意した登録済み名義と承認済みadapterを使い、既存MCP/SQLiteを維持 | 初心者がprotocol操作なしで送信・返信・切断からの復旧を完了。製品の能力差を正しく表示 |
+| 初期MVP | 既存read-only GUIに接続/登録案内、宛先picker、明示メッセージ送信/返信、受付/相手保存/問題表示を追加する。最初は管理者が用意した登録済み名義と承認済みadapterを使い、既存MCPを維持 | 初心者がprotocol操作なしで送信・返信・切断からの復旧を完了。製品の能力差を正しく表示 |
 | 次段階 | GUIの登録/割当/明示テスト送信/復旧mutation、正式な継続受信、A2A固定Task/Artifact PoC | 共通APIの認可と冪等、保存ACKとTask完了の分離、PC/モバイルのprivate操作が受入条件を満たす |
-| 配送置換評価 | JetStream adapterの隔離PoC、現行SQLiteとの保守負担・故障/復元比較 | 期限・旧lease・再送・削除・失効・backup/rollbackの互換性と削減効果を確認し、採否を決定 |
-| 拡張 | 製品adapter追加、通知、SSE/webhook、管理添付、複数host、追加設定 | 製品の正式能力と運用/費用を検証して個別に追加。Kanbanは別の任意アプリ |
+| 配送置換 | JetStream adapterの隔離PoCとSQLiteとの比較を経て、ADR-016でJetStreamだけの配送へ置換した。旧messageは移行しない | 期限・旧lease・再送・削除・失効・backup/restoreを実配置の対象版・設定で確認する。採否は決定済み |
+| 拡張 | 製品adapter追加、通知、SSE/webhook、複数host、追加設定 | 製品の正式能力と運用/費用を検証して個別に追加。Kanbanは別の任意アプリ |
 
 この段階表は作業日数や実装済みの主張ではない。置換見積はSDK/driver、store境界、製品adapter、private GUI認証、移行試験の未決を分けて作成する。
 
@@ -196,14 +195,14 @@ ACK後のRelay本文解放、brokerの論理除去、file上書き、SSD/backup/
 | A-08 | private mobile | 認証済みprivate経路でPCと狭幅モバイルの一覧/検索/宛先/状態/対象操作を使える。公開Funnelやブラウザ常駐へ依存しない |
 | A-09 | 実行境界 | 未承認skill、自由文、保存ACKが任意実行に変換されない。取消は実行停止の証拠まで確定しない |
 | A-10 | 配送の耐久性 | 各commit前後の停止、保存失敗、ACK消失、旧lease、期限/失効競合で既存の不変条件を守る |
-| A-11 | 置換/復元 | broker dedup window超過、TTL時刻差、容量、破損、backup/restore、route rollbackを試し、対象故障model内の予期しない受付済みデータ消失0件 |
-| A-12 | 変更の価値 | 削除できる独自module、追加process/設定/復旧手順、実負荷での遅延/容量をSQLite基準と比較し、NATSの採否を記録 |
+| A-11 | 置換/復元 | broker dedup window超過、TTL時刻差、容量、破損、backup/restore、code rollbackを試し、対象故障model内の予期しない受付済みデータ消失0件 |
+| A-12 | 変更の価値 | 削除した独自module、追加process/設定/復旧手順、実負荷での遅延/容量を記録する。NATSの採否はADR-016に記録した |
 
 受入試験には対象版・commit、母数・負荷、故障条件、成功/期限切れ/未確定/失敗を記録する。実装や模擬試験の成功を、全製品の常用接続成功へ一般化しない。
 
 ## 12. 未決事項と保証範囲
 
-未決はA2A/JetStreamの正式採否、固定するSDK/driver/client/CLI、Task Storeと配送journalのcommit境界、取消port、Task/inbox保持、private GUI認証と配備方式、各製品の正式wake/表示能力、実storageの故障挙動、許容停止時間と運用費用である。
+未決はA2Aの正式採否、固定するSDK/driver/client/CLI、Task Storeと配送journalのcommit境界、取消port、Task/inbox保持、private GUI認証と配備方式、各製品の正式wake/表示能力、実storageの故障挙動、許容停止時間と運用費用である。
 
 HABが提供する簡単な通信は、全製品の自動起動、無期限保存、人間既読の推測、厳密な一度だけの外部実行、全故障での無損失、全コピーの物理消去を保証しない。利用者には、対応範囲と復旧可能な次操作を具体的に示す。
 

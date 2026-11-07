@@ -49,7 +49,8 @@ export class EventSender {
     if (
       s.expiresAt <= this.now() ||
       s.task_id !== taskId ||
-      !(await this.options.authorise(s.subject, taskId))
+      !(await this.options.authorise(s.subject, taskId)) ||
+      s.expiresAt <= this.now()
     )
       throw new CallbackPolicyError("subscription_not_authorised");
     return s;

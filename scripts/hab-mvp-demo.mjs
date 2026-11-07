@@ -1,5 +1,6 @@
 /** Explicit one-shot synthetic MVP; no existing runtime or production configuration is loaded. */
 import { runLocalMvp } from "./lib/local-mvp.mjs";
+import { NATS_SERVER_REQUIRED } from "./lib/nats-broker.mjs";
 if (process.argv.length !== 3 || process.argv[2] !== "--simulate") {
   process.stderr.write("Usage: node scripts/hab-mvp-demo.mjs --simulate\n");
   process.exitCode = 2;
@@ -13,9 +14,11 @@ if (process.argv.length !== 3 || process.argv[2] !== "--simulate") {
   try {
     const report = await runLocalMvp(controller.signal);
     process.stdout.write(JSON.stringify(report, null, 2) + "\n");
-  } catch {
+  } catch (error) {
     process.stderr.write(
-      "local_mvp_failed; no production connection attempted\n",
+      error?.code === "nats_server_required"
+        ? `local_mvp_failed reason=${NATS_SERVER_REQUIRED}; no production connection attempted\n`
+        : "local_mvp_failed; no production connection attempted\n",
     );
     process.exitCode = 1;
   } finally {

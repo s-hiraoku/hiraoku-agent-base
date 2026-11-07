@@ -28,18 +28,16 @@ clock逆行・不正時刻はfail-closedです。既定clockはprocessの単調�
 
 ## 任意のHTTP配線
 
-Relay／HAB／添付の各HTTP gatewayは、verifier引数の次に任意の同じWriterAdmission instanceを受け取ります。HABは同期port `habWriterIdentity(registry)` で、検証済みcontextから現在のbindingと操作権限を確認します。portは短いregistry guardの中で不変IDだけを返し、認可objectやlockを待機queueへ持ち出しません。実際のサービスは待機後に本来のregistry → Relay → upload guardを取り直します。
+Relay／HABの各HTTP gatewayは、verifier引数の次に任意の同じWriterAdmission instanceを受け取ります。HABは同期port `habWriterIdentity(registry)` で、検証済みcontextから現在のbindingと操作権限を確認します。portは短いregistry guardの中で不変IDだけを返し、認可objectやlockを待機queueへ持ち出しません。実際のサービスは待機後に本来のregistry → Relay guardを取り直します。
 
 ```ts
 const writer = new WriterAdmission(writerPolicy, habWriterIdentity(registry));
-const gateway = new HabAttachmentHttpGateway(
-  relay, attachments, wirePolicy, httpPolicy, audit, verify, writer,
-);
+const gateway = new HabHttpGateway(relay, httpPolicy, audit, verify, writer);
 ```
 
 writerPolicy等はhostが用意する既存port／明示設定です。この例は登録・credential発行・listener起動をしません。基本RelayもHABと同じ受付coreを使い、HAB固有の個体解決は上の別portへ分離します。
 
-認証・request bytes・protocol前処理の後、SDKのtool dispatch前に受付します。submit／status／poll／ACK／resolveと添付の全6toolは同じ個体bucketを共有します。uploadの操作はsubmit権限、attachment readはpoll権限で照合し、peer・kind・bindingの実検証は本来のtoolで行います。別gateway・modern／legacy framing・同じIDの再送でbudgetを分けません。tools/list・initialize等は既存の認証と全体HTTP制限を通り、個体のwriter tokenは消費しません。未知toolや未対応mappingはdispatchしません。既知toolのschema不正はSDKで拒否し、その受付試行は消費します。
+認証・request bytes・protocol前処理の後、SDKのtool dispatch前に受付します。submit／status／poll／ACK／resolveは同じ個体bucketを共有します。peer・kind・bindingの実検証は本来のtoolで行います。別gateway・modern／legacy framing・同じIDの再送でbudgetを分けません。tools/list・initialize等は既存の認証と全体HTTP制限を通り、個体のwriter tokenは消費しません。未知toolや未対応mappingはdispatchしません。既知toolのschema不正はSDKで拒否し、その受付試行は消費します。
 
 認証失敗は401、現在binding／操作の拒否は403、個体rateは429、queue上限／queue期限／close等は503、HTTP全体deadlineは504、呼出元のabortは408です。新しい拒否は空bodyと既存audit categoryで返し、個体ID・queue数・原例外を漏らしません。queue・HTTPのtimeoutや429は未commitの証明ではないため、送信側は元ID・元intent・receiptで照合します。
 
@@ -51,4 +49,4 @@ slotはSDK応答の有限読取・handler closeに加え、未完了toolの開�
 
 `node --test test/relay-writer-admission.test.js` の20シナリオで、巡回順・1 active、個体別bucket／比例補充・queue上限・有限個体map、取消し／期限・失効・rebind・呼出し直前のmicrotask・clock逆行、未認証・async port・policy copy・closeを検証します。実エージェント・credential・listenerを起動しません。
 
-HTTP側は `node --test test/relay-writer-http.test.js` の26シナリオで、modern／legacy・gateway共用・全添付tool・directory、認証／引数偽装、queue競合・取消し・期限・現在失効・独立registry更新、開始／完了auditのtimeout後slot保持、揮発budget再生成とdurable receipt照合を確認します。うち1件は使い捨てのloopback listenerで、合成Bearerと一時SQLiteだけを使います。
+HTTP側は `node --test test/relay-writer-http.test.js` の18シナリオで、modern／legacy・gateway共用・directory、認証／引数偽装、queue競合・取消し・期限・現在失効・独立registry更新、開始／完了auditのtimeout後slot保持、揮発budget再生成とdurable receipt照合を確認します。うち1件は使い捨てのloopback listenerで、合成Bearerと一時SQLiteだけを使います。

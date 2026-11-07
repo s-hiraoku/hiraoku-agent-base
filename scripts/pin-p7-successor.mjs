@@ -88,11 +88,23 @@ for (const path of [...selected].sort()) {
     blobs[old] = { gzip_base64: gzipSync(bytes).toString("base64") };
   }
 }
+const sourcePackage = JSON.parse(git("show", `${source}:package.json`));
+const projection = Object.fromEntries(
+  Object.entries(pin.root_package_projection)
+    .filter(
+      ([field, value]) =>
+        JSON.stringify(sourcePackage[field]) !== JSON.stringify(value),
+    )
+    .map(([field]) => [field, sourcePackage[field]]),
+);
 const manifest = {
   version: 1,
   base_ref: baseline,
   base_pin_sha256: hash(pinBytes),
   source_ref: source,
+  ...(Object.keys(projection).length
+    ? { root_package_projection: projection }
+    : {}),
   inputs,
 };
 const canonical = (value) =>

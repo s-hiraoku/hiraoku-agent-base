@@ -4,11 +4,11 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { DurableSender, DurableReceiver } from "../src/relay/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { RelayMcpClient } from "../src/relay/mcp-client.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import { fixture, message, limits } from "./relay-http-fixtures.js";
 
 async function listening(t, f) {
@@ -114,7 +114,7 @@ for (const loss of ["before_send", "after_commit"]) {
     `HTTP durable journals recover ${loss} submit loss and committed ACK loss across client/store restart`,
     { timeout: 10000 },
     async (t) => {
-      const f = fixture(t),
+      const f = await fixture(t),
         j = journals(t, f),
         { connect } = await listening(t, f),
         m = message();
@@ -198,7 +198,9 @@ for (const loss of ["before_send", "after_commit"]) {
       assert.equal(receiver.inbox()[0].receipt_confirmed, false);
       assert.equal(f.service.status(f.contexts.a, m.message_id).state, "acked");
       assert.equal(
-        f.raw.prepare("SELECT body FROM relay_messages").get().body,
+        f.raw
+          .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+          .get().body,
         null,
       );
       j.close(j.inbox);
@@ -234,7 +236,7 @@ test(
   "lost HTTP poll response waits for old lease and redelivers a new fenced generation",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       { connect } = await listening(t, f),
       m = message();
     await connect("a").submit(m);
@@ -247,12 +249,10 @@ test(
     await assert.rejects(b.poll(), code("relay_transport_failed"));
     const recovered = connect("b");
     assert.equal(await recovered.poll(), null);
-    f.raw.exec(
-      "UPDATE relay_deliveries SET lease_until=0 WHERE state='leased'",
-    );
+    f.raw.exec("UPDATE nats_messages SET lease_until=0 WHERE state='leased'");
     assert.equal(await recovered.poll(), null);
     f.raw.exec(
-      "UPDATE relay_deliveries SET next_visible_at=0 WHERE state='pending'",
+      "UPDATE nats_messages SET next_visible_at=0 WHERE state='pending'",
     );
     const next = await recovered.poll();
     assert.equal(next.generation, lost.generation + 1);
@@ -283,7 +283,7 @@ test(
   "HTTP credential refusal and current revocation preserve pending sender intent without switching identity",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       j = journals(t, f),
       { connect } = await listening(t, f),
       m = message();
@@ -345,7 +345,7 @@ test(
   "misbound credentials cannot select a sender with local agent labels; returned mismatch stops resending",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       j = journals(t, f),
       { connect } = await listening(t, f),
       m = message();
@@ -357,7 +357,7 @@ test(
     await sender.sendOnce();
     assert.equal(f.count(), 1);
     assert.equal(
-      f.raw.prepare("SELECT sender_id FROM relay_messages").get().sender_id,
+      f.raw.prepare("SELECT sender_id FROM nats_messages").get().sender_id,
       "c",
     );
     assert.equal(sender.get(m.message_id).state, "quarantined");

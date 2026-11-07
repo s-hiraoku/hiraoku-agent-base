@@ -1,4 +1,4 @@
-import type { Submission } from "../relay/contract.ts";
+import type { Submission } from "../messaging/contract.ts";
 
 export interface MessageSource {
   sender_id: string;

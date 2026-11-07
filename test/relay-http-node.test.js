@@ -3,8 +3,8 @@ import { test } from "node:test";
 import { createServer, request as nodeRequest } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import {
   fixture,
   limits,
@@ -93,7 +93,7 @@ test(
   "actual temporary loopback HTTP delivers only after durable inbox save, and exact retries recover receipts",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       { url } = await listening(t, f),
       m = message();
     const a = await send(url, "relay_submit", m);
@@ -140,7 +140,9 @@ test(
       "acked",
     );
     assert.equal(
-      f.raw.prepare("SELECT body FROM relay_messages").get().body,
+      f.raw
+        .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+        .get().body,
       null,
     );
     assert.equal(a.response.headers.get("connection"), "close");
@@ -151,7 +153,7 @@ test(
   "native unauthenticated and oversized-body refusals flush their HTTP status before cancelling unread input",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       { url } = await listening(t, f, { max_request_bytes: 1024 });
     const unauthorized = await send(url, "relay_submit", message(), {
       headers: { Authorization: "" },
@@ -175,7 +177,7 @@ test(
   "native Host, duplicate framing/auth headers and non-origin-form targets never reach verification",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let verified = 0;
     const { url } = await listening(t, f, {}, (v) => {
       verified++;
@@ -215,7 +217,7 @@ test(
   "native deadline preserves bounded admission when verification ignores cancellation",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let release,
       entered,
       signal,
@@ -258,7 +260,7 @@ test(
   "native client disconnect aborts pending verification and a late result cannot mutate storage",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let release, entered, signal;
     const ready = new Promise((r) => {
       entered = r;

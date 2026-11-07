@@ -20,8 +20,8 @@ import { SQLiteEnrollmentJournal } from "../src/hab/sqlite-enrollment-journal.ts
 import { enrollmentTerminalUI } from "../src/hab/enrollment-terminal.ts";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 
-function setup(t, patch = {}, registryOptions = {}) {
-  const f = fixture(t, registryOptions);
+async function setup(t, patch = {}, registryOptions = {}) {
+  const f = await fixture(t, registryOptions);
   const path = join(f.dir, "enrollment.sqlite");
   const journals = new Set();
   const open = () => {
@@ -82,7 +82,7 @@ function setup(t, patch = {}, registryOptions = {}) {
   };
 }
 test("enrollment: human choices reserve, bind and explicitly activate one immutable address", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const result = await runHabEnrollment(f.host, "flow-1");
   assert.equal(result.status, "complete");
   assert.equal(result.agent.address, "research@grok-bot.hab");
@@ -113,7 +113,7 @@ test("enrollment: human choices reserve, bind and explicitly activate one immuta
 });
 for (const kind of ["reserve", "bind", "activate"]) {
   test(`enrollment: refusal at ${kind} pauses without granting subsequent rights`, async (t) => {
-    const f = setup(t, { confirm: async (p) => p.kind !== kind });
+    const f = await setup(t, { confirm: async (p) => p.kind !== kind });
     const result = await runHabEnrollment(f.host, "pause");
     assert.equal(result.status, "paused");
     assert.equal(
@@ -147,7 +147,7 @@ for (const kind of ["reserve", "bind", "activate"]) {
 }
 for (const stage of ["enrolled", "bound", "complete"]) {
   test(`enrollment: restart recovers a committed operation before ${stage} checkpoint response`, async (t) => {
-    const f = setup(t);
+    const f = await setup(t);
     const journal = f.host.journal;
     f.host.journal = {
       load: (id) => journal.load(id),
@@ -190,7 +190,7 @@ for (const stage of ["enrolled", "bound", "complete"]) {
 }
 for (const stage of ["enroll_pending", "bind_pending", "activation_pending"]) {
   test(`enrollment: journal refusal before ${stage} prevents that registry mutation`, async (t) => {
-    const f = setup(t);
+    const f = await setup(t);
     const journal = f.host.journal;
     f.host.journal = {
       load: (id) => journal.load(id),
@@ -217,7 +217,7 @@ for (const stage of ["enroll_pending", "bind_pending", "activation_pending"]) {
   });
 }
 test("enrollment: lost activation response followed by stop is not silently replayed as active", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const journal = f.host.journal;
   f.host.journal = {
     load: (id) => journal.load(id),
@@ -244,7 +244,7 @@ test("enrollment: lost activation response followed by stop is not silently repl
   assert.equal(f.registry.inspect(f.admin, active.agent_id).state, "stopped");
 });
 test("enrollment: a changed or revoked binding after pause requires review", async (t) => {
-  const f = setup(t, { confirm: async (p) => p.kind !== "activate" });
+  const f = await setup(t, { confirm: async (p) => p.kind !== "activate" });
   await runHabEnrollment(f.host, "revoke");
   const cp = f.host.journal.load("revoke").checkpoint;
   f.registry.revoke(f.admin, {
@@ -260,7 +260,7 @@ test("enrollment: a changed or revoked binding after pause requires review", asy
   assert.equal(f.registry.inspect(f.admin, cp.agent_id).state, "stopped");
 });
 test("enrollment: current management rights are rechecked after human confirmation and on restart", async (t) => {
-  const f = setup(t, {
+  const f = await setup(t, {
     confirm: async (p) => {
       if (p.kind === "reserve") f.mutable.denied.add("enroll");
       return true;
@@ -286,7 +286,7 @@ test("enrollment: current management rights are rechecked after human confirmati
   );
 });
 test("enrollment: same proposed address won by a concurrent administrator does not retarget", async (t) => {
-  const f = setup(t, {
+  const f = await setup(t, {
     confirm: async (p) => {
       if (p.kind === "reserve") f.enroll("research", false);
       return true;
@@ -300,7 +300,7 @@ test("enrollment: same proposed address won by a concurrent administrator does n
   assert.equal(f.count("hab_bindings"), 0);
 });
 test("enrollment: confirmed connection cannot change even before its first bind commits", async (t) => {
-  const f = setup(t, {
+  const f = await setup(t, {
     confirm: async (p) => {
       if (p.kind === "bind") f.mutable.individual = false;
       return true;
@@ -332,7 +332,7 @@ test("enrollment: confirmed connection cannot change even before its first bind 
   );
 });
 test("enrollment: stale activation confirmation cannot overwrite a later management action", async (t) => {
-  const f = setup(t, {
+  const f = await setup(t, {
     confirm: async (p) => {
       if (p.kind === "activate") {
         const cp = f.host.journal.load("race").checkpoint;
@@ -355,7 +355,7 @@ test("enrollment: stale activation confirmation cannot overwrite a later managem
   assert.equal(f.registry.inspect(f.admin, cp.agent_id).state, "stopped");
 });
 test("enrollment: select only approved product IDs, canonical bot names and explicit grants", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   f.host.ui.product = async () => "self-declared-product";
   await assert.rejects(
     runHabEnrollment(f.host, "invalid1"),
@@ -378,8 +378,8 @@ test("enrollment: select only approved product IDs, canonical bot names and expl
     "waiting_connection",
   );
 });
-test("enrollment: checkpoint rejects embedded contexts, credentials, unknown fields and address changes", (t) => {
-  const f = setup(t);
+test("enrollment: checkpoint rejects embedded contexts, credentials, unknown fields and address changes", async (t) => {
+  const f = await setup(t);
   const valid = {
     version: 1,
     flow_id: "one",
@@ -408,7 +408,7 @@ test("enrollment: checkpoint rejects embedded contexts, credentials, unknown fie
   );
 });
 test("enrollment: stored checkpoints/audit have no raw individual claims, labels or authentication material", async (t) => {
-  const f = setup(t, { confirm: async (p) => p.kind !== "bind" });
+  const f = await setup(t, { confirm: async (p) => p.kind !== "bind" });
   await runHabEnrollment(f.host, "privacy");
   // Save the pending-binding checkpoint, then fail its actual verification.
   f.host.ui.confirm = async (p) => {
@@ -429,7 +429,7 @@ test("enrollment: stored checkpoints/audit have no raw individual claims, labels
     assert.equal(audit.includes(value), false);
 });
 test("enrollment: unexpected UI/connection failures are redacted", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   f.host.connection = async () => {
     throw Error("synthetic-private-provider-details");
   };
@@ -440,8 +440,8 @@ test("enrollment: unexpected UI/connection failures are redacted", async (t) => 
     return true;
   });
 });
-test("enrollment: journal CAS refuses concurrent/old writers and its capacity never evicts reservations", (t) => {
-  const f = setup(t);
+test("enrollment: journal CAS refuses concurrent/old writers and its capacity never evicts reservations", async (t) => {
+  const f = await setup(t);
   const second = f.openJournal();
   const cp = {
     version: 1,
@@ -476,8 +476,8 @@ test("enrollment: journal CAS refuses concurrent/old writers and its capacity ne
   assert.equal(tiny.load("one").revision, 1);
   assert.equal(tiny.save("one", 1, cp), 2);
 });
-test("enrollment: journal refuses loose/symlink/unknown/corrupt storage and requires explicit migration", (t) => {
-  const f = setup(t);
+test("enrollment: journal refuses loose/symlink/unknown/corrupt storage and requires explicit migration", async (t) => {
+  const f = await setup(t);
   assert.equal(statSync(f.pathJournal).mode & 0o777, 0o600);
   const link = join(f.dir, "linked.sqlite");
   symlinkSync(f.pathJournal, link);
@@ -520,8 +520,8 @@ test("enrollment: journal refuses loose/symlink/unknown/corrupt storage and requ
     code("invalid_enrollment_checkpoint"),
   );
 });
-test("management catalog: bounded authorized pagination contains approved products only", (t) => {
-  const f = setup(t);
+test("management catalog: bounded authorized pagination contains approved products only", async (t) => {
+  const f = await setup(t);
   for (const name of ["dot", "hermes"])
     f.registry.registerProduct(f.admin, {
       request_id: `product-${name}`,
@@ -560,8 +560,8 @@ test("management catalog: bounded authorized pagination contains approved produc
     code("registry_forbidden"),
   );
 });
-test("verified binding: fresh exclusive host claims required even for an exact committed retry", (t) => {
-  const f = setup(t);
+test("verified binding: fresh exclusive host claims required even for an exact committed retry", async (t) => {
+  const f = await setup(t);
   const agent = f.enroll("waiting", false);
   const digest = f.registry.inspectConnection(
     f.admin,
@@ -622,7 +622,7 @@ test("verified binding: fresh exclusive host claims required even for an exact c
   );
 });
 test("verified binding: disconnected, throwing and asynchronous identity ports fail closed", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   for (const individual of [
     undefined,
     () => {
@@ -646,7 +646,7 @@ test("verified binding: disconnected, throwing and asynchronous identity ports f
   await new Promise((resolve) => setTimeout(resolve, 1)); // consume denied async rejection
 });
 test("terminal enrollment: exact address confirmation and explicit operation selection", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const answers = [
     "1",
     "research",
@@ -704,7 +704,7 @@ test("terminal enrollment: generic yes, EOF and terminal control input never con
   }
 });
 test("enrollment: concurrent runners cannot independently advance one flow", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const results = await Promise.allSettled([
     runHabEnrollment(f.host, "concurrent"),
     runHabEnrollment(f.host, "concurrent"),
@@ -727,7 +727,7 @@ test("enrollment: concurrent runners cannot independently advance one flow", asy
   assert.equal(f.count("hab_bindings"), 1);
 });
 test("enrollment: a durable checkpoint with a lost save response is recovered without another reservation confirmation", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const journal = f.host.journal;
   f.host.journal = {
     load: (id) => journal.load(id),
@@ -754,7 +754,7 @@ test("enrollment: a durable checkpoint with a lost save response is recovered wi
   );
 });
 test("enrollment: product selection can explicitly advance a bounded catalog page", async (t) => {
-  const f = setup(t, {}, { max_products: 60 });
+  const f = await setup(t, {}, { max_products: 60 });
   for (let i = 0; i < 50; i++)
     f.registry.registerProduct(f.admin, {
       request_id: `more-${i}`,
@@ -775,7 +775,7 @@ test("enrollment: product selection can explicitly advance a bounded catalog pag
   assert.equal(result.agent.address, `research@${selected.agent_name}.hab`);
 });
 test("management: rejected asynchronous administrator results are denied and consumed", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const registry = f.open(
     {},
     {
@@ -793,7 +793,7 @@ test("management: rejected asynchronous administrator results are denied and con
   await new Promise((resolve) => setTimeout(resolve, 1));
 });
 test("enrollment: foreign error codes from injected ports are not exposed", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   f.host.ui.product = async () => {
     const error = new Error("synthetic-private-error");
     error.code = "synthetic-private-error";

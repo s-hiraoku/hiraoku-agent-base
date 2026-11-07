@@ -7,22 +7,18 @@ import {
   lstatSync,
   readdirSync,
   readFileSync,
+  existsSync,
 } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
 import { SQLiteHabRegistry } from "../../../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../../../src/hab/mcp-client.ts";
-import { SQLiteInbox } from "../../../src/relay/sqlite-inbox.ts";
-import { DurableReceiver } from "../../../src/relay/receiver.ts";
-import {
-  startConfiguredJetStreamRelay,
-  readJetStreamHostConfig,
-} from "../src/configured.ts";
-import { startConfiguredLocalRelay } from "../../../src/relay-host/configured.ts";
-import { startLocalRelay } from "../../../src/relay-host/local.ts";
-import { createJetStreamServiceFactory } from "../src/configured.ts";
+import { SQLiteInbox } from "../../../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../../../src/agent-sdk/receiver.ts";
+import { startHost } from "../../../src/host/start.ts";
+import { startHostServer } from "../../../src/host/server.ts";
+import { createJetStreamDelivery } from "../../../src/host/delivery.ts";
 import {
   options as registryOptions,
   principal,
@@ -105,57 +101,49 @@ test("explicit private config serves the existing five MCP operations, survives 
     audit_max_bytes: 262144,
     limits: f.options.limits,
     registry: registryConfig,
-    store: {
-      max_pending: 20,
-      max_records: 100,
-      max_pending_per_recipient: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 2000,
-      max_attempts: 3,
-      retry_base_ms: 50,
-      retry_cap_ms: 200,
-      poll_scan_limit: 10,
-      agent_capacity: {
-        max_pending_per_sender: 5,
-        max_body_bytes_per_sender: 50000,
-        max_records_per_sender: 25,
-        max_body_bytes_per_recipient: 50000,
-        max_records_per_recipient: 50,
-        reservations: [],
+    delivery: {
+      broker: {
+        server: f.options.server,
+        user: f.options.user,
+        password: f.options.password,
+        stream: "HAB",
+        subject_prefix: "hab",
+        max_consumers: 10,
+        max_bytes: 4_000_000,
+        max_message_bytes: 64000,
+        request_timeout_ms: 1000,
+      },
+      pump: { interval_ms: 20, max_records_per_cycle: 20 },
+      volume: {
+        identity_file: marker,
+        expected_id: "synthetic-ssd",
+        expected_device: lstatSync(state).dev,
+      },
+      queue: {
+        max_pending: 20,
+        max_records: 100,
+        max_pending_per_recipient: 10,
+        max_body_bytes: 100000,
+        max_clock_skew_ms: 1000,
+        lease_ms: 2000,
+        max_attempts: 3,
+        retry_base_ms: 50,
+        retry_cap_ms: 200,
+        poll_scan_limit: 10,
+        agent_capacity: {
+          max_pending_per_sender: 5,
+          max_body_bytes_per_sender: 50000,
+          max_records_per_sender: 25,
+          max_body_bytes_per_recipient: 50000,
+          max_records_per_recipient: 50,
+          reservations: [],
+        },
       },
     },
     http,
   };
   const serviceFile = write("service", serviceConfig);
-  const natsConfig = {
-    version: 1,
-    broker: {
-      server: f.options.server,
-      user: f.options.user,
-      password: f.options.password,
-      stream: "HAB",
-      subject_prefix: "hab",
-      max_consumers: 10,
-      max_bytes: 4_000_000,
-      max_message_bytes: 64000,
-      request_timeout_ms: 1000,
-    },
-    routing: {
-      epoch: 1,
-      enabled: true,
-      recipients: [agents.b.agent_id],
-      kinds: ["question", "answer", "notice"],
-    },
-    pump: { interval_ms: 20, max_records_per_cycle: 20 },
-    volume: {
-      identity_file: marker,
-      expected_id: "synthetic-ssd",
-      expected_device: lstatSync(state).dev,
-    },
-  };
-  const natsFile = write("jetstream", natsConfig);
-  host = await startConfiguredJetStreamRelay(serviceFile, natsFile);
+  host = await startHost(serviceFile);
   const tokens = { a: "a".repeat(64), b: "b".repeat(64) };
   const now = Date.now();
   const credentials = [];
@@ -260,16 +248,8 @@ test("explicit private config serves the existing five MCP operations, survives 
       return false;
     }
   });
-  const legacyWitness = new DatabaseSync(join(state, "relay.sqlite"), {
-    readOnly: true,
-  });
-  assert.equal(
-    legacyWitness
-      .prepare("SELECT count(*) n FROM relay_messages WHERE message_id=?")
-      .get(offline.message_id).n,
-    0,
-  );
-  legacyWitness.close();
+  // There is no SQLite delivery store to fall back to while the broker is down.
+  assert.equal(existsSync(join(state, "relay.sqlite")), false);
   await f.start();
   await eventually(async () => {
     await receiver.receiveOnce();
@@ -289,8 +269,7 @@ test("explicit private config serves the existing five MCP operations, survives 
   serviceConfig.port = Number(new URL(firstUrl).port);
   write("service", serviceConfig);
   await host.close();
-  await assert.rejects(startConfiguredLocalRelay(serviceFile));
-  host = await startConfiguredJetStreamRelay(serviceFile, natsFile);
+  host = await startHost(serviceFile);
   assert.equal(host.url, firstUrl);
   assert.equal(
     (await client("a").status(message.message_id)).receipt_id,
@@ -303,22 +282,26 @@ test("explicit private config serves the existing five MCP operations, survives 
   await assert.rejects(client("a").status(message.message_id));
 });
 
-test("missing, nonprivate and unknown JetStream configuration fails without fallback", async (t) => {
+test("missing and unknown delivery configuration fails without fallback or leaking values", async (t) => {
   const f = await fixture(t);
-  assert.throws(
-    () => readJetStreamHostConfig(join(f.dir, "missing.local.json")),
+  await assert.rejects(
+    startHost(join(f.dir, "missing.local.json")),
     /local_relay_start_rejected/,
   );
   const path = join(f.dir, "invalid.local.json");
   writeFileSync(
     path,
-    JSON.stringify({ version: 1, secret: "synthetic-not-for-errors" }),
+    JSON.stringify({
+      version: 1,
+      delivery: { secret: "synthetic-not-for-errors" },
+    }),
     { mode: 0o600 },
   );
-  assert.throws(
-    () => readJetStreamHostConfig(path),
+  await assert.rejects(
+    startHost(path),
     (error) =>
-      error.reason === "jetstream_config_rejected" &&
+      error.reason === "config_invalid" &&
+      error.fields.includes("delivery.secret") &&
       !JSON.stringify(error).includes("synthetic-not-for-errors"),
   );
 });
@@ -332,7 +315,6 @@ test("volume preflight rejects a foreign marker or device before creating any st
     mode: 0o600,
   });
   const config = {
-    version: 1,
     broker: {
       server: f.options.server,
       user: f.options.user,
@@ -344,20 +326,39 @@ test("volume preflight rejects a foreign marker or device before creating any st
       max_message_bytes: 64000,
       request_timeout_ms: 1000,
     },
-    routing: { epoch: 1, enabled: false, recipients: [], kinds: ["question"] },
     pump: { interval_ms: 20, max_records_per_cycle: 20 },
     volume: {
       identity_file: marker,
       expected_id: "expected",
       expected_device: lstatSync(directory).dev,
     },
+    queue: {
+      max_pending: f.options.max_pending,
+      max_records: f.options.max_records,
+      max_pending_per_recipient: f.options.max_pending_per_recipient,
+      max_body_bytes: f.options.max_body_bytes,
+      max_clock_skew_ms: f.options.max_clock_skew_ms,
+      lease_ms: f.options.lease_ms,
+      max_attempts: f.options.max_attempts,
+      retry_base_ms: f.options.retry_base_ms,
+      retry_cap_ms: f.options.retry_cap_ms,
+      poll_scan_limit: 10,
+      agent_capacity: {
+        max_pending_per_sender: 5,
+        max_body_bytes_per_sender: 50000,
+        max_records_per_sender: 25,
+        max_body_bytes_per_recipient: 50000,
+        max_records_per_recipient: 50,
+        reservations: [],
+      },
+    },
   };
+  const key = new Uint8Array(32).fill(42);
   const options = {
     directory,
     port: 0,
     limits: f.options.limits,
     registry: registryOptions,
-    store: { ...f.options, poll_scan_limit: 10 },
     http: { ...httpPolicy },
     authority: { individual: () => undefined },
     verify: () => null,
@@ -366,9 +367,9 @@ test("volume preflight rejects a foreign marker or device before creating any st
   delete options.http.resource_url;
   delete options.http.allowed_origins;
   await assert.rejects(
-    startLocalRelay({
+    startHostServer({
       ...options,
-      service_factory: createJetStreamServiceFactory(config),
+      delivery: createJetStreamDelivery(config, key),
     }),
     { code: "local_relay_extension_storage_unavailable" },
   );
@@ -380,22 +381,18 @@ test("volume preflight rejects a foreign marker or device before creating any st
   config.volume.identity_file = inside;
   config.volume.expected_device++;
   await assert.rejects(
-    startLocalRelay({
+    startHostServer({
       ...options,
-      service_factory: createJetStreamServiceFactory(config),
+      delivery: createJetStreamDelivery(config, key),
     }),
     { code: "local_relay_extension_storage_unavailable" },
   );
   assert.deepEqual(readdirSync(directory), ["volume.local.json"]);
+  await assert.rejects(startHostServer(options), /invalid_local_relay_options/);
   await assert.rejects(
-    startLocalRelay({ ...options, service_factory: async () => ({}) }),
-    /invalid_local_relay_options/,
-  );
-  await assert.rejects(
-    startLocalRelay({
+    startHostServer({
       ...options,
-      service_factory: Object.assign(async () => ({}), {
-        extension_id: "synthetic",
+      delivery: Object.assign(async () => ({}), {
         preflight: async () => undefined,
       }),
     }),

@@ -2,10 +2,10 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 import { limits, policy } from "./relay-http-fixtures.js";
 
 export async function setup(t, f, hab = f.hab) {

@@ -2,12 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { groupFixture } from "./hab-group-fixtures.js";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { createHabRelayRoute } from "../src/a2a/hab-route.ts";
 import { message, limits } from "./relay-http-fixtures.js";
 
-function setup(t) {
-  const f = groupFixture(t, {
+async function setup(t) {
+  const f = await groupFixture(t, {
     allowed_kinds: [
       "execution_request",
       "execution_accepted",
@@ -69,8 +69,8 @@ function setup(t) {
   return { ...f, outbox, route, options, input };
 }
 
-test("HAB A2A route uses current group membership and immutable sender ID under enqueue guard", (t) => {
-  const f = setup(t);
+test("HAB A2A route uses current group membership and immutable sender ID under enqueue guard", async (t) => {
+  const f = await setup(t);
   assert.equal(f.route.ownerId, f.first.agent_id);
   const queued = f.route.enqueue(f.input);
   assert.equal(queued.state, "queued");
@@ -96,7 +96,7 @@ test("HAB A2A route uses current group membership and immutable sender ID under 
 });
 
 test("HAB A2A route rechecks current authorization after asynchronous sender work", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   const route = createHabRelayRoute({
     ...f.options,
     senderTransport: {
@@ -108,8 +108,8 @@ test("HAB A2A route rechecks current authorization after asynchronous sender wor
   await assert.rejects(() => route.flush(), /forbidden/);
 });
 
-test("HAB A2A route recipient mapping cannot silently move to another identity", (t) => {
-  const f = setup(t);
+test("HAB A2A route recipient mapping cannot silently move to another identity", async (t) => {
+  const f = await setup(t);
   assert.throws(
     () =>
       createHabRelayRoute({
@@ -120,12 +120,35 @@ test("HAB A2A route recipient mapping cannot silently move to another identity",
   );
 });
 
-test("HAB A2A route snapshots its configured identities before later host-object mutations", (t) => {
-  const f = setup(t);
+test("HAB A2A route snapshots its configured identities before later host-object mutations", async (t) => {
+  const f = await setup(t);
   const recipientId = f.external.agent_id;
   f.options.recipient.agent_id = f.second.agent_id;
   f.options.recipient.address = f.second.address;
   const queued = f.route.enqueue(f.input);
   assert.equal(queued.recipient_id, recipientId);
   assert.equal(f.route.recipientId, recipientId);
+});
+
+test("HAB A2A route forwards a reply source hint only while current authorization permits reads", async (t) => {
+  const f = await setup(t);
+  const seen = [];
+  const route = createHabRelayRoute({
+    ...f.options,
+    inbox: {
+      inbox: (source) => {
+        seen.push(source);
+        return [];
+      },
+    },
+  });
+  const source = {
+    sender_id: f.first.agent_id,
+    message_id: f.input.message_id,
+  };
+  assert.deepEqual(route.replies(source), []);
+  assert.deepEqual(seen, [source]);
+  f.access("stopped");
+  assert.throws(() => route.replies(source), /forbidden/);
+  assert.equal(seen.length, 1);
 });

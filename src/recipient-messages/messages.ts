@@ -4,10 +4,10 @@ import {
   comparisonMaterial,
   parseSubmission,
   validateLimits,
-} from "../relay/contract.ts";
-import type { ContractLimits } from "../relay/contract.ts";
-import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
-import type { SQLiteOutbox } from "../relay/sqlite-outbox.ts";
+} from "../messaging/contract.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
+import type { SQLiteInbox } from "../agent-sdk/sqlite-inbox.ts";
+import type { SQLiteOutbox } from "../agent-sdk/sqlite-outbox.ts";
 import { RecipientMessageError } from "./contract.ts";
 import type {
   RecipientBinding,

@@ -5,8 +5,8 @@ import { hostFixture, limits } from "./adapter-host-fixtures.js";
 import { RecipientMessages } from "../src/recipient-messages/messages.ts";
 
 // Synthetic native input/policy store. This is not a product model or approval API.
-export function fixture(t) {
-  const f = hostFixture(t),
+export async function fixture(t) {
+  const f = await hostFixture(t),
     path = join(f.dir, "synthetic-recipient.sqlite"),
     context = Symbol("recipient-caller"),
     owner = Symbol("recipient-owner"),

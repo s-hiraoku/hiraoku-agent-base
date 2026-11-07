@@ -13,10 +13,10 @@ import type {
   SourceKey,
 } from "../task-bridge/contract.ts";
 import type { SQLiteTaskBridgeJournal } from "../task-bridge/sqlite-journal.ts";
-import type { SQLiteInbox } from "../relay/sqlite-inbox.ts";
+import type { SQLiteInbox } from "../agent-sdk/sqlite-inbox.ts";
 import type { BridgeReplyOutbox } from "../task-bridge/replies.ts";
-import type { DurableReceiver } from "../relay/receiver.ts";
-import type { ContractLimits } from "../relay/contract.ts";
+import type { DurableReceiver } from "../agent-sdk/receiver.ts";
+import type { ContractLimits } from "../messaging/contract.ts";
 import type { SubmissionReceipts } from "./submission-receipts.ts";
 import type { ReplyKind } from "../task-bridge/reply-contract.ts";
 

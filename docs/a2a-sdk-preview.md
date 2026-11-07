@@ -2,7 +2,7 @@
 
 This is the P1 SDK foundation for the [replacement plan](hab-product-spec.md). It is disabled by default. Importing these modules starts no listener and changes no Relay, Registry, MCP catalog, account, or production configuration.
 
-Run the proof with Node 24 and `npm ci`, then `npm run test:a2a`. The tests own temporary private databases, loopback ports, synthetic bearer tokens, and cleanup. They use the official A2A client and a real SQLite TaskService. The fixed worker result is a connectivity fixture, not evidence of a production agent completing work.
+Run the proof with Node 26 and `npm ci`, then `npm run test:a2a`. The tests own temporary private databases, loopback ports, synthetic bearer tokens, and cleanup. They use the official A2A client and a real SQLite TaskService. The fixed worker result is a connectivity fixture, not evidence of a production agent completing work.
 
 ## Supported contract
 

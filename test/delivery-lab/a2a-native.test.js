@@ -23,12 +23,12 @@ function readDatabase(f, name, action) {
   }
 }
 function expireFixtureLease(f, source) {
-  const db = new DatabaseSync(join(f.dir, "relay.sqlite"));
+  const db = new DatabaseSync(join(f.dir, "jetstream-journal.sqlite"));
   try {
     assert.equal(
       db
         .prepare(
-          "UPDATE relay_deliveries SET lease_until=0,next_visible_at=0 WHERE sender_id=? AND message_id=? AND state='leased'",
+          "UPDATE nats_messages SET lease_until=0,next_visible_at=0 WHERE sender_id=? AND message_id=? AND state='leased'",
         )
         .run(source.sender_id, source.message_id).changes,
       1,
@@ -116,7 +116,13 @@ test(nativeCases[1], async (t) => {
   await assert.rejects(() =>
     f.client.sendMessage(a2aRequest("independent_replay"), f.options),
   );
-  const original = { ...f.relayRows()[0] };
+  const relayRecord = () => {
+    // The journal moves the body from its outbox to the candidate cache; identity must not change.
+    const row = { ...f.relayRows()[0] };
+    delete row.body;
+    return row;
+  };
+  const original = relayRecord();
   assert.equal(f.requestCount(), 1);
   await f.restart();
   f.faults.outboxRetryDue();
@@ -133,7 +139,7 @@ test(nativeCases[1], async (t) => {
     replay.metadata.hab_relay.source,
     task.metadata.hab_relay.source,
   );
-  assert.deepEqual({ ...f.relayRows()[0] }, original);
+  assert.deepEqual(relayRecord(), original);
   assert.equal((await f.receipt(task)).receipt_id, original.receipt_id);
   assert.equal(
     Date.parse(task.metadata.hab_relay.source.expires_at),

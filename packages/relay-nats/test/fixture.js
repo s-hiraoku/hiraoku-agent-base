@@ -9,17 +9,14 @@ import { setTimeout as delay } from "node:timers/promises";
 import { connect } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
 import { JetStreamRelay } from "../src/backend.ts";
-import { SQLiteInbox } from "../../../src/relay/sqlite-inbox.ts";
-import { DurableReceiver } from "../../../src/relay/receiver.ts";
+import { SQLiteInbox } from "../../../src/agent-sdk/sqlite-inbox.ts";
+import { DurableReceiver } from "../../../src/agent-sdk/receiver.ts";
 
 export const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -38,6 +35,47 @@ export function ackRequest(delivery, request_id = "ack-1") {
     generation: delivery.generation,
     lease_token: delivery.lease_token,
     request_id,
+  };
+}
+/**
+ * The backend's delivery surface as the host uses it: synchronous journal commits under an
+ * explicit authorization. Submit publishes the admitted message; poll and ACK let the pump
+ * prefetch candidates and clean up acknowledged bodies around the journal commit.
+ */
+export function operations(backend, authorization) {
+  const pump = () =>
+    backend.pumpOnce().catch((error) => {
+      if (error?.code !== "capacity_exceeded") throw error;
+    });
+  return {
+    async submit(context, message) {
+      const receipt = backend.admitWithAuthorization(
+        context,
+        message,
+        authorization,
+      );
+      await backend.publishPending();
+      return backend.statusWithAuthorization(
+        context,
+        receipt.message_id,
+        authorization,
+      );
+    },
+    status: async (context, id) =>
+      backend.statusWithAuthorization(context, id, authorization),
+    async poll(context) {
+      await pump();
+      return backend.pollWithAuthorization(context, authorization);
+    },
+    async ack(context, request) {
+      const receipt = backend.ackWithAuthorization(
+        context,
+        request,
+        authorization,
+      );
+      await pump();
+      return receipt;
+    },
   };
 }
 export async function fixture(
@@ -253,9 +291,15 @@ export async function fixture(
   });
   let manager = await jetstreamManager(admin);
   let counter = 0;
+  const current = () => operations(backend, options.authorization);
   const f = {
     dir,
     options,
+    ops: (target) => operations(target, options.authorization),
+    submit: (context, message) => current().submit(context, message),
+    status: (context, id) => current().status(context, id),
+    poll: (context) => current().poll(context),
+    ack: (context, request) => current().ack(context, request),
     track(value) {
       opened.add(value);
       return value;
@@ -286,10 +330,10 @@ export async function fixture(
     },
     transport(name) {
       return {
-        submit: (message) => backend.submit(name, message),
-        status: (id) => backend.status(name, id),
-        poll: () => backend.poll(name),
-        ack: (request) => backend.ack(name, request),
+        submit: (message) => f.submit(name, message),
+        status: (id) => f.status(name, id),
+        poll: () => f.poll(name),
+        ack: (request) => f.ack(name, request),
       };
     },
     inbox(name) {
@@ -346,7 +390,7 @@ export async function fixture(
   return f;
 }
 
-export async function gatePubAck(t, upstream, mode = "puback") {
+export async function gatePubAck(t, upstream) {
   const sockets = new Set();
   let release, gateResolve;
   const gated = new Promise((resolve) => {
@@ -361,12 +405,9 @@ export async function gatePubAck(t, upstream, mode = "puback") {
     sockets.add(remote);
     client.on("error", () => {});
     remote.on("error", () => {});
-    if (mode === "ack-request") remote.pipe(client);
-    else client.pipe(remote);
-    const source = mode === "ack-request" ? client : remote;
-    const target = mode === "ack-request" ? remote : client;
+    client.pipe(remote);
     let buffer = Buffer.alloc(0);
-    source.on("data", (chunk) => {
+    remote.on("data", (chunk) => {
       buffer = Buffer.concat([buffer, chunk]);
       while (buffer.length) {
         const eol = buffer.indexOf("\r\n");
@@ -381,15 +422,13 @@ export async function gatePubAck(t, upstream, mode = "puback") {
         buffer = buffer.subarray(size);
         const payload = frame.subarray(eol + 2, -2).toString();
         const matches =
-          mode === "ack-request"
-            ? line.startsWith("PUB $JS.ACK.")
-            : /^MSG /.test(line) && /^\{"stream":"HAB","seq":/.test(payload);
+          /^MSG /.test(line) && /^\{"stream":"HAB","seq":/.test(payload);
         if (!release && matches) {
           release = (drop = false) => {
-            if (!drop) target.write(frame);
+            if (!drop) client.write(frame);
           };
           gateResolve();
-        } else target.write(frame);
+        } else client.write(frame);
       }
     });
     remote.on("end", () => client.end());

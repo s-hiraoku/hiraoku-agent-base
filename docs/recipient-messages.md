@@ -2,7 +2,7 @@
 
 `src/recipient-messages/` は、保存済みメッセージを受信エージェントの既存入力経路へ渡し、その確定返信を既存 outbox に保存する、明示構成のローカル API である。[ADR-015](hab-decisions.md)、[共通 MCP 接続](common-mcp-connection.md)、[受信側の実機準備](recipient-readiness.md)に従う。通常 MCP の5操作、受信 supervisor、Task の状態や既存製品設定は変更しない。
 
-現在の対象は `in_reply_to=null` のテキストだけの question / notice。返信は question に対するテキスト answer だけで、追加質問や対応不能の説明も受信側がその本文として選べる。answer を次の入力へ自動転送しない。構造化実行要求、添付、継続会話の dispatch はこの接点では未対応であり、既存通信では引き続きデータとして保存される。
+現在の対象は `in_reply_to=null` のテキストだけの question / notice。返信は question に対するテキスト answer だけで、追加質問や対応不能の説明も受信側がその本文として選べる。answer を次の入力へ自動転送しない。構造化実行要求と継続会話の dispatch はこの接点では未対応であり、通常の通信・明示構成された別の機能の責務を変更しない。添付は現行の通信契約でも拒否される。
 
 ## 明示的な構成と呼出し
 
@@ -54,6 +54,8 @@ key の runtime ID は永続的な同一性であり、再起動で新 ID を作
 
 合成 native store はテストだけに存在し、モデルも実所有者承認 UI も呼ばない。実製品の wake、入力、正式な session binding、durable な重複排除、承認の実効性、backup 復旧、常駐は未検証。Hermes / Dots / その他の製品向けの port はまだ同梱しない。これらの正式 API がない製品では、本変更で自動判断・自動返信の接続が完成したとは扱わない。
 
-## #137 との関係
+## 現行アーキテクチャとの関係
 
-実装基準は main `3e203d7ea210013207a5380a6f08190d8f4e6a9e`。未マージ #137 の head `599c1f2b8552e7b475ef917477ab0b03e1e5aa10` は durable client を `src/agent-sdk` へ移し、adapter-host / answer-intents 等を deferred として除外している。本変更はそれらを編集せず、独立した受信側構成に置く。#137 統合時は contract / inbox / outbox の import を移動先へ合わせ、受信側の reply admission 実装とテスト構成を選び直して再検証する。#137 にこの機能が含まれる、または #137 上で検証済みとは主張しない。
+#137 と #140 を含む main `d0506828f8568cecc68b12893adefe6b341117d7` に統合する。通信契約は `src/messaging`、durable client・inbox・outbox は `src/agent-sdk`、配送は NATS JetStream に従う。SQLite は受信側の inbox / outbox / reply budget と合成 native store に使用し、廃止済みの SQLite 配送backendを復活させない。
+
+この接点と adapter-host / answer-intents は、既定runtimeに配線しない明示構成のローカル部品である。`RecipientReplyAdmission` は受信側が供給する同期契約であり、テストでは現行 `SQLiteReplyBudget` と `AdapterHostCycle` を明示的に構成する。実製品の native port を実装した、または既定の受信で自動実行・返信するという意味ではない。統合後のテストは Node 26 と固定バージョンの実 NATS broker を要する。最新の実行結果は当該 head の検証記録を参照し、過去の SQLite 配送試験や旧 root 件数を現在の成功証拠とみなさない。

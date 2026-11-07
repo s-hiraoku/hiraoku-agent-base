@@ -1,8 +1,7 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../../../src/hab/sqlite-registry.ts";
-import { SQLiteRelayStore } from "../../../src/relay/sqlite-store.ts";
-import { HabJetStreamService } from "../src/hab-service.ts";
+import { HabJetStreamService } from "../../../src/host/hab-delivery-service.ts";
 import { fixture } from "./fixture.js";
 import {
   options as registryOptions,
@@ -60,16 +59,7 @@ export async function habFixture(t, patch = {}, serverBinary) {
     authority,
   );
   registry.migrate();
-  const legacyPath = join(f.dir, "relay.sqlite");
-  let legacy = new SQLiteRelayStore(legacyPath, {
-    ...f.options,
-    poll_scan_limit: f.options.poll_scan_limit ?? 20,
-  });
-  legacy.migrate();
-  t.after(() => {
-    legacy.close();
-    registry.close();
-  });
+  t.after(() => registry.close());
   let count = 0;
   const request = () => "synthetic-management-" + ++count;
   const product = registry.registerProduct(admin, {
@@ -121,24 +111,10 @@ export async function habFixture(t, patch = {}, serverBinary) {
       operations,
     });
   }
-  const routing = {
-    epoch: 1,
-    enabled: true,
-    recipients: [agents.b.agent_id],
-    kinds: ["question", "answer", "notice"],
-  };
-  const createService = (policy = routing, backend = f.backend) =>
-    new HabJetStreamService(
-      registry,
-      legacy,
-      backend,
-      f.options.limits,
-      policy,
-      { ...f.options, poll_scan_limit: f.options.poll_scan_limit ?? 20 },
-      () => {
-        if (!mutable.storage) throw Error("synthetic_volume_missing");
-      },
-    );
+  const createService = (backend = f.backend) =>
+    new HabJetStreamService(registry, backend, f.options, () => {
+      if (!mutable.storage) throw Error("synthetic_volume_missing");
+    });
   let service = createService();
   const selected = (name, contextName = name === "a2" ? "a" : name) =>
     service.selectAddress(
@@ -163,17 +139,14 @@ export async function habFixture(t, patch = {}, serverBinary) {
     get registry() {
       return registry;
     },
-    get legacy() {
-      return legacy;
-    },
-    legacyPath,
     registryPath: path,
     request,
     get service() {
       return service;
     },
-    routing,
     createService,
+    /** Opens another backend on the same journal with the current `options`. */
+    openBackend: () => f.open(),
     selected,
     message(to = "b", patch = {}) {
       return f.message(agents[to].agent_id, patch);
@@ -197,7 +170,6 @@ export async function habFixture(t, patch = {}, serverBinary) {
     },
     async restart() {
       await f.restart();
-      legacy.close();
       registry.close();
       registry = new SQLiteHabRegistry(
         path,
@@ -205,11 +177,6 @@ export async function habFixture(t, patch = {}, serverBinary) {
         authority,
       );
       registry.migrate();
-      legacy = new SQLiteRelayStore(legacyPath, {
-        ...f.options,
-        poll_scan_limit: f.options.poll_scan_limit ?? 20,
-      });
-      legacy.migrate();
       service = createService();
     },
     disconnect: () => f.stop(),

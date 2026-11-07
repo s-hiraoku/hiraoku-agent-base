@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReadableStream } from "node:stream/web";
-import { RelayHttpGateway } from "../src/relay/http.ts";
+import { RelayHttpGateway } from "../src/host/mcp/http.ts";
 import {
   fixture,
   policy,
@@ -16,7 +16,7 @@ test(
   "HTTP policy/audit is explicit and bounded; host/origin lists are immutable private copies",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     for (const patch of [
       { resource_url: "http://relay.example/mcp" },
       { resource_url: "https://user:pass@relay.example/mcp" },
@@ -59,7 +59,7 @@ test(
   "unconfigured/throwing verifier and cookie/forwarded identity claims cannot enable anonymous delivery",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     for (const g of [
       new RelayHttpGateway(f.service, policy, f.audit),
       f.gateway({}, () => {
@@ -97,7 +97,7 @@ test(
   "unauthenticated malformed bodies are cancelled without parsing/reading their application stream",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let pulls = 0,
       cancelled = false;
     const body = new ReadableStream(
@@ -130,7 +130,7 @@ test(
   "bounded HTTP modern and legacy MCP exchanges preserve identity, receipts and delivery-only semantics",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       g = f.gateway(),
       m = message();
     const a = await call(g, "relay_submit", m);
@@ -175,7 +175,9 @@ test(
       "acked",
     );
     assert.equal(
-      f.raw.prepare("SELECT body FROM relay_messages").get().body,
+      f.raw
+        .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+        .get().body,
       null,
     );
     assert.equal(a.response.headers.get("cache-control"), "no-store");
@@ -186,7 +188,7 @@ test(
   "resource, Host, Origin and method checks reject aliases before invoking authentication",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let verified = 0;
     const g = f.gateway({}, (v) => {
       verified++;
@@ -230,7 +232,7 @@ test(
   "media type, compression, byte budgets, content length, invalid JSON/UTF-8 fail before any operation",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       g = f.gateway();
     for (const [patch, status] of [
       [{ headers: { "Content-Type": "text/plain" } }, 415],
@@ -257,7 +259,7 @@ test(
   "batch, listener and subscription requests cannot open SDK streams; header/body routing mismatches are rejected",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       g = f.gateway();
     for (const method of [
       "subscriptions/listen",
@@ -299,7 +301,7 @@ test(
   "raw streamed request overflow cancels input and releases admission for later requests",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let cancelled = false;
     const body = new ReadableStream(
       {
@@ -330,7 +332,7 @@ test(
   "a stalled body is cancelled at the whole-request deadline without creating a message",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let cancelled = false;
     const body = new ReadableStream(
       {
@@ -354,7 +356,7 @@ test(
   "timed-out verification retains admission until settlement and late identity cannot start work",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let release, entered;
     const ready = new Promise((r) => {
       entered = r;
@@ -401,7 +403,7 @@ test(
   "late tool-start audit cannot dispatch after timeout, and new requests cannot bypass the pending audit slot",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let release, entered;
     const ready = new Promise((r) => {
       entered = r;
@@ -437,7 +439,7 @@ test(
   "abort/disconnect is signalled to verification and a late result cannot create a delivery",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       abort = new AbortController();
     let release, entered, signal;
     const ready = new Promise((r) => {
@@ -467,7 +469,7 @@ test(
   "audit failures deny before dispatch; failure after commit returns uncertainty and exact replay recovers",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       m = message();
     const failing = (at) => ({
       record(category) {
@@ -507,7 +509,7 @@ test(
   "response byte cap returns no partial receipt and original intent can be reconciled without duplication",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       m = message();
     const result = await call(
       f.gateway({ max_response_bytes: 8 }),
@@ -527,7 +529,7 @@ test(
   "global admission uses no caller-controlled identity/IP keys and logs only fixed categories/correlations",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       g = f.gateway({ requests_per_window: 2 });
     const first = await g.fetch(
       request(
@@ -564,7 +566,7 @@ test(
   "concurrent requests keep independent verified contexts and current service policy can revoke them",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     let release, entered;
     const ready = new Promise((r) => {
       entered = r;
@@ -608,7 +610,7 @@ test(
   "catalog requests work without manufacturing any task and valid HTTP results remain bounded",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       g = f.gateway();
     const r = await g.fetch(request());
     const decoded = await decode(r);
@@ -626,7 +628,7 @@ test(
   "fragmented UTF-8 JSON and empty input chunks preserve exact message contents within the byte cap",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       m = message();
     m.body.parts[0].text = "合成の確認データ";
     const original = request("tools/call", {
@@ -660,8 +662,8 @@ test(
       "a",
     );
     assert.equal(
-      JSON.parse(f.raw.prepare("SELECT body FROM relay_messages").get().body)
-        .body.parts[0].text,
+      JSON.parse(f.raw.prepare("SELECT outbox FROM nats_messages").get().outbox)
+        .message.body.parts[0].text,
       m.body.parts[0].text,
     );
   },
@@ -671,7 +673,7 @@ test(
   "post-commit audit still owns admission after deadline/SDK cleanup, and recovery uses the existing receipt",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       m = message();
     let entered,
       release,

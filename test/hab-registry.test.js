@@ -54,8 +54,8 @@ test("version-1 names are canonical ASCII slugs; address parser never normalizes
     assert.throws(() => parseHabAddress(s), code("invalid_registry_request"));
 });
 
-test("preview is read-only, enrollment atomically reserves immutable names and starts without rights", (t) => {
-  const f = fixture(t),
+test("preview is read-only, enrollment atomically reserves immutable names and starts without rights", async (t) => {
+  const f = await fixture(t),
     before = f.registryRaw
       .prepare("SELECT epoch FROM hab_registry_meta")
       .get().epoch;
@@ -112,8 +112,8 @@ test("preview is read-only, enrollment atomically reserves immutable names and s
     );
 });
 
-test("only catalog product selects agent_name; same bot name on different products is a different permanent individual", (t) => {
-  const f = fixture(t),
+test("only catalog product selects agent_name; same bot name on different products is a different permanent individual", async (t) => {
+  const f = await fixture(t),
     second = f.registry.registerProduct(f.admin, {
       request_id: "product-hermes",
       agent_name: "hermes",
@@ -145,8 +145,8 @@ test("only catalog product selects agent_name; same bot name on different produc
   );
 });
 
-test("registration retry survives reopen with same ID and conflicts on changed content", (t) => {
-  const f = fixture(t),
+test("registration retry survives reopen with same ID and conflicts on changed content", async (t) => {
+  const f = await fixture(t),
     input = {
       request_id: "same-request",
       product_id: f.product.product_id,
@@ -170,8 +170,8 @@ test("registration retry survives reopen with same ID and conflicts on changed c
   );
 });
 
-test("management authority is separate, rechecked on exact retries, operation-specific and absent by default", (t) => {
-  const f = fixture(t),
+test("management authority is separate, rechecked on exact retries, operation-specific and absent by default", async (t) => {
+  const f = await fixture(t),
     request = {
       request_id: "enroll-a",
       product_id: f.product.product_id,
@@ -224,8 +224,8 @@ test("management authority is separate, rechecked on exact retries, operation-sp
   );
 });
 
-test("binding and activation require distinct authorized steps and stale epochs cannot mutate state", (t) => {
-  const f = fixture(t),
+test("binding and activation require distinct authorized steps and stale epochs cannot mutate state", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a", false);
   const activate = {
     request_id: "access-a",
@@ -281,8 +281,8 @@ test("binding and activation require distinct authorized steps and stale epochs 
   );
 });
 
-test("full principal tuple is exclusive and never rebound, including after revocation", (t) => {
-  const f = fixture(t),
+test("full principal tuple is exclusive and never rebound, including after revocation", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b", false),
     binding = f.bindings.get("a");
@@ -358,8 +358,8 @@ test("full principal tuple is exclusive and never rebound, including after revoc
     );
 });
 
-test("retirement is terminal and database guards preserve ID/address/principal reservations", (t) => {
-  const f = fixture(t),
+test("retirement is terminal and database guards preserve ID/address/principal reservations", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a");
   const retired = f.registry.setAccess(f.admin, {
     request_id: "retire-a",
@@ -409,8 +409,8 @@ test("retirement is terminal and database guards preserve ID/address/principal r
   assert.notEqual(next.agent_id, a.agent_id);
 });
 
-test("management state, audit, idempotency receipt and epoch roll back together on storage failure", (t) => {
-  const f = fixture(t),
+test("management state, audit, idempotency receipt and epoch roll back together on storage failure", async (t) => {
+  const f = await fixture(t),
     before = f.registryRaw
       .prepare("SELECT epoch FROM hab_registry_meta")
       .get().epoch;
@@ -442,8 +442,8 @@ test("management state, audit, idempotency receipt and epoch roll back together 
   assert.equal(f.registry.enroll(f.admin, input).address, "a@grok-bot.hab");
 });
 
-test("management storage contains no raw principal claims or input bodies in audit/request ledger", (t) => {
-  const f = fixture(t);
+test("management storage contains no raw principal claims or input bodies in audit/request ledger", async (t) => {
+  const f = await fixture(t);
   f.enroll("a");
   const rows = f.registryRaw.prepare("SELECT * FROM hab_registry_audit").all();
   assert.ok(
@@ -468,8 +468,8 @@ test("management storage contains no raw principal claims or input bodies in aud
     assert.equal(persisted.includes(s), false);
 });
 
-test("registry caps refuse growth, and exact requests recover even when capacity is full", (t) => {
-  const f = fixture(t, { max_agents: 1, max_products: 1 });
+test("registry caps refuse growth, and exact requests recover even when capacity is full", async (t) => {
+  const f = await fixture(t, { max_agents: 1, max_products: 1 });
   const a = f.enroll("a", false);
   assert.deepEqual(f.enroll("a", false), a);
   assert.throws(() => f.enroll("b", false), code("registry_capacity_exceeded"));
@@ -502,8 +502,8 @@ test("registry caps refuse growth, and exact requests recover even when capacity
   );
 });
 
-test("file mode, key, schema and explicit migration are checked without changing other databases", (t) => {
-  const f = fixture(t);
+test("file mode, key, schema and explicit migration are checked without changing other databases", async (t) => {
+  const f = await fixture(t);
   assert.equal(statSync(f.path).mode & 0o777, 0o600);
   const unopened = f.open();
   assert.throws(
@@ -547,8 +547,8 @@ test("unsafe or implicit policy is refused before opening a registry", () => {
     );
 });
 
-test("binding reservations keep consuming quota after revocation, while explicit unblock frees a block slot", (t) => {
-  const f = fixture(t),
+test("binding reservations keep consuming quota after revocation, while explicit unblock frees a block slot", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b"),
     c = f.enroll("c");
@@ -623,7 +623,7 @@ test(
   "simultaneous enrollment from separate workers reserves one individual and recovers shared request",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t);
+    const f = await fixture(t);
     const run = (requestId) =>
       new Promise((resolve, reject) => {
         const worker = new Worker(

@@ -3,11 +3,10 @@ import { mkdtempSync, chmodSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { SQLiteEnrollmentJournal } from "../src/hab/sqlite-enrollment-journal.ts";
 import { runHabEnrollment } from "../src/hab/enrollment.ts";
-import { HabRelayService } from "../src/hab/relay.ts";
+import { jetstreamDelivery } from "./jetstream-delivery.js";
 import { options, operations, principal } from "./hab-registry-fixtures.js";
 import { limits, message } from "./relay-http-fixtures.js";
 import { setup } from "./hab-http-fixtures.js";
@@ -42,7 +41,7 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
     choices = [],
     agents = {},
     products = {};
-  let registry, store, journal;
+  let registry, delivery, journal;
   const opened = new Set();
   const track = (s) => {
     opened.add(s);
@@ -57,22 +56,6 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
       new SQLiteHabRegistry(join(dir, "registry.sqlite"), options, authority),
     );
     registry.migrate();
-    store = track(
-      new SQLiteRelayStore(join(dir, "relay.sqlite"), {
-        fingerprint_key: new Uint8Array(32).fill(43),
-        max_pending: 20,
-        max_records: 100,
-        max_pending_per_recipient: 10,
-        max_body_bytes: 100000,
-        max_clock_skew_ms: 1000,
-        lease_ms: 30000,
-        max_attempts: 3,
-        retry_base_ms: 10,
-        retry_cap_ms: 100,
-        poll_scan_limit: 20,
-      }),
-    );
-    store.migrate();
     journal = track(
       new SQLiteEnrollmentJournal(join(dir, "enrollment.sqlite"), {
         max_sessions: 10,
@@ -123,7 +106,17 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
       agents[name] = registry.inspect(admin, saved.agent_id);
     return result;
   };
-  const hab = () => new HabRelayService(registry, store, limits);
+  delivery = await jetstreamDelivery(t, {
+    registry,
+    limits,
+    directory: dir,
+    queue: {
+      max_pending: 20,
+      max_pending_per_recipient: 10,
+      agent_capacity: undefined,
+    },
+  });
+  const hab = () => delivery.serviceFor(registry);
   const f = {
     dir,
     audit: {
@@ -160,16 +153,31 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
     get journal() {
       return journal;
     },
-    get store() {
-      return store;
+    get delivery() {
+      return delivery;
     },
     client: (name, fetch = globalThis.fetch) =>
       net.clients(name, agents[name], fetch),
     raw,
     count: (table) =>
-      raw(table.startsWith("hab_") ? "registry.sqlite" : "relay.sqlite", (db) =>
-        Number(db.prepare(`SELECT count(*) n FROM ${table}`).get().n),
-      ),
+      table.startsWith("hab_")
+        ? raw("registry.sqlite", (db) =>
+            Number(db.prepare(`SELECT count(*) n FROM ${table}`).get().n),
+          )
+        : raw("jetstream-journal.sqlite", (db) =>
+            Number(
+              db
+                .prepare(
+                  {
+                    relay_messages: "SELECT count(*) n FROM nats_messages",
+                    relay_deliveries: "SELECT count(*) n FROM nats_messages",
+                    relay_ack_receipts:
+                      "SELECT count(*) n FROM nats_messages WHERE ack_request_id IS NOT NULL",
+                  }[table],
+                )
+                .get().n,
+            ),
+          ),
     async enrollAll() {
       for (const name of ["a", "b", "c"]) await run(name);
     },
@@ -177,8 +185,8 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
       await net.stop();
       close(journal);
       close(registry);
-      close(store);
       open();
+      await delivery.reopen(registry);
       await net.start(hab());
     },
     makeMessage(to, patch = {}) {
@@ -202,9 +210,9 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
       );
     },
     expireLeases() {
-      raw("relay.sqlite", (db) =>
+      raw("jetstream-journal.sqlite", (db) =>
         db.exec(
-          "UPDATE relay_deliveries SET lease_until=0,next_visible_at=0 WHERE state='leased'",
+          "UPDATE nats_messages SET lease_until=0,next_visible_at=0 WHERE state='leased'",
         ),
       );
     },

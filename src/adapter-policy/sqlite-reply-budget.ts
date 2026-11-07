@@ -8,8 +8,8 @@ import {
   parseSubmission,
   isReplayBoundMessageId,
   validateLimits,
-} from "../relay/contract.ts";
-import type { ContractLimits, Submission } from "../relay/contract.ts";
+} from "../messaging/contract.ts";
+import type { ContractLimits, Submission } from "../messaging/contract.ts";
 import {
   ReplyBudgetError,
   id,

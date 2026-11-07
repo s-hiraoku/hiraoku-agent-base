@@ -13,7 +13,7 @@
 
 原質問のbodyは最初のprepare後に既存inboxのreleaseBodyで解放できます。journalには原質問本文を複製せず、検証した原質問の宛先・thread・ID・期限と秘密key付き比較指紋を保存します。原質問ごとの確定回答は一つです。同じbodyのprepareは元の記録を返し、変更したbodyはanswer_intent_conflictです。これは本文解放後にも維持します。構造化JSONのobject key順は同一視し、文字列・parts順・値は保持します。
 
-添付partは既存契約の管理添付metadataだけを保持します。添付本体の生成・ownership・寿命・outboxへのready admissionは既存添付portの責務であり、ここでURLを取得したり添付を延命したりしません。
+添付partは契約から廃止されており、intentの保存前に契約検証で拒否します。ここでURLを取得しません。
 
 ## 不明な引渡しと起動時照合
 

@@ -21,8 +21,8 @@ import { SQLiteTaskBridgeJournal } from "../src/task-bridge/sqlite-journal.ts";
 import { ConnectivityTaskPort } from "../src/task-bridge/task-port.ts";
 import { closedTask } from "../src/task-bridge/contract.ts";
 
-test("Task bridge: delivery and confirmed ACK alone do not accept or create a Task", (t) => {
-  const f = fixture(t),
+test("Task bridge: delivery and confirmed ACK alone do not accept or create a Task", async (t) => {
+  const f = await fixture(t),
     key = f.receive();
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
   assert.throws(() => f.journal.get(key), code("bridge_not_found"));
@@ -33,7 +33,7 @@ test("Task bridge: delivery and confirmed ACK alone do not accept or create a Ta
   assert.deepEqual(f.audit(), ["accepted"]);
 });
 test("Task bridge: explicit acceptance and fixed Task submission preserve distinct states", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive(),
     accepted = f.bridge.accept(f.context, key);
   const linked = await f.bridge.submitOnce(f.context, key);
@@ -46,7 +46,7 @@ test("Task bridge: explicit acceptance and fixed Task submission preserve distin
   assert.deepEqual(f.audit(), ["accepted", "attempted", "linked"]);
 });
 test("Task bridge: caller names cannot replace current explicit local authorization", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   assert.throws(
     () => f.bridge.accept({ receiver_id: "b", actor_id: "operator" }, key),
@@ -62,8 +62,8 @@ test("Task bridge: caller names cannot replace current explicit local authorizat
   );
   assert.equal(f.count(), 0);
 });
-test("Task bridge: unconfirmed delivery cannot be explicitly accepted", (t) => {
-  const f = fixture(t),
+test("Task bridge: unconfirmed delivery cannot be explicitly accepted", async (t) => {
+  const f = await fixture(t),
     key = f.receive({}, false);
   assert.throws(
     () => f.bridge.accept(f.context, key),
@@ -71,8 +71,8 @@ test("Task bridge: unconfirmed delivery cannot be explicitly accepted", (t) => {
   );
   assert.equal(f.count(), 0);
 });
-test("Task bridge: ordinary replies, free text, attachments and arbitrary task arguments cannot execute", (t) => {
-  const f = fixture(t);
+test("Task bridge: ordinary replies, free text, attachments and arbitrary task arguments cannot execute", async (t) => {
+  const f = await fixture(t);
   for (const patch of [
     { kind: "answer" },
     { kind: "execution_result" },
@@ -134,8 +134,8 @@ test("Task bridge: ordinary replies, free text, attachments and arbitrary task a
   }
   assert.equal(f.count(), 0);
 });
-test("Task bridge: inbox handoff validates durable content and cannot accept released bodies", (t) => {
-  const f = fixture(t),
+test("Task bridge: inbox handoff validates durable content and cannot accept released bodies", async (t) => {
+  const f = await fixture(t),
     key = f.receive();
   f.inbox.releaseBody(key.sender_id, key.message_id);
   assert.throws(() => f.bridge.accept(f.context, key), code("not_found"));
@@ -156,8 +156,8 @@ test("Task bridge: inbox handoff validates durable content and cannot accept rel
   );
   assert.throws(() => f.journal.get(last), code("bridge_not_found"));
 });
-test("Task bridge: source handoff rejects runtime body tampering before journal admission", (t) => {
-  const f = fixture(t),
+test("Task bridge: source handoff rejects runtime body tampering before journal admission", async (t) => {
+  const f = await fixture(t),
     key = f.receive();
   const raw = new f.raw.constructor(join(f.dir, "bridge-inbox.sqlite"));
   t.after(() => raw.close());
@@ -175,8 +175,8 @@ test("Task bridge: source handoff rejects runtime body tampering before journal 
   );
   assert.equal(f.count(), 0);
 });
-test("Task bridge: exact acceptance replay survives full capacity, response loss and reopen", (t) => {
-  const f = fixture(t, { max_records: 1 }),
+test("Task bridge: exact acceptance replay survives full capacity, response loss and reopen", async (t) => {
+  const f = await fixture(t, { max_records: 1 }),
     key = f.receive(),
     first = f.bridge.accept(f.context, key);
   assert.deepEqual(f.bridge.accept(f.context, key), first);
@@ -194,7 +194,7 @@ test("Task bridge: exact acceptance replay survives full capacity, response loss
   );
 });
 test("Task bridge: losing a committed Task response reuses the same owner and submit key", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive(),
     accepted = f.bridge.accept(f.context, key);
   const lost = f.makeBridge({
@@ -218,7 +218,7 @@ test("Task bridge: losing a committed Task response reuses the same owner and su
   assert.equal(await f.hub.claim(worker, {}).then(Boolean), true);
 });
 test("Task bridge: release after durable acceptance does not lose the Task link", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive(),
     accepted = f.bridge.accept(f.context, key);
   f.inbox.releaseBody(key.sender_id, key.message_id);
@@ -227,7 +227,7 @@ test("Task bridge: release after durable acceptance does not lose the Task link"
   assert.equal(f.count(), 1);
 });
 test("Task bridge: an unresolved outcome holds the one submission slot for other source messages", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     one = f.receive(),
     two = f.receive();
   f.bridge.accept(f.context, one);
@@ -247,7 +247,7 @@ test("Task bridge: an unresolved outcome holds the one submission slot for other
   assert.equal(f.count(), 2);
 });
 test("Task bridge: finite failed reconciliations enter waiting approval without key rotation", async (t) => {
-  const f = fixture(t, { max_submit_attempts: 2 }),
+  const f = await fixture(t, { max_submit_attempts: 2 }),
     key = f.receive(),
     accepted = f.bridge.accept(f.context, key);
   const bad = f.makeBridge({
@@ -265,7 +265,7 @@ test("Task bridge: finite failed reconciliations enter waiting approval without 
   assert.equal((await bad.submitOnce(f.context, key, true)).attempts, 2);
 });
 test("Task bridge: a late original response cannot overwrite a newer reconciliation fence", async (t) => {
-  const f = fixture(t, { lease_ms: 500 }),
+  const f = await fixture(t, { lease_ms: 500 }),
     key = f.receive();
   f.bridge.accept(f.context, key);
   const old = f.journal.begin(key, false, () => {}),
@@ -282,7 +282,7 @@ test("Task bridge: a late original response cannot overwrite a newer reconciliat
   assert.equal(f.count(), 1);
 });
 test("Task bridge: crash while submitting requires same-key reconciliation after the finite lease", async (t) => {
-  const f = fixture(t, { lease_ms: 500 }),
+  const f = await fixture(t, { lease_ms: 500 }),
     key = f.receive();
   f.bridge.accept(f.context, key);
   const job = f.journal.begin(key, false, () => {});
@@ -303,7 +303,7 @@ test("Task bridge: crash while submitting requires same-key reconciliation after
   assert.equal(f.count(), 1);
 });
 test("Task bridge: invalid Task evidence is never linked as a successful acceptance", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   const wrong = f.makeBridge({
@@ -320,7 +320,7 @@ test("Task bridge: invalid Task evidence is never linked as a successful accepta
   );
 });
 test("Task bridge: current Task principal and durable Task stop are independent authorization gates", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   f.state.task_enabled = false;
@@ -340,7 +340,7 @@ test("Task bridge: current Task principal and durable Task stop are independent 
   assert.equal(f.count(), 0);
 });
 test("Task bridge: completion evidence comes from the Task engine and repeated observation does not resubmit", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   await f.bridge.submitOnce(f.context, key);
@@ -365,7 +365,7 @@ test("Task bridge: completion evidence comes from the Task engine and repeated o
   assert.equal(f.count(), 1);
 });
 test("Task bridge: cancelling an active Task is not completion and does not release the execution gate", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   await f.bridge.submitOnce(f.context, key);
@@ -378,7 +378,7 @@ test("Task bridge: cancelling an active Task is not completion and does not rele
   assert.equal(await f.hub.claim(worker, {}), null);
 });
 test("Task bridge: audit failure rolls back the link while preserving the stable pre-submit journal", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive(),
     accepted = f.bridge.accept(f.context, key);
   f.raw.exec(
@@ -394,8 +394,8 @@ test("Task bridge: audit failure rolls back the link while preserving the stable
   );
   assert.equal(f.count(), 1);
 });
-test("Task bridge: changed acceptance authority before commit leaves no durable approval", (t) => {
-  const f = fixture(t),
+test("Task bridge: changed acceptance authority before commit leaves no durable approval", async (t) => {
+  const f = await fixture(t),
     key = f.receive();
   let n = 0;
   const bridge = f.makeBridge({}, f.journal, () =>
@@ -406,7 +406,7 @@ test("Task bridge: changed acceptance authority before commit leaves no durable 
   assert.equal(f.count(), 0);
 });
 test("Task bridge: changed authority during Task submit retains an unresolved key instead of false success", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   const bridge = f.makeBridge({
@@ -421,8 +421,8 @@ test("Task bridge: changed authority during Task submit retains an unresolved ke
   assert.equal(result.task, null);
   assert.equal(f.count(), 1);
 });
-test("Task bridge: HMAC or indexed-state tampering fails closed", (t) => {
-  const f = fixture(t),
+test("Task bridge: HMAC or indexed-state tampering fails closed", async (t) => {
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   f.raw
@@ -432,8 +432,8 @@ test("Task bridge: HMAC or indexed-state tampering fails closed", (t) => {
     .run(key.message_id);
   assert.throws(() => f.journal.get(key), code("bridge_integrity_failed"));
 });
-test("Task bridge: private files, migration and fixed engine binding are required", (t) => {
-  const f = fixture(t);
+test("Task bridge: private files, migration and fixed engine binding are required", async (t) => {
+  const f = await fixture(t);
   assert.equal(statSync(f.path).mode & 0o077, 0);
   for (const patch of [
     { receiver_id: "c" },
@@ -464,7 +464,7 @@ test("Task bridge: private files, migration and fixed engine binding are require
   );
 });
 test("Task bridge: missing schema objects do not auto-repair and audit capacity fails before Task IO", async (t) => {
-  const f = fixture(t, { max_audit_records: 1 }),
+  const f = await fixture(t, { max_audit_records: 1 }),
     key = f.receive();
   f.bridge.accept(f.context, key);
   await assert.rejects(
@@ -477,7 +477,7 @@ test("Task bridge: missing schema objects do not auto-repair and audit capacity 
   assert.throws(() => s.migrate(), code("unsupported_bridge_schema"));
 });
 test("Task bridge: task principal aliases and task-type permissions cannot change engine binding", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   for (const p of [
@@ -493,7 +493,7 @@ test("Task bridge: task principal aliases and task-type permissions cannot chang
   assert.equal(f.count(), 0);
 });
 test("Task bridge: competing native journal connections claim only one attempt fence", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   const source = new URL(
@@ -530,7 +530,7 @@ test("Task bridge: competing native journal connections claim only one attempt f
   assert.equal(f.count(), 0);
 });
 test("Task bridge: asynchronous approval ports and commit guards fail closed", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   const bridge = f.makeBridge({}, f.journal, () =>
     Promise.reject(Error("synthetic")),
@@ -545,7 +545,7 @@ test("Task bridge: asynchronous approval ports and commit guards fail closed", a
   assert.equal(f.count(), 0);
 });
 test("Task bridge: terminal evidence cannot regress or be replaced by another Task ID", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   f.bridge.accept(f.context, key);
   await f.bridge.submitOnce(f.context, key);
@@ -573,8 +573,8 @@ test("Task bridge: terminal evidence cannot regress or be replaced by another Ta
   );
   assert.equal(f.journal.get(key).task.state, "succeeded");
 });
-test("Task bridge: transaction-level rollback fails closed until explicit migration and keeps no approval", (t) => {
-  const f = fixture(t),
+test("Task bridge: transaction-level rollback fails closed until explicit migration and keeps no approval", async (t) => {
+  const f = await fixture(t),
     key = f.receive();
   f.raw.exec(
     "CREATE TRIGGER rollback_bridge BEFORE INSERT ON task_bridge_audit BEGIN SELECT RAISE(ROLLBACK,'synthetic');END",
@@ -590,7 +590,7 @@ test("Task bridge: transaction-level rollback fails closed until explicit migrat
   assert.equal(f.count(), 0);
 });
 test("Task bridge: composed inbox and Task methods are captured before caller mutation", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     key = f.receive();
   const service = {
     submit: f.hub.submit.bind(f.hub),

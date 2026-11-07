@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HabRelayService } from "../src/hab/relay.ts";
-import { RelayService } from "../src/relay/service.ts";
+import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
+import { queue } from "./jetstream-delivery.js";
 import {
   fixture,
   options,
@@ -9,7 +9,7 @@ import {
   operations,
   code,
 } from "./hab-registry-fixtures.js";
-import { limits, message } from "./relay-http-fixtures.js";
+import { message } from "./relay-http-fixtures.js";
 function submission(to, entropy = "1".repeat(32)) {
   return { ...message(entropy), recipient_id: to.agent_id };
 }
@@ -48,8 +48,8 @@ function block(f, a, b, blocked, requestId = "block") {
   });
 }
 
-test("registered active individuals resolve and communicate without per-pair allowlists", (t) => {
-  const f = fixture(t),
+test("registered active individuals resolve and communicate without per-pair allowlists", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b"),
     c = f.enroll("c");
@@ -77,8 +77,8 @@ test("registered active individuals resolve and communicate without per-pair all
   assert.notEqual(c.agent_id, b.agent_id);
 });
 
-test("unknown, unbound, inactive and expired contexts cannot resolve, submit, poll, ACK or status", (t) => {
-  const f = fixture(t),
+test("unknown, unbound, inactive and expired contexts cannot resolve, submit, poll, ACK or status", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b"),
     m = submission(b);
@@ -111,8 +111,8 @@ test("unknown, unbound, inactive and expired contexts cannot resolve, submit, po
   assert.equal(f.count(), 0);
 });
 
-test("individual proof includes issuer/audience/subject/client/connection; a shared owner never chooses a mailbox", (t) => {
-  const f = fixture(t),
+test("individual proof includes issuer/audience/subject/client/connection; a shared owner never chooses a mailbox", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   for (const patch of [
@@ -134,11 +134,7 @@ test("individual proof includes issuer/audience/subject/client/connection; a sha
     );
     other.migrate();
     assert.throws(
-      () =>
-        new HabRelayService(other, f.store, limits).submit(
-          f.contexts.a,
-          submission(b),
-        ),
+      () => f.habFor(other).submit(f.contexts.a, submission(b)),
       code("forbidden"),
     );
   }
@@ -150,8 +146,8 @@ test("individual proof includes issuer/audience/subject/client/connection; a sha
   assert.equal(f.hab.submit(f.contexts.a, submission(b)).sender_id, a.agent_id);
 });
 
-test("operation grants and unknown kinds are checked independently of a valid binding", (t) => {
-  const f = fixture(t);
+test("operation grants and unknown kinds are checked independently of a valid binding", async (t) => {
+  const f = await fixture(t);
   let a = f.enroll("a");
   const b = f.enroll("b");
   a = access(f, a, "active", ["status"]);
@@ -179,8 +175,8 @@ test("operation grants and unknown kinds are checked independently of a valid bi
   assert.equal(a.operations.length, operations.length);
 });
 
-test("resolve hides unknown, stopped, retired and blocked destinations with the same refusal", (t) => {
-  const f = fixture(t),
+test("resolve hides unknown, stopped, retired and blocked destinations with the same refusal", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b"),
     c = f.enroll("c");
@@ -208,8 +204,8 @@ test("resolve hides unknown, stopped, retired and blocked destinations with the 
   );
 });
 
-test("stopped destination rejects duplicate submit while sender can inspect its own stored acceptance", (t) => {
-  const f = fixture(t);
+test("stopped destination rejects duplicate submit while sender can inspect its own stored acceptance", async (t) => {
+  const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b"),
     m = submission(b);
@@ -219,13 +215,15 @@ test("stopped destination rejects duplicate submit while sender can inspect its 
   assert.deepEqual(f.hab.status(f.contexts.a, m.message_id), receipt);
   assert.equal(f.count(), 1);
   assert.notEqual(
-    f.raw.prepare("SELECT body FROM relay_messages").get().body,
+    f.raw
+      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+      .get().body,
     null,
   );
 });
 
-test("directional blocks affect submit, pending delivery and exact ACK retry without deleting saved delivery", (t) => {
-  const f = fixture(t);
+test("directional blocks affect submit, pending delivery and exact ACK retry without deleting saved delivery", async (t) => {
+  const f = await fixture(t);
   let a = f.enroll("a"),
     b = f.enroll("b");
   const m = submission(b),
@@ -250,8 +248,8 @@ test("directional blocks affect submit, pending delivery and exact ACK retry wit
   assert.equal(accepted.recipient_id, b.agent_id);
 });
 
-test("revocation immediately denies retained contexts and exact ACK/receipt retry; fresh binding requires activation", (t) => {
-  const f = fixture(t),
+test("revocation immediately denies retained contexts and exact ACK/receipt retry; fresh binding requires activation", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b"),
     m = submission(b);
@@ -273,8 +271,8 @@ test("revocation immediately denies retained contexts and exact ACK/receipt retr
   );
 });
 
-test("scoped authorization cannot escape its transaction, change operation/context or authorize maintenance", (t) => {
-  const f = fixture(t),
+test("scoped authorization cannot escape its transaction, change operation/context or authorize maintenance", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
   let saved;
@@ -302,9 +300,13 @@ test("scoped authorization cannot escape its transaction, change operation/conte
     saved.authorize(f.contexts.a, "submit", b.agent_id, "question"),
     undefined,
   );
-  const escaped = new RelayService(f.store, limits, saved);
   assert.throws(
-    () => escaped.submit(f.contexts.a, submission(b)),
+    () =>
+      f.delivery.backend.admitWithAuthorization(
+        f.contexts.a,
+        submission(b),
+        saved,
+      ),
     code("forbidden"),
   );
   assert.throws(
@@ -313,8 +315,8 @@ test("scoped authorization cannot escape its transaction, change operation/conte
   );
 });
 
-test("registry write guard spans Relay commit so another connection cannot revoke in the authorization gap", (t) => {
-  const f = fixture(t);
+test("registry write guard spans Relay commit so another connection cannot revoke in the authorization gap", async (t) => {
+  const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b"),
     second = f.open({ busy_timeout_ms: 1 });
@@ -327,25 +329,28 @@ test("registry write guard spans Relay commit so another connection cannot revok
     operations: [],
   };
   let checked = false;
-  const composed = new HabRelayService(
+  const backend = f.delivery.backend;
+  const composed = new HabJetStreamService(
     f.registry,
     {
-      accept(resolve) {
-        return f.store.accept(() => {
-          const result = resolve();
-          assert.throws(
-            () => second.setAccess(f.admin, stop),
-            code("registry_unavailable"),
-          );
-          checked = true;
-          return result;
+      prefetchWindow: backend.prefetchWindow,
+      admitWithAuthorization(context, input, authorization) {
+        return backend.admitWithAuthorization(context, input, {
+          authorize(...args) {
+            const result = authorization.authorize(...args);
+            if (args[1] === "submit" && args[2] !== undefined) {
+              assert.throws(
+                () => second.setAccess(f.admin, stop),
+                code("registry_unavailable"),
+              );
+              checked = true;
+            }
+            return result;
+          },
         });
       },
-      status(resolve) {
-        return f.store.status(resolve);
-      },
     },
-    limits,
+    queue,
   );
   const m = submission(b);
   composed.submit(f.contexts.a, m);
@@ -355,8 +360,8 @@ test("registry write guard spans Relay commit so another connection cannot revok
   assert.equal(f.count(), 1);
 });
 
-test("emergency stop is durable, idempotent and independent of full or failing append-only audit/ledger", (t) => {
-  const f = fixture(t);
+test("emergency stop is durable, idempotent and independent of full or failing append-only audit/ledger", async (t) => {
+  const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b");
   const capped = f.open({ max_requests: 1, max_audit_records: 1 });
@@ -379,18 +384,15 @@ test("emergency stop is durable, idempotent and independent of full or failing a
   );
   const reopened = f.open();
   reopened.migrate();
-  assert.throws(
-    () => new HabRelayService(reopened, f.store, limits).poll(f.contexts.a),
-    code("forbidden"),
-  );
+  assert.throws(() => f.habFor(reopened).poll(f.contexts.a), code("forbidden"));
   assert.equal(
     f.registryRaw.prepare("SELECT count(*) n FROM hab_registry_stop").get().n,
     1,
   );
 });
 
-test("missing authoritative stop state fails closed and never initializes an unlocked replacement", (t) => {
-  const f = fixture(t);
+test("missing authoritative stop state fails closed and never initializes an unlocked replacement", async (t) => {
+  const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b");
   f.registryRaw.exec("DELETE FROM hab_registry_stop");
@@ -411,8 +413,8 @@ test("missing authoritative stop state fails closed and never initializes an unl
   assert.throws(() => reopened.migrate(), code("registry_unavailable"));
 });
 
-test("explicit overlapping binding rotation revokes only the old verified connection without stopping the individual", (t) => {
-  const f = fixture(t),
+test("explicit overlapping binding rotation revokes only the old verified connection without stopping the individual", async (t) => {
+  const f = await fixture(t),
     a = f.enroll("a"),
     rotated = principal("a", { connection_id: "verified-a-rotated" });
   const added = f.registry.bind(f.admin, {
@@ -439,8 +441,5 @@ test("explicit overlapping binding rotation revokes only the old verified connec
     },
   );
   current.migrate();
-  assert.equal(
-    new HabRelayService(current, f.store, limits).poll(f.contexts.a),
-    null,
-  );
+  assert.equal(f.habFor(current).poll(f.contexts.a), null);
 });

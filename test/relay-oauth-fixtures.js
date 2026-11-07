@@ -1,5 +1,5 @@
-import { PinnedRelayOAuthAuthority } from "../src/relay-host/oauth-auth.ts";
-import { RELAY_OAUTH_SCOPES } from "../src/relay/oauth-resource.ts";
+import { PinnedOAuthAuthority } from "../src/host/oauth-auth.ts";
+import { RELAY_OAUTH_SCOPES } from "../src/host/mcp/oauth-resource.ts";
 export const issuer = "https://synthetic-tenant.jp.auth0.com/";
 export const resource = "https://relay.example/hab/mcp";
 const keys = crypto.subtle.generateKey(
@@ -41,7 +41,7 @@ export async function oauthFixture(realtime = false) {
     ],
     connections: [record],
   };
-  const auth = await PinnedRelayOAuthAuthority.create(
+  const auth = await PinnedOAuthAuthority.create(
     () => config,
     () => (realtime ? Date.now() : now),
   );

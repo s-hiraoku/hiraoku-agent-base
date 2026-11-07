@@ -109,7 +109,7 @@ sequenceDiagram
 | A2A Task状態 | HABでの意味と補助情報 |
 | --- | --- |
 | `TASK_STATE_SUBMITTED` | 作業の提出を永続受付し、処理開始前。配送のみでTaskを作らない経路には適用しない |
-| `TASK_STATE_WORKING` | 任意Taskのcoordinatorが処理を開始。現行NATS経路では外部runtimeの受付・モデル起動前も含む |
+| `TASK_STATE_WORKING` | 任意Taskのcoordinatorが処理を開始。外部runtimeの受付・モデル起動前も含む |
 | `TASK_STATE_INPUT_REQUIRED` | 続行に追加の人の入力が必要。質問待ちと受信側所有者判断待ちを、HABの待機理由・判断者区分で区別 |
 | `TASK_STATE_AUTH_REQUIRED` | 標準のin-task認可取得をクライアントへ依頼する場合。受信側所有者の操作承認を送信側へ移すためには使わない |
 | `TASK_STATE_COMPLETED` | 対象処理の成功と結果を確認済み |
@@ -139,7 +139,7 @@ stateDiagram-v2
     CANCELED --> [*]
 ```
 
-現行実装の `GenericTextJobs` はTaskのclaim後を `working` と投影する。外部runtimeの実行受付、モデル起動、受信者承認や成功の証拠ではない。UIは `working` だけから「受信側モデルが実行中」と表示しない。[NATS実装](implementation/generic-nats-dispatch.md)と[application service](implementation/generic-job-application.md)に現行の意味を記録する。
+現行実装の `GenericTextJobs` はTaskのclaim後を `working` と投影する。外部runtimeの実行受付、モデル起動、受信者承認や成功の証拠ではない。UIは `working` だけから「受信側モデルが実行中」と表示しない。[application service](implementation/generic-job-application.md)に現行の意味を記録する。削除済みの汎用NATS実行portの契約は[履歴文書](implementation/generic-nats-dispatch.md)に残る。
 
 図は任意Taskの初期profileの主要遷移であり、標準全遷移の定義ではない。結果不明は実行照合の補助状態として保持し、終端状態を推測しない。終端Taskを再開せず、追加作業は元Taskを参照した別Taskにする。単発メッセージへの直接応答はTaskを作らない経路として維持する。[MessageとTask](https://a2a-protocol.org/v1.0.0/topics/life-of-a-task/)
 

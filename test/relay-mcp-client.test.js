@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReadableStream } from "node:stream/web";
-import { RelayMcpClient } from "../src/relay/mcp-client.ts";
+import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
 import { limits, fixture, message, tick } from "./relay-http-fixtures.js";
 
 const policy = {
@@ -237,7 +237,7 @@ test(
   "real SDK gateway supplies all four client operations with scoped identities and exact receipts",
   { timeout: 10000 },
   async (t) => {
-    const f = fixture(t),
+    const f = await fixture(t),
       gateway = f.gateway(),
       m = message();
     const a = client((_body, url, init) =>
@@ -277,7 +277,6 @@ test("only equivalent text/structured fixed tool errors retain semantic codes", 
     "invalid_ack",
     "forbidden",
     "idempotency_conflict",
-    "attachment_store_unavailable",
     "expired_before_acceptance",
     "ack_idempotency_conflict",
   ]) {

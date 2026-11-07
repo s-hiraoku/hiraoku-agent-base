@@ -10,14 +10,12 @@ import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../../src/hab/sqlite-registry.ts";
 import { SQLiteEnrollmentJournal } from "../../src/hab/sqlite-enrollment-journal.ts";
 import { runHabEnrollment } from "../../src/hab/enrollment.ts";
-import { HabRelayService } from "../../src/hab/relay.ts";
 import { HabHttpGateway } from "../../src/hab/http.ts";
 import { HabMcpClient } from "../../src/hab/mcp-client.ts";
-import { SQLiteRelayStore } from "../../src/relay/sqlite-store.ts";
-import { createRelayNodeHandler } from "../../src/relay/http-node.ts";
-import { SQLiteInbox } from "../../src/relay/sqlite-inbox.ts";
-import { SQLiteOutbox } from "../../src/relay/sqlite-outbox.ts";
-import { makeReplayBoundMessageId } from "../../src/relay/contract.ts";
+import { createRelayNodeHandler } from "../../src/host/mcp/http-node.ts";
+import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
+import { SQLiteOutbox } from "../../src/agent-sdk/sqlite-outbox.ts";
+import { makeReplayBoundMessageId } from "../../src/messaging/contract.ts";
 import { SQLiteReplyBudget } from "../../src/adapter-policy/sqlite-reply-budget.ts";
 import { SQLiteAnswerJournal } from "../../src/answer-intents/sqlite-journal.ts";
 import { SQLiteHostControl } from "../../src/adapter-host/sqlite-control.ts";
@@ -27,15 +25,15 @@ import { SQLiteTaskBridgeJournal } from "../../src/task-bridge/sqlite-journal.ts
 import { ConnectivityTaskPort } from "../../src/task-bridge/task-port.ts";
 import { Hub } from "../../src/sqlite.ts";
 import { RESPONSE } from "../../src/types.ts";
+import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
+import { HabJetStreamService } from "../../src/host/hab-delivery-service.ts";
+import { startLocalBroker } from "./nats-broker.mjs";
 
 const limits = Object.freeze({
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 });
@@ -68,7 +66,9 @@ export async function runLocalMvp(signal) {
     agents = {},
     locals = new Map();
   let registry,
+    broker,
     relay,
+    delivery,
     enrollment,
     tasks,
     server,
@@ -151,8 +151,7 @@ export async function runLocalMvp(signal) {
       authority,
     );
     registry.migrate();
-    relay = new SQLiteRelayStore(join(directory, "relay.sqlite"), {
-      fingerprint_key: key(43),
+    const queue = {
       max_pending: 20,
       max_records: 50,
       max_pending_per_recipient: 10,
@@ -164,8 +163,25 @@ export async function runLocalMvp(signal) {
       retry_cap_ms: 20,
       poll_scan_limit: 20,
       fair_poll: true,
+    };
+    relay = await JetStreamRelay.open({
+      ...queue,
+      fingerprint_key: key(43),
+      journal_path: join(directory, "jetstream-journal.sqlite"),
+      server: broker.server,
+      user: broker.user,
+      password: broker.password,
+      stream: "HAB_MVP",
+      subject_prefix: "habMvp",
+      max_consumers: 10,
+      broker_max_bytes: 4000000,
+      broker_max_message_bytes: 64000,
+      request_timeout_ms: 2000,
+      limits,
+      prefetch_per_recipient: queue.max_pending_per_recipient,
+      authorization: { authorize: () => undefined },
     });
-    relay.migrate();
+    delivery = new HabJetStreamService(registry, relay, queue);
     enrollment = new SQLiteEnrollmentJournal(
       join(directory, "enrollment.sqlite"),
       { max_sessions: 3, busy_timeout_ms: 100 },
@@ -238,7 +254,7 @@ export async function runLocalMvp(signal) {
     url = "http://127.0.0.1:" + port + "/mcp";
     gateway = createRelayNodeHandler(
       new HabHttpGateway(
-        new HabRelayService(registry, relay, limits),
+        delivery,
         {
           resource_url: url,
           allowed_origins: [],
@@ -433,8 +449,14 @@ export async function runLocalMvp(signal) {
       status = host.status(operator);
     if (status.paused) host.setPaused(operator, false, status.epoch);
   };
+  // The host's pump publishes accepted messages on its next cycle; the simulation runs that
+  // cycle explicitly before each receive so every stage stays deterministic.
+  const pump = async () => {
+    for (let cycle = 0; cycle < 2; cycle++) await relay.pumpOnce();
+  };
   const step = async (n, command) => {
     check();
+    if (command.op === "receive") await pump();
     return locals.get(n).host.stepOnce(operator, command);
   };
   const done = async (n, command) => {
@@ -459,9 +481,11 @@ export async function runLocalMvp(signal) {
       expires_at: new Date(Date.parse(first) + 3600000).toISOString(),
     };
   };
-  const closeCentral = () => {
-    for (const s of [tasks, enrollment, relay, registry]) s?.close();
-    tasks = enrollment = relay = registry = undefined;
+  const closeCentral = async () => {
+    for (const s of [tasks, enrollment]) s?.close();
+    await relay?.close();
+    registry?.close();
+    tasks = enrollment = relay = delivery = registry = undefined;
   };
   const coldRestart = async () => {
     for (const n of ["a", "b", "c"]) {
@@ -470,7 +494,7 @@ export async function runLocalMvp(signal) {
       closeLocal(n);
     }
     await stopServer();
-    closeCentral();
+    await closeCentral();
     const ids = Object.values(agents).map((a) => a.agent_id);
     await openCentral();
     await startServer();
@@ -490,6 +514,11 @@ export async function runLocalMvp(signal) {
   };
   signal?.addEventListener("abort", onAbort, { once: true });
   try {
+    check();
+    broker = await startLocalBroker(join(directory, "broker"), {
+      maxFileStore: "64MB",
+      keepAlive: true,
+    });
     check();
     await openCentral();
     await startServer();
@@ -731,24 +760,19 @@ export async function runLocalMvp(signal) {
     );
     assert.equal(taskCount(), 1);
     stage("loop-denial");
-    const db = new DatabaseSync(join(directory, "relay.sqlite"), {
+    const db = new DatabaseSync(join(directory, "jetstream-journal.sqlite"), {
       readOnly: true,
     });
+    const count = (where) =>
+      Number(
+        db.prepare("SELECT count(*) n FROM nats_messages WHERE " + where).get()
+          .n,
+      );
     try {
       report.counters = {
-        deliveries: Number(
-          db.prepare("SELECT count(*) n FROM relay_deliveries").get().n,
-        ),
-        acked: Number(
-          db
-            .prepare(
-              "SELECT count(*) n FROM relay_deliveries WHERE state='acked'",
-            )
-            .get().n,
-        ),
-        ack_receipts: Number(
-          db.prepare("SELECT count(*) n FROM relay_ack_receipts").get().n,
-        ),
+        deliveries: count("1"),
+        acked: count("state='acked'"),
+        ack_receipts: count("ack_receipt_id IS NOT NULL"),
         tasks: taskCount(),
         open_executions: Number(
           tasks.sqlite.db
@@ -780,7 +804,8 @@ export async function runLocalMvp(signal) {
     await stopServer();
     report.cleanup.server_closed = !server?.listening;
     for (const n of ["a", "b", "c"]) closeLocal(n);
-    closeCentral();
+    await closeCentral();
+    await broker?.stop();
     rmSync(directory, { recursive: true, force: true });
     report.cleanup.temporary_state_removed = !existsSync(directory);
   }

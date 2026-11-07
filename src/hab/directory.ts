@@ -1,5 +1,5 @@
 /** HAB directory wire contract; no SDK, database, credentials or network imports. */
-import { RelayError } from "../relay/service.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
 import { parseHabAddress } from "./registry.ts";
 export interface HabResolution {
   recipient_id: string;
@@ -36,7 +36,7 @@ export function parseHabResolveInput(input: unknown): { address: string } {
       address: parseHabAddress(record(input, ["address"]).address).address,
     };
   } catch {
-    throw new RelayError("invalid_request");
+    throw new MessagingError("invalid_request");
   }
 }
 export function parseHabResolution(
@@ -64,6 +64,6 @@ export function parseHabResolution(
       normalization_version: 1,
     };
   } catch {
-    throw new RelayError("relay_transport_failed");
+    throw new MessagingError("relay_transport_failed");
   }
 }

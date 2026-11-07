@@ -7,7 +7,7 @@ import { hostFixture } from "./adapter-host-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
 import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 
 const bodies = {
   question: {
@@ -40,7 +40,7 @@ const bodies = {
 
 for (const [kind, body] of Object.entries(bodies))
   test(`Common MCP boundary: ${kind} is durably received without Task acceptance or reply`, async (t) => {
-    const f = hostFixture(t);
+    const f = await hostFixture(t);
     const owner = new SQLiteHostOwner(join(f.dir, "receive-owner.sqlite"), {
       agent_id: "b",
       fingerprint_key: new Uint8Array(32).fill(91),

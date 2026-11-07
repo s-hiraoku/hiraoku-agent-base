@@ -1,5 +1,4 @@
 import { startupCases } from "../../packages/relay-nats/test/startup/startup-cases.js";
-import { genericNatsCases } from "../generic-nats/case-names.js";
 import a2aCases from "./a2a-cases.json" with { type: "json" };
 import natsCases from "./nats-cases.json" with { type: "json" };
 import { nativeCases } from "../delivery-lab/a2a-acceptance.js";
@@ -7,8 +6,8 @@ export const p7Cases = [
   "P7-01 official A2A and real HAB NATS separate saved ACK from one Task and Artifact",
   "P7-02 whole HAB cold restore preserves a live broker reply and one known engine Task",
   "P7-03 incomplete cold images refuse restoration before serving traffic",
-  "P7-04 same-ID rename and epoch rollback preserve old NATS chains and new SQLite ownership",
-  "P7-05 broker outage retains original admission without implicit SQLite fallback",
+  "P7-04 same-ID rename preserves the NATS chain and receipt across a cold host restart",
+  "P7-05 broker outage retains original admission without any SQLite fallback",
 ];
 export const runnerCases = [
   "R01 fixed composite contents validate without producer Git objects",
@@ -46,6 +45,7 @@ export const groups = [
       "configured-host",
       "guarded-commits",
       "hab-integration",
+      "delivery-semantics",
     ].map((name) => `packages/relay-nats/test/${name}.test.js`),
     cases: natsCases,
   },
@@ -59,24 +59,19 @@ export const groups = [
     files: ["test/p7/integration.test.js"],
     cases: p7Cases,
   },
-  {
-    id: "generic-nats",
-    files: ["test/generic-nats/integration.test.js"],
-    cases: genericNatsCases,
-  },
   { id: "p7-guards", files: ["test/p7/runner.test.js"], cases: runnerCases },
   {
     id: "shared-real-backends",
     generated_common: true,
     cases: [
-      "relay-sqlite D01 six directed round trips preserve sender, recipient and UTF-8 body",
-      "relay-sqlite D02 duplicate acceptance returns one receipt and changed content is rejected",
-      "relay-sqlite D03 ACK is sent only after inbox survives an independent reopen",
-      "relay-sqlite D04 lost committed ACK response recovers the exact request after restart",
-      "relay-sqlite D05 ACK loss before commit and lease expiry redeliver without a duplicate inbox entry",
-      "relay-sqlite D06 two competing consumers receive only one active lease",
-      "relay-sqlite D07 foreign status, mailbox and ACK cannot cross identity boundaries",
-      "relay-sqlite D08 disconnected receiver reconnects and recovers an accepted message",
+      "hab-host-jetstream D01 six directed round trips preserve sender, recipient and UTF-8 body",
+      "hab-host-jetstream D02 duplicate acceptance returns one receipt and changed content is rejected",
+      "hab-host-jetstream D03 ACK is sent only after inbox survives an independent reopen",
+      "hab-host-jetstream D04 lost committed ACK response recovers the exact request after restart",
+      "hab-host-jetstream D05 ACK loss before commit and lease expiry redeliver without a duplicate inbox entry",
+      "hab-host-jetstream D06 two competing consumers receive only one active lease",
+      "hab-host-jetstream D07 foreign status, mailbox and ACK cannot cross identity boundaries",
+      "hab-host-jetstream D08 disconnected receiver reconnects and recovers an accepted message",
       "nats-jetstream-real-hab D01 six directed round trips preserve sender, recipient and UTF-8 body",
       "nats-jetstream-real-hab D02 duplicate acceptance returns one receipt and changed content is rejected",
       "nats-jetstream-real-hab D03 ACK is sent only after inbox survives an independent reopen",

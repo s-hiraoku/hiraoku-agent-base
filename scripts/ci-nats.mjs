@@ -19,16 +19,17 @@ const stages = {
   p4: { files: ["backend.test.js"], count: 21 },
   p5: {
     files: ["backend.test.js", "guarded-commits.test.js"],
-    count: 35,
+    count: 34,
   },
   p6: {
     files: [
       "backend.test.js",
       "configured-host.test.js",
+      "delivery-semantics.test.js",
       "guarded-commits.test.js",
       "hab-integration.test.js",
     ],
-    count: 55,
+    count: 68,
     shared: true,
   },
 };
@@ -93,7 +94,7 @@ const report = {
   expected_test_files: definition.files,
   expected_test_count: definition.count,
   shared_scope: definition.shared
-    ? "8 real HAB compatibility contracts; only recipient b is routed to JetStream"
+    ? "8 real HAB compatibility contracts on the JetStream-only host"
     : "not part of this stage",
   groups: [],
   input: { state: "not-prepared", backend_executed: false },

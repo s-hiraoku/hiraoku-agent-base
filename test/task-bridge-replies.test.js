@@ -12,13 +12,13 @@ import {
   limits,
 } from "./task-bridge-fixtures.js";
 import { TaskReplies } from "../src/task-bridge/replies.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
-import { DurableSender } from "../src/relay/sender.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
+import { DurableSender } from "../src/agent-sdk/sender.ts";
 
 const accepted = "execution_accepted",
   result = "execution_result";
-function setup(t, patch = {}, outboxPatch = {}) {
-  const f = fixture(t, patch);
+async function setup(t, patch = {}, outboxPatch = {}) {
+  const f = await fixture(t, patch);
   const path = join(f.dir, "reply-outbox.sqlite");
   const options = {
     agent_id: "b",
@@ -85,7 +85,7 @@ function clock(at, action) {
 }
 
 test("Task replies: acceptance is separate from ACK, local approval and unconfirmed Task submission", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = f.receive();
   assert.throws(
     () => f.replies.prepare(f.context, key, accepted),
@@ -111,7 +111,7 @@ test("Task replies: acceptance is separate from ACK, local approval and unconfir
 });
 
 test("Task replies: fixed accepted contract derives destination, thread and source reference", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     count = f.calls.length;
   const r = f.replies.prepare(f.context, key, accepted);
@@ -137,7 +137,7 @@ test("Task replies: fixed accepted contract derives destination, thread and sour
 });
 
 test("Task replies: prepare, handoff and exact retries keep one message and never resubmit a Task", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const r = f.replies.prepare(f.context, key, accepted);
   assert.deepEqual(f.replies.prepare(f.context, key, accepted), r);
@@ -155,7 +155,7 @@ test("Task replies: prepare, handoff and exact retries keep one message and neve
 });
 
 test("Task replies: default denial, fake context and separate reply permission", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const denied = new TaskReplies(f.journal, f.outbox);
   assert.throws(
@@ -180,7 +180,7 @@ test("Task replies: default denial, fake context and separate reply permission",
 });
 
 test("Task replies: wrong outbox identity and async authority fail closed", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   assert.throws(
     () =>
@@ -204,7 +204,7 @@ test("Task replies: wrong outbox identity and async authority fail closed", asyn
 
 test("Task replies: closed succeeded and failed evidence produces the fixed result contract", async (t) => {
   for (const state of ["succeeded", "failed"]) {
-    const f = setup(t),
+    const f = await setup(t),
       key = await linked(f);
     const done = await finish(f, key, state);
     const reply = f.replies.prepare(f.context, key, result);
@@ -228,7 +228,7 @@ test("Task replies: closed succeeded and failed evidence produces the fixed resu
 });
 
 test("Task replies: queued, running, waiting approval and cancelled-open are not completion", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   assert.throws(
     () => f.replies.prepare(f.context, key, result),
@@ -257,7 +257,7 @@ test("Task replies: queued, running, waiting approval and cancelled-open are not
 });
 
 test("Task replies: cancelled-closed evidence is a result without claiming success", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     task = f.journal.get(key).task;
   await f.hub.cancel(owner, { id: task.id });
@@ -269,7 +269,7 @@ test("Task replies: cancelled-closed evidence is a result without claiming succe
 });
 
 test("Task replies: terminal result requires observation, not merely an Engine-side completion", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     task = await f.hub.claim(worker, {});
   await f.hub.complete(worker, {
@@ -287,7 +287,7 @@ test("Task replies: terminal result requires observation, not merely an Engine-s
 });
 
 test("Task replies: lost enqueue response recovers the same durable message after reopen", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const r = f.replies.prepare(f.context, key, accepted);
   const replies = new TaskReplies(
@@ -321,7 +321,7 @@ test("Task replies: lost enqueue response recovers the same durable message afte
 });
 
 test("Task replies: journal commit failure after durable enqueue replays without another message", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   f.replies.prepare(f.context, key, accepted);
   f.raw.exec(
@@ -340,7 +340,7 @@ test("Task replies: journal commit failure after durable enqueue replays without
 });
 
 test("Task replies: accepted outbox receipt can recover handoff after its body is erased", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     r = f.replies.prepare(f.context, key, accepted);
   const replies = new TaskReplies(
@@ -368,7 +368,7 @@ test("Task replies: accepted outbox receipt can recover handoff after its body i
 });
 
 test("Task replies: full outbox preserves prepared ID without Task IO", async (t) => {
-  const f = setup(t, {}, { max_records: 1 }),
+  const f = await setup(t, {}, { max_records: 1 }),
     key = await linked(f);
   const a = f.replies.prepare(f.context, key, accepted);
   f.replies.enqueueOnce(f.context, key, accepted);
@@ -384,7 +384,7 @@ test("Task replies: full outbox preserves prepared ID without Task IO", async (t
 });
 
 test("Task replies: finite audit capacity is reserved before writing outbox", async (t) => {
-  const f = setup(t, { max_audit_records: 4 }),
+  const f = await setup(t, { max_audit_records: 4 }),
     key = await linked(f);
   f.replies.prepare(f.context, key, accepted); // accepted, attempted, linked, prepared
   assert.throws(
@@ -396,7 +396,7 @@ test("Task replies: finite audit capacity is reserved before writing outbox", as
 });
 
 test("Task replies: authorization revoked at outbox commit rolls back the durable enqueue", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   f.replies.prepare(f.context, key, accepted);
   let checks = 0;
@@ -412,7 +412,7 @@ test("Task replies: authorization revoked at outbox commit rolls back the durabl
 });
 
 test("Task replies: authority revoked after outbox commit leaves a recoverable prepared handoff", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   f.replies.prepare(f.context, key, accepted);
   const replies = new TaskReplies(
@@ -443,7 +443,7 @@ test("Task replies: authority revoked after outbox commit leaves a recoverable p
 });
 
 test("Task replies: expired preparation never renews ID or lifetime, even if handoff was uncertain", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const original = f.replies.prepare(f.context, key, accepted);
   const view = clock(Date.parse(original.message.expires_at), () =>
@@ -470,7 +470,7 @@ test("Task replies: expired preparation never renews ID or lifetime, even if han
 });
 
 test("Task replies: outbox GC cannot cause a completed handoff to enqueue again", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const r = f.replies.prepare(f.context, key, accepted);
   f.replies.enqueueOnce(f.context, key, accepted);
@@ -487,7 +487,7 @@ test("Task replies: outbox GC cannot cause a completed handoff to enqueue again"
 });
 
 test("Task replies: source release, terminal observation and restart do not alter the accepted reply", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     r = f.replies.prepare(f.context, key, accepted);
   f.inbox.releaseBody(key.sender_id, key.message_id);
@@ -502,7 +502,7 @@ test("Task replies: source release, terminal observation and restart do not alte
 
 test("Task replies: tampered reply payload, indexed ID and state fail integrity before outbox", async (t) => {
   for (const field of ["data", "reply_id", "state"]) {
-    const f = setup(t),
+    const f = await setup(t),
       key = await linked(f);
     f.replies.prepare(f.context, key, accepted);
     if (field === "reply_id")
@@ -521,7 +521,7 @@ test("Task replies: tampered reply payload, indexed ID and state fail integrity 
 });
 
 test("Task replies: explicit schema1 upgrade preserves existing link and stable Task key", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     before = f.journal.get(key);
   f.close(f.journal);
@@ -540,7 +540,7 @@ test("Task replies: explicit schema1 upgrade preserves existing link and stable 
 });
 
 test("Task replies: missing schema2 objects fail closed without auto repair", async (t) => {
-  const f = setup(t);
+  const f = await setup(t);
   f.raw.exec("DROP TRIGGER task_bridge_reply_identity");
   const j = f.open();
   assert.throws(() => j.migrate(), code("unsupported_bridge_schema"));
@@ -555,7 +555,7 @@ test("Task replies: missing schema2 objects fail closed without auto repair", as
 });
 
 test("Task replies: captured outbox port cannot be replaced after composition", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const port = {
     agentId: "b",
@@ -577,7 +577,7 @@ test("Task replies: invalid outbox responses cannot claim durable handoff", asyn
     { message_id: "other" },
     Promise.resolve({}),
   ]) {
-    const f = setup(t),
+    const f = await setup(t),
       key = await linked(f);
     f.replies.prepare(f.context, key, accepted);
     const replies = new TaskReplies(
@@ -594,7 +594,7 @@ test("Task replies: invalid outbox responses cannot claim durable handoff", asyn
 });
 
 test("Task replies: real Relay accepted/result delivery and ACK do not generate another Task", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const sender = new DurableSender(f.outbox, {
     submit: async (m) => f.service.submit(f.contexts.b, m),
@@ -628,13 +628,13 @@ test("Task replies: real Relay accepted/result delivery and ACK do not generate 
 });
 
 test("Task replies: native competing writers converge on one prepared reply and one outbox row", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const journalUrl = new URL(
     "../src/task-bridge/sqlite-journal.ts",
     import.meta.url,
   ).href;
-  const outboxUrl = new URL("../src/relay/sqlite-outbox.ts", import.meta.url)
+  const outboxUrl = new URL("../src/agent-sdk/sqlite-outbox.ts", import.meta.url)
     .href;
   const repliesUrl = new URL("../src/task-bridge/replies.ts", import.meta.url)
     .href;
@@ -690,7 +690,7 @@ test("Task replies: native competing writers converge on one prepared reply and 
 });
 
 test("Outbox guarded enqueue: failed or async commit guard rolls back fresh and exact enqueue", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     r = f.replies.prepare(f.context, key, accepted);
   assert.throws(() =>
@@ -714,7 +714,7 @@ test("Outbox guarded enqueue: failed or async commit guard rolls back fresh and 
 });
 
 test("Task replies: expired uncertain handoff preserves the existing outbox row without renewing a message", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     r = f.replies.prepare(f.context, key, accepted);
   const replies = new TaskReplies(
@@ -743,7 +743,7 @@ test("Task replies: expired uncertain handoff preserves the existing outbox row 
 });
 
 test("Task replies: lost Relay acceptance response retries through sender with the same message", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     r = f.replies.prepare(f.context, key, accepted);
   f.replies.enqueueOnce(f.context, key, accepted);
@@ -772,7 +772,7 @@ test("Task replies: lost Relay acceptance response retries through sender with t
 });
 
 test("Task replies: authority changed during preparation leaves no saved reply or audit", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     before = f.audit();
   let n = 0;
@@ -789,7 +789,7 @@ test("Task replies: authority changed during preparation leaves no saved reply o
 });
 
 test("Task replies: decorated promises cannot impersonate synchronous authorization", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f);
   const promise = Object.assign(Promise.resolve(), {
     receiver_id: "b",
@@ -804,7 +804,7 @@ test("Task replies: decorated promises cannot impersonate synchronous authorizat
 });
 
 test("Task replies: an outbox port cannot mutate the saved reply through its input reference", async (t) => {
-  const f = setup(t),
+  const f = await setup(t),
     key = await linked(f),
     prepared = f.replies.prepare(f.context, key, accepted);
   const replies = new TaskReplies(

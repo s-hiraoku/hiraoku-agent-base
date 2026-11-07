@@ -5,12 +5,12 @@ import { once } from "node:events";
 import { fixture } from "./recipient-messages-fixtures.js";
 import { deferred } from "./adapter-host-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
-import { createRelayNodeHandler } from "../src/relay/http-node.ts";
+import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 
 const code = (wanted) => (error) => error.code === wanted;
 
 test("explicit recipient handoff, native policy wait, exact approved reply and durable send remain separate", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key, message } = await f.receive({
       body: {
         parts: [
@@ -65,7 +65,7 @@ test("explicit recipient handoff, native policy wait, exact approved reply and d
 });
 
 test("lost admission response reopens and reconciles without another admission or new key", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   f.state.lost = true;
   assert.deepEqual(await f.driver.handoffOnce(f.context, key), {
@@ -86,7 +86,7 @@ test("lost admission response reopens and reconciles without another admission o
 });
 
 test("native inspection failure does not become absence and cause admission", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   const driver = f.make({
     recipient: {
@@ -103,7 +103,7 @@ test("native inspection failure does not become absence and cause admission", as
 });
 
 test("missing product input API is unsupported with no fallback runner", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive(),
     driver = f.make({ recipient: undefined });
   await assert.rejects(
@@ -118,7 +118,7 @@ test("missing product input API is unsupported with no fallback runner", async (
 });
 
 test("source, operation, actor and authority epoch are independently checked", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await assert.rejects(
     f.driver.handoffOnce({}, key),
@@ -156,7 +156,7 @@ test("source, operation, actor and authority epoch are independently checked", a
 });
 
 test("revocation during native await blocks admission and retained callback expires", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive(),
     gate = deferred();
   let oldCheck;
@@ -181,7 +181,7 @@ test("revocation during native await blocks admission and retained callback expi
 });
 
 test("unconfirmed receipts, replies, execution requests and data are not auto-dispatched", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive({}, false);
   await assert.rejects(
     f.driver.handoffOnce(f.context, key),
@@ -208,7 +208,7 @@ test("unconfirmed receipts, replies, execution requests and data are not auto-di
 });
 
 test("notice may be judged and declined without a reply, Task or blanket approval", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive({ kind: "notice" });
   await f.driver.handoffOnce(f.context, key);
   f.decide("declined");
@@ -219,7 +219,7 @@ test("notice may be judged and declined without a reply, Task or blanket approva
 });
 
 test("native policy may allow an ordinary reply without an owner approval callback", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   f.allowByPolicy(f.answer(key));
@@ -228,7 +228,7 @@ test("native policy may allow an ordinary reply without an owner approval callba
 });
 
 test("exact source authorization and actor continuity are required", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   const scoped = f.make({
     authorization(ctx, op, source) {
@@ -262,7 +262,7 @@ test("exact source authorization and actor continuity are required", async (t) =
 });
 
 test("native receipts cannot leak drafts, prompt IDs or mismatched identity", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   for (const patch of [
     { key: "f".repeat(64) },
@@ -285,7 +285,7 @@ test("native receipts cannot leak drafts, prompt IDs or mismatched identity", as
 });
 
 test("native envelope cannot redirect recipient, thread or source, or issue non-text effects", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   for (const patch of [
@@ -309,7 +309,7 @@ test("native envelope cannot redirect recipient, thread or source, or issue non-
 });
 
 test("native reply authorization is rechecked inside durable outbox commit", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   f.decide("reply_ready", f.answer(key));
@@ -330,7 +330,7 @@ test("native reply authorization is rechecked inside durable outbox commit", asy
 });
 
 test("native exact reply check rejects an envelope replaced before outbox commit", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   f.allowByPolicy(f.answer(key));
@@ -355,7 +355,7 @@ test("native exact reply check rejects an envelope replaced before outbox commit
 });
 
 test("native admission rechecks authority after await at its durable boundary", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive(),
     gate = deferred(),
     entered = deferred();
@@ -378,7 +378,7 @@ test("native admission rechecks authority after await at its durable boundary", 
 });
 
 test("reply envelope changed after admission conflicts instead of replacing queued reply", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   const reply = f.answer(key);
@@ -393,7 +393,7 @@ test("reply envelope changed after admission conflicts instead of replacing queu
 });
 
 test("real loopback MCP receive, synthetic native judgment and policy, outbox and reply delivery", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     observed = [];
   let handle;
   const server = createServer((req, res) => {
@@ -459,7 +459,7 @@ test("real loopback MCP receive, synthetic native judgment and policy, outbox an
 });
 
 test("changed saved source is reconciled as a conflict without new native admission", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   const changed = f.make({
@@ -480,7 +480,7 @@ test("changed saved source is reconciled as a conflict without new native admiss
 });
 
 test("same source in another recipient owner scope gets a separate native key", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   const binding = { ...f.binding, owner_scope: "another-owner" };
@@ -492,7 +492,7 @@ test("same source in another recipient owner scope gets a separate native key", 
 });
 
 test("loss after outbox commit retries the same persisted envelope only", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   f.decide("reply_ready", f.answer(key));
@@ -517,7 +517,7 @@ test("loss after outbox commit retries the same persisted envelope only", async 
 });
 
 test("reply guard rejects asynchronous policy checks and an expired reply", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     { key } = await f.receive();
   await f.driver.handoffOnce(f.context, key);
   f.decide("reply_ready", f.answer(key));

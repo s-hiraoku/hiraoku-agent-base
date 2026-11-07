@@ -9,12 +9,13 @@ import { message } from "./relay-http-fixtures.js";
 import { code } from "./task-bridge-fixtures.js";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
 // Healthy send coverage must not expire a deliberately short fault-test lease under suite load.
-const hostFixture = (t) => baseHostFixture(t, {}, { outboxLeaseMs: 5000 });
+const hostFixture = async (t) =>
+  baseHostFixture(t, {}, { outboxLeaseMs: 5000 });
 const initial = (patch = {}) => ({ ...message(), recipient_id: "a", ...patch });
 const enqueue = (value) => ({ op: "message_enqueue", message: value });
 
 test("initial message: paused/default-denied/fake-context calls cannot populate outbox", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     value = initial();
   await assert.rejects(f.step(enqueue(value)), code("host_paused"));
   f.resume();
@@ -32,7 +33,7 @@ test("initial message: paused/default-denied/fake-context calls cannot populate 
 });
 
 test("initial message: enqueue needs its own operation permission and strict command fields", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   f.state.denied.add("message_enqueue");
   await assert.rejects(f.step(enqueue(initial())), code("host_forbidden"));
@@ -45,7 +46,7 @@ test("initial message: enqueue needs its own operation permission and strict com
 });
 
 test("initial message: persist before network, stable duplicate receipt, and changed body never overwrites", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     value = initial();
   f.resume();
   const first = await f.step(enqueue(value));
@@ -66,7 +67,7 @@ test("initial message: persist before network, stable duplicate receipt, and cha
 });
 
 test("initial message: explicit send performs the only submit using the host-bound sender", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     value = initial();
   f.resume();
   await f.step(enqueue(value));
@@ -79,7 +80,7 @@ test("initial message: explicit send performs the only submit using the host-bou
 });
 
 test("initial message: replies cannot bypass source-bound intents and reply budgets", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   for (const kind of ["answer", "execution_accepted", "execution_result"]) {
     const result = await f.step(enqueue(initial({ kind })));
@@ -98,7 +99,7 @@ test("initial message: replies cannot bypass source-bound intents and reply budg
 });
 
 test("initial message: malformed sender/URL/attachment input cannot enqueue or trigger IO", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   for (const patch of [
     { sender_id: "a" },
@@ -117,7 +118,7 @@ test("initial message: malformed sender/URL/attachment input cannot enqueue or t
 });
 
 test("initial message: current authority is rechecked at the durable outbox boundary", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const original = f.outbox.enqueueGuarded.bind(f.outbox);
   f.outbox.enqueueGuarded = (value, guard) => {
@@ -132,7 +133,7 @@ test("initial message: current authority is rechecked at the durable outbox boun
 });
 
 test("initial message: lost confirmation keeps one stable intent and reveals no exception text", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const value = initial();
   const original = f.outbox.enqueueGuarded.bind(f.outbox);
@@ -157,7 +158,7 @@ test("initial message: lost confirmation keeps one stable intent and reveals no 
 });
 
 test("initial message: inert execution request never creates a Task at enqueue or send", async (t) => {
-  const f = hostFixture(t);
+  const f = await hostFixture(t);
   f.resume();
   const value = initial({
     kind: "execution_request",
@@ -180,7 +181,7 @@ test("initial message: inert execution request never creates a Task at enqueue o
 });
 
 test("initial message: released process owner cannot enqueue through an old host", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     owner = new SQLiteHostOwner(join(f.dir, "message-owner.sqlite"), {
       agent_id: "b",
       fingerprint_key: new Uint8Array(32).fill(82),
@@ -198,7 +199,7 @@ test("initial message: released process owner cannot enqueue through an old host
 });
 
 test("initial message: an in-flight host RPC blocks concurrent enqueue", async (t) => {
-  const f = hostFixture(t),
+  const f = await hostFixture(t),
     wait = deferred();
   f.resume();
   f.state.credential = () => wait.promise;

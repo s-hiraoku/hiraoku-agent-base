@@ -4,7 +4,7 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 
 ## Baseline preconditions
 
-- `npm ci` has been run with Node ≥ 24.
+- `npm ci` has been run with Node ≥ 26.
 - `$S/launch.sh "$RUN"` printed `DOCTOR_OK <url>` for a fresh `RUN=/tmp/hab-verify/<id>`.
 - Baseline state: three active agents `a` = `verify-a@grok-bot.hab`, `b` = `verify-b@dot.hab`, `c` = `verify-c@hermes.hab`, each allowed `submit,status,poll,ack,resolve`, and no messages. Their ids and tokens are in `$RUN/instance/state.json`.
 - Never drive a run dir or a port this verification run did not start.
@@ -19,7 +19,7 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 ## Proof and skip reporting
 
 - Capture the action's request/response (`mcp.sh` does this) and a second view of the result: another agent's tool call and/or `node $S/inspect.mjs "$RUN" <label>`.
-- Mutation proof includes the delivery state and `relay_delivery_audit` events from `inspect.mjs`.
+- Mutation proof includes the delivery state and the journal's `nats_delivery_audit` events from `inspect.mjs`.
 - Terminal proof is a `tmux capture-pane -p` transcript saved in `$RUN/evidence/` plus the exit code.
 - Record the sub-feature ID with each evidence file name.
 - If a precondition is missing, report the attempted command and the unmet precondition. Do not report an entry point as verified through a different one.
@@ -33,9 +33,10 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, external text and structured execution requests remaining data, and optional Task state semantics. It runs isolated fixtures with its own listeners and cleanup.
 
 - [Resolve an address](./resolve-address.md) covers `relay_resolve` success, unknown address and malformed address.
-- [Send a message](./send-message.md) covers `relay_submit`, idempotent replay, conflicting replay, disallowed kind, sender-only `relay_status` and per-pair thread names.
+- [Send a message](./send-message.md) covers `relay_submit`, idempotent replay, conflicting replay, disallowed kind, attachment-part refusal, sender-only `relay_status` and per-pair thread names.
 - [Receive and acknowledge](./receive-ack.md) covers `relay_poll` leasing, empty poll, lease expiry redelivery and `relay_ack` including wrong-token and wrong-agent refusal.
 - [Access control](./access-control.md) covers missing and unknown bearer tokens.
 - [Restart durability](./restart-durability.md) covers a pending message surviving a stack stop and reopen.
 - [Enrollment terminal](./enrollment-terminal.md) covers the human registration flow from product choice to an active address.
-- [Configured Relay and operator CLI](./configured-relay.md) covers the shipped `relay:local` start refusal reasons, `relay:admin` connect/status/disconnect, a roundtrip through the shipped Relay and the exact-Host rule. It has its own launcher (`configured.sh`), not `launch.sh`.
+- [Configured Relay and operator CLI](./configured-relay.md) covers the shipped `relay:local` start refusal reasons, `relay:admin` connect/status/disconnect (including group disconnect stopping every member), a roundtrip through the shipped Relay and the exact-Host rule. It has its own launcher (`configured.sh`), not `launch.sh`.
+- [A2A entry on the configured Relay](./a2a-host.md) covers A2A off by default, host identity provisioning and its reservation, Card, A2A auth refusals, a Task sent from the host identity, restart durability, completion from the recipient's replies, and the `result_window_expired` failure of a Task whose reply window closed. It uses `HAB_VERIFY_A2A=1 configured.sh start`, `a2a.sh` and `new-reply.sh`.

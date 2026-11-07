@@ -9,18 +9,15 @@ import {
   comparisonMaterial,
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
-} from "../src/relay/index.ts";
-import { SQLiteOutbox } from "../src/relay/sqlite-outbox.ts";
+} from "../src/messaging/index.ts";
+import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 
 const day = 86400000;
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -135,16 +132,21 @@ function row(f, id) {
 test("outbox expiry is explicit and bounded, drops payload, and preserves status recovery without a network call", (t) => {
   const f = fixture(t),
     m = message();
+  const collectible = seed(f);
   f.store.enqueue(m);
   f.raw
     .prepare("UPDATE relay_outbox SET expires_at=0 WHERE message_id=?")
     .run(m.message_id);
   assert.equal(row(f, m.message_id).body.includes("synthetic"), true);
-  assert.deepEqual(f.store.maintain(1), {
+  assert.deepEqual(f.store.maintain(5, false), {
     expired: 1,
     purged: 0,
     safety_held: 0,
   });
+  assert.ok(
+    row(f, collectible.message_id),
+    "deferred collection preserves admission slots",
+  );
   const r = row(f, m.message_id);
   assert.equal(r.body, null);
   assert.equal(r.state, "queued");
@@ -398,4 +400,27 @@ test("maintenance rejects invalid budgets, unknown schema and missing aggregate 
   f.raw.exec("UPDATE relay_outbox_meta SET version=3");
   const future = f.open();
   code(() => future.migrate(), "unsupported_schema");
+});
+
+test("retained counts and a numeric collection cap preserve free-slot reservations and bounded expiry", (t) => {
+  const f = fixture(t, { max_records: 4 });
+  seed(f, { entropy: "4".repeat(32) });
+  seed(f, { entropy: "5".repeat(32) });
+  const live = message(Date.now() - 100, "6".repeat(32));
+  f.store.enqueue(live);
+  assert.deepEqual(f.store.retainedCounts(Date.now() - day), {
+    total: 3,
+    expires_after: 1,
+  });
+  assert.equal(f.store.maintain(100, 1).purged, 1);
+  assert.deepEqual(f.store.retainedCounts(Date.now() - day), {
+    total: 2,
+    expires_after: 1,
+  });
+  assert.equal(f.store.maintain(100, 0).purged, 0);
+  assert.equal(f.store.maintain(100, 1).purged, 1);
+  assert.equal(f.store.get(live.message_id).state, "queued");
+  code(() => f.store.retainedCounts(NaN), "invalid_request");
+  for (const cap of [-1, 2, 0.5, NaN])
+    code(() => f.store.maintain(1, cap), "invalid_request");
 });

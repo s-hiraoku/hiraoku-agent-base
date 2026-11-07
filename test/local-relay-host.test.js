@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { startLocalRelay } from "../src/relay-host/local.ts";
+import { startHostServer } from "../src/host/server.ts";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import {
@@ -22,8 +22,10 @@ import {
   operations,
 } from "./hab-registry-fixtures.js";
 import { limits, policy, message, envelope } from "./relay-http-fixtures.js";
+import { createJetStreamDelivery } from "../src/host/delivery.ts";
+import { deliverySection, pollUntilDelivered } from "./jetstream-delivery.js";
 
-function fixture(t, enroll = true) {
+async function fixture(t, enroll = true) {
   const directory = realpathSync(
     mkdtempSync(join(tmpdir(), "local-relay-host-")),
   );
@@ -89,19 +91,10 @@ function fixture(t, enroll = true) {
     port: 0,
     limits,
     registry: registryOptions,
-    store: {
-      fingerprint_key: new Uint8Array(32).fill(43),
-      max_pending: 20,
-      max_records: 100,
-      max_pending_per_recipient: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      max_attempts: 3,
-      retry_base_ms: 10,
-      retry_cap_ms: 100,
-      poll_scan_limit: 20,
-    },
+    delivery: createJetStreamDelivery(
+      await deliverySection(directory),
+      new Uint8Array(32).fill(43),
+    ),
     http,
     authority,
     verify: ({ authorization }) =>
@@ -112,7 +105,7 @@ function fixture(t, enroll = true) {
   };
   const hosts = [];
   const start = async (patch = {}) => {
-    const host = await startLocalRelay({ ...options, ...patch });
+    const host = await startHostServer({ ...options, ...patch });
     hosts.push(host);
     return host;
   };
@@ -163,7 +156,7 @@ function list(url, authorization) {
 }
 
 test("explicit local host persists a submission across listener/database restart and completes HTTP poll/ACK", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   let host = await f.start();
   const submission = { ...message(), recipient_id: f.agents.b.agent_id };
   const first = await f.client(host, "a").submit(submission);
@@ -173,7 +166,7 @@ test("explicit local host persists a submission across listener/database restart
   await assert.rejects(list(oldUrl, "Bearer synthetic-a"));
   host = await f.start({ port: Number(new URL(oldUrl).port) });
   assert.deepEqual(await f.client(host, "a").submit(submission), first);
-  const delivery = await f.client(host, "b").poll();
+  const delivery = await pollUntilDelivered(f.client(host, "b"));
   assert.equal(delivery.message.message_id, submission.message_id);
   await f.client(host, "b").ack({
     sender_id: delivery.message.sender_id,
@@ -186,12 +179,16 @@ test("explicit local host persists a submission across listener/database restart
     (await f.client(host, "a").status(submission.message_id)).state,
     "acked",
   );
-  for (const file of ["owner.sqlite", "registry.sqlite", "relay.sqlite"])
+  for (const file of [
+    "owner.sqlite",
+    "registry.sqlite",
+    "jetstream-journal.sqlite",
+  ])
     assert.equal(statSync(join(f.directory, file)).mode & 0o077, 0);
 });
 
 test("no verifier or individual policy cannot silently enable unauthenticated hosting", async (t) => {
-  const f = fixture(t, false);
+  const f = await fixture(t, false);
   await assert.rejects(
     f.start({ verify: undefined }),
     /invalid_local_relay_options/,
@@ -200,14 +197,14 @@ test("no verifier or individual policy cannot silently enable unauthenticated ho
     f.start({ authority: {} }),
     /invalid_local_relay_options/,
   );
-  assert.deepEqual(readdirSync(f.directory), []);
+  assert.deepEqual(readdirSync(f.directory), ["volume.local.json"]);
   const host = await f.start();
   assert.equal((await list(host.url)).status, 401);
   assert.equal((await list(host.url, "Bearer unknown")).status, 401);
 });
 
 test("registry revocation is checked for the next authenticated tool call", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     host = await f.start();
   assert.equal(
     (await f.client(host, "a").resolve("b@synthetic.hab")).address,
@@ -218,7 +215,7 @@ test("registry revocation is checked for the next authenticated tool call", asyn
 });
 
 test("competing owner refuses without releasing the existing host", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     host = await f.start();
   await assert.rejects(f.start(), /host_owner_busy/);
   assert.equal((await list(host.url, "Bearer synthetic-a")).status, 200);
@@ -227,7 +224,7 @@ test("competing owner refuses without releasing the existing host", async (t) =>
 });
 
 test("startup port collision releases ownership, preserves the other listener, and permits retry", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     other = createServer((_req, res) => res.end("owned test server"));
   other.listen(0, "127.0.0.1");
   await once(other, "listening");
@@ -242,7 +239,7 @@ test("startup port collision releases ownership, preserves the other listener, a
 });
 
 test("private state is mandatory; existing permissive or symlinked DB files are not repaired", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   chmodSync(f.directory, 0o755);
   await assert.rejects(f.start(), /private_path/);
   chmodSync(f.directory, 0o700);
@@ -251,18 +248,18 @@ test("private state is mandatory; existing permissive or symlinked DB files are 
   await assert.rejects(f.start(), /private_path/);
   assert.equal(statSync(db).mode & 0o777, 0o644);
   chmodSync(db, 0o600);
-  symlinkSync(db, join(f.directory, "relay.sqlite"));
+  symlinkSync(db, join(f.directory, "jetstream-journal.sqlite"));
   await assert.rejects(f.start(), /private_path/);
 });
 
 test("invalid HTTP policy rolls back startup without leaking an owner or listener", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   await assert.rejects(f.start({ http: { ...f.options.http, timeout_ms: 0 } }));
   await f.start();
 });
 
 test("stop fences a verifier that resolves after shutdown; reopening retains the original DBs", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   let admitted, finish;
   const entered = new Promise((resolve) => {
     admitted = resolve;
@@ -289,7 +286,7 @@ test("stop fences a verifier that resolves after shutdown; reopening retains the
 });
 
 test("changing the persisted integrity key refuses restart without overwriting state", async (t) => {
-  const f = fixture(t),
+  const f = await fixture(t),
     host = await f.start();
   const submission = { ...message(), recipient_id: f.agents.b.agent_id };
   await f.client(host, "a").submit(submission);
@@ -310,7 +307,7 @@ test("changing the persisted integrity key refuses restart without overwriting s
 });
 
 test("opt-in discovery identifies a host owner over a real socket and keeps the ordinary five operations working", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   const owner = {
     agent_id: f.agents.a.agent_id,
     address: f.agents.a.address,

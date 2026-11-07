@@ -9,20 +9,16 @@ import {
   comparisonMaterial,
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
-  RelayService,
-  DurableReceiver,
-} from "../src/relay/index.ts";
-import { SQLiteInbox } from "../src/relay/sqlite-inbox.ts";
-import { SQLiteRelayStore } from "../src/relay/sqlite-store.ts";
+} from "../src/messaging/index.ts";
+import { DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { authorizedDelivery } from "./jetstream-delivery.js";
 const day = 86400000;
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
   data_bytes: 16000,
-  attachment_bytes: 1000,
-  total_attachment_bytes: 1000,
   parts: 8,
-  attachments: 3,
   json_depth: 20,
   json_nodes: 1000,
 };
@@ -182,25 +178,20 @@ function seed(
     );
   return { m, req };
 }
-function realRelay(t, f) {
-  const server = new SQLiteRelayStore(join(f.dir, "relay.sqlite"), {
-    fingerprint_key: new Uint8Array(32).fill(42),
-    max_pending: 10,
-    max_records: 100,
-    max_pending_per_recipient: 5,
-    max_body_bytes: 100000,
-    max_clock_skew_ms: 1000,
-    lease_ms: 30000,
-    max_attempts: 3,
-    retry_base_ms: 10,
-    retry_cap_ms: 100,
-    poll_scan_limit: 10,
-  });
-  t.after(() => server.close());
-  server.migrate();
-  const service = new RelayService(server, limits, {
-    authorize(ctx) {
-      return ["a", "b"].includes(ctx) ? { agent_id: ctx } : undefined;
+async function realRelay(t, f) {
+  const { service } = await authorizedDelivery(t, {
+    authorization: {
+      authorize(ctx) {
+        return ["a", "b"].includes(ctx) ? { agent_id: ctx } : undefined;
+      },
+    },
+    limits,
+    directory: f.dir,
+    queue: {
+      max_pending: 10,
+      max_pending_per_recipient: 5,
+      poll_scan_limit: 10,
+      agent_capacity: undefined,
     },
   });
   return service;
@@ -239,7 +230,7 @@ test("explicit application handoff is idempotent and released bodies never reapp
 
 test("lost server ACK response recovers after release and restart without a second application handoff", async (t) => {
   const f = fixture(t),
-    service = realRelay(t, f),
+    service = await realRelay(t, f),
     m = message(),
     requests = [];
   service.submit("a", m);
@@ -532,10 +523,11 @@ test("purge failures roll back ACK deletion, tombstone deletion and maintenance 
 function downgrade(f) {
   f.store.close();
   f.raw
-    .exec(`DROP TRIGGER relay_attachment_identity; DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
+    .exec(`DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
+    DROP INDEX relay_inbox_reply_source;
     ALTER TABLE relay_inbox DROP COLUMN released_at; ALTER TABLE relay_inbox DROP COLUMN expires_at;
     ALTER TABLE relay_inbox DROP COLUMN ack_retry_until; ALTER TABLE relay_inbox DROP COLUMN ack_terminal_at;
-    ALTER TABLE relay_inbox DROP COLUMN retain_until; ALTER TABLE relay_inbox DROP COLUMN has_attachments; ALTER TABLE relay_inbox DROP COLUMN attachment_guard;
+    ALTER TABLE relay_inbox DROP COLUMN retain_until;
     ALTER TABLE relay_receiver_acks DROP COLUMN terminal_at; ALTER TABLE relay_receiver_acks DROP COLUMN retain_until;
     DROP TABLE relay_inbox_maintenance_totals; UPDATE relay_inbox_meta SET version=1;`);
 }
@@ -573,7 +565,7 @@ test("v1 migration preserves body and stable pending ACK, verifies identity befo
   assert.equal(ack(f).request, pending);
   assert.equal(
     f.raw.prepare("SELECT version FROM relay_inbox_meta").get().version,
-    3,
+    4,
   );
   assert.deepEqual(f.raw.prepare("PRAGMA foreign_key_check").all(), []);
   const before = row(f, d.message.message_id);
@@ -623,4 +615,324 @@ test("invalid budgets, missing counters and unsupported schema fail closed witho
   f.raw.exec("UPDATE relay_inbox_meta SET version=99");
   const newer = f.open();
   code(() => newer.migrate(), "unsupported_schema");
+});
+
+test("schema 3 inbox with retired attachment columns still opens, drops them and claims its pending ACK", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const pending = ack(f).request;
+  f.store.close();
+  f.raw
+    .exec(`ALTER TABLE relay_inbox ADD COLUMN has_attachments INTEGER NOT NULL DEFAULT 0 CHECK(has_attachments IN (0,1));
+ALTER TABLE relay_inbox ADD COLUMN attachment_guard TEXT NOT NULL DEFAULT '';
+CREATE TRIGGER relay_attachment_identity BEFORE UPDATE OF has_attachments,attachment_guard ON relay_inbox BEGIN SELECT RAISE(ABORT,'immutable attachment identity');END;
+UPDATE relay_inbox_meta SET version=3;`);
+  const upgraded = f.open();
+  upgraded.migrate();
+  assert.equal(
+    f.raw.prepare("SELECT version FROM relay_inbox_meta").get().version,
+    4,
+  );
+  assert.equal(
+    f.raw
+      .prepare(
+        "SELECT count(*) n FROM sqlite_master WHERE sql LIKE '%attachment%'",
+      )
+      .get().n,
+    0,
+  );
+  assert.deepEqual(upgraded.inbox()[0].message, messageFrom(d));
+  assert.equal(JSON.stringify(upgraded.claimAck()), pending);
+});
+
+test("a released body frees its record slot while its tombstone still deduplicates and ACK history stays bounded", (t) => {
+  const f = fixture(t, { max_records: 1, max_ack_records: 2 }),
+    first = delivery(message(Date.now() - 100, "3".repeat(32))),
+    second = delivery(message(Date.now() - 100, "4".repeat(32))),
+    third = delivery(message(Date.now() - 100, "5".repeat(32)));
+  f.store.save(first);
+  code(() => f.store.save(second), "inbox_capacity_exceeded");
+  assert.equal(f.store.releaseBody("a", first.message.message_id), true);
+  f.store.save(second);
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [second.message.message_id],
+  );
+  f.store.save({ ...first, generation: 2 });
+  assert.equal(f.store.inbox().length, 1, "the tombstone still deduplicates");
+  assert.equal(f.store.releaseBody("a", second.message.message_id), true);
+  code(() => f.store.save(third), "inbox_capacity_exceeded");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
+    3,
+    "ACK history of two messages, not released bodies, bounds what the inbox retains",
+  );
+});
+
+test("legacy IDs cannot grow the retained rows past the dedup bound across retention cycles", (t) => {
+  const bound = { max_records: 1, max_ack_records: 1 };
+  const f = fixture(t, bound);
+  const rows = () =>
+    f.raw.prepare("SELECT count(*) n FROM relay_inbox").get().n;
+  const age = () => {
+    const shift = RECORD_RETENTION_MS + 10 * day;
+    f.raw
+      .prepare(
+        "UPDATE relay_inbox SET received_at=received_at-?,released_at=released_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift, shift, shift, shift);
+    f.raw
+      .prepare(
+        "UPDATE relay_receiver_acks SET retry_until=retry_until-?,terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift);
+  };
+  const cycle = (m) => {
+    f.store.save(delivery(m));
+    const req = f.store.claimAck();
+    f.store.confirmAck(req, receipt(req));
+    assert.equal(f.store.releaseBody("a", m.message_id), true);
+    age();
+    f.store.maintain(1000);
+  };
+  const legacy = (i) => ({
+    ...message(Date.now() - 100, String(i).repeat(32)),
+    message_id: `legacy-${i}`,
+  });
+  const held = legacy(1);
+  cycle(held);
+  const refused = [];
+  for (let i = 2; i <= 5; i++) {
+    try {
+      cycle(legacy(i));
+    } catch (error) {
+      if (error.code !== "inbox_legacy_id_capacity_exceeded") throw error;
+      refused.push(i);
+    }
+    assert.ok(
+      rows() <= bound.max_records + bound.max_ack_records,
+      `cycle ${i} keeps the retained rows within the bound, found ${rows()}`,
+    );
+  }
+  assert.deepEqual(refused, [2, 3, 4, 5], "new legacy IDs are refused");
+  f.store.save(delivery(held, 2));
+  assert.deepEqual(
+    f.store.inbox(),
+    [],
+    "a replay of the held ID is not handed off again",
+  );
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  age();
+  f.store.maintain(1000);
+  const bound_id = delivery(message(Date.now() - 100, "6".repeat(32)));
+  f.store.save(bound_id);
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [bound_id.message.message_id],
+    "a replay-bound ID still saves once legacy IDs are refused",
+  );
+  assert.ok(rows() <= bound.max_records + bound.max_ack_records);
+});
+
+test("lease redeliveries of one message take one ACK history slot, so its reply still fits", (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  const accepted = message(Date.now() - 100, "7".repeat(32));
+  for (const generation of [1, 2]) {
+    f.store.save(delivery(accepted, generation));
+    f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  }
+  f.store.save(delivery(accepted, 3));
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(f.store.releaseBody("a", accepted.message_id), true);
+  const result = message(Date.now() - 100, "8".repeat(32));
+  f.store.save(delivery(result));
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [result.message_id],
+    "the reply after three lease generations is saved",
+  );
+  f.store.releaseBody("a", result.message_id);
+  const third = message(Date.now() - 100, "9".repeat(32));
+  f.store.save(delivery(third));
+  f.store.releaseBody("a", third.message_id);
+  code(
+    () => f.store.save(delivery(message(Date.now() - 100, "a".repeat(32)))),
+    "inbox_capacity_exceeded",
+  );
+});
+
+test("a body whose ACK can never be confirmed is released once it expires, and only then", async (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  const soon = (entropy) => message(Date.now() - 3600000 + 400, entropy);
+  const lost = soon("c".repeat(32)),
+    pending = soon("d".repeat(32));
+  f.store.save(delivery(lost));
+  f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  f.store.save(delivery(pending));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", lost.message_id),
+    false,
+    "an unexpired body may still get a new generation",
+  );
+  code(
+    () => f.store.save(delivery(message(Date.now() - 100, "e".repeat(32)))),
+    "inbox_capacity_exceeded",
+  );
+  await new Promise((done) => setTimeout(done, 500));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", pending.message_id),
+    false,
+    "a pending ACK may still confirm it",
+  );
+  assert.equal(f.store.releaseUnconfirmable("a", lost.message_id), true);
+  assert.equal(f.store.releaseUnconfirmable("a", lost.message_id), false);
+  const next = delivery(message(Date.now() - 100, "e".repeat(32)));
+  f.store.save(next);
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", next.message.message_id),
+    false,
+    "a confirmed body is the application's to release",
+  );
+  code(() => f.store.save(delivery(lost, 2)), "expired_delivery");
+  assert.deepEqual(
+    f.store
+      .inbox()
+      .map((entry) => entry.message.message_id)
+      .sort(),
+    [pending.message_id, next.message.message_id].sort(),
+  );
+});
+
+test("one message keeps at most max_attempts ACK generations", (t) => {
+  const f = fixture(t, { max_attempts: 2 });
+  const m = message(Date.now() - 100, "b".repeat(32));
+  for (const generation of [1, 2]) {
+    f.store.save(delivery(m, generation));
+    f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  }
+  code(() => f.store.save(delivery(m, 3)), "inbox_capacity_exceeded");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
+    2,
+  );
+});
+
+test("replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again", (t) => {
+  const bound = { max_records: 1, max_ack_records: 1 };
+  const f = fixture(t, bound);
+  const count = (table) =>
+    f.raw.prepare(`SELECT count(*) n FROM ${table}`).get().n;
+  const shift = RECORD_RETENTION_MS + 10 * day;
+  // Moves every row `shift` into the past. Each replay-bound ID is renamed to the one
+  // bound to its shifted send time, as if the message had really arrived back then.
+  const age = () => {
+    f.raw.exec("PRAGMA foreign_keys=OFF");
+    for (const { message_id } of f.raw
+      .prepare("SELECT message_id FROM relay_inbox")
+      .all()) {
+      const [, first, entropy] = message_id.split(".");
+      const aged = `rm1.${Number(first) - shift}.${entropy}`;
+      for (const table of ["relay_inbox", "relay_receiver_acks"])
+        f.raw
+          .prepare(`UPDATE ${table} SET message_id=? WHERE message_id=?`)
+          .run(aged, message_id);
+    }
+    f.raw.exec("PRAGMA foreign_keys=ON");
+    f.raw
+      .prepare(
+        "UPDATE relay_inbox SET received_at=received_at-?,released_at=released_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift, shift, shift, shift);
+    f.raw
+      .prepare(
+        "UPDATE relay_receiver_acks SET retry_until=retry_until-?,terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift);
+  };
+  const confirm = () => {
+    const req = f.store.claimAck();
+    f.store.confirmAck(req, receipt(req));
+  };
+  for (let i = 1; i <= 5; i++) {
+    const entropy = i.toString(16).repeat(32);
+    const m = message(Date.now() - 100, entropy);
+    f.store.save(delivery(m));
+    confirm();
+    assert.equal(f.store.releaseBody("a", m.message_id), true);
+    f.store.save(delivery(m, 2));
+    confirm();
+    assert.deepEqual(
+      f.store.inbox(),
+      [],
+      `cycle ${i}: a redelivery inside the retention period is deduplicated`,
+    );
+    code(
+      () => f.store.save(delivery(message(Date.now() - 100, "f".repeat(32)))),
+      "inbox_capacity_exceeded",
+    );
+    assert.deepEqual(
+      f.store.maintain(1000),
+      { expired_acks: 0, purged_acks: 0, purged_messages: 0, safety_held: 0 },
+      `cycle ${i}: nothing is collected before its retention ends`,
+    );
+    age();
+    assert.deepEqual(
+      f.store.maintain(1000),
+      { expired_acks: 0, purged_acks: 2, purged_messages: 1, safety_held: 0 },
+      `cycle ${i}: the ID, its tombstone and both ACK generations are collected`,
+    );
+    assert.equal(count("relay_inbox"), 0);
+    assert.equal(count("relay_receiver_acks"), 0);
+    const replay = message(Date.parse(m.first_sent_at) - shift, entropy);
+    code(() => f.store.save(delivery(replay)), "expired_delivery");
+    assert.deepEqual(
+      f.store.inbox(),
+      [],
+      `cycle ${i}: the collected ID is never handed off again`,
+    );
+  }
+  const totals = f.raw
+    .prepare(
+      "SELECT purged_acks,purged_messages FROM relay_inbox_maintenance_totals",
+    )
+    .get();
+  assert.deepEqual({ ...totals }, { purged_acks: 10, purged_messages: 5 });
+});
+
+test("capacity for a new reply batch includes retained ACK history and retained rows, without changing retention", (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  assert.equal(f.store.hasCapacityFor(2, 100000), true);
+  for (const entropy of ["2".repeat(32), "3".repeat(32)])
+    seed(f, { entropy, released: false, state: "pending" });
+  assert.equal(f.store.hasCapacityFor(2, 100000), false);
+  for (const entry of f.store.inbox())
+    assert.equal(
+      f.store.releaseUnconfirmable("a", entry.message.message_id),
+      true,
+    );
+  assert.equal(f.store.inbox().length, 0);
+  assert.equal(
+    f.store.hasCapacityFor(2, 100000),
+    false,
+    "two retained ACK histories leave only one slot",
+  );
+  assert.equal(f.store.hasCapacityFor(1, 100000), true);
+  assert.equal(
+    f.store.maintain(100).purged_acks,
+    0,
+    "new terminal time still keeps ACK history for 30 days",
+  );
+  assert.ok(ack(f).terminal_at > Date.now() - 10000);
+  for (const args of [
+    [-1, 0],
+    [1.5, 0],
+    [0, -1],
+    [0, NaN],
+  ])
+    code(() => f.store.hasCapacityFor(...args), "invalid_request");
 });

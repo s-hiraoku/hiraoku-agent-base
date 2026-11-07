@@ -141,7 +141,7 @@ Relayは正規schema、時刻、有効期間（Registryの`max_context_ms`以内
 agent IDとアドレスの一致を再検証します。不正な証明は拒否し、期限切れ証明は値を
 公開せず`unknown / stale_attestation`にします。ホストの証明は稼働監視ではありません。
 
-`startLocalRelay`は選ばれた認証authorityのこのportを引き継ぎます。通常のファイル設定
+`startHostServer`は選ばれた認証authorityのこのportを引き継ぎます。通常のファイル設定
 にはhost session情報を創作するmappingを追加しません。Relay単独では各製品のsession／
 botや全hostの割当一覧を知りません。Hermes pluginの実identity storeへの配線は、
 未マージの登録実装との統合時に同じ不変IDとowner_referenceで行う別作業です。

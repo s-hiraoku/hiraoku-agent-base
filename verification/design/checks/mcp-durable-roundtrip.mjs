@@ -195,8 +195,8 @@ async function roundtrip(target, out) {
   try {
     const load = (name) => import(pathToFileURL(join(target, name)).href);
     const { HabMcpClient } = await load("src/hab/mcp-client.ts");
-    const { SQLiteInbox } = await load("src/relay/sqlite-inbox.ts");
-    const { DurableReceiver } = await load("src/relay/receiver.ts");
+    const { SQLiteInbox } = await load("src/agent-sdk/sqlite-inbox.ts");
+    const { DurableReceiver } = await load("src/agent-sdk/receiver.ts");
     controller.signal.throwIfAborted();
     child = spawn(
       process.execPath,
@@ -265,10 +265,7 @@ async function roundtrip(target, out) {
       envelope_bytes: 32768,
       text_bytes: 16000,
       data_bytes: 16000,
-      attachment_bytes: 1000,
-      total_attachment_bytes: 1000,
       parts: 8,
-      attachments: 3,
       json_depth: 20,
       json_nodes: 1000,
     };
@@ -374,7 +371,18 @@ async function roundtrip(target, out) {
         observerReadOnly: true,
       });
     });
-    await new DurableReceiver(inbox, receiverClient).receiveOnce();
+    const receiver = new DurableReceiver(inbox, receiverClient);
+    // JetStream publishes accepted messages on the pump's next cycle, so a poll right after submit can be empty.
+    const receiveDeadline = Date.now() + 5000;
+    await receiver.receiveOnce();
+    while (
+      observed === 0 &&
+      receiver.inbox().length === 0 &&
+      Date.now() < receiveDeadline
+    ) {
+      await delay(25);
+      await receiver.receiveOnce();
+    }
     assert.equal(observed, 1);
     const readEntry = () =>
       inbox.withEntry(state.agents.a.agent_id, message.message_id, (entry) =>

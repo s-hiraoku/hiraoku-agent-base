@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { InMemoryTaskStore, ServerCallContext } from "@a2a-js/sdk/server";
 import { SendMessageRequest } from "@a2a-js/sdk";
 import { HabA2aHandler, habRelayAgentCard } from "../src/a2a/hab-adapter.ts";
-import { RelayError } from "../src/relay/service.ts";
-import { makeReplayBoundMessageId } from "../src/relay/contract.ts";
+import { MessagingError } from "../src/messaging/delivery-service.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 import { RESPONSE } from "../src/types.ts";
 export { RESPONSE };
 export const request = (messageId = "first", text = "connectivity_check") =>
@@ -44,7 +44,7 @@ export function fixture() {
     senderId: ownerId,
     recipientId: "recipient-b",
     assertCurrent() {
-      if (!state.allowed) throw new RelayError("forbidden");
+      if (!state.allowed) throw new MessagingError("forbidden");
     },
     enqueue(message) {
       state.enqueueCalls++;
@@ -61,7 +61,7 @@ export function fixture() {
     },
     delivery(id) {
       const record = state.records.get(id);
-      if (!record) throw new RelayError("not_found");
+      if (!record) throw new MessagingError("not_found");
       return {
         message_id: id,
         recipient_id: record.message.recipient_id,
