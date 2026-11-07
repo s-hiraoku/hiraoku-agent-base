@@ -445,7 +445,11 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       for (const task of store.overdue(cutoff, 100)) {
         const gateway = wired.gateway;
         if (stopped || !gateway) return;
-        await gateway.apply(task, storedRoute(task, []));
+        try {
+          await gateway.apply(task, storedRoute(task, []));
+        } catch {
+          // One Task that cannot be applied must not hold back the others or maintenance.
+        }
       }
     };
     let maintainedAt = 0;
@@ -463,9 +467,9 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         await applyReplies();
         if (Date.now() - maintainedAt >= 60000) {
           maintainedAt = Date.now();
-          await closeWindows();
           box.maintain(100);
           mail.maintain(100);
+          await closeWindows();
         }
       } catch {
         // As above: the replies stay saved and the next cycle applies them.
