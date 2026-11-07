@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "1ac965367778be2717b47a2c233b2866674b225b",
+  "source_ref": "833fc827f3f95d2337ec1962acd05e775448c164",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "c6e6e30fd24a6ef6d1f6098b03666a1168796cc8d6b38744d42bac93b4f2dd7e"
+      "sha256": "7cf7ae08de7736fb3250b62030e6976069d0ec653eae5e9601e1c34c0912269c"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -175,7 +175,7 @@
     },
     "src/a2a/store.ts": {
       "previous_sha256": "5e9a7b778e8db3fdb6c293be6d88b360c2d61693ff760319d2d3c4d373040942",
-      "sha256": "3cbfe8caa3cc5bad5f26d7a6c9156e37f487ef453940c976d0083c5f00be150b"
+      "sha256": "e5fbe2801cc29e6eedf843879dcbd1a7cb997f7e45962a0ee3ac37d906552942"
     },
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
@@ -611,7 +611,7 @@
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "e480dbbf061fc668c89b100fc15ae07be5d6d7f0ec0ecc29b55237a0b1e5d5e6"
+      "sha256": "d6579441711625eaf585cec6ab9500d4eed60d56003f7aa36d3861557ab62753"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
@@ -620,6 +620,10 @@
     "test/a2a-relay-fixtures.js": {
       "previous_sha256": "1ff32e86efee187b5032cd489a7fde70c2bd0050e13137d02fa16535c88c481b",
       "sha256": "19b815a07da6d0b689e7e8d270577145ce98b9ded8a25f72043f644beffc280e"
+    },
+    "test/a2a-sdk-store.test.js": {
+      "previous_sha256": "1e0a880b756b4ad7678fce5e85cd6e9c80168285bfd99ebe773d79c140ce8424",
+      "sha256": "b97722800d5f2e4ff7605fcb12bc8248e92578ed83d62a3cdd351c23d914b488"
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
