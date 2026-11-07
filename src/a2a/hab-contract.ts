@@ -25,6 +25,11 @@ export interface HabA2aRoute {
   /** Sends the saved intent; a route may send only this message. */
   flush(messageId: string): Promise<void>;
   replies(): InboxEntry[];
+  /**
+   * Replies count until the request's expiry plus this many milliseconds. A Task still
+   * without a result then fails as `result_window_expired`. Without it, a Task waits.
+   */
+  readonly replyWindowMs?: number;
   /** Called once the saved Task holds what these replies carried; may release their bodies. */
   settle?(replies: InboxEntry[]): void;
   /**

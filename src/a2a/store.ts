@@ -48,6 +48,9 @@ export function openA2aTaskStore(path: string) {
     const bySource = sqlite.prepare(
       `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE ${source}=?`,
     );
+    const overdue = sqlite.prepare(
+      `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab_relay.source.expires_at')<=? ORDER BY status_last_updated,id LIMIT ?`,
+    );
     const db = new Kysely({ dialect: new SqliteDialect({ database: sqlite }) });
     return {
       store: new DatabaseTaskStore(db, { tableName: "hab_a2a_tasks" }),
@@ -55,6 +58,13 @@ export function openA2aTaskStore(path: string) {
       findBySource: (messageId: string) =>
         bySource.get(messageId) as
           { tenant: string; owner: string; id: string } | undefined,
+      /** Non-terminal Tasks whose relay request expired at or before `expiredBy`. */
+      overdue: (expiredBy: string, limit: number) =>
+        overdue.all(expiredBy, limit) as {
+          tenant: string;
+          owner: string;
+          id: string;
+        }[],
       close: () => db.destroy(),
     };
   } catch (error) {

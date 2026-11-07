@@ -46,6 +46,7 @@ import { habHostAgentCard } from "../a2a/hab-adapter.ts";
 import { createHabA2aGateway } from "../a2a/hab-http.ts";
 import { createA2aNodeHandler } from "../a2a/http-node.ts";
 import type { HabA2aRoute } from "../a2a/hab-contract.ts";
+import type { InboxEntry } from "../agent-sdk/receiver.ts";
 import type { RelayHttpVerifier } from "./mcp/http.ts";
 import type { HostA2aConfig } from "./config.ts";
 
@@ -76,7 +77,7 @@ export class HostA2aError extends Error {
 
 const request = () => `host-a2a-${randomUUID()}`;
 
-/** A reply is saved only until this long after its request's own expiry. */
+/** A reply is saved only until this long after its request's own expiry; a Task still without a result then fails. */
 const REPLY_WINDOW_MS = 86400000;
 const ACK_RETRY_MS = 86400000;
 // An outbox record outlives the ACK history of every reply it can still receive
@@ -244,6 +245,7 @@ function hostRoute(options: {
         assertCurrent();
       }
     },
+    replyWindowMs: REPLY_WINDOW_MS,
     replies() {
       assertCurrent();
       return inbox.inbox();
@@ -392,6 +394,24 @@ export async function startHostA2a(deps: HostA2aDependencies) {
     // Each ACKed reply is applied to its Task here, not on the caller's next read, and
     // its body is released once the Task store holds the result. A Task nobody reads
     // therefore never keeps a slot, even after its outbox record is purged.
+    const storedRoute = (
+      task: { tenant: string; owner: string },
+      replies: InboxEntry[],
+    ): HabA2aRoute => ({
+      ownerId: task.owner,
+      senderId: identity.agent_id,
+      recipientId: task.tenant.slice("hab-a2a:".length),
+      replyWindowMs: REPLY_WINDOW_MS,
+      assertCurrent() {},
+      enqueue() {
+        throw new MessagingError("forbidden");
+      },
+      delivery: (messageId) => box.get(messageId),
+      async flush() {
+        throw new MessagingError("forbidden");
+      },
+      replies: () => replies,
+    });
     const applyReplies = async () => {
       for (const entry of mail.inbox()) {
         const gateway = wired.gateway;
@@ -406,20 +426,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         const task = source ? store.findBySource(source) : undefined;
         try {
           if (task)
-            await gateway.apply(task, {
-              ownerId: task.owner,
-              senderId: identity.agent_id,
-              recipientId: task.tenant.slice("hab-a2a:".length),
-              assertCurrent() {},
-              enqueue() {
-                throw new MessagingError("forbidden");
-              },
-              delivery: (messageId) => box.get(messageId),
-              async flush() {
-                throw new MessagingError("forbidden");
-              },
-              replies: () => [entry],
-            });
+            await gateway.apply(task, storedRoute(task, [entry]));
         } catch (error) {
           // A reply the Task refuses (a conflict, a malformed body) is rejected; any
           // other failure keeps the body for the next cycle.
@@ -430,6 +437,15 @@ export async function startHostA2a(deps: HostA2aDependencies) {
             continue;
         }
         mail.releaseBody(entry.sender_id, entry.message.message_id);
+      }
+    };
+    // A Task whose reply window closed without a result fails without waiting for a read.
+    const closeWindows = async () => {
+      const cutoff = new Date(Date.now() - REPLY_WINDOW_MS).toISOString();
+      for (const task of store.overdue(cutoff, 100)) {
+        const gateway = wired.gateway;
+        if (stopped || !gateway) return;
+        await gateway.apply(task, storedRoute(task, []));
       }
     };
     let maintainedAt = 0;
@@ -447,6 +463,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         await applyReplies();
         if (Date.now() - maintainedAt >= 60000) {
           maintainedAt = Date.now();
+          await closeWindows();
           box.maintain(100);
           mail.maintain(100);
         }

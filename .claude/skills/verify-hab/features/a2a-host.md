@@ -11,6 +11,7 @@ With an `a2a` config section, the shipped Relay opens a separate loopback A2A li
 - `a2a-send` SendMessage returns `TASK_STATE_SUBMITTED`. The recipient's poll shows `kind: execution_request` with `sender_id` equal to the host identity. A storage ACK alone leaves the Task `SUBMITTED`.
 - `a2a-restart` after a Relay restart the same Task is still `SUBMITTED`, and the replies sent after the restart still complete it.
 - `a2a-complete` the `execution_accepted` reply moves the Task to `WORKING`. The `execution_result` reply with `succeeded` moves it to `COMPLETED`, with Artifact text `connectivity_ok` and `result_message_id` equal to the reply's message ID.
+- `a2a-window` a Task with no result one day after its request's one-hour deadline is `TASK_STATE_FAILED`, with `metadata.hab_relay.reason == "result_window_expired"` and a status message saying the outcome is unknown. A later reply is ACKed without changing it. A live drive cannot wait out that day: `test/a2a-host.test.js` ages the request while the host is stopped.
 
 ## How to get to it (user POV)
 
@@ -37,3 +38,5 @@ Preconditions are the same as [configured-relay.md](configured-relay.md), with a
 - The host polls every `a2a.poll_interval_ms` (100 ms here). Poll `GetTask` a few times after each reply.
 - A Relay restarted from inside a short-lived shell can be reaped with that shell. Run `restart` and the later drives from the same long-lived shell, or check `kill -0 $(jq .pid "$RUN/instance/state.json")` before driving.
 - `COMPLETED` means the recipient reported a result. The host does not verify the recipient's engine.
+- `FAILED` with `result_window_expired` does not mean the recipient did not execute the request. The outcome is unknown.
+- A blocking SendMessage (no `returnImmediately`) completes from a result that arrives in a later host poll cycle than the acceptance. It no longer stalls the host's receive loop until the five-second wait runs out.

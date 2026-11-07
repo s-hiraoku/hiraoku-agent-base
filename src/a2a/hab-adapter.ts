@@ -82,6 +82,7 @@ const linkSchema = z.strictObject({
   execution: taskSchema.optional(),
   reply_task_id: identifier.optional(),
   result_message_id: identifier.optional(),
+  failure: z.literal("result_window_expired").optional(),
 });
 const acceptedSchema = z.strictObject({
   task_type: z.literal("connectivity_check"),
@@ -124,6 +125,7 @@ function publicTask(task: Task, length: number | undefined): Task {
         ...(link.result_message_id
           ? { result_message_id: link.result_message_id }
           : {}),
+        ...(link.failure ? { reason: link.failure } : {}),
         ...(link.binding ? {} : { attestation: "recipient_reply" }),
       },
     },
@@ -220,6 +222,8 @@ export class HabA2aHandler extends DefaultRequestHandler {
         Number(a.message.kind === "execution_result"),
     );
     for (const entry of matches) {
+      // A Task closed by its reply window keeps that outcome; a late reply changes nothing.
+      if (link.failure) continue;
       const reply = parseSubmission(entry.message, HAB_A2A_LIMITS);
       if (
         reply.thread_id !== link.source.thread_id ||
@@ -337,7 +341,33 @@ export class HabA2aHandler extends DefaultRequestHandler {
         metadata: { hab_relay: link },
       };
     }
-    if (!terminal(next)) {
+    if (
+      !terminal(next) &&
+      route.replyWindowMs !== undefined &&
+      Date.now() >= Date.parse(link.source.expires_at) + route.replyWindowMs
+    ) {
+      link = { ...link, failure: "result_window_expired" };
+      next = {
+        ...next,
+        status: {
+          state: TaskState.TASK_STATE_FAILED,
+          timestamp: new Date().toISOString(),
+          message: Message.fromJSON({
+            messageId: `${task.id}-result-window`,
+            taskId: task.id,
+            contextId: task.contextId,
+            role: "ROLE_AGENT",
+            parts: [
+              {
+                text: "result_window_expired: no execution result arrived before the reply window closed. The outcome is unknown: the recipient may or may not have executed the request.",
+              },
+            ],
+            metadata: { hab_relay: { reason: "result_window_expired" } },
+          }),
+        },
+        metadata: { hab_relay: link },
+      };
+    } else if (!terminal(next)) {
       let expired = Date.parse(link.source.expires_at) <= Date.now();
       try {
         const delivery = route.delivery(link.source.message_id);
