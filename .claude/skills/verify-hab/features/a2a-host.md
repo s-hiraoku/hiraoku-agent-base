@@ -11,7 +11,8 @@ With an `a2a` config section, the shipped Relay opens a separate loopback A2A li
 - `a2a-send` SendMessage returns `TASK_STATE_SUBMITTED`. The recipient's poll shows `kind: execution_request` with `sender_id` equal to the host identity. A storage ACK alone leaves the Task `SUBMITTED`.
 - `a2a-restart` after a Relay restart the same Task is still `SUBMITTED`, and the replies sent after the restart still complete it.
 - `a2a-complete` the `execution_accepted` reply moves the Task to `WORKING`. The `execution_result` reply with `succeeded` moves it to `COMPLETED`, with Artifact text `connectivity_ok` and `result_message_id` equal to the reply's message ID.
-- `a2a-window` a Task with no result one day after its request's one-hour deadline is `TASK_STATE_FAILED`, with `metadata.hab_relay.reason == "result_window_expired"` and a status message saying the outcome is unknown. A later reply is ACKed without changing it. A live drive cannot wait out that day: `test/a2a-host.test.js` ages the request while the host is stopped.
+- `a2a-fresh-id` a reply under a new message ID that would not change the Task, such as a second `execution_accepted` after `WORKING`, is ACKed (`relay_status` shows `acked`) without a host inbox record and leaves the Task unchanged. A valid `execution_result` sent after any number of them still completes the Task.
+- `a2a-window` a Task with no result one day after its request's one-hour deadline is `TASK_STATE_FAILED`, with `metadata.hab_relay.reason == "result_window_expired"` and a status message saying the outcome is unknown. The host makes the transition within one receive cycle of that time, without a read. A later reply is ACKed without changing it. A live drive cannot wait out that day: `test/a2a-host.test.js` ages the request, once so that the window closes seconds after a restart.
 
 ## How to get to it (user POV)
 
@@ -28,12 +29,14 @@ Preconditions are the same as [configured-relay.md](configured-relay.md), with a
 - **Send.** `$S/a2a.sh "$RUN" x SendMessage '{"message":{"messageId":"live_1","role":"ROLE_USER","parts":[{"text":"connectivity_check"}]},"configuration":{"returnImmediately":true}}' | sed 1d > "$RUN/send.json"`. Then `sleep 0.3; $S/mcp.sh "$RUN" b relay_poll '{}' | sed 1d > "$RUN/poll.json"`, and ACK it as in `SKILL.md`. `GetTask` (`$S/a2a.sh "$RUN" x GetTask '{"id":"<task id>"}'`) still returns `TASK_STATE_SUBMITTED`.
 - **Restart.** Run `$S/configured.sh "$RUN" restart`. `GetTask` again returns `TASK_STATE_SUBMITTED`, and the identity's `agent_id`/`epoch` in `admin status` are unchanged.
 - **Reply.** `$S/mcp.sh "$RUN" b relay_submit "$($S/new-reply.sh "$RUN/poll.json" execution_accepted engine-1)"` moves `GetTask` to `TASK_STATE_WORKING` within a few poll intervals. Then `… "$($S/new-reply.sh "$RUN/poll.json" execution_result engine-1 succeeded connectivity_ok)"` moves it to `TASK_STATE_COMPLETED`, with `.result.artifacts[0].parts[0].text == "connectivity_ok"`.
+- **Fresh ID.** Between the two replies above, send `execution_accepted engine-1` again with `new-reply.sh`, which mints a new message ID. `relay_status` for it shows `acked` within a few poll intervals, `GetTask` stays `TASK_STATE_WORKING`, and `node -e 'const { DatabaseSync } = require("node:sqlite"); console.log(new DatabaseSync(process.argv[1], { readOnly: true }).prepare("SELECT count(*) n FROM relay_inbox").get().n)' "$RUN/instance/state/a2a-inbox.sqlite"` stays at the count before it. The result reply then completes the Task as above.
 - **Host.** `curl` the A2A URL with `Host: localhost:<a2a port>` or an `Origin` header and check for 403.
 - **Stop.** Run `$S/configured.sh "$RUN" stop`.
 
 ## Gotchas
 
 - Replies must be `relay_submit` from the configured recipient with `in_reply_to` pointing at the host's request. The Relay quarantines a forged reference from another agent. The host releases any other mail it receives without reading it into a Task.
+- An `acked` status for a reply does not mean the host applied it. A reply under a new ID that repeats what the Task holds, or that the Task would refuse, is ACKed without a record.
 - There is no background resend. If SendMessage failed, repeat it with the same `messageId`.
 - The host polls every `a2a.poll_interval_ms` (100 ms here). Poll `GetTask` a few times after each reply.
 - A Relay restarted from inside a short-lived shell can be reaped with that shell. Run `restart` and the later drives from the same long-lived shell, or check `kill -0 $(jq .pid "$RUN/instance/state.json")` before driving.
