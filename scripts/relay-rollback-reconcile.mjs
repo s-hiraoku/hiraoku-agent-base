@@ -1,14 +1,17 @@
 /**
  * Read-only rollback reconciliation list. Compares the drained schema 4 journal copy with
- * the restored pre-upgrade journal and the recipients' post-upgrade inbox copies. Prints
- * no bodies, tokens or credentials.
+ * the restored pre-upgrade journal, the recipients' post-upgrade inbox copies, the inboxes
+ * the backup restores and the recipients' copied execution records. Prints no bodies,
+ * tokens or credentials.
  */
 import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { RECORD_RETENTION_MS } from "../src/messaging/contract.ts";
 
 const INCOMPLETE = new Set(["staging", "pending", "leased", "quarantined"]);
 const key = (row) => JSON.stringify([row.sender_id, row.message_id]);
+const iso = (ms) => new Date(Number(ms)).toISOString();
 
 function read(path, query) {
   const db = new DatabaseSync(path, { readOnly: true });
@@ -23,83 +26,157 @@ const journal = (path) =>
     path,
     "SELECT sender_id,message_id,recipient_id,state,expires_at FROM nats_messages ORDER BY sender_id,message_id",
   );
+const inboxAgent = (path) =>
+  read(path, "SELECT agent_id FROM relay_inbox_meta")[0].agent_id;
+/** Each inbox copy by agent: message key → whether its body was released. */
+function inboxCopies(paths) {
+  const copies = new Map();
+  for (const path of paths)
+    copies.set(
+      inboxAgent(path),
+      new Map(
+        read(path, "SELECT sender_id,message_id,released_at FROM relay_inbox").map(
+          (row) => [key(row), row.released_at !== null],
+        ),
+      ),
+    );
+  return copies;
+}
+/** `{recipient_id, handled: [{sender_id, message_id}]}` exported from an application's execution records. */
+function executionRecords(paths) {
+  const records = new Map();
+  for (const path of paths) {
+    const { recipient_id, handled } = JSON.parse(readFileSync(path, "utf8"));
+    if (typeof recipient_id !== "string" || !Array.isArray(handled))
+      throw Error(`invalid execution record: ${path}`);
+    records.set(recipient_id, new Set(handled.map(key)));
+  }
+  return records;
+}
 
 /**
- * Lists every message the upgraded release accepted or finished after the backup, that is
- * each row absent from the backup journal or incomplete in it.
+ * Lists every message whose outcome the restore erases: each ID the upgraded release
+ * accepted, and each ID incomplete in the backup, whether or not the upgraded journal still
+ * has its row. Separately lists every body the backup restores unreleased, which the
+ * restored recipient would hand to its application again.
  */
 export function reconcile({
   upgraded,
   backup,
   inboxes = [],
+  backupInboxes = [],
+  executions = [],
   now = Date.now(),
 }) {
   const before = new Map(journal(backup).map((row) => [key(row), row]));
-  const saved = new Map();
-  for (const path of inboxes) {
-    const [meta] = read(path, "SELECT agent_id FROM relay_inbox_meta");
-    saved.set(
-      meta.agent_id,
-      new Set(
-        read(path, "SELECT sender_id,message_id FROM relay_inbox").map(key),
-      ),
-    );
-  }
-  const messages = journal(upgraded)
-    .filter((row) => {
+  const after = new Map(journal(upgraded).map((row) => [key(row), row]));
+  const saved = inboxCopies(inboxes);
+  const handled = executionRecords(executions);
+  const listed = [
+    ...[...after.values()].filter((row) => {
       const prior = before.get(key(row));
       return !prior || INCOMPLETE.has(prior.state);
-    })
-    .map((row) => {
-      const inbox = saved.get(row.recipient_id);
-      const recipient_record = !inbox
+    }),
+    // A row the upgraded journal already purged is still unresolved.
+    ...[...before.values()].filter(
+      (row) => INCOMPLETE.has(row.state) && !after.has(key(row)),
+    ),
+  ].sort((a, b) => key(a).localeCompare(key(b)));
+  const messages = listed.map((row) => {
+    const final = after.get(key(row));
+    const inbox = saved.get(row.recipient_id);
+    const recipient_record = !inbox
+      ? "no_inbox_copy"
+      : inbox.has(key(row))
+        ? "saved"
+        : "absent";
+    // An inbox may collect a record 30 days after its expiry, so absence then proves nothing.
+    const collectable = Number(row.expires_at) + RECORD_RETENTION_MS <= now;
+    const action =
+      final?.state === "acked" || recipient_record === "saved"
+        ? "delivered"
+        : final &&
+            recipient_record === "absent" &&
+            !collectable &&
+            ["expired", "quarantined"].includes(final.state)
+          ? "not_saved"
+          : "unknown";
+    return {
+      sender_id: row.sender_id,
+      message_id: row.message_id,
+      recipient_id: row.recipient_id,
+      expires_at: iso(row.expires_at),
+      backup_state: before.get(key(row))?.state ?? null,
+      final_state: final?.state ?? null,
+      recipient_record,
+      action,
+    };
+  });
+  // ACK proves the save, not the execution: a body acked before the backup but processed
+  // after it comes back unprocessed with the restored inbox.
+  const restored_bodies = [];
+  for (const path of backupInboxes) {
+    const recipient_id = inboxAgent(path);
+    const copy = saved.get(recipient_id);
+    const record = handled.get(recipient_id);
+    for (const row of read(
+      path,
+      "SELECT sender_id,message_id,expires_at FROM relay_inbox WHERE released_at IS NULL ORDER BY sender_id,message_id",
+    )) {
+      const upgraded_record = !copy
         ? "no_inbox_copy"
-        : inbox.has(key(row))
-          ? "saved"
+        : !copy.has(key(row))
+          ? "absent"
+          : copy.get(key(row))
+            ? "released"
+            : "unreleased";
+      const execution_record = !record
+        ? "no_record_copy"
+        : record.has(key(row))
+          ? "handled"
           : "absent";
-      // An inbox may collect a record 30 days after its expiry, so absence then proves nothing.
-      const collectable = Number(row.expires_at) + RECORD_RETENTION_MS <= now;
-      const action =
-        row.state === "acked" || recipient_record === "saved"
-          ? "delivered"
-          : recipient_record === "absent" &&
-              !collectable &&
-              ["expired", "quarantined"].includes(row.state)
-            ? "not_saved"
-            : "unknown";
-      return {
+      restored_bodies.push({
+        recipient_id,
         sender_id: row.sender_id,
         message_id: row.message_id,
-        recipient_id: row.recipient_id,
-        expires_at: new Date(Number(row.expires_at)).toISOString(),
-        backup_state: before.get(key(row))?.state ?? null,
-        final_state: row.state,
-        recipient_record,
-        action,
-      };
-    });
+        expires_at: iso(row.expires_at),
+        upgraded_record,
+        execution_record,
+        action:
+          execution_record === "handled"
+            ? "do_not_process"
+            : execution_record === "absent" && upgraded_record === "unreleased"
+              ? "process"
+              : "unknown",
+      });
+    }
+  }
   const restored = [...before.values()].filter((row) =>
     INCOMPLETE.has(row.state),
   );
   return {
     messages,
+    restored_bodies,
     restored_incomplete_expire_by: restored.length
-      ? new Date(
-          Math.max(...restored.map((row) => Number(row.expires_at))),
-        ).toISOString()
+      ? iso(Math.max(...restored.map((row) => Number(row.expires_at))))
       : null,
   };
 }
 
 const usage =
-  "usage: relay-rollback-reconcile --upgraded-journal <copy> --backup-journal <restored> [--inbox <copy>]...";
+  "usage: relay-rollback-reconcile --upgraded-journal <copy> --backup-journal <restored> [--inbox <copy>]... [--backup-inbox <restored>]... [--execution-record <json>]...";
 
 export function main(args = process.argv.slice(2)) {
-  const options = { inboxes: [] };
+  const options = { inboxes: [], backupInboxes: [], executions: [] };
+  const lists = {
+    "--inbox": options.inboxes,
+    "--backup-inbox": options.backupInboxes,
+    "--execution-record": options.executions,
+  };
   for (let i = 0; i < args.length; i += 2) {
     const [flag, value] = [args[i], args[i + 1]];
     if (value === undefined) throw Error(usage);
-    if (flag === "--inbox") options.inboxes.push(value);
+    if (Object.hasOwn(lists, flag)) lists[flag].push(value);
     else if (flag === "--upgraded-journal" && !options.upgraded)
       options.upgraded = value;
     else if (flag === "--backup-journal" && !options.backup)

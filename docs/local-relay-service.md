@@ -24,7 +24,9 @@ one means restoring a pre-upgrade backup. Reconcile by original ID the messages 
 release accepted and those still incomplete in the backup. An `expired` or
 `quarantined` row may still have been saved by its recipient, so the recipient's
 records decide it. Keep the earlier build stopped until every restored ID has
-expired, so nothing executed after the backup is delivered again
+expired, so the relay delivers nothing executed after the backup again. A body
+already saved in a restored inbox is handed out regardless of expiry, so settle
+each one against the copied execution records before restarting its recipient
 ([procedure](../packages/relay-nats/OPERATIONS.md#roll-back)).
 
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
