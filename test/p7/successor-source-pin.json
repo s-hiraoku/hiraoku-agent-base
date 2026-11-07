@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "833fc827f3f95d2337ec1962acd05e775448c164",
+  "source_ref": "4a7a7f30c102ee3d65f00dac0aca0f07c8dd67b9",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -43,7 +43,7 @@
     },
     "packages/relay-nats/OPERATIONS.md": {
       "previous_sha256": "4b5e0040932f3a699179e922df0a6f6f7fc6afc4f141cdd83aa44ad6cbd8535c",
-      "sha256": "b6b8a455373d8d6b2c0a5eee225d2e31e827f8d12adecf36abfebb1832318e7c"
+      "sha256": "13fbf6960bbea022bd1953a34dfd9251d1db3449fc3815b435f687782206d746"
     },
     "packages/relay-nats/README.md": {
       "previous_sha256": "7f8d3a4d4d01e647ff9076492250be285089b6bde4a1302d7d8c35e00fcb6037",
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "7cf7ae08de7736fb3250b62030e6976069d0ec653eae5e9601e1c34c0912269c"
+      "sha256": "4e641fca820fc7d9f3741f143a1b52985bf97128d46c715c96e04c7fd7504cb6"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -155,11 +155,11 @@
     },
     "src/a2a/hab-adapter.ts": {
       "previous_sha256": "9f191223fb851a001cacac5ed9676d73ab65df820ff1c8bdd90d3b3695cc7e65",
-      "sha256": "632b20d4367694b79b208e7e015e1349dbd74194d679d984cc8b427ca0078796"
+      "sha256": "04f0fe17694e3b64780055b908f108d434eb8c3ac2198c377a60f52bc2f6486d"
     },
     "src/a2a/hab-contract.ts": {
       "previous_sha256": "bcd35e4caaa038e1312f752232e814186fb9bc763b66fa94313709a839ed0854",
-      "sha256": "c5c77f016f7a26c2a13e707ae1abe0b32dc616cf4f8d0feaf9255586a895587e"
+      "sha256": "d088c696fc743acab7d0af75b78d52c4196995d662f485b83d8c8a5ec969f4b9"
     },
     "src/a2a/hab-http.ts": {
       "previous_sha256": "cb7427b8837694373b4642d25562be49c5454aec41140102142906aa2927adc9",
@@ -167,7 +167,7 @@
     },
     "src/a2a/hab-route.ts": {
       "previous_sha256": "2636d36a80ea12af65f0e9ec10376bd61434f1258d0340fd311b735a26e0244c",
-      "sha256": "6d15c00d9cc36ca4875b9a136c09cd106c881f71ee17d24f2ebf6f633bbb74ac"
+      "sha256": "3ce2120f46a9028f6556d094cf75f025dcf08acf2464a422e2d36edef59666cb"
     },
     "src/a2a/recipient.ts": {
       "previous_sha256": "224eb2152d3cb2583aeed0cba75cfef3a78c0587fe4d240da444c09218f6bcdc",
@@ -175,7 +175,7 @@
     },
     "src/a2a/store.ts": {
       "previous_sha256": "5e9a7b778e8db3fdb6c293be6d88b360c2d61693ff760319d2d3c4d373040942",
-      "sha256": "e5fbe2801cc29e6eedf843879dcbd1a7cb997f7e45962a0ee3ac37d906552942"
+      "sha256": "4d6e5e5a89045ad84373d5d253ebddf10fa8c74275326e1028abf8c1fee7c3f0"
     },
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
@@ -199,7 +199,7 @@
     },
     "src/agent-sdk/README.md": {
       "previous_sha256": null,
-      "sha256": "80f876754659d44a5ce4ee4f3942e35fa20ca36374c7c0573fa1e6547e6094e4"
+      "sha256": "d793ce9c22800a41c98add36b2dda576a8ee583461da29ea5e3d2634489f3bbc"
     },
     "src/agent-sdk/index.ts": {
       "previous_sha256": null,
@@ -219,11 +219,11 @@
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
-      "sha256": "8632fc33531d048765b736b6b786261e4860cc230ce30f761d343d223b2bd88b"
+      "sha256": "55c681b1123ca036651d465f9d072a4d583a1101581f258f56ca961dac7367a0"
     },
     "src/agent-sdk/sqlite-outbox.ts": {
       "previous_sha256": null,
-      "sha256": "ead5eb4b9b2815f8b4c7c43131ea62942673455cf0a9267b27934757a9dac07c"
+      "sha256": "79fa991c1ff64233140aa86a32e7105f6da4305fa50ed2e1f3404b3b4b87cb8e"
     },
     "src/answer-intents/answers.ts": {
       "previous_sha256": "0a518833a4af974d41d6159d1bb83358f8d74f2cd80a880e75994511aab73d93",
@@ -307,7 +307,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "e1e77b8e0188b298d5f074e37b63c9b5aea91ac1b92083c08a3330b4f83b7ca2"
+      "sha256": "fbab4f06fabaad1b4574c259a81554374efa964dbb1d76bb3162f5e0d146156a"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
@@ -607,11 +607,15 @@
     },
     "test/a2a-hab-unit-route.test.js": {
       "previous_sha256": "393fa2d023be7aad06e87c55e0405c1c09595faa854863a3fdeeacc5a1063547",
-      "sha256": "6bc92452efe071c6a808e2fab9cf258c6ed77ac30d76688b9b03a5857feda5f3"
+      "sha256": "0a53eaf79fb1d9beace8d3fd9b0ae3191d1708cc21cdc5ef90a961b6a50af3bb"
+    },
+    "test/a2a-hab-unit.test.js": {
+      "previous_sha256": "781901e1382e88e30a098f547dd6e9010ba0310084ef500f394f51ccd793d9cf",
+      "sha256": "a5f64f244bbf11a72ab01c552370d2175214c8037020546d1bd864f113bd1998"
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "d6579441711625eaf585cec6ab9500d4eed60d56003f7aa36d3861557ab62753"
+      "sha256": "cfb8bca6749c0e1d8788103d7582370b5a5f061bf9555df7b199d485815efabf"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
@@ -623,7 +627,7 @@
     },
     "test/a2a-sdk-store.test.js": {
       "previous_sha256": "1e0a880b756b4ad7678fce5e85cd6e9c80168285bfd99ebe773d79c140ce8424",
-      "sha256": "b97722800d5f2e4ff7605fcb12bc8248e92578ed83d62a3cdd351c23d914b488"
+      "sha256": "a76ffb56d46336da720dc4285dd948b43c4bc0b0632d4e18d088bd356c5afc8a"
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
@@ -725,9 +729,13 @@
       "previous_sha256": "99dc523f47c1d30653bea641cbc0a83c7eecbd538c37ae1ce23d8e781d5f0dbf",
       "sha256": "1bb7e3435cb390897548ec03abb755a3e750a4afd538aa9bc60938849dc85c6e"
     },
+    "test/relay-inbox-source.test.js": {
+      "previous_sha256": null,
+      "sha256": "4f67ae4ed1715607eff72d967fd9323bb48c405bb1c644dfec786a63a072e545"
+    },
     "test/relay-rollback-reconcile-unit.test.js": {
       "previous_sha256": null,
-      "sha256": "f76eafba000b724e255c5bcc299ee98e60d15fb1a9b9f583820d5059eba91c54"
+      "sha256": "fcb93d64db4a7a075eac874ba14e09f327c9de0472f9b3a5303bb11cb6e32e3c"
     },
     "test/relay-snapshot-bundle.test.js": {
       "previous_sha256": "7e136487b18ca2ab0edad9d7e1c9e47630d53f36612c2bb9f8d8541ed8fac72b",
