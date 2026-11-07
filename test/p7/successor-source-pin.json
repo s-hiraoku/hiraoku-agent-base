@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "2e2b392a9c8fbfe5281e63e080ab2a02af389a0e",
+  "source_ref": "c27a88a675067a7e8201e19614e0af4ae70d0129",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -43,7 +43,7 @@
     },
     "packages/relay-nats/OPERATIONS.md": {
       "previous_sha256": "4b5e0040932f3a699179e922df0a6f6f7fc6afc4f141cdd83aa44ad6cbd8535c",
-      "sha256": "ae40826c83ad950d0c702f9dc6bbaa579880096f38ea8a84fdff4978244434f9"
+      "sha256": "fd29db8a184d3708bef2bad288702d572373933272e1005344fc2a1413eae81d"
     },
     "packages/relay-nats/README.md": {
       "previous_sha256": "7f8d3a4d4d01e647ff9076492250be285089b6bde4a1302d7d8c35e00fcb6037",
@@ -95,7 +95,7 @@
     },
     "packages/relay-nats/test/delivery-semantics.test.js": {
       "previous_sha256": null,
-      "sha256": "5cff0ae234c987ff3f1f685498e1532eb29a91c94a9e2c577626efc44d27e02f"
+      "sha256": "10537ca6368a9642af916e43f769758ed73387eb76325134b93759f7d2badc8e"
     },
     "packages/relay-nats/test/fixture.js": {
       "previous_sha256": "75bc9335f5461a80aea0522ac2b0b69f182ba4695b8dba8ac7db2f7573a6a2d6",
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "3265cf91d8b0783f9472c34a6b54592b3a66256ac4115bbe5503b69534c4933d"
+      "sha256": "8358c18392bf397f1eba0c9d5d89605b46133e7f1a2e1ca6687bd46c0b0151bc"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -155,7 +155,7 @@
     },
     "src/a2a/hab-adapter.ts": {
       "previous_sha256": "9f191223fb851a001cacac5ed9676d73ab65df820ff1c8bdd90d3b3695cc7e65",
-      "sha256": "ef629e4c7cf6ae1c3c1136098b5d88edfa6a587067e18ea136f78d64f6e54487"
+      "sha256": "632b20d4367694b79b208e7e015e1349dbd74194d679d984cc8b427ca0078796"
     },
     "src/a2a/hab-contract.ts": {
       "previous_sha256": "bcd35e4caaa038e1312f752232e814186fb9bc763b66fa94313709a839ed0854",
@@ -163,7 +163,7 @@
     },
     "src/a2a/hab-http.ts": {
       "previous_sha256": "cb7427b8837694373b4642d25562be49c5454aec41140102142906aa2927adc9",
-      "sha256": "5f964c336f4d72f289fc4c8e85bdd28b57083e4ba88b0469825126ba967bb351"
+      "sha256": "6a9ed5a6fcbc6a8a59c6aaa6831d94c443880ddd82102a4664231fe5ea85ef39"
     },
     "src/a2a/hab-route.ts": {
       "previous_sha256": "2636d36a80ea12af65f0e9ec10376bd61434f1258d0340fd311b735a26e0244c",
@@ -175,7 +175,7 @@
     },
     "src/a2a/store.ts": {
       "previous_sha256": "5e9a7b778e8db3fdb6c293be6d88b360c2d61693ff760319d2d3c4d373040942",
-      "sha256": "f0c0dfd9afdf20e1e039ac032ec9aafe53fba27494faa0d58f201dec6eda4549"
+      "sha256": "3cbfe8caa3cc5bad5f26d7a6c9156e37f487ef453940c976d0083c5f00be150b"
     },
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
@@ -307,7 +307,7 @@
     },
     "src/host/a2a.ts": {
       "previous_sha256": null,
-      "sha256": "277eca057d90bb054b38c047e8e2e947c8c3f9c0d4f844d7015ed6e83894989f"
+      "sha256": "5fd0614deaf01352af3024c66817dd5e15f2b4303e4ef1a51b09c1e75d25d3ae"
     },
     "src/host/admin.ts": {
       "previous_sha256": null,
@@ -611,7 +611,7 @@
     },
     "test/a2a-host.test.js": {
       "previous_sha256": null,
-      "sha256": "20a7dff25b8ef927ffabbeb549c7766a1a1342acb4e7640b5d506c4d49d77ffc"
+      "sha256": "2de1fdd6009ce8fc170824d0fc5cc5124b1285f906e025b92dea48445716871f"
     },
     "test/a2a-relay-e2e.test.js": {
       "previous_sha256": "9859c5c814536fa50aadec2ee5234a85f019c9b9f61f12fe6a54c16a0159b0b0",
