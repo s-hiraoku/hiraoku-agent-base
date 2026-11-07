@@ -12,7 +12,7 @@ Reason: Preserves independent agents and prevents transport authorization becomi
 
 Scope: All standard communication; recipient integration Decision: **accepted**.
 
-Checks: js-common-mcp, ast-boundary, native-recipient.
+Checks: js-common-mcp, ast-boundary, native-recipient, js-recipient-messages, js-recipient-host-mcp.
 
 Sources: [docs/hab-principles.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-principles.md#L9-L9), [docs/hab-decisions.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L28-L31).
 
@@ -24,7 +24,7 @@ Reason: Native product capability/configuration differs, but delivery contract m
 
 Scope: Standard shared MCP and receive supervisor Decision: **accepted**.
 
-Checks: ts-root, build, ast-boundary, js-common-mcp, native-recipient.
+Checks: ts-root, build, ast-boundary, js-common-mcp, native-recipient, js-recipient-messages, js-recipient-host-mcp.
 
 Sources: [docs/common-mcp-connection.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/common-mcp-connection.md#L3-L6), [docs/hab-principles.md:13](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-principles.md#L13-L13).
 
@@ -36,7 +36,7 @@ Reason: Transport reception must not take or execute work on behalf of the recip
 
 Scope: Standard communication, including untrusted execution_request data Decision: **accepted**.
 
-Checks: js-common-mcp, ast-boundary.
+Checks: js-common-mcp, ast-boundary, js-recipient-messages, js-recipient-host-mcp.
 
 Sources: [docs/hab-decisions.md:30](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L30-L30), [docs/adapter-host.md:32](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L32-L34), [docs/receive-supervisor.md:51](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/receive-supervisor.md#L51-L52).
 
@@ -72,7 +72,7 @@ Reason: Every UI and evidence statement must match its observed state boundary.
 
 Scope: State APIs, UI, reports and recipient handoff Decision: **accepted**.
 
-Checks: js-common-mcp, js-root, gui-parity.
+Checks: js-common-mcp, js-root, gui-parity, js-recipient-messages, js-recipient-host-mcp.
 
 Sources: [docs/hab-product-spec.md:98](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L98-L110), [docs/generic-agent-async-design.md:103](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/generic-agent-async-design.md#L103-L103), [docs/hab-decisions.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-decisions.md#L28-L28).
 
@@ -84,7 +84,7 @@ Reason: Metadata/receive permission must not silently grant body access; caller 
 
 Scope: Local AdapterHostCycle inbox_read Decision: **accepted**.
 
-Checks: js-common-mcp.
+Checks: js-common-mcp, js-recipient-host-mcp.
 
 Sources: [docs/adapter-host.md:47](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L47-L49).
 
@@ -96,7 +96,7 @@ Reason: Decouples pure retrieval from uncertain transport state and independent 
 
 Scope: Local inbox_read and explicit recipient decisions Decision: **accepted**.
 
-Checks: js-common-mcp.
+Checks: js-common-mcp, js-recipient-host-mcp.
 
 Sources: [docs/adapter-host.md:47](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L47-L53), [docs/recipient-readiness.md:7](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/recipient-readiness.md#L7-L9).
 
@@ -132,7 +132,7 @@ Reason: Prevents outside content or stale authorization from crossing into manag
 
 Scope: All public entry points and recipient action integration Decision: **accepted**.
 
-Checks: js-root, native-recipient.
+Checks: js-root, native-recipient, js-recipient-messages, js-recipient-host-mcp.
 
 Sources: [docs/hab-principles.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-principles.md#L21-L21), [docs/hab-relay-spec.md:93](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L93-L97), [docs/generic-agent-async-design.md:83](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/generic-agent-async-design.md#L83-L87).
 
@@ -192,7 +192,7 @@ Reason: Prevents stale late responses and overlapping work after a superficial t
 
 Scope: Finite adapter host/control and optional task ports Decision: **accepted**.
 
-Checks: js-root.
+Checks: js-root, js-recipient-host-mcp.
 
 Sources: [docs/adapter-host.md:67](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L67-L81).
 
@@ -894,7 +894,7 @@ Reason: Prepared replies survive restart without recreating content from convers
 
 Scope: Optional AnswerIntents producer and its host wiring. Decision: **accepted**.
 
-Checks: js-root.
+Checks: js-root, js-recipient-host-mcp.
 
 Sources: [docs/answer-intents.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/answer-intents.md#L5-L14), [docs/answer-intents.md:18](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/answer-intents.md#L18-L38).
 

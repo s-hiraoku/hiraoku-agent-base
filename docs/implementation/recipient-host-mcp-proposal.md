@@ -44,6 +44,33 @@ There is no timeout retry layer: uncertain operations retain the host's existing
 state and must reconcile the same source/intent. The wrapper sanitizes thrown
 exceptions and preserves incomplete results rather than claiming success.
 
+## Explicit owner composition
+
+The integration owner supplies the existing host, a verified recipient context
+and an already authenticated transport. For example, from repository code:
+
+```ts
+import { createRecipientHostMcpServer } from "./src/adapter-host/mcp.ts";
+
+const server = createRecipientHostMcpServer({
+  host,
+  context: verifiedRecipientContext,
+  allowedOperations: [
+    "receive", "inbox", "inbox_read", "answer_prepare",
+    "answer_inspect", "answer_pending", "answer_enqueue", "send",
+  ],
+});
+await server.connect(existingAuthenticatedTransport);
+```
+
+These variables are prerequisites, not configuration or native binding created by
+this wrapper. The host must already own its private stores and enforce current
+recipient policy. For stdio, the owner launches and controls the process and
+binds its recipient session; this does not create a public HTTP listener. There
+is no honest production launch command until the real binding, current policy,
+store configuration and transport are verified. The test-only fixture below
+must not be installed as a production entry point.
+
 ## Relationship to RecipientMessagePort
 
 This is a pull route and does not implement or replace RecipientMessagePort.
@@ -58,6 +85,12 @@ outside this change and needs design review. No such API is assumed to exist.
 
 Hermes source inspected at 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7:
 
+- The [MCP configuration keys](https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/website/docs/user-guide/features/mcp.md#L490-L503)
+  document stdio command, args, env, cwd and process recycling. The
+  [transport implementation](https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L373-L414)
+  builds StdioServerParameters and calls the SDK stdio_client. These source
+  excerpts establish a supported transport candidate, not a live connection or
+  verified native policy/session binding. No client or profile was launched.
 - tui_gateway/methods_prompt.py rejects client-supplied _turn_author dictionaries.
   prompt.submit is a user-turn API, not a safe external-message substitute.
 - gateway/session_bot.py bot_relay.deliver has durable identity checks, but may
@@ -79,12 +112,18 @@ performed for this preparation. ACK remains storage receipt, not execution.
 ## Evidence
 
 `test/recipient-host-mcp.test.js` uses the official MCP SDK client/server over
-in-memory transport. Its real-host case uses existing SQLite inbox/outbox/answer
-journal and a private NATS broker. It verifies durable receive/ACK, source read,
-revocation, fixed reply enqueue and separate send. The recipient decisions are
-synthetic. These tests do not prove HTTP deployment, native-product behavior,
-wake, human approval, full restoration or production access control.
+in-memory transport and an owned separate stdio process. The real-host cases use
+existing SQLite inbox/outbox/answer journals and private NATS brokers. They cover
+receive/ACK, saved source reads, revocation, fixed reply enqueue and separate
+send. The stdio case observes `RECIPIENT_STDIO_CLEANUP_OK` after closing its client
+and cleaning up owned stores and broker. Recipient identity, decisions and
+operator resume are synthetic. The Relay-side fixture uses an in-process gateway;
+this is not an HTTP deployment or real product test. Native wake, human approval,
+session binding, full restoration and production access control remain unverified.
 
-The existing design verification bundle has not adopted this proposal. Its source
-inventory/citations and requirement mappings must be reviewed and maintained
-before a merge; an old green audit is not evidence for this new surface.
+The [design verification bundle](../../verification/design/README.md) classifies
+this document as proposal context and maps the focused tests to existing adopted
+host, authority and answer-intent requirements. Source review and a clean audit do
+not adopt this surface or satisfy the native-product manual gates. Current source
+hashes and fresh check results are required; an older green run is not evidence
+for the changed surface.
