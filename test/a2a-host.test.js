@@ -1159,7 +1159,10 @@ function loseHostAcks(t, entropy) {
   const dropped = [];
   HabJetStreamService.prototype.ack = function (context, input) {
     const [, first, tail] = String(input?.message_id).split(".");
-    if (tail === entropy && Date.now() < Number(first) + 3600000) {
+    if (
+      (Array.isArray(entropy) ? entropy.includes(tail) : tail === entropy) &&
+      Date.now() < Number(first) + 3600000
+    ) {
       dropped.push(input);
       throw Error("ack lost in transport");
     }
@@ -1270,6 +1273,208 @@ test("when the running host loses its own ACK of a saved result, the reply expir
   assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
 });
 
+test("after a long stop, retained ACK histories keep the outbox full instead of admitting a Task whose result would not fit", async (t) => {
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: 1 }),
+  });
+  await f.restart(async () => {
+    f.config.delivery.queue.lease_ms = 500;
+    f.write("service.local.json", f.config);
+  });
+  const client = await a2aClient(f, "caller");
+  const [{ request }] = await inFlight(client, recipient, "before_stop", 1);
+  const entropies = [
+    randomUUID().replaceAll("-", ""),
+    randomUUID().replaceAll("-", ""),
+  ];
+  loseHostAcks(t, entropies);
+  const replies = [];
+  for (const [i, [kind, value]] of [
+    ["execution_accepted", accepted("stopped")],
+    ["execution_result", succeeded("stopped")],
+  ].entries()) {
+    const reply = await recipient.reply(
+      request,
+      kind,
+      value,
+      3600000 - 100,
+      entropies[i],
+    );
+    replies.push(reply);
+    assert.ok(
+      await eventually(
+        async () =>
+          hostAck(f, reply.message_id).acks.some(
+            (row) => row.state === "pending",
+          ) || undefined,
+        8000,
+      ),
+      `pending ${kind}: ${JSON.stringify(hostAck(f, reply.message_id))}; relay=${JSON.stringify(await recipient.client.status(reply.message_id))}`,
+    );
+  }
+  assert.ok(
+    replies.every((reply) =>
+      hostAck(f, reply.message_id).acks.some((row) => row.state === "pending"),
+    ),
+    "the running host saved both replies with pending ACKs before one stop",
+  );
+  // Model 40 days of offline time in owned state. Preserve replay-bound IDs and
+  // timestamps together, so normal maintenance, not test-side deletion, reclaims rows.
+  const shift = 40 * 86400000;
+  const agedId = (id) => {
+    const [, first, entropy] = id.split(".");
+    return `rm1.${Number(first) - shift}.${entropy}`;
+  };
+  const agedTime = (at) => new Date(Date.parse(at) - shift).toISOString();
+  await f.restart(async () => {
+    const out = new DatabaseSync(join(f.config.directory, "a2a-outbox.sqlite"));
+    for (const row of out.prepare("SELECT message_id FROM relay_outbox").all())
+      out
+        .prepare(
+          "UPDATE relay_outbox SET message_id=?,first_sent_at=first_sent_at-?,expires_at=expires_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+        )
+        .run(
+          agedId(row.message_id),
+          shift,
+          shift,
+          shift,
+          shift,
+          shift,
+          row.message_id,
+        );
+    out.close();
+    const mail = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
+    mail.exec("PRAGMA foreign_keys=OFF");
+    for (const row of mail
+      .prepare("SELECT message_id,body FROM relay_inbox")
+      .all()) {
+      const m = JSON.parse(row.body);
+      m.message_id = agedId(m.message_id);
+      m.first_sent_at = agedTime(m.first_sent_at);
+      m.expires_at = agedTime(m.expires_at);
+      m.in_reply_to.message_id = agedId(m.in_reply_to.message_id);
+      mail
+        .prepare(
+          "UPDATE relay_inbox SET message_id=?,body=?,received_at=received_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,retain_until=retain_until-? WHERE message_id=?",
+        )
+        .run(
+          m.message_id,
+          JSON.stringify(m),
+          shift,
+          shift,
+          shift,
+          shift,
+          row.message_id,
+        );
+    }
+    for (const row of mail
+      .prepare("SELECT request_id,message_id,request FROM relay_receiver_acks")
+      .all()) {
+      const req = JSON.parse(row.request);
+      req.message_id = agedId(req.message_id);
+      mail
+        .prepare(
+          "UPDATE relay_receiver_acks SET message_id=?,request=?,next_retry_at=next_retry_at-?,retry_until=retry_until-?,retain_until=retain_until-? WHERE request_id=?",
+        )
+        .run(
+          agedId(row.message_id),
+          JSON.stringify(req),
+          shift,
+          shift,
+          shift,
+          row.request_id,
+        );
+    }
+    assert.deepEqual(mail.prepare("PRAGMA foreign_key_check").all(), []);
+    mail.close();
+    const tasks = new DatabaseSync(
+      join(f.config.directory, "a2a-tasks.sqlite"),
+    );
+    for (const row of tasks
+      .prepare("SELECT id,metadata FROM hab_a2a_tasks")
+      .all()) {
+      const meta = JSON.parse(row.metadata);
+      meta.hab_relay.source.message_id = agedId(
+        meta.hab_relay.source.message_id,
+      );
+      meta.hab_relay.source.expires_at = agedTime(
+        meta.hab_relay.source.expires_at,
+      );
+      tasks
+        .prepare("UPDATE hab_a2a_tasks SET metadata=? WHERE id=?")
+        .run(JSON.stringify(meta), row.id);
+    }
+    tasks.close();
+  });
+  assert.ok(
+    await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
+  );
+  const mail = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
+  assert.equal(
+    mail
+      .prepare("SELECT count(DISTINCT message_id) n FROM relay_receiver_acks")
+      .get().n,
+    2,
+  );
+  assert.ok(
+    mail.prepare("SELECT min(terminal_at) at FROM relay_receiver_acks").get()
+      .at >
+      Date.now() - 10000,
+  );
+  mail.close();
+  await assert.rejects(
+    () => client.send("capacity_not_admitted"),
+    /outbox_capacity_exceeded/,
+  );
+  // Retention is not shortened. Once another 31 days pass, ACK maintenance makes
+  // room first, then outbox maintenance may admit the next Task and both replies.
+  await f.restart(async () => {
+    const mail = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
+    const elapsed = 31 * 86400000;
+    mail
+      .prepare(
+        "UPDATE relay_receiver_acks SET terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(elapsed, elapsed);
+    mail
+      .prepare(
+        "UPDATE relay_inbox SET released_at=released_at-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(elapsed, elapsed, elapsed);
+    mail.close();
+  });
+  const next = await eventually(async () => {
+    try {
+      return await client.send("after_history_retention");
+    } catch {
+      return undefined;
+    }
+  }, 8000);
+  assert.ok(
+    next,
+    "new Task admission resumes after retained histories become collectable",
+  );
+  const received = await eventually(async () => {
+    await recipient.receiver.receiveOnce();
+    return recipient.receiver
+      .inbox()
+      .find(
+        (entry) =>
+          entry.message.message_id ===
+          next.metadata.hab_relay.source.message_id,
+      );
+  }, 8000);
+  assert.ok(received);
+  for (const [kind, value] of [
+    ["execution_accepted", accepted("recovered")],
+    ["execution_result", succeeded("recovered")],
+  ]) {
+    const reply = await recipient.reply(received, kind, value);
+    assert.equal(await untilAcked(recipient.client, reply.message_id), "acked");
+  }
+  await untilState(() => client.get(next.id), TaskState.TASK_STATE_COMPLETED);
+});
+
 test("a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance", async (t) => {
   const { f, recipient } = await connected(t);
   const client = await a2aClient(f, "caller");
@@ -1304,8 +1509,9 @@ const storedState = (f, id) => {
     readOnly: true,
   });
   try {
-    return db.prepare("SELECT status_state FROM hab_a2a_tasks WHERE id=?").get(id)
-      .status_state;
+    return db
+      .prepare("SELECT status_state FROM hab_a2a_tasks WHERE id=?")
+      .get(id).status_state;
   } finally {
     db.close();
   }
@@ -1347,7 +1553,14 @@ test("a WORKING Task whose reply window closes without a result fails as result_
       .prepare(
         "UPDATE relay_outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
       )
-      .run(2 * day, 2 * day, 2 * day, 2 * day, 2 * day, request.message.message_id);
+      .run(
+        2 * day,
+        2 * day,
+        2 * day,
+        2 * day,
+        2 * day,
+        request.message.message_id,
+      );
     outbox.close();
   });
   assert.ok(
@@ -1374,8 +1587,16 @@ test("a WORKING Task whose reply window closes without a result fails as result_
   await new Promise((done) => setTimeout(done, 200));
   const after = await client.get(task.id);
   assert.equal(after.status.state, TaskState.TASK_STATE_FAILED);
-  assert.deepEqual(after.status, failed.status, "the late result changes nothing");
-  assert.equal(unreleasedReplies(f), 0, "the late result was ACKed without a record");
+  assert.deepEqual(
+    after.status,
+    failed.status,
+    "the late result changes nothing",
+  );
+  assert.equal(
+    unreleasedReplies(f),
+    0,
+    "the late result was ACKed without a record",
+  );
 });
 
 test("a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance", async (t) => {

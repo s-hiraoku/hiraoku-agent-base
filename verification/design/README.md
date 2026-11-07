@@ -166,3 +166,12 @@ The remaining review fixes (reviewed at `c62d24da5f4cac0543286a8f54b8e7d89cd730f
 - In source-review.json the changed sources were re-read and rehashed. `src/host/a2a.ts`, `src/a2a/hab-adapter.ts`, `src/a2a/store.ts` and `src/a2a/hab-http.ts` have extended summaries, and the three root tests record their new cases.
 
 New and re-rendered source links pin to the reviewed commit above.
+
+## Local follow-up: retained rollback bodies and delayed ACK retention
+
+This follow-up is based on `0fc76a6ebe48602524cf22df08888cff8bbff34a` and fixes two rollback omissions and the long-stop A2A capacity gate. Changed source citations use repository-relative links to remain valid on this branch.
+
+- HAB-F24 now includes post-backup IDs retained only in recipient evidence after journal collection and unreleased bodies present only in upgraded inbox copies. Draining and the expiry hold do not transfer those bodies. The operator reviews original-key application-specific local handoff; missing/conflicting evidence and uncertain effects stay stopped, with no generic replay executor or expiry bypass.
+- HAB-D06 documents the non-reserving read-only batch-capacity query. HAB-D20 replaces the incorrect claim that the outbox horizon always outlives ACK history with inbox-first maintenance and a whole-next-batch capacity gate before outbox collection. ACKs first made terminal after a long stop retain the full 30 days from their actual local terminal time. New admission waits instead of accepting Tasks whose replies cannot fit. This is prospective protection, not repair of source slots already collected by an earlier build or of lost/quarantined results; affected existing deployments need quiesced admissions and normal retention/capacity recovery. The whole-batch reserve is intentionally conservative.
+- Re-read the rollback portions of ADR-016, the product spec, local Relay guide and OPERATIONS, the A2A host guide and agent SDK README. Updated their semantic summaries and the implementation/test source reviews. Re-cited affected excerpts; the platform-evidence passage moved unchanged. No authority, execution, retention or manual gate is weakened.
+- Coverage adds four minimal SQLite projection cases, one inbox-capacity case and one host outage/ACK-loss case; the existing real rollback drill additionally recovers an upgraded-only saved body after its TTL. The host case uses a short lease, injected ACK transport failures and modeled timestamp/ID aging, not a real multi-week outage. Test outcome evidence is recorded separately from this source review.

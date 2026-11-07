@@ -80,9 +80,9 @@ const request = () => `host-a2a-${randomUUID()}`;
 /** A reply is saved only until this long after its request's own expiry; a Task still without a result then fails. */
 const REPLY_WINDOW_MS = 86400000;
 const ACK_RETRY_MS = 86400000;
-// An outbox record outlives the ACK history of every reply it can still receive
-// (window, ACK retry, the reply's own one-hour expiry and slack), so a slot it frees
-// never leaves ACK rows behind that a newly admitted Task's replies would need.
+// This horizon covers on-time reply ACK history (window, retry, TTL and slack).
+// A long stop can delay local ACK terminal time, so collection also checks actual
+// inbox capacity before freeing outbox slots for newly admitted Tasks.
 const STATUS_RETRY_MS = REPLY_WINDOW_MS + ACK_RETRY_MS + 2 * 3600000;
 
 /**
@@ -473,8 +473,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         const source = entry.message.in_reply_to?.message_id;
         const task = source ? store.findBySource(source) : undefined;
         try {
-          if (task)
-            await gateway.apply(task, storedRoute(task, [entry]));
+          if (task) await gateway.apply(task, storedRoute(task, [entry]));
         } catch (error) {
           // A reply the Task refuses (a conflict, a malformed body) is rejected; any
           // other failure keeps the body for the next cycle.
@@ -536,8 +535,17 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         await applyReplies();
         if (Date.now() - maintainedAt >= 60000) {
           maintainedAt = Date.now();
-          box.maintain(100);
           mail.maintain(100);
+          // ACKs first made terminal after a long stop keep a fresh 30-day history.
+          // Do not free sender slots until the inbox can hold the next whole batch
+          // of acceptance/result replies as well as that retained history.
+          box.maintain(
+            100,
+            mail.hasCapacityFor(
+              replySlots,
+              replySlots * deps.limits.envelope_bytes,
+            ),
+          );
           windowsDueAt = 0;
         }
         if (Date.now() >= windowsDueAt) await closeWindows();

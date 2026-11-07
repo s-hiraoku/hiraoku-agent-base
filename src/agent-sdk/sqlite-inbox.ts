@@ -613,6 +613,34 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         receipt_confirmed: row.receipt_confirmed === 1,
       }));
   }
+  /** Read-only capacity check for new replay-bound messages; does not reserve or collect. */
+  hasCapacityFor(records: number, bodyBytes: number): boolean {
+    if (
+      !Number.isSafeInteger(records) ||
+      records < 0 ||
+      !Number.isSafeInteger(bodyBytes) ||
+      bodyBytes < 0
+    )
+      throw new MessagingError("invalid_request");
+    this.#now();
+    const usage = this.#db
+      .prepare(
+        `SELECT
+      count(*) retained,
+      coalesce(sum(released_at IS NULL),0) bodies,
+      coalesce(sum(CASE WHEN released_at IS NULL THEN length(cast(body AS BLOB)) ELSE 0 END),0) bytes,
+      (SELECT count(*) FROM (SELECT sender_id,message_id FROM relay_receiver_acks GROUP BY sender_id,message_id)) acks
+      FROM relay_inbox`,
+      )
+      .get()!;
+    return (
+      Number(usage.bodies) + records <= this.#options.max_records &&
+      Number(usage.bytes) + bodyBytes <= this.#options.max_body_bytes &&
+      Number(usage.acks) + records <= this.#options.max_ack_records &&
+      Number(usage.retained) + records <=
+        this.#options.max_records + this.#options.max_ack_records
+    );
+  }
   /** Call only after a separate, durable application save; no execution is implied. */
   releaseBody(senderId: string, messageId: string): boolean {
     if (!identifier(senderId) || !identifier(messageId))

@@ -388,8 +388,8 @@ test("the rollback drill restores the journal with its broker store, settles res
   const appPath = join(dir, "app-b.json");
   writeFileSync(appPath, JSON.stringify({ recipient_id: "b", handled: [] }));
   let inbox;
-  const openInbox = () => {
-    inbox = new SQLiteInbox(inboxPath, {
+  const openInbox = (path = inboxPath) => {
+    inbox = new SQLiteInbox(path, {
       agent_id: "b",
       fingerprint_key: new Uint8Array(32).fill(44),
       limits,
@@ -458,8 +458,11 @@ test("the rollback drill restores the journal with its broker store, settles res
   // The upgraded build delivers the in-flight message and a new one, and b executes
   // both and `handled`.
   const afterBackup = message("b");
+  const retainedWaiting = message("b", 20000);
   await relay.submit(afterBackup);
-  for (let i = 0; i < 2; i++) await receiver().receiveOnce();
+  await relay.submit(retainedWaiting);
+  for (let i = 0; i < 3; i++) await receiver().receiveOnce();
+  assert.equal(relay.status(retainedWaiting.message_id), "acked");
   assert.equal(relay.status(inFlight.message_id), "acked");
   assert.equal(relay.status(afterBackup.message_id), "acked");
   runApplication([
@@ -520,6 +523,11 @@ test("the rollback drill restores the journal with its broker store, settles res
         final_state: "acked",
         action: "delivered",
       },
+      [retainedWaiting.message_id]: {
+        backup_state: null,
+        final_state: "acked",
+        action: "delivered",
+      },
     },
   );
   assert.deepEqual(
@@ -530,6 +538,10 @@ test("the rollback drill restores the journal with its broker store, settles res
       [handled.message_id]: "do_not_process",
       [waiting.message_id]: "process",
     },
+  );
+  assert.deepEqual(
+    out.retained_bodies.map((row) => [row.message_id, row.action]),
+    [[retainedWaiting.message_id, "review_application_handoff"]],
   );
   assert.equal(out.restored_incomplete_expire_by, inFlight.expires_at);
   const restoredRow = new DatabaseSync(relay.journal, { readOnly: true });
@@ -564,6 +576,17 @@ test("the rollback drill restores the journal with its broker store, settles res
   await new Promise((done) =>
     setTimeout(done, Math.max(0, holdUntil - Date.now()) + 100),
   );
+  // Application-specific local recovery, with the network still stopped: read a
+  // working copy through its compatible SDK, preserve the original key, and use
+  // this fixture application's durable dedup store. Never submit an expired body
+  // to the relay or inject it through restored inbox.save(). Keep evidence intact.
+  const recoveryInbox = join(dir, "recovery-inbox.sqlite");
+  copy(join(upgraded, "inbox-b.sqlite"), recoveryInbox);
+  chmodSync(recoveryInbox, 0o600);
+  openInbox(recoveryInbox);
+  assert.ok(Date.parse(retainedWaiting.expires_at) <= Date.now());
+  runApplication([retainedWaiting.message_id]);
+  inbox.close();
   await relay.start();
   assert.equal(
     await relay.lastSequence(),
@@ -581,8 +604,8 @@ test("the rollback drill restores the journal with its broker store, settles res
   });
   assert.deepEqual(
     executed.slice(3),
-    [waiting.message_id],
-    "only the unprocessed body runs after the restore",
+    [retainedWaiting.message_id, waiting.message_id],
+    "both unprocessed bodies run once, including the retained-copy handoff",
   );
   assert.equal(new Set(executed).size, executed.length, "nothing runs twice");
   assert.deepEqual(inbox.inbox(), []);

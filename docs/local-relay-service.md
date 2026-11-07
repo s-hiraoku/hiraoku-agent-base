@@ -21,12 +21,12 @@ section with `broker`, `pump`, `volume` and `queue` parts. The retired SQLite
 field paths; messages held by the retired SQLite store are not migrated.
 The delivery journal is schema 4, which earlier builds refuse, so rolling back to
 one means restoring a pre-upgrade backup. Reconcile by original ID the messages this
-release accepted and those still incomplete in the backup. An `expired` or
+release accepted and those still incomplete in the backup, including IDs retained only in inbox or execution evidence after journal collection. An `expired` or
 `quarantined` row may still have been saved by its recipient, so the recipient's
 records decide it. Keep the earlier build stopped until every restored ID has
 expired, so the relay delivers nothing executed after the backup again. A body
 already saved in a restored inbox is handed out regardless of expiry, so settle
-each one against the copied execution records before restarting its recipient
+each one against the copied execution records before restarting its recipient. Also reconcile unreleased bodies retained only in the upgraded inbox copy: draining and waiting do not transfer them. Use an application-specific local handoff under the original key only after ruling out prior or uncertain effects; otherwise keep the recipient stopped. Never replay, replace IDs or extend expiry
 ([procedure](../packages/relay-nats/OPERATIONS.md#roll-back)).
 
 The [example](../config/relay-service.example.json) uses dummy paths and supervised

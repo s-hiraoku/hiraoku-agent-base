@@ -132,16 +132,21 @@ function row(f, id) {
 test("outbox expiry is explicit and bounded, drops payload, and preserves status recovery without a network call", (t) => {
   const f = fixture(t),
     m = message();
+  const collectible = seed(f);
   f.store.enqueue(m);
   f.raw
     .prepare("UPDATE relay_outbox SET expires_at=0 WHERE message_id=?")
     .run(m.message_id);
   assert.equal(row(f, m.message_id).body.includes("synthetic"), true);
-  assert.deepEqual(f.store.maintain(1), {
+  assert.deepEqual(f.store.maintain(5, false), {
     expired: 1,
     purged: 0,
     safety_held: 0,
   });
+  assert.ok(
+    row(f, collectible.message_id),
+    "deferred collection preserves admission slots",
+  );
   const r = row(f, m.message_id);
   assert.equal(r.body, null);
   assert.equal(r.state, "queued");

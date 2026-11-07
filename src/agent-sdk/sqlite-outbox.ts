@@ -569,9 +569,14 @@ export class SQLiteOutbox implements SenderStore {
       throw new MessagingError("invalid_status_result");
     this.defer(job, true);
   }
-  /** Explicit local administration; never transmits, schedules or replaces a message. */
-  maintain(limit: number): OutboxMaintenanceResult {
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
+  /** Explicit local administration; `collect=false` keeps slots but still expires bodies. */
+  maintain(limit: number, collect = true): OutboxMaintenanceResult {
+    if (
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 1000 ||
+      typeof collect !== "boolean"
+    )
       throw new MessagingError("invalid_request");
     return this.#tx(() => {
       const now = this.#now();
@@ -590,7 +595,7 @@ export class SQLiteOutbox implements SenderStore {
           `SELECT message_id FROM relay_outbox WHERE ${eligible} AND relay_outbox_gc_safe(message_id,expires_at)=1
          ORDER BY retain_until,message_id LIMIT ?`,
         )
-        .all(cutoff, cutoff, cutoff, now, limit - expired);
+        .all(cutoff, cutoff, cutoff, now, collect ? limit - expired : 0);
       for (const row of rows)
         this.#db
           .prepare("DELETE FROM relay_outbox WHERE message_id=?")

@@ -902,3 +902,36 @@ test("replay-bound IDs are collected every retention cycle, so new IDs keep savi
     .get();
   assert.deepEqual({ ...totals }, { purged_acks: 10, purged_messages: 5 });
 });
+
+test("capacity for a new reply batch includes retained ACK history and retained rows, without changing retention", (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  assert.equal(f.store.hasCapacityFor(2, 100000), true);
+  for (const entropy of ["2".repeat(32), "3".repeat(32)])
+    seed(f, { entropy, released: false, state: "pending" });
+  assert.equal(f.store.hasCapacityFor(2, 100000), false);
+  for (const entry of f.store.inbox())
+    assert.equal(
+      f.store.releaseUnconfirmable("a", entry.message.message_id),
+      true,
+    );
+  assert.equal(f.store.inbox().length, 0);
+  assert.equal(
+    f.store.hasCapacityFor(2, 100000),
+    false,
+    "two retained ACK histories leave only one slot",
+  );
+  assert.equal(f.store.hasCapacityFor(1, 100000), true);
+  assert.equal(
+    f.store.maintain(100).purged_acks,
+    0,
+    "new terminal time still keeps ACK history for 30 days",
+  );
+  assert.ok(ack(f).terminal_at > Date.now() - 10000);
+  for (const args of [
+    [-1, 0],
+    [1.5, 0],
+    [0, -1],
+    [0, NaN],
+  ])
+    code(() => f.store.hasCapacityFor(...args), "invalid_request");
+});
