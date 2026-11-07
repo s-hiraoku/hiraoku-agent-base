@@ -125,3 +125,43 @@ test("real host MCP: durable receive/read, current permission, fixed answer enqu
   const delivered = await f.service.poll(f.contexts.a);
   assert.deepEqual(delivered.message.in_reply_to, source.key);
 });
+
+test("real stdio process: official MCP client can receive, read and queue a fixed reply without a native runner", async (t) => {
+  const process = (await import("node:process")).default;
+  const { fileURLToPath } = await import("node:url");
+  const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
+  const { natsServerBinary } = await import("./jetstream-delivery.js");
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [fileURLToPath(new URL("./recipient-host-stdio-fixture.js", import.meta.url))],
+    env: { HAB_NATS_SERVER: natsServerBinary(), NODE_NO_WARNINGS: "1" },
+    stderr: "pipe",
+  });
+  let diagnostics = "";
+  transport.stderr.on("data", (chunk) => { diagnostics += chunk.toString(); });
+  const client = new Client({ name: "synthetic-stdio-recipient", version: "1" });
+  t.after(async () => { await client.close(); });
+  await client.connect(transport);
+  const call = async (op, args = {}) => {
+    const result = await client.callTool({ name: `recipient_${op}`, arguments: args });
+    assert.equal(result.isError, false);
+    return JSON.parse(result.content[0].text);
+  };
+  assert.equal((await client.listTools()).tools.length, 7);
+  await call("receive");
+  const entries = (await call("inbox")).result.value;
+  assert.equal(entries.length, 1);
+  const source = { sender_id: entries[0].sender_id, message_id: entries[0].message_id };
+  const saved = await call("inbox_read", { source });
+  assert.equal(saved.origin, "external_agent");
+  assert.equal(saved.result.value.receipt_confirmed, true);
+  assert.equal(saved.result.value.message.body.parts[0].text, "Synthetic external question");
+  await call("answer_prepare", { source, body: { parts: [{ type: "text", text: "Synthetic stdio answer" }] } });
+  await call("answer_enqueue", { source });
+  await call("answer_enqueue", { source });
+  await call("answer_inspect", { source });
+  await call("send");
+  await client.close();
+  assert.match(diagnostics, /RECIPIENT_STDIO_CLEANUP_OK/);
+  assert.doesNotMatch(diagnostics, /RECIPIENT_STDIO_CLEANUP_FAILED/);
+});
