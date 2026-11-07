@@ -488,9 +488,15 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       }
     };
     // A Task whose reply window closed without a result fails without waiting for a read.
+    // The next pass is due when the earliest open window closes, and at most a minute
+    // later: a Task created after this pass expires a delivery TTL plus the window from
+    // now, and one that failed to apply is retried with maintenance.
+    let windowsDueAt = 0;
     const closeWindows = async () => {
-      const cutoff = new Date(Date.now() - REPLY_WINDOW_MS).toISOString();
-      for (const task of store.overdue(cutoff, 100)) {
+      const now = Date.now();
+      const cutoff = new Date(now - REPLY_WINDOW_MS).toISOString();
+      const due = store.overdue(cutoff, 100);
+      for (const task of due) {
         const gateway = wired.gateway;
         if (stopped || !gateway) return;
         try {
@@ -499,6 +505,14 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           // One Task that cannot be applied must not hold back the others or maintenance.
         }
       }
+      const next = store.nextExpiry(cutoff);
+      windowsDueAt =
+        due.length === 100
+          ? 0
+          : Math.min(
+              next ? Date.parse(next) + REPLY_WINDOW_MS : Infinity,
+              now + 60000,
+            );
     };
     let maintainedAt = 0;
     const receive = async () => {
@@ -524,8 +538,9 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           maintainedAt = Date.now();
           box.maintain(100);
           mail.maintain(100);
-          await closeWindows();
+          windowsDueAt = 0;
         }
+        if (Date.now() >= windowsDueAt) await closeWindows();
       } catch {
         // As above: the replies stay saved and the next cycle applies them.
       }
