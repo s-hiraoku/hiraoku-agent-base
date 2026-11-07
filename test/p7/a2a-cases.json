@@ -45,6 +45,7 @@
   "A2A native ingress retains downstream foreign mailbox, status and ACK refusal",
   "SDK DatabaseTaskStore survives a separate process and isolates owners and tenants",
   "A2A store refuses an existing engine database and public file permissions",
+  "closing an unused A2A store closes its eager SQLite connection before a reopen",
   "A2A submission receipt persists one original success without becoming another Task engine",
   "A2A submission receipt refuses binding changes and tampered success evidence"
 ]

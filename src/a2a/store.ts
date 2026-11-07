@@ -71,7 +71,15 @@ export function openA2aTaskStore(path: string) {
       /** The earliest relay request expiry after `after` among non-terminal Tasks. */
       nextExpiry: (after: string) =>
         (nextExpiry.get(after) as { at: string | null }).at ?? undefined,
-      close: () => db.destroy(),
+      close: async () => {
+        try {
+          await db.destroy();
+        } finally {
+          // Kysely initializes its driver lazily. Host maintenance can use the
+          // eager connection without any SDK load/save, so destroy alone may not close it.
+          if (sqlite.open) sqlite.close();
+        }
+      },
     };
   } catch (error) {
     sqlite.close();

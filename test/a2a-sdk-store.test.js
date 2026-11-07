@@ -88,3 +88,25 @@ test("A2A store refuses an existing engine database and public file permissions"
   chmodSync(path, 0o644);
   assert.throws(() => openA2aTaskStore(path), /private regular file/);
 });
+
+test("closing an unused A2A store closes its eager SQLite connection before a reopen", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "a2a-store-close-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "tasks.sqlite");
+  const unused = openA2aTaskStore(path);
+  // These host maintenance reads bypass Kysely; no SDK load/save has initialized it.
+  assert.equal(unused.findBySource("absent"), undefined);
+  assert.deepEqual(unused.overdue("9999-01-01T00:00:00.000Z", 100), []);
+  await unused.close();
+  assert.throws(() => unused.findBySource("absent"), /not open|closed/);
+  await unused.close();
+
+  const reopened = openA2aTaskStore(path);
+  assert.equal(
+    await reopened.store.load("absent", context("caller", "group")),
+    undefined,
+  );
+  await reopened.close();
+  assert.throws(() => reopened.findBySource("absent"), /not open|closed/);
+  await reopened.close();
+});

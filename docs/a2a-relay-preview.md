@@ -125,7 +125,7 @@ A different engine Task ID in a later reply, or a second terminal result with an
 
 ### Shutdown
 
-On close the host stops accepting A2A requests with 503 and closes the listener. It waits for in-flight A2A requests and the current receiver cycle, then closes the Task store, outbox and inbox before closing delivery and the Registry. Unsent intents, unACKed deliveries and saved Tasks stay on disk for the next start.
+On close the host stops accepting A2A requests with 503 and closes the listener. It waits for in-flight A2A requests and the current receiver cycle, then closes the Task store, outbox and inbox before closing delivery and the Registry. Unsent intents, unACKed deliveries and saved Tasks stay on disk for the next start. Closing the Task store also closes its eagerly opened SQLite connection when no SDK load/save initialized the lazy database driver. Calling close again is safe; a stopped host must not leave an unused connection behind across restart.
 
 ### Not covered
 

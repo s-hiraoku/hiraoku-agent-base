@@ -4,6 +4,7 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import Database from "better-sqlite3";
 import { ClientFactory, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
 import { SendMessageRequest, TaskState } from "@a2a-js/sdk";
 import { startHost } from "../src/host/start.ts";
@@ -1282,7 +1283,12 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
     f.write("service.local.json", f.config);
   });
   const client = await a2aClient(f, "caller");
-  const [{ request }] = await inFlight(client, recipient, "before_stop", 1);
+  const [{ task: stoppedTask, request }] = await inFlight(
+    client,
+    recipient,
+    "before_stop",
+    1,
+  );
   const entropies = [
     randomUUID().replaceAll("-", ""),
     randomUUID().replaceAll("-", ""),
@@ -1387,7 +1393,8 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
     }
     assert.deepEqual(mail.prepare("PRAGMA foreign_key_check").all(), []);
     mail.close();
-    const tasks = new DatabaseSync(
+    // Use the same driver as the host for the offline Task-store fixture.
+    const tasks = new Database(
       join(f.config.directory, "a2a-tasks.sqlite"),
     );
     for (const row of tasks
@@ -1397,6 +1404,9 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
       meta.hab_relay.source.message_id = agedId(
         meta.hab_relay.source.message_id,
       );
+      meta.hab_relay.source.first_sent_at = agedTime(
+        meta.hab_relay.source.first_sent_at,
+      );
       meta.hab_relay.source.expires_at = agedTime(
         meta.hab_relay.source.expires_at,
       );
@@ -1404,6 +1414,9 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
         .prepare("UPDATE hab_a2a_tasks SET metadata=? WHERE id=?")
         .run(JSON.stringify(meta), row.id);
     }
+    assert.deepEqual(tasks.pragma("integrity_check"), [
+      { integrity_check: "ok" },
+    ]);
     tasks.close();
   });
   assert.ok(
@@ -1422,6 +1435,10 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
       Date.now() - 10000,
   );
   mail.close();
+  await untilState(
+    () => client.get(stoppedTask.id),
+    TaskState.TASK_STATE_FAILED,
+  );
   await assert.rejects(
     () => client.send("capacity_not_admitted"),
     /outbox_capacity_exceeded/,
@@ -1443,16 +1460,19 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
       .run(elapsed, elapsed, elapsed);
     mail.close();
   });
+  let admissionError;
   const next = await eventually(async () => {
     try {
       return await client.send("after_history_retention");
-    } catch {
+    } catch (error) {
+      if (!/outbox_capacity_exceeded/.test(String(error))) throw error;
+      admissionError = String(error);
       return undefined;
     }
   }, 8000);
   assert.ok(
     next,
-    "new Task admission resumes after retained histories become collectable",
+    `new Task admission resumes after retained histories become collectable: ${admissionError ?? "no response"}`,
   );
   const received = await eventually(async () => {
     await recipient.receiver.receiveOnce();
