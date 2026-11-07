@@ -24,7 +24,8 @@ export interface HabA2aRoute {
   delivery(messageId: string): OutboxRecord;
   /** Sends the saved intent; a route may send only this message. */
   flush(messageId: string): Promise<void>;
-  replies(): InboxEntry[];
+  /** Optional source hint only; callers must still validate every reply's correlation. */
+  replies(source?: SourceKey): InboxEntry[];
   /**
    * Replies count until the request's expiry plus this many milliseconds. A Task still
    * without a result then fails as `result_window_expired`. Without it, a Task waits.

@@ -31,7 +31,7 @@ import { RequestMalformedError } from "@a2a-js/sdk/errors";
 import { ZodError } from "zod";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { Delivery } from "../messaging/delivery-service.ts";
-import type { ContractLimits } from "../messaging/contract.ts";
+import { ContractError, type ContractLimits } from "../messaging/contract.ts";
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { HabMcpService } from "../hab/mcp.ts";
 import { parseHabAddress } from "../hab/registry.ts";
@@ -162,6 +162,28 @@ export function hostA2aIndividual(maxContextMs: number) {
   };
 }
 
+/** Budget new sender slots without spending capacity reserved for free slots or live reply windows. */
+export function replySafeCollectionLimit(
+  retained: { total: number; expires_after: number },
+  maxRecords: number,
+  envelopeBytes: number,
+  hasCapacityFor: (records: number, bodyBytes: number) => boolean,
+  limit = 100,
+): number {
+  let low = 0,
+    high = limit;
+  while (low < high) {
+    const candidate = Math.ceil((low + high) / 2);
+    // If an operator lowered the cap below the retained count, collecting excess
+    // rows does not create any usable sender slot until the count falls below it.
+    const freeAfter = Math.max(0, maxRecords - retained.total + candidate);
+    const records = 2 * (freeAfter + retained.expires_after);
+    if (hasCapacityFor(records, records * envelopeBytes)) low = candidate;
+    else high = candidate - 1;
+  }
+  return low;
+}
+
 /** Per-request route: the caller is checked by the Registry; the host identity sends. */
 function hostRoute(options: {
   registry: SQLiteHabRegistry;
@@ -246,9 +268,9 @@ function hostRoute(options: {
       }
     },
     replyWindowMs: REPLY_WINDOW_MS,
-    replies() {
+    replies(source) {
       assertCurrent();
-      return inbox.inbox();
+      return inbox.inbox(source);
     },
     // The terminal Task is saved; its reply bodies would otherwise fill the inbox.
     settle(replies) {
@@ -369,59 +391,79 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       }
     };
     // A new reply ID is saved only if it would change its Task. One that repeats what
-    // the Task or a held reply already carries, or that the Task would refuse, changes
+    // the Task or a confirmed held reply carries, or that the Task would refuse, changes
     // nothing when dropped, so a recipient cannot fill the ACK history with fresh IDs.
     // An ID the inbox still holds always reaches it, so its redelivery is deduplicated.
-    const changesTask = async (delivery: Delivery) => {
+    const classifyReply = async (
+      delivery: Delivery,
+    ): Promise<"save" | "discard" | "defer"> => {
       const { sender_id, ...message } = delivery.message;
       const source = message.in_reply_to!.message_id;
       const held = mail
-        .inbox()
+        .inbox({ sender_id: identity.agent_id, message_id: source })
         .filter(
           (entry) =>
             entry.sender_id === sender_id &&
             entry.message.in_reply_to?.message_id === source,
         );
       if (held.some((entry) => entry.message.message_id === message.message_id))
-        return true;
+        return "save";
       const task = store.findBySource(source);
       const gateway = wired.gateway;
-      if (!task || !gateway) return false;
-      // A held reply counts as confirmed, so a copy under a new ID is not saved while
-      // the first one waits for its ACK.
-      const confirmed = held.map((entry) => ({
-        ...entry,
+      if (!task || !gateway) return "discard";
+      // An unconfirmed reply may never become usable. It cannot justify ACKing and
+      // discarding another reply that would still change the actual stored Task.
+      const confirmed = held.filter((entry) => entry.receipt_confirmed);
+      const candidate: InboxEntry = {
+        sender_id,
+        message,
+        received_at: new Date().toISOString(),
         receipt_confirmed: true,
-      }));
+      };
       const state = async (replies: InboxEntry[]) =>
         (await gateway.preview(task, storedRoute(task, replies)))?.status
           ?.state;
       try {
         const before = await state(confirmed).catch(() => state([]));
-        const after = await state([
-          ...confirmed,
-          {
-            sender_id,
-            message,
-            received_at: new Date().toISOString(),
-            receipt_confirmed: true,
-          },
-        ]);
-        return after !== before;
-      } catch {
-        return false;
+        const after = await state([...confirmed, candidate]);
+        if (after === before) return "discard";
+      } catch (error) {
+        // A failed preview is not evidence of redundancy. Only a validated refusal
+        // justifies dropping the candidate; transient storage failures defer it.
+        return error instanceof ContractError ||
+          error instanceof RequestMalformedError ||
+          error instanceof ZodError
+          ? "discard"
+          : "defer";
       }
+      if (confirmed.length !== held.length) {
+        // Keep the finite reply slots: defer a fresh ID whose usefulness depends on
+        // a held reply failing. It is neither saved nor ACKed. Its relay lease may
+        // retry or expire; no unconfirmed outcome justifies discarding it as known.
+        const assumed = held.map((entry) => ({
+          ...entry,
+          receipt_confirmed: true,
+        }));
+        try {
+          if ((await state(assumed)) === (await state([...assumed, candidate])))
+            return "defer";
+        } catch {
+          return "defer";
+        }
+      }
+      return "save";
     };
     let received = false;
     const receiver = new DurableReceiver(mail, {
       poll: async () => {
         const delivery = service.poll(hostContext);
         received = delivery !== null;
-        if (
-          !delivery ||
-          (correlated(delivery.message) && (await changesTask(delivery)))
-        )
-          return delivery;
+        if (!delivery) return null;
+        const disposition = correlated(delivery.message)
+          ? await classifyReply(delivery)
+          : "discard";
+        if (disposition === "save") return delivery;
+        if (disposition === "defer") return null;
         // Anything else is ACKed without an inbox record, so it spends none of the
         // record or ACK history capacity that replies need. Dropping it again on a
         // redelivery is harmless, so it needs no dedup record.
@@ -491,10 +533,11 @@ export async function startHostA2a(deps: HostA2aDependencies) {
     // later: a Task created after this pass expires a delivery TTL plus the window from
     // now, and one that failed to apply is retried with maintenance.
     let windowsDueAt = 0;
+    let windowCursor: ReturnType<typeof store.overdue>[number] | undefined;
     const closeWindows = async () => {
       const now = Date.now();
       const cutoff = new Date(now - REPLY_WINDOW_MS).toISOString();
-      const due = store.overdue(cutoff, 100);
+      const due = store.overdue(cutoff, 100, windowCursor);
       for (const task of due) {
         const gateway = wired.gateway;
         if (stopped || !gateway) return;
@@ -504,6 +547,9 @@ export async function startHostA2a(deps: HostA2aDependencies) {
           // One Task that cannot be applied must not hold back the others or maintenance.
         }
       }
+      // Advance even past failed rows. A full failing batch must not starve later
+      // Tasks; once the pass ends, the next pass retries from the beginning.
+      windowCursor = due.length === 100 ? due.at(-1) : undefined;
       const next = store.nextExpiry(cutoff);
       windowsDueAt =
         due.length === 100
@@ -536,16 +582,17 @@ export async function startHostA2a(deps: HostA2aDependencies) {
         if (Date.now() - maintainedAt >= 60000) {
           maintainedAt = Date.now();
           mail.maintain(100);
-          // ACKs first made terminal after a long stop keep a fresh 30-day history.
-          // Do not free sender slots until the inbox can hold the next whole batch
-          // of acceptance/result replies as well as that retained history.
-          box.maintain(
-            100,
-            mail.hasCapacityFor(
-              replySlots,
-              replySlots * deps.limits.envelope_bytes,
-            ),
+          // Keep two reply slots for every already-free sender slot and every
+          // retained source still inside its reply window. Each collected source
+          // frees one more sender slot. There is no await between these snapshots
+          // and collection; enqueue trades a free slot for an open source.
+          const collectionLimit = replySafeCollectionLimit(
+            box.retainedCounts(Date.now() - REPLY_WINDOW_MS),
+            config.max_records,
+            deps.limits.envelope_bytes,
+            (records, bytes) => mail.hasCapacityFor(records, bytes),
           );
+          box.maintain(100, collectionLimit);
           windowsDueAt = 0;
         }
         if (Date.now() >= windowsDueAt) await closeWindows();

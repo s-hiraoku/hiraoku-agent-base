@@ -20,7 +20,7 @@ The inbox records received messages. It is not an execution queue, and a saved A
 
 ## Sender: commit, then submit
 
-A lost acceptance response replays the exact original submission. Once the submit budget is spent or the deadline passes, the job uses status lookup only. No retry extends the one-hour TTL or generates a replacement message. Exhaustion ends in quarantine before expiry or `expired_unknown` after it, never a claim that the recipient saw nothing. `maintain(limit, false)` still expires payloads but defers collecting retained rows, keeping admission slots occupied; the default keeps the normal collection behavior. The receipt must match the local agent, message, recipient and expiry before the outbox commits acceptance and clears the body.
+A lost acceptance response replays the exact original submission. Once the submit budget is spent or the deadline passes, the job uses status lookup only. No retry extends the one-hour TTL or generates a replacement message. Exhaustion ends in quarantine before expiry or `expired_unknown` after it, never a claim that the recipient saw nothing. `maintain(limit, false)` or `maintain(limit, 0)` still expires payloads but defers collecting retained rows, keeping admission slots occupied. A numeric second argument caps collection separately within the total maintenance budget; `true` (the default) keeps normal collection. `retainedCounts(expiresAfter)` reads all retained rows and those with expiry strictly after the supplied horizon without reserving slots. The receipt must match the local agent, message, recipient and expiry before the outbox commits acceptance and clears the body.
 
 ## MCP transport
 
@@ -35,3 +35,5 @@ node --test test/relay-receiver.test.js test/relay-inbox-maintenance.test.js \
 ```
 
 The fixtures use synthetic keys and new temporary databases only.
+
+An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.

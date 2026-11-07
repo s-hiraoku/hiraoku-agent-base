@@ -401,3 +401,26 @@ test("maintenance rejects invalid budgets, unknown schema and missing aggregate 
   const future = f.open();
   code(() => future.migrate(), "unsupported_schema");
 });
+
+test("retained counts and a numeric collection cap preserve free-slot reservations and bounded expiry", (t) => {
+  const f = fixture(t, { max_records: 4 });
+  seed(f, { entropy: "4".repeat(32) });
+  seed(f, { entropy: "5".repeat(32) });
+  const live = message(Date.now() - 100, "6".repeat(32));
+  f.store.enqueue(live);
+  assert.deepEqual(f.store.retainedCounts(Date.now() - day), {
+    total: 3,
+    expires_after: 1,
+  });
+  assert.equal(f.store.maintain(100, 1).purged, 1);
+  assert.deepEqual(f.store.retainedCounts(Date.now() - day), {
+    total: 2,
+    expires_after: 1,
+  });
+  assert.equal(f.store.maintain(100, 0).purged, 0);
+  assert.equal(f.store.maintain(100, 1).purged, 1);
+  assert.equal(f.store.get(live.message_id).state, "queued");
+  code(() => f.store.retainedCounts(NaN), "invalid_request");
+  for (const cap of [-1, 2, 0.5, NaN])
+    code(() => f.store.maintain(1, cap), "invalid_request");
+});

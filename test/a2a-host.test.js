@@ -7,7 +7,9 @@ import { DatabaseSync } from "node:sqlite";
 import Database from "better-sqlite3";
 import { ClientFactory, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
 import { SendMessageRequest, TaskState } from "@a2a-js/sdk";
+import { DatabaseTaskStore } from "@a2a-js/sdk/server/database";
 import { startHost } from "../src/host/start.ts";
+import { replySafeCollectionLimit } from "../src/host/a2a.ts";
 import { readHostConfig } from "../src/host/config.ts";
 import {
   hostAdminConnect,
@@ -1274,6 +1276,161 @@ test("when the running host loses its own ACK of a saved result, the reply expir
   assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
 });
 
+test("an unconfirmed held result does not cause a fresh result to be ACKed and discarded", async (t) => {
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: 1 }),
+  });
+  // Quarantine R1 after its first lost lease so R2 can be delivered while
+  // R1 is still locally held. R1's short TTL later permits unread release.
+  f.config.delivery.queue.lease_ms = 1000;
+  f.config.delivery.queue.max_attempts = 1;
+  f.write("service.local.json", f.config);
+  await f.restart();
+  const client = await a2aClient(f, "caller");
+  const [{ task, request }] = await inFlight(client, recipient, "recover", 1);
+  await recipient.reply(request, "execution_accepted", accepted("recover"));
+  await untilState(() => client.get(task.id), TaskState.TASK_STATE_WORKING);
+
+  const entropy = randomUUID().replaceAll("-", "");
+  const dropped = loseHostAcks(t, entropy);
+  const first = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("recover"),
+    6000,
+    entropy,
+  );
+  assert.ok(await eventually(async () => dropped.length > 0 || undefined));
+  assert.equal(hostAck(f, first.message_id).inbox?.receipt_confirmed, 0);
+  assert.equal(storedState(f, task.id), "TASK_STATE_WORKING");
+
+  // R1 is still saved and unconfirmed when the recipient sends R2 under a new ID.
+  // R2 is a recovery opportunity, not evidence that the failed ACK of R1 succeeded.
+  const polled = new Set();
+  const poll = HabJetStreamService.prototype.poll;
+  t.mock.method(HabJetStreamService.prototype, "poll", function (context) {
+    const delivery = poll.call(this, context);
+    if (delivery) polled.add(delivery.message.message_id);
+    return delivery;
+  });
+  const replacement = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("recover"),
+  );
+  assert.ok(
+    await eventually(
+      async () => polled.has(replacement.message_id) || undefined,
+    ),
+  );
+  await new Promise((done) => setTimeout(done, 200));
+  assert.notEqual(
+    (await recipient.client.status(replacement.message_id)).state,
+    "acked",
+    "R2 is deferred, not ACKed based on unconfirmed R1",
+  );
+  assert.equal(hostAck(f, replacement.message_id).inbox, undefined);
+  assert.equal(inboxRows(f), 2, "a deferred fresh ID spends no local capacity");
+  assert.equal(hostAck(f, first.message_id).inbox?.receipt_confirmed, 0);
+  assert.ok(
+    await eventually(
+      async () =>
+        Number.isSafeInteger(hostAck(f, first.message_id).inbox?.released_at) ||
+        undefined,
+      15000,
+    ),
+    "R1 expires and is safely released unread",
+  );
+  assert.equal(
+    (await recipient.client.status(replacement.message_id)).state,
+    "quarantined",
+  );
+  const recovery = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("recover"),
+  );
+  assert.equal(
+    await untilAcked(recipient.client, recovery.message_id),
+    "acked",
+  );
+  assert.equal(
+    hostAck(f, recovery.message_id).inbox?.receipt_confirmed,
+    1,
+    "a new recovery result is saved before ACK after R1's unread release",
+  );
+  assert.ok(
+    await eventually(
+      async () =>
+        storedState(f, task.id) === "TASK_STATE_COMPLETED" || undefined,
+    ),
+    "the background receiver applies the recovery result without a caller read",
+  );
+  const done = await client.get(task.id);
+  assert.deepEqual(
+    done.metadata.hab_relay.source,
+    task.metadata.hab_relay.source,
+  );
+  assert.equal(done.metadata.hab_relay.result_message_id, recovery.message_id);
+  assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
+  assert.equal(
+    inboxRows(f),
+    3,
+    "acceptance plus two results stay within the configured history cap",
+  );
+  assert.equal(hostAck(f, first.message_id).inbox?.receipt_confirmed, 0);
+  assert.notEqual(hostAck(f, first.message_id).inbox?.released_at, null);
+});
+
+test("a deferred fresh result can exhaust its relay leases without being falsely ACKed", async (t) => {
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: 1 }),
+  });
+  f.config.delivery.queue.lease_ms = 1000;
+  f.config.delivery.queue.max_attempts = 1;
+  f.write("service.local.json", f.config);
+  await f.restart();
+  const client = await a2aClient(f, "caller");
+  const [{ task, request }] = await inFlight(client, recipient, "deferred", 1);
+  await recipient.reply(request, "execution_accepted", accepted("deferred"));
+  await untilState(() => client.get(task.id), TaskState.TASK_STATE_WORKING);
+  const entropy = randomUUID().replaceAll("-", "");
+  const dropped = loseHostAcks(t, entropy);
+  await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("deferred"),
+    3600000,
+    entropy,
+  );
+  assert.ok(await eventually(async () => dropped.length > 0 || undefined));
+  const second = await recipient.reply(
+    request,
+    "execution_result",
+    succeeded("deferred"),
+  );
+  assert.ok(
+    await eventually(async () => {
+      const { state } = await recipient.client.status(second.message_id);
+      assert.notEqual(
+        state,
+        "acked",
+        "unconfirmed R1 cannot justify dropping R2",
+      );
+      await new Promise((done) => setTimeout(done, 200));
+      return state === "quarantined" || undefined;
+    }, 5000),
+    "the deferred reply still obeys the configured finite relay attempts",
+  );
+  assert.equal(hostAck(f, second.message_id).inbox, undefined);
+  assert.equal(
+    inboxRows(f),
+    2,
+    "deferred deliveries spend no local body or ACK slot",
+  );
+  assert.equal(storedState(f, task.id), "TASK_STATE_WORKING");
+});
+
 test("after a long stop, retained ACK histories keep the outbox full instead of admitting a Task whose result would not fit", async (t) => {
   const { f, recipient } = await connected(t, {
     a2a: a2aSection({ max_records: 1 }),
@@ -1394,9 +1551,7 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
     assert.deepEqual(mail.prepare("PRAGMA foreign_key_check").all(), []);
     mail.close();
     // Use the same driver as the host for the offline Task-store fixture.
-    const tasks = new Database(
-      join(f.config.directory, "a2a-tasks.sqlite"),
-    );
+    const tasks = new Database(join(f.config.directory, "a2a-tasks.sqlite"));
     for (const row of tasks
       .prepare("SELECT id,metadata FROM hab_a2a_tasks")
       .all()) {
@@ -1679,4 +1834,459 @@ test("a Task whose reply window closes while the host runs fails within seconds,
   assert.ok(lag < 20000, `failed ${lag} ms after the window closed`);
   const failed = await client.get(task.id);
   assert.equal(failed.metadata.hab_relay.reason, "result_window_expired");
+});
+
+test("mixed retention cohorts reclaim only affordable sender slots while one failed Task save keeps its body", async (t) => {
+  const { f, recipient } = await connected(t, {
+    a2a: a2aSection({ max_records: 3 }),
+  });
+  const client = await a2aClient(f, "caller");
+  const flights = await inFlight(client, recipient, "cohort", 3);
+  const old = flights[0],
+    shifts = new Map(),
+    replies = new Map();
+  let blockOldSave = false;
+  const save = DatabaseTaskStore.prototype.save;
+  DatabaseTaskStore.prototype.save = function (task, ...args) {
+    if (blockOldSave && task.id === old.task.id)
+      return Promise.reject(Error("synthetic per-Task storage failure"));
+    return save.call(this, task, ...args);
+  };
+  t.after(() => {
+    DatabaseTaskStore.prototype.save = save;
+  });
+  for (const [i, flight] of flights.entries()) {
+    const shift = (i === 0 ? 40 : 2) * 86400000;
+    shifts.set(flight.task.metadata.hab_relay.source.message_id, shift);
+    for (const [kind, value] of [
+      ["execution_accepted", accepted(`cohort${i}`)],
+      ["execution_result", succeeded(`cohort${i}`)],
+    ]) {
+      if (i === 0 && kind === "execution_result") {
+        await untilState(
+          () => client.get(old.task.id),
+          TaskState.TASK_STATE_WORKING,
+        );
+        blockOldSave = true;
+      }
+      const reply = await recipient.reply(flight.request, kind, value);
+      replies.set(reply.message_id, shift);
+      assert.equal(
+        await untilAcked(recipient.client, reply.message_id),
+        "acked",
+      );
+    }
+    if (i !== 0)
+      await untilState(
+        () => client.get(flight.task.id),
+        TaskState.TASK_STATE_COMPLETED,
+      );
+  }
+  assert.equal(unreleasedReplies(f), 1);
+  const agedId = (id, shift) => {
+    const [, first, entropy] = id.split(".");
+    return `rm1.${Number(first) - shift}.${entropy}`;
+  };
+  const agedTime = (at, shift) =>
+    new Date(Date.parse(at) - shift).toISOString();
+  // Model two retention cohorts in owned state, not a wall-clock or HMAC restore test.
+  await f.restart(() => {
+    const out = new DatabaseSync(join(f.config.directory, "a2a-outbox.sqlite"));
+    for (const [id, shift] of shifts)
+      out
+        .prepare(
+          "UPDATE relay_outbox SET message_id=?,first_sent_at=first_sent_at-?,expires_at=expires_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+        )
+        .run(agedId(id, shift), shift, shift, shift, shift, shift, id);
+    out.close();
+    const mail = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
+    mail.exec("PRAGMA foreign_keys=OFF");
+    for (const [id, shift] of replies) {
+      const row = mail
+        .prepare("SELECT body FROM relay_inbox WHERE message_id=?")
+        .get(id);
+      let body = row.body;
+      if (body) {
+        const message = JSON.parse(body);
+        message.message_id = agedId(message.message_id, shift);
+        message.first_sent_at = agedTime(message.first_sent_at, shift);
+        message.expires_at = agedTime(message.expires_at, shift);
+        message.in_reply_to.message_id = agedId(
+          message.in_reply_to.message_id,
+          shift,
+        );
+        body = JSON.stringify(message);
+      }
+      mail
+        .prepare(
+          "UPDATE relay_inbox SET message_id=?,body=?,received_at=received_at-?,expires_at=expires_at-?,released_at=released_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+        )
+        .run(
+          agedId(id, shift),
+          body,
+          shift,
+          shift,
+          shift,
+          shift,
+          shift,
+          shift,
+          id,
+        );
+      mail
+        .prepare(
+          "UPDATE relay_receiver_acks SET message_id=?,terminal_at=terminal_at-?,retry_until=retry_until-?,next_retry_at=next_retry_at-?,retain_until=retain_until-? WHERE message_id=?",
+        )
+        .run(agedId(id, shift), shift, shift, shift, shift, id);
+    }
+    assert.deepEqual(mail.prepare("PRAGMA foreign_key_check").all(), []);
+    mail.close();
+    const tasks = new Database(join(f.config.directory, "a2a-tasks.sqlite"));
+    for (const row of tasks
+      .prepare("SELECT id,metadata FROM hab_a2a_tasks")
+      .all()) {
+      const meta = JSON.parse(row.metadata);
+      const source = meta.hab_relay.source;
+      const shift = shifts.get(source.message_id);
+      source.message_id = agedId(source.message_id, shift);
+      source.first_sent_at = agedTime(source.first_sent_at, shift);
+      source.expires_at = agedTime(source.expires_at, shift);
+      if (meta.hab_relay.result_message_id)
+        meta.hab_relay.result_message_id = agedId(
+          meta.hab_relay.result_message_id,
+          shift,
+        );
+      tasks
+        .prepare("UPDATE hab_a2a_tasks SET metadata=? WHERE id=?")
+        .run(JSON.stringify(meta), row.id);
+    }
+    assert.deepEqual(tasks.pragma("integrity_check"), [
+      { integrity_check: "ok" },
+    ]);
+    tasks.close();
+  });
+  assert.ok(
+    await eventually(async () => {
+      const db = new DatabaseSync(
+        join(f.config.directory, "a2a-outbox.sqlite"),
+      );
+      const count = db.prepare("SELECT count(*) n FROM relay_outbox").get().n;
+      db.close();
+      return count === 2 || undefined;
+    }, 8000),
+    "the old eligible source is collected despite younger ACK histories and one held body",
+  );
+  assert.equal(
+    unreleasedReplies(f),
+    1,
+    "storage failure never discards the confirmed body",
+  );
+  const [fresh] = await inFlight(client, recipient, "cohort_fresh", 1);
+  for (const [kind, value] of [
+    ["execution_accepted", accepted("cohort_fresh")],
+    ["execution_result", succeeded("cohort_fresh")],
+  ]) {
+    const reply = await recipient.reply(fresh.request, kind, value);
+    assert.equal(await untilAcked(recipient.client, reply.message_id), "acked");
+  }
+  await untilState(
+    () => client.get(fresh.task.id),
+    TaskState.TASK_STATE_COMPLETED,
+  );
+  assert.equal(unreleasedReplies(f), 1);
+  blockOldSave = false;
+  await untilState(
+    () => client.get(old.task.id),
+    TaskState.TASK_STATE_COMPLETED,
+  );
+  assert.ok(
+    await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
+  );
+});
+
+test("partial collection reserves both existing free slots and every still-open source window", () => {
+  const capacity = (records, bytes) => records <= 7 && bytes <= 7 * 1024;
+  assert.equal(
+    replySafeCollectionLimit({ total: 4, expires_after: 2 }, 4, 1024, capacity),
+    1,
+  );
+  assert.equal(
+    replySafeCollectionLimit({ total: 3, expires_after: 2 }, 4, 1024, capacity),
+    0,
+    "one already-free slot is reserved before another can be collected",
+  );
+  assert.equal(
+    replySafeCollectionLimit({ total: 4, expires_after: 3 }, 4, 1024, capacity),
+    0,
+    "enqueue exchanges that free slot for an open source without losing reservation",
+  );
+  assert.equal(
+    replySafeCollectionLimit({ total: 4, expires_after: 0 }, 4, 1024, capacity),
+    3,
+    "closed reply windows no longer reserve future arrivals",
+  );
+  assert.equal(
+    replySafeCollectionLimit(
+      { total: 1000, expires_after: 0 },
+      1000,
+      1024,
+      (records, bytes) => records <= 1000 && bytes <= 1024,
+    ),
+    0,
+    "byte pressure still protects the next pair of replies",
+  );
+  assert.equal(
+    replySafeCollectionLimit(
+      { total: 1000, expires_after: 0 },
+      1000,
+      1024,
+      () => true,
+    ),
+    100,
+    "the maintenance collection budget stays bounded",
+  );
+  assert.equal(
+    replySafeCollectionLimit(
+      { total: 1000, expires_after: 0 },
+      4,
+      1024,
+      capacity,
+    ),
+    100,
+    "collecting rows above a lowered quota does not yet create new admission slots",
+  );
+});
+/** Read the host's committed sender state without changing its retry clock or body. */
+function hostOutboxRows(f) {
+  const db = new DatabaseSync(join(f.config.directory, "a2a-outbox.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    return db
+      .prepare(
+        "SELECT message_id,state,reason,submit_attempts FROM relay_outbox ORDER BY message_id",
+      )
+      .all()
+      .map((row) => ({ ...row }));
+  } finally {
+    db.close();
+  }
+}
+
+test("closing after a Task save leaves its original unsent intent retryable after restart", async (t) => {
+  const { f, recipient } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  const save = DatabaseTaskStore.prototype.save;
+  let saved, closing;
+  const mocked = t.mock.method(
+    DatabaseTaskStore.prototype,
+    "save",
+    async function (task, context) {
+      await save.call(this, task, context);
+      if (
+        !saved &&
+        task.metadata?.hab_relay?.message_id === "close_after_save"
+      ) {
+        saved = structuredClone(task);
+        // This is an actual asynchronous boundary: close can run while save resolves.
+        closing = f.host.close();
+      }
+    },
+  );
+  await client.send("close_after_save").catch(() => undefined);
+  assert.ok(saved, "the Task was durably saved before shutdown");
+  await closing;
+  mocked.mock.restore();
+  assert.deepEqual(
+    hostOutboxRows(f),
+    [],
+    "shutdown refuses before a sender claim",
+  );
+
+  await f.restart();
+  const replay = await (await a2aClient(f, "caller")).send("close_after_save");
+  assert.equal(replay.id, saved.id);
+  assert.deepEqual(
+    replay.metadata.hab_relay.source,
+    saved.metadata.hab_relay.source,
+  );
+  assert.equal(replay.status.state, TaskState.TASK_STATE_SUBMITTED);
+  await recipient.receiver.receiveOnce();
+  assert.deepEqual(
+    recipient.receiver.inbox().map((entry) => entry.message.message_id),
+    [saved.metadata.hab_relay.source.message_id],
+    "the retry sends the one original intent, without a replacement ID or deadline",
+  );
+});
+
+test("close scheduled at claim runs only after synchronous submit admission and does not quarantine the intent", async (t) => {
+  const { f, recipient } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  const claim = SQLiteOutbox.prototype.claim;
+  let claimed, closing;
+  const mocked = t.mock.method(
+    SQLiteOutbox.prototype,
+    "claim",
+    function (messageId) {
+      const job = claim.call(this, messageId);
+      if (!claimed && job?.operation === "submit") {
+        claimed = structuredClone(job.message);
+        // The earliest legal asynchronous close after claim. There is no await from
+        // claim through the caller guard and the host's synchronous admission.
+        globalThis.queueMicrotask(() => {
+          closing = f.host.close();
+        });
+      }
+      return job;
+    },
+  );
+  await client.send("close_after_claim").catch(() => undefined);
+  assert.ok(claimed, "the sender claimed the intent");
+  assert.ok(closing, "shutdown ran at the next asynchronous boundary");
+  await closing;
+  mocked.mock.restore();
+  assert.deepEqual(
+    hostOutboxRows(f),
+    [
+      {
+        message_id: claimed.message_id,
+        state: "accepted",
+        reason: null,
+        submit_attempts: 1,
+      },
+    ],
+    "admission completed before close and its receipt remains durable",
+  );
+
+  await f.restart();
+  const replay = await (await a2aClient(f, "caller")).send("close_after_claim");
+  assert.deepEqual(replay.metadata.hab_relay.source, claimed);
+  assert.equal(replay.status.state, TaskState.TASK_STATE_SUBMITTED);
+  assert.equal(
+    hostOutboxRows(f)[0].submit_attempts,
+    1,
+    "replay does not resubmit an accepted intent",
+  );
+  await recipient.receiver.receiveOnce();
+  assert.deepEqual(
+    recipient.receiver.inbox().map((entry) => entry.message.message_id),
+    [claimed.message_id],
+  );
+});
+
+test("disconnecting the host identity is permanent and changing its configured address cannot undo revocation", async (t) => {
+  const f = await a2aHost(t);
+  const [before] = identityRow(f);
+  const disconnected = hostAdminDisconnect(f.configPath, IDENTITY);
+  assert.equal(disconnected.revoked_bindings, 1);
+  assert.equal(disconnected.address.state, "stopped");
+  assert.equal(
+    hostAdminDisconnect(f.configPath, IDENTITY).already_disconnected,
+    true,
+  );
+  await f.host.close();
+  await assert.rejects(startHost(f.configPath), {
+    reason: "a2a_identity_revoked",
+  });
+  assert.deepEqual(
+    identityRow(f).map((row) => ({
+      agent_id: row.agent_id,
+      bindings: row.bindings,
+      state: row.state,
+    })),
+    [{ agent_id: before.agent_id, bindings: 0, state: "stopped" }],
+    "startup must not silently rebind or re-enable the revoked identity",
+  );
+
+  f.config.a2a.identity = "replacement@hab-host.hab";
+  f.write("service.local.json", f.config);
+  await assert.rejects(startHost(f.configPath), {
+    reason: "a2a_identity_conflict",
+  });
+  // Revocation turns off A2A, not the host's independent MCP operation.
+  delete f.config.a2a;
+  f.write("service.local.json", f.config);
+  const host = await startHost(f.configPath);
+  t.after(() => host.close());
+  assert.equal(host.a2a_url, undefined);
+  assert.ok(host.url.endsWith("/mcp"));
+});
+test("a full batch of per-Task store failures does not starve later overdue Tasks", async (t) => {
+  const { f } = await connected(t);
+  const client = await a2aClient(f, "caller");
+  const seed = await client.send("window_fairness");
+  const blocked = new Set();
+  const attempts = new Set();
+  const normal = "00000000-0000-4000-8000-000000000100";
+  let recovered = false;
+  const save = DatabaseTaskStore.prototype.save;
+  t.mock.method(DatabaseTaskStore.prototype, "save", function (task, context) {
+    if (
+      !recovered &&
+      blocked.has(task.id) &&
+      task.status.state === TaskState.TASK_STATE_FAILED
+    ) {
+      attempts.add(task.id);
+      throw Error("injected per-Task store failure");
+    }
+    return save.call(this, task, context);
+  });
+  await f.restart(() => {
+    // Model 101 expired Tasks and one whose window closes shortly, without
+    // waiting a day or sending 102 relay requests. The fault is a selected
+    // TaskStore save failure, not a claim that malformed Task metadata is
+    // reachable through the public A2A API.
+    const db = new Database(join(f.config.directory, "a2a-tasks.sqlite"));
+    try {
+      const row = db
+        .prepare("SELECT * FROM hab_a2a_tasks WHERE id=?")
+        .get(seed.id);
+      db.prepare("DELETE FROM hab_a2a_tasks WHERE id=?").run(seed.id);
+      const columns = Object.keys(row);
+      const insert = db.prepare(
+        `INSERT INTO hab_a2a_tasks (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`,
+      );
+      for (let i = 0; i < 102; i++) {
+        const id = `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+        if (i < 100) blocked.add(id);
+        const metadata = JSON.parse(row.metadata);
+        const at = new Date(
+          i === 101
+            ? Date.now() + 3000 - 86400000 - 3600000
+            : Date.now() - 2 * 86400000,
+        ).toISOString();
+        const source = metadata.hab_relay.source;
+        source.first_sent_at = at;
+        source.expires_at = new Date(Date.parse(at) + 3600000).toISOString();
+        source.message_id = makeReplayBoundMessageId(
+          at,
+          i.toString(16).padStart(32, "0"),
+        );
+        const copy = { ...row, id, metadata: JSON.stringify(metadata) };
+        insert.run(...columns.map((column) => copy[column]));
+      }
+    } finally {
+      db.close();
+    }
+  });
+  assert.ok(
+    await eventually(
+      async () => storedState(f, normal) === "TASK_STATE_FAILED" || undefined,
+      5000,
+    ),
+    "the 101st Task closes without a caller read despite the failed first batch",
+  );
+  assert.equal(attempts.size, 100);
+  for (const id of blocked)
+    assert.equal(storedState(f, id), "TASK_STATE_SUBMITTED");
+  recovered = true;
+  // The next window deadline starts a new pass while this same host is running.
+  // Its cursor must wrap and retry held failures, not permanently skip them.
+  assert.ok(
+    await eventually(
+      async () =>
+        [...blocked].every(
+          (id) => storedState(f, id) === "TASK_STATE_FAILED",
+        ) || undefined,
+    ),
+  );
 });

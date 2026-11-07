@@ -224,7 +224,12 @@ export function reconcile({
     restored_bodies,
     retained_bodies,
     restored_incomplete_expire_by: restored.length
-      ? iso(Math.max(...restored.map((row) => Number(row.expires_at))))
+      ? iso(
+          restored.reduce(
+            (latest, row) => Math.max(latest, Number(row.expires_at)),
+            -Infinity,
+          ),
+        )
       : null,
   };
 }

@@ -12,7 +12,7 @@ With an `a2a` config section, the shipped Relay opens a separate loopback A2A li
 - `a2a-restart` after a Relay restart the same Task is still `SUBMITTED`, and the replies sent after the restart still complete it.
 - `a2a-complete` the `execution_accepted` reply moves the Task to `WORKING`. The `execution_result` reply with `succeeded` moves it to `COMPLETED`, with Artifact text `connectivity_ok` and `result_message_id` equal to the reply's message ID.
 - `a2a-fresh-id` a reply under a new message ID that would not change the Task, such as a second `execution_accepted` after `WORKING`, is ACKed (`relay_status` shows `acked`) without a host inbox record and leaves the Task unchanged. A valid `execution_result` sent after any number of them still completes the Task.
-- `a2a-window` a Task with no result one day after its request's one-hour deadline is `TASK_STATE_FAILED`, with `metadata.hab_relay.reason == "result_window_expired"` and a status message saying the outcome is unknown. The host makes the transition within one receive cycle of that time, without a read. A later reply is ACKed without changing it. A live drive cannot wait out that day: `test/a2a-host.test.js` ages the request, once so that the window closes seconds after a restart.
+- `a2a-window` a Task with no result one day after its request's one-hour deadline is `TASK_STATE_FAILED`, with `metadata.hab_relay.reason == "result_window_expired"` and a status message saying the outcome is unknown. The host starts bounded processing at that time without a read, at most 100 Tasks per cycle; failed applies do not starve later Tasks. A later reply is ACKed without changing it. A live drive cannot wait out that day: `test/a2a-host.test.js` ages the request, once so that the window closes seconds after a restart.
 
 ## How to get to it (user POV)
 
@@ -36,10 +36,16 @@ Preconditions are the same as [configured-relay.md](configured-relay.md), with a
 ## Gotchas
 
 - Replies must be `relay_submit` from the configured recipient with `in_reply_to` pointing at the host's request. The Relay quarantines a forged reference from another agent. The host releases any other mail it receives without reading it into a Task.
-- An `acked` status for a reply does not mean the host applied it. A reply under a new ID that repeats what the Task holds, or that the Task would refuse, is ACKed without a record.
+- An `acked` status for a reply does not mean the host applied it. A reply under a new ID that repeats what the Task or ACK-confirmed held replies carry, or that the Task would refuse, is ACKed without a record. If its usefulness instead depends on an unconfirmed held reply failing, it is deferred without saving or ACKing it. Finite relay retries or TTL can quarantine or expire that deferred reply; inspect its status rather than assuming it was accepted.
 - There is no background resend. If SendMessage failed, repeat it with the same `messageId`.
 - The host polls every `a2a.poll_interval_ms` (100 ms here). Poll `GetTask` a few times after each reply.
 - A Relay restarted from inside a short-lived shell can be reaped with that shell. Run `restart` and the later drives from the same long-lived shell, or check `kill -0 $(jq .pid "$RUN/instance/state.json")` before driving.
 - `COMPLETED` means the recipient reported a result. The host does not verify the recipient's engine.
 - `FAILED` with `result_window_expired` does not mean the recipient did not execute the request. The outcome is unknown.
 - A blocking SendMessage (no `returnImmediately`) completes from a result that arrives in a later host poll cycle than the acceptance. It no longer stalls the host's receive loop until the five-second wait runs out.
+
+- Capacity maintenance may collect only some eligible outbox rows. It leaves room for two replies per still-open source window and usable sender slot after collection (max(0, configured cap minus retained rows plus proposed collection)), including bytes and ACK/row history. An unexpected per-Task save failure keeps its body; it is not permission to discard mail. The synthetic mixed-cohort regression proves another Task can complete while one such body remains, not repair of corrupt storage.
+- A deferred fresh reply has no local acceptance guarantee: finite relay attempts or TTL may quarantine or expire it. The tests include that terminal outcome rather than promising eventual redelivery.
+- Disconnecting the host identity permanently disables A2A for this Registry. Configuring a new address cannot reset the reserved principal; remove `a2a` to start MCP alone. No identity rotation procedure is provided.
+- The legal close-boundary controls preserve original Task/message IDs and show synchronous sender claim-to-admission precedes a queued close. They establish no normal-shutdown defect.
+- Source-scoped inbox reads use an additive index but keep current authorization and final correlation checks. The 200-body/64-read test measures parsed bodies, not real MCP starvation.

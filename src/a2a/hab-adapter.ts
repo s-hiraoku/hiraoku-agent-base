@@ -217,7 +217,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
       message_id: link.source.message_id,
     };
     const matches = route
-      .replies()
+      .replies({ ...sourceKey })
       .filter(
         (entry) =>
           entry.receipt_confirmed &&

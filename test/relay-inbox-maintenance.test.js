@@ -524,6 +524,7 @@ function downgrade(f) {
   f.store.close();
   f.raw
     .exec(`DROP INDEX relay_inbox_retention; DROP INDEX relay_receiver_acks_retention;
+    DROP INDEX relay_inbox_reply_source;
     ALTER TABLE relay_inbox DROP COLUMN released_at; ALTER TABLE relay_inbox DROP COLUMN expires_at;
     ALTER TABLE relay_inbox DROP COLUMN ack_retry_until; ALTER TABLE relay_inbox DROP COLUMN ack_terminal_at;
     ALTER TABLE relay_inbox DROP COLUMN retain_until;

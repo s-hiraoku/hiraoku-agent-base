@@ -176,7 +176,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/a2a-host.md",
-      "sha256": "d2d70c7cfdfc8ef0922b770d15e21dd3c8e87049ba98103d3839bf0fbbb90faa",
+      "sha256": "06bec27876c6a32f9ffa98a1fff17aad13bb5b1e5c7ec6fc758bdffa6d5bd1e4",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured Relay A2A recipe: no listener, mailbox or identity without an `a2a` section; host identity provisioning with one binding, unchanged agent ID and epoch across restart and the a2a_identity_reserved connect refusal; Card; 401 for missing, unknown and MCP-audience bearers and 403 for Origin or a wrong Host; SendMessage from the host identity staying SUBMITTED after storage ACK and restart; WORKING and COMPLETED from the recipient's replies with the result Artifact; `a2a-fresh-id` a reply under a new ID that would not change the Task is ACKed without a host inbox record and a later valid result still completes it, with a live Fresh ID drive; `a2a-window` FAILED with reason result_window_expired and an outcome-unknown message once a Task has no result one day after its deadline, unchanged by a later reply, which a live drive cannot wait out and test/a2a-host.test.js covers. Gotchas state there is no background resend, that COMPLETED is the recipient's report, not engine verification, that result_window_expired does not mean the recipient did not execute, and that a blocking SendMessage no longer stalls the receive loop. Synthetic identities only.",
@@ -255,12 +255,12 @@
     },
     {
       "path": "docs/a2a-relay-preview.md",
-      "sha256": "142bbb68a770edb24ec20dd1b2cebfa17a3edb315d0ceb62fb28addce146647e",
+      "sha256": "08aa0c0fdfd76ce5ac320e10f8cd407e306b4fc336066a256b161d7feccae6c9",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend. That evidence-verified rule governs the preview composition with HabExecutionEvidence. A separate section records the owner's ADR-016 decision to wire the gateway into the host: off unless the config has an `a2a` section, a separate loopback listener, a host-owned Registry identity attested in-process as `urn:hab:host` with startup refusal codes, per-caller Registry checks of resolve/submit/execution_request with Tasks scoped per caller, private outbox/inbox/Task store, send only inside the owner's SendMessage with no background submit retry, a receiver loop that saves then ACKs only replies to host messages within one day of their request's expiry, ACKs any other or later delivery, and any reply under a new message ID that would not change its Task (previewed with held replies counted as confirmed), without an inbox or ACK record, applies each saved reply to its Task and releases the body once the Task is saved, releases unread a reply whose ACK can no longer be confirmed, fails a Task still without a result when the reply window closes (FAILED, reason result_window_expired, outcome unknown, a later reply changes nothing) in the receive cycle after the earliest open window closes, an ACK history counted per message, a blocking SendMessage that holds the Task serializer only per 25 ms check, an inbox of 2 × max_records reply bodies, outbox collection gated by actual inbox capacity after its minimum horizon, a host submit admitted inside the transaction that rechecks the caller, and reply-attested Task states labelled `attestation: \"recipient_reply\"` that claim no engine verification. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim. The outbox horizon is only a minimum: inbox maintenance and a read-only whole-next-batch capacity gate precede outbox collection, preserving actual-local-terminal ACK retention after a long stop and deferring new admissions rather than accepting results that cannot fit. Window expiry is independent of the maintenance cadence; outbox body expiry still runs when row collection is deferred. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The whole-batch reserve may defer collection and admission longer than the minimum necessary. No live deployment has been checked. Task-store shutdown closes the eagerly opened SQLite connection even without SDK driver initialization, supports repeated close, and leaves saved state for reopening."
+      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend. That evidence-verified rule governs the preview composition with HabExecutionEvidence. A separate section records the owner's ADR-016 decision to wire the gateway into the host: off unless the config has an `a2a` section, a separate loopback listener, a host-owned Registry identity attested in-process as `urn:hab:host` with startup refusal codes, per-caller Registry checks of resolve/submit/execution_request with Tasks scoped per caller, private outbox/inbox/Task store, send only inside the owner's SendMessage with no background submit retry, a receiver loop that saves then ACKs only replies to host messages within one day of their request's expiry, ACKs any other or later delivery, and any reply under a new message ID that would not change its Task (previewed with held replies counted as confirmed), without an inbox or ACK record, applies each saved reply to its Task and releases the body once the Task is saved, releases unread a reply whose ACK can no longer be confirmed, fails a Task still without a result when the reply window closes (FAILED, reason result_window_expired, outcome unknown, a later reply changes nothing) in the receive cycle after the earliest open window closes, an ACK history counted per message, a blocking SendMessage that holds the Task serializer only per 25 ms check, an inbox of 2 × max_records reply bodies, outbox collection gated by actual inbox capacity after its minimum horizon, a host submit admitted inside the transaction that rechecks the caller, and reply-attested Task states labelled `attestation: \"recipient_reply\"` that claim no engine verification. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim. The outbox horizon is only a minimum: inbox maintenance and a read-only whole-next-batch capacity gate precede outbox collection, preserving actual-local-terminal ACK retention after a long stop and deferring new admissions rather than accepting results that cannot fit. Window expiry is independent of the maintenance cadence; outbox body expiry still runs when row collection is deferred. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The whole-batch reserve may defer collection and admission longer than the minimum necessary. No live deployment has been checked. Task-store shutdown closes the eagerly opened SQLite connection even without SDK driver initialization, supports repeated close, and leaves saved state for reopening. Nine-candidate follow-up: partial 2(max(0,M-T+p)+W) collection (ordinary T<=M: 2(F+W+p)), tri-state defer with finite-delivery limits, fair bounded overdue pages, source-index hints with unchanged guards, and permanent identity revocation rather than address rotation; unexpected save failures retain bodies."
     },
     {
       "path": "docs/a2a-sdk-preview.md",
@@ -408,10 +408,10 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "d1bd35be1bda2633b469581e7654af438b11a013d7650f361258021e1666544a",
+      "sha256": "3764de478a4ce5df32d6dd8ab0a4537c965732f7f1af43c33e726256f7333bab",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions."
     },
     {
       "path": "docs/hab-principles.md",
@@ -802,7 +802,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "aa5bf5dc10aa202e94b2363124c63939e493b353dd50ee5327dbf9fb75d458f2",
+      "sha256": "345052694e5e84385f368683b49a053d94d67048867198948d7c3539272633fc",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -826,10 +826,10 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "c3991dece9c6cf7aa0bfa246f233db0a46458de14ac3b12433a9d9d67c9b6381",
+      "sha256": "dcdd65758a8d221b6200b80dd4844632f7a687e1439f5004be58622fe4e779f4",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1190) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1207) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full"
     },
     {
@@ -842,7 +842,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "cb3f3ad2779f11ed2fb468cb1d82e09b2fd93a6d3641870f4b0066108fd7d688",
+      "sha256": "96737c57b9c5688d61582d705f6ffe9ec4a329cc01872a700aa3788aabc3970b",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -888,7 +888,7 @@
     },
     {
       "path": "packages/relay-nats/OPERATIONS.md",
-      "sha256": "b6b8a455373d8d6b2c0a5eee225d2e31e827f8d12adecf36abfebb1832318e7c",
+      "sha256": "13fbf6960bbea022bd1953a34dfd9251d1db3449fc3815b435f687782206d746",
       "role": "normative",
       "review": "reviewed",
       "summary": "Operator-selected private persistent volume and device/marker checks fail closed before state writes and each pump. A leftover relay.sqlite from the retired store is silently ignored, so its pending messages must be reconciled with senders before upgrade. Pinned loopback broker requires audited fsync policy and finite capacity; health file is a transition record, not heartbeat. Whole-state quiesced backup includes the broker stream, journal, current authority/config and recipient state with separately protected secrets; broker-only snapshot insufficient. There is no SQLite fallback. A code-only rollback on the same journal and broker store works only to a build that opens journal and inbox schema 4; earlier builds refuse it and there is no downgrade or version rewrite. Rolling back past it reconciles every message the new release accepted and every message staging/pending/leased/quarantined in the backup; no journal state proves non-delivery and only acked is conclusive. It drains, stops the host and recipients, copies the schema 4 journal and post-upgrade inboxes, Task Store, execution records and a2a files, exports each recipient's handled IDs from its execution records, lists the union of both journals' IDs (a purged incomplete-at-backup ID stays listed) with the read-only scripts/relay-rollback-reconcile.mjs (delivered, not_saved or unknown, restored_bodies of each backup inbox as do_not_process, process or unknown via --backup-inbox and --execution-record, plus restored_incomplete_expire_by), restores one whole stopped pre-upgrade backup generation (never the journal or broker store alone), keeps the earlier build stopped until backup time plus one hour plus max clock skew so the relay redelivers no restored ID, which does not cover bodies a restored inbox already holds, settles restored_bodies before each restored recipient restarts (do_not_process recorded and released unprocessed, unknown keeps the recipient stopped), then settles each ID (delivered not resent, not_saved reported, unknown checked by the recipient's operator without retry), keeping the copies until done. test/relay-rollback-reconcile.test.js exercises the listing and a drill that restores the journal with the broker store dir, waits out the hold and restarts the relay and a recipient on the current build, not the earlier build. Single-host/container evidence does not prove VPS fault independence. The read-only union adds retained recipient evidence after journal GC and retained_bodies identifies upgraded-only unreleased bodies for do_not_process, review_application_handoff or unknown. No generic executor or automatic replay is introduced; missing sources and uncertain effects remain blocked. The extended restore drill and four minimal projection cases have explicit evidence limits."
@@ -909,7 +909,7 @@
     },
     {
       "path": "src/agent-sdk/README.md",
-      "sha256": "80f876754659d44a5ce4ee4f3942e35fa20ca36374c7c0573fa1e6547e6094e4",
+      "sha256": "d793ce9c22800a41c98add36b2dda576a8ee583461da29ea5e3d2634489f3bbc",
       "role": "normative",
       "review": "reviewed",
       "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved."
@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "774e9cb2e5f8981430c22c26a80365de51976e91b4215dee2b9d6dc83316d233",
+      "sha256": "8ea4396a5ee6c82afb60843432a38b1a9f5ecc26325b5aa85faec35c7652eddc",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -932,7 +932,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "ad93fc59a844014870ba9dbaf408747ad725b928fad6eb08e4a3f5572525dc10",
+      "sha256": "2a7254d0a693f00643d9b773282ecba6cc1268477838ec864b0c55d69376809a",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +940,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "58984ff73f850d192c7ac8f5f40a821f1e25cbd339eb527aad48bb33c5e3c20b",
+      "sha256": "169deb389bac1a9021d381e634b2c8ffb61ad3f317586e0d1b28c4ae486e9336",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -948,7 +948,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "975a0f8258580c0a77035759ff2db4bdfdf496e87d0556b48237da78dfa35531",
+      "sha256": "dc11143dba8e3eb1545f27147b6e46e9d95bb39fbde7e28fb1485d7e49f9e790",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1591,7 +1591,7 @@
       "title": "Restore conservatively",
       "statement": "Quiesce delivery and execution before restoring; reconcile original IDs, epochs, ACK/inbox, known Task/run and external outcomes before resuming. A code rollback that keeps the same delivery journal is allowed only to a build that opens that journal's schema; never rewrite a schema version or rewind the journal or broker store alone. Rolling back past a schema change (the JetStream-only release writes journal schema 4, which earlier builds refuse) restores every part of one consistent pre-upgrade backup generation together and reconciles by original sender and message ID, before routing traffic, each message the newer release accepted and each message still `staging`, `pending`, `leased` or `quarantined` in the backup, because the newer release may have delivered it after the backup; the list takes the union of both journals' IDs and retained recipient evidence, so an ID incomplete in the backup whose row the upgraded journal already purged stays listed with no final state. It also reconciles every body a restored recipient inbox holds unreleased, because an ACK proves only the save: the upgraded recipient may have executed a body acked before the backup, and the restored inbox would hand it to the application again. No journal state proves that a recipient did not save or execute a message: a recipient can save a body while its ACK never commits, leaving the row `expired` or `quarantined`, so those states mean outcome unknown; only `acked` is conclusive, and only of the save, and the recipient's own inbox, Task results and execution records decide the rest. Before the restore, copy the schema 4 journal and every post-upgrade recipient inbox, Task Store, execution record and host `a2a-*.sqlite` file, export from each recipient's copied execution records the sender and message IDs its application handled, and build the list from the copies with the read-only scripts/relay-rollback-reconcile.mjs (`--inbox` per inbox copy, `--backup-inbox` per inbox the restore puts back, `--execution-record` per export). It marks each ID `delivered` (`acked` or a record in its recipient's inbox copy), `not_saved` (`expired` or `quarantined` with no record in an inbox copy that cannot yet have collected it) or `unknown` (no inbox copy, a record that may have been collected, or a purged row with no inbox record); under `restored_bodies` it marks each unreleased backup-inbox body `do_not_process` (listed as handled in its recipient's execution record), `process` (not handled and still unreleased in the upgraded inbox copy) or `unknown` (released in the copy with no execution record, or a copy missing); and it prints `restored_incomplete_expire_by`. Keep the earlier build stopped with no listener until the backup time plus one hour plus the largest `max_clock_skew_ms`, and at least until `restored_incomplete_expire_by`, so every restored ID has expired and the relay does not deliver again anything a recipient saved or executed after the backup. That hold does not cover a body already saved in a restored inbox, which the inbox hands out whatever its expiry, so before restarting each restored recipient settle its `restored_bodies`: record a `do_not_process` body's result in the restored application store under the same sender and message ID and release it with `releaseBody` without handing it to the application, let a `process` body be processed as usual, and keep a recipient with an `unknown` body stopped until its operator decides from its own records, never processing it to find out. Then settle every listed ID: never resend a `delivered` one, tell the sender a `not_saved` one was not delivered (a new attempt is a new request under a new ID), and report an `unknown` one as unknown, without retry, until its recipient's operator checks. Keep the journal and state copies until reconciliation is complete. Do not assume a rollback means unexecuted, dual-dispatch to old/new backends, or promise powerloss/all-copy durability from normal reopen/sync settings. The evidence union also includes IDs absent from the backup that survive only in upgraded inbox or application execution records after journal collection; execution-only evidence has unknown expiry and does not invent a relay save. IDs absent from every supplied source cannot be enumerated and require independent sender/application records. Separately, `retained_bodies` lists unreleased upgraded-copy bodies not restored unreleased: handled ones are `do_not_process`, a body absent from a supplied backup inbox and absent from a supplied execution export is `review_application_handoff`, and missing or conflicting evidence is `unknown`. Draining and waiting do not transfer these bodies. Before recipient restart, review full Task/execution and external-effect state; only a proven unhanded-off body may continue through an application-specific local recovery using a working copy and the original sender/message and Task/run identities with durable deduplication. Never resubmit it to the relay, inject an expired delivery through inbox.save, replace its ID or extend expiry. Preserve evidence; if prior effects are uncertain or no safe recovery exists, keep the recipient stopped. No generic automatic replay or recovery executor is introduced.",
       "rationale": "Restoring old local proof can erase knowledge without undoing remote effects.",
-      "scope": "Backup/restore/migration and evidence claims. The reconciliation listing is covered in js-root by test/relay-rollback-reconcile.test.js on a real JetStream journal and agent SDK inboxes, including restored inbox bodies executed or still unprocessed after the backup and an incomplete-at-backup ID whose upgraded row was purged; a third drill on its own broker backs up and restores the journal with the JetStream store dir, the recipient inbox and its application store, runs the listing on the copies, settles the do_not_process body, waits out the hold to restored_incomplete_expire_by, and restarts the relay and the recipient on the restored state, then checks that the broker runs on the backup's stream, the relay delivers nothing again and nothing is executed twice. It restarts the current build on the restored state; starting the earlier build remains production-operations. The extended real-broker drill also leaves a post-backup ACKed body unprocessed, then recovers that saved body locally under its original key after its TTL from a private working copy with the relay stopped. Minimal SQLite projection tests in test/relay-rollback-reconcile-unit.test.js cover journal-GCed new IDs, application-only evidence and missing/conflicting copies; these fixtures do not wait out actual journal retention or prove arbitrary application recovery.",
+      "scope": "Backup/restore/migration and evidence claims. The reconciliation listing is covered in js-root by test/relay-rollback-reconcile.test.js on a real JetStream journal and agent SDK inboxes, including restored inbox bodies executed or still unprocessed after the backup and an incomplete-at-backup ID whose upgraded row was purged; a third drill on its own broker backs up and restores the journal with the JetStream store dir, the recipient inbox and its application store, runs the listing on the copies, settles the do_not_process body, waits out the hold to restored_incomplete_expire_by, and restarts the relay and the recipient on the restored state, then checks that the broker runs on the backup's stream, the relay delivers nothing again and nothing is executed twice. It restarts the current build on the restored state; starting the earlier build remains production-operations. The extended real-broker drill also leaves a post-backup ACKed body unprocessed, then recovers that saved body locally under its original key after its TTL from a private working copy with the relay stopped. Minimal SQLite projection tests in test/relay-rollback-reconcile-unit.test.js cover journal-GCed new IDs, application-only evidence and missing/conflicting copies; these fixtures do not wait out actual journal retention or prove arbitrary application recovery. The 150,000-incomplete-row SQLite projection regression exercises the CLI entry function, verifies latest expiry without spread-argument overflow, preserves unknown outcomes and checks unchanged journal hashes. The implementation still materializes the read-only listing in memory; this is not an unbounded scalability or production-sizing guarantee.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -1614,7 +1614,7 @@
           "path": "packages/relay-nats/OPERATIONS.md",
           "start": 39,
           "end": 70,
-          "excerpt_sha256": "96c700d72a2d79300e7ceae0df574a9d9a133c00f1be40c883448a2fb1c68bad"
+          "excerpt_sha256": "cd13813c3d33f8b3c67e87db7ff57ac39707be788c3e86b2b1f7e5273febdbc3"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -1689,7 +1689,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "557b9777f7bb2b697b97c9e58bda81618bea2d167943fa5ba0471544f0d45caf"
+          "excerpt_sha256": "66c9bf4bbb717648c09fe1657bf662315323696df111d4e8a8209c2cec2ac884"
         }
       ]
     },
@@ -2349,7 +2349,7 @@
     {
       "id": "HAB-A21",
       "title": "Host A2A identity cannot act as a confused deputy",
-      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and relay:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withRelay called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable.",
+      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and relay:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withRelay called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable. The fixed host principal remains reserved to its original agent after revocation. Disconnect is a permanent A2A off switch for this Registry; changing the identity address cannot undo it. Removing the a2a section permits MCP-only startup without deleting stored history. No identity rotation or revocation reset is provided.",
       "rationale": "The host identity submits under its own rights. Without a current per-request check of the caller it could deliver to a recipient the caller cannot reach, or expose another caller's replies.",
       "scope": "Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier only; the OAuth ingress does not serve A2A, and a group-authenticated caller with several addresses is refused. Covered in js-root by test/a2a-host.test.js.",
       "decision": "accepted",
@@ -2359,33 +2359,33 @@
       "citations": [
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 63,
-          "end": 63,
+          "start": 67,
+          "end": 67,
           "excerpt_sha256": "c4994ed768511e1c52d6b2dbcdc1499fe928ffcbd54c4c4d5091e80264b59b82"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 80,
-          "end": 89,
-          "excerpt_sha256": "f63dde7702eadd1cc5fa83ae444f1166d2ae1d869054470c7860c58fa1d0a474"
+          "start": 84,
+          "end": 93,
+          "excerpt_sha256": "77d000c0e72579616df1d27a02ac01c34a26131b00169ef9a63362ae6316abcb"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 93,
-          "end": 95,
+          "start": 97,
+          "end": 99,
           "excerpt_sha256": "b1fab60858895b83b2d79efb90bb9861e5839b55f417c431de0cf8c66c97c03b"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 99,
-          "end": 101,
+          "start": 103,
+          "end": 105,
           "excerpt_sha256": "b4ae6ea107f7c317615b9217caa7ab230d300a96a9863e98afd1abcffd4eab48"
         },
         {
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "b61f7823a2f6ac54a0d1fea0b5f1bf58eeaf0288507d84a811f458f34c7b7b52"
+          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -2585,7 +2585,7 @@
           "path": "src/agent-sdk/README.md",
           "start": 23,
           "end": 23,
-          "excerpt_sha256": "afc8e0b2a93e56c4d334c86465c4190d4e0b62dbf8d6cff14b2cf0f56236b90b"
+          "excerpt_sha256": "9001e9482a4b61a3d4a29d7073008de86c0592519b6f12feeee5bbdfeeeacde0"
         },
         {
           "path": "src/agent-sdk/README.md",
@@ -2622,7 +2622,7 @@
     {
       "id": "HAB-D06",
       "title": "Delivery, reading, application handoff and execution remain separate",
-      "statement": "Inbox is a received-message record, not execution queue. Local handoff requires separately durable application save deduplicated by sender/message before explicit release; ACK confirmation and release are independent. No read/release/receipt alone proves exactly-once application effects or Task acceptance. Unreleased body is retained under finite backpressure. The record and byte quotas count unreleased bodies only, so a release frees a slot at once, while a separate finite `max_ack_records` bound limits the dedup history, counted by message, that every saved message enters; a released tombstone still deduplicates. A lease redelivery of a message already in that history adds an ACK row for its new generation without taking another slot, and one message keeps at most `max_attempts` generations (a further one is refused with `inbox_capacity_exceeded`), so the ACK table holds at most `max_ack_records × max_attempts` rows. `releaseUnconfirmable` releases, without handing it to the application, only a body whose receipt can no longer be confirmed: its ACK is unconfirmed, the message has expired so no new generation can be saved, and no ACK request is pending; otherwise it changes nothing, and the released tombstone still deduplicates. Rows of any kind are capped at `max_records + max_ack_records`. A legacy (non-replay-bound) ID's tombstone is never collected, because a replay of it could not be told from a new message, so legacy-ID rows are capped at `max_ack_records`: a new legacy ID past that is refused with `inbox_legacy_id_capacity_exceeded`, replay-bound IDs keep the `max_records` body budget, and a held legacy ID stays deduplicated and is never handed off again. hasCapacityFor(records, bodyBytes) is a read-only check for new replay-bound messages against body/byte, per-message ACK-history and retained-row bounds; it neither reserves nor collects and never shortens retention from actual local terminal time.",
+      "statement": "Inbox is a received-message record, not execution queue. Local handoff requires separately durable application save deduplicated by sender/message before explicit release; ACK confirmation and release are independent. No read/release/receipt alone proves exactly-once application effects or Task acceptance. Unreleased body is retained under finite backpressure. The record and byte quotas count unreleased bodies only, so a release frees a slot at once, while a separate finite `max_ack_records` bound limits the dedup history, counted by message, that every saved message enters; a released tombstone still deduplicates. A lease redelivery of a message already in that history adds an ACK row for its new generation without taking another slot, and one message keeps at most `max_attempts` generations (a further one is refused with `inbox_capacity_exceeded`), so the ACK table holds at most `max_ack_records × max_attempts` rows. `releaseUnconfirmable` releases, without handing it to the application, only a body whose receipt can no longer be confirmed: its ACK is unconfirmed, the message has expired so no new generation can be saved, and no ACK request is pending; otherwise it changes nothing, and the released tombstone still deduplicates. Rows of any kind are capped at `max_records + max_ack_records`. A legacy (non-replay-bound) ID's tombstone is never collected, because a replay of it could not be told from a new message, so legacy-ID rows are capped at `max_ack_records`: a new legacy ID past that is refused with `inbox_legacy_id_capacity_exceeded`, replay-bound IDs keep the `max_records` body budget, and a held legacy ID stays deduplicated and is never handed off again. hasCapacityFor(records, bodyBytes) is a read-only check for new replay-bound messages against body/byte, per-message ACK-history and retained-row bounds; it neither reserves nor collects and never shortens retention from actual local terminal time. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
       "rationale": "Receiver storage and user processing have different lifetimes and authority boundaries.",
       "scope": "Recipient-local body lifecycle. The quota and row bounds, the per-message ACK history, the `max_attempts` generation cap `releaseUnconfirmable` and the collection of replay-bound IDs over repeated retention cycles are covered in js-root by test/relay-inbox-maintenance.test.js. The same suite covers the read-only capacity gate and unchanged terminal-time retention.",
       "decision": "accepted",
@@ -2648,6 +2648,12 @@
           "start": 392,
           "end": 394,
           "excerpt_sha256": "b8520dfe92aefb31f060f881ee62474fb493bbcbfef3c283916a2cc7ec5f7d67"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 55,
+          "end": 55,
+          "excerpt_sha256": "a1cf270901a5ed07f454e330a21dd57f87eb845cde1eb5e20cc18507219c3f42"
         }
       ]
     },
@@ -3031,9 +3037,9 @@
     {
       "id": "HAB-D20",
       "title": "Host A2A sends only inside the owner's request",
-      "statement": "The host A2A outbox, inbox and SDK Task store are private 0600 files in the host state directory; a saved Task, its send intent and received replies survive a host restart, and a replay reuses the original message ID and one-hour expiry. A saved intent is sent only inside its owner's authorized SendMessage, which claims only that message ID from the shared outbox. There is no background submit retry; a retry is a repeated SendMessage with the same messageId. The only background work is the receiver loop, which polls the host mailbox and classifies each delivery before saving anything. A reply from the configured recipient to a host message is saved, then ACKed, but a reply under a new message ID only if it would change its Task: the loop first applies it to a copy of the stored Task, counting every reply the inbox still holds for that Task as confirmed, and a reply that leaves the copy's state unchanged or that the Task would refuse is ACKed without a record, like a late reply, so fresh-ID replies cannot fill the ACK history. A message ID the inbox still holds always reaches it, so its redelivery is deduplicated and can still confirm its ACK, and an unconfirmed reply is still never applied. Any other delivery is ACKed without an inbox record or ACK history entry, so unrelated senders spend none of the capacity replies need; dropping it again on a redelivery is harmless, so it needs no dedup record. At most once a minute the loop runs bounded inbox and outbox maintenance. It fails each non-terminal Task whose reply window has closed (HAB-E20), found through the Task store's `overdue()`, in the first receive cycle after the earliest open window closes: it keeps that time from the store's next non-terminal request expiry and refreshes it at least once a minute with maintenance; a Task whose transition fails is skipped, holds back neither the others nor the maintenance, and is retried with maintenance. `max_records` caps the outbox. The inbox holds `2 × max_records` unreleased reply bodies, one `execution_accepted` and one `execution_result` per host message, so an accepted reply never takes the slot its own result needs. The receiver loop applies each ACKed reply to its Task and releases the body once the Task store holds the new state; a reply the Task refuses (a conflict or a malformed body, such as a late reply to a terminal Task) is released the same way, and any other failure keeps the body for the next cycle. A Task nobody reads, or one already terminal, therefore holds no slot. A saved reply whose ACK never committed is never applied; once it has expired with no ACK request pending, so no redelivery can confirm it, the loop releases its body unread with `releaseUnconfirmable` and keeps its tombstone for dedup, and its Task waits for another reply or for its reply window to close. A reply is saved only while the current time is before its request's expiry plus one day (the reply window); a later reply is ACKed without a record and does not change its Task. Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 × max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. The inbox keeps an ACK history of three times `max_records` messages for the same 30 days, counted per message, so the lease redeliveries of one reply (up to `max_attempts` generations) take a single slot. A blocking SendMessage holds the handler's Task serializer only for each 25 ms check, which reloads the stored Task, so the receiver loop applies replies during the five-second wait and a result saved in a later receive cycle than its acceptance completes the Task. On close the host refuses new A2A requests with 503 and waits for in-flight requests and the current receiver cycle before closing its stores, leaving unsent intents, unACKed deliveries and saved Tasks on disk. Closing the Task store must close its eagerly opened SQLite connection even if the lazy SDK database driver was never initialized by a load/save, and repeated close is safe.",
+      "statement": "The host A2A outbox, inbox and SDK Task store are private 0600 files in the host state directory; a saved Task, its send intent and received replies survive a host restart, and a replay reuses the original message ID and one-hour expiry. A saved intent is sent only inside its owner's authorized SendMessage, which claims only that message ID from the shared outbox. There is no background submit retry; a retry is a repeated SendMessage with the same messageId. The only background work is the receiver loop, which polls the host mailbox and classifies each delivery before saving anything. A new reply ID is classified against the stored Task and only ACK-confirmed held replies. If it cannot change that state or is refused by validated contract/schema rules, it is discarded with ACK and no inbox record. If it would change that state but would be redundant or conflicting assuming an unconfirmed held reply became usable, it is deferred without save or ACK. Unexpected preview failures also defer rather than proving redundancy. A deferred delivery remains subject to finite relay leases, attempts and TTL, so it may quarantine or expire; recovery is not guaranteed. An ID already held still reaches the inbox for deduplication and ACK confirmation. Unconfirmed replies are never applied. Any other delivery is ACKed without an inbox record or ACK history entry, so unrelated senders spend none of the capacity replies need; dropping it again on a redelivery is harmless, so it needs no dedup record. At most once a minute the loop runs bounded inbox and outbox maintenance. Window closure uses at most 100 overdue Tasks per receive cycle, ordered and paged by the complete stable (tenant, owner, id) key. The cursor advances past individual failed applies; a full page schedules another cycle, and the end resets the cursor for the next scheduled pass. The earliest open window or at most one minute schedules that pass. Thus a failed full batch does not permanently hide later Tasks, but a backlog or persistent storage failure does not promise every transition within one cycle. `max_records` caps the outbox. The inbox holds `2 × max_records` unreleased reply bodies, one `execution_accepted` and one `execution_result` per host message, so an accepted reply never takes the slot its own result needs. The receiver loop applies each ACKed reply to its Task and releases the body once the Task store holds the new state; a reply the Task refuses (a conflict or a malformed body, such as a late reply to a terminal Task) is released the same way, and any other failure keeps the body for the next cycle. A successful durable apply releases the body even without a caller read; unexpected storage failures retain it for retry. A saved reply whose ACK never committed is never applied; once it has expired with no ACK request pending, so no redelivery can confirm it, the loop releases its body unread with `releaseUnconfirmable` and keeps its tombstone for dedup, and its Task waits for another reply or for its reply window to close. A reply is saved only while the current time is before its request's expiry plus one day (the reply window); a later reply is ACKed without a record and does not change its Task. Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance collects the inbox first, then computes a bounded outbox collection allowance. Let M be max_records, T be retained outbox rows, W be retained sources whose reply windows are still open (expires_at > now minus one day), and p be proposed collected rows. It binary-searches p from 0 through 100 against room for 2 × (max(0, M - T + p) + W) new replies. For T <= M this equals 2 × (F + W + p), where F = M - T. If an operator lowers M below T, collecting excess rows creates no usable sender slots until the count falls below M. The check includes those replies and their maximum envelope bytes, checking unreleased body/byte, distinct-message ACK-history and all retained-row capacities. This preserves two future replies for each free slot and open source before freeing additional sender slots. The snapshots and numeric-cap collection have no intervening await in the single-owner host. Only eligible rows are collected, and expiry still runs even when the allowance is zero. This is conservative capacity accounting, not a multi-writer reservation or shortened retention. The inbox keeps an ACK history of three times `max_records` messages for the same 30 days, counted per message, so the lease redeliveries of one reply (up to `max_attempts` generations) take a single slot. A blocking SendMessage holds the handler's Task serializer only for each 25 ms check, which reloads the stored Task, so the receiver loop applies replies during the five-second wait and a result saved in a later receive cycle than its acceptance completes the Task. On close the host refuses new A2A requests with 503 and waits for in-flight requests and the current receiver cycle before closing its stores, leaving unsent intents, unACKed deliveries and saved Tasks on disk. Closing the Task store must close its eagerly opened SQLite connection even if the lazy SDK database driver was never initialized by a load/save, and repeated close is safe. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
       "rationale": "A background resend under the host identity would send without a current check of the caller who asked for it; save-before-ACK keeps replies recoverable across a crash.",
-      "scope": "Opt-in host A2A entry, one host process per state directory. Not multi-host writer coordination, production retention or capacity design. Covered in js-root by test/a2a-host.test.js, including results saved when accepted replies fill the cap, unread completed Tasks freeing their slots after the outbox purge, a Task admitted after a purge whose replies are saved after a late reply, unconfirmable saved replies that release their slots so a later reply still completes its Task, and a blocking SendMessage completing from a result in a later receive cycle than its acceptance. Its case \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\" sends more repeated acceptances, conflicting acceptances and refused results under fresh IDs than the `3 × max_records` ACK history holds, then a valid result, and checks that the result completes the Task with only two inbox rows. \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" drops the running host's ACKs of one result at its delivery-service transport while the result is live, then checks the real relay's invalid_ack, the unapplied release and completion from a new result. \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" covers the window timing (HAB-E20). The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The whole-batch reserve may defer collection and admission longer than the minimum necessary. No live deployment has been checked. test/a2a-sdk-store.test.js covers unused eager connection closure after direct host maintenance reads, closure after SDK initialization, safe repeated close and reopening. This demonstrates the lifecycle defect and its repair, not a universal cause or repair for malformed databases. The outage fixture now ages first_sent_at consistently with the replay-bound ID and expires_at, uses the host Task-store driver for offline Task metadata changes and checks integrity before reopening. It checks the old Task reaches FAILED after its result window and retries only outbox_capacity_exceeded, surfacing other errors immediately without increasing the timeout.",
+      "scope": "Opt-in host A2A entry, one host process per state directory. Not multi-host writer coordination, production retention or capacity design. Covered in js-root by test/a2a-host.test.js, including results saved when accepted replies fill the cap, unread completed Tasks freeing their slots after the outbox purge, a Task admitted after a purge whose replies are saved after a late reply, unconfirmable saved replies that release their slots so a later reply still completes its Task, and a blocking SendMessage completing from a result in a later receive cycle than its acceptance. Its case \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\" sends more repeated acceptances, conflicting acceptances and refused results under fresh IDs than the `3 × max_records` ACK history holds, then a valid result, and checks that the result completes the Task with only two inbox rows. \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" drops the running host's ACKs of one result at its delivery-service transport while the result is live, then checks the real relay's invalid_ack, the unapplied release and completion from a new result. \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" covers the window timing (HAB-E20). The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The bounded allowance remains conservative and does not repair previously lost admission reservations. No live deployment has been checked. test/a2a-sdk-store.test.js covers unused eager connection closure after direct host maintenance reads, closure after SDK initialization, safe repeated close and reopening. This demonstrates the lifecycle defect and its repair, not a universal cause or repair for malformed databases. The outage fixture now ages first_sent_at consistently with the replay-bound ID and expires_at, uses the host Task-store driver for offline Task metadata changes and checks integrity before reopening. It checks the old Task reaches FAILED after its result window and retries only outbox_capacity_exceeded, surfacing other errors immediately without increasing the timeout. A held confirmed body is retained on an unexpected per-Task save failure; no exception-based blanket release is allowed. The mixed-cohort regression injects that failure for one legitimate Task, verifies partial collection and another Task completing while the body remains, then removes the fault and verifies recovery. It does not repair malformed SQLite pages, a globally failed database or invalid JSON that prevents inbox enumeration. Cohort aging changes rm1 IDs and timestamps consistently but does not refresh fingerprints, so it is maintenance/capacity evidence, not a whole-state restore proof. The shutdown controls demonstrate a saved Task retrying under its original identity after close, and synchronous claim-to-admission before a queued close; no normal-shutdown race fix is claimed. The overdue control injects 100 per-Task save failures before a healthy later Task, then removes the fault and checks wrap/retry. It does not establish corrupt metadata reachability through the API.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -3041,14 +3047,14 @@
       "citations": [
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 105,
-          "end": 107,
-          "excerpt_sha256": "a44ad9367b3e54347f5138f2799cd7b18c6f2ac5188631ec4dd15d574b8943a2"
+          "start": 109,
+          "end": 111,
+          "excerpt_sha256": "0e4cfdd089342cec30a68ea0b8d6b5028714b04cee29c263151a1dd73ff6d83d"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 128,
-          "end": 128,
+          "start": 132,
+          "end": 132,
           "excerpt_sha256": "96f4584f351a4b408823481cc060a48357eafa510b13893d34681063aa39a068"
         },
         {
@@ -3059,14 +3065,14 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 76,
-          "end": 76,
-          "excerpt_sha256": "d6d9075c9557da51c4e33d4088136ed74fb4d70407323971e27604adeb4a67b8"
+          "start": 80,
+          "end": 80,
+          "excerpt_sha256": "f0e19246eef214371bcc571fe3a40ec4875f7444ac5f2914db1ccdd6002b457f"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 101,
-          "end": 101,
+          "start": 105,
+          "end": 105,
           "excerpt_sha256": "86ec598c42479a94fa0241840ea55a196a868fa57a4fec9454c5f4f66d5be40d"
         },
         {
@@ -3091,7 +3097,19 @@
           "path": ".claude/skills/verify-hab/features/a2a-host.md",
           "start": 39,
           "end": 39,
-          "excerpt_sha256": "c739caea17afd0712cf21937a86213a31f415a891c170a8c5d694f4e73eaf5a7"
+          "excerpt_sha256": "f7a6e430a9da316fe57522a5efda8687dd8b9406442a18772bdf8e981c68b8fc"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 55,
+          "end": 55,
+          "excerpt_sha256": "a1cf270901a5ed07f454e330a21dd57f87eb845cde1eb5e20cc18507219c3f42"
+        },
+        {
+          "path": "docs/a2a-relay-preview.md",
+          "start": 138,
+          "end": 138,
+          "excerpt_sha256": "dfe159f75a5c2e1f5383863c6327e04f221c64bb2b202c84a69e6cd36e4ea261"
         }
       ]
     },
@@ -3625,9 +3643,9 @@
     {
       "id": "HAB-E20",
       "title": "Host-routed A2A completion is reply-attested and labelled",
-      "statement": "The host-routed A2A entry has no engine evidence port. Recipient storage ACK leaves the Task SUBMITTED. A durable execution_accepted reply makes it WORKING, and a durable execution_result reply makes it COMPLETED (succeeded, with the result text as the only Artifact), FAILED or CANCELED; an expired or quarantined request with no reply becomes INPUT_REQUIRED until its reply window closes. A reply counts only when the configured recipient sent it, it references that Task's own host source message, its thread matches and its schema is exact. A reply counts only if it arrives before its request's expiry plus one day (the reply window); a later one is ACKed without a record and never changes the Task. By the owner's 2026-11-07 decision (ADR-016), a Task with no result applied when its reply window closes, whether SUBMITTED, WORKING or INPUT_REQUIRED, moves to the standard TASK_STATE_FAILED with no Artifact, `reason: \"result_window_expired\"` in its status message metadata and its public `hab_relay` metadata, and a status message that starts with `result_window_expired` and says the outcome is unknown, because the recipient may or may not have executed the request; no custom A2A state is added and the Task never stays WORKING. The host receiver loop makes this transition without a caller read through the Task store's `overdue()`, in the first receive cycle after the window closes, and a read after the window makes it at once. A reply arriving afterwards never revives or changes the Task. FAILED with result_window_expired never claims that the recipient did not execute the request. A later reply with another engine Task ID, or a second terminal result with another state, is refused without replacing the saved Task. Every such Task's public metadata carries `attestation: \"recipient_reply\"`, and the Card and Artifact describe the result as the recipient's report. COMPLETED here claims no verification of the recipient's engine and never satisfies the evidence-verified rule of HAB-E02 and HAB-V12.",
+      "statement": "The host-routed A2A entry has no engine evidence port. Recipient storage ACK leaves the Task SUBMITTED. A durable execution_accepted reply makes it WORKING, and a durable execution_result reply makes it COMPLETED (succeeded, with the result text as the only Artifact), FAILED or CANCELED; an expired or quarantined request with no reply becomes INPUT_REQUIRED until its reply window closes. A reply counts only when the configured recipient sent it, it references that Task's own host source message, its thread matches and its schema is exact. A reply counts only if it arrives before its request's expiry plus one day (the reply window); a later one is ACKed without a record and never changes the Task. By the owner's 2026-11-07 decision (ADR-016), a Task with no result applied when its reply window closes, whether SUBMITTED, WORKING or INPUT_REQUIRED, moves to the standard TASK_STATE_FAILED with no Artifact, `reason: \"result_window_expired\"` in its status message metadata and its public `hab_relay` metadata, and a status message that starts with `result_window_expired` and says the outcome is unknown, because the recipient may or may not have executed the request; no custom A2A state is added and the Task never stays WORKING. The host receiver loop makes this transition without a caller read through bounded stable-key pages from the Task store's `overdue()`, starting when the earliest window closes; later pages and failed applies can require later cycles. A read after the window attempts the transition at once. A reply arriving afterwards never revives or changes the Task. FAILED with result_window_expired never claims that the recipient did not execute the request. A later reply with another engine Task ID, or a second terminal result with another state, is refused without replacing the saved Task. Every such Task's public metadata carries `attestation: \"recipient_reply\"`, and the Card and Artifact describe the result as the recipient's report. COMPLETED here claims no verification of the recipient's engine and never satisfies the evidence-verified rule of HAB-E02 and HAB-V12.",
       "rationale": "The host cannot read a remote recipient's engine. The label keeps a recipient's self-report from passing as independently verified execution.",
-      "scope": "Opt-in host A2A entry only. The preview composition with HabExecutionEvidence keeps HAB-E02 and HAB-V12. Covered in js-root by test/a2a-host.test.js; an actual product recipient's reply is not exercised. Its case \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" ages the request two days while the host is stopped, waits for the stored Task to fail without a caller read, checks the reason, the outcome-unknown message and the empty Artifacts, and checks that a late result is ACKed without a record and leaves the status unchanged. Its case \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" ages the request so that its window closes five seconds after a restart, after the restart's first maintenance pass, and checks that the stored Task fails within 20 seconds of that time without a read. A live drive cannot wait out the day (features/a2a-host.md a2a-window).",
+      "scope": "Opt-in host A2A entry only. The preview composition with HabExecutionEvidence keeps HAB-E02 and HAB-V12. Covered in js-root by test/a2a-host.test.js; an actual product recipient's reply is not exercised. Its case \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" ages the request two days while the host is stopped, waits for the stored Task to fail without a caller read, checks the reason, the outcome-unknown message and the empty Artifacts, and checks that a late result is ACKed without a record and leaves the status unchanged. Its case \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" ages the request so that its window closes five seconds after a restart, after the restart's first maintenance pass, and checks that the stored Task fails within 20 seconds of that time without a read. A live drive cannot wait out the day (features/a2a-host.md a2a-window). A new unit control holds a pre-window result unconfirmed, reaches FAILED at the window, then confirms it and checks that it cannot revive the failed Task. It preserves the existing deadline semantics, not a new grace period. One-cycle timing is an unobstructed fixture claim, not a backlog guarantee.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -3636,15 +3654,15 @@
       "citations": [
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 101,
-          "end": 101,
+          "start": 105,
+          "end": 105,
           "excerpt_sha256": "86ec598c42479a94fa0241840ea55a196a868fa57a4fec9454c5f4f66d5be40d"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 111,
-          "end": 124,
-          "excerpt_sha256": "557f4fa4a15b8e9b19c44fe38a8a1e2157f74a7b6e8d693b4def2ab6c61be9ab"
+          "start": 115,
+          "end": 128,
+          "excerpt_sha256": "da81423c0e118d87398dabd1e8c51ea4754179f7f85482ef7e795b4e25a61e50"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -3666,21 +3684,21 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 76,
-          "end": 76,
-          "excerpt_sha256": "d6d9075c9557da51c4e33d4088136ed74fb4d70407323971e27604adeb4a67b8"
+          "start": 80,
+          "end": 80,
+          "excerpt_sha256": "f0e19246eef214371bcc571fe3a40ec4875f7444ac5f2914db1ccdd6002b457f"
         },
         {
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "b61f7823a2f6ac54a0d1fea0b5f1bf58eeaf0288507d84a811f458f34c7b7b52"
+          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
         },
         {
           "path": ".claude/skills/verify-hab/features/a2a-host.md",
           "start": 15,
           "end": 15,
-          "excerpt_sha256": "42f0b72b6a2b7ea73e96871785c226f6de95ab4600ccfb39125bb32973ceb5ef"
+          "excerpt_sha256": "8ecf0739e1f944de8abb9d8b1ee36d0483d24c04d8b5ca0ba8ad7345637b9098"
         },
         {
           "path": ".claude/skills/verify-hab/features/a2a-host.md",
@@ -3843,7 +3861,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "953eb82fb3b46746cce5c6021a9694ee8d8f123ced962d6074c75519c813652f"
+          "excerpt_sha256": "58f9b062a56b1146328130283f6a5829dbf8698a307c1c440c450ebbe64ba855"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4041,7 +4059,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "fb8dd9496dacf7065f1d6fc07fc2824f17c0207d404b638dae9d1ed7dce6e7c6"
+          "excerpt_sha256": "272218751973aa8ee4c4e4281e203b0d06f1cc0638e6b9dacda3355e8c1468d4"
         },
         {
           "path": "docs/testing/publication.md",
@@ -4386,7 +4404,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "557b9777f7bb2b697b97c9e58bda81618bea2d167943fa5ba0471544f0d45caf"
+          "excerpt_sha256": "66c9bf4bbb717648c09fe1657bf662315323696df111d4e8a8209c2cec2ac884"
         }
       ]
     },
@@ -5166,7 +5184,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "c061114a863b8f322d1b0d2d6a0fa76566266835e7030aea9bb6f968285c9f0a"
+          "excerpt_sha256": "a1b6a27d1e5ee39bb2b9609e8ed2acf8ac306e126d6bceb6d012fe5457a328f5"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5285,13 +5303,13 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "b912affc71a9f319ee63c1617bf4790a0d4cf114f9d59b75da1a70bfea4ede7d"
+          "excerpt_sha256": "615a16c0648903a2dbe8f0a880ab471e75cf0d0fa94e7da9a5497da75b372dc9"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "0c8690bee626b9cb2fe6ab9ffa09dbbf42d6d2bcc2cd4e51984f21a1945782ef"
+          "excerpt_sha256": "bbdcfec46fc156ee3cf08dad909fbf4bf28bbfa6b6f80961924a1a85533b21d0"
         },
         {
           "path": "test/p7/README.md",
@@ -5300,7 +5318,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up expects root 1207 (17 added cases) and A2A producer 53 (four added cases). These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots."
     },
     {
       "status": "resolved",
@@ -5389,7 +5407,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "557b9777f7bb2b697b97c9e58bda81618bea2d167943fa5ba0471544f0d45caf"
+          "excerpt_sha256": "66c9bf4bbb717648c09fe1657bf662315323696df111d4e8a8209c2cec2ac884"
         },
         {
           "path": "packages/relay-nats/DESIGN.md",
@@ -5455,33 +5473,33 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 55,
-          "end": 55,
+          "start": 59,
+          "end": 59,
           "excerpt_sha256": "bbc0380fb2b56ba4bde7942ea793d7876dc922777991b1e072042c64828d19d0"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 59,
-          "end": 59,
+          "start": 63,
+          "end": 63,
           "excerpt_sha256": "29d57d0c769ab769bdd5692297f6bd02b4d19409e2b3c7a3f9289833c38c5b93"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 111,
-          "end": 111,
+          "start": 115,
+          "end": 115,
           "excerpt_sha256": "adc663ccbac56e809219537514af6d2f60f61c58008f45f8a95203c7f7d2f82d"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 124,
-          "end": 124,
+          "start": 128,
+          "end": 128,
           "excerpt_sha256": "6e1083f4541b49ab4215539e526d0b07132347862f3213da11a4ec82d1b5d101"
         },
         {
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "b61f7823a2f6ac54a0d1fea0b5f1bf58eeaf0288507d84a811f458f34c7b7b52"
+          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -5556,26 +5574,26 @@
         "HAB-E20",
         "HAB-D20"
       ],
-      "resolution": "FAILED with result_window_expired. The owner decided on 2026-11-07 (ADR-016) that such a Task moves to the standard FAILED state rather than staying WORKING, with no custom A2A state, and that its status says the recipient may or may not have executed it. The superseded WORKING sentence in HAB-E20 is replaced by the transition, its reason metadata, the outcome-unknown message, the empty Artifacts and the rule that a late reply never changes the Task; HAB-D20 states the once-a-minute host maintenance that makes the transition through the Task store's overdue() without a caller read. FAILED here does not claim non-execution: the features/a2a-host.md gotcha and the preview say the outcome is unknown. test/a2a-host.test.js covers the transition and the late result in js-root. HAB-E02 and HAB-V12 keep the preview composition's evidence-verified rule unchanged.",
+      "resolution": "FAILED with result_window_expired. The owner decided on 2026-11-07 (ADR-016) that such a Task moves to the standard FAILED state rather than staying WORKING, with no custom A2A state, and that its status says the recipient may or may not have executed it. The superseded WORKING sentence in HAB-E20 is replaced by the transition, its reason metadata, the outcome-unknown message, the empty Artifacts and the rule that a late reply never changes the Task; HAB-D20 states the bounded host receiver work, scheduled at window closure and subsequent page/retry cycles, that makes the transition through the Task store's overdue() without a caller read. FAILED here does not claim non-execution: the features/a2a-host.md gotcha and the preview say the outcome is unknown. test/a2a-host.test.js covers the transition and the late result in js-root. HAB-E02 and HAB-V12 keep the preview composition's evidence-verified rule unchanged.",
       "classification": "explicit-authority",
       "citations": [
         {
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "b61f7823a2f6ac54a0d1fea0b5f1bf58eeaf0288507d84a811f458f34c7b7b52"
+          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 120,
-          "end": 122,
-          "excerpt_sha256": "d800e4ddbca56dc079bfdf56e16879db52e465d611927a820e29d2a44e003af9"
+          "start": 124,
+          "end": 126,
+          "excerpt_sha256": "86d3e9d9e35cd2b29351888be8ae03f7633a81bee2e89e3d0c95e6521b6e705a"
         },
         {
           "path": ".claude/skills/verify-hab/features/a2a-host.md",
           "start": 15,
           "end": 15,
-          "excerpt_sha256": "42f0b72b6a2b7ea73e96871785c226f6de95ab4600ccfb39125bb32973ceb5ef"
+          "excerpt_sha256": "8ecf0739e1f944de8abb9d8b1ee36d0483d24c04d8b5ca0ba8ad7345637b9098"
         },
         {
           "path": ".claude/skills/verify-hab/features/a2a-host.md",

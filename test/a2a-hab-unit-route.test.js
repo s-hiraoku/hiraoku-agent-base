@@ -129,3 +129,26 @@ test("HAB A2A route snapshots its configured identities before later host-object
   assert.equal(queued.recipient_id, recipientId);
   assert.equal(f.route.recipientId, recipientId);
 });
+
+test("HAB A2A route forwards a reply source hint only while current authorization permits reads", async (t) => {
+  const f = await setup(t);
+  const seen = [];
+  const route = createHabRelayRoute({
+    ...f.options,
+    inbox: {
+      inbox: (source) => {
+        seen.push(source);
+        return [];
+      },
+    },
+  });
+  const source = {
+    sender_id: f.first.agent_id,
+    message_id: f.input.message_id,
+  };
+  assert.deepEqual(route.replies(source), []);
+  assert.deepEqual(seen, [source]);
+  f.access("stopped");
+  assert.throws(() => route.replies(source), /forbidden/);
+  assert.equal(seen.length, 1);
+});

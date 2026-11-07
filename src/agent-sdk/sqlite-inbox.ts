@@ -245,6 +245,13 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           "DROP TRIGGER relay_attachment_identity; ALTER TABLE relay_inbox DROP COLUMN has_attachments; ALTER TABLE relay_inbox DROP COLUMN attachment_guard",
         );
       if (version < 4) this.#db.exec("UPDATE relay_inbox_meta SET version=4");
+      // An additive read index, not a record-format change. Released tombstones have
+      // an empty body and must not enter the JSON expressions or source lookup.
+      this.#db
+        .exec(`CREATE INDEX IF NOT EXISTS relay_inbox_reply_source ON relay_inbox(
+        json_extract(body,'$.in_reply_to.sender_id'),
+        json_extract(body,'$.in_reply_to.message_id'),received_at,sender_id,message_id
+      ) WHERE released_at IS NULL`);
     });
     this.#ready = true;
   }
@@ -599,19 +606,34 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       return result;
     });
   }
-  inbox(): InboxEntry[] {
+  /** Optional exact reply reference; pending ACKs remain visible to the caller. */
+  inbox(source?: NonNullable<Submission["in_reply_to"]>): InboxEntry[] {
+    if (
+      source &&
+      (!identifier(source.sender_id) || !identifier(source.message_id))
+    )
+      throw new MessagingError("invalid_request");
     this.#now();
-    return this.#db
-      .prepare(
-        "SELECT sender_id,body,received_at,receipt_confirmed FROM relay_inbox WHERE released_at IS NULL ORDER BY received_at,sender_id,message_id",
-      )
-      .all()
-      .map((row) => ({
-        sender_id: String(row.sender_id),
-        message: JSON.parse(String(row.body)),
-        received_at: new Date(Number(row.received_at)).toISOString(),
-        receipt_confirmed: row.receipt_confirmed === 1,
-      }));
+    const query = this.#db.prepare(
+      `SELECT sender_id,body,received_at,receipt_confirmed FROM relay_inbox
+       WHERE released_at IS NULL${
+         source
+           ? `
+         AND json_extract(body,'$.in_reply_to.sender_id')=?
+         AND json_extract(body,'$.in_reply_to.message_id')=?`
+           : ""
+       }
+       ORDER BY received_at,sender_id,message_id`,
+    );
+    const rows = source
+      ? query.all(source.sender_id, source.message_id)
+      : query.all();
+    return rows.map((row) => ({
+      sender_id: String(row.sender_id),
+      message: JSON.parse(String(row.body)),
+      received_at: new Date(Number(row.received_at)).toISOString(),
+      receipt_confirmed: row.receipt_confirmed === 1,
+    }));
   }
   /** Read-only capacity check for new replay-bound messages; does not reserve or collect. */
   hasCapacityFor(records: number, bodyBytes: number): boolean {

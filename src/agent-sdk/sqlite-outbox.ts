@@ -569,13 +569,35 @@ export class SQLiteOutbox implements SenderStore {
       throw new MessagingError("invalid_status_result");
     this.defer(job, true);
   }
-  /** Explicit local administration; `collect=false` keeps slots but still expires bodies. */
-  maintain(limit: number, collect = true): OutboxMaintenanceResult {
+  /** Read-only retained-row counts for a caller's expiry horizon; does not reserve slots. */
+  retainedCounts(expiresAfter: number): {
+    total: number;
+    expires_after: number;
+  } {
+    if (!Number.isSafeInteger(expiresAfter))
+      throw new MessagingError("invalid_request");
+    this.#now();
+    const row = this.#db
+      .prepare(
+        "SELECT count(*) total,coalesce(sum(expires_at>?),0) expires_after FROM relay_outbox",
+      )
+      .get(expiresAfter)!;
+    return {
+      total: Number(row.total),
+      expires_after: Number(row.expires_after),
+    };
+  }
+  /** Local administration. A numeric collection cap leaves other slots but still expires bodies. */
+  maintain(
+    limit: number,
+    collect: boolean | number = true,
+  ): OutboxMaintenanceResult {
     if (
       !Number.isSafeInteger(limit) ||
       limit < 1 ||
       limit > 1000 ||
-      typeof collect !== "boolean"
+      (typeof collect !== "boolean" &&
+        (!Number.isSafeInteger(collect) || collect < 0 || collect > limit))
     )
       throw new MessagingError("invalid_request");
     return this.#tx(() => {
@@ -587,7 +609,9 @@ export class SQLiteOutbox implements SenderStore {
       )
         throw new MessagingError("maintenance_state_unavailable");
       const expired = this.#expire(now, limit),
-        cutoff = now - RECORD_RETENTION_MS;
+        cutoff = now - RECORD_RETENTION_MS,
+        collectionLimit =
+          typeof collect === "boolean" ? (collect ? limit : 0) : collect;
       const eligible = `state IN ('accepted','expired_unknown') AND body IS NULL AND lease_until IS NULL
         AND terminal_at<=? AND expires_at<=? AND status_until<=? AND retain_until<=?`;
       const rows = this.#db
@@ -595,7 +619,13 @@ export class SQLiteOutbox implements SenderStore {
           `SELECT message_id FROM relay_outbox WHERE ${eligible} AND relay_outbox_gc_safe(message_id,expires_at)=1
          ORDER BY retain_until,message_id LIMIT ?`,
         )
-        .all(cutoff, cutoff, cutoff, now, collect ? limit - expired : 0);
+        .all(
+          cutoff,
+          cutoff,
+          cutoff,
+          now,
+          Math.min(limit - expired, collectionLimit),
+        );
       for (const row of rows)
         this.#db
           .prepare("DELETE FROM relay_outbox WHERE message_id=?")

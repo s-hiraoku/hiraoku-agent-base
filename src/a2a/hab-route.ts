@@ -1,6 +1,6 @@
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { SQLiteOutbox } from "../agent-sdk/sqlite-outbox.ts";
-import type { InboxEntry } from "../agent-sdk/receiver.ts";
+import type { SQLiteInbox } from "../agent-sdk/sqlite-inbox.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { HabA2aRoute, HabExecutionEvidence } from "./hab-contract.ts";
 
@@ -11,7 +11,7 @@ export function createHabRelayRoute(options: {
   recipient: { agent_id: string; address: string };
   outbox: Pick<SQLiteOutbox, "agentId" | "enqueueGuarded" | "get">;
   senderTransport: { sendOnce(): Promise<void> };
-  inbox: { inbox(): InboxEntry[] };
+  inbox: Pick<SQLiteInbox, "inbox">;
   evidence: HabExecutionEvidence;
 }): HabA2aRoute {
   const { registry, outbox, senderTransport, inbox, evidence } = options;
@@ -82,9 +82,9 @@ export function createHabRelayRoute(options: {
         assertCurrent();
       }
     },
-    replies() {
+    replies(source) {
       assertCurrent();
-      return inbox.inbox();
+      return inbox.inbox(source);
     },
   });
 }

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { reconcile } from "../scripts/relay-rollback-reconcile.mjs";
+import { main, reconcile } from "../scripts/relay-rollback-reconcile.mjs";
 
 // Minimal read-only SQLite projections, not a broker or inbox-integrity proof.
 function fixture(t) {
@@ -133,4 +134,57 @@ test("a released backup record does not authorize a retained-copy handoff", (t) 
   const [body] = reconcile(options).retained_bodies;
   assert.equal(body.backup_record, "released");
   assert.equal(body.action, "unknown");
+});
+
+test("large restored journals compute the incomplete expiry without changing evidence", (t) => {
+  const { backup, upgraded } = fixture(t);
+  const args = ["--upgraded-journal", upgraded, "--backup-journal", backup];
+  assert.equal(main(args).restored_incomplete_expire_by, null);
+
+  // Above the pinned Node runtime's argument-count limit. Use real SQLite reads
+  // through the CLI entry point, without printing the large reconciliation list.
+  const count = 150000;
+  const expiry = Date.UTC(2026, 10, 7);
+  const db = new DatabaseSync(backup);
+  try {
+    db.prepare(
+      `WITH RECURSIVE ids(n) AS (
+      SELECT 0 UNION ALL SELECT n+1 FROM ids WHERE n+1 < ?
+    ) INSERT INTO nats_messages
+      SELECT 'a',printf('message-%06d',n),'b',
+        CASE n WHEN 0 THEN 'staging' WHEN 1 THEN 'leased'
+          WHEN 2 THEN 'quarantined' ELSE 'pending' END,
+        ? + CASE n WHEN 2 THEN ? ELSE n END FROM ids`,
+    ).run(count, expiry, count);
+    db.prepare("INSERT INTO nats_messages VALUES ('a',?,'b',?,?)").run(
+      "already-acked",
+      "acked",
+      expiry + count + 1000,
+    );
+    db.prepare("INSERT INTO nats_messages VALUES ('a',?,'b',?,?)").run(
+      "already-expired",
+      "expired",
+      expiry + count + 2000,
+    );
+  } finally {
+    db.close();
+  }
+  const digest = (path) =>
+    createHash("sha256").update(readFileSync(path)).digest("hex");
+  const before = [backup, upgraded].map(digest);
+  const out = main(args);
+  assert.equal(
+    out.restored_incomplete_expire_by,
+    new Date(expiry + count).toISOString(),
+  );
+  assert.equal(out.messages.length, count);
+  assert.ok(
+    out.messages.every(
+      (row) => row.final_state === null && row.action === "unknown",
+    ),
+    "a large backup with no upgraded or recipient evidence stays unknown",
+  );
+  assert.deepEqual(out.restored_bodies, []);
+  assert.deepEqual(out.retained_bodies, []);
+  assert.deepEqual([backup, upgraded].map(digest), before);
 });

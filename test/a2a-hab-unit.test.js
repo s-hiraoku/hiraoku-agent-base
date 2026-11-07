@@ -220,6 +220,45 @@ test("HAB A2A expired unknown delivery keeps original identity without creating 
   }
 });
 
+test("a reply saved before the window but still unconfirmed cannot postpone failure or revive a failed Task", async (t) => {
+  const f = fixture();
+  delete f.route.evidence;
+  f.route.replyWindowMs = 86400000;
+  const first = await f.handler.sendMessage(request(), context());
+  f.reply(first);
+  await f.handler.apply(first.id, context(), f.route);
+  f.state.evidence.state = "succeeded";
+  f.state.evidence.result = RESPONSE;
+  const result = f.reply(first, "execution_result");
+  result.receipt_confirmed = false;
+  assert.equal(
+    (await f.handler.apply(first.id, context(), f.route)).status.state,
+    TaskState.TASK_STATE_WORKING,
+  );
+  const deadline =
+    Date.parse(first.metadata.hab_relay.source.expires_at) +
+    f.route.replyWindowMs;
+  assert.ok(Date.parse(result.received_at) < deadline);
+  t.mock.method(Date, "now", () => deadline);
+  const failed = await f.handler.apply(first.id, context(), f.route);
+  assert.equal(failed.status.state, TaskState.TASK_STATE_FAILED);
+  assert.equal(failed.metadata.hab_relay.failure, "result_window_expired");
+  assert.deepEqual(failed.artifacts, []);
+  result.receipt_confirmed = true;
+  const later = await f.handler.apply(first.id, context(), f.route);
+  assert.equal(
+    JSON.stringify(later),
+    JSON.stringify(failed),
+    "ACK confirmation after failure cannot revive the Task",
+  );
+  assert.equal(
+    JSON.stringify(later.metadata.hab_relay.source),
+    JSON.stringify(first.metadata.hab_relay.source),
+  );
+  assert.equal(f.state.enqueueCalls, 1);
+  assert.equal(f.state.flushCalls, 1);
+});
+
 test("HAB A2A flush uncertainty preserves one intent and Get never retries submission", async () => {
   const f = fixture();
   f.state.flushError = Error("response lost");
@@ -445,4 +484,33 @@ test("HAB A2A ignores ordinary legacy replies beside a valid execution result", 
   const done = await f.handler.getTask(get(first.id), context());
   assert.equal(done.status.state, TaskState.TASK_STATE_COMPLETED);
   assert.equal(done.artifacts[0].parts[0].content.value, RESPONSE);
+});
+
+test("HAB A2A supplies the exact source hint and still filters an unscoped reply provider", async () => {
+  const f = fixture();
+  const first = await f.handler.sendMessage(request(), context());
+  const other = await f.handler.sendMessage(request("other"), context());
+  f.reply(other);
+  f.reply(first);
+  const hints = [];
+  f.route.replies = (source) => {
+    hints.push(source);
+    return f.state.entries;
+  };
+  const observed = await f.handler.getTask(get(first.id), context());
+  assert.deepEqual(hints, [
+    {
+      sender_id: first.metadata.hab_relay.sender_id,
+      message_id: first.metadata.hab_relay.source.message_id,
+    },
+  ]);
+  assert.equal(f.state.verifyCalls, 1);
+  assert.equal(observed.status.state, TaskState.TASK_STATE_SUBMITTED);
+  // A hint is not the canonical correlation key, even if an implementation mutates it.
+  f.route.replies = (source) => {
+    source.message_id = other.metadata.hab_relay.source.message_id;
+    return f.state.entries;
+  };
+  await f.handler.getTask(get(first.id), context());
+  assert.equal(f.state.verifyCalls, 2);
 });
