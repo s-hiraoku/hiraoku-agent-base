@@ -734,3 +734,45 @@ test("legacy IDs cannot grow the retained rows past the dedup bound across reten
   );
   assert.ok(rows() <= bound.max_records + bound.max_ack_records);
 });
+
+test("lease redeliveries of one message take one ACK history slot, so its reply still fits", (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  const accepted = message(Date.now() - 100, "7".repeat(32));
+  for (const generation of [1, 2]) {
+    f.store.save(delivery(accepted, generation));
+    f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  }
+  f.store.save(delivery(accepted, 3));
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(f.store.releaseBody("a", accepted.message_id), true);
+  const result = message(Date.now() - 100, "8".repeat(32));
+  f.store.save(delivery(result));
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [result.message_id],
+    "the reply after three lease generations is saved",
+  );
+  f.store.releaseBody("a", result.message_id);
+  const third = message(Date.now() - 100, "9".repeat(32));
+  f.store.save(delivery(third));
+  f.store.releaseBody("a", third.message_id);
+  code(
+    () => f.store.save(delivery(message(Date.now() - 100, "a".repeat(32)))),
+    "inbox_capacity_exceeded",
+  );
+});
+
+test("one message keeps at most max_attempts ACK generations", (t) => {
+  const f = fixture(t, { max_attempts: 2 });
+  const m = message(Date.now() - 100, "b".repeat(32));
+  for (const generation of [1, 2]) {
+    f.store.save(delivery(m, generation));
+    f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  }
+  code(() => f.store.save(delivery(m, 3)), "inbox_capacity_exceeded");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
+    2,
+  );
+});
