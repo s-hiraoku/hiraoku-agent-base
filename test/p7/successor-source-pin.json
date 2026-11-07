@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "1ecc8d2c198e0abe42d48210863144b42f83588f",
+  "source_ref": "0e931f74bc6753a5ca8065abe24d4b9b6933d4e3",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "a1dec0d999eb873711384582f2bcb43a4ef344f6c9c4ee96a006ab47adc3b114"
+      "sha256": "9151f47b762f59da23e88387b57802895b4f032ed441f5466bdbd11f97c58b04"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -376,6 +376,14 @@
     "src/messaging/tool-errors.ts": {
       "previous_sha256": null,
       "sha256": "40f8786cd0890fb6ec39ae3660ff5561813c8c4c0cb9b62d304a50ec603ed4b5"
+    },
+    "src/recipient-messages/contract.ts": {
+      "previous_sha256": null,
+      "sha256": "7750d2d6889c265926faaec07214f9a09384a5c381c64264e37716f672112905"
+    },
+    "src/recipient-messages/messages.ts": {
+      "previous_sha256": null,
+      "sha256": "ab1d233c90cd5cf6d14594f006469d40ebe1982139de985210d589ced4a2d929"
     },
     "src/relay-host/admin.ts": {
       "previous_sha256": "cd627aaa836e752afc59a54bf0b3d4088343690eb122d73fce112eba4f81f627",
@@ -724,6 +732,14 @@
     "test/p7/runner.test.js": {
       "previous_sha256": null,
       "sha256": "927bd21de1a32e0b279431b22c2ba280d114df64c4e896dab6cb2fd152d2d7dc"
+    },
+    "test/recipient-messages-fixtures.js": {
+      "previous_sha256": null,
+      "sha256": "d114dcf3f1b81e1748959b95776a2685b267528129b3d217e65f53720b03bb0c"
+    },
+    "test/recipient-messages.test.js": {
+      "previous_sha256": null,
+      "sha256": "be7ffdc7b6d6b77f0af6068f947846b909b128e8fb20fa041633c7e6feeade6f"
     },
     "test/relay-http-fixtures.js": {
       "previous_sha256": "99dc523f47c1d30653bea641cbc0a83c7eecbd538c37ae1ce23d8e781d5f0dbf",

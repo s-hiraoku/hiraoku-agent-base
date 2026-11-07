@@ -192,7 +192,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "b24e8e9683ee2038c31c97f5de1e35a35db00e7176cb6d0c7b48773ba34c9a5a",
+      "sha256": "2ac8cc3ea38430c365c47acb17925d0ce4fa6174d15f783ba84bd46459f3347d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof.",
@@ -802,7 +802,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "146f7ca7fb03430f5591570d8595cb3a795b79a97c27ac18bf726a70fd5ee710",
+      "sha256": "4756ecc0f4d79de209205d96ca1d4ab8bb1e5b41b7a0e9321e05f3967e4f6d14",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -826,10 +826,10 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "b515d839179c253c5cda6456a6ab8c4fe5ca3ca4c0eedf5b0d26c03befa7ad6a",
+      "sha256": "b0117550b5224747e0f6b931602eec548967a7038943ab731f880b2d035f6527",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1208) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1229) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full"
     },
     {
@@ -842,7 +842,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "b1ad1e33733df0d483bcde175a44e31c51ba75e2170d96d9bc3a486524361275",
+      "sha256": "504435a1a6705784e15181da6b463de23846e1cd23e4c0463ac52ba9ab05d621",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -924,7 +924,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "df33ca51bf0aa570625cb449b358f707ef465ac67016e3a0588016c32b280555",
+      "sha256": "dba8157b79c9cc84918f1588e917f10d64dfdc8136799edc1ef4448f52c4f150",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -948,7 +948,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "67bce33c1304f91eac1f7eaaf7eae4330fc2e0ae426e06bbb8824cd6c131d7a9",
+      "sha256": "33a6b5252fc45f61dd6a394388238e2428935e28554e29c23152d552e5b62d4e",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -964,11 +964,18 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "82a19515f656d3475065a7f48dabe75eb1167ec7feb1ef0d5db93bc9e1fcd8d3",
+      "sha256": "b4cc49eed3e858619da5526d763be551e7333fa1a017300c0f4381a386adf23b",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+    },
+    {
+      "path": "docs/recipient-messages.md",
+      "sha256": "73e6e44013285d8cd71b9b43177172e6b0bdb484efdca6db59e1d23a4386258a",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Reviewed explicit recipient-local handoff and exact-reply composition against ADR-015 after integration onto JetStream-only main. Uses src/messaging and src/agent-sdk, with explicitly supplied reply admission. Native input/dedup/policy/approval remain trusted recipient prerequisites. Synthetic native store and real JetStream/loopback MCP tests are not native model/approval/deployment evidence; deferred components remain unconnected to default runtime."
     }
   ],
   "requirements": [
@@ -982,7 +989,8 @@
       "checks": [
         "js-common-mcp",
         "ast-boundary",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1011,7 +1019,8 @@
         "build",
         "ast-boundary",
         "js-common-mcp",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1037,7 +1046,8 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "ast-boundary"
+        "ast-boundary",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1135,7 +1145,8 @@
       "checks": [
         "js-common-mcp",
         "js-root",
-        "gui-parity"
+        "gui-parity",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1250,7 +1261,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1328,7 +1340,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "mcp-durable-roundtrip"
+        "mcp-durable-roundtrip",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1443,7 +1456,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "production-operations"
+        "production-operations",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1501,7 +1515,8 @@
       "decision": "accepted",
       "checks": [
         "mcp-durable-roundtrip",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1702,7 +1717,8 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "native-recipient"
+        "native-recipient",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -1814,7 +1830,8 @@
       "scope": "HAB Registry-composed JetStream delivery (HabJetStreamService); separate IO already sent cannot be retracted.",
       "decision": "accepted",
       "checks": [
-        "js-root"
+        "js-root",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -2193,7 +2210,8 @@
       "scope": "Public repository and verification output; detailed audit formats remain subsystem-specific.",
       "decision": "accepted",
       "checks": [
-        "source-publication"
+        "source-publication",
+        "js-recipient-messages"
       ],
       "citations": [
         {
@@ -3838,8 +3856,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 32,
-          "end": 32,
+          "start": 34,
+          "end": 34,
           "excerpt_sha256": "052c00c877d07e3a61e3feb6ad246bf68b6d5f3e50f61a6ff60abd3995ed6d23"
         }
       ]
@@ -3861,7 +3879,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "38feaf521a0481f4d1fff3c6b608f955c9306e3f6dfce1ef3a906a82f7f22438"
+          "excerpt_sha256": "cb12d44a70a38139945040016a664b704b4305a57edd877140e73d17af07f814"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -3902,8 +3920,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 34,
-          "end": 34,
+          "start": 36,
+          "end": 36,
           "excerpt_sha256": "1f35490845293eab70cdf8e80f965c5dfdda959901472a32f50c4081cf157895"
         }
       ]
@@ -3929,8 +3947,8 @@
         {
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 28,
-          "end": 37,
-          "excerpt_sha256": "134164ea1a70b361d56afdb25f8d125c723a66d568cf8a1014595890a0f17c40"
+          "end": 39,
+          "excerpt_sha256": "a4db5f1f03fe7cc96a15c5f0fd0528f533a03f10e6a33676762ac6e6c2c04ae3"
         }
       ]
     },
@@ -4059,7 +4077,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "626bdb30a9cbc72fd61c7c4b895d0a5337900438a971b4570a6512afcd13b6bf"
+          "excerpt_sha256": "1bb73857c74ed8102c282363e384ed4221f64c078910d6fd65336bf47ae9b69e"
         },
         {
           "path": "docs/testing/publication.md",
@@ -4292,7 +4310,7 @@
       "tier": "manual",
       "proves": "Actual product caller/session, native MCP exposure, durable integration, display/wake, independent judgment and existing approvals.",
       "limitations": "Not executed or automatically satisfied by this harness. Requires scoped external evidence and review; remains unverified.",
-      "instructions": "Use docs/recipient-readiness.md and the existing common-MCP recipe. Record product/version, formal caller, trusted session/group/address binding, actual MCP transport, poll trigger and durable stores. Obtain concrete operational authority before live settings/grants/services/model execution. Send untrusted content and an execution_request; independently observe recipient interpretation/refusal/approval and unchanged existing approval rules. Unsupported APIs remain unsupported. Never substitute fixture/model-free success."
+      "instructions": "Use docs/recipient-readiness.md and the existing common-MCP recipe. Record product/version, formal caller, trusted session/group/address binding, actual MCP transport, poll trigger and durable stores. Obtain concrete operational authority before live settings/grants/services/model execution. Send untrusted content and an execution_request; independently observe recipient interpretation/refusal/approval and unchanged existing approval rules. Unsupported APIs remain unsupported. Never substitute fixture/model-free success. For optional RecipientMessages composition, also review docs/recipient-messages.md and independently verify durable same-key native admission, durable unknown, exact reply approval consumption and current policy at commit. The synthetic recipient port test cannot satisfy this manual check."
     },
     {
       "id": "production-operations",
@@ -4356,6 +4374,25 @@
       "protocol": "exit",
       "proves": "Nineteen negative controls reject missing/partial/forged/zero/skip/manual-pass/hash/cleanup/trace evidence; a complete internally consistent synthetic report passes without promoting manual scope.",
       "limitations": "CI report-consistency gate controls only. Synthetic artifacts establish no HAB behavior, signature/provenance authenticity or native/production compliance. Real report is checked after the run."
+    },
+    {
+      "id": "js-recipient-messages",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/recipient-messages.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Explicit confirmed-inbox handoff to synthetic durable native input, stable-key reconciliation, source/actor/epoch guards, recipient-owned policy/approval waits and exact reply revalidation through real SQLite budget/outbox; real JetStream delivery and one owned loopback MCP receive-to-reply path with no Task links.",
+      "limitations": "Native input/policy store and owner are fixtures. No real product wake/input, model, native approval UI, atomic native production deduplication, backup rollback, residency or deployment is established. Same-process database close/reopen is not crash/powerloss proof.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
     }
   ],
   "conflicts": [
@@ -5184,7 +5221,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "68fde1de2be3c4eb8c4469c7bb201bfba740c9ce3e3624f09faf1fa0c19e02d5"
+          "excerpt_sha256": "ce038d2c4d58165f77a201b9263c5f39b7da6b9bf56c2001ee18aa0333fe52b5"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5303,13 +5340,13 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "6f90204621bb9f12a72850dcca829407411bf2a58be721d4ea9d12cf39b8e048"
+          "excerpt_sha256": "981a17aa3612272aa0c95143734736a09ca4727e9764a0c07bfc97d0cfe72cb4"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "1f4247002012ad1ce1b0e531533b801fb08d790aa7046cd0e1153728165b2f37"
+          "excerpt_sha256": "795f7de6c4e97d2e8ce9f22c09a394d0f15763ea05f1998f91852214d3c90abd"
         },
         {
           "path": "test/p7/README.md",
@@ -5318,7 +5355,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence."
     },
     {
       "status": "resolved",

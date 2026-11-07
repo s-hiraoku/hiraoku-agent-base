@@ -2,7 +2,7 @@
 
 これは初期baselineとexact-f19専用runnerの記録です。現行の複合実装では、この固定runnerは意図的に拒否します。[P7実行手順](p7-lab.md)と[公開・CIの範囲](publication.md)を使用してください。
 
-現在の配送はNATS JetStreamだけです。下表の「現行Relay」列と`relay-store`等は、廃止したSQLite配送storeを指す当時の記録です。現在の必須群と件数（full-regression 1208件を含む）は[P7実行手順](p7-lab.md)を参照してください。
+現在の配送はNATS JetStreamだけです。下表の「現行Relay」列と`relay-store`等は、廃止したSQLite配送storeを指す当時の記録です。現在の必須群と件数（full-regression 1229件を含む）は[P7実行手順](p7-lab.md)を参照してください。
 
 For the exact-f19 A2A integration branch, see [native A2A acceptance](a2a-native-acceptance.md). It adds mandatory protocol groups and reclassifies the original A2A engine placeholders. Historical counts below describe the original lab baseline.
 

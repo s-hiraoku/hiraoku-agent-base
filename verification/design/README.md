@@ -201,3 +201,7 @@ The follow-up (reviewed at `af7c769c0167230bf11809f326488ff0e1348186`) makes the
 - In source-review.json the changed sources were re-read and rehashed. `src/host/a2a.ts` extends its summary with the refusal set, `test/a2a-host.test.js` records the new case, and the count summaries for the three testing documents, `scripts/p7-lab.mjs` and `test/p7/a2a-cases.json` state 1208.
 
 Re-rendered source links are relative, as in the latest sections. This maintenance changes no execution authority, manual-check status or product design.
+
+## RecipientMessages integration onto JetStream-only main
+
+Reviewed explicit recipient-local handoff and exact-reply composition against ADR-015 after integration onto JetStream-only main. Uses src/messaging and src/agent-sdk, with explicitly supplied reply admission. Native input/dedup/policy/approval remain trusted recipient prerequisites. Synthetic native store and real JetStream/loopback MCP tests are not native model/approval/deployment evidence; deferred components remain unconnected to default runtime. The focused check remains separate from the overlapping full-root inventory (expected 1229). Manual evidence remains unverified. Existing requirement IDs, authority sources and historical failure records are unchanged.
