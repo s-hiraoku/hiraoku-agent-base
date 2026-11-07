@@ -1231,7 +1231,9 @@ test("when the running host loses its own ACK of a saved result, the reply expir
   );
   const { inbox, acks } = hostAck(f, sent.message_id);
   assert.ok(
-    acks.some((row) => row.state === "obsolete" && row.reason === "invalid_ack"),
+    acks.some(
+      (row) => row.state === "obsolete" && row.reason === "invalid_ack",
+    ),
     `after the reply expired the relay refused the ACK as invalid_ack: ${JSON.stringify(acks)}`,
   );
   assert.equal(inbox.receipt_confirmed, 0);
