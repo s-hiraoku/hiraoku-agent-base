@@ -363,6 +363,61 @@ test("unbound message IDs are safety-held without starving a purgeable ID in the
     assert.equal((await f.status("a", message.message_id)).state, "acked");
 });
 
+test("replay-bound IDs cycle through the record cap every retention period, and a collected ID is never delivered again", async (t) => {
+  const f = await fixture(t, {
+    max_records: 2,
+    max_pending: 2,
+    max_pending_per_recipient: 2,
+  });
+  const time = clock(t);
+  const j = journal(t, f);
+  for (let cycle = 0; cycle < 3; cycle++) {
+    const batch = [replayBound(f), replayBound(f)];
+    const receipts = [];
+    for (const [i, message] of batch.entries())
+      receipts.push(await deliverAndAck(f, message, `cycle-${cycle}-${i}`));
+    await assert.rejects(f.submit("a", replayBound(f)), {
+      code: "capacity_exceeded",
+    });
+    assert.equal((await f.submit("a", batch[0])).state, "acked");
+    assert.equal(
+      await f.poll("b"),
+      null,
+      `cycle ${cycle}: a replay is not delivered`,
+    );
+    time.advance(MAX_ACK_RETRY_MS + RECORD_RETENTION_MS - 1);
+    assert.deepEqual(await f.backend.maintain("admin"), {
+      purged: 0,
+      safety_held: 0,
+      publication_blocked: false,
+    });
+    for (const message of batch)
+      assert.equal((await f.status("a", message.message_id)).state, "acked");
+    time.advance(1);
+    assert.equal((await f.backend.maintain("admin")).purged, 2);
+    assert.equal(
+      j.count("nats_messages"),
+      0,
+      `cycle ${cycle}: every row collected`,
+    );
+    for (const message of batch) {
+      await assert.rejects(f.status("a", message.message_id), {
+        code: "not_found",
+      });
+      await assert.rejects(f.submit("a", message), {
+        code: "expired_before_acceptance",
+      });
+    }
+    assert.equal(
+      await f.poll("b"),
+      null,
+      `cycle ${cycle}: a collected ID is not delivered`,
+    );
+    assert.ok(receipts.every((receipt) => receipt.state === "acked"));
+  }
+  assert.equal(j.totals().purged, 6);
+});
+
 test("maintenance purges at most its batch limit and leaves pending work deliverable", async (t) => {
   const f = await fixture(t);
   const time = clock(t);

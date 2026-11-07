@@ -820,3 +820,85 @@ test("one message keeps at most max_attempts ACK generations", (t) => {
     2,
   );
 });
+
+test("replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again", (t) => {
+  const bound = { max_records: 1, max_ack_records: 1 };
+  const f = fixture(t, bound);
+  const count = (table) =>
+    f.raw.prepare(`SELECT count(*) n FROM ${table}`).get().n;
+  const shift = RECORD_RETENTION_MS + 10 * day;
+  // Moves every row `shift` into the past. Each replay-bound ID is renamed to the one
+  // bound to its shifted send time, as if the message had really arrived back then.
+  const age = () => {
+    f.raw.exec("PRAGMA foreign_keys=OFF");
+    for (const { message_id } of f.raw
+      .prepare("SELECT message_id FROM relay_inbox")
+      .all()) {
+      const [, first, entropy] = message_id.split(".");
+      const aged = `rm1.${Number(first) - shift}.${entropy}`;
+      for (const table of ["relay_inbox", "relay_receiver_acks"])
+        f.raw
+          .prepare(`UPDATE ${table} SET message_id=? WHERE message_id=?`)
+          .run(aged, message_id);
+    }
+    f.raw.exec("PRAGMA foreign_keys=ON");
+    f.raw
+      .prepare(
+        "UPDATE relay_inbox SET received_at=received_at-?,released_at=released_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift, shift, shift, shift);
+    f.raw
+      .prepare(
+        "UPDATE relay_receiver_acks SET retry_until=retry_until-?,terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift);
+  };
+  const confirm = () => {
+    const req = f.store.claimAck();
+    f.store.confirmAck(req, receipt(req));
+  };
+  for (let i = 1; i <= 5; i++) {
+    const entropy = i.toString(16).repeat(32);
+    const m = message(Date.now() - 100, entropy);
+    f.store.save(delivery(m));
+    confirm();
+    assert.equal(f.store.releaseBody("a", m.message_id), true);
+    f.store.save(delivery(m, 2));
+    confirm();
+    assert.deepEqual(
+      f.store.inbox(),
+      [],
+      `cycle ${i}: a redelivery inside the retention period is deduplicated`,
+    );
+    code(
+      () => f.store.save(delivery(message(Date.now() - 100, "f".repeat(32)))),
+      "inbox_capacity_exceeded",
+    );
+    assert.deepEqual(
+      f.store.maintain(1000),
+      { expired_acks: 0, purged_acks: 0, purged_messages: 0, safety_held: 0 },
+      `cycle ${i}: nothing is collected before its retention ends`,
+    );
+    age();
+    assert.deepEqual(
+      f.store.maintain(1000),
+      { expired_acks: 0, purged_acks: 2, purged_messages: 1, safety_held: 0 },
+      `cycle ${i}: the ID, its tombstone and both ACK generations are collected`,
+    );
+    assert.equal(count("relay_inbox"), 0);
+    assert.equal(count("relay_receiver_acks"), 0);
+    const replay = message(Date.parse(m.first_sent_at) - shift, entropy);
+    code(() => f.store.save(delivery(replay)), "expired_delivery");
+    assert.deepEqual(
+      f.store.inbox(),
+      [],
+      `cycle ${i}: the collected ID is never handed off again`,
+    );
+  }
+  const totals = f.raw
+    .prepare(
+      "SELECT purged_acks,purged_messages FROM relay_inbox_maintenance_totals",
+    )
+    .get();
+  assert.deepEqual({ ...totals }, { purged_acks: 10, purged_messages: 5 });
+});
