@@ -1226,5 +1226,45 @@
     "excerpt_sha256": "b4bf976aa85520380006b92b0e51550193cbae008d32b9f040f3c94e5f6471b7",
     "access_outcome": "Read from clean selected files in a local checkout at the exact revision; no remote fetch, product import, launcher, profile, credential, model or live agent was invoked.",
     "scope": "post-render MCP text truncation and downstream spillover context; not a verified complete content-delivery path"
+  },
+  {
+    "reader_scope": "Native acceptance prerequisites after #143",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/hermes_cli/plugins.py#L502-L555",
+    "referenced_by": [
+      "docs/recipient-readiness.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "4eb1a417a12096d96080b7207907cbee16d120d3c6f9ded561316eb72872cc97",
+    "access_outcome": "Selected source excerpt read locally at the pinned revision. No product import, profile/configuration, credentials, model or agent communication. Source support only, not native acceptance."
+  },
+  {
+    "reader_scope": "Native acceptance prerequisites after #143",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_handlers.py#L505-L522",
+    "referenced_by": [
+      "docs/recipient-readiness.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "d2fd0998181c4d6f82ae1fe1fcda9370974cebd68036484bce84ab99b1640564",
+    "access_outcome": "Selected source excerpt read locally at the pinned revision. No product import, profile/configuration, credentials, model or agent communication. Source support only, not native acceptance."
+  },
+  {
+    "reader_scope": "Native acceptance prerequisites after #143",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L367-L370",
+    "referenced_by": [
+      "docs/recipient-readiness.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "ccaaf5f8301f4de233a246deed8e711c624a7aca98c7092f1ed36c55ff011cf9",
+    "access_outcome": "Selected source excerpt read locally at the pinned revision. No product import, profile/configuration, credentials, model or agent communication. Source support only, not native acceptance."
+  },
+  {
+    "reader_scope": "Native acceptance authority clarification",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_scope.py#L1-L65",
+    "referenced_by": [
+      "docs/recipient-readiness.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "b19f99ee548291e964899e73966beed7f570113a8ff1b51ffffdce745bfff106",
+    "access_outcome": "Read local source only. Connection scope and shared adoption are not native single-session acceptance evidence."
   }
 ]

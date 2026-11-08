@@ -374,12 +374,12 @@
     },
     {
       "path": "docs/finite-mcp-trial.md",
-      "sha256": "995e4bf3356077dad1b6f3bafae728107379b9df0db5925d51123658690c3a4c",
+      "sha256": "651fb0e6ef8cfc7e92270d68dc973f74d68ee813ee10047343d6e929eed6912c",
       "hash": "418b04acba5e7eb5748bfda36e6dea7fec4caca72c421375bd4f19333fbc6121",
       "role": "evidence",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used."
+      "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used. Appended concrete next-trial approval checklist and distinction between historical native basic-five-tool evidence and the new synthetic recipient SDK checks; no live authorization inferred."
     },
     {
       "path": "docs/fixed-pilot.md",
@@ -715,10 +715,10 @@
     },
     {
       "path": "docs/recipient-readiness.md",
-      "sha256": "0ab8b00eab02fa3b4adbca855c47625b25b6df92b8599108776a578cd246376f",
+      "sha256": "6bfabbd5eb6244c8b6667cd9983eefad51245a6231553b539028cfb74f0838b3",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Current local handoff specification and live preparation ledger. Metadata inbox differs from scoped authenticated copy via inbox_read; unconfirmed receipt remains false and actions keep original guards. Seven local/HTTP scenarios are claimed with injected scheduler/synthetic recipient explicitly distinguished from actual agency/approval. Lists exact caller/session binding, native transport, durable storage, formal display/input API, existing policy, reply and restore work needed; unsupported product APIs remain unsupported, not replaced by Hermes or Tasks."
+      "summary": "Current local handoff specification and live preparation ledger. Metadata inbox differs from scoped authenticated copy via inbox_read; unconfirmed receipt remains false and actions keep original guards. Seven local/HTTP scenarios are claimed with injected scheduler/synthetic recipient explicitly distinguished from actual agency/approval. Lists exact caller/session binding, native transport, durable storage, formal display/input API, existing policy, reply and restore work needed; unsupported product APIs remain unsupported, not replaced by Hermes or Tasks. Appended source-verified ordinary/plugin content-cap distinction and missing session/current-policy proof. Registry hostIdentity is an existing discovery attestation candidate, not HostAuthorization; concrete product-side inputs and commit-time authority responsibilities remain prerequisites. Clarifies conditional authenticated private-process launch binding and recipient-owned current policy without requiring a native wire-proof protocol; current Hermes connection sharing is not per-session isolation. Pull authorization and optional push exact-reply approval stay distinct."
     },
     {
       "path": "docs/relay-agent-capacity.md",
@@ -823,12 +823,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "cb49f82f0420419643991af2317889959f152b7078ef481370feb7e74cbbd937",
+      "sha256": "afe041244f84c90e3ca8d68f6795da3bca27562525b1dad95eb3111f9dad250e",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "PR141 follow-up on 3f1ffd61: reviewed current count change 1236 to 1239 for one interrupted-cleanup case and two result-size cases (focused total ten). Historical counts and all acceptance gates are unchanged; expected inventory is not run evidence."
+      "maintenance": "Reviewed count-only 1239 to 1244 change for the five single-source owner composition regressions. No gate, required group or historical result changed."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -848,12 +848,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "b961f951c5a170e61cdf99e8e058f13c3ad997b94d1b1315348975bbfeafc1df",
+      "sha256": "0e8140544a41b6f65a20165abdda8c651f37530b827633aeadfd19b2953cce30",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1239) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1244) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "PR141 follow-up on 3f1ffd61: reviewed current count change 1236 to 1239 for one interrupted-cleanup case and two result-size cases (focused total ten). Historical counts and all acceptance gates are unchanged; expected inventory is not run evidence."
+      "maintenance": "Reviewed count-only 1239 to 1244 change for the five single-source owner composition regressions. No gate, required group or historical result changed."
     },
     {
       "path": "docs/testing/plan.md",
@@ -865,12 +865,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "4440b82aaa5d709583469108eb5c7f292229cb1a4fd1da9eac0f96d200de2582",
+      "sha256": "b2819c2dbb39d19c3fd8267feef1b85d542178190268e27c85aadb058ccc5bba",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "PR141 follow-up on 3f1ffd61: reviewed current count change 1236 to 1239 for one interrupted-cleanup case and two result-size cases (focused total ten). Historical counts and all acceptance gates are unchanged; expected inventory is not run evidence."
+      "maintenance": "Reviewed count-only 1239 to 1244 change for the five single-source owner composition regressions. No gate, required group or historical result changed."
     },
     {
       "path": "docs/testing/results.md",
@@ -948,7 +948,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "6f8720d8c5a129eb05fdacc26f192c27d674888336bd71e312ea208ce16a2893",
+      "sha256": "f6e6770c8e632872e7f25f8fd6731523939b03ef6c411114664d9a9e0107b303",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -956,7 +956,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "a5a975a0c9134c5033e01b0a23599f4f915414ad09052ad9b677d34221ac710e",
+      "sha256": "4c11b760cbbef9337f32a94ed52bf4b6970f5ac75376346133e79e4efbc7b2ea",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "55a3ec0951de24097ab78f886383823b1626db5e351089d2e8fa434e4ad5e492",
+      "sha256": "2cc6343cf22b6fe34ae94b29e2c0e1fc63e2b610a32c285e0a3e317eb244c7be",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -988,7 +988,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "db3e503bff348c9ba117723c00da230ff82b361db610e76de5521d15c99a1626",
+      "sha256": "d48622de399df8445e270a404c10a12e41aefe0851b7ab5b76160260abca2984",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -3905,7 +3905,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "0626c7d6d1b1ef2f29e49dbed9956fd0435b5607da8f75d94d76b1f7673b1846"
+          "excerpt_sha256": "77361bb85939d856b3ea405fb7a75219486eccbd9aa853ca19e7cfe04aaff770"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4103,7 +4103,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "f3df04bfdf036b56cb610a815add642a058ccc67f76aa30fb67867ddd0c0d0e5"
+          "excerpt_sha256": "9f0bfb52b2c13435d39b8fa1204f847f1cad42533b7323570e32206187cf7686"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5401,7 +5401,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor."
     },
     {
       "status": "resolved",

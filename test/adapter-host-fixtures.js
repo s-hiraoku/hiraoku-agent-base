@@ -87,8 +87,8 @@ export async function hostFixture(
     ctx === f.context && state.enabled && !state.denied.has(op)
       ? { agent_id: "b", actor_id: state.actor }
       : undefined;
-  const makeHost = (extra = {}) =>
-    new AdapterHostCycle({
+  const hostOptions = (extra = {}) =>
+    ({
       control,
       inbox: f.inbox,
       outbox,
@@ -128,6 +128,7 @@ export async function hostFixture(
       authorization: authorize,
       ...extra,
     });
+  const makeHost = (extra = {}) => new AdapterHostCycle(hostOptions(extra));
   const host = makeHost();
   const resume = (h = host) =>
     h.setPaused(f.context, false, h.status(f.context).epoch);
@@ -174,6 +175,7 @@ export async function hostFixture(
     ...f,
     host,
     makeHost,
+    hostOptions,
     state,
     authorize,
     resume,
