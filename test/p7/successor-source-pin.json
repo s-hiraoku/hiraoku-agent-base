@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "75a31d75ab05b006d597893bc5e159a579b5dd39",
+  "source_ref": "593e1d7ed251e57f48ac2a954b27c2835d613ead",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -151,7 +151,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "c3a870aa46cff5796f8a116a36c2e17b5366ff6f95fb193e826d7048015b0b0f"
+      "sha256": "622dbd2991f7a948fbef148c1822a56c0fe10b1a347ea7b63efec0439bb969b7"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -667,7 +667,7 @@
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
-      "sha256": "ca7d9d9ad02539ae01fcf7e93e8c0c0c1b29c9eaeb52cd14b5958aa1ac06f8e3"
+      "sha256": "463333870736ad3f05252d7e64f845dfdc494a431feaa7140db51a10bcc43a0d"
     },
     "test/common-mcp-boundary.test.js": {
       "previous_sha256": null,

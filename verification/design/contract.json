@@ -823,12 +823,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "accc4628cebdbe2dd9d79ce89850b5f9ee9990d81d90b54f9bf3289e102953b0",
+      "sha256": "fe387f8447696f7e69137f73dcb5e6ea2cf86326f6b922b9520077a1dcb8979c",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "Task-reconciliation regression on main 361e9fc: reviewed current root inventory 1244 to 1245 for one explicit expired-RPC case. Historical results, other group counts, lease/authority semantics and manual gates unchanged; count is not execution evidence."
+      "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -848,12 +848,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "977e3417072df2d23fd0a65e9364689cfeca802f1fd2056ed48a3ec07e9352e8",
+      "sha256": "9156d953b52dffa59607725cd8209860bf0741d068077e48e804f2ac5a90eea1",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1245) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1246) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "Task-reconciliation regression on main 361e9fc: reviewed current root inventory 1244 to 1245 for one explicit expired-RPC case. Historical results, other group counts, lease/authority semantics and manual gates unchanged; count is not execution evidence."
+      "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
     },
     {
       "path": "docs/testing/plan.md",
@@ -865,12 +865,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "642701789d41c18eef5fc5f5d53e1744ae052786853693e6ef3bdb877d87332f",
+      "sha256": "91bee9d3d5b100980f197fbc463a442540e555d6da517bcd79d0ce6e7553a6de",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "Task-reconciliation regression on main 361e9fc: reviewed current root inventory 1244 to 1245 for one explicit expired-RPC case. Historical results, other group counts, lease/authority semantics and manual gates unchanged; count is not execution evidence."
+      "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
     },
     {
       "path": "docs/testing/results.md",
@@ -3905,7 +3905,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "0cf6ea129b726a21f5963c9bcf3787d374794e64e2374f1686389967dc96f6aa"
+          "excerpt_sha256": "e01e13d57bcde232f5dfb1bfdba140e2f9835a6726acd7b01502b4b031694b03"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4103,7 +4103,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "0f54603410f0aa800bb6d3656514d21478afe3cc7c70e21f9f2ad410666dccfb"
+          "excerpt_sha256": "9a0349da93e043bc9c151701398490f575dc46d1ebce1c031fdb0eeaba3e9fa6"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5267,7 +5267,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "e00f370dbc2f7025b34356c12957fa2d05ff016b2c26cf82c88270410f7d7836"
+          "excerpt_sha256": "0f88372a4c56ced3ba80d6794fa1e72ee61ab214f719765b44519c0337e90990"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5386,13 +5386,13 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "82a39bceaab82cbdf21bf2715d7d5a0bef75a450b57ec0d627c162fbbea853f8"
+          "excerpt_sha256": "956eacb043f8a9374137af8a1ea74fb78723a1651003402f58508d29c05ee4de"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "500c19f1fa0cb0410d1ec295a6f08a995b86b71c33dce267fe9083b745572b61"
+          "excerpt_sha256": "38cbde407a4af9df34196d82bc20f5acbbece42063af062f2b84db4ef58f44ca"
         },
         {
           "path": "test/p7/README.md",
