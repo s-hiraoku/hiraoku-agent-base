@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "593e1d7ed251e57f48ac2a954b27c2835d613ead",
+  "source_ref": "b6e7dd32111f428d89a8dbc3212bf801d6bc48fb",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -151,7 +151,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "622dbd2991f7a948fbef148c1822a56c0fe10b1a347ea7b63efec0439bb969b7"
+      "sha256": "79a1b5e9ce8695f2f8bdc3a3276f2ab2f749e2cc3ae66749a5ccfbbf1707675b"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -200,6 +200,10 @@
     "src/adapter-host/single-source-authority.ts": {
       "previous_sha256": null,
       "sha256": "637f14485a6742696bc15d32c8e175c213a38f455187a701c08fb88460760d45"
+    },
+    "src/adapter-host/stdio.ts": {
+      "previous_sha256": null,
+      "sha256": "1dee4d013a35ca78ca26b125565a0f521c268ee0b655449a9ec75bbaee06313c"
     },
     "src/adapter-policy/contract.ts": {
       "previous_sha256": "46f6d5cb1fea588fa516b44ab273ed6f80df43ab235aabf96ad140c4ebdbc168",
@@ -816,6 +820,14 @@
     "test/single-source-authority.test.js": {
       "previous_sha256": null,
       "sha256": "c17dda0016093fc4029330293dd1f1f7d95e5499a240cf0f1b795d5afbfa0e03"
+    },
+    "test/single-source-stdio-child.js": {
+      "previous_sha256": null,
+      "sha256": "418706c4881c8e85d9373776900306b164eb74a4c311cd5bff928e6fe7a1521c"
+    },
+    "test/single-source-stdio.test.js": {
+      "previous_sha256": null,
+      "sha256": "faba3a88a7d85a3719f8d76f92a243902e08cb6fea030d238622ad6f4da286a4"
     }
   }
 }
