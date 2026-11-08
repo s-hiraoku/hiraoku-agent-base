@@ -20,6 +20,13 @@ export function deferred() {
 // Short enough for expiry tests, long enough that one loopback MCP round trip on a
 // loaded single-core CI runner does not lose the lease mid-step.
 export const HOST_LEASE_MS = 400;
+/**
+ * Build an isolated synthetic recipient host with durable stores and a private
+ * test delivery backend. Expose the same options for explicit compositions;
+ * patch affects control options and outboxLeaseMs controls only the test lease.
+ * Register owned store cleanup with the test context. This does not authenticate
+ * a product session, supply native approval or launch an external agent.
+ */
 export async function hostFixture(
   t,
   patch = {},

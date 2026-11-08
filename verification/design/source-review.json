@@ -1513,7 +1513,8 @@
     "scope": "Local single-source owner composition preparation",
     "attestation": [
       "Reviewed against existing host authority/epoch/owner contracts. Independent reviewer caught and required removal of a public callback/bind split; corrected implementation is under final review. No native/manual gate is satisfied. Full root/P7 and successor pins remain pending.",
-      "Final independent review found no blocking issue. Current P7 count and three current testing guides were semantically reviewed for the five new cases (1244); historical counts were preserved. Full root passed 1244; initial P7 refused unpinned source before execution. Publication and fresh pinned P7 remain separate."
+      "Final independent review found no blocking issue. Current P7 count and three current testing guides were semantically reviewed for the five new cases (1244); historical counts were preserved. Full root passed 1244; initial P7 refused unpinned source before execution. Publication and fresh pinned P7 remain separate.",
+      "PR144 CodeRabbit found no merge-blocking issue but reported 50 percent documentation coverage over two analyzed functions. Added a substantive JSDoc to the touched exported hostFixture; no executable behavior or test count changed. This addresses the missing function documentation; remote coverage recalculation is separate."
     ],
     "supplemental_sources": [
       {
@@ -1532,10 +1533,10 @@
       },
       {
         "path": "test/adapter-host-fixtures.js",
-        "sha256": "2ce439e9a82401cfea9a47a6438eb07ea45e4abe7d068ad0e1c4fa1f1626a15f",
+        "sha256": "a6d890d3ec185a9156092c609097032478f13b29e31a69e742f083e16a6edf43",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Extracts the existing AdapterHostOptions object into hostOptions; makeHost still uses identical options and defaults. Existing host regressions pass."
+        "summary": "Extracts the existing AdapterHostOptions object into hostOptions; makeHost still uses identical options and defaults. Existing host regressions pass. Added JSDoc describing isolated synthetic scope, option controls and owned cleanup; executable behavior unchanged."
       },
       {
         "path": "scripts/p7-lab.mjs",
