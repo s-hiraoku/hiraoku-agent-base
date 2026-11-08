@@ -166,3 +166,22 @@ reviewed non-secret artifact selection, native settings, identity, approval,
 provenance, budget enforcement and owned cleanup remain separate obligations.
 Historical native and SDK evidence is unchanged. Existing requirements, manual
 checks, source citations and conflicts are not weakened or marked complete.
+
+## Dedicated recipient stdio composition (2026-11-08)
+
+| Document | Classification | Review |
+| --- | --- | --- |
+| docs/recipient-stdio.md | context / reviewed | Explicit owner-side composition of the existing single-source host, acquired SQLite owner and fixed MCP surface. Initial deny/pause, local-only grant/resume, finite lifetime, EOF handling and pause/drain/close/release are implementation behavior under existing F02/F03/F07/F16/E09, not a new identity or native approval authority. The dedicated single-producer outbox and verified launch contexts remain prerequisites. Failed stop retains stores/owner; a successful retry does not rewrite the first failed completion. SDK/SQLite/private-broker tests are synthetic authority, not native session/model/approval/wake/residency or production evidence. |
+
+The proposal appendix links this opt-in wiring without adopting it as a default
+Relay catalog or a production launcher. The P7 guide inventory increases from
+1246 to 1253 for seven new expected cases; it is not an execution-result claim.
+Stable requirements, source authority and manual gates are unchanged.
+
+CodeRabbit follow-up: reviewed the irreversible in-memory recipient revocation
+before any stop control IO. A failed pause read does not claim durable pause;
+all recipient guards remain denied after recovery, and operator cleanup can
+retry. The seven SDK cases include recovered-control/late-poll rejection and
+independent held-owner observations around a gated SDK close. Updated only
+current acceptance-count references in publication.md and delivery-lab.md; their
+historical evidence remains unchanged. No native/manual gate is promoted.

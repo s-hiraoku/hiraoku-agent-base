@@ -177,3 +177,11 @@ host, authority and answer-intent requirements. Source review and a clean audit 
 not adopt this surface or satisfy the native-product manual gates. Current source
 hashes and fresh check results are required; an older green run is not evidence
 for the changed surface.
+
+## Dedicated owner-side stdio wiring
+
+[Recipient stdio composition](../recipient-stdio.md) connects the existing
+single-source host and acquired owner to stdio with an initially denied, paused
+policy, explicit local management and bounded shutdown. It requires trusted
+launch/session binding and applicable native approval; it does not install an
+agent profile or turn these synthetic tests into real-product acceptance.

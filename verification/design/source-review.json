@@ -1653,5 +1653,87 @@
         "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged."
       }
     ]
+  },
+  {
+    "scope": "Dedicated recipient stdio composition (2026-11-08)",
+    "attestation": "Coordinator read the full changed composition, tests, and guide; independent read-only reviewer checked lifecycle/authorization and existing F02/F03/F07/F16/E09 mappings. The initial SDK EOF gap was corrected. Five focused SDK cases passed with synthetic identity and actual owned protocol/storage/broker resources. Native model/session/approval/wake/residency remain unverified; focused and root totals overlap.",
+    "supplemental_sources": [
+      {
+        "path": "src/adapter-host/stdio.ts",
+        "sha256": "1dee4d013a35ca78ca26b125565a0f521c268ee0b655449a9ec75bbaee06313c",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Full review of inherited draft and EOF correction. Reuses private single-source host authorization and owner attachment, default deny/pause, local-only permit/resume, finite lifetime and explicit EOF/pipe-error stop. Pause/drain/close precede owner release; timeout preserves owner and stores, explicit retry may finish. Native launch identity/policy/approval remain prerequisites."
+      },
+      {
+        "path": "test/single-source-stdio.test.js",
+        "sha256": "faba3a88a7d85a3719f8d76f92a243902e08cb6fea030d238622ad6f4da286a4",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Five official SDK owned-child cases: denied/paused and local management, fixed source/exact persisted reply plus queued-send revocation, finite expiry, EOF graceful cleanup, and held-response drain timeout/late-save fencing/stop retry. Parent owns broker/scratch; synthetic authority and in-process Relay HTTP are stated limitations."
+      },
+      {
+        "path": "test/single-source-stdio-child.js",
+        "sha256": "418706c4881c8e85d9373776900306b164eb74a4c311cd5bff928e6fe7a1521c",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Test-only private command file controls synthetic owner outside MCP; borrows parent broker descriptor, uses real owned SQLite stores, emits cleanup only after stopped owner and store closure. SIGTERM fallback is a failure marker, not graceful proof."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "79a1b5e9ce8695f2f8bdc3a3276f2ab2f749e2cc3ae66749a5ccfbbf1707675b",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened."
+      }
+    ]
+  },
+  {
+    "scope": "CodeRabbit stop-failure revocation and acceptance-count corrections",
+    "attestation": "Reviewed all changed code/guide/count references and retained d377831 historical evidence. The seventh-case test suite passes after a RED-confirmed late-save regression. Independent read-only reviewer checked control-failure recovery, per-guard revocation, operator retry and SDK-close ordering; no new native/manual claim.",
+    "supplemental_sources": [
+      {
+        "path": "src/adapter-host/single-source-authority.ts",
+        "sha256": "50b95d85d703cc3f11f82d9b3fd523d34146f73e587f571a85bcdcb264ddf12d",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Terminal operator-only in-memory revocation blocks current/new recipient guards independently of control IO and permanently refuses regrant; operator cleanup scope is retained. This is local denial, not proof of durable pause."
+      },
+      {
+        "path": "src/adapter-host/stdio.ts",
+        "sha256": "cf34f1587fa7a1ca124cc0d2c2df2815b6f9d1d54d42a9e35e3e97a3c794ffcb",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Stop marks stopping and irreversibly revokes recipient authority before snapshot/pause. A transient recovered control store cannot re-enable existing or new recipient work. Stop retry still performs durable pause/drain/SDK close/release."
+      },
+      {
+        "path": "test/single-source-authority.test.js",
+        "sha256": "4d41af1296ae2dd2057f8266e2d37deafab7f27c11307d98d19a72588b40a22f",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Existing five-case suite additionally verifies recipient cannot trigger terminal revocation, repeated operator revocation remains denied and regrant is impossible; source read/send are denied after revocation."
+      },
+      {
+        "path": "test/single-source-stdio.test.js",
+        "sha256": "bcd4d76caa1a50acee558e845c4eaa34c49ab841e78401ea7985a9ce804dfbf6",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Seven owned SDK cases include initial active-control denial without a grant, a RED-confirmed failed pause snapshot/active-control recovery/late poll guard regression, and held ownership around blocked SDK close."
+      },
+      {
+        "path": "test/single-source-stdio-child.js",
+        "sha256": "76c016875065d4fe298012606786874663b2be3eeb26a39def4883a480c02c26",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Fault injection is isolated to the synthetic child: one snapshot throw restores the original method, held poll response, child-only SDK close gate, independent close-complete owner observation and cleanup after successful stop/retry."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "849c9dff96f7758855cd5ca03745c9eac5e691ee093eab2d195de1fb943e74ed",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained."
+      }
+    ]
   }
 ]

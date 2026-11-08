@@ -93,3 +93,22 @@ Eight optional synthetic cases pass, including fail-closed flags and oversized
 sparse files. These checks still do not prove launch-time isolation or native
 identity/approval. Filesystem snapshots and caller-reviewed artifact assumptions
 remain explicit. No requirement or manual acceptance status changed.
+
+Dedicated stdio maintenance (2026-11-08): an independent read-only reviewer
+checked the stdio lifecycle, existing host/owner authorization and new guide.
+The initial draft incorrectly relied on the SDK to close on stdin EOF; explicit
+EOF/close/error handling now starts the same pause/drain/close/release path.
+Existing F02/F03/F07/F16/E09 remain unchanged and gain an overlapping focused
+SDK check. The current expected root inventory is 1253; previous counts remain
+historical. Native recipient/session identity, approvals, model, wake, residency
+and deployment remain manual/unverified.
+
+CodeRabbit identified a stop-failure authorization gap in d377831: if reading
+control failed before durable pause, the connected recipient could keep its
+grant after control recovery. A new owned SDK case failed on that code with
+a held poll returning done/saving after the failed stop. Stop now irreversibly
+revokes recipient authorization before any control IO; every existing guard
+(including in-flight work) checks the terminal latch. Operator cleanup stays
+available and regrant is forbidden. The added SDK-close gate observes owner held
+while close is pending and immediately after SDK close completes, before release.
+Independent read-only review checked the final guard, retry and test semantics.
