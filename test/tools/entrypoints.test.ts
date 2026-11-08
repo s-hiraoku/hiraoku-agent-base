@@ -80,11 +80,11 @@ test("enrollment demo resumes on both entry points using disposable synthetic st
     assert.equal(result.status, 0, result.stderr);
     assert.match(
       result.stdout,
-      /再開後の模擬確認: activate research@grok-bot.hab/,
+      /再開後の模擬確認: activate research@grok-bot\.hab/,
     );
     assert.match(
       result.stdout,
-      /模擬登録完了: research@grok-bot.hab \/ active/,
+      /模擬登録完了: research@grok-bot\.hab \/ active/,
     );
   }
 });
