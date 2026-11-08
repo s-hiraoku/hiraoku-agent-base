@@ -2,7 +2,7 @@
 import process from "node:process";
 import { setInterval } from "node:timers";
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createRecipientHostMcpServer } from "../src/adapter-host/mcp.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
@@ -10,6 +10,8 @@ import { hostFixture, limits } from "./adapter-host-fixtures.js";
 import { useParentTestBroker } from "./jetstream-delivery.js";
 // A private descriptor created by the owning test, never a product configuration.
 useParentTestBroker(JSON.parse(readFileSync(process.env.HAB_TEST_BROKER_FILE, "utf8")));
+if (process.env.HAB_TEST_COMPATIBILITY_PID_FILE)
+  writeFileSync(process.env.HAB_TEST_COMPATIBILITY_PID_FILE, String(process.pid), { mode: 0o600, flag: "wx" });
 const cleanup = [];
 let server, stopping = false;
 const stop = async () => {
@@ -40,9 +42,26 @@ const journal = new SQLiteAnswerJournal(join(f.dir, "recipient-answers.sqlite"),
 journal.migrate();
 cleanup.push(() => journal.close());
 const host = f.makeHost({ answer_intents: journal });
-f.resume(host); // Synthetic test-only operator action; production wrapper cannot resume.
-f.submit("question", { body: { parts: [{ type: "text", text: "Synthetic external question" }] } });
-server = createRecipientHostMcpServer({ host, context: f.context,
+const compatibility = process.env.HAB_TEST_COMPATIBILITY;
+if (compatibility !== "paused")
+  f.resume(host); // Synthetic test-only operator action; production wrapper cannot resume.
+const submitted = f.submit("question", { body: { parts: [{ type: "text", text: "Synthetic external question" }] } });
+// Test-controlled policy transition only, never native product authorization.
+const testHost = compatibility ? { async stepOnce(context, command) {
+  const result = await host.stepOnce(context, command);
+  if (compatibility === "revoked" && command.op === "inbox_read" && result.state === "done")
+    f.state.enabled = false;
+  if (compatibility === "roundtrip" && command.op === "send" && result.state === "done") {
+    const reply = await f.service.poll(f.contexts.a);
+    if (reply?.message?.in_reply_to?.sender_id !== submitted.key.sender_id ||
+        reply.message.in_reply_to.message_id !== submitted.key.message_id ||
+        reply.message.body.parts[0].text !== "Synthetic stdio answer" || f.queued().length !== 1)
+      throw Error("synthetic_reply_mismatch");
+    process.stderr.write("RECIPIENT_PYTHON_REPLY_VERIFIED\n");
+  }
+  return result;
+} } : host;
+server = createRecipientHostMcpServer({ host: testHost, context: f.context,
   allowedOperations: ["receive", "inbox", "inbox_read", "answer_prepare", "answer_inspect", "answer_enqueue", "send"],
 });
 await server.connect(new StdioServerTransport());

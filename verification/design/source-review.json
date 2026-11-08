@@ -1457,5 +1457,56 @@
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
       }
     ]
+  },
+  {
+    "scope": "Optional Python recipient-MCP compatibility maintenance",
+    "attestation": [
+      "Reviewed frozen local addition against main 9a8948a5b4fee83ec2ad9a5a22cceb9350ad07d0 with an independent read-only source reader. New document is context. Existing requirement statements, rationales, scopes, decisions, citations, check mappings, manual checks and feature map are unchanged.",
+      "The three optional SDK scenarios are not mandatory CI or Node-root tests; root inventory remains 1239. Inspected producer logs show installed SDK 2.3.0 paused/roundtrip/revoked success plus the existing host tests 8/8, with no full-suite execution by this maintenance pass. These scoped logs do not satisfy native-recipient or any full/current-hosted claim.",
+      "Receipt confirmation is not independently observed pre-network commit; source correlation/first text part is not whole-body equality. Missing clean-child evidence fails the check, while confirmed group reclamation may remove scratch. Missing group identity or unconfirmed exit retains scratch; broker stop has no separate exit deadline. No native auth/approval/wake or product/full-content claim is added.",
+      "Source commit and immutable successor pin review remain pending and separate. Include the new optional runner and Python client if updating the successor source set, and refresh the already tracked fixture from that exact commit. No pin generation from an uncommitted working tree or publication occurred."
+    ],
+    "supplemental_sources": [
+      {
+        "path": "scripts/check-recipient-python-mcp.mjs",
+        "sha256": "da7d8033fa48393c1d882d9441afa86c7d1d8386d74146d38fa374275c6b1519",
+        "kind": "optional verification helper",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Caller-supplied absolute Python interpreter; isolated minimal environment; one owned private broker and three direct-SDK sessions. Output and child/group teardown limits, private fixture PID ledger and post-exit scratch removal. Missing markers fail; unconfirmed fixture identity/group exit retains state. No product launcher or credentials."
+      },
+      {
+        "path": "test/compatibility/recipient-python-mcp.py",
+        "sha256": "66772e13af57326d997cd78ec6ac5eb71776ac42e8eead34e59a2c58d16d4b2c",
+        "kind": "optional verification",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Direct official Python SDK initialize/discovery/calls for the selected seven-tool subset. Paused refusal, exact-source read with post-call receipt confirmation, forbidden authority fields, fixed answer replay and same-session synthetic revocation; SDK version reported. Neither Hermes product imports nor native approval or independent pre-ACK observer."
+      },
+      {
+        "path": "test/recipient-host-stdio-fixture.js",
+        "sha256": "90aa76762f18a5c3021a53d204a551710ba2204ff4a22cb5a473ae838a29620c",
+        "kind": "verification helper",
+        "review": "reviewed",
+        "read_coverage": "full; complete diff against 9a8948a5b4fee83ec2ad9a5a22cceb9350ad07d0",
+        "summary": "Existing parent-broker fixture gains opt-in compatibility modes and a private PID file. Default Node path still resumes the synthetic operator; optional paths leave it paused or revoke synthetic policy after read. Reply observer checks original source fields, first text part and one queued row, not entire-body equality. No production wiring."
+      },
+      {
+        "path": "scripts/lib/nats-broker.mjs",
+        "sha256": "93e55ca4d91cb9f9373e1be4248507a06432d9981370741c343e8330460c6e28",
+        "kind": "verification helper",
+        "review": "reviewed",
+        "read_coverage": "startLocalBroker lifecycle and stop implementation, lines 80-110",
+        "summary": "Reused owned broker start is bounded; stop sends SIGTERM then awaits exit without a separate timeout. This optional recipe does not prove a hard whole-run deadline."
+      },
+      {
+        "path": "docs/implementation/recipient-python-mcp-acceptance.md",
+        "sha256": "96b6bd3daec15e933c31f031d3d16ea6731d4fce336feefedb01c131128b8410",
+        "kind": "context",
+        "review": "reviewed",
+        "read_coverage": "full; cleanup/body/deadline wording reconciled with implementation",
+        "summary": "Optional direct official Python MCP SDK recipe over the existing synthetic recipient-host stdio fixture, real temporary SQLite and private parent-owned JetStream. Covers initial pause refusal, receipt-confirmed read and explicit fixed reply, rejected authority arguments and same-session synthetic policy revocation. No Hermes runtime, product binding, native approval, independent pre-ACK observer, full-body/model-facing preservation, wake or deployment evidence. The caller supplies an already installed SDK; no mandatory contract/CI dependency or Node-root count change. Process-group cleanup and broker ownership are distinguished from clean store shutdown; the broker exit wait has no hard deadline. Native/manual gates remain unverified."
+      }
+    ]
   }
 ]

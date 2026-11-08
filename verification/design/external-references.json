@@ -1193,5 +1193,38 @@
     "access_outcome": "Verified through the local source checkout at the exact revision; selected files have no working-tree modifications. Read only the cited configuration/stdio transport excerpt. No native client invocation, profile/configuration, credentials, running session or policy was inspected or changed. This establishes source support only, not installed product acceptance.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "fd3af967817a343158a7f0dc2dfd9485593dacf68d51e55ad11c91f81e7dded1"
+  },
+  {
+    "reader_scope": "Optional Python recipient-MCP compatibility maintenance",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L307-L414",
+    "referenced_by": [
+      "docs/implementation/recipient-python-mcp-acceptance.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "bc15439a182dd3c8911bcb656f033479cc8c9b02ab24fdb3cb795d41a962b44d",
+    "access_outcome": "Read from clean selected files in a local checkout at the exact revision; no remote fetch, product import, launcher, profile, credential, model or live agent was invoked.",
+    "scope": "stdio child lifecycle/group ledger, ignored identity_header, unscoped orphan cleanup, stderr log side effects and actual SDK stdio entry"
+  },
+  {
+    "reader_scope": "Optional Python recipient-MCP compatibility maintenance",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_content.py#L17-L25",
+    "referenced_by": [
+      "docs/implementation/recipient-python-mcp-acceptance.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "8e2062ae4cc4c544e6eefe8b8a6224e19291952457768fb053087460024e6d4e",
+    "access_outcome": "Read from clean selected files in a local checkout at the exact revision; no remote fetch, product import, launcher, profile, credential, model or live agent was invoked.",
+    "scope": "two-million-character MCP text hard-cap constant; source limit, not full model-facing preservation"
+  },
+  {
+    "reader_scope": "Optional Python recipient-MCP compatibility maintenance",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_handlers.py#L599-L617",
+    "referenced_by": [
+      "docs/implementation/recipient-python-mcp-acceptance.md"
+    ],
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
+    "excerpt_sha256": "b4bf976aa85520380006b92b0e51550193cbae008d32b9f040f3c94e5f6471b7",
+    "access_outcome": "Read from clean selected files in a local checkout at the exact revision; no remote fetch, product import, launcher, profile, credential, model or live agent was invoked.",
+    "scope": "post-render MCP text truncation and downstream spillover context; not a verified complete content-delivery path"
   }
 ]
