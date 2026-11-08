@@ -288,7 +288,10 @@ test("Task bridge: crash while submitting requires same-key reconciliation after
   const job = f.journal.begin(key, false, () => {});
   await f.tasks.submit(job.request_key);
   f.close(f.journal);
-  const s = f.open();
+  // Keep the persisted crash lease short, but give the new recovery attempt
+  // its own finite I/O budget. Recovery may perform durable Task work and is
+  // not required to finish inside the old crash-detection test window.
+  const s = f.open({ lease_ms: 30000 });
   s.migrate();
   const bridge = f.makeBridge({}, s);
   await assert.rejects(
@@ -296,10 +299,10 @@ test("Task bridge: crash while submitting requires same-key reconciliation after
     code("bridge_busy"),
   );
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 520);
-  assert.equal(
-    (await bridge.submitOnce(f.context, key, true)).task.request_key,
-    job.request_key,
-  );
+  const recovered = await bridge.submitOnce(f.context, key, true);
+  assert.equal(recovered.state, "linked");
+  assert.equal(recovered.attempts, 2);
+  assert.equal(recovered.task.request_key, job.request_key);
   assert.equal(f.count(), 1);
 });
 test("Task bridge: invalid Task evidence is never linked as a successful acceptance", async (t) => {
