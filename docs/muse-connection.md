@@ -86,4 +86,7 @@ CIの`install-ci-nats.mjs`は既存の固定版installerを呼び、408／429／
 検証は元のinstallerに残す。403／404、ハッシュ・版不一致、子プロセス起動失敗・signal
 では直ちに停止する。成功時だけ元のJSONをstdoutへ出し、再試行の診断はstderrへ出す。
 恒久的な配布障害の解消を保証するものではなく、最終失敗はCIの失敗として残す。
+両workflowはOS・architecture・固定installerのhashをkeyにarchiveだけをキャッシュする。
+cache hitでもinstallerを省略せず、毎回SHA-256と実行版を検証する。既存の破損cacheを
+実CLIへ渡す負例でも、展開前に拒否して成功JSONを出さないことを確認する。
 この回帰試験とCI成功を、Museの実接続・実応答の証拠にはしない。

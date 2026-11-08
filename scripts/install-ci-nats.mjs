@@ -37,7 +37,10 @@ export async function installCiNats(
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   try {
     if (process.argv.length !== 2) throw Error("no arguments accepted");
     process.stdout.write(await installCiNats());

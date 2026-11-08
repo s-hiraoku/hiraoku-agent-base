@@ -1,4 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { installCiNats } from "../../scripts/install-ci-nats.mjs";
 
@@ -9,8 +15,45 @@ const httpFailure = (status) => ({
 });
 const success = { status: 0, stdout: '{"binary":"verified"}\n', stderr: "" };
 
+test("the real CLI refuses a corrupt cached archive before extraction", () => {
+  const directory = mkdtempSync(join(tmpdir(), "hab-ci-nats-"));
+  try {
+    mkdirSync(join(directory, ".runtime"), { mode: 0o700 });
+    const arch = process.arch === "x64" ? "amd64" : process.arch;
+    writeFileSync(
+      join(
+        directory,
+        ".runtime",
+        `nats-server-v2.15.2-${process.platform}-${arch}.tar.gz`,
+      ),
+      "unverified cache bytes",
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(
+          new URL("../../scripts/install-ci-nats.mjs", import.meta.url),
+        ),
+      ],
+      { cwd: directory, encoding: "utf8", timeout: 5000 },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /server archive SHA-256 mismatch/);
+    assert.doesNotMatch(result.stderr, /retrying/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("transient HTTP failures retry and preserve successful installer output", async () => {
-  const results = [httpFailure(504), httpFailure(503), httpFailure(429), success];
+  const results = [
+    httpFailure(504),
+    httpFailure(503),
+    httpFailure(429),
+    success,
+  ];
   const delays = [];
   const messages = [];
   assert.equal(
