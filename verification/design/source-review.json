@@ -1627,5 +1627,31 @@
         "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged."
       }
     ]
+  },
+  {
+    "scope": "Inbox-read preparation timing regression",
+    "attestation": [
+      "PR146 design run 42450877536 failed in receive setup before body-authority assertions: incomplete instead of done, with 1.4 seconds elapsed. The fixture client has a one-second deadline. A controlled 1.1-second delay after relay_poll reproduces the same setup assertion; the historical result did not expose its reason, so the exact original timeout is not claimed as observed.",
+      "Only the saved-body test preparation receives a finite five-second client budget, restored in finally. Setup must finish one receive, find the exact saved source and confirm its ACK. It adds no retry or production timeout change. A delayed-poll regression checks the exact body and confirmed receipt without Task/reply creation; a failed poll must fail immediately without retry and restore the original budget. Existing permission/refusal tests and production guards are unchanged.",
+      "Current root catalog changes 1245 to 1246 for one regression case; historical run evidence is retained. Source must be committed before successor pin generation. Native and production gates remain unverified."
+    ],
+    "supplemental_sources": [
+      {
+        "path": "test/adapter-inbox-read.test.js",
+        "sha256": "463333870736ad3f05252d7e64f845dfdc494a431feaa7140db51a10bcc43a0d",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
+        "summary": "Separate bounded transport preparation from saved-body authority assertions; require exact source and confirmed ACK, restore timeout, and reject failed preparation without retry."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "622dbd2991f7a948fbef148c1822a56c0fe10b1a347ea7b63efec0439bb969b7",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
+        "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged."
+      }
+    ]
   }
 ]

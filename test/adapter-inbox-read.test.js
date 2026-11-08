@@ -28,11 +28,52 @@ async function receive(f) {
       ],
     },
   });
-  assert.equal((await f.step({ op: "receive" })).state, "done");
+  // These cases exercise saved-body authority, not a one-second network budget.
+  // Keep setup finite and restore the normal transport policy before assertions.
+  const timeout = f.state.timeout_ms;
+  f.state.timeout_ms = 5000;
+  try {
+    const result = await f.step({ op: "receive" });
+    assert.equal(result.state, "done", JSON.stringify(result));
+    const saved = f.inbox.inbox().find(
+      (entry) => entry.sender_id === source.key.sender_id &&
+        entry.message.message_id === source.key.message_id,
+    );
+    assert.ok(saved?.receipt_confirmed, "setup must save and confirm this source");
+  } finally {
+    f.state.timeout_ms = timeout;
+  }
   return source;
 }
 const read = (f, source, host = f.host) =>
   host.stepOnce(f.context, { op: "inbox_read", source });
+
+test("inbox read: preparation has a separate finite RPC budget and never retries a refusal", async (t) => {
+  const f = await hostFixture(t);
+  const timeout = f.state.timeout_ms;
+  f.state.afterNetwork = async (tool) => {
+    if (tool === "relay_poll")
+      await new Promise((resolve) => setTimeout(resolve, timeout + 100));
+  };
+  const { key, message } = await receive(f);
+  assert.equal(f.state.timeout_ms, timeout);
+  assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack"]);
+  const saved = await read(f, key);
+  assert.deepEqual(saved.value.message, message);
+  assert.equal(saved.value.receipt_confirmed, true);
+  assert.equal(f.queued().length, 0);
+  assert.equal(f.count(), 0);
+
+  const refused = await hostFixture(t);
+  const refusedTimeout = refused.state.timeout_ms;
+  refused.state.afterNetwork = async () => {
+    throw Error("synthetic transport refusal");
+  };
+  await assert.rejects(receive(refused), /poll_transport_failed/);
+  assert.equal(refused.state.timeout_ms, refusedTimeout);
+  assert.deepEqual(refused.state.tools, ["relay_poll"]);
+  assert.equal(refused.inbox.inbox().length, 0);
+});
 
 test("inbox read: exact saved external data is separate from metadata and repeatable without side effects", async (t) => {
   const f = await hostFixture(t);
