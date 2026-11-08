@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "0080e649a1cb5ef395cfdb1cfddb0bbb13aa473d",
+  "source_ref": "bf1ca210b182c6e42e8159bb2d743f03622fba9c",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -124,6 +124,10 @@
     "packages/relay-nats/test/startup/startup.test.js": {
       "previous_sha256": null,
       "sha256": "8c6d4daff78f82d418b209a3091050f002b8b88ad3a3fe3f7d53e0c4ee201f9e"
+    },
+    "scripts/check-recipient-python-mcp.mjs": {
+      "previous_sha256": null,
+      "sha256": "da7d8033fa48393c1d882d9441afa86c7d1d8386d74146d38fa374275c6b1519"
     },
     "scripts/delivery-lab.mjs": {
       "previous_sha256": "cd0cd15bc7f3b4d84a3b405f69c2f33958b549ddad91b8db913d268dbe5113ba",
@@ -649,6 +653,10 @@
       "previous_sha256": null,
       "sha256": "ffe941209f2a9a40450f8c5d22fd8475b531b22002b4e72b920c5d77263aae04"
     },
+    "test/compatibility/recipient-python-mcp.py": {
+      "previous_sha256": null,
+      "sha256": "66772e13af57326d997cd78ec6ac5eb71776ac42e8eead34e59a2c58d16d4b2c"
+    },
     "test/delivery-lab/a2a-native.test.js": {
       "previous_sha256": "04514a184372455d94bea16d5967443395dc3e7d396fd00e48d809bdf5a0702f",
       "sha256": "5cdf1fcf98e397275a122f5d0872defade89b7edc363c7ca3e69a69dcd8422aa"
@@ -751,7 +759,7 @@
     },
     "test/recipient-host-stdio-fixture.js": {
       "previous_sha256": null,
-      "sha256": "c23d93e27a0638048765513e96bd7a3a66ef401179c7cb21142ce7010a4896a5"
+      "sha256": "90aa76762f18a5c3021a53d204a551710ba2204ff4a22cb5a473ae838a29620c"
     },
     "test/recipient-host-stdio-parent.js": {
       "previous_sha256": null,
