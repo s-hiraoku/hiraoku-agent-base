@@ -1653,5 +1653,39 @@
         "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged."
       }
     ]
+  },
+  {
+    "scope": "Dedicated recipient stdio composition (2026-11-08)",
+    "attestation": "Coordinator read the full changed composition, tests, and guide; independent read-only reviewer checked lifecycle/authorization and existing F02/F03/F07/F16/E09 mappings. The initial SDK EOF gap was corrected. Five focused SDK cases passed with synthetic identity and actual owned protocol/storage/broker resources. Native model/session/approval/wake/residency remain unverified; focused and root totals overlap.",
+    "supplemental_sources": [
+      {
+        "path": "src/adapter-host/stdio.ts",
+        "sha256": "1dee4d013a35ca78ca26b125565a0f521c268ee0b655449a9ec75bbaee06313c",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Full review of inherited draft and EOF correction. Reuses private single-source host authorization and owner attachment, default deny/pause, local-only permit/resume, finite lifetime and explicit EOF/pipe-error stop. Pause/drain/close precede owner release; timeout preserves owner and stores, explicit retry may finish. Native launch identity/policy/approval remain prerequisites."
+      },
+      {
+        "path": "test/single-source-stdio.test.js",
+        "sha256": "faba3a88a7d85a3719f8d76f92a243902e08cb6fea030d238622ad6f4da286a4",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Five official SDK owned-child cases: denied/paused and local management, fixed source/exact persisted reply plus queued-send revocation, finite expiry, EOF graceful cleanup, and held-response drain timeout/late-save fencing/stop retry. Parent owns broker/scratch; synthetic authority and in-process Relay HTTP are stated limitations."
+      },
+      {
+        "path": "test/single-source-stdio-child.js",
+        "sha256": "418706c4881c8e85d9373776900306b164eb74a4c311cd5bff928e6fe7a1521c",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Test-only private command file controls synthetic owner outside MCP; borrows parent broker descriptor, uses real owned SQLite stores, emits cleanup only after stopped owner and store closure. SIGTERM fallback is a failure marker, not graceful proof."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "79a1b5e9ce8695f2f8bdc3a3276f2ab2f749e2cc3ae66749a5ccfbbf1707675b",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened."
+      }
+    ]
   }
 ]

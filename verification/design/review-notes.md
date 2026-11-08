@@ -93,3 +93,12 @@ Eight optional synthetic cases pass, including fail-closed flags and oversized
 sparse files. These checks still do not prove launch-time isolation or native
 identity/approval. Filesystem snapshots and caller-reviewed artifact assumptions
 remain explicit. No requirement or manual acceptance status changed.
+
+Dedicated stdio maintenance (2026-11-08): an independent read-only reviewer
+checked the stdio lifecycle, existing host/owner authorization and new guide.
+The initial draft incorrectly relied on the SDK to close on stdin EOF; explicit
+EOF/close/error handling now starts the same pause/drain/close/release path.
+Existing F02/F03/F07/F16/E09 remain unchanged and gain an overlapping focused
+SDK check. The current expected root inventory is 1251; previous counts remain
+historical. Native recipient/session identity, approvals, model, wake, residency
+and deployment remain manual/unverified.

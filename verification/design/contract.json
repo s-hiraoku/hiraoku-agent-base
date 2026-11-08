@@ -530,10 +530,10 @@
     },
     {
       "path": "docs/implementation/recipient-host-mcp-proposal.md",
-      "sha256": "117a453eb69ea7487046a96ba5851c3baad6a4c4cdc010b99e13717d1693ba8e",
+      "sha256": "b0da86760bf2eff0ae0808564d1a5c9a82aad6eba78c29fd4f26432c9ac8cebd",
       "role": "context",
       "review": "reviewed",
-      "summary": "Proposal context for a separate opt-in recipient-host MCP wrapper over AdapterHostCycle. Fixed operation schemas and one trusted recipient context preserve current source/actor/epoch/commit authority; exposure is not permission. Receive/read, persisted answer and send remain separate. The normal five-tool Relay, receive supervisor and RecipientMessagePort are unchanged. In-memory and owned stdio/SQLite/JetStream fixtures establish synthetic paths only; native policy/session/wake/approval, production transport and deployment remain unverified. PR141 follow-up adds an owner-composed inbox_read result budget with body-free refusal, full-response recovery only under compatible owner-selected transport limits, no truncation and no mutating-result replacement. Parent-owned synthetic broker/scratch cleanup and stderr drainage are tested separately from clean child shutdown; native/manual gates remain unverified."
+      "summary": "Proposal context for a separate opt-in recipient-host MCP wrapper over AdapterHostCycle. Fixed operation schemas and one trusted recipient context preserve current source/actor/epoch/commit authority; exposure is not permission. Receive/read, persisted answer and send remain separate. The normal five-tool Relay, receive supervisor and RecipientMessagePort are unchanged. In-memory and owned stdio/SQLite/JetStream fixtures establish synthetic paths only; native policy/session/wake/approval, production transport and deployment remain unverified. PR141 follow-up adds an owner-composed inbox_read result budget with body-free refusal, full-response recovery only under compatible owner-selected transport limits, no truncation and no mutating-result replacement. Parent-owned synthetic broker/scratch cleanup and stderr drainage are tested separately from clean child shutdown; native/manual gates remain unverified. Dedicated owner-side stdio appendix links the explicit initial-deny wiring without claiming a production launcher or native acceptance."
     },
     {
       "path": "docs/implementation/recipient-python-mcp-acceptance.md",
@@ -848,10 +848,10 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "9156d953b52dffa59607725cd8209860bf0741d068077e48e804f2ac5a90eea1",
+      "sha256": "e289bcc09be79cd881f05eb36a482025bfa3ee6738756be250890b5ce180c657",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1246) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1251) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
       "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
     },
@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "bdb028089f3cdcd805e18ed4918843992e488f631739811885e0e1921fd7fe69",
+      "sha256": "490ba2685b56f30abebc7a78096d04c21fd3226feed01fa9df75e4c173d669f8",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -988,11 +988,18 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "9bd4dfd1456ca4a5c6a95081cd259695dd179f3697ee7dc94e2424e139bbcdf5",
+      "sha256": "6341a5260367dd9a2456a14f498045ce9552073e3fb8b7892b97b1b31f5beba4",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+    },
+    {
+      "path": "docs/recipient-stdio.md",
+      "sha256": "52c5aae334d8a983de53913f49f826116a6a471307a6902a8fd1ee081ed089dd",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Explicit owner-side stdio composition over existing fixed-source host, acquired owner and answer intents. Default deny/pause, local-only management, finite lifetime and pause/drain/close/release; trusted launch contexts and native policy remain prerequisites. Synthetic SDK/SQLite/broker tests are not live product acceptance."
     }
   ],
   "requirements": [
@@ -1039,7 +1046,8 @@
         "js-common-mcp",
         "native-recipient",
         "js-recipient-messages",
-        "js-recipient-host-mcp"
+        "js-recipient-host-mcp",
+        "js-single-source-stdio"
       ],
       "citations": [
         {
@@ -1067,7 +1075,8 @@
         "js-common-mcp",
         "ast-boundary",
         "js-recipient-messages",
-        "js-recipient-host-mcp"
+        "js-recipient-host-mcp",
+        "js-single-source-stdio"
       ],
       "citations": [
         {
@@ -1199,7 +1208,8 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "js-recipient-host-mcp"
+        "js-recipient-host-mcp",
+        "js-single-source-stdio"
       ],
       "citations": [
         {
@@ -1411,7 +1421,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "js-recipient-host-mcp"
+        "js-recipient-host-mcp",
+        "js-single-source-stdio"
       ],
       "citations": [
         {
@@ -3392,7 +3403,8 @@
       "scope": "Optional SQLiteHostOwner; local-MVP composition requires it, legacy unconfigured compatibility is not evidence of owner enforcement.",
       "decision": "accepted",
       "checks": [
-        "js-root"
+        "js-root",
+        "js-single-source-stdio"
       ],
       "citations": [
         {
@@ -3905,7 +3917,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "e01e13d57bcde232f5dfb1bfdba140e2f9835a6726acd7b01502b4b031694b03"
+          "excerpt_sha256": "ea13c3360a617bdfc8ecfe3ece769502c396b2a92ce368880565147b824795c6"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4436,6 +4448,25 @@
       "protocol": "node-tap",
       "proves": "Opt-in tool discovery without host calls; fixed context/operation schemas; per-call forwarding, synthetic operation revocation and sanitized errors; incomplete results without wrapper retries; real recipient SQLite receive/read, fixed answer enqueue/replay and separate send; official SDK MCP over in-memory and owned separate stdio processes. Parent-owned broker/scratch cleanup is checked after a deliberately interrupted child cleanup, with bounded stderr drainage. Exact UTF-8/JSON-escaped inbox_read CallToolResult limits reject without body/truncation, cannot be raised by tool arguments and preserve mutating results. A refused stdio read leaves discovery usable; explicit owner-aligned server/client budgets retrieve the complete same synthetic source.",
       "limitations": "Synthetic recipient identity, policy, operator resume and chosen answers. Relay HTTP is an in-process gateway, not a socket deployment. Size cases use a synthetic host result, not a real large-message store or installed product. The read budget excludes JSON-RPC framing/request IDs and is not a universal wire/output/memory cap; products unable to carry the full response remain blocked. Stdio proves SDK transport and owned cleanup, not native session/auth/approval/wake, readOnlyHint enforcement, residency, restart or physical-fault recovery. Forced cleanup is not clean child shutdown or crash-durability proof. Post-call receipt observations do not replace the independent pre-ACK observer. Tests overlap js-root; counts are not unique.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-single-source-stdio",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/single-source-stdio.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Official SDK client over an owned separate stdio process with real recipient SQLite and a parent-owned private JetStream broker. Default deny/pause and explicit local-only grant/resume; fixed source and exact durable reply enqueue/send with revocation; finite lifetime and EOF pause/drain/close/owner release before caller store cleanup; failed drain retains ownership until underlying work settles and a local stop retry succeeds. No Task or arbitrary enqueue is exposed.",
+      "limitations": "Recipient/operator identity, policy and chosen answer are synthetic. Relay HTTP uses the existing in-process gateway. Not native session binding, product approval, model judgment, wake, residency, production launcher, process crash or physical restore evidence. Source grant covers the whole dedicated single-producer outbox, not exact-body human approval. Post-call receipt evidence does not replace the independent pre-ACK observer. Tests overlap js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
@@ -5386,7 +5417,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "956eacb043f8a9374137af8a1ea74fb78723a1651003402f58508d29c05ee4de"
+          "excerpt_sha256": "184047a917476dd8129ea1b46b3d182eb05da169ae17e65b5e6b2433b9403112"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5401,7 +5432,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim."
     },
     {
       "status": "resolved",
