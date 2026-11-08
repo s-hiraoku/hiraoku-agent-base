@@ -82,7 +82,8 @@ HTTP 504で繰り返し停止した。取得URLや固定ハッシュの誤りを
 外部取得が不安定な状況で単発取得がCI全体を失敗させていた。
 
 CIの`install-ci-nats.mjs`は既存の固定版installerを呼び、408／429／500／502／503／504
-だけを最大4回、1・2・4秒の待機で再試行する。公式URL、archiveのSHA-256、実行版の
+と、fetchの`ERR_HTTP2_STREAM_ERROR`／`http2ErrorCode: 7`（REFUSED_STREAM）だけを
+同じ最大4回・1／2／4秒待機の枠で再試行する。公式URL、archiveのSHA-256、実行版の
 検証は元のinstallerに残す。403／404、ハッシュ・版不一致、子プロセス起動失敗・signal
 では直ちに停止する。成功時だけ元のJSONをstdoutへ出し、再試行の診断はstderrへ出す。
 恒久的な配布障害の解消を保証するものではなく、最終失敗はCIの失敗として残す。
@@ -90,3 +91,11 @@ CIの`install-ci-nats.mjs`は既存の固定版installerを呼び、408／429／
 cache hitでもinstallerを省略せず、毎回SHA-256と実行版を検証する。既存の破損cacheを
 実CLIへ渡す負例でも、展開前に拒否して成功JSONを出さないことを確認する。
 この回帰試験とCI成功を、Museの実接続・実応答の証拠にはしない。
+
+main `4dfcd14`のDesign CI run `42472004750`は、HTTP応答前のREFUSED_STREAMで
+installerが停止した。事前11試験は成功したが、後段の設計監査・実検証は未実行だった。
+この接続拒否は[RFC 9113 §8.7](https://www.rfc-editor.org/rfc/rfc9113.html#section-8.7)
+の再試行可能な条件である。固定Node版のfetch失敗・stream error・code 7を組み合わせて
+識別し、他のHTTP/2 code、一般的なfetch／TLS失敗を再試行対象へ広げない。
+記録済みstderrによる回復・上限・隣接code拒否の追加試験は、実配布側で同じ障害を
+再発させて回復した証明とは区別する。

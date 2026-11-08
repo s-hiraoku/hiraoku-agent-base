@@ -10,6 +10,12 @@ const installer = fileURLToPath(
 const transientHttpError =
   /^Error: official server download failed (408|429|500|502|503|504)\r?$/m;
 
+const transientDownloadError = (stderr = "") =>
+  transientHttpError.test(stderr) ||
+  (/\bTypeError: fetch failed\b/.test(stderr) &&
+    /\bcode:\s*['"]ERR_HTTP2_STREAM_ERROR['"]/.test(stderr) &&
+    /\bhttp2ErrorCode:\s*7\b/.test(stderr));
+
 export type InstallerResult = Pick<SpawnSyncReturns<string>, "status"> &
   Partial<
     Pick<SpawnSyncReturns<string>, "stdout" | "stderr" | "error" | "signal">
@@ -41,7 +47,7 @@ export async function installCiNats(
       result.error ||
       result.signal ||
       index === 3 ||
-      !transientHttpError.test(result.stderr ?? "")
+      !transientDownloadError(result.stderr)
     ) {
       throw new InstallerError(result);
     }

@@ -976,7 +976,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "431c25a0414561ccab1bca6cd661918ec36c31e3b6c9564bee5402fac7ba6322",
+      "sha256": "8359944d32fba86b173cc199925663403482a364fabd966fea9bc5f98adf0f64",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1007,10 +1007,10 @@
     },
     {
       "path": "docs/muse-connection.md",
-      "sha256": "1939b881decde3b9cfd754d5aa609560561a178f8df501cb9593f5f1cbbf20eb",
+      "sha256": "5a6a5c3e6b697496d58661d26c108fdd1d21d24ebcca0709d2d7574e776aca58",
       "role": "context",
       "review": "reviewed",
-      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction."
+      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction. Main HTTP/2 refused-stream failure is separately recorded; only the pinned fetch/stream/code7 diagnostic joins the shared retry budget, with adjacent-code/TLS negative controls."
     },
     {
       "path": "docs/typescript-migration.md",

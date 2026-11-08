@@ -1829,5 +1829,27 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "TypeScript and main HTTP/2 retry reconciliation",
+    "baseline": "a4b6fb96fb3cb9ae6da5bd3dad23657573447076 + cc9c775748136601f2e5c3fcea79cd1d2bd3eb1a",
+    "summary": "Read both installer implementations and complete tests. Keep the TypeScript implementation and unchanged legacy .mjs delegation. Port only main's existing fetch-failed / ERR_HTTP2_STREAM_ERROR / code 7 recognition into the shared four-attempt budget; HTTP status rules, pinned archive/version verification, spawn/signal failure and final-failure behavior remain unchanged. Preserve all sixteen installer cases with strict narrowing and an explicit nonempty attempt assertion. Recorded diagnostics are regression fixtures, not live delivery recovery or native acceptance. Historical reviews remain unchanged; this entry supersedes the two changed TypeScript source hashes.",
+    "supplemental": [
+      {
+        "path": "scripts/install-ci-nats.ts",
+        "sha256": "c04bd3cb7b776444bd242af6641837e32ed0c4301873b39d32426e75eb806d7f",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/install-ci-nats.mjs",
+        "sha256": "00bc4ad8a9087370f463f1ea9d6acb4baae669b3722bcb17fdf8f91da88595df",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/ci-nats/install.test.ts",
+        "sha256": "dc76ec22c29c40edaa6841fe15d08ace6ee08b0fdb33505f9a3e3f0168323db6",
+        "review": "reviewed"
+      }
+    ]
   }
 ]
