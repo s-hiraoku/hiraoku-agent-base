@@ -684,7 +684,7 @@ test("CLI prints JSON results and fixed refusal codes without secrets", async (t
         stderr = "";
       child.stdout.on("data", (d) => (stdout += d));
       child.stderr.on("data", (d) => (stderr += d));
-      const [code] = await once(child, "exit");
+      const [code] = await once(child, "close");
       return { code, stdout, stderr };
     };
     const ok = await run(

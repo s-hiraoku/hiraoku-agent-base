@@ -1851,5 +1851,22 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "PR152 CodeRabbit subprocess output completion",
+    "baseline": "5c3b3d5054b6fc537113a62a3357405333913252",
+    "summary": "Reviewed the admin CLI and Relay SIGTERM/restart compatibility cases. Both now await child close before inspecting captured stdout/stderr, so process exit alone cannot race pending pipe data. The Relay close listener is registered before SIGTERM; the readiness failure listener still observes exit. Existing exit code/signal, stopped output, empty stderr, address state, secret omission and owned-port closure assertions remain unchanged for both .ts and .mjs. No product code, test catalog count, timeout, authority or native/manual acceptance gate changes. This source review supersedes only the two changed test hashes; historical evidence is retained.",
+    "supplemental": [
+      {
+        "path": "test/local-relay-admin.test.js",
+        "sha256": "51425c5efb312517c9d6b5adfd6eb374feb10e1e742f98587dbf204fbafdf575",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/local-relay-service.test.js",
+        "sha256": "8ef21031cb6eea748c19c356b7c6afda2bd84251a0cf5e04155fc422a6d9aee4",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

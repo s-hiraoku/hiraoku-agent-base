@@ -275,9 +275,9 @@ test("CLI uses private state across SIGTERM/restart and closes its owned port", 
       const info = await ready;
       assert.equal(info.state, "ready");
       assert.equal((await list(info.url)).status, 401);
-      const exited = once(child, "exit");
+      const closed = once(child, "close");
       child.kill("SIGTERM");
-      const [code, signal] = await exited;
+      const [code, signal] = await closed;
       assert.equal(code, 0);
       assert.equal(signal, null);
       assert.ok(output.includes('"state":"stopped"'));
