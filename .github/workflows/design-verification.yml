@@ -26,7 +26,9 @@ jobs:
       - name: Install the pinned nats-server for JetStream delivery tests
         run: |
           mkdir -m 700 -p .runtime
-          node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
+          node node_modules/eslint/bin/eslint.js scripts/install-ci-nats.mjs test/ci-nats/install.test.js
+          node --test test/ci-nats/install.test.js
+          node scripts/install-ci-nats.mjs > .runtime/nats-install.json
       - name: Read pinned generic coordinator only
         uses: actions/checkout@v4
         with:

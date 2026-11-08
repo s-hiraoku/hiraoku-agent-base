@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "8bbd93f80faf165f1deb2f83d56545d4bebb92a3aff595ca6e0001030d2d96c6",
+      "sha256": "9539d55ea7f6d7e48724884c7c85a2adf5dc488e77089258a308ec34a73b9a22",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1003,10 +1003,10 @@
     },
     {
       "path": "docs/muse-connection.md",
-      "sha256": "f11bb0b87aac55462b3c66a5cf5ad5dfb461ac1e2d640511ba05d6b0bd463d4e",
+      "sha256": "6da3d6113747cec960a76475d79c50a21b113840a17a34e75ca5a8657aec50a3",
       "role": "context",
       "review": "reviewed",
-      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed."
+      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance."
     }
   ],
   "requirements": [

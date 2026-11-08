@@ -21,7 +21,11 @@ jobs:
       - run: npm ci --prefix packages/relay-nats --ignore-scripts
       - run: npm run check --prefix packages/relay-nats
       - run: mkdir -m 700 -p .runtime
-      - run: node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
+      - name: Check bounded NATS download retries
+        run: |
+          node node_modules/eslint/bin/eslint.js scripts/install-ci-nats.mjs test/ci-nats/install.test.js
+          node --test test/ci-nats/install.test.js
+      - run: node scripts/install-ci-nats.mjs > .runtime/nats-install.json
       - run: node docs/diagrams/render-mermaid.mjs --check
       - run: npm run lint
       - run: npm run typecheck

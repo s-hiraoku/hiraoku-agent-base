@@ -193,3 +193,7 @@ historical evidence remains unchanged. No native/manual gate is promoted.
 | docs/muse-connection.md | context / reviewed | Read in full against common-mcp-connection, persistent-mcp-auth, relay-auth-groups, mcp-agent-discovery and recipient-stdio. Identifies the installed Meta Muse app and the locked-UI blocker. Official custom-connector help is separated from public-platform submission and from actual HTTP MCP/OAuth/wake support. Reuses existing recipient-owned approval and durable save-before-ACK requirements; proposes no product branch or new execution authority. Live connection, native model/UI, refresh and residency remain unverified. |
 
 No stable requirement, source citation, conflict or manual gate is changed. This is a connection preparation record, not a production acceptance result.
+
+## CI download retry follow-up (2026-11-08)
+
+Reread the complete Muse context document and the changed CI workflows against the unchanged pinned installer. A new CI-only wrapper retries only the installer's fixed transient HTTP status diagnostics, up to four attempts with 1/2/4-second waits. It does not change official URLs, checksum/version verification, P7 source profiles, product runtime, registration or native authority. Permanent HTTP/integrity/version/process failures remain failures. The eight nested CI tests use synthetic child results; they neither add root-suite cases nor establish actual Muse/network compatibility. Both active workflows run their lint and tests before the wrapper. Existing requirements and manual gates stay unchanged.
