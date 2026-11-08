@@ -14,6 +14,7 @@ import { coldBackup, restoreImage, sealOracle, readOracle } from "./backup.js";
 import { sha256 } from "../../scripts/lib/p7-provenance.mjs";
 import { join } from "node:path";
 import { TaskState, ListTasksRequest } from "@a2a-js/sdk";
+import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
 import {
   openP7System,
   a2aRequest,
@@ -34,7 +35,8 @@ function evidence(id, data) {
 async function receiveRequest(f) {
   await eventually(async () => {
     await f.recipient.receiveOnce();
-    return f.recipientEntries().length === 1;
+    const entries = f.recipientEntries();
+    return entries.length === 1 && entries[0].receipt_confirmed;
   });
 }
 async function receiveResult(f, count) {
@@ -404,7 +406,22 @@ test("P7-04 same-ID rename preserves the NATS chain and receipt across a cold ho
     (await f.receipt(replay)).expires_at,
     originalReceipt.expires_at,
   );
+  // A durable inbox row is not execution authority until its ACK is confirmed.
+  // Leave the first post-restart receive cycle unconfirmed, without wall-clock
+  // sleeps, to cover the save/ACK gap (including an exhausted ACK generation).
+  const claimAck = SQLiteInbox.prototype.claimAck;
+  let deferredAck = false;
+  const ackMock = t.mock.method(SQLiteInbox.prototype, "claimAck", function () {
+    if (!deferredAck && this.inbox().some((entry) => !entry.receipt_confirmed)) {
+      deferredAck = true;
+      return null;
+    }
+    return claimAck.call(this);
+  });
   await receiveRequest(f);
+  ackMock.mock.restore();
+  assert.equal(deferredAck, true);
+  assert.equal(f.recipientEntries()[0].receipt_confirmed, true);
   const { done } = await execute(f, replay, witnesses);
   const fresh = await f.client.sendMessage(
     a2aRequest("p7_rename_restart_new"),
