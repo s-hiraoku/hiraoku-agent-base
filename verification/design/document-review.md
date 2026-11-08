@@ -203,3 +203,12 @@ Follow-up: full wrapper retries were observed in Linux CI, but some workers stil
 CodeRabbit follow-up: the real CLI ENOENT control failed before the diagnostic correction (only generic failure was printed). The corrected stderr fallback preserves child stderr first and otherwise reports the retained spawn error. The ten-case suite now includes actual failed child creation in an owned scratch directory, nonzero/empty-stdout/no-retry observations and cleanup. This changes diagnostics only; errors still fail closed.
 
 The CodeRabbit coverage nit is also addressed: HTTP 408/500/502 each fail then recover, retaining existing 504/503/429 and exhaustion/permanent-failure controls. The nested suite now has eleven cases. No root inventory or runtime policy changes.
+
+## Claude Code and Grok Bot onboarding review
+
+Reviewed the two connection guides against common-MCP, persistent-auth, recipient-readiness and recipient-stdio. These are product onboarding context, not new design authority or live acceptance. The Claude JSON example has placeholders only and creates no grant. Grok account-wide sharing and remote execution remain explicit gates; no product-specific core path or synthetic success replaces them.
+
+| Path | Role | Review and meaning |
+| --- | --- | --- |
+| docs/claude-code-connection.md | context / reviewed | Claude Code native MCP onboarding context: observed CLI version/capabilities, reviewed HTTP OAuth template, separate client and group setup, existing approval boundaries, durable save-before-ACK and private launch prerequisites. Configuration parsing is separate from live authentication/model/residency acceptance; no product runtime is added. |
+| docs/grok-bot-connection.md | context / reviewed | Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB. |
