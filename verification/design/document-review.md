@@ -186,6 +186,24 @@ independent held-owner observations around a gated SDK close. Updated only
 current acceptance-count references in publication.md and delivery-lab.md; their
 historical evidence remains unchanged. No native/manual gate is promoted.
 
+## Muse onboarding investigation (2026-11-08)
+
+| Document | Classification | Review |
+| --- | --- | --- |
+| docs/muse-connection.md | context / reviewed | Read in full against common-mcp-connection, persistent-mcp-auth, relay-auth-groups, mcp-agent-discovery and recipient-stdio. Identifies the installed Meta Muse app and the locked-UI blocker. Official custom-connector help is separated from public-platform submission and from actual HTTP MCP/OAuth/wake support. Reuses existing recipient-owned approval and durable save-before-ACK requirements; proposes no product branch or new execution authority. Live connection, native model/UI, refresh and residency remain unverified. |
+
+No stable requirement, source citation, conflict or manual gate is changed. This is a connection preparation record, not a production acceptance result.
+
+## CI download retry follow-up (2026-11-08)
+
+Reread the complete Muse context document and the changed CI workflows against the unchanged pinned installer. A new CI-only wrapper retries only the installer's fixed transient HTTP status diagnostics, up to four attempts with 1/2/4-second waits. It does not change official URLs, checksum/version verification, P7 source profiles, product runtime, registration or native authority. Permanent HTTP/integrity/version/process failures remain failures. The nested CI retry tests use synthetic child results; they neither add root-suite cases nor establish actual Muse/network compatibility. Both active workflows run their lint and tests before the wrapper. Existing requirements and manual gates stay unchanged.
+
+Follow-up: full wrapper retries were observed in Linux CI, but some workers still received four 504s. Public HEAD requests with and without cache-control also returned 504. Both workflows now use the fixed official actions/cache commit, storing only archives keyed by OS/architecture/the unchanged installer hash. Cache hits never skip the original SHA-256 and version checks. A ninth test drives the real CLI with a corrupt preexisting archive, observes a nonzero exit/empty stdout/hash refusal and no retry, and removes only its owned temporary directory after child exit. The helper and test were read in full; cache is an availability optimization, not source authority or proof of Muse compatibility.
+
+CodeRabbit follow-up: the real CLI ENOENT control failed before the diagnostic correction (only generic failure was printed). The corrected stderr fallback preserves child stderr first and otherwise reports the retained spawn error. The ten-case suite now includes actual failed child creation in an owned scratch directory, nonzero/empty-stdout/no-retry observations and cleanup. This changes diagnostics only; errors still fail closed.
+
+The CodeRabbit coverage nit is also addressed: HTTP 408/500/502 each fail then recover, retaining existing 504/503/429 and exhaustion/permanent-failure controls. The nested suite now has eleven cases. No root inventory or runtime policy changes.
+
 ## Claude Code and Grok Bot onboarding review
 
 Reviewed the two connection guides against common-MCP, persistent-auth, recipient-readiness and recipient-stdio. These are product onboarding context, not new design authority or live acceptance. The Claude JSON example has placeholders only and creates no grant. Grok account-wide sharing and remote execution remain explicit gates; no product-specific core path or synthetic success replaces them.

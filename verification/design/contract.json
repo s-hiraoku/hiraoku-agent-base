@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "8a76065889ec19fc07cebd43c94456ba006e25f0a5d1c57d5c3628bb180be0bc",
+      "sha256": "431c25a0414561ccab1bca6cd661918ec36c31e3b6c9564bee5402fac7ba6322",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1000,6 +1000,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit owner-side stdio composition over existing fixed-source host, acquired owner and answer intents. Default deny/pause, local-only management, finite lifetime and pause/drain/close/release; trusted launch contexts and native policy remain prerequisites. Synthetic SDK/SQLite/broker tests are not live product acceptance. Stop irreversibly fences all recipient guards before control IO, retaining operator cleanup if durable pause fails; recovered active control cannot restore a recipient grant."
+    },
+    {
+      "path": "docs/muse-connection.md",
+      "sha256": "1939b881decde3b9cfd754d5aa609560561a178f8df501cb9593f5f1cbbf20eb",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction."
     },
     {
       "path": "docs/claude-code-connection.md",
