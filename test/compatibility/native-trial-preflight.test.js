@@ -1,8 +1,10 @@
 import { test } from "node:test";
+import process from "node:process";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  truncateSync,
   mkdirSync,
   mkdtempSync,
   realpathSync,
@@ -17,6 +19,7 @@ import {
   readNativeTrialPlan,
 } from "../../scripts/lib/native-trial-preflight.mjs";
 
+/** Isolated unlaunched synthetic artifacts; no native products or secrets. */
 function fixture(t) {
   const dir = mkdtempSync(join(realpathSync(tmpdir()), "hab-plan-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -180,7 +183,11 @@ test("unknown, missing, unsafe, or unbounded declarations are rejected", (t) => 
 test("root refuses reused state, profiles ancestry, nonprivate and symlink paths", (t) => {
   const p = fixture(t);
   writeFileSync(join(p.hermes.root, "gateway.json"), "synthetic");
-  assert.deepEqual(preflightNativeTrial(p).errors, ["root_not_empty"]);
+  assert.deepEqual(preflightNativeTrial(p), {
+    launchAllowed: false,
+    offlineValid: false,
+    errors: ["root_not_empty"],
+  });
   rmSync(join(p.hermes.root, "gateway.json"));
   chmodSync(p.hermes.root, 0o755);
   assert.deepEqual(preflightNativeTrial(p).errors, ["nonprivate_directory"]);
@@ -261,4 +268,30 @@ test("zero budget is valid but blank fields and dot-prefixed profile children ar
   p.hermes.root = join(p.hermes.cwd, "..trial");
   mkdirSync(p.hermes.root, { mode: 0o700 });
   assert.deepEqual(preflightNativeTrial(p).errors, ["existing_profile_root"]);
+});
+
+test("profile boundary aliases, unusable commands and oversized artifacts fail closed", (t) => {
+  const p = fixture(t);
+  const alias = join(p.hermes.cwd, "profile-alias");
+  symlinkSync(p.hermes.root, alias);
+  p.hermes.existingProfilesRoot = alias;
+  assert.deepEqual(preflightNativeTrial(p).errors, ["symlink_path"]);
+  p.hermes.existingProfilesRoot = join(alias, "not-created");
+  assert.deepEqual(preflightNativeTrial(p).errors, ["symlink_path"]);
+  p.hermes.existingProfilesRoot = join(p.hermes.cwd, "absent-profiles");
+  if (process.getuid() !== 0) {
+    chmodSync(p.hermes.binary.path, 0o641);
+    assert.deepEqual(preflightNativeTrial(p).errors, [
+      "artifact_not_executable",
+    ]);
+  }
+  chmodSync(p.hermes.binary.path, 0o600);
+  assert.deepEqual(preflightNativeTrial(p).errors, ["artifact_not_executable"]);
+  chmodSync(p.hermes.binary.path, 0o700);
+  truncateSync(p.hermes.binary.path, 128 * 1024 * 1024 + 1);
+  assert.deepEqual(preflightNativeTrial(p), {
+    launchAllowed: false,
+    offlineValid: false,
+    errors: ["artifact_too_large"],
+  });
 });

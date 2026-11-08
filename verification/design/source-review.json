@@ -1581,10 +1581,10 @@
     "supplemental": [
       {
         "path": "scripts/lib/native-trial-preflight.mjs",
-        "sha256": "96de62083aee5f5c6504d2b405d984506b999cffd2a4e5ef09fb091da3a58fa5",
+        "sha256": "5cd49e9d5aef6287c3868de61dfc7e906ce703dfc32c039f0b3807e7ab02e3cf",
         "review": "reviewed",
         "read_coverage": "full new file",
-        "summary": "Strict declared plan plus read-only path/hash snapshot; launchAllowed always false. Manifest read is fd-bound regular-file and 64KiB bounded. Native settings, approval, provenance, costs and cleanup stay pending."
+        "summary": "Strict declared plan plus read-only path/hash snapshot; launchAllowed always false. Manifest read is fd-bound regular-file and 64KiB bounded. Native settings, approval, provenance, costs and cleanup stay pending. Review corrections: declared profile boundary components reject aliases; executable access uses current-user X_OK; artifact hash reads at most 128MiB+1 through one regular fd with bounded chunks and guaranteed close."
       },
       {
         "path": "scripts/native-trial-preflight.mjs",
@@ -1595,10 +1595,10 @@
       },
       {
         "path": "test/compatibility/native-trial-preflight.test.js",
-        "sha256": "490ca66418d83f8fbd2ce33990aec29350abeb0e13db0e12fc0fc5e71849945f",
+        "sha256": "16a72d61f3f7531f57ee80898d49909cb85cb97dd1617632473a5b157b7f2588",
         "review": "reviewed",
         "read_coverage": "full new file",
-        "summary": "Seven optional synthetic-only cases including unsafe/missing fields, symlinks, profile ancestry, bounded manifest reads, blank fields and zero spending cap; no native process or credentials."
+        "summary": "Seven optional synthetic-only cases including unsafe/missing fields, symlinks, profile ancestry, bounded manifest reads, blank fields and zero spending cap; no native process or credentials. Eighth regression covers existing and missing-tail profile aliases, current-user 0641 failure when non-root, non-executable inputs, sparse oversized files and full fail-closed result flags."
       }
     ]
   }

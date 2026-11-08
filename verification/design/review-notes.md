@@ -83,3 +83,13 @@ blank declarations and zero-budget support, and bounding regular-file manifest
 reads through an opened descriptor. An earlier five-case rerun failed solely
 at temporary-directory creation with ENOSPC; it is not a successful run. No
 native product, credential, configuration, network, or model was exercised.
+
+
+PR #145 review corrections preserve the same non-launching scope. Artifact
+hashing now caps descriptor reads at 128 MiB plus one growth-detection byte;
+profile-boundary aliases are rejected even with a missing suffix; executable
+access is checked for the current inspecting user rather than any mode bit.
+Eight optional synthetic cases pass, including fail-closed flags and oversized
+sparse files. These checks still do not prove launch-time isolation or native
+identity/approval. Filesystem snapshots and caller-reviewed artifact assumptions
+remain explicit. No requirement or manual acceptance status changed.

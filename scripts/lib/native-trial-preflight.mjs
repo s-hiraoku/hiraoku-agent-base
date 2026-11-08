@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import {
   lstatSync,
   readdirSync,
-  readFileSync,
+  accessSync,
   openSync,
   closeSync,
   fstatSync,
@@ -88,6 +88,7 @@ const plan = z.strictObject({
   }),
 });
 
+/** Compare canonical absolute path components without resolving aliases. */
 function below(path, parent) {
   const r = relative(parent, path);
   return (
@@ -95,12 +96,21 @@ function below(path, parent) {
   );
 }
 
-// No realpath traversal: reject symlinks, including intermediate components.
-function inspectPath(path, directory, privateDirectory = false) {
+/** Reject existing symlink components, even above a not-yet-created boundary. */
+function inspectComponents(path, allowMissing = false) {
   for (let p = path; ; p = dirname(p)) {
-    if (lstatSync(p).isSymbolicLink()) throw Error("symlink_path");
+    try {
+      if (lstatSync(p).isSymbolicLink()) throw Error("symlink_path");
+    } catch (error) {
+      if (!allowMissing || error.code !== "ENOENT") throw error;
+    }
     if (p === dirname(p)) break;
   }
+}
+
+/** Inspect path type and optional current-owner private directory metadata. */
+function inspectPath(path, directory, privateDirectory = false) {
+  inspectComponents(path);
   const st = lstatSync(path);
   if (directory ? !st.isDirectory() : !st.isFile())
     throw Error("wrong_path_kind");
@@ -128,6 +138,7 @@ export function preflightNativeTrial(input) {
   const p = parsed.data;
   try {
     const root = p.hermes.root;
+    inspectComponents(p.hermes.existingProfilesRoot, true);
     if (below(root, p.hermes.existingProfilesRoot))
       throw Error("existing_profile_root");
     for (let ancestor = root; ; ancestor = dirname(ancestor)) {
@@ -151,18 +162,20 @@ export function preflightNativeTrial(input) {
     ]) {
       const st = inspectPath(a.path, false);
       if (st.size > 128 * 1024 * 1024) throw Error("artifact_too_large");
-      if (executable && !(st.mode & 0o111))
-        throw Error("artifact_not_executable");
+      if (executable) {
+        try {
+          accessSync(a.path, constants.X_OK);
+        } catch {
+          throw Error("artifact_not_executable");
+        }
+      }
       if (
         /^(npx|npm|pnpm|yarn|uvx|uv|pipx|bash|sh|zsh)(\.[^/]*)?$/.test(
           basename(a.path),
         )
       )
         throw Error("indirect_runner");
-      if (
-        createHash("sha256").update(readFileSync(a.path)).digest("hex") !==
-        a.sha256
-      )
+      if (boundedArtifactHash(a.path) !== a.sha256)
         throw Error("artifact_digest_mismatch");
     }
     return {
@@ -218,6 +231,39 @@ export function readNativeTrialPlan(path) {
     }
     if (length > limit) throw Error("manifest_too_large");
     return JSON.parse(bytes.subarray(0, length).toString("utf8"));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Hash at most 128 MiB through a regular fd, including a bounded growth probe. */
+function boundedArtifactHash(path) {
+  const limit = 128 * 1024 * 1024;
+  const fd = openSync(
+    path,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile()) throw Error("wrong_path_kind");
+    if (st.size > limit) throw Error("artifact_too_large");
+    const hash = createHash("sha256");
+    const chunk = Buffer.alloc(64 * 1024);
+    let total = 0;
+    while (total <= limit) {
+      const n = readSync(
+        fd,
+        chunk,
+        0,
+        Math.min(chunk.length, limit + 1 - total),
+        null,
+      );
+      if (!n) return hash.digest("hex");
+      total += n;
+      if (total > limit) throw Error("artifact_too_large");
+      hash.update(chunk.subarray(0, n));
+    }
+    throw Error("artifact_too_large");
   } finally {
     closeSync(fd);
   }
