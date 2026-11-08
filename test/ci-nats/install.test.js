@@ -112,6 +112,23 @@ test("a persistent 504 fails after four attempts", async () => {
   assert.deepEqual(delays, [1000, 2000, 4000]);
 });
 
+test("408, 500 and 502 each recover on the next attempt", async () => {
+  for (const status of [408, 500, 502]) {
+    const results = [httpFailure(status), success];
+    const delays = [];
+    assert.equal(
+      await installCiNats(
+        () => results.shift(),
+        async (delay) => delays.push(delay),
+        () => {},
+      ),
+      success.stdout,
+    );
+    assert.equal(results.length, 0);
+    assert.deepEqual(delays, [1000]);
+  }
+});
+
 for (const failure of [
   httpFailure(403),
   httpFailure(404),

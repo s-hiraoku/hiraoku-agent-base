@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "3c733a3c91bd99c999440df599439dc8c1d7d9eae33733999328d6e35b385809",
+      "sha256": "f2d90f9d2caf27544e757ef2441979559f1ec1ee2b8d96559e26152287f09d68",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
