@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "7cbcebcf82d125b7a73b9ae8c1bbf9a06c84fc39ca04004f73cacc7bf2534c72",
+      "sha256": "8bbd93f80faf165f1deb2f83d56545d4bebb92a3aff595ca6e0001030d2d96c6",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1000,6 +1000,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit owner-side stdio composition over existing fixed-source host, acquired owner and answer intents. Default deny/pause, local-only management, finite lifetime and pause/drain/close/release; trusted launch contexts and native policy remain prerequisites. Synthetic SDK/SQLite/broker tests are not live product acceptance. Stop irreversibly fences all recipient guards before control IO, retaining operator cleanup if durable pause fails; recovered active control cannot restore a recipient grant."
+    },
+    {
+      "path": "docs/muse-connection.md",
+      "sha256": "f11bb0b87aac55462b3c66a5cf5ad5dfb461ac1e2d640511ba05d6b0bd463d4e",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed."
     }
   ],
   "requirements": [

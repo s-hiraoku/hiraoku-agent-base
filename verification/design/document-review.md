@@ -185,3 +185,11 @@ retry. The seven SDK cases include recovered-control/late-poll rejection and
 independent held-owner observations around a gated SDK close. Updated only
 current acceptance-count references in publication.md and delivery-lab.md; their
 historical evidence remains unchanged. No native/manual gate is promoted.
+
+## Muse onboarding investigation (2026-11-08)
+
+| Document | Classification | Review |
+| --- | --- | --- |
+| docs/muse-connection.md | context / reviewed | Read in full against common-mcp-connection, persistent-mcp-auth, relay-auth-groups, mcp-agent-discovery and recipient-stdio. Identifies the installed Meta Muse app and the locked-UI blocker. Official custom-connector help is separated from public-platform submission and from actual HTTP MCP/OAuth/wake support. Reuses existing recipient-owned approval and durable save-before-ACK requirements; proposes no product branch or new execution authority. Live connection, native model/UI, refresh and residency remain unverified. |
+
+No stable requirement, source citation, conflict or manual gate is changed. This is a connection preparation record, not a production acceptance result.
