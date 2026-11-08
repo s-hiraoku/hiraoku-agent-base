@@ -207,3 +207,12 @@ The CodeRabbit coverage nit is also addressed: HTTP 408/500/502 each fail then r
 ## Main HTTP/2 refused-stream follow-up (2026-11-08)
 
 Read the changed wrapper, full nested tests and Muse context appendix against main4dfcd14. Design run42472004750 completed eleven preparation tests but failed on Node26 fetch with ERR_HTTP2_STREAM_ERROR/http2ErrorCode7 before later design checks. The wrapper now recognizes only that pinned diagnostic combination in addition to the existing transient HTTP statuses, sharing the original four-attempt budget. Recorded stderr controls failed before the fix, then passed. Adjacent HTTP/2 codes8/70 and TLS expiry stay nonretryable. The nested suite is sixteen cases; no root/P7 inventory, pinned installer, checksum/version authority or native/manual gate changes. Actual main rerun and latest PR CI remain separate evidence.
+
+## Claude Code and Grok Bot onboarding review
+
+Reviewed the two connection guides against common-MCP, persistent-auth, recipient-readiness and recipient-stdio. These are product onboarding context, not new design authority or live acceptance. The Claude JSON example has placeholders only and creates no grant. Grok account-wide sharing and remote execution remain explicit gates; no product-specific core path or synthetic success replaces them.
+
+| Path | Role | Review and meaning |
+| --- | --- | --- |
+| docs/claude-code-connection.md | context / reviewed | Claude Code native MCP onboarding context: observed CLI version/capabilities, reviewed HTTP OAuth template, separate client and group setup, existing approval boundaries, durable save-before-ACK and private launch prerequisites. Configuration parsing is separate from live authentication/model/residency acceptance; no product runtime is added. |
+| docs/grok-bot-connection.md | context / reviewed | Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB. |

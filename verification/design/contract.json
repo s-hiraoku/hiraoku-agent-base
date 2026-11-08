@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "72ccd624f43fa17a79a15c56e24df87552e2c6af660fa3576422e92c1ecd8c34",
+      "sha256": "3c5644898acdf8c12dd5a0f7eb1c26c46728126570431ecada8f0b624fe5618f",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1007,6 +1007,20 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction. Main HTTP/2 refused-stream failure is separately recorded; only the pinned fetch/stream/code7 diagnostic joins the shared retry budget, with adjacent-code/TLS negative controls."
+    },
+    {
+      "path": "docs/claude-code-connection.md",
+      "sha256": "1f3d1888306dee42ceeb1c9f8471fbb158e792b914866e35c5217132531a9687",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Claude Code native MCP onboarding context: observed CLI version/capabilities, reviewed HTTP OAuth template, separate client and group setup, existing approval boundaries, durable save-before-ACK and private launch prerequisites. Configuration parsing is separate from live authentication/model/residency acceptance; no product runtime is added."
+    },
+    {
+      "path": "docs/grok-bot-connection.md",
+      "sha256": "7ab0a4c9f7648043c6f86038ee84a57912e595f603b802095ec87355b44f492e",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB."
     }
   ],
   "requirements": [
