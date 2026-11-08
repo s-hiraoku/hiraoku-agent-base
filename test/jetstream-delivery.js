@@ -26,6 +26,11 @@ import {
 export { natsServerBinary };
 
 let shared;
+/** Synthetic subprocess fixtures may borrow a broker owned and cleaned up by their parent. */
+export function useParentTestBroker(broker) {
+  if (shared) throw Error("test_broker_already_initialized");
+  shared = Promise.resolve(broker);
+}
 /** One broker per test process; each delivery gets its own stream, so tests stay isolated. */
 export async function startBroker() {
   if (shared) return shared;

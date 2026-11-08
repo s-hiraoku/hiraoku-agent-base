@@ -1271,5 +1271,191 @@
         "summary": "Explicit composition on messaging/agent-sdk and JetStream-only main, retained native prerequisites and no default integration. Attachment rejection corrected to match current contract."
       }
     ]
+  },
+  {
+    "scope": "recipient-host MCP proposal maintenance",
+    "attestation": [
+      "Reviewed after latest-main merge 199202a178b35fc377197ace56522ec1d0c17715 onto main 322a940, followed by committed stdio source 6085738 and successor pin 8d3104c. Read-only independent source reader confirmed proposal/context classification; coordinator reread exact foundational citations and the wrapper, host/answer guards, full focused tests and stdio fixture. Existing requirement statements/decisions/citations and public feature map are preserved.",
+      "The wrapper is not a RecipientMessagePort RPC, native owner binding, wake mechanism or default Relay catalog extension. Native policy/session/auth/approval and product installation are unverified. The focused SDK test and actual hirastack source audit are separate from full live feature maintenance, production and hosted P7 acceptance."
+    ],
+    "supplemental_sources": [
+      {
+        "path": "src/adapter-host/mcp.ts",
+        "sha256": "38734ff11bbbcb08b82d89c9eb7b828e48bd3e691c1d0ef0ee01d9c3bf73ef3b",
+        "kind": "implementation",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Fixed opt-in schema dispatch and one composed context; host authorization remains authoritative; no listener, scheduler, credentials or model; external-origin label is advisory provenance, not permission."
+      },
+      {
+        "path": "src/adapter-host/cycle.ts",
+        "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2",
+        "kind": "implementation",
+        "review": "reviewed",
+        "read_coverage": "stepOnce schemas, authorization, pause/epoch/owner checks, inbox_read, answer-intent dispatch and incomplete-result handling",
+        "summary": "Existing host preserves exact source/current actor/commit guards; the wrapper does not replace this authority."
+      },
+      {
+        "path": "src/answer-intents/answers.ts",
+        "sha256": "a470d3c8cf20197819c5e653184e9443902c68093c0140faf4b15408f133f0b3",
+        "kind": "implementation",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "prepare validates confirmed question, persists original envelope and delegates guarded fixed-envelope handoff to existing journal/budget/outbox; inspect/pending are not execution rights."
+      },
+      {
+        "path": "test/recipient-host-mcp.test.js",
+        "sha256": "4413def0c63f7f7146b6901ecbc6ee1a9dcfa1000e2a304d44f6497e42b3f329",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Seven cases cover in-memory SDK and real SQLite/private JetStream host paths plus official SDK stdio in a separate owned child. Identity/policy/answer selection are synthetic. No actual native product or pre-ACK independent observer is substituted."
+      },
+      {
+        "path": "test/recipient-host-stdio-fixture.js",
+        "sha256": "7173dfc55c84cc3e43a8ea675012d05358ca9158b835d28e61c2e5ff8c853046",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Synthetic fixture, explicit test-only resume, bounded owned stdio child, private stores/broker and cleanup marker. Not a production launch/configuration or native session binding."
+      },
+      {
+        "path": "docs/implementation/recipient-host-mcp-proposal.md",
+        "sha256": "2d64d1ce02f305b2c24819f894acd964903ede52c8517a6137ebd0c817f7b7cb",
+        "kind": "context",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Reviewed proposal contract, usable owner-composition example, explicit RecipientMessagePort distinction and synthetic/native evidence limits."
+      },
+      {
+        "path": "docs/testing/delivery-lab.md",
+        "sha256": "a59a1f9a26b8470743122a9237b5a15bee7924e33d344236f90842c9f32fda3d",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+      },
+      {
+        "path": "docs/testing/p7-lab.md",
+        "sha256": "c21215a9fbabc2d53f52c1d49021b1af40bbe9e6e4a350a7544e34c8e0a23d51",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+      },
+      {
+        "path": "docs/testing/publication.md",
+        "sha256": "2f57d577e874eec5b3dbe756663598da41303dbb741eb0a2f3ffccea124f12eb",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "7133031196fb954b1a8f3b770394ee68fae333b12683bfff4cc8643815e2d08a",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+      }
+    ]
+  },
+  {
+    "scope": "PR141 result-size and parent-owned stdio cleanup correction",
+    "attestation": [
+      "Semantic review of completed diff against 3f1ffd61d3abbedbbc376d221465ce7772dd7d42. Independent read-only source reader and coordinator reviewed wrapper, size test, parent helper, child fixture, shared-broker injection, count changes and proposal. Existing requirement statements/rationales/scopes/decisions and manual gates are unchanged.",
+      "CallToolResult budget is not full-wire or memory bound; no truncation, paging, automatic authority/budget expansion or native-product pass. Parent-owned forced-cleanup evidence is not clean child shutdown, independent pre-ACK observation or crash durability. Source commit and separate immutable P7 pin update remain prerequisites to final combined verification."
+    ],
+    "supplemental_sources": [
+      {
+        "path": "src/adapter-host/mcp.ts",
+        "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e",
+        "kind": "implementation",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Read-only CallToolResult UTF-8 bound after host authorization; owner-only budget, body-free oversize error, complete successful response and mutating results unchanged."
+      },
+      {
+        "path": "test/recipient-host-mcp.test.js",
+        "sha256": "bdd398e7c76d45685b99aa3f09a59f653de13f886cb4a796bd009cda9bd3845d",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Eight cases including normal stdio and interrupted child cleanup; parent ownership and stderr drainage replace child-owned broker dependence."
+      },
+      {
+        "path": "test/recipient-host-mcp-size.test.js",
+        "sha256": "76e25d2006146de878f5b916c2a679bd3867334b559c763b10febd683cb3035f",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Two synthetic-host cases: exact Unicode/escaping byte boundary and owner-only budget/auth; actual stdio connection survives refusal and owner-aligned pair retrieves complete same source. No durable large-message store or product policy proof."
+      },
+      {
+        "path": "test/recipient-host-stdio-parent.js",
+        "sha256": "68f45e5228e6236d868a17f4407f57bec6b702386bcb7871bd8e1bd629a39567",
+        "kind": "verification helper",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Owns private broker/temporary directory independently of fixture child; closes SDK client, waits stderr end with timeout, then stops broker/removes scratch in finally. Descriptor contains transient synthetic credentials only."
+      },
+      {
+        "path": "test/recipient-host-stdio-fixture.js",
+        "sha256": "c23d93e27a0638048765513e96bd7a3a66ef401179c7cb21142ce7010a4896a5",
+        "kind": "verification helper",
+        "review": "reviewed",
+        "read_coverage": "full",
+        "summary": "Borrows parent-owned synthetic broker descriptor. Child-store cleanup emits marker; deliberate cleanup stall and 30-second bound exercise parent recovery without native product configuration."
+      },
+      {
+        "path": "test/jetstream-delivery.js",
+        "sha256": "aa5ef02b05d0ac37d7c29cb52febf343379b2288bfaea836b841ca3a535b0f83",
+        "kind": "verification helper",
+        "review": "reviewed",
+        "read_coverage": "changed injection and startBroker/openBackend use",
+        "summary": "New useParentTestBroker only supplies fixture broker before shared broker initialization; existing broker creation remains default and no production module changes."
+      },
+      {
+        "path": "docs/implementation/recipient-host-mcp-proposal.md",
+        "sha256": "117a453eb69ea7487046a96ba5851c3baad6a4c4cdc010b99e13717d1693ba8e",
+        "kind": "context",
+        "review": "reviewed",
+        "read_coverage": "full changed proposal and evidence",
+        "summary": "Reviewed byte-budget/framing/blocked-client limits and parent-owned cleanup wording; remains opt-in uninstalled proposal with native gates unverified."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "3997aed5b08f115e2e9de88418aeb0407e32fe75b0da45ee2650e00bf8071b27",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff and current acceptance context",
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+      },
+      {
+        "path": "docs/testing/p7-lab.md",
+        "sha256": "b961f951c5a170e61cdf99e8e058f13c3ad997b94d1b1315348975bbfeafc1df",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff and current acceptance context",
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+      },
+      {
+        "path": "docs/testing/publication.md",
+        "sha256": "4440b82aaa5d709583469108eb5c7f292229cb1a4fd1da9eac0f96d200de2582",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff and current acceptance context",
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+      },
+      {
+        "path": "docs/testing/delivery-lab.md",
+        "sha256": "cb49f82f0420419643991af2317889959f152b7078ef481370feb7e74cbbd937",
+        "kind": "verification inventory",
+        "review": "reviewed",
+        "read_coverage": "complete diff and current acceptance context",
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+      }
+    ]
   }
 ]

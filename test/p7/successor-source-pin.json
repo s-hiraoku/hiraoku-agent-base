@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "0e931f74bc6753a5ca8065abe24d4b9b6933d4e3",
+  "source_ref": "0080e649a1cb5ef395cfdb1cfddb0bbb13aa473d",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -139,7 +139,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "9151f47b762f59da23e88387b57802895b4f032ed441f5466bdbd11f97c58b04"
+      "sha256": "3997aed5b08f115e2e9de88418aeb0407e32fe75b0da45ee2650e00bf8071b27"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -180,6 +180,10 @@
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
       "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2"
+    },
+    "src/adapter-host/mcp.ts": {
+      "previous_sha256": null,
+      "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e"
     },
     "src/adapter-policy/contract.ts": {
       "previous_sha256": "46f6d5cb1fea588fa516b44ab273ed6f80df43ab235aabf96ad140c4ebdbc168",
@@ -717,6 +721,10 @@
       "previous_sha256": "ff7728bbf455942ac1256687a04c5819ebad28fa2bb8eb8c44a8d88fbdc3fdbb",
       "sha256": "f2633f9c44ad0fde636fc1b15d84564f6632bc4a84eba20bda16312d8d147385"
     },
+    "test/jetstream-delivery.js": {
+      "previous_sha256": null,
+      "sha256": "aa5ef02b05d0ac37d7c29cb52febf343379b2288bfaea836b841ca3a535b0f83"
+    },
     "test/local-relay-admin.test.js": {
       "previous_sha256": "3e32c2eb7b3397d35ac50915665946188fdace8426774b19b7ba94a459fc86f3",
       "sha256": "dabbae489217983ade32a3682b4e574a12bc08de438471bc4b242855e7aebf9c"
@@ -732,6 +740,22 @@
     "test/p7/runner.test.js": {
       "previous_sha256": null,
       "sha256": "927bd21de1a32e0b279431b22c2ba280d114df64c4e896dab6cb2fd152d2d7dc"
+    },
+    "test/recipient-host-mcp-size.test.js": {
+      "previous_sha256": null,
+      "sha256": "76e25d2006146de878f5b916c2a679bd3867334b559c763b10febd683cb3035f"
+    },
+    "test/recipient-host-mcp.test.js": {
+      "previous_sha256": null,
+      "sha256": "bdd398e7c76d45685b99aa3f09a59f653de13f886cb4a796bd009cda9bd3845d"
+    },
+    "test/recipient-host-stdio-fixture.js": {
+      "previous_sha256": null,
+      "sha256": "c23d93e27a0638048765513e96bd7a3a66ef401179c7cb21142ce7010a4896a5"
+    },
+    "test/recipient-host-stdio-parent.js": {
+      "previous_sha256": null,
+      "sha256": "68f45e5228e6236d868a17f4407f57bec6b702386bcb7871bd8e1bd629a39567"
     },
     "test/recipient-messages-fixtures.js": {
       "previous_sha256": null,
