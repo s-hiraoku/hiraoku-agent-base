@@ -176,7 +176,10 @@ test("Adapter host: a stop after remote ACK preserves the exact local ACK reques
   );
 });
 test("Adapter host: a stop after remote submit retains sending lease and same reply ID", async (t) => {
-  const f = await hostFixture(t);
+  // Recovery is not a short-lease timing test: its lease must outlive the RPC budget.
+  const recoveryLeaseMs = 5000;
+  const f = await hostFixture(t, {}, { outboxLeaseMs: recoveryLeaseMs });
+  f.state.timeout_ms = 2000;
   f.resume();
   const { key } = await question(f),
     message = f.answer(key);
@@ -190,10 +193,12 @@ test("Adapter host: a stop after remote submit retains sending lease and same re
     f.service.status(f.contexts.b, message.message_id).state,
     "pending",
   );
-  f.state.afterNetwork = null;
+  // Exercise a same-ID submit replay slower than the old 400ms claim lease.
+  f.state.afterNetwork = (tool) => tool === "relay_submit" ? sleep(HOST_LEASE_MS + 100) : undefined;
   f.resume();
-  await sleep(HOST_LEASE_MS + 50);
-  assert.equal((await f.step({ op: "send" })).state, "done");
+  await sleep(recoveryLeaseMs + 50);
+  const recovered = await f.step({ op: "send" });
+  assert.equal(recovered.state, "done", JSON.stringify(recovered));
   assert.equal(f.queued().length, 1);
   assert.equal(f.queued()[0].message_id, message.message_id);
   assert.equal(f.queued()[0].state, "accepted");
@@ -264,9 +269,13 @@ test("Adapter host: timed-out fetch work retains admission without dropping old 
   f.pause();
   f.resume();
   wait.resolve();
-  await sleep(10);
+  // Await actual settlement, then restore the normal budget for the fresh operation.
+  for (let i = 0; i < 200 && f.host.status(f.context).draining; i++) await sleep(10);
+  assert.equal(f.host.status(f.context).draining, 0);
   f.state.afterNetwork = null;
-  assert.equal((await f.step({ op: "receive" })).state, "done");
+  f.state.timeout_ms = 1000;
+  const recovered = await f.step({ op: "receive" });
+  assert.equal(recovered.state, "done", JSON.stringify(recovered));
 });
 test("Adapter host: authorization revoked during RPC stops later save and ACK", async (t) => {
   const f = await hostFixture(t);

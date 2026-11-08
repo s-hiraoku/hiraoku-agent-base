@@ -1508,5 +1508,71 @@
         "summary": "Optional direct official Python MCP SDK recipe over the existing synthetic recipient-host stdio fixture, real temporary SQLite and private parent-owned JetStream. Covers initial pause refusal, receipt-confirmed read and explicit fixed reply, rejected authority arguments and same-session synthetic policy revocation. No Hermes runtime, product binding, native approval, independent pre-ACK observer, full-body/model-facing preservation, wake or deployment evidence. The caller supplies an already installed SDK; no mandatory contract/CI dependency or Node-root count change. Process-group cleanup and broker ownership are distinguished from clean store shutdown; the broker exit wait has no hard deadline. Native/manual gates remain unverified."
       }
     ]
+  },
+  {
+    "scope": "Local single-source owner composition preparation",
+    "attestation": [
+      "Reviewed against existing host authority/epoch/owner contracts. Independent reviewer caught and required removal of a public callback/bind split; corrected implementation is under final review. No native/manual gate is satisfied. Full root/P7 and successor pins remain pending.",
+      "Final independent review found no blocking issue. Current P7 count and three current testing guides were semantically reviewed for the five new cases (1244); historical counts were preserved. Full root passed 1244; initial P7 refused unpinned source before execution. Publication and fresh pinned P7 remain separate.",
+      "PR144 CodeRabbit found no merge-blocking issue but reported 50 percent documentation coverage over two analyzed functions. Added a substantive JSDoc to the touched exported hostFixture; no executable behavior or test count changed. This addresses the missing function documentation; remote coverage recalculation is separate."
+    ],
+    "supplemental_sources": [
+      {
+        "path": "src/adapter-host/single-source-authority.ts",
+        "sha256": "637f14485a6742696bc15d32c8e175c213a38f455187a701c08fb88460760d45",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Private single-host callback, fixed source, management context separation, default deny and committed-pause/drain/held-owner fence; send grants the whole dedicated outbox. No authentication or native approval implementation."
+      },
+      {
+        "path": "test/single-source-authority.test.js",
+        "sha256": "c17dda0016093fc4029330293dd1f1f7d95e5499a240cf0f1b795d5afbfa0e03",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Five fresh dedicated-store tests with a real SQLiteHostOwner, synthetic policy and private broker; default deny, queued send revocation, pending/timeout drain fencing, context/source immutability and owner failure."
+      },
+      {
+        "path": "test/adapter-host-fixtures.js",
+        "sha256": "a6d890d3ec185a9156092c609097032478f13b29e31a69e742f083e16a6edf43",
+        "review": "reviewed",
+        "read_coverage": "full changed code",
+        "summary": "Extracts the existing AdapterHostOptions object into hostOptions; makeHost still uses identical options and defaults. Existing host regressions pass. Added JSDoc describing isolated synthetic scope, option controls and owned cleanup; executable behavior unchanged."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "d461da3d8db70339f20a50560325da95bcf064765a401e79c1525b78be5de61c",
+        "review": "reviewed",
+        "read_coverage": "count-only diff",
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+      },
+      {
+        "path": "docs/testing/p7-lab.md",
+        "sha256": "0e8140544a41b6f65a20165abdda8c651f37530b827633aeadfd19b2953cce30",
+        "review": "reviewed",
+        "read_coverage": "count-only diff",
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+      },
+      {
+        "path": "docs/testing/publication.md",
+        "sha256": "b2819c2dbb39d19c3fd8267feef1b85d542178190268e27c85aadb058ccc5bba",
+        "review": "reviewed",
+        "read_coverage": "count-only diff",
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+      },
+      {
+        "path": "docs/testing/delivery-lab.md",
+        "sha256": "afe041244f84c90e3ca8d68f6795da3bca27562525b1dad95eb3111f9dad250e",
+        "review": "reviewed",
+        "read_coverage": "count-only diff",
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+      },
+      {
+        "path": "test/adapter-host.test.js",
+        "sha256": "9abe48e4a5de565544b6b0c4c598df7361c323d9d910e37ca7c7441faabfbf0d",
+        "review": "reviewed",
+        "read_coverage": "full two-case diff and corresponding host/sender/lease code",
+        "summary": "Separates intentional short timeout from fresh recovery; awaits bounded drain. Case-local recovery lease exceeds transport budget, with same-ID replay delayed beyond the old lease as a regression control. All state/correlation assertions remain; no production behavior change."
+      }
+    ]
   }
 ]

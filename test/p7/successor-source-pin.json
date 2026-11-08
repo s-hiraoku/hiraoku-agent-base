@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "a12854f2405d82534425914496426af49bbd8276",
+  "source_ref": "afc672e8117fca67d5151bbd7d6830f4003aab40",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -143,7 +143,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "3997aed5b08f115e2e9de88418aeb0407e32fe75b0da45ee2650e00bf8071b27"
+      "sha256": "d461da3d8db70339f20a50560325da95bcf064765a401e79c1525b78be5de61c"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -188,6 +188,10 @@
     "src/adapter-host/mcp.ts": {
       "previous_sha256": null,
       "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e"
+    },
+    "src/adapter-host/single-source-authority.ts": {
+      "previous_sha256": null,
+      "sha256": "637f14485a6742696bc15d32c8e175c213a38f455187a701c08fb88460760d45"
     },
     "src/adapter-policy/contract.ts": {
       "previous_sha256": "46f6d5cb1fea588fa516b44ab273ed6f80df43ab235aabf96ad140c4ebdbc168",
@@ -645,6 +649,14 @@
       "previous_sha256": "1e0a880b756b4ad7678fce5e85cd6e9c80168285bfd99ebe773d79c140ce8424",
       "sha256": "a76ffb56d46336da720dc4285dd948b43c4bc0b0632d4e18d088bd356c5afc8a"
     },
+    "test/adapter-host-fixtures.js": {
+      "previous_sha256": null,
+      "sha256": "a6d890d3ec185a9156092c609097032478f13b29e31a69e742f083e16a6edf43"
+    },
+    "test/adapter-host.test.js": {
+      "previous_sha256": null,
+      "sha256": "9abe48e4a5de565544b6b0c4c598df7361c323d9d910e37ca7c7441faabfbf0d"
+    },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
       "sha256": "ca7d9d9ad02539ae01fcf7e93e8c0c0c1b29c9eaeb52cd14b5958aa1ac06f8e3"
@@ -788,6 +800,10 @@
     "test/relay-snapshot-bundle.test.js": {
       "previous_sha256": "7e136487b18ca2ab0edad9d7e1c9e47630d53f36612c2bb9f8d8541ed8fac72b",
       "sha256": null
+    },
+    "test/single-source-authority.test.js": {
+      "previous_sha256": null,
+      "sha256": "c17dda0016093fc4029330293dd1f1f7d95e5499a240cf0f1b795d5afbfa0e03"
     }
   }
 }

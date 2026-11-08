@@ -149,3 +149,25 @@ ACKは配送受領であり、依頼内容の実行完了を意味しません�
 導入手順の一般化は[Issue #104](https://github.com/s-hiraoku/hiraoku-agent-base/issues/104)、
 複数アドレス・容量保守などの関連作業は[Issue #102](https://github.com/s-hiraoku/hiraoku-agent-base/issues/102)
 と照合し、必須でない改善を今回の有限試験へ追加しません。
+
+## 次回試験の承認票と証拠の分離
+
+過去の試験承認は新release・profile・接続先・認証設定へ引き継がない。実行前に以下を
+具体値で提示し、未確定欄を推測で埋めず承認を得る。秘密値自体は承認票へ記載しない。
+
+- 対象製品とrevision、双方のprofile／隔離session、受信先address／connection、Relay revision。
+- 経路: 基本5操作の有限native再試験か、新recipient入口か。後者は
+  [認可bridgeのゲート](recipient-readiness.md#143後の実製品接続ゲート)を先に満たす。
+  SDK互換試験をnative実試験と呼ばない。
+- 送る無害な短文と固定返信の正確な内容、相手、方向と往復回数。他会話・個人文脈を除外する。
+- 実モデルID、総費用上限と通貨、最大実行時間、呼出し回数、timeout時の停止方法。
+  モデルfallbackや期限延長、異なるIDによる再送を自動で行わない。
+- 既存認証の使用経路、一時credential／grant／bindingの必要性と期限、保存先・権限・
+  読取り可能な主体。持続access拡張はその具体的変更について別途必要な確認を行う。
+- 本文・receipt・監査の隔離保存先と保持期限、秘密を含まない成果記録、失効と削除の担当。
+- 終了時は両側のbinding・mapping失効、許可した一時設定／秘密値の除去、所有する試験
+  processだけの停止を確認する。終了不明なら成功を宣言せず、秘密を公開せず証拠を保持する。
+
+通常Hermes MCPとplugin ctx.call_mcpには別の文字数制限がある。短文の成功を一般の
+大きな本文へ外挿しない。新入口のsession／source別認可が未成立の場合、基本5操作の
+短文再試験は別範囲として実施可否を判断し、その成功で新入口の未検証項目を閉じない。

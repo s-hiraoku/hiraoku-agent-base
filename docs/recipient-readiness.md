@@ -36,3 +36,100 @@ NODE_NO_WARNINGS=1 npm run test:communication-boundary
 実稼働へ進む前に、対象製品・承認済みrelease、接続先、所属groupとアドレス、既存MCP transport、保存先、実効権限・承認、受信頻度、起動・停止・復元手順を具体化する。設定値やAPIを推測して新credential、grant、常駐jobを作成しない。
 
 今回の変更は製品に依存しないローカル読取り口と検証準備である。稼働中のサービス・設定、実agent、実モデル、承認UIや本番processへの故障注入は変更・実行していない。
+
+## #143後の実製品接続ゲート
+
+#143のPython MCP SDK 2.3.0による3ケースは、新recipient入口と実SQLite／private
+JetStreamを合成policyで接続した互換証拠である。Hermesのnative session、承認UI、
+モデルへの本文到達やwakeの証明ではない。2026-10-25の[有限native往復](finite-mcp-trial.md)
+は別revisionの基本5操作を使った実製品試験であり、新入口の認可bridgeへ転用しない。
+
+Hermes `6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7` のsource確認では、次を区別する。
+
+- 通常MCP handlerは `tools/mcp_tool_content.py:17–25` の2,000,000文字hard capを
+  `tools/mcp_tool_handlers.py:599–617` で適用する。その後のspilloverも含め、transportの
+  buffer拡大だけでは本文全体のモデル到達を保証しない。文字数とUTF-8 byte予算は別である。
+- plugin `ctx.call_mcp` は通常handlerを呼んだ後、`hermes_cli/plugins.py:502–555` で
+  さらに65,536文字を超える結果を切り詰める。末尾markerとtruncated flagが付くが、
+  保存本文の完全性やJSON形の維持を保証しない。通常MCP経路の上限と混同しない。
+  このplugin経路は別途server allowlistを要求し、この文書は追加grantを許可しない。
+- `tools/mcp_tool_handlers.py:505–522` のSDK呼出しはtool名・arguments・任意progressを
+  渡し、HABの認証済session／現在source権限の証明を提供していない。
+  `tools/mcp_tool_transport.py:367–370` はstdioのidentity_headerを無効として警告する。
+  client名、profile名、tool引数、外部本文を認可contextの代用にしない。
+
+### 既存identity契約を再利用できる範囲
+
+`RegistryAuthority.hostIdentity` (`src/hab/registry.ts`) は、検証済connectionに対する
+host所有の任意attestationである。`src/hab/discovery.ts` の `HabHostIdentity` は
+agent/address、opaqueなowner_reference、session/bot区分、binding_generation、観測時刻と
+期限を持つ。Registryは所属・現在address・鮮度を検証してdiscoveryへ返す。
+これは既存identity表示契約として再利用候補だが、`HostAuthorization`ではない。
+actor_id、操作別権限、正確なsource keyへの現在許可やcommit時の再確認は提供しない。
+
+受信者が管理する信頼境界で、次の入力と責務を確定するまでproduction bridgeは未成立である。
+
+1. 実際に認証済みのrecipient session／botとdurable ownerへの対応、世代、期限、失効。
+   名前や共有group内のas_address選択から独立sessionの本人性を推論しない。
+2. `HostAuthorization(context, operation, source)` が同期に検証できる現在のactorと
+   操作・source別許可。prepareとenqueue/sendを分離し、必要な受信者承認を製品側で適用する。
+3. 各操作・commitまでに失効やactor変更を反映し、不明／非同期結果は既存どおり拒否する。
+   ネットワークの事前確認をcommit guardの代わりにせず、独自の承認キャッシュを足さない。
+4. 本人限定stores、鍵、owner排他、停止とdrain、restart後同一bindingの構成。
+   MCP factoryはこれらを受け取れるが、生成・認証・自動resumeするlauncherではない。
+
+これは既存契約間の不足の記録であり、新RPC認可protocol、製品plugin、汎用lifecycle層の
+採用ではない。検証済みの入力がなければ固定allow-allで埋めず、接続を保留する。
+
+### private stdioのlaunch bindingを使う場合の条件
+
+wire上のsession証明がないことだけで、すべての接続を不可能とは判断しない。
+既存HostAuthorizationは認証済contextを外側の構成から受け取る契約であり、特定製品の
+policy export protocolを必須にしていない。所有者が認証済みの起動経路を管理し、専用の
+private stdio processとrecipientを一対一に固定できるなら、launch時のcontextを閉じ込め、
+受信側hostが現在のscopeを同期検査する構成は候補となる。これは未実証の構成条件である。
+
+- process／pipeに接続できる主体とその信頼範囲、共有profile・複数session・再利用の有無を
+  検証する。同一OSユーザーや共有MCP接続の分離を、process名だけで証明しない。
+- launch bindingは本人性の入力であり永続的な許可ではない。recipient所有者が明示した
+  現在のoperation/source scope、期限、失効を各guardで確認する。外部本文やtool引数で
+  更新できず、不明時は拒否する。restart時の旧contextを自動再承認しない。
+- host所有policyは配送操作の追加制限にできるが、製品の既存承認を不要にできない。
+  標準接続へ全返信の一律承認を追加する必要もない。製品の通常MCP操作承認と、
+  source別host許可の両方を実効経路で確認する。
+- pull型answer intentはsourceごとに本文・相関・IDを永続固定し、enqueue commitで
+  現在のhost許可を再確認する。HostAuthorizationの引数はoperation/sourceであり、
+  それだけをexact-envelope人間承認の証明とはしない。個別本文への承認が必要な用途では
+  その承認と保存済intentの一致・失効を受信側で確保するまで送信を許可しない。
+  push型RecipientMessagePort.withReply/checkReplyの要件を、通常pull通信の追加必須APIへ
+  拡大しない一方、pushで必要なexact commit guardを省略することもない。
+
+したがって次の確認対象は、正式に制御できる専用processの起動・共有scope、所有者が許可する
+配送操作の範囲、既存製品承認の実効性である。新しい認証protocolや独立承認UIを先に作らない。
+
+Hermesの通常接続はこの専用session条件を自動では満たさない。
+`tools/mcp_tool_scope.py:1–14,25–65` ではconnection keyはserver名、または
+owner_scope/server名で、同route・credentialsなら別profileによるadoptionもある。
+session ID単位の接続ではない。従って通常gatewayのstdioを単一sessionと呼ばず、
+専用有限processを選ぶなら共有・他sessionの不在を別途検証する。
+
+### 限定owner policyのローカル準備
+
+`src/adapter-host/single-source-authority.ts` は既存HostAuthorizationのopt-in実装候補である。
+検証済みrecipient/operator contextを別参照で受け取り、固定sourceだけのread/prepare/inspect/
+enqueueとreceive/sendを既定拒否から明示許可する。認証、expiry timer、承認UI、stdio起動は
+実装しない。policyオブジェクトは信頼されたowner構成だけが保持し、モデルに渡さない。
+
+`createSingleSourceHost`は既存stores/transportと取得済みownerを受け、単一AdapterHostCycleを
+内部構築する。authorization callbackと別hostへのbindは公開しない。agentはcontrolから導出し、
+初期pausedとowner heldを要求する。DBのopen/migrate/acquire/closeは既存構成側に残る。
+`updateWhilePaused(operatorContext, expectedEpoch, enabled)`は既存controlへpauseをcommitし、
+running/drainingがゼロかつowner heldの場合だけ許可を差し替える。失敗時は許可を変えず、pauseできた場合は
+停止を維持する。resumeは別の明示操作である。既に開始したRPCの遠隔効果は取り消せず、
+古いepochの結果を新grantで承認しない。同一actorの再grantもこのfenceを経由する。
+
+sendはsource=nullのため許可はoutbox全体に及ぶ。試験はfreshな専用outboxと単一producerで
+この前提を限定し、任意enqueue/Task操作は許可しない。既存・復元・共有outboxの検査や
+複数sourceの独立失効はこの実装の機能ではなく、汎用storeへ安全に適用済みとは扱わない。
+source許可を無効化するとsendも拒否するが、sourceとexact-body承認は同一ではない。
+必要なnative承認を代替せず、MCP管理tool、常駐loop、実製品設定を追加しない。
