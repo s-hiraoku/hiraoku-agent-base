@@ -36,14 +36,26 @@ LaunchAgent release paths therefore remain usable. Package commands and owned
 verification recipes use `.ts`; no installed job, credential or live config is
 changed by this migration.
 
+## Worker entry points
+
+The SQLite claim/startup workers and the JetStream synchronous pump worker now
+live in `test/claim-worker.ts`, `test/startup-worker.ts` and
+`test/jetstream-pump-worker.ts`. Their existing callers use the `.ts` Worker
+URLs. Root strict typechecking includes `test/*-worker.ts`; parent ports,
+trusted worker data, pump commands and replies are typed using the existing
+`Principal` and `JetStreamRelayOptions` contracts. The ready/go handshake,
+SQLite close order, pump error codes and post-reply atomic wakeup are retained.
+No test case or assertion is removed. Historical P7 pins and compressed fixture
+bytes remain unchanged; the successor records the new paths and callers.
+
 ## Remaining source inventory
 
-Counts below describe the tree after this stage, not an execution result or a
+Counts below describe the tree after these stages, not an execution result or a
 claim that the overall migration is finished.
 
 | Remaining owned JavaScript | Files | Next migration unit |
 | --- | ---: | --- |
-| `test/**/*.js` and the generic-async worker `.mjs` | 160 | Shared fixtures and child-process entry points, then tests grouped by subsystem; include `.test.ts` in every matching runner/catalog before renaming. Negative schema tests must keep exercising invalid runtime inputs. |
+| `test/**/*.js` and the generic-async worker `.mjs` | 157 | Shared fixtures and child-process entry points, then tests grouped by subsystem; include `.test.ts` in every matching runner/catalog before renaming. Negative schema tests must keep exercising invalid runtime inputs. |
 | `scripts/**/*.mjs`, excluding the seven CLI compatibility aliases | 18 | Lab/proof runners and their libraries, rollback tooling and Python compatibility parent; preserve process ownership and exact evidence gates. |
 | `packages/relay-nats/{scripts,test}/**` | 16 | Package fixtures, startup cases and proof/install tools; extend that package's strict tsconfig and update root consumers together. |
 | `verification/design/checks/*.mjs` | 3 | Preserve the TAP/report protocols, independent durable-save observer and all negative controls. |

@@ -132,7 +132,7 @@ function synchronousPump(t, options) {
   const plain = { ...options };
   delete plain.authorization;
   const worker = new Worker(
-    new URL("./jetstream-pump-worker.js", import.meta.url),
+    new URL("./jetstream-pump-worker.ts", import.meta.url),
     {
       workerData: { port: port2, signal, options: plain },
       transferList: [port2],

@@ -23,7 +23,7 @@ test("independent worker threads really contend for one SQLite claim", async () 
   const workers = Array.from(
     { length: 4 },
     () =>
-      new Worker(new URL("./claim-worker.js", import.meta.url), {
+      new Worker(new URL("./claim-worker.ts", import.meta.url), {
         workerData: { path, principal: worker },
       }),
   );
@@ -102,7 +102,7 @@ for (const pending of [false, true])
     const workers = Array.from(
       { length: 4 },
       () =>
-        new Worker(new URL("./startup-worker.js", import.meta.url), {
+        new Worker(new URL("./startup-worker.ts", import.meta.url), {
           workerData: { path },
         }),
     );
