@@ -1574,5 +1574,32 @@
         "summary": "Separates intentional short timeout from fresh recovery; awaits bounded drain. Case-local recovery lease exceeds transport budget, with same-ID replay delayed beyond the old lease as a regression control. All state/correlation assertions remain; no production behavior change."
       }
     ]
+  },
+  {
+    "scope": "finite-native-trial-offline-preflight",
+    "summary": "Reviewed the complete helper, CLI and synthetic test. Existing pilot-config is legacy Dots/Grok OAuth configuration, not a reusable native trial schema. This optional scripts-only entry neither launches products nor replaces runtime policy or manual acceptance. Root defaults and P7 test inventory are unchanged.",
+    "supplemental": [
+      {
+        "path": "scripts/lib/native-trial-preflight.mjs",
+        "sha256": "96de62083aee5f5c6504d2b405d984506b999cffd2a4e5ef09fb091da3a58fa5",
+        "review": "reviewed",
+        "read_coverage": "full new file",
+        "summary": "Strict declared plan plus read-only path/hash snapshot; launchAllowed always false. Manifest read is fd-bound regular-file and 64KiB bounded. Native settings, approval, provenance, costs and cleanup stay pending."
+      },
+      {
+        "path": "scripts/native-trial-preflight.mjs",
+        "sha256": "da0899d05d78f2e6a762157ac5cd107de443158dea16111b957162ee76b98413",
+        "review": "reviewed",
+        "read_coverage": "full new file",
+        "summary": "Optional CLI; reads explicit manifest and prints sanitized result. Exit zero means only offline-valid, never launch permission."
+      },
+      {
+        "path": "test/compatibility/native-trial-preflight.test.js",
+        "sha256": "490ca66418d83f8fbd2ce33990aec29350abeb0e13db0e12fc0fc5e71849945f",
+        "review": "reviewed",
+        "read_coverage": "full new file",
+        "summary": "Seven optional synthetic-only cases including unsafe/missing fields, symlinks, profile ancestry, bounded manifest reads, blank fields and zero spending cap; no native process or credentials."
+      }
+    ]
   }
 ]

@@ -171,3 +171,30 @@ ACKは配送受領であり、依頼内容の実行完了を意味しません�
 通常Hermes MCPとplugin ctx.call_mcpには別の文字数制限がある。短文の成功を一般の
 大きな本文へ外挿しない。新入口のsession／source別認可が未成立の場合、基本5操作の
 短文再試験は別範囲として実施可否を判断し、その成功で新入口の未検証項目を閉じない。
+
+### 非起動の計画preflight
+
+`node scripts/native-trial-preflight.mjs <secret-free-plan.json>` は操作者が指定した
+計画と指定artifactのbytes／metadataを読む任意の事前点検であり、Hermesを起動しない。
+artifactに秘密がないかを自動判別しない。操作者が確認済みの非秘密実行ファイル／entrypoint
+だけを指定し、credentialや個人ファイルをartifactとして渡さない。
+既存の `pilot-preflight.mjs` は旧Dots/Grok OAuth設定向けなので、native試験の条件と
+混ぜない。schemaは `scripts/lib/native-trial-preflight.mjs`、秘密不要の入力例と負例は
+`test/compatibility/native-trial-preflight.test.js` にある。例のモデル・revision・承認参照・
+ファイルは合成値であり、実試験へそのまま使わない。
+
+必要欄は固定binary／entrypointの絶対pathとSHA-256、Hermes revision、独立root、
+既存profilesの境界、絶対cwd、単一stdio MCP（`trust: untrusted`）、モデル／provider、
+認証方法と承認参照、単一sourceと受信先、正確な短文／返信、費用・時間・呼出し上限、
+証拠保存先／保持期限、所有processだけの停止と失効計画。秘密値は入力しない。
+YOLO、resume、既存gateway URL、plugins、package runner、任意args／envは受け付けない。
+rootは所有者private・非symlink・空を要求し、既存profiles配下と既存descriptorを含む
+非空rootを拒否する。祖先symlinkも拒否するため、事前に承認したcanonical pathを指定する。
+既存rootの設定／credentialやdescriptor内容を読む検査ではない。
+
+成功は `offlineValid: true` だけで、`launchAllowed: false` は常に維持する。終了code0も
+実行許可ではない。revision文字列とbinaryの由来の照合、実効環境／tool catalog、
+製品側の本人対応・session隔離・必要な操作承認、費用／時間上限の強制、起動後の所有確認と
+cleanupは未証明のまま残る。path検査はその時点の観測でありTOCTOU防止機構ではない。
+承認参照の自己申告は承認取得の証拠ではなく、静的点検で上の承認票や手動確認を省略しない。
+この点検を通すために普段の設定・権限を変えたり、native通信を開始したりしない。
