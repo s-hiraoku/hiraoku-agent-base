@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "b1b88c518b5a5deb82be1002e9a7b9c7631cf015",
+  "source_ref": "75a31d75ab05b006d597893bc5e159a579b5dd39",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -151,7 +151,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "d461da3d8db70339f20a50560325da95bcf064765a401e79c1525b78be5de61c"
+      "sha256": "c3a870aa46cff5796f8a116a36c2e17b5366ff6f95fb193e826d7048015b0b0f"
     },
     "scripts/prove-generic-entrances.mjs": {
       "previous_sha256": null,
@@ -663,7 +663,7 @@
     },
     "test/adapter-host.test.js": {
       "previous_sha256": null,
-      "sha256": "9abe48e4a5de565544b6b0c4c598df7361c323d9d910e37ca7c7441faabfbf0d"
+      "sha256": "e06428096749e78f5a746e076ac573d19e1427550d5f91e37ee9c5b9cf0d590d"
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
