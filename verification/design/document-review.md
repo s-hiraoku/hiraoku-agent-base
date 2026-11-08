@@ -204,6 +204,10 @@ CodeRabbit follow-up: the real CLI ENOENT control failed before the diagnostic c
 
 The CodeRabbit coverage nit is also addressed: HTTP 408/500/502 each fail then recover, retaining existing 504/503/429 and exhaustion/permanent-failure controls. The nested suite now has eleven cases. No root inventory or runtime policy changes.
 
+## Main HTTP/2 refused-stream follow-up (2026-11-08)
+
+Read the changed wrapper, full nested tests and Muse context appendix against main4dfcd14. Design run42472004750 completed eleven preparation tests but failed on Node26 fetch with ERR_HTTP2_STREAM_ERROR/http2ErrorCode7 before later design checks. The wrapper now recognizes only that pinned diagnostic combination in addition to the existing transient HTTP statuses, sharing the original four-attempt budget. Recorded stderr controls failed before the fix, then passed. Adjacent HTTP/2 codes8/70 and TLS expiry stay nonretryable. The nested suite is sixteen cases; no root/P7 inventory, pinned installer, checksum/version authority or native/manual gate changes. Actual main rerun and latest PR CI remain separate evidence.
+
 ## Claude Code and Grok Bot onboarding review
 
 Reviewed the two connection guides against common-MCP, persistent-auth, recipient-readiness and recipient-stdio. These are product onboarding context, not new design authority or live acceptance. The Claude JSON example has placeholders only and creates no grant. Grok account-wide sharing and remote execution remain explicit gates; no product-specific core path or synthetic success replaces them.
