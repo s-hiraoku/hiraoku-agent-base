@@ -45,7 +45,9 @@ if (
     if (process.argv.length !== 2) throw Error("no arguments accepted");
     process.stdout.write(await installCiNats());
   } catch (error) {
-    process.stderr.write(error.cause?.stderr || `${error.message}\n`);
+    process.stderr.write(
+      error.cause?.stderr || `${error.cause?.error ?? error.message}\n`,
+    );
     process.exitCode = 1;
   }
 }

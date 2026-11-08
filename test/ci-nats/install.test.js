@@ -15,6 +15,31 @@ const httpFailure = (status) => ({
 });
 const success = { status: 0, stdout: '{"binary":"verified"}\n', stderr: "" };
 
+test("the real CLI reports a child spawn failure without retrying", () => {
+  const directory = mkdtempSync(join(tmpdir(), "hab-ci-spawn-"));
+  try {
+    const setup = `process.execPath = ${JSON.stringify(join(directory, "missing-node"))}`;
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        `data:text/javascript,${encodeURIComponent(setup)}`,
+        fileURLToPath(
+          new URL("../../scripts/install-ci-nats.mjs", import.meta.url),
+        ),
+      ],
+      { cwd: directory, encoding: "utf8", timeout: 5000 },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /ENOENT/);
+    assert.doesNotMatch(result.stderr, /retrying/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("the real CLI refuses a corrupt cached archive before extraction", () => {
   const directory = mkdtempSync(join(tmpdir(), "hab-ci-nats-"));
   try {
