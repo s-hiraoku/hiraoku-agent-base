@@ -374,12 +374,12 @@
     },
     {
       "path": "docs/finite-mcp-trial.md",
-      "sha256": "651fb0e6ef8cfc7e92270d68dc973f74d68ee813ee10047343d6e929eed6912c",
+      "sha256": "f587fe5993a6bf3d0050a3371cabc566dbd70415000f09287b0e3fc28b31e70d",
       "hash": "418b04acba5e7eb5748bfda36e6dea7fec4caca72c421375bd4f19333fbc6121",
       "role": "evidence",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used. Appended concrete next-trial approval checklist and distinction between historical native basic-five-tool evidence and the new synthetic recipient SDK checks; no live authorization inferred."
+      "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used. Appended concrete next-trial approval checklist and distinction between historical native basic-five-tool evidence and the new synthetic recipient SDK checks; no live authorization inferred. Adds an optional read-only finite trial planning preflight; offline-valid never grants launch, native authorization, environment isolation, provenance or runtime budget/cleanup proof. Explicitly selected artifact bytes must be reviewed non-secret inputs."
     },
     {
       "path": "docs/fixed-pilot.md",
@@ -972,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "2cc6343cf22b6fe34ae94b29e2c0e1fc63e2b610a32c285e0a3e317eb244c7be",
+      "sha256": "bdb028089f3cdcd805e18ed4918843992e488f631739811885e0e1921fd7fe69",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -988,7 +988,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "ff6f0b84db5cf1c0e62bb75f022783f3e965c7892ab614edffb018584fb2f6bd",
+      "sha256": "9bd4dfd1456ca4a5c6a95081cd259695dd179f3697ee7dc94e2424e139bbcdf5",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",

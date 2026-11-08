@@ -67,3 +67,29 @@ Local single-source composition follow-up: the initial public authorization/bind
 Final independent read-only review found no remaining blocking issue in the corrected composition. Full root on the uncommitted working tree passed 1244/1244 with no failures/skips/cancellations/TODO. P7 --full stopped before all groups (groups=[]), reporting P7 component inventory mismatch because the new/changed source set has not been committed and pinned; scratch removal was confirmed. This is a blocked provenance gate, not a P7 execution pass. Source commit, inventory/count maintenance and successor pin remain separate pending work.
 
 PR144 hosted follow-up: one design run at 2de09cb failed two existing host recovery assertions (done versus incomplete), while its paired design run and both CI runs passed. The timed-out fetch test retained the injected 30ms timeout for its fresh recovery call; restore the normal 1000ms budget after bounded drain confirmation. The stop-after-submit test used a 400ms claim lease below the normal transport budget. Give only that recovery scenario a 5000ms lease and 2000ms RPC budget, wait for lease expiry, and inject a 500ms same-ID replay delay. An isolated old-400ms negative control reproduces incomplete/host_step_unavailable; the exact original CI reason was not logged and is not retrospectively asserted. Focused 35 tests pass. Production timing/authorization behavior and all acceptance assertions remain unchanged.
+
+## Optional offline native-trial preparation
+
+The new scripts-only preflight does not replace legacy `pilot-config.ts` (the
+latter validates Dots/Grok OAuth configuration) or add an adapter/runtime layer.
+It accepts a strict finite approval plan and inspects explicitly selected paths
+and artifact bytes. It does not determine whether those bytes contain secrets;
+the caller must choose reviewed non-secret artifacts. All filesystem checks are
+snapshots, not a launch-time TOCTOU barrier. Even successful input inspection
+returns `launchAllowed: false` and leaves native prerequisites pending.
+
+Seven optional synthetic tests pass after fixing component-prefix containment,
+blank declarations and zero-budget support, and bounding regular-file manifest
+reads through an opened descriptor. An earlier five-case rerun failed solely
+at temporary-directory creation with ENOSPC; it is not a successful run. No
+native product, credential, configuration, network, or model was exercised.
+
+
+PR #145 review corrections preserve the same non-launching scope. Artifact
+hashing now caps descriptor reads at 128 MiB plus one growth-detection byte;
+profile-boundary aliases are rejected even with a missing suffix; executable
+access is checked for the current inspecting user rather than any mode bit.
+Eight optional synthetic cases pass, including fail-closed flags and oversized
+sparse files. These checks still do not prove launch-time isolation or native
+identity/approval. Filesystem snapshots and caller-reviewed artifact assumptions
+remain explicit. No requirement or manual acceptance status changed.

@@ -156,3 +156,13 @@ Remaining review-fix maintenance against `c62d24da5f4cac0543286a8f54b8e7d89cd730
 ## RecipientMessages integration onto JetStream-only main
 
 Reviewed explicit recipient-local handoff and exact-reply composition against ADR-015 after integration onto JetStream-only main. Uses src/messaging and src/agent-sdk, with explicitly supplied reply admission. Native input/dedup/policy/approval remain trusted recipient prerequisites. Synthetic native store and real JetStream/loopback MCP tests are not native model/approval/deployment evidence; deferred components remain unconnected to default runtime. The focused check remains separate from the overlapping full-root inventory (expected 1229). Manual evidence remains unverified. Existing requirement IDs, authority sources and historical failure records are unchanged.
+
+## Finite native trial offline preflight maintenance (2026-11-08)
+
+Read the complete appended section of `docs/finite-mcp-trial.md` against the new
+scripts-only helper and CLI. It remains evidence/procedure, not a new product
+permission contract. A valid static plan always has `launchAllowed: false`;
+reviewed non-secret artifact selection, native settings, identity, approval,
+provenance, budget enforcement and owned cleanup remain separate obligations.
+Historical native and SDK evidence is unchanged. Existing requirements, manual
+checks, source citations and conflicts are not weakened or marked complete.
