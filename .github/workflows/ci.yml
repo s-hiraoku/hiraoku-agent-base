@@ -28,6 +28,8 @@ jobs:
       - run: node node_modules/eslint/bin/eslint.js scripts/ci-nats.mjs scripts/lib/p7-worker.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts
       - name: Check CI input refusals
         run: node --test --test-timeout=30000 test/ci-nats/arguments.test.js
+      - name: Check offline native-trial preflight
+        run: node --test --test-timeout=30000 test/compatibility/native-trial-preflight.test.js
       - name: Run verified NATS checks
         run: |
           node --input-type=module <<'JS'
