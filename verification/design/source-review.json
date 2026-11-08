@@ -1565,6 +1565,13 @@
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+      },
+      {
+        "path": "test/adapter-host.test.js",
+        "sha256": "9abe48e4a5de565544b6b0c4c598df7361c323d9d910e37ca7c7441faabfbf0d",
+        "review": "reviewed",
+        "read_coverage": "full two-case diff and corresponding host/sender/lease code",
+        "summary": "Separates intentional short timeout from fresh recovery; awaits bounded drain. Case-local recovery lease exceeds transport budget, with same-ID replay delayed beyond the old lease as a regression control. All state/correlation assertions remain; no production behavior change."
       }
     ]
   }
