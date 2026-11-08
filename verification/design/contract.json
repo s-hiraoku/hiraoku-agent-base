@@ -536,6 +536,13 @@
       "summary": "Proposal context for a separate opt-in recipient-host MCP wrapper over AdapterHostCycle. Fixed operation schemas and one trusted recipient context preserve current source/actor/epoch/commit authority; exposure is not permission. Receive/read, persisted answer and send remain separate. The normal five-tool Relay, receive supervisor and RecipientMessagePort are unchanged. In-memory and owned stdio/SQLite/JetStream fixtures establish synthetic paths only; native policy/session/wake/approval, production transport and deployment remain unverified. PR141 follow-up adds an owner-composed inbox_read result budget with body-free refusal, full-response recovery only under compatible owner-selected transport limits, no truncation and no mutating-result replacement. Parent-owned synthetic broker/scratch cleanup and stderr drainage are tested separately from clean child shutdown; native/manual gates remain unverified."
     },
     {
+      "path": "docs/implementation/recipient-python-mcp-acceptance.md",
+      "sha256": "96b6bd3daec15e933c31f031d3d16ea6731d4fce336feefedb01c131128b8410",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Optional direct official Python MCP SDK recipe over the existing synthetic recipient-host stdio fixture, real temporary SQLite and private parent-owned JetStream. Covers initial pause refusal, receipt-confirmed read and explicit fixed reply, rejected authority arguments and same-session synthetic policy revocation. No Hermes runtime, product binding, native approval, independent pre-ACK observer, full-body/model-facing preservation, wake or deployment evidence. The caller supplies an already installed SDK; no mandatory contract/CI dependency or Node-root count change. Process-group cleanup and broker ownership are distinguished from clean store shutdown; the broker exit wait has no hard deadline. Native/manual gates remain unverified."
+    },
+    {
       "path": "docs/inventory-end-to-end.md",
       "sha256": "56f8c640130bcb0ad7e14ae79ed0ac455042ede8efccbd1849e7a6f2360d7762",
       "hash": "56f8c640130bcb0ad7e14ae79ed0ac455042ede8efccbd1849e7a6f2360d7762",
@@ -941,7 +948,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "f83147f3ac5dbc705fa6a626e224f38f5ce7d09fa73faeab146d5d53cec52635",
+      "sha256": "6f8720d8c5a129eb05fdacc26f192c27d674888336bd71e312ea208ce16a2893",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -965,7 +972,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "4274c62794424eba122d7d681ab5cd4ad99aecf6c4910fb3d0bbfd22a95807f8",
+      "sha256": "55a3ec0951de24097ab78f886383823b1626db5e351089d2e8fa434e4ad5e492",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -973,7 +980,7 @@
     },
     {
       "path": "verification/design/helpers.md",
-      "sha256": "9dd8a93bbed8bd90a16a4cc96482d7c95e02e1d1819bd23db46a4e57ce887244",
+      "sha256": "6751e8872864e325f09e200c66d9376530f4052f356a4ba60a8a7823bd9542bc",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -981,7 +988,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "9155818e58724f342b2bf75150c4309d550b9e0d1dbe40269983e713db2e6e53",
+      "sha256": "db3e503bff348c9ba117723c00da230ff82b361db610e76de5521d15c99a1626",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
