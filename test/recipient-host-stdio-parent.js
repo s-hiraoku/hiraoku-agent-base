@@ -7,7 +7,7 @@ import process from "node:process";
 import { setTimeout, clearTimeout } from "node:timers";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { startLocalBroker } from "../scripts/lib/nats-broker.mjs";
+import { startLocalBroker } from "../scripts/lib/nats-broker.ts";
 
 export async function recipientStdio(t, { blockCleanup = false } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "hab-recipient-stdio-"));

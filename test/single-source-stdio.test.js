@@ -9,7 +9,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { performance } from "node:perf_hooks";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { startLocalBroker } from "../scripts/lib/nats-broker.mjs";
+import { startLocalBroker } from "../scripts/lib/nats-broker.ts";
 
 /** Wait for independently published child evidence under a bounded deadline. */
 async function until(read, timeout = 5000) {

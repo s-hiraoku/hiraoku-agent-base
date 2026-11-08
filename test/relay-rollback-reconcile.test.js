@@ -20,7 +20,7 @@ import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
 import { authorizedDelivery } from "./jetstream-delivery.js";
-import { startLocalBroker } from "../scripts/lib/nats-broker.mjs";
+import { startLocalBroker } from "../scripts/lib/nats-broker.ts";
 import { JetStreamRelay } from "../packages/relay-nats/src/backend.ts";
 
 const nats = createRequire(

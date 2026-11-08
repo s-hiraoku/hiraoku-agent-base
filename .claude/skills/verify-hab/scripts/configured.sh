@@ -18,7 +18,7 @@ repo=$(cd "$here/../../../.." && pwd)
 mkdir -p "$1"; run=$(cd "$1" && pwd); inst="$run/instance"; cfg="$inst/service.local.json"
 relay_start() {
   local before; before=$(grep -c '"ready"' "$run/evidence/relay.log" 2>/dev/null || true)
-  (cd "$repo" && exec node scripts/hab-relay.mjs --config "$cfg") >> "$run/evidence/relay.log" 2>&1 &
+  (cd "$repo" && exec node scripts/hab-relay.ts --config "$cfg") >> "$run/evidence/relay.log" 2>&1 &
   echo $! > "$inst/relay.pid"
   for _ in $(seq 1 40); do [ "$(grep -c '"ready"' "$run/evidence/relay.log")" -gt "${before:-0}" ] && return 0; sleep 0.25; done
   cat "$run/evidence/relay.log" >&2; return 1
@@ -38,7 +38,7 @@ start)
   mkdir -p -m 700 "$inst" "$inst/state" "$inst/audit" "$inst/broker" "$run/evidence"
   freeport() { node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
   port=${3:-$(freeport)}; nport=$(freeport); aport=$(freeport)
-  nats=$(cd "$repo" && node --input-type=module -e 'import { natsServerBinary } from "./scripts/lib/nats-broker.mjs"; console.log(natsServerBinary())')
+  nats=$(cd "$repo" && node --input-type=module -e 'import { natsServerBinary } from "./scripts/lib/nats-broker.ts"; console.log(natsServerBinary())')
   node - "$repo" "$inst" "$port" "$nport" "${HAB_VERIFY_GROUPS:-}" "${HAB_VERIFY_A2A:-}" "$aport" <<'JS'
 const fs = require("fs"), c = require("crypto"), [repo, inst, port, nport, groups, a2a, aport] = process.argv.slice(2);
 const w = (p, o) => fs.writeFileSync(`${inst}/${p}`, JSON.stringify(o), { mode: 0o600 });
@@ -84,7 +84,7 @@ JS
     '{url:$url,port:($port|tonumber),pid:($pid|tonumber),agents:{}} + (if $a2a == "" then {} else {a2a_url:$a2a} end)')
   for k in a b; do
     addr=$(jq -r --arg k "$k" '.agents[$k]' "$pend")
-    out=$(cd "$repo" && node scripts/hab-relay-admin.mjs --config "$cfg" connect --address "$addr" --connection-id "verify-$k-$now")
+    out=$(cd "$repo" && node scripts/hab-relay-admin.ts --config "$cfg" connect --address "$addr" --connection-id "verify-$k-$now")
     printf '%s\n' "$out" > "$run/evidence/admin-connect-$k.json"
     state=$(jq --arg k "$k" --argjson o "$out" --arg t "$(jq -r --arg k "$k" '.tokens[$k]' "$pend")" \
       '.agents[$k]={agent_id:$o.address.agent_id,address:$o.address.address,token:$t}' <<<"$state")
@@ -93,14 +93,14 @@ JS
     state=$(jq --arg k "$k" --arg t "$(jq -r --arg k "$k" '.tokens[$k]' "$pend")" --arg c "verify-$k-$now"       '.agents[$k]={token:$t,connection_id:$c}' <<<"$state")
   done
   for k in $(jq -r '.callers[]' "$pend"); do
-    out=$(cd "$repo" && node scripts/hab-relay-admin.mjs --config "$cfg" connect --address codex@codex.hab --connection-id "verify-$k-$now")
+    out=$(cd "$repo" && node scripts/hab-relay-admin.ts --config "$cfg" connect --address codex@codex.hab --connection-id "verify-$k-$now")
     printf '%s\n' "$out" > "$run/evidence/admin-connect-$k.json"
     state=$(jq --arg k "$k" --argjson o "$out" --arg t "$(jq -r --arg k "$k" '.tokens[$k]' "$pend")" \
       '.agents[$k]={agent_id:$o.address.agent_id,address:$o.address.address,token:$t}' <<<"$state")
   done
   rm -f "$pend"; (umask 077; printf '%s\n' "$state" > "$inst/state.json")
   echo "CONFIGURED_READY $url" ;;
-admin) shift 2; cd "$repo" && node scripts/hab-relay-admin.mjs --config "$cfg" "$@" ;;
+admin) shift 2; cd "$repo" && node scripts/hab-relay-admin.ts --config "$cfg" "$@" ;;
 restart)
   [ -f "$inst/state.json" ] || { echo "no_state: start first" >&2; exit 2; }
   relay_stop

@@ -22,9 +22,9 @@ import { fixture, list } from "./local-relay-service-fixtures.js";
 import { eventually, pollUntilDelivered } from "./jetstream-delivery.js";
 import { oauthFixture } from "./relay-oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
-import { main as runRelayAdmin } from "../scripts/hab-relay-admin.mjs";
+import { main as runRelayAdmin } from "../scripts/hab-relay-admin.ts";
 
-const cli = resolve("scripts/hab-relay-admin.mjs");
+const cli = resolve("scripts/hab-relay-admin.ts");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
 
 async function started(t, patch = {}, oauthConfig) {

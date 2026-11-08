@@ -174,12 +174,12 @@ ACKは配送受領であり、依頼内容の実行完了を意味しません�
 
 ### 非起動の計画preflight
 
-`node scripts/native-trial-preflight.mjs <secret-free-plan.json>` は操作者が指定した
+`node scripts/native-trial-preflight.ts <secret-free-plan.json>` は操作者が指定した
 計画と指定artifactのbytes／metadataを読む任意の事前点検であり、Hermesを起動しない。
 artifactに秘密がないかを自動判別しない。操作者が確認済みの非秘密実行ファイル／entrypoint
 だけを指定し、credentialや個人ファイルをartifactとして渡さない。
 既存の `pilot-preflight.mjs` は旧Dots/Grok OAuth設定向けなので、native試験の条件と
-混ぜない。schemaは `scripts/lib/native-trial-preflight.mjs`、秘密不要の入力例と負例は
+混ぜない。schemaは `scripts/lib/native-trial-preflight.ts`、秘密不要の入力例と負例は
 `test/compatibility/native-trial-preflight.test.js` にある。例のモデル・revision・承認参照・
 ファイルは合成値であり、実試験へそのまま使わない。
 

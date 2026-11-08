@@ -1735,5 +1735,77 @@
         "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained."
       }
     ]
+  },
+  {
+    "scope": "TypeScript operator/build/preflight tooling migration",
+    "baseline": "4dfcd14",
+    "summary": "Reviewed the migrated implementations, compiler/lint/runner coverage and command-path edits. Runtime schemas and protocol/storage/authorization behavior remain unchanged. Seven legacy CLI aliases delegate to typed implementations and retain import/export behavior where the original CLI was guarded. NATS broker process ownership and enrollment cleanup remain bounded to owned synthetic resources. Native trial remains read-only with launchAllowed false; native settings, model/identity/approval and production remain unverified. Historical supplemental rows retain original path/hash provenance; moved helper paths are superseded by this review. The new migration document is engineering context only, with explicit remaining source scope and third-party/generated exclusions.",
+    "supplemental": [
+      {
+        "path": "scripts/build.ts",
+        "sha256": "0b494412f7a453ff170d118a57cd43b2a5b5dcb17c99f5ec24479d33ea07ce17",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/hab-enrollment-demo.ts",
+        "sha256": "2219a5cb2059612641096630fd55f73e6c2d972f0b2d44c28d16a8824ca3b75f",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/hab-relay-admin.ts",
+        "sha256": "189b9be8e0d141b197d220ac87f69661288a21048b9ee2961c9c246f6de8aef5",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/hab-relay.ts",
+        "sha256": "e16cda769a5de59309a4473f02ab0ba6afb5883334bbfcbddbd4fe730aedc4d4",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/install-ci-nats.ts",
+        "sha256": "c101a370cded735bbc22235b2cd85c6faf5481103d95be72bedb339b44d8899d",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/native-trial-preflight.ts",
+        "sha256": "ab0c37ebba029e6e9e041826da24f3966b06a3b04ac889e058201a8c9c855b79",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/nats-broker.ts",
+        "sha256": "ca6b59a746d3a79d758eca3f5c29e2b16b3f63bd2f7738891b47547cb2f08874",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/native-trial-preflight.ts",
+        "sha256": "c615c18039f6137afba39b7524db7e5ebe8a98aff52fb6f52608e5cd9632f67c",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/pilot-preflight.ts",
+        "sha256": "4baa8b9285761466222441c7c1024419b64e7573319f9ddebca28b422d9ea18b",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/ci-nats/install.test.ts",
+        "sha256": "f747bda185e284bd7efab542a76ee46a850d47d2fc168a82c311b7a60cdf374d",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/tools/entrypoints.test.ts",
+        "sha256": "7ef2081dde0376fefe5ab968b665d3a528fd97cc0b5c2408077dd640b33f11ff",
+        "review": "reviewed"
+      },
+      {
+        "path": "tsconfig.tools.json",
+        "sha256": "e3ff028ec49fa2ca2f7e72b7edde34e11f2e8c65ce52e52b4df60014b08b9ab1",
+        "review": "reviewed"
+      }
+    ],
+    "moved_sources": {
+      "scripts/lib/native-trial-preflight.mjs": "scripts/lib/native-trial-preflight.ts",
+      "scripts/lib/nats-broker.mjs": "scripts/lib/nats-broker.ts",
+      "test/ci-nats/install.test.js": "test/ci-nats/install.test.ts"
+    }
   }
 ]

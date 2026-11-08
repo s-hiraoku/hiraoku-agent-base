@@ -28,17 +28,17 @@ jobs:
           key: nats-archive-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/relay-nats/scripts/install-server.mjs') }}
       - name: Check bounded NATS download retries
         run: |
-          node node_modules/eslint/bin/eslint.js scripts/install-ci-nats.mjs test/ci-nats/install.test.js
-          node --test test/ci-nats/install.test.js
-      - run: node scripts/install-ci-nats.mjs > .runtime/nats-install.json
+          node node_modules/eslint/bin/eslint.js scripts/install-ci-nats.ts test/ci-nats/install.test.ts
+          node --test test/ci-nats/install.test.ts
+      - run: node scripts/install-ci-nats.ts > .runtime/nats-install.json
       - run: node docs/diagrams/render-mermaid.mjs --check
       - run: npm run lint
       - run: npm run typecheck
       - run: node node_modules/eslint/bin/eslint.js scripts/ci-nats.mjs scripts/lib/p7-worker.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts
       - name: Check CI input refusals
         run: node --test --test-timeout=30000 test/ci-nats/arguments.test.js
-      - name: Check offline native-trial preflight
-        run: node --test --test-timeout=30000 test/compatibility/native-trial-preflight.test.js
+      - name: Check TypeScript tools and legacy CLI entry points
+        run: npm run test:tools
       - name: Run verified NATS checks
         run: |
           node --input-type=module <<'JS'

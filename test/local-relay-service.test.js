@@ -13,7 +13,7 @@ import { readHostConfig } from "../src/host/config.ts";
 import { startHost } from "../src/host/start.ts";
 import { envelope } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
-const cli = resolve("scripts/hab-relay.mjs");
+const cli = resolve("scripts/hab-relay.ts");
 test("explicit group configuration creates registry v2 and stays deny-all across restart", async (t) => {
   const f = await fixture(t);
   f.config.registry.authentication_groups = true;
