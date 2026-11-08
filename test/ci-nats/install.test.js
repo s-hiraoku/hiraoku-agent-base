@@ -1,0 +1,154 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { test } from "node:test";
+import { installCiNats } from "../../scripts/install-ci-nats.mjs";
+
+const httpFailure = (status) => ({
+  status: 1,
+  stdout: "",
+  stderr: `Error: official server download failed ${status}\n`,
+});
+const success = { status: 0, stdout: '{"binary":"verified"}\n', stderr: "" };
+
+test("the real CLI reports a child spawn failure without retrying", () => {
+  const directory = mkdtempSync(join(tmpdir(), "hab-ci-spawn-"));
+  try {
+    const setup = `process.execPath = ${JSON.stringify(join(directory, "missing-node"))}`;
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        `data:text/javascript,${encodeURIComponent(setup)}`,
+        fileURLToPath(
+          new URL("../../scripts/install-ci-nats.mjs", import.meta.url),
+        ),
+      ],
+      { cwd: directory, encoding: "utf8", timeout: 5000 },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /ENOENT/);
+    assert.doesNotMatch(result.stderr, /retrying/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the real CLI refuses a corrupt cached archive before extraction", () => {
+  const directory = mkdtempSync(join(tmpdir(), "hab-ci-nats-"));
+  try {
+    mkdirSync(join(directory, ".runtime"), { mode: 0o700 });
+    const arch = process.arch === "x64" ? "amd64" : process.arch;
+    writeFileSync(
+      join(
+        directory,
+        ".runtime",
+        `nats-server-v2.15.2-${process.platform}-${arch}.tar.gz`,
+      ),
+      "unverified cache bytes",
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(
+          new URL("../../scripts/install-ci-nats.mjs", import.meta.url),
+        ),
+      ],
+      { cwd: directory, encoding: "utf8", timeout: 5000 },
+    );
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /server archive SHA-256 mismatch/);
+    assert.doesNotMatch(result.stderr, /retrying/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("transient HTTP failures retry and preserve successful installer output", async () => {
+  const results = [
+    httpFailure(504),
+    httpFailure(503),
+    httpFailure(429),
+    success,
+  ];
+  const delays = [];
+  const messages = [];
+  assert.equal(
+    await installCiNats(
+      () => results.shift(),
+      async (delay) => delays.push(delay),
+      (message) => messages.push(message),
+    ),
+    success.stdout,
+  );
+  assert.equal(results.length, 0);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
+  assert.equal(messages.length, 3);
+});
+
+test("a persistent 504 fails after four attempts", async () => {
+  let attempts = 0;
+  const delays = [];
+  await assert.rejects(
+    installCiNats(
+      () => {
+        attempts += 1;
+        return httpFailure(504);
+      },
+      async (delay) => delays.push(delay),
+      () => {},
+    ),
+    (error) => error.cause.stderr === httpFailure(504).stderr,
+  );
+  assert.equal(attempts, 4);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
+});
+
+test("408, 500 and 502 each recover on the next attempt", async () => {
+  for (const status of [408, 500, 502]) {
+    const results = [httpFailure(status), success];
+    const delays = [];
+    assert.equal(
+      await installCiNats(
+        () => results.shift(),
+        async (delay) => delays.push(delay),
+        () => {},
+      ),
+      success.stdout,
+    );
+    assert.equal(results.length, 0);
+    assert.deepEqual(delays, [1000]);
+  }
+});
+
+for (const failure of [
+  httpFailure(403),
+  httpFailure(404),
+  { status: 1, stderr: "Error: server archive SHA-256 mismatch\n" },
+  { status: 1, stderr: "Error: server version mismatch\n" },
+  { status: null, error: Error("spawn failed") },
+  { status: null, signal: "SIGTERM", stderr: httpFailure(504).stderr },
+]) {
+  test(`permanent failure is not retried: ${failure.stderr ?? failure.error}`, async () => {
+    let attempts = 0;
+    await assert.rejects(
+      installCiNats(
+        () => {
+          attempts += 1;
+          return failure;
+        },
+        async () => assert.fail("must not wait"),
+        () => assert.fail("must not report retry"),
+      ),
+    );
+    assert.equal(attempts, 1);
+  });
+}
