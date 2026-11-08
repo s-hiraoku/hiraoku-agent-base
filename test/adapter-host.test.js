@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { chmodSync, statSync, symlinkSync } from "node:fs";
 import { createServer } from "node:http";
+import { DatabaseSync } from "node:sqlite";
 import { once } from "node:events";
 import { Worker } from "node:worker_threads";
 import {
@@ -373,10 +374,105 @@ test("Adapter host: Task delivery does not execute until separate explicit accep
   assert.equal(f.service.poll(f.contexts.a).message.kind, "execution_result");
   assert.equal(f.count(), 1);
 });
+// Control only this fixture's Task journal clock. Real SQLite transactions,
+// fingerprints, leases and epoch guards still execute; no production clock API.
+// Each test owns a private file and restores the prototype mock on completion.
+function taskJournalClock(t, f) {
+  const clock = { at: Math.floor(Date.now() / 1000) * 1000 };
+  const path = join(f.dir, "bridge.sqlite");
+  const connections = new WeakSet();
+  const prepare = DatabaseSync.prototype.prepare;
+  t.mock.method(DatabaseSync.prototype, "prepare", function (sql) {
+    if (this.location() === path && !connections.has(this)) {
+      // Arity one is essential: the journal calls unixepoch('subsec').
+      this.function("unixepoch", (mode) => {
+        assert.equal(mode, "subsec");
+        return clock.at / 1000;
+      });
+      connections.add(this);
+    }
+    return prepare.call(this, sql);
+  });
+  return clock;
+}
+
 test("Adapter host: Task RPC stop keeps unknown submission for same-key restart reconciliation", async (t) => {
   const f = await hostFixture(t),
     wait = deferred(),
     started = deferred();
+  const clock = taskJournalClock(t, f);
+  f.resume();
+  const { key } = f.submit("execution_request", {
+    body: {
+      parts: [
+        {
+          type: "data",
+          schema_id: "task.execution_request",
+          schema_version: 1,
+          value: { task_type: "connectivity_check" },
+        },
+      ],
+    },
+  });
+  await f.step({ op: "receive" });
+  await f.step({ op: "task_accept", source: key });
+  const original = f.journal.get(key).request_key;
+  let taskId;
+  const host = f.makeHost({
+    task: {
+      journal: f.journal,
+      tasks: {
+        binding: f.binding,
+        submit: async (requestKey) => {
+          const task = await f.tasks.submit(requestKey);
+          taskId = task.id;
+          started.resolve();
+          await wait.promise;
+          return task;
+        },
+        get: f.tasks.get.bind(f.tasks),
+      },
+    },
+  });
+  const pending = host.stepOnce(f.context, { op: "task_submit", source: key });
+  await started.promise;
+  f.pause();
+  f.resume();
+  wait.resolve();
+  assert.equal((await pending).reason, "host_epoch_changed");
+  assert.equal(f.journal.get(key).state, "submitting");
+  assert.equal(f.count(), 1);
+  const abandoned = f.journal.get(key);
+  assert.equal(abandoned.lease_until, clock.at + HOST_LEASE_MS);
+  clock.at = abandoned.lease_until - 1;
+  const busy = await f.step({
+    op: "task_submit",
+    source: key,
+    reconcile: true,
+  });
+  assert.equal(busy.state, "incomplete");
+  assert.equal(busy.reason, "bridge_busy");
+  assert.equal(f.journal.get(key).attempts, 1);
+  clock.at = abandoned.lease_until;
+  const result = await f.step({
+    op: "task_submit",
+    source: key,
+    reconcile: true,
+  });
+  assert.equal(result.state, "done");
+  assert.equal(result.reason, null);
+  assert.equal(result.value.state, "linked");
+  assert.equal(result.value.request_key, original);
+  assert.equal(result.value.attempts, 2);
+  assert.equal(result.value.fence, abandoned.fence + 1);
+  assert.equal(result.value.task.id, taskId);
+  assert.equal(f.count(), 1);
+});
+test("Adapter host: expired Task reconciliation refuses a late same-key response", async (t) => {
+  const f = await hostFixture(t),
+    wait = deferred(),
+    started = deferred();
+  const clock = taskJournalClock(t, f);
   f.resume();
   const { key } = f.submit("execution_request", {
     body: {
@@ -416,16 +512,42 @@ test("Adapter host: Task RPC stop keeps unknown submission for same-key restart 
   assert.equal((await pending).reason, "host_epoch_changed");
   assert.equal(f.journal.get(key).state, "submitting");
   assert.equal(f.count(), 1);
-  await sleep(HOST_LEASE_MS + 50);
-  const result = await f.step({
+  clock.at = f.journal.get(key).lease_until;
+  let calls = 0;
+  const recovering = f.makeHost({
+    task: {
+      journal: f.journal,
+      tasks: {
+        binding: f.binding,
+        submit: async (requestKey) => {
+          calls++;
+          const task = await f.tasks.submit(requestKey);
+          clock.at = f.journal.get(key).lease_until;
+          return task;
+        },
+        get: f.tasks.get.bind(f.tasks),
+      },
+    },
+  });
+  const result = await recovering.stepOnce(f.context, {
     op: "task_submit",
     source: key,
     reconcile: true,
   });
-  assert.equal(result.value.state, "linked");
+  assert.equal(result.state, "incomplete");
+  assert.equal(result.reason, "reconcile_required");
+  assert.equal(result.value.state, "uncertain");
+  assert.equal(result.value.task, null);
+  assert.equal(result.value.attempts, 2);
+  assert.equal(calls, 1);
+  const denied = await f.step({ op: "task_submit", source: key });
+  assert.equal(denied.state, "incomplete");
+  assert.equal(denied.reason, "bridge_reconciliation_required");
+  assert.equal(f.journal.get(key).state, "uncertain");
   assert.equal(result.value.request_key, original);
   assert.equal(f.count(), 1);
 });
+
 test("Adapter host: missing Task binding refuses explicit Task commands", async (t) => {
   const f = await hostFixture(t);
   f.resume();
