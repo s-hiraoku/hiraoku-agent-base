@@ -823,12 +823,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "afe041244f84c90e3ca8d68f6795da3bca27562525b1dad95eb3111f9dad250e",
+      "sha256": "accc4628cebdbe2dd9d79ce89850b5f9ee9990d81d90b54f9bf3289e102953b0",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "Reviewed count-only 1239 to 1244 change for the five single-source owner composition regressions. No gate, required group or historical result changed."
+      "maintenance": "Task-reconciliation regression on main 361e9fc: reviewed current root inventory 1244 to 1245 for one explicit expired-RPC case. Historical results, other group counts, lease/authority semantics and manual gates unchanged; count is not execution evidence."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -848,12 +848,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "0e8140544a41b6f65a20165abdda8c651f37530b827633aeadfd19b2953cce30",
+      "sha256": "977e3417072df2d23fd0a65e9364689cfeca802f1fd2056ed48a3ec07e9352e8",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1244) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1245) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "Reviewed count-only 1239 to 1244 change for the five single-source owner composition regressions. No gate, required group or historical result changed."
+      "maintenance": "Task-reconciliation regression on main 361e9fc: reviewed current root inventory 1244 to 1245 for one explicit expired-RPC case. Historical results, other group counts, lease/authority semantics and manual gates unchanged; count is not execution evidence."
     },
     {
       "path": "docs/testing/plan.md",
@@ -865,12 +865,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "b2819c2dbb39d19c3fd8267feef1b85d542178190268e27c85aadb058ccc5bba",
+      "sha256": "642701789d41c18eef5fc5f5d53e1744ae052786853693e6ef3bdb877d87332f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "Reviewed count-only 1239 to 1244 change for the five single-source owner composition regressions. No gate, required group or historical result changed."
+      "maintenance": "Task-reconciliation regression on main 361e9fc: reviewed current root inventory 1244 to 1245 for one explicit expired-RPC case. Historical results, other group counts, lease/authority semantics and manual gates unchanged; count is not execution evidence."
     },
     {
       "path": "docs/testing/results.md",
@@ -3905,7 +3905,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "77361bb85939d856b3ea405fb7a75219486eccbd9aa853ca19e7cfe04aaff770"
+          "excerpt_sha256": "0cf6ea129b726a21f5963c9bcf3787d374794e64e2374f1686389967dc96f6aa"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4103,7 +4103,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "9f0bfb52b2c13435d39b8fa1204f847f1cad42533b7323570e32206187cf7686"
+          "excerpt_sha256": "0f54603410f0aa800bb6d3656514d21478afe3cc7c70e21f9f2ad410666dccfb"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5267,7 +5267,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "be197fd29b6749d1aee7a6f5a247f210c5d4adeabe168751bedf1b1cc72a368a"
+          "excerpt_sha256": "e00f370dbc2f7025b34356c12957fa2d05ff016b2c26cf82c88270410f7d7836"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5386,13 +5386,13 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "d9101acc2d38bea37a41301bfb99f34d0c3cc37f99afaa075740a6f37b77db8c"
+          "excerpt_sha256": "82a39bceaab82cbdf21bf2715d7d5a0bef75a450b57ec0d627c162fbbea853f8"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "8efe349b2f50ff38afa52231dda9bb3da26c2a04799323d17fe125b00e617703"
+          "excerpt_sha256": "500c19f1fa0cb0410d1ec295a6f08a995b86b71c33dce267fe9083b745572b61"
         },
         {
           "path": "test/p7/README.md",

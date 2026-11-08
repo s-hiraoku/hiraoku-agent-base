@@ -1601,5 +1601,31 @@
         "summary": "Seven optional synthetic-only cases including unsafe/missing fields, symlinks, profile ancestry, bounded manifest reads, blank fields and zero spending cap; no native process or credentials. Eighth regression covers existing and missing-tail profile aliases, current-user 0641 failure when non-root, non-executable inputs, sparse oversized files and full fail-closed result flags."
       }
     ]
+  },
+  {
+    "scope": "Task-reconciliation test-clock maintenance",
+    "attestation": [
+      "The stopped-RPC host test previously assumed its new reconciliation would finish inside a real 400 ms journal lease. A controlled 450 ms pause after begin reproduced stale_bridge_attempt and the uncertain/linked assertion. This reproduces the mechanism, not the unavailable exact caught exception in historical CI.",
+      "Reviewed the test-only SQLite unixepoch override scoped to the exact private journal path. Real SQL, fingerprints, current authority, epoch checks and finite lease rules are unchanged. Before-expiry admission refusal, boundary recovery with the original task/key/fence, and a late recovery response remaining uncertain are asserted. No production code, timeout extension or automatic retry is added.",
+      "Current root catalog changes 1244 to 1245 for the additional expiry case; old run results remain historical. Source must be committed before a separate successor pin generation and verification. Native/production gates remain unverified."
+    ],
+    "supplemental_sources": [
+      {
+        "path": "test/adapter-host.test.js",
+        "sha256": "e06428096749e78f5a746e076ac573d19e1427550d5f91e37ee9c5b9cf0d590d",
+        "kind": "verification",
+        "review": "reviewed",
+        "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
+        "summary": "Scoped journal clock and explicit success/expiry assertions without changing production safety."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "c3a870aa46cff5796f8a116a36c2e17b5366ff6f95fb193e826d7048015b0b0f",
+        "kind": "verification helper",
+        "review": "reviewed",
+        "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
+        "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged."
+      }
+    ]
   }
 ]
