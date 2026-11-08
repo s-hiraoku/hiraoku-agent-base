@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "dc2c728386ac674a86a1f883752e8c28ea892fc6",
+  "source_ref": "a20e7980f0df6a559da7b0902ba3b301ff145526",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -179,7 +179,7 @@
     },
     "scripts/install-ci-nats.ts": {
       "previous_sha256": null,
-      "sha256": "c101a370cded735bbc22235b2cd85c6faf5481103d95be72bedb339b44d8899d"
+      "sha256": "c04bd3cb7b776444bd242af6641837e32ed0c4301873b39d32426e75eb806d7f"
     },
     "scripts/lib/local-mvp.mjs": {
       "previous_sha256": null,
@@ -739,7 +739,7 @@
     },
     "test/ci-nats/install.test.ts": {
       "previous_sha256": null,
-      "sha256": "f747bda185e284bd7efab542a76ee46a850d47d2fc168a82c311b7a60cdf374d"
+      "sha256": "dc76ec22c29c40edaa6841fe15d08ace6ee08b0fdb33505f9a3e3f0168323db6"
     },
     "test/common-mcp-boundary.test.js": {
       "previous_sha256": null,
