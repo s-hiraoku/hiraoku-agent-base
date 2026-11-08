@@ -44,6 +44,13 @@ test("single-source owner policy defaults deny and cannot be changed by recipien
   await assert.rejects(s.step({ op: "inbox_read", source: { ...s.key, message_id: "other" } }), /host_forbidden/);
   await assert.rejects(s.step({ op: "message_enqueue", message: {} }), /host_forbidden/);
   assert.throws(() => s.host.setPaused(s.recipient, true, 1), /host_forbidden/);
+  assert.throws(() => s.policy.revokePermanently(s.recipient), /policy_denied/);
+  assert.equal((await s.step({ op: "inbox_read", source: s.key })).state, "done");
+  s.policy.revokePermanently(s.operator);
+  s.policy.revokePermanently(s.operator); // Repeated shutdown cannot restore authority.
+  await assert.rejects(s.step({ op: "inbox_read", source: s.key }), /host_forbidden/);
+  await assert.rejects(s.step({ op: "send" }), /host_forbidden/);
+  assert.throws(() => s.update(true), /authority_revoked/);
 });
 
 test("source revocation also denies whole dedicated outbox send until explicit regrant", async (t) => {

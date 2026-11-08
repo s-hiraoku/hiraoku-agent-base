@@ -175,5 +175,13 @@ checks, source citations and conflicts are not weakened or marked complete.
 
 The proposal appendix links this opt-in wiring without adopting it as a default
 Relay catalog or a production launcher. The P7 guide inventory increases from
-1246 to 1251 for five new expected cases; it is not an execution-result claim.
+1246 to 1253 for seven new expected cases; it is not an execution-result claim.
 Stable requirements, source authority and manual gates are unchanged.
+
+CodeRabbit follow-up: reviewed the irreversible in-memory recipient revocation
+before any stop control IO. A failed pause read does not claim durable pause;
+all recipient guards remain denied after recovery, and operator cleanup can
+retry. The seven SDK cases include recovered-control/late-poll rejection and
+independent held-owner observations around a gated SDK close. Updated only
+current acceptance-count references in publication.md and delivery-lab.md; their
+historical evidence remains unchanged. No native/manual gate is promoted.

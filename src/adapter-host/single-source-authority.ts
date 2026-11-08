@@ -23,13 +23,14 @@ export function createSingleSourceHost(options: {
   if (!recipient || !operator || typeof recipient !== "object" ||
       typeof operator !== "object" || recipient === operator)
     throw Error("invalid_single_source_authority");
-  let enabled = false;
+  let enabled = false, revoked = false;
   if (!options.hostOptions.owner || !options.hostOptions.control.snapshot().paused)
     throw Error("single_source_requires_paused_owned_host");
+  /** Current recipient guards include terminal revocation; operator cleanup keeps its own scope. */
   const authorization: HostAuthorization = (context, operation, key) => {
     if (context === operator && ["status", "control", "release_owner"].includes(operation))
       return { agent_id, actor_id };
-    if (context !== recipient || !enabled) return undefined;
+    if (context !== recipient || !enabled || revoked) return undefined;
     // send has no source argument: this is a grant for the WHOLE dedicated outbox.
     if (["receive", "send"].includes(operation) && key === null)
       return { agent_id, actor_id };
@@ -45,6 +46,16 @@ export function createSingleSourceHost(options: {
   return Object.freeze({
     host,
     /**
+     * Irreversible local denial before shutdown IO. It also fences in-flight guards
+     * if durable control cannot be read/paused; it does not claim durable pause.
+     * Operator cleanup remains authorized, and this composition cannot regrant.
+     */
+    revokePermanently(context: unknown) {
+      if (context !== operator) throw Error("single_source_policy_denied");
+      revoked = true;
+      enabled = false;
+    },
+    /**
      * Owner-only synchronous fence. A busy/draining host stays paused on failure.
      * Only after committed pause and complete drain may the permission change.
      * Resume is a separate, explicitly authorized host operation, never automatic.
@@ -52,6 +63,7 @@ export function createSingleSourceHost(options: {
     updateWhilePaused(context: unknown, expectedEpoch: number, allow: boolean) {
       if (context !== operator || typeof allow !== "boolean")
         throw Error("single_source_policy_denied");
+      if (revoked) throw Error("single_source_authority_revoked");
       host.setPaused(operator, true, expectedEpoch);
       const state = host.status(operator);
       if (!state.paused || state.running || state.draining || state.owner !== "held")

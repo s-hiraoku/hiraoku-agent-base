@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout, clearTimeout, setInterval, clearInterval } from "node:timers";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useParentTestBroker } from "./jetstream-delivery.js";
 import { hostFixture, limits } from "./adapter-host-fixtures.js";
 import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
@@ -12,6 +13,10 @@ import { startSingleSourceRecipientStdio } from "../src/adapter-host/stdio.ts";
 
 const directory = process.env.HAB_TEST_SINGLE_SOURCE_DIRECTORY;
 const drainTest = process.env.HAB_TEST_SINGLE_SOURCE_MODE === "drain";
+const snapshotFailureTest = process.env.HAB_TEST_SINGLE_SOURCE_MODE === "snapshot-failure";
+const closeOrderTest = process.env.HAB_TEST_SINGLE_SOURCE_MODE === "close-order";
+const retryTest = drainTest || snapshotFailureTest;
+/** Atomically publish synthetic evidence and local test-control responses. */
 const write = (name, value) => {
   const path = join(directory, name);
   writeFileSync(`${path}.tmp`, JSON.stringify(value), { mode: 0o600 });
@@ -43,17 +48,29 @@ const owner = new SQLiteHostOwner(join(f.dir, "single-source-owner.sqlite"), {
 owner.migrate();
 owner.acquire(() => {});
 cleanup.push(() => owner.close());
+let releaseClose;
+if (closeOrderTest) {
+  const originalClose = McpServer.prototype.close;
+  const closeGate = new Promise((resolve) => { releaseClose = resolve; });
+  // This isolated synthetic child alone patches the SDK; the product server remains private.
+  McpServer.prototype.close = async function () {
+    write("close-entered.json", { entered: true });
+    await closeGate;
+    await originalClose.call(this);
+    write("close-finished.json", { status: entry.status() });
+  };
+}
 const entry = await startSingleSourceRecipientStdio({
   hostOptions: f.hostOptions({ owner, answer_intents: journal }),
   actorId: "synthetic-stdio-owner", verifiedRecipientContext: {}, verifiedOperatorContext: {},
-  source: submitted.key, shutdownTimeoutMs: drainTest ? 100 : 1000,
+  source: submitted.key, shutdownTimeoutMs: drainTest ? 100 : closeOrderTest ? 5000 : 1000,
   lifetimeMs: Number(process.env.HAB_TEST_SINGLE_SOURCE_LIFETIME_MS ?? 15000),
 });
 write("ready.json", { source: submitted.key, message: submitted.message, status: entry.status() });
 let releaseNetwork, resolveRetry;
 const retriedStop = new Promise((resolve) => { resolveRetry = resolve; });
 const completion = entry.completion.catch((error) => {
-  if (!drainTest) throw error;
+  if (!retryTest) throw error;
   write("stop-failed.json", { error: error.message, status: entry.status() });
   return retriedStop;
 });
@@ -84,7 +101,7 @@ const commands = setInterval(async () => {
           inboxCount: f.inboxRaw.prepare("SELECT count(*) n FROM relay_inbox").get().n };
         break;
       case "hold": {
-        if (!drainTest) throw Error("invalid_synthetic_command");
+        if (!retryTest) throw Error("invalid_synthetic_command");
         const pending = new Promise((resolve) => { releaseNetwork = resolve; });
         f.state.afterNetwork = async () => {
           write("network-entered.json", { entered: true });
@@ -94,13 +111,13 @@ const commands = setInterval(async () => {
         break;
       }
       case "release":
-        if (!drainTest || !releaseNetwork) throw Error("invalid_synthetic_command");
+        if (!retryTest || !releaseNetwork) throw Error("invalid_synthetic_command");
         f.state.afterNetwork = null;
         releaseNetwork();
         value = true;
         break;
       case "stop":
-        if (!drainTest) throw Error("invalid_synthetic_command");
+        if (!retryTest) throw Error("invalid_synthetic_command");
         try {
           await entry.stop();
           value = { stopped: true };
@@ -108,6 +125,26 @@ const commands = setInterval(async () => {
         } catch (error) {
           value = { stopped: false, error: error.message, status: entry.status() };
         }
+        break;
+      case "failSnapshot": {
+        if (!snapshotFailureTest) throw Error("invalid_synthetic_command");
+        const original = f.control.snapshot;
+        f.control.snapshot = function () {
+          f.control.snapshot = original;
+          throw Error("synthetic_control_snapshot_failure");
+        };
+        value = true;
+        break;
+      }
+      case "beginStop":
+        if (!closeOrderTest) throw Error("invalid_synthetic_command");
+        void entry.stop().catch(() => {});
+        value = true;
+        break;
+      case "releaseClose":
+        if (!closeOrderTest || !releaseClose) throw Error("invalid_synthetic_command");
+        releaseClose();
+        value = true;
         break;
       case "reply": {
         const delivery = await f.service.poll(f.contexts.a);

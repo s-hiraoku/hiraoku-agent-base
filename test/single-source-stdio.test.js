@@ -11,6 +11,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { startLocalBroker } from "../scripts/lib/nats-broker.mjs";
 
+/** Wait for independently published child evidence under a bounded deadline. */
 async function until(read, timeout = 5000) {
   const deadline = performance.now() + timeout;
   for (;;) {
@@ -84,6 +85,9 @@ async function fixture(t, { lifetimeMs = 15000, mode = "normal" } = {}) {
     networkEntered: () => existsSync(join(directory, "network-entered.json")),
     stopFailed: () => existsSync(join(directory, "stop-failed.json")) &&
       JSON.parse(readFileSync(join(directory, "stop-failed.json"), "utf8")),
+    closeEntered: () => existsSync(join(directory, "close-entered.json")),
+    closeFinished: () => existsSync(join(directory, "close-finished.json")) &&
+      JSON.parse(readFileSync(join(directory, "close-finished.json"), "utf8")),
     cleanupExists: () => existsSync(join(directory, "cleanup.json")) };
 }
 
@@ -96,6 +100,12 @@ test("single-source stdio: starts denied and paused; only the local owner can gr
     "recipient_answer_inspect", "recipient_answer_enqueue",
   ]);
   assert.equal((await f.call("receive")).isError, true);
+  await f.command("resume");
+  assert.equal((await f.command("state")).status.paused, false);
+  assert.equal((await f.call("receive")).isError, true);
+  const denied = await f.command("state");
+  assert.equal(denied.inboxCount, 0);
+  assert.equal(denied.outbox.length, 0);
   for (const name of ["pause", "resume", "control", "updatePermission", "message_enqueue", "task_submit"])
     assert.equal((await f.call(name)).isError, true);
   assert.equal((await f.command("state")).outbox.length, 0);
@@ -209,6 +219,77 @@ test("single-source stdio: drain timeout retains owner/stores, fences late RPC a
   assert.equal((await f.command("stop")).stopped, true);
   await until(f.cleanupExists);
   await f.closeClient();
+  assert.equal(f.proof().ownerReleased, true);
+  assert.equal(f.proof().storesClosed, true);
+  assert.match(f.diagnostics(), /SINGLE_SOURCE_CLEANUP_OK/);
+  assert.doesNotMatch(f.diagnostics(), /SINGLE_SOURCE_SIGTERM|CLEANUP_FAILED/);
+});
+
+test("single-source stdio: stop snapshot failure irreversibly revokes new and late work before durable pause", async (t) => {
+  const f = await fixture(t, { mode: "snapshot-failure" });
+  await f.command("grant");
+  await f.command("resume");
+  await f.command("hold");
+  const pending = f.call("receive");
+  await until(f.networkEntered);
+  await f.command("failSnapshot");
+  const stopped = await f.command("stop");
+  const failed = await until(f.stopFailed);
+  const before = await f.command("state");
+  const storesOpen = !f.cleanupExists();
+  await f.command("release");
+  const late = await pending;
+  const state = await f.command("state");
+  const fresh = await f.call("inbox_read", { source: f.ready.source });
+  const newReceive = await f.call("receive");
+  const retried = await f.command("stop");
+  await until(f.cleanupExists);
+  await f.closeClient();
+  // Reclaim owned resources even on the old implementation's expected RED path.
+  assert.equal(stopped.stopped, false);
+  assert.equal(stopped.error, "synthetic_control_snapshot_failure");
+  assert.equal(failed.error, "synthetic_control_snapshot_failure");
+  assert.equal(before.status.paused, false); // The durable pause was never reached.
+  assert.equal(before.status.owner, "held");
+  assert.equal(before.inboxCount, 0);
+  assert.equal(storesOpen, true);
+  assert.equal(late.isError, true, "late poll must lose authorization despite recovered active control");
+  assert.equal(JSON.parse(late.content[0].text).result.state, "incomplete");
+  assert.equal(state.status.paused, false);
+  assert.equal(state.status.running, false);
+  assert.equal(state.status.draining, 0);
+  assert.equal(state.status.owner, "held");
+  assert.equal(state.inboxCount, 0);
+  assert.equal(state.outbox.length, 0);
+  assert.equal(state.taskCount, 0);
+  assert.equal(fresh.isError, true, "new body reads must stay revoked after stop failure");
+  assert.equal(newReceive.isError, true, "new receive must stay revoked after stop failure");
+  assert.equal(retried.stopped, true);
+  assert.equal(f.proof().ownerReleased, true);
+  assert.equal(f.proof().storesClosed, true);
+  assert.match(f.diagnostics(), /SINGLE_SOURCE_CLEANUP_OK/);
+  assert.doesNotMatch(f.diagnostics(), /SINGLE_SOURCE_SIGTERM|CLEANUP_FAILED/);
+});
+
+test("single-source stdio: owner and caller stores remain held until SDK close finishes", async (t) => {
+  const f = await fixture(t, { mode: "close-order" });
+  await f.command("grant");
+  await f.command("resume");
+  await f.command("beginStop");
+  await until(f.closeEntered);
+  const waiting = await f.command("state");
+  const closedEarly = f.closeFinished();
+  const storesClosedEarly = f.cleanupExists();
+  await f.command("releaseClose");
+  await until(f.cleanupExists);
+  await f.closeClient();
+  assert.equal(waiting.status.paused, true);
+  assert.equal(waiting.status.running, false);
+  assert.equal(waiting.status.draining, 0);
+  assert.equal(waiting.status.owner, "held");
+  assert.equal(closedEarly, false);
+  assert.equal(storesClosedEarly, false);
+  assert.equal(f.closeFinished().status.owner, "held");
   assert.equal(f.proof().ownerReleased, true);
   assert.equal(f.proof().storesClosed, true);
   assert.match(f.diagnostics(), /SINGLE_SOURCE_CLEANUP_OK/);

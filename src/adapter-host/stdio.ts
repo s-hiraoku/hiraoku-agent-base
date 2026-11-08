@@ -80,13 +80,16 @@ export async function startSingleSourceRecipientStdio(
   // Retain rejection for callers without an unhandled-rejection side effect.
   void completion.promise.catch(() => {});
   let stopAttempt: Promise<void> | undefined;
+  /** Keep local grant/resume handles closed after shutdown begins. */
   const requireOpen = () => {
     if (stopping || stopped) throw Error("recipient_stdio_stopping");
   };
+  /** Fence recipient guards before control IO; retain stores/owner on a failed stop attempt. */
   const stop = (): Promise<void> => {
     if (stopped) return Promise.resolve();
     if (stopAttempt) return stopAttempt;
     stopping = true;
+    composition.revokePermanently(operator);
     if (lifetimeTimer) clearTimeout(lifetimeTimer);
     stopAttempt = (async () => {
       const deadline = performance.now() + shutdownTimeoutMs;

@@ -72,9 +72,17 @@ stdio registration alone starts no receive loop or model.
 `shutdownTimeoutMs` bounds each stop attempt to 1–60,000 ms. These timers run on
 the process event loop; they are not a hard real-time watchdog or remote RPC
 cancellation. Expiry, stdin EOF/close/error, stdout error, or MCP transport close
-starts the same stop path: commit pause, wait for running and draining work,
+starts the same stop path: permanently revoke recipient permission in memory,
+commit pause, wait for running and draining work,
 close the SDK server, and only then release the owner. Explicit EOF listeners
 are necessary because the pinned SDK stdio transport does not close on EOF.
+
+The irreversible recipient fence runs before any control-store read or pause
+attempt. Every existing authorization guard, including guards of in-flight work,
+then refuses recipient operations even if control storage temporarily fails and
+later recovers in a resumed state. Operator status/pause/release remain usable
+for a stop retry. This fence does not replace durable pause or establish its
+success, and a new process still requires fresh verified launch binding.
 
 Once stopping starts, local grant/resume operations are refused. Concurrent stop
 calls share one attempt. A drain/close/control failure rejects that attempt and
@@ -102,4 +110,6 @@ Hermes/Dots session binding, model decision, actual approval, wake, residency or
 production launch. The child fixture is test-only and must not be installed as a
 production launcher. Pure EOF and the child's own cleanup marker are checked
 separately from SDK client termination so killing a child cannot masquerade as
-successful graceful shutdown.
+successful graceful shutdown. Additional fault cases recover a failed pause
+read and verify continued recipient denial plus fencing of a delayed poll; an
+SDK-close gate independently observes held ownership until close completes.
