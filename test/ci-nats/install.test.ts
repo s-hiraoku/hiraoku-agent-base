@@ -6,9 +6,12 @@ import { tmpdir } from "node:os";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { installCiNats } from "../../scripts/install-ci-nats.mjs";
+import {
+  installCiNats,
+  type InstallerResult,
+} from "../../scripts/install-ci-nats.ts";
 
-const httpFailure = (status) => ({
+const httpFailure = (status: number) => ({
   status: 1,
   stdout: "",
   stderr: `Error: official server download failed ${status}\n`,
@@ -35,10 +38,14 @@ test("HTTP/2 REFUSED_STREAM shares the existing bounded retry budget", async () 
     refusedStreamFailure,
     success,
   ];
-  const delays = [];
+  const delays: number[] = [];
   assert.equal(
     await installCiNats(
-      () => results.shift(),
+      () => {
+        const next = results.shift();
+        assert.ok(next, "unexpected extra installation attempt");
+        return next;
+      },
       async (delay) => delays.push(delay),
       () => {},
     ),
@@ -50,7 +57,7 @@ test("HTTP/2 REFUSED_STREAM shares the existing bounded retry budget", async () 
 
 test("persistent HTTP/2 REFUSED_STREAM fails after four attempts", async () => {
   let attempts = 0;
-  const delays = [];
+  const delays: number[] = [];
   await assert.rejects(
     installCiNats(
       () => {
@@ -60,7 +67,8 @@ test("persistent HTTP/2 REFUSED_STREAM fails after four attempts", async () => {
       async (delay) => delays.push(delay),
       () => {},
     ),
-    (error) => error.cause === refusedStreamFailure,
+    (error: unknown) =>
+      error instanceof Error && error.cause === refusedStreamFailure,
   );
   assert.equal(attempts, 4);
   assert.deepEqual(delays, [1000, 2000, 4000]);
@@ -76,7 +84,7 @@ test("the real CLI reports a child spawn failure without retrying", () => {
         "--import",
         `data:text/javascript,${encodeURIComponent(setup)}`,
         fileURLToPath(
-          new URL("../../scripts/install-ci-nats.mjs", import.meta.url),
+          new URL("../../scripts/install-ci-nats.ts", import.meta.url),
         ),
       ],
       { cwd: directory, encoding: "utf8", timeout: 5000 },
@@ -108,7 +116,7 @@ test("the real CLI refuses a corrupt cached archive before extraction", () => {
       process.execPath,
       [
         fileURLToPath(
-          new URL("../../scripts/install-ci-nats.mjs", import.meta.url),
+          new URL("../../scripts/install-ci-nats.ts", import.meta.url),
         ),
       ],
       { cwd: directory, encoding: "utf8", timeout: 5000 },
@@ -130,11 +138,15 @@ test("transient HTTP failures retry and preserve successful installer output", a
     httpFailure(429),
     success,
   ];
-  const delays = [];
-  const messages = [];
+  const delays: number[] = [];
+  const messages: string[] = [];
   assert.equal(
     await installCiNats(
-      () => results.shift(),
+      () => {
+        const next = results.shift();
+        assert.ok(next, "unexpected extra installation attempt");
+        return next;
+      },
       async (delay) => delays.push(delay),
       (message) => messages.push(message),
     ),
@@ -147,7 +159,7 @@ test("transient HTTP failures retry and preserve successful installer output", a
 
 test("a persistent 504 fails after four attempts", async () => {
   let attempts = 0;
-  const delays = [];
+  const delays: number[] = [];
   await assert.rejects(
     installCiNats(
       () => {
@@ -157,7 +169,12 @@ test("a persistent 504 fails after four attempts", async () => {
       async (delay) => delays.push(delay),
       () => {},
     ),
-    (error) => error.cause.stderr === httpFailure(504).stderr,
+    (error: unknown) =>
+      error instanceof Error &&
+      typeof error.cause === "object" &&
+      error.cause !== null &&
+      "stderr" in error.cause &&
+      error.cause.stderr === httpFailure(504).stderr,
   );
   assert.equal(attempts, 4);
   assert.deepEqual(delays, [1000, 2000, 4000]);
@@ -166,10 +183,14 @@ test("a persistent 504 fails after four attempts", async () => {
 test("408, 500 and 502 each recover on the next attempt", async () => {
   for (const status of [408, 500, 502]) {
     const results = [httpFailure(status), success];
-    const delays = [];
+    const delays: number[] = [];
     assert.equal(
       await installCiNats(
-        () => results.shift(),
+        () => {
+          const next = results.shift();
+          assert.ok(next, "unexpected extra installation attempt");
+          return next;
+        },
         async (delay) => delays.push(delay),
         () => {},
       ),
@@ -180,7 +201,7 @@ test("408, 500 and 502 each recover on the next attempt", async () => {
   }
 });
 
-for (const failure of [
+const failures: InstallerResult[] = [
   httpFailure(403),
   httpFailure(404),
   { status: 1, stderr: "Error: server archive SHA-256 mismatch\n" },
@@ -205,7 +226,8 @@ for (const failure of [
     status: 1,
     stderr: "[TypeError: fetch failed] { code: 'CERT_HAS_EXPIRED' }\n",
   },
-]) {
+];
+for (const failure of failures) {
   test(`permanent failure is not retried: ${failure.stderr ?? failure.error}`, async () => {
     let attempts = 0;
     await assert.rejects(

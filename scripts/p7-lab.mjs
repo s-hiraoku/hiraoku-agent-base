@@ -145,7 +145,7 @@ try {
     report.build = await executeOwnedNode({
       cwd: repo,
       env,
-      args: ["scripts/build.mjs"],
+      args: ["scripts/build.ts"],
       log: join(run, "build.log"),
       timeout_ms: 120000,
       signal: abort.signal,

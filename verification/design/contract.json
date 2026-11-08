@@ -200,19 +200,21 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-relay.md",
-      "sha256": "26d8512153193bd786ae123d69782c1bf49075db181c97b7826b60a07d65a1b5",
+      "sha256": "a183404d28b31cd8faa6e9fba1dae36b0d7567105329c8257b4c47ab976c93a9",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped Relay, private broker and operator CLI recipe: fixed redacted refusal codes including retired-config and out-of-range registry limits, idempotent connect, credential/binding health, epoch-aware disconnect, a group disconnect that stops every member while a reconnect re-grants only the named address, refusal of empty `--operations`, an atomic refused group connect, two-agent synthetic JetStream roundtrip with attachment-part refusal and exact Host. Separate launcher (with an optional group mode) and a stop that ends the owned Relay and broker but leaves the instance directory for the driver to remove; credential expiry and no real client/model guarantee are explicit.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
       "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
-      "sha256": "058c2e51545eac709469566bf9702c8e9935fddfc6146d5b44c3de0a9007b508",
+      "sha256": "408051c38102bd04b51cd720aef964d3bd2fe3e283ac55b07bcfe8f93289a075",
       "role": "normative",
       "review": "reviewed",
       "summary": "Prompt-gated real TTY/tmux enrollment completion, exact-address abort and scripted durable resume; synthetic authority, temporary DB and transcript/exit-code proof. Scripted UI is not proof of an interactive run.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
       "path": ".claude/skills/verify-hab/features/receive-ack.md",
@@ -374,12 +376,13 @@
     },
     {
       "path": "docs/finite-mcp-trial.md",
-      "sha256": "f587fe5993a6bf3d0050a3371cabc566dbd70415000f09287b0e3fc28b31e70d",
+      "sha256": "4b864cb825575b1989f76d2fe72b234c6aae720ca3f3e2db041b1397a45d6b2f",
       "hash": "418b04acba5e7eb5748bfda36e6dea7fec4caca72c421375bd4f19333fbc6121",
       "role": "evidence",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used. Appended concrete next-trial approval checklist and distinction between historical native basic-five-tool evidence and the new synthetic recipient SDK checks; no live authorization inferred. Adds an optional read-only finite trial planning preflight; offline-valid never grants launch, native authorization, environment isolation, provenance or runtime budget/cleanup proof. Explicitly selected artifact bytes must be reviewed non-secret inputs."
+      "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used. Appended concrete next-trial approval checklist and distinction between historical native basic-five-tool evidence and the new synthetic recipient SDK checks; no live authorization inferred. Adds an optional read-only finite trial planning preflight; offline-valid never grants launch, native authorization, environment isolation, provenance or runtime budget/cleanup proof. Explicitly selected artifact bytes must be reviewed non-secret inputs.",
+      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
       "path": "docs/fixed-pilot.md",
@@ -649,12 +652,13 @@
     },
     {
       "path": "docs/mvp-acceptance.md",
-      "sha256": "e9aee0958b635495c9267e09042ef1128484a27af7de8f0bb2665ef50b6d9ea1",
+      "sha256": "96f7713f64493b514a939ce37c014c6a0e42903237d051f92eabc47f8a4e6f16",
       "hash": "e9aee0958b635495c9267e09042ef1128484a27af7de8f0bb2665ef50b6d9ea1",
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Mixed current gate/checklist and earlier implementation snapshots. Synthetic MVP is reproducible, live/G1 not accepted. Auth0/model additional cost is constrained to zero and unknown entitlement/quota parks optional work. Token broker reserves durable account-wide attempts, no tick minting/automatic retries/reset; explicit currently configured Node increment supersedes older missing-wiring rows."
+      "summary": "Mixed current gate/checklist and earlier implementation snapshots. Synthetic MVP is reproducible, live/G1 not accepted. Auth0/model additional cost is constrained to zero and unknown entitlement/quota parks optional work. Token broker reserves durable account-wide attempts, no tick minting/automatic retries/reset; explicit currently configured Node increment supersedes older missing-wiring rows.",
+      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
       "path": "docs/mvp-inventory.md",
@@ -972,7 +976,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "3c5644898acdf8c12dd5a0f7eb1c26c46728126570431ecada8f0b624fe5618f",
+      "sha256": "8359944d32fba86b173cc199925663403482a364fabd966fea9bc5f98adf0f64",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1007,6 +1011,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction. Main HTTP/2 refused-stream failure is separately recorded; only the pinned fetch/stream/code7 diagnostic joins the shared retry budget, with adjacent-code/TLS negative controls."
+    },
+    {
+      "path": "docs/typescript-migration.md",
+      "sha256": "8e03d0269582d6cad980d56ae9caf6351c418b3e8a55efc0d74ea194434381b3",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Engineering inventory of the staged TypeScript tooling migration: strict compiler coverage, Node native stripping, seven compatibility aliases, explicit remaining owned sources and excluded third-party/generated/historical inputs. Does not adopt product behavior or claim native/production acceptance."
     },
     {
       "path": "docs/claude-code-connection.md",
@@ -4160,7 +4171,7 @@
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "exit",
-      "proves": "Root TypeScript declarations and command/port shapes compile under pinned installed dependencies.",
+      "proves": "Application and migrated operator/build/preflight tooling compile under strict TypeScript using the pinned dependencies and erasable syntax.",
       "limitations": "Compilation does not establish runtime behavior, authority or native compatibility."
     },
     {
@@ -4203,12 +4214,15 @@
         "node",
         "--test",
         "--test-reporter=tap",
-        "test/*.test.js"
+        "test/*.test.js",
+        "test/tools/*.test.ts",
+        "test/ci-nats/*.test.ts",
+        "test/compatibility/native-trial-preflight.test.js"
       ],
       "cwd": ".",
       "timeout_seconds": 900,
       "protocol": "node-tap",
-      "proves": "Complete current top-level JavaScript test inventory, including real local HTTP/SQLite and a private pinned nats-server for JetStream delivery, bounded optional execution, authority, recovery, attachment-part refusal and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required.",
+      "proves": "Complete current top-level JavaScript test inventory plus typed CLI compatibility/installer and offline native-preflight checks, including real local HTTP/SQLite and a private pinned nats-server for JetStream delivery, bounded optional execution, authority, recovery, attachment-part refusal and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required.",
       "limitations": "Scenario-specific functional evidence with synthetic authorities and substituted external runtimes. Does not run nested P7 real-broker groups or native agent models, production OAuth, GUI, real media failures or every possible policy. Explicit NODE_OPTIONS matches the existing P7 lab environment because CLI fixtures compare stderr exactly; it suppresses ExperimentalWarning category only, not test assertions or skip/failure handling.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"

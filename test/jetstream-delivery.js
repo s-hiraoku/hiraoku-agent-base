@@ -20,7 +20,7 @@ import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
 import {
   natsServerBinary,
   startLocalBroker,
-} from "../scripts/lib/nats-broker.mjs";
+} from "../scripts/lib/nats-broker.ts";
 
 // Delivery tests need the pinned nats-server; a missing binary fails the test, it never skips.
 export { natsServerBinary };

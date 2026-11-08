@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout, clearTimeout } from "node:timers";
 import { setTimeout as delay } from "node:timers/promises";
 import assert from "node:assert/strict";
-import { startLocalBroker } from "./lib/nats-broker.mjs";
+import { startLocalBroker } from "./lib/nats-broker.ts";
 
 const [python, ...extra] = process.argv.slice(2);
 if (!python || !isAbsolute(python) || extra.length)

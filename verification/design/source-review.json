@@ -1735,5 +1735,138 @@
         "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained."
       }
     ]
+  },
+  {
+    "scope": "TypeScript operator/build/preflight tooling migration",
+    "baseline": "4dfcd14",
+    "summary": "Reviewed the migrated implementations, compiler/lint/runner coverage and command-path edits. Runtime schemas and protocol/storage/authorization behavior remain unchanged. Seven legacy CLI aliases delegate to typed implementations and retain import/export behavior where the original CLI was guarded. NATS broker process ownership and enrollment cleanup remain bounded to owned synthetic resources. Native trial remains read-only with launchAllowed false; native settings, model/identity/approval and production remain unverified. Historical supplemental rows retain original path/hash provenance; moved helper paths are superseded by this review. The new migration document is engineering context only, with explicit remaining source scope and third-party/generated exclusions.",
+    "supplemental": [
+      {
+        "path": "scripts/build.ts",
+        "sha256": "0b494412f7a453ff170d118a57cd43b2a5b5dcb17c99f5ec24479d33ea07ce17",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/hab-enrollment-demo.ts",
+        "sha256": "2219a5cb2059612641096630fd55f73e6c2d972f0b2d44c28d16a8824ca3b75f",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/hab-relay-admin.ts",
+        "sha256": "189b9be8e0d141b197d220ac87f69661288a21048b9ee2961c9c246f6de8aef5",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/hab-relay.ts",
+        "sha256": "e16cda769a5de59309a4473f02ab0ba6afb5883334bbfcbddbd4fe730aedc4d4",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/install-ci-nats.ts",
+        "sha256": "c101a370cded735bbc22235b2cd85c6faf5481103d95be72bedb339b44d8899d",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/native-trial-preflight.ts",
+        "sha256": "ab0c37ebba029e6e9e041826da24f3966b06a3b04ac889e058201a8c9c855b79",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/nats-broker.ts",
+        "sha256": "ca6b59a746d3a79d758eca3f5c29e2b16b3f63bd2f7738891b47547cb2f08874",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/native-trial-preflight.ts",
+        "sha256": "c615c18039f6137afba39b7524db7e5ebe8a98aff52fb6f52608e5cd9632f67c",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/pilot-preflight.ts",
+        "sha256": "4baa8b9285761466222441c7c1024419b64e7573319f9ddebca28b422d9ea18b",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/ci-nats/install.test.ts",
+        "sha256": "f747bda185e284bd7efab542a76ee46a850d47d2fc168a82c311b7a60cdf374d",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/tools/entrypoints.test.ts",
+        "sha256": "7ef2081dde0376fefe5ab968b665d3a528fd97cc0b5c2408077dd640b33f11ff",
+        "review": "reviewed"
+      },
+      {
+        "path": "tsconfig.tools.json",
+        "sha256": "e3ff028ec49fa2ca2f7e72b7edde34e11f2e8c65ce52e52b4df60014b08b9ab1",
+        "review": "reviewed"
+      }
+    ],
+    "moved_sources": {
+      "scripts/lib/native-trial-preflight.mjs": "scripts/lib/native-trial-preflight.ts",
+      "scripts/lib/nats-broker.mjs": "scripts/lib/nats-broker.ts",
+      "test/ci-nats/install.test.js": "test/ci-nats/install.test.ts"
+    }
+  },
+  {
+    "scope": "PR152 CodeRabbit CLI compatibility test corrections and main integration",
+    "baseline": "30f5faf",
+    "summary": "Both CodeRabbit nitpicks were checked against the current head and adopted. The existing successful Relay lifecycle case now starts, observes deny-all readiness, SIGTERMs, verifies owned-port closure and restarts through both .ts and .mjs with explicit config arguments. The existing admin CLI case now independently connects, reads and disconnects a synthetic address via each extension, preserving refusal and secret-omission assertions. The enrollment output regexes require a literal .hab separator. Top-level case catalogs and required assertion counts are unchanged; product code, authority and runtime storage/wire contracts are unchanged. Main integration retains both the TypeScript engineering inventory and the previously reviewed Claude/Grok onboarding context entries; neither is upgraded to native acceptance.",
+    "supplemental": [
+      {
+        "path": "test/tools/entrypoints.test.ts",
+        "sha256": "3f889c9f3a6ef636553a1d3334acc7460217fcd94f12c578fe6d214ecff0c58e",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/local-relay-service.test.js",
+        "sha256": "de4960b5f7e5aad364deac69e6e61ed8c97ec98393dda1aace60a030e12fa5a3",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/local-relay-admin.test.js",
+        "sha256": "6eabd51a7cbbf8e204b6b89d9f5c9b5e48f694467c9984d8ad36b550673991da",
+        "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "TypeScript and main HTTP/2 retry reconciliation",
+    "baseline": "a4b6fb96fb3cb9ae6da5bd3dad23657573447076 + cc9c775748136601f2e5c3fcea79cd1d2bd3eb1a",
+    "summary": "Read both installer implementations and complete tests. Keep the TypeScript implementation and unchanged legacy .mjs delegation. Port only main's existing fetch-failed / ERR_HTTP2_STREAM_ERROR / code 7 recognition into the shared four-attempt budget; HTTP status rules, pinned archive/version verification, spawn/signal failure and final-failure behavior remain unchanged. Preserve all sixteen installer cases with strict narrowing and an explicit nonempty attempt assertion. Recorded diagnostics are regression fixtures, not live delivery recovery or native acceptance. Historical reviews remain unchanged; this entry supersedes the two changed TypeScript source hashes.",
+    "supplemental": [
+      {
+        "path": "scripts/install-ci-nats.ts",
+        "sha256": "c04bd3cb7b776444bd242af6641837e32ed0c4301873b39d32426e75eb806d7f",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/install-ci-nats.mjs",
+        "sha256": "00bc4ad8a9087370f463f1ea9d6acb4baae669b3722bcb17fdf8f91da88595df",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/ci-nats/install.test.ts",
+        "sha256": "dc76ec22c29c40edaa6841fe15d08ace6ee08b0fdb33505f9a3e3f0168323db6",
+        "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "PR152 CodeRabbit subprocess output completion",
+    "baseline": "5c3b3d5054b6fc537113a62a3357405333913252",
+    "summary": "Reviewed the admin CLI and Relay SIGTERM/restart compatibility cases. Both now await child close before inspecting captured stdout/stderr, so process exit alone cannot race pending pipe data. The Relay close listener is registered before SIGTERM; the readiness failure listener still observes exit. Existing exit code/signal, stopped output, empty stderr, address state, secret omission and owned-port closure assertions remain unchanged for both .ts and .mjs. No product code, test catalog count, timeout, authority or native/manual acceptance gate changes. This source review supersedes only the two changed test hashes; historical evidence is retained.",
+    "supplemental": [
+      {
+        "path": "test/local-relay-admin.test.js",
+        "sha256": "51425c5efb312517c9d6b5adfd6eb374feb10e1e742f98587dbf204fbafdf575",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/local-relay-service.test.js",
+        "sha256": "8ef21031cb6eea748c19c356b7c6afda2bd84251a0cf5e04155fc422a6d9aee4",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

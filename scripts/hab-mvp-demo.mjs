@@ -1,6 +1,6 @@
 /** Explicit one-shot synthetic MVP; no existing runtime or production configuration is loaded. */
 import { runLocalMvp } from "./lib/local-mvp.mjs";
-import { NATS_SERVER_REQUIRED } from "./lib/nats-broker.mjs";
+import { NATS_SERVER_REQUIRED } from "./lib/nats-broker.ts";
 if (process.argv.length !== 3 || process.argv[2] !== "--simulate") {
   process.stderr.write("Usage: node scripts/hab-mvp-demo.mjs --simulate\n");
   process.exitCode = 2;
