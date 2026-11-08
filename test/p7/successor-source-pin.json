@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "d8930b5d4c888bbf61dc373fcf7dbedc9b800285",
+  "source_ref": "dc2c728386ac674a86a1f883752e8c28ea892fc6",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -835,7 +835,7 @@
     },
     "test/local-relay-admin.test.js": {
       "previous_sha256": "3e32c2eb7b3397d35ac50915665946188fdace8426774b19b7ba94a459fc86f3",
-      "sha256": "198bde5a965162e094347537a02663c05635aaeb0121297788bd426c76735fb3"
+      "sha256": "6eabd51a7cbbf8e204b6b89d9f5c9b5e48f694467c9984d8ad36b550673991da"
     },
     "test/local-relay-participation.test.js": {
       "previous_sha256": null,
@@ -843,7 +843,7 @@
     },
     "test/local-relay-service.test.js": {
       "previous_sha256": null,
-      "sha256": "13ec4660df9d423616fde9f0eb19c9c0d639fc1cdc66da413847c78d0211bc80"
+      "sha256": "de4960b5f7e5aad364deac69e6e61ed8c97ec98393dda1aace60a030e12fa5a3"
     },
     "test/p7/README.md": {
       "previous_sha256": null,
@@ -915,7 +915,7 @@
     },
     "test/tools/entrypoints.test.ts": {
       "previous_sha256": null,
-      "sha256": "7ef2081dde0376fefe5ab968b665d3a528fd97cc0b5c2408077dd640b33f11ff"
+      "sha256": "3f889c9f3a6ef636553a1d3334acc7460217fcd94f12c578fe6d214ecff0c58e"
     },
     "tsconfig.tools.json": {
       "previous_sha256": null,
