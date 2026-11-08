@@ -14,6 +14,57 @@ const httpFailure = (status) => ({
   stderr: `Error: official server download failed ${status}\n`,
 });
 const success = { status: 0, stdout: '{"binary":"verified"}\n', stderr: "" };
+// Pinned Node 26 diagnostic observed in main's Design CI run 42472004750.
+const refusedStreamFailure = {
+  status: 1,
+  stdout: "",
+  stderr: `[TypeError: fetch failed] {
+  [cause]: Error [ERR_HTTP2_STREAM_ERROR]: Stream closed with error code NGHTTP2_REFUSED_STREAM
+      at ClientHttp2Stream._destroy (node:internal/http2/core:2544:13) {
+    code: 'ERR_HTTP2_STREAM_ERROR',
+    http2ErrorCode: 7
+  }
+}
+`,
+};
+
+test("HTTP/2 REFUSED_STREAM shares the existing bounded retry budget", async () => {
+  const results = [
+    refusedStreamFailure,
+    httpFailure(504),
+    refusedStreamFailure,
+    success,
+  ];
+  const delays = [];
+  assert.equal(
+    await installCiNats(
+      () => results.shift(),
+      async (delay) => delays.push(delay),
+      () => {},
+    ),
+    success.stdout,
+  );
+  assert.equal(results.length, 0);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
+});
+
+test("persistent HTTP/2 REFUSED_STREAM fails after four attempts", async () => {
+  let attempts = 0;
+  const delays = [];
+  await assert.rejects(
+    installCiNats(
+      () => {
+        attempts += 1;
+        return refusedStreamFailure;
+      },
+      async (delay) => delays.push(delay),
+      () => {},
+    ),
+    (error) => error.cause === refusedStreamFailure,
+  );
+  assert.equal(attempts, 4);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
+});
 
 test("the real CLI reports a child spawn failure without retrying", () => {
   const directory = mkdtempSync(join(tmpdir(), "hab-ci-spawn-"));
@@ -136,6 +187,24 @@ for (const failure of [
   { status: 1, stderr: "Error: server version mismatch\n" },
   { status: null, error: Error("spawn failed") },
   { status: null, signal: "SIGTERM", stderr: httpFailure(504).stderr },
+  {
+    status: 1,
+    stderr: refusedStreamFailure.stderr.replace(
+      "http2ErrorCode: 7",
+      "http2ErrorCode: 8",
+    ),
+  },
+  {
+    status: 1,
+    stderr: refusedStreamFailure.stderr.replace(
+      "http2ErrorCode: 7",
+      "http2ErrorCode: 70",
+    ),
+  },
+  {
+    status: 1,
+    stderr: "[TypeError: fetch failed] { code: 'CERT_HAS_EXPIRED' }\n",
+  },
 ]) {
   test(`permanent failure is not retried: ${failure.stderr ?? failure.error}`, async () => {
     let attempts = 0;

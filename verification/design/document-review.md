@@ -203,3 +203,7 @@ Follow-up: full wrapper retries were observed in Linux CI, but some workers stil
 CodeRabbit follow-up: the real CLI ENOENT control failed before the diagnostic correction (only generic failure was printed). The corrected stderr fallback preserves child stderr first and otherwise reports the retained spawn error. The ten-case suite now includes actual failed child creation in an owned scratch directory, nonzero/empty-stdout/no-retry observations and cleanup. This changes diagnostics only; errors still fail closed.
 
 The CodeRabbit coverage nit is also addressed: HTTP 408/500/502 each fail then recover, retaining existing 504/503/429 and exhaustion/permanent-failure controls. The nested suite now has eleven cases. No root inventory or runtime policy changes.
+
+## Main HTTP/2 refused-stream follow-up (2026-11-08)
+
+Read the changed wrapper, full nested tests and Muse context appendix against main4dfcd14. Design run42472004750 completed eleven preparation tests but failed on Node26 fetch with ERR_HTTP2_STREAM_ERROR/http2ErrorCode7 before later design checks. The wrapper now recognizes only that pinned diagnostic combination in addition to the existing transient HTTP statuses, sharing the original four-attempt budget. Recorded stderr controls failed before the fix, then passed. Adjacent HTTP/2 codes8/70 and TLS expiry stay nonretryable. The nested suite is sixteen cases; no root/P7 inventory, pinned installer, checksum/version authority or native/manual gate changes. Actual main rerun and latest PR CI remain separate evidence.
