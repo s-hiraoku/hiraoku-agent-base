@@ -1,5 +1,21 @@
 # Document review
 
+## Cross-process handoff experiment (2026-11-09)
+
+Reviewed `verification/experiments/cross-process-handoff/README.md` against the
+unchanged recipient-messages, answer-intents, receive-supervisor and dedicated
+stdio contracts. Classify it as context: a proposed shared transaction authority
+and a simplified SQLite reference model, not adopted product authority or a
+native port. It explicitly preserves CURRENT permission checks, external origin,
+durable exact identity and unknown outcomes. The required participation of every
+effective native permission writer remains unimplemented. Existing in-process
+MCP usage during an authorized conversation is a smaller separate option; no
+background model execution is implied. Synthetic model outbox atomicity does not
+establish atomicity across current HAB/native stores. Existing requirements,
+checks, feature definitions and manual/native gates are unchanged. A separate CI
+step runs the experiment's synthetic interleaving/process-exit tests without
+counting them as native/product acceptance.
+
 Local follow-up on `0fc76a6ebe48602524cf22df08888cff8bbff34a` reread the six changed design documents and the implementation/test diffs: rollback evidence union and retained-body local recovery (HAB-F24), and actual inbox-capacity gating rather than an outbox-horizon guarantee (HAB-D06/D20). Required local-terminal retention is unchanged. New and changed citations use repository-relative links to remain valid on this branch; no remote source pin is invented. Historical evidence and native/production/manual gates are unchanged.
 
 Extraction baseline `c67711e2bb79670402e3b2cac10452344db7df00`. All 122 initial discovered paths were individually classified: 106 included documents read in full, 16 vendored methodology files excluded with a reason. Hashes bind content but do not prove semantic review or source truth. Generated bundle/skill documents are reviewed separately and excluded as product authority to avoid circular justification.
