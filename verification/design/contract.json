@@ -984,7 +984,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "a5927728f83d9f7eac453948b8066b3ad4227d2b25a763ff87b2b93094ccbfb6",
+      "sha256": "435c27097aef1c1e28b6d73ca6b3ff305b29c325377097a68b151796a62bb7c8",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1043,7 +1043,7 @@
     },
     {
       "path": "verification/experiments/cross-process-handoff/README.md",
-      "sha256": "bf99e1664dd8ba9252e968894419aa6ac4d2a1ef80a9eb0c57813b5e6d682a61",
+      "sha256": "ed50dd43d1f5b5c65122fb04aee736b09c47ccbe48afedc5b34327303da2e35e",
       "role": "context",
       "review": "reviewed",
       "summary": "Unadopted cross-process shared transaction authority proposal and synthetic SQLite model. Retains current native authorization and exact identity requirements; no native integration, product schema or runtime change. Distinguishes active-conversation MCP from background dispatch and model outbox from the existing SQLiteOutbox."

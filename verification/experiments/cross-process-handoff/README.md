@@ -21,7 +21,8 @@ label, signature or reply-ready status cannot create authority. Existing
 product approval rules apply; ordinary permitted replies do not acquire a new
 mandatory human approval step. This does not reinstate closed PR #132.
 
-The minimum safe proposal is ONE effective transaction authority for admission,
+One candidate serialization design for the background push path is a single
+effective transaction authority for admission,
 permission/owner generations, exact reply, reply budget and dispatch eligibility.
 It is product-neutral; native integrations use their own supported APIs and
 must enroll all effective permission writers in this serialization boundary.
@@ -42,8 +43,8 @@ Rejected alternatives:
 
 ### Smaller path: an existing user conversation using standard MCP
 
-This proposal is needed only when a separate background process must dispatch
-native input and obtain a reply. It is NOT a prerequisite for all ordinary
+This is one option for cross-process background dispatch that must retain the
+strict native/outbox commit guarantees. It is NOT a prerequisite for all ordinary
 conversation. In an already active authorized native conversation, the agent can
 use the existing dedicated recipient stdio MCP tools to receive/read a permitted
 source, decide a reply under its current native policy, prepare a durable answer

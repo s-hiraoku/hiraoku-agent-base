@@ -8,7 +8,7 @@ stdio contracts. Classify it as context: a proposed shared transaction authority
 and a simplified SQLite reference model, not adopted product authority or a
 native port. It explicitly preserves CURRENT permission checks, external origin,
 durable exact identity and unknown outcomes. The required participation of every
-effective native permission writer remains unimplemented. Existing in-process
+effective native permission writer remains unimplemented. Existing active-conversation
 MCP usage during an authorized conversation is a smaller separate option; no
 background model execution is implied. Synthetic model outbox atomicity does not
 establish atomicity across current HAB/native stores. Existing requirements,
