@@ -984,7 +984,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "e7f20841b3748eb02b33ea372d61e7692974af6d393419d0bb754bd8a05a3493",
+      "sha256": "63064bb700aeb36564930221e8fefb1fb01bd56b42c94a3ba1cefef5a2863a12",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1040,6 +1040,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB."
+    },
+    {
+      "path": "docs/private-recipient-http.md",
+      "sha256": "e73ebaa3ad4ac7566262e7c7260ec6b0273440229dbb0b81b5fcad1d5201310e",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Generic private HTTP owner composition: unbound metadata discovery, externally verified launch binding, stable schemas, current receipt and quiescent-write promotion fence, initial deny/pause and explicit local grant/resume. Per-request bearer authentication is not native identity. Finite terminal revocation/drain/close retains owner on failure; HTTP disconnect alone is not stdio EOF. Synthetic SDK/SQLite/private-broker checks do not prove native authentication, approval, credential delivery or production readiness."
     }
   ],
   "requirements": [
@@ -1087,7 +1094,8 @@
         "native-recipient",
         "js-recipient-messages",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http"
       ],
       "citations": [
         {
@@ -1116,7 +1124,8 @@
         "ast-boundary",
         "js-recipient-messages",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http"
       ],
       "citations": [
         {
@@ -1249,7 +1258,8 @@
       "checks": [
         "js-common-mcp",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http"
       ],
       "citations": [
         {
@@ -1462,7 +1472,8 @@
       "checks": [
         "js-root",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http"
       ],
       "citations": [
         {
@@ -3444,7 +3455,8 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http"
       ],
       "citations": [
         {
@@ -4510,6 +4522,25 @@
       "protocol": "node-tap",
       "proves": "Official SDK client over an owned separate stdio process with real recipient SQLite and a parent-owned private JetStream broker. Default deny/pause and explicit local-only grant/resume; fixed source and exact durable reply enqueue/send with revocation; finite lifetime and EOF pause/drain/close/owner release before caller store cleanup; failed drain retains ownership until underlying work settles and a local stop retry succeeds. No Task or arbitrary enqueue is exposed. Stop attempts irreversibly revoke recipient guards before control IO; an injected failed control read followed by resumed-state recovery still denies new calls and delayed poll saves. A gated SDK close independently witnesses owner held while pending and immediately on close completion, before release. Initial resume without a grant remains denied.",
       "limitations": "Recipient/operator identity, policy and chosen answer are synthetic. Relay HTTP uses the existing in-process gateway. Not native session binding, product approval, model judgment, wake, residency, production launcher, process crash or physical restore evidence. Source grant covers the whole dedicated single-producer outbox, not exact-body human approval. Post-call receipt evidence does not replace the independent pre-ACK observer. Tests overlap js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-private-recipient-http",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/private-recipient-http.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Owned loopback MCP with SQLite and private JetStream fixtures; all-request authentication and Host/Origin/path rejection without redirects; unbound tool denial and stable schemas; fresh discovery receipts and delayed-POST promotion fence; explicit grant/resume, fixed-source read and persisted answer prepare/enqueue/send with revocation; owner loss, DELETE, expiry, failed drain/control/startup-close retention and explicit cleanup retry.",
+      "limitations": "Synthetic bearer, recipient/operator contexts and policy only. External listener/credential delivery and native session launch verification remain owner responsibilities. No live agent, model, native approval, production queue, OS isolation or hard real-time guarantee. Tests overlap js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
