@@ -984,7 +984,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "e7f20841b3748eb02b33ea372d61e7692974af6d393419d0bb754bd8a05a3493",
+      "sha256": "fa432d6292914c3e64e574360b207c0f6812608fd3503b828aa420b3e0176525",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1040,6 +1040,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB."
+    },
+    {
+      "path": "docs/auth0-recovery.md",
+      "sha256": "e9c74424a7e69fc2a4e65258618ba2483676a3cf7737e79e83e425119c6c2b7c",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. Offline trial preparation now samples one clock value, uses the existing replay-bound ID factory and contract parser, refuses repair/overwrite of saved intents, and checks the exact saved submission before any separately authorized submit. The 1ms mismatch regression and expiry boundary remain offline controls, not live recovery proof."
     }
   ],
   "requirements": [
