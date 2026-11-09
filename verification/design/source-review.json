@@ -1868,5 +1868,99 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "TypeScript SQLite and JetStream test workers",
+    "baseline": "2c3b0dad2865dfb9d8b638aa976961ad01e9d128",
+    "summary": "Read the three complete workers, existing caller contracts, strict compiler coverage and migration inventory. Trusted structured-clone data now has explicit types from existing product contracts. Parent ports are narrowed before listeners; ready/go, SQLite cleanup, pump close/error behavior and message-before-atomic-wakeup remain intact. Existing tests and assertions stay unchanged. Historical pins and compressed source fixtures remain byte-identical. This is engineering context and fixture verification, not native product or production acceptance.",
+    "supplemental": [
+      {
+        "path": "test/claim-worker.ts",
+        "sha256": "122b87bd1dbbcdbd3cb6ae22c7420fa19f1ed6aadeb36c6e39a8dde6ad5c5076",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/startup-worker.ts",
+        "sha256": "2df411c3b87f53dc2be4f7b34883a24c6813c4305bbc40c89dcb6968106fba7b",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/jetstream-pump-worker.ts",
+        "sha256": "794fd9a07ab2d57a73aefe568a14fe5ef90f4e3faa9f555f1171ce0f267d4772",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/hub.test.js",
+        "sha256": "3378a3b73949e2293453309053b1d893755808e453686428af17c1db74b1f726",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/jetstream-delivery.js",
+        "sha256": "33b63b01daaf0cb90c6470bb737c8200fd0b4099ab6cfc198e9fd4cd0ab37e35",
+        "review": "reviewed"
+      },
+      {
+        "path": "tsconfig.json",
+        "sha256": "bbee384db99210cf7d2457b504026f98fbe934b0ab84a008e53731bd2732e644",
+        "review": "reviewed"
+      },
+      {
+        "path": "docs/typescript-migration.md",
+        "sha256": "d4947bbe384c166d8836d23ff369e8b4dfbf388923441077eb6de44042bcf3e3",
+        "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "TypeScript diagram integrity renderer",
+    "baseline": "ba7434f9b175b909b74d756dfcb0976d7c0c69af",
+    "summary": "Read complete old and typed renderers and the new owned CLI controls. The original Markdown-authority comment and behavior are preserved; legacy mjs delegates to the typed implementation. Dedicated strict configuration and package commands cover the renderer without altering worker or P7 source inventories. Existing Markdown, image and manifest bytes stay unchanged. Current source references move to typed line 1 with an unchanged excerpt hash. Browser launch arguments/environment, timeout, scratch/config modes and finally cleanup are unchanged; real rendering is not claimed by the eleven fixture controls. This entry supersedes only the renderer implementation path/hash and does not change product design or manual/native/production scope.",
+    "moved_sources": {
+      "docs/diagrams/render-mermaid.mjs": "docs/diagrams/render-mermaid.ts"
+    },
+    "supplemental": [
+      {
+        "path": "docs/diagrams/render-mermaid.mjs",
+        "sha256": "d59bffbd762f0dce35f3dd0c2a13d89961f2cc0cbdb72078aff7414b33afd011",
+        "review": "reviewed"
+      },
+      {
+        "path": "docs/diagrams/render-mermaid.ts",
+        "sha256": "779638cdcfc487daa446fc1ad4725110d517c7ecdfba9fea3e2f6bf724770dc6",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/tools/diagrams.test.ts",
+        "sha256": "27eb190efb9b2248ace6045eefddc4e06bd27a5a9e0d5820b4ea2d5f0f43ef52",
+        "review": "reviewed"
+      },
+      {
+        "path": "tsconfig.diagrams.json",
+        "sha256": "2a6ac0771d46a8c434fab62ad4d54365b93fc182c71a48377fd42a9ab4f8c901",
+        "review": "reviewed"
+      },
+      {
+        "path": "package.json",
+        "sha256": "e294d40e2ef53319ae1014f42425a57af2159cd96a7cd01a246727489ef1479f",
+        "review": "reviewed"
+      },
+      {
+        "path": "docs/typescript-migration.md",
+        "sha256": "b8364811059c1f937e9b55d715f4bae302c014c6ea521ee1016b7e88d8c652d8",
+        "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "PR156 push-run finite MCP success-path RPC budget",
+    "baseline": "7444c86a6d490da555f45d4b0d6a91ead75a5c65",
+    "summary": "Reviewed failed branch run 42539734275 independently of passing PR run 42539742388 and read the complete finite question/answer/ACK case, fixture, host cycle and MCP client deadline/receiver mapping. The original failure logged incomplete after 1119ms against a 1000ms RPC budget but omitted its reason. A controlled 1100ms poll response reproduces poll_transport_failed under that budget. The existing success case now carries the same delay and a finite 5000ms fixture RPC budget, preserving every original semantic assertion and case count. Shared failure diagnostics show the complete result. Explicit short-timeout, draining, epoch and revocation controls and all product code/defaults remain unchanged. Historical failure evidence is retained; current branch and PR workflow results must be reported separately.",
+    "supplemental": [
+      {
+        "path": "test/adapter-host.test.js",
+        "sha256": "8966a7ffe9c927dc398553130643f574b5f7939df47e0f72381a10671ff30e32",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

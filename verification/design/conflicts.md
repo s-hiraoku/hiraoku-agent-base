@@ -310,7 +310,7 @@ Classification: documentation-integrity artifact versus product authority. Requi
 
 Manifest hashes verify correspondence of two rendered images to Markdown Mermaid source, not running topology. Derive principles from the authoritative Markdown current/target scope; keep binary image access separate.
 
-Sources: [docs/diagrams/render-mermaid.mjs:1](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/diagrams/render-mermaid.mjs#L1-L1).
+Sources: [docs/diagrams/render-mermaid.ts:1](../../docs/diagrams/render-mermaid.ts#L1-L1).
 
 ## HAB-C-D06 — resolved
 

@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "162dc0b662d7f71ee253032d814a42d423afc82d",
+  "source_ref": "f84d3c9f5576c1b71bd560e0d1fa2c91503ee3ba",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -731,7 +731,7 @@
     },
     "test/adapter-host.test.js": {
       "previous_sha256": null,
-      "sha256": "e06428096749e78f5a746e076ac573d19e1427550d5f91e37ee9c5b9cf0d590d"
+      "sha256": "8966a7ffe9c927dc398553130643f574b5f7939df47e0f72381a10671ff30e32"
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
@@ -740,6 +740,10 @@
     "test/ci-nats/install.test.ts": {
       "previous_sha256": null,
       "sha256": "dc76ec22c29c40edaa6841fe15d08ace6ee08b0fdb33505f9a3e3f0168323db6"
+    },
+    "test/claim-worker.ts": {
+      "previous_sha256": null,
+      "sha256": "122b87bd1dbbcdbd3cb6ae22c7420fa19f1ed6aadeb36c6e39a8dde6ad5c5076"
     },
     "test/common-mcp-boundary.test.js": {
       "previous_sha256": null,
@@ -829,9 +833,17 @@
       "previous_sha256": "ff7728bbf455942ac1256687a04c5819ebad28fa2bb8eb8c44a8d88fbdc3fdbb",
       "sha256": "f2633f9c44ad0fde636fc1b15d84564f6632bc4a84eba20bda16312d8d147385"
     },
+    "test/hub.test.js": {
+      "previous_sha256": null,
+      "sha256": "3378a3b73949e2293453309053b1d893755808e453686428af17c1db74b1f726"
+    },
     "test/jetstream-delivery.js": {
       "previous_sha256": null,
-      "sha256": "99cb9dca44e4fc737aeceb7619ec6578a954c73c8f78da2b7c1aa35d442f0501"
+      "sha256": "33b63b01daaf0cb90c6470bb737c8200fd0b4099ab6cfc198e9fd4cd0ab37e35"
+    },
+    "test/jetstream-pump-worker.ts": {
+      "previous_sha256": null,
+      "sha256": "794fd9a07ab2d57a73aefe568a14fe5ef90f4e3faa9f555f1171ce0f267d4772"
     },
     "test/local-relay-admin.test.js": {
       "previous_sha256": "3e32c2eb7b3397d35ac50915665946188fdace8426774b19b7ba94a459fc86f3",
@@ -913,9 +925,17 @@
       "previous_sha256": null,
       "sha256": "039f4b893209aa08ec92366be07581752e2bbe5902cf8427f7333cade8a12dc1"
     },
+    "test/startup-worker.ts": {
+      "previous_sha256": null,
+      "sha256": "2df411c3b87f53dc2be4f7b34883a24c6813c4305bbc40c89dcb6968106fba7b"
+    },
     "test/tools/entrypoints.test.ts": {
       "previous_sha256": null,
       "sha256": "3f889c9f3a6ef636553a1d3334acc7460217fcd94f12c578fe6d214ecff0c58e"
+    },
+    "tsconfig.json": {
+      "previous_sha256": null,
+      "sha256": "bbee384db99210cf7d2457b504026f98fbe934b0ab84a008e53731bd2732e644"
     },
     "tsconfig.tools.json": {
       "previous_sha256": null,
