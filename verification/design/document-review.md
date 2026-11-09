@@ -243,3 +243,14 @@ Retained the failed branch Design run 42539734275 at 7444c86 separately from suc
 No existing requirement, decision authority, source citation or native/manual gate
 was weakened. The HTTP check supplements the existing stdio/authority checks and
 uses real owned MCP/SQLite/private-broker resources with synthetic credentials.
+
+## Generic external owner launcher preparation (2026-11-09)
+
+| Document | Classification | Semantic review |
+| --- | --- | --- |
+| docs/external-owner-launcher.md | context / reviewed | Opt-in product-independent listener and separately supervised owner process. Trusted driver callbacks, not native authentication implementation, supply the committed cause chain and participant scope. One create attempt, current receipt, separate native/outer liveness and deny-only surface preserve source authority. Empty env and ignored raw output are process boundaries, not home/network isolation. Forced/unconfirmed exit, unsettled driver work and failed cleanup remain failure, with state retained until actual exit. No product runner, credential issuance, grant, model, live profile/queue or deployment is adopted. ACP is a feasible subsequent independent driver, explicitly unimplemented. |
+
+Reviewed against HAB-F02/F03/F07/F11/F16/E09, HAB-C-F02 and the existing private HTTP,
+fixed-source and owner contracts. The new focused synthetic check supplements those
+requirements without changing statements, citations, decisions or manual/native gates.
+Real SQLite and owned MCP/process faults are not a product session or native approval.

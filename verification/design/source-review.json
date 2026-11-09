@@ -1962,5 +1962,42 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "Generic deny-only external-owner preparation",
+    "baseline": "28cc847268b5d508c0f0c9ad8f8b2beabebdef8d",
+    "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. No native ACP driver/verifier, product runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment. Existing HAB-F02/F03/F07/F11/F16/E09 authority, accepted statements and native/manual requirements are unchanged. Reread the private HTTP composition, single-source authorization, owner/control lifecycle and HAB principles; no standard runtime imports this opt-in launcher. Code changes include early review fixes for raw store-error suppression and bounded exit-unconfirmed reporting. Independent review also corrected repeated process-error handling and prohibited signal escalation after a known failure. Actual child exit is tracked separately from IPC close because the disconnected synthetic fault exposed missing close notification despite confirmed process death. The final focused synthetic run passes all 13 cases; full suites and hosted evidence remain separate.",
+    "supplemental": [
+      {
+        "path": "src/adapter-host/external-owner.ts",
+        "sha256": "da137ee3eadbb389d49d23f6b27af63f3d269876b93f3312eceb9cd876263261",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/owner-process.ts",
+        "sha256": "85473ec2841b08e406fd1dd862ac60824fdd62caa947a18d1c90296e4f991277",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/owner-process-entry.ts",
+        "sha256": "aea3fb0381efd0f4a90c2f2a9eac594220d436dbfa800cada59da8e659e1a6be",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner.test.js",
+        "sha256": "a302db597ee8740cd35432fe84311d6a03c08f4390434d18b01698f154e98669",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner-fixture.js",
+        "sha256": "570b6176400d8827067324afdb2cc360e6e0fe05e46fb6f1d3163f4f06e79f09",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner-child.js",
+        "sha256": "6d599902d1c07ebd2655ad9c0f613b1629382750092b530285e611aa47d07236",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

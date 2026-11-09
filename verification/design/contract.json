@@ -984,7 +984,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "63064bb700aeb36564930221e8fefb1fb01bd56b42c94a3ba1cefef5a2863a12",
+      "sha256": "5194d580da1ba220b5e843e3fe79cbe81cccd115daceb15a12bff6e153d92262",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -992,7 +992,7 @@
     },
     {
       "path": "verification/design/helpers.md",
-      "sha256": "6751e8872864e325f09e200c66d9376530f4052f356a4ba60a8a7823bd9542bc",
+      "sha256": "54e2830d66891cb8e53b2b952952baef76a38068ea6d3b0abcc73942cc647436",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1047,6 +1047,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Generic private HTTP owner composition: unbound metadata discovery, externally verified launch binding, stable schemas, current receipt and quiescent-write promotion fence, initial deny/pause and explicit local grant/resume. Per-request bearer authentication is not native identity. Finite terminal revocation/drain/close retains owner on failure; HTTP disconnect alone is not stdio EOF. Synthetic SDK/SQLite/private-broker checks do not prove native authentication, approval, credential delivery or production readiness."
+    },
+    {
+      "path": "docs/external-owner-launcher.md",
+      "sha256": "9cfaab2ef360dfe90a3ef083acb9d9c8e635bd9e15fe8d7d8b56c91ff3a91a09",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. No native ACP driver/verifier, product runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment."
     }
   ],
   "requirements": [
@@ -1095,7 +1102,8 @@
         "js-recipient-messages",
         "js-recipient-host-mcp",
         "js-single-source-stdio",
-        "js-private-recipient-http"
+        "js-private-recipient-http",
+        "js-external-owner"
       ],
       "citations": [
         {
@@ -1125,7 +1133,8 @@
         "js-recipient-messages",
         "js-recipient-host-mcp",
         "js-single-source-stdio",
-        "js-private-recipient-http"
+        "js-private-recipient-http",
+        "js-external-owner"
       ],
       "citations": [
         {
@@ -1259,7 +1268,8 @@
         "js-common-mcp",
         "js-recipient-host-mcp",
         "js-single-source-stdio",
-        "js-private-recipient-http"
+        "js-private-recipient-http",
+        "js-external-owner"
       ],
       "citations": [
         {
@@ -1346,7 +1356,8 @@
         "js-root",
         "native-recipient",
         "js-recipient-messages",
-        "js-recipient-host-mcp"
+        "js-recipient-host-mcp",
+        "js-external-owner"
       ],
       "citations": [
         {
@@ -1473,7 +1484,8 @@
         "js-root",
         "js-recipient-host-mcp",
         "js-single-source-stdio",
-        "js-private-recipient-http"
+        "js-private-recipient-http",
+        "js-external-owner"
       ],
       "citations": [
         {
@@ -3456,7 +3468,8 @@
       "checks": [
         "js-root",
         "js-single-source-stdio",
-        "js-private-recipient-http"
+        "js-private-recipient-http",
+        "js-external-owner"
       ],
       "citations": [
         {
@@ -4541,6 +4554,25 @@
       "protocol": "node-tap",
       "proves": "Owned loopback MCP with SQLite and private JetStream fixtures; all-request authentication and Host/Origin/path rejection without redirects; unbound tool denial and stable schemas; fresh discovery receipts and delayed-POST promotion fence; explicit grant/resume, fixed-source read and persisted answer prepare/enqueue/send with revocation; owner loss, DELETE, expiry, failed drain/control/startup-close retention and explicit cleanup retry.",
       "limitations": "Synthetic bearer, recipient/operator contexts and policy only. External listener/credential delivery and native session launch verification remain owner responsibilities. No live agent, model, native approval, production queue, OS isolation or hard real-time guarantee. Tests overlap js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-external-owner",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/external-owner.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry.",
+      "limitations": "Trusted synthetic driver only; no native verifier or ACP wire driver, credential issuance/delivery, model, live profile/queue or product session. No OS sandbox, descendant kill or parent-death plus blocked-child containment. Forced or unconfirmed termination is failure, not successful cleanup. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
