@@ -984,7 +984,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "263e42331db64485eb4d36f19f2e116f24f40f803b33975835c9736c432dbe52",
+      "sha256": "e7f20841b3748eb02b33ea372d61e7692974af6d393419d0bb754bd8a05a3493",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",

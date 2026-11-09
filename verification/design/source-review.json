@@ -1950,5 +1950,17 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "PR156 push-run finite MCP success-path RPC budget",
+    "baseline": "7444c86a6d490da555f45d4b0d6a91ead75a5c65",
+    "summary": "Reviewed failed branch run 42539734275 independently of passing PR run 42539742388 and read the complete finite question/answer/ACK case, fixture, host cycle and MCP client deadline/receiver mapping. The original failure logged incomplete after 1119ms against a 1000ms RPC budget but omitted its reason. A controlled 1100ms poll response reproduces poll_transport_failed under that budget. The existing success case now carries the same delay and a finite 5000ms fixture RPC budget, preserving every original semantic assertion and case count. Shared failure diagnostics show the complete result. Explicit short-timeout, draining, epoch and revocation controls and all product code/defaults remain unchanged. Historical failure evidence is retained; current branch and PR workflow results must be reported separately.",
+    "supplemental": [
+      {
+        "path": "test/adapter-host.test.js",
+        "sha256": "8966a7ffe9c927dc398553130643f574b5f7939df47e0f72381a10671ff30e32",
+        "review": "reviewed"
+      }
+    ]
   }
 ]
