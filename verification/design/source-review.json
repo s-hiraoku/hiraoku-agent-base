@@ -1962,5 +1962,39 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "Existing Auth0/Hermes connection recovery",
+    "baseline": "ad73e36",
+    "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. The offline trial producer fix reuses makeReplayBoundMessageId and parseSubmission without changing HAB acceptance. One sampled time, exact saved-input validation and 1ms rejection prevent the previously unvalidated ad hoc producer error; old evidence is retained and no new communication is authorized by these tools.",
+    "requirements_reviewed": [
+      "HAB-A08",
+      "HAB-A09",
+      "HAB-A11",
+      "HAB-A16",
+      "HAB-D17"
+    ],
+    "supplemental": [
+      {
+        "path": "docs/auth0-recovery.md",
+        "sha256": "e9c74424a7e69fc2a4e65258618ba2483676a3cf7737e79e83e425119c6c2b7c",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/native-trial-message.ts",
+        "sha256": "02b79f67ad858f92d0a02c5d7b281aad61c02c9f3bf2ce3ed28da7a61fad8058",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/native-trial-message.ts",
+        "sha256": "d7357fa099bd001c708a72652b26b58bcce93812265aeb88692032513dd0229c",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/tools/native-trial-message.test.ts",
+        "sha256": "e73abc62f815f4e13e05f07132b8869003339414035e7199b015268eda157d2c",
+        "review": "reviewed"
+      }
+    ]
   }
 ]
