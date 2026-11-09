@@ -352,10 +352,18 @@
     },
     {
       "path": "docs/diagrams/render-mermaid.mjs",
-      "sha256": "3d04f2ac79a280b8914bf60d5cb513e061b84260bf0abd6c05155ad5e513505f",
+      "sha256": "d59bffbd762f0dce35f3dd0c2a13d89961f2cc0cbdb72078aff7414b33afd011",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Legacy diagram CLI delegates to the typed renderer, preserving documented and CI commands and original top-level execution behavior. No independent product requirement or native acceptance.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/diagrams/render-mermaid.ts",
+      "sha256": "779638cdcfc487daa446fc1ad4725110d517c7ecdfba9fea3e2f6bf724770dc6",
       "role": "evidence",
       "review": "reviewed",
-      "summary": "Diagram verifier/renderer implementation: Markdown Mermaid authoritative, unique markers, version and definition/image hash checks; optional explicit local browser rendering. Evidence of document rendering integrity, not runtime topology correctness or additional product design.",
+      "summary": "Strict TypeScript successor of the reviewed diagram verifier/renderer. Preserves Markdown Mermaid authority, unique markers, pinned tool versions, definition/image hashes and optional explicit local browser rendering. Diagram integrity is not runtime topology or native product acceptance.",
       "read_scope": "full"
     },
     {
@@ -960,7 +968,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "4c11b760cbbef9337f32a94ed52bf4b6970f5ac75376346133e79e4efbc7b2ea",
+      "sha256": "152641ee0d0af350ff1abbcc127c5b89fc633deb6c976cb56306289d9a7898e3",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -976,7 +984,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "eb877bcf3901ebc5692bb05577c4c8d0955ba05a18a46835166cfc276cb7ae4c",
+      "sha256": "e7f20841b3748eb02b33ea372d61e7692974af6d393419d0bb754bd8a05a3493",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1014,10 +1022,10 @@
     },
     {
       "path": "docs/typescript-migration.md",
-      "sha256": "d4947bbe384c166d8836d23ff369e8b4dfbf388923441077eb6de44042bcf3e3",
+      "sha256": "b8364811059c1f937e9b55d715f4bae302c014c6ea521ee1016b7e88d8c652d8",
       "role": "context",
       "review": "reviewed",
-      "summary": "Engineering inventory of the staged TypeScript tooling migration: strict compiler coverage, Node native stripping, seven compatibility aliases, explicit remaining owned sources and excluded third-party/generated/historical inputs. Does not adopt product behavior or claim native/production acceptance. The next stage types the three SQLite/JetStream test workers and their existing message contracts, extends root compiler coverage and preserves exact historical fixture bytes; the remaining test/helper inventory is 157 files."
+      "summary": "Engineering inventory of the staged TypeScript tooling migration: strict compiler coverage, Node native stripping, seven compatibility aliases, explicit remaining owned sources and excluded third-party/generated/historical inputs. Does not adopt product behavior or claim native/production acceptance. The next stage types the three SQLite/JetStream test workers and their existing message contracts, extends root compiler coverage and preserves exact historical fixture bytes; the remaining test/helper inventory is 157 files. Diagram renderer maintenance adds a typed implementation, preserved legacy alias and eleven isolated CLI controls without real-browser/native acceptance; sequencing on the worker PR is explicit."
     },
     {
       "path": "docs/claude-code-connection.md",
@@ -5516,7 +5524,7 @@
       "classification": "documentation-integrity artifact versus product authority",
       "citations": [
         {
-          "path": "docs/diagrams/render-mermaid.mjs",
+          "path": "docs/diagrams/render-mermaid.ts",
           "start": 1,
           "end": 1,
           "excerpt_sha256": "00743e4bebb6a762f21fc1168d2047632df1dc5f4504e52ee1bae38699bc58ab"
