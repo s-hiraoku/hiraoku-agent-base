@@ -835,12 +835,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "02d97d72f3b5015afd5c4a485ce432cc60f55b03659aa3b486cbeacab895f3a1",
+      "sha256": "2ec08c0eafeb2d3b566b1b1b1ac3d2e8d405e3f5ea7428d67b17f4c389ec6fc8",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "Private HTTP composition adds eleven top-level cases: current root inventory 1264. Hosted run42699025780 measured1264 passes but failed the previous1253 expected-count gate. Historical evidence and strict failure/skip/cleanup gates remain unchanged."
+      "maintenance": "Generic deny-only external owner adds thirteen top-level cases, making the expected root inventory 1277. Earlier private-HTTP 1264 evidence remains historical. This count update is not a full-suite or hosted execution result and changes no acceptance gate."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -860,12 +860,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "203b5f30c6245a0b910d5ef02846bc5988fbdfcef87d6e6be7133361a47fb585",
+      "sha256": "77b5a4778b3089038c0f672ba6018915ab14648387337e1c95c7ff16d74dc30e",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1264) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1277) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "Private HTTP composition adds eleven top-level cases: current root inventory 1264. Hosted run42699025780 measured1264 passes but failed the previous1253 expected-count gate. Historical evidence and strict failure/skip/cleanup gates remain unchanged."
+      "maintenance": "Generic deny-only external owner adds thirteen top-level cases, making the expected root inventory 1277. Earlier private-HTTP 1264 evidence remains historical. This count update is not a full-suite or hosted execution result and changes no acceptance gate."
     },
     {
       "path": "docs/testing/plan.md",
@@ -877,12 +877,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "c9040fbd9f93f3aa948431550c40f104e4ba8ae7b1235eb6cffbfe0ac89d690c",
+      "sha256": "8067035c202957f2b8b389268851218c58360d2dbafb90fa682d7d6e2deb9843",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "Private HTTP composition adds eleven top-level cases: current root inventory 1264. Hosted run42699025780 measured1264 passes but failed the previous1253 expected-count gate. Historical evidence and strict failure/skip/cleanup gates remain unchanged."
+      "maintenance": "Generic deny-only external owner adds thirteen top-level cases, making the expected root inventory 1277. Earlier private-HTTP 1264 evidence remains historical. This count update is not a full-suite or hosted execution result and changes no acceptance gate."
     },
     {
       "path": "docs/testing/results.md",
@@ -3982,7 +3982,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "9f239897b99ff1131f767b71a5dc049c6470623b24848389eb007833b6d90b64"
+          "excerpt_sha256": "e82aa19566ffd2b4296814c18344127a41d27cdc689bcca10cdd93779686353a"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4180,7 +4180,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "081325cb4d21eb42daa3bef5dace0d0580dda20dba3d11dd070037228a540f2c"
+          "excerpt_sha256": "451749de7eedd16a7671f1c6be774041c2c64635cab4a6c2829b86ebfc44b931"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5404,7 +5404,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "223223e62d3995132a4697de24398138e13b646f6205dc6e14b29a9ff3dd810f"
+          "excerpt_sha256": "05f97f9c48d270414421cf19591e468c26639bce2262f803528998201272113f"
         },
         {
           "path": "docs/testing/publication.md",
@@ -5523,13 +5523,13 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "faece4e1a6c024fdf17019b9038b0de26975ba9b22f750c54767684447d061cf"
+          "excerpt_sha256": "66bdb6e1c12fbc95bc6a2a16a8d9e54be787d38bce786d13fbc09def0b5c5c23"
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "0b3ded0f4a08dc84cc965f6540144344b58f8fcba6a25f0ec6fc05bceed96456"
+          "excerpt_sha256": "2236f811aa8d179d5071c2330d01d19f1ad118fd1ea2726dc1e5fb68c4f68859"
         },
         {
           "path": "test/p7/README.md",
@@ -5538,7 +5538,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks."
     },
     {
       "status": "resolved",

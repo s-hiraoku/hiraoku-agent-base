@@ -1997,6 +1997,12 @@
         "path": "test/external-owner-child.js",
         "sha256": "6d599902d1c07ebd2655ad9c0f613b1629382750092b530285e611aa47d07236",
         "review": "reviewed"
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "8ef32feb8d8f6bb81bd0044c113b137e13a11c24a58701218feeed48e89e0788",
+        "review": "reviewed",
+        "maintenance": "Only strict expected top-level count changes from 1264 to 1277 for the thirteen new external-owner cases. Historical group counts, assertions and failure handling are unchanged."
       }
     ]
   }
