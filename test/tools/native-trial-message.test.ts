@@ -130,3 +130,65 @@ test("offline CLI prepares and checks a private new artifact without overwriting
   assert.equal(rejected.stdout, "");
   assert.equal(readFileSync(output, "utf8"), invalidBefore);
 });
+
+for (const failure of ["empty", "partial", "fsync", "close"]) {
+  test(`offline CLI identifies and preserves output after ${failure} failure`, (t) => {
+    const dir = mkdtempSync(join(tmpdir(), "hab-trial-write-failure-"));
+    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    const input = join(dir, "template.json"),
+      policy = join(dir, "limits.json"),
+      output = join(dir, "failed-message.json");
+    writeFileSync(input, JSON.stringify(template));
+    writeFileSync(policy, JSON.stringify(limits));
+    // Patch builtins only in this synthetic child, without a production fault hook.
+    const preload = `
+      import fs from "node:fs";
+      import { syncBuiltinESMExports } from "node:module";
+      const failure = ${JSON.stringify(failure)};
+      const write = fs.writeFileSync;
+      const close = fs.closeSync;
+      const open = fs.openSync;
+      let outputFd;
+      fs.openSync = (...args) => {
+        const fd = open(...args);
+        if (args[0] === ${JSON.stringify(output)} && args[1] === "wx") outputFd = fd;
+        return fd;
+      };
+      const fail = () => { throw Error("synthetic I/O failure"); };
+      if (failure === "fsync") fs.fsyncSync = fail;
+      else if (failure === "close") fs.closeSync = (fd) => {
+        close(fd);
+        if (fd === outputFd) fail();
+      };
+      else fs.writeFileSync = (fd, data) => {
+        if (failure === "partial") write(fd, data.slice(0, 12));
+        fail();
+      };
+      syncBuiltinESMExports();
+    `;
+    const result = spawnSync(process.execPath, [
+      "--import", `data:text/javascript,${encodeURIComponent(preload)}`,
+      fileURLToPath(command), "prepare", input, policy, output,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 1, result.stderr);
+    assert.equal(result.stdout, "");
+    const diagnostic = JSON.parse(result.stderr);
+    assert.equal(diagnostic.error, "trial_message_output_write_failed");
+    assert.equal(diagnostic.output_path, output);
+    assert.equal(diagnostic.submitted, false);
+    assert.match(diagnostic.recovery, /Do not submit/);
+    assert.match(diagnostic.recovery, /new unused output path/);
+    const retained = readFileSync(output, "utf8");
+    assert.equal(statSync(output).mode & 0o777, 0o600);
+    if (failure === "empty") assert.equal(retained, "");
+    else if (failure === "partial") assert.equal(retained.length, 12);
+    else assert.doesNotThrow(() => JSON.parse(retained));
+    const retry = cli("prepare", input, policy, output);
+    assert.equal(retry.status, 1);
+    assert.equal(retry.stderr.trim(), "invalid_or_unreadable_trial_message");
+    assert.equal(readFileSync(output, "utf8"), retained);
+    const fresh = cli("prepare", input, policy, join(dir, "fresh-message.json"));
+    assert.equal(fresh.status, 0, fresh.stderr);
+    assert.equal(readFileSync(input, "utf8"), JSON.stringify(template));
+  });
+}

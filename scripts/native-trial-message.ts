@@ -14,6 +14,8 @@ import {
   prepareNativeTrialMessage,
 } from "./lib/native-trial-message.ts";
 
+let incompleteOutputPath: string | undefined;
+
 // Operator-selected JSON only. This command has no credentials or transport.
 try {
   const [action, inputPath, limitsPath, outputPath, ...extra] =
@@ -31,12 +33,14 @@ try {
   if (action === "prepare") {
     const message = prepareNativeTrialMessage(input, limits);
     const fd = openSync(outputPath!, "wx", 0o600);
+    incompleteOutputPath = outputPath;
     try {
       writeFileSync(fd, JSON.stringify(message) + "\n");
       fsyncSync(fd);
     } finally {
       closeSync(fd);
     }
+    incompleteOutputPath = undefined;
     console.log(JSON.stringify({ prepared: true, submitted: false }));
   } else {
     checkNativeTrialMessage(input, limits);
@@ -56,6 +60,16 @@ try {
       : error instanceof Error && error.message === "trial_message_expired"
         ? error.message
         : "invalid_or_unreadable_trial_message";
-  console.error(code);
+  console.error(
+    incompleteOutputPath === undefined
+      ? code
+      : JSON.stringify({
+          error: "trial_message_output_write_failed",
+          output_path: incompleteOutputPath,
+          submitted: false,
+          recovery:
+            "Do not submit this output. Retain it for inspection; it may be incomplete or not durable. Resolve the I/O failure, then prepare from the original template at a new unused output path. Never overwrite a saved intent.",
+        }),
+  );
   process.exitCode = 1;
 }
