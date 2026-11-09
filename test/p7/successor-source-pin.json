@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "725fdf01bcea30037fec2ab131496f7e4904a90d",
+  "source_ref": "f84d3c9f5576c1b71bd560e0d1fa2c91503ee3ba",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -731,7 +731,7 @@
     },
     "test/adapter-host.test.js": {
       "previous_sha256": null,
-      "sha256": "e06428096749e78f5a746e076ac573d19e1427550d5f91e37ee9c5b9cf0d590d"
+      "sha256": "8966a7ffe9c927dc398553130643f574b5f7939df47e0f72381a10671ff30e32"
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
