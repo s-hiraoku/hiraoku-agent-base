@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "f84d3c9f5576c1b71bd560e0d1fa2c91503ee3ba",
+  "source_ref": "57c5abe07e41ca9f159ccf08759561fcc33e1cd5",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -260,6 +260,10 @@
     "src/adapter-host/mcp.ts": {
       "previous_sha256": null,
       "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e"
+    },
+    "src/adapter-host/private-http.ts": {
+      "previous_sha256": null,
+      "sha256": "06ae7212883f3a533ac13209c216c29eecd9a32f0567878ef0a91a46f0c91a17"
     },
     "src/adapter-host/single-source-authority.ts": {
       "previous_sha256": null,
@@ -868,6 +872,10 @@
     "test/p7/runner.test.js": {
       "previous_sha256": null,
       "sha256": "927bd21de1a32e0b279431b22c2ba280d114df64c4e896dab6cb2fd152d2d7dc"
+    },
+    "test/private-recipient-http.test.js": {
+      "previous_sha256": null,
+      "sha256": "f559ae106eb8a60e2b20d469192e384d8295f1bd963e8a031e1acac65f289c5e"
     },
     "test/recipient-host-mcp-size.test.js": {
       "previous_sha256": null,
