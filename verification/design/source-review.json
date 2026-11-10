@@ -178,11 +178,11 @@
       },
       {
         "path": "src/relay-host/oauth-auth.ts",
-        "scope": "full (read ranges1–115,116–169,170–348)"
+        "scope": "full (read ranges1\u2013115,116\u2013169,170\u2013348)"
       },
       {
         "path": "src/relay-host/configured.ts",
-        "scope": "lines1–115 and180–267 (schema and startup composition)"
+        "scope": "lines1\u2013115 and180\u2013267 (schema and startup composition)"
       },
       {
         "path": "config/relay-oauth-persistent.example.json",
@@ -244,7 +244,7 @@
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Integrated host review: identity provisioning, current caller guards and owner-only synchronous claim-to-admission remain unchanged. Receiver classifies save/discard/defer using confirmed held replies, deferring unexpected preview failures and candidates whose redundancy depends on unconfirmed replies without saving or ACKing; held IDs still deduplicate. applyReplies retains unexpected-error bodies. Inbox-first maintenance computes T=retained total, M=configured cap, W=retained sources with expires_at>now-REPLY_WINDOW_MS and binary-searches p<=100 using all inbox capacities for 2(max(0,M-T+p)+W) messages (equivalent to 2(F+W+p) for ordinary T<=M, F=M-T) and maximum envelope bytes. No await separates counts/checks and numeric-cap collection; expiry remains independent. Stable full-key overdue pages advance past failed applies and wrap at pass end, scheduling full pages immediately and later passes at next window or within one minute. Source-scoped inbox reads retain correlation and authorization. Close rejects new requests and drains current work before stores close; no normal-shutdown bug or repair is claimed. A saved reply whose apply raises ContractError, RequestMalformedError or ZodError is released as refused; any other apply failure keeps the body for the next cycle.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withRelay. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); routes name replyWindowMs, an unconfirmed reply is passed to releaseUnconfirmable instead of being applied, and once-a-minute maintenance runs inbox and outbox maintenance and then closeWindows over store.overdue(), one try per Task (52d7fdf). Re-read the diff to the release-before-poll fix: each cycle now runs applyReplies once before polling, so bodies no ACK can confirm are released before a new reply is saved, and again after polling. Remaining review-fix maintenance: re-read the diff from 843e5d9; the receiver's poll passes a correlated reply on only if changesTask previews it as changing its Task (a2a.ts changesTask), and the window pass runs in each cycle once windowsDueAt passes, refreshed from store.nextExpiry and with maintenance. Local follow-up on 0fc76a6: Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 × max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; applyReplies also treats ContractError as a refusal, releasing the body and leaving the Task unchanged, as classifyReply already discards it before save."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withRelay. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); routes name replyWindowMs, an unconfirmed reply is passed to releaseUnconfirmable instead of being applied, and once-a-minute maintenance runs inbox and outbox maintenance and then closeWindows over store.overdue(), one try per Task (52d7fdf). Re-read the diff to the release-before-poll fix: each cycle now runs applyReplies once before polling, so bodies no ACK can confirm are released before a new reply is saved, and again after polling. Remaining review-fix maintenance: re-read the diff from 843e5d9; the receiver's poll passes a correlated reply on only if changesTask previews it as changing its Task (a2a.ts changesTask), and the window pass runs in each cycle once windowsDueAt passes, refreshed from store.nextExpiry and with maintenance. Local follow-up on 0fc76a6: Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 \u00d7 max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; applyReplies also treats ContractError as a refusal, releasing the body and leaving the Task unchanged, as classifyReply already discards it before save."
       },
       {
         "path": "src/host/server.ts",
@@ -988,9 +988,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
+        "sha256": "3af7f71e475a0a25982e48e7fe7985674dd39df8eee70acd352b366752044452",
         "mode": "full",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1007,9 +1007,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
+        "sha256": "8a0da470b3a11585d3d89784326b38a02f4312f4524f8eabe27cc74e941bb8d2",
         "mode": "full",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1020,9 +1020,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
+        "sha256": "59ba4135ef5226d4ce7b8303c5864060c5d7f62f1a0a48ac9039041ffa2fd2b6",
         "mode": "full",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1169,13 +1169,13 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Expected full-root assertion updated1190 to1207 for17 new cases, then to1208 for the contract-limit reply-release case; acceptance checks and environment handling unchanged. This is an expected count, not an execution claim. Current expected root inventory is 1229; counts are not execution evidence.",
         "limit": "Source inspection only; not an execution-result claim.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "test/a2a-hab-unit.test.js",
@@ -1329,39 +1329,39 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
+        "sha256": "3af7f71e475a0a25982e48e7fe7985674dd39df8eee70acd352b366752044452",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
+        "sha256": "8a0da470b3a11585d3d89784326b38a02f4312f4524f8eabe27cc74e941bb8d2",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
+        "sha256": "59ba4135ef5226d4ce7b8303c5864060c5d7f62f1a0a48ac9039041ffa2fd2b6",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -1430,39 +1430,39 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
+        "sha256": "8a0da470b3a11585d3d89784326b38a02f4312f4524f8eabe27cc74e941bb8d2",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
+        "sha256": "59ba4135ef5226d4ce7b8303c5864060c5d7f62f1a0a48ac9039041ffa2fd2b6",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
+        "sha256": "3af7f71e475a0a25982e48e7fe7985674dd39df8eee70acd352b366752044452",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -1548,35 +1548,35 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
+        "sha256": "8a0da470b3a11585d3d89784326b38a02f4312f4524f8eabe27cc74e941bb8d2",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
+        "sha256": "59ba4135ef5226d4ce7b8303c5864060c5d7f62f1a0a48ac9039041ffa2fd2b6",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
+        "sha256": "3af7f71e475a0a25982e48e7fe7985674dd39df8eee70acd352b366752044452",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "test/adapter-host.test.js",
@@ -1632,12 +1632,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
         "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -1659,12 +1659,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
         "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -1695,11 +1695,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -1744,11 +1744,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -2020,9 +2020,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ]
   },
@@ -2067,9 +2067,9 @@
     "supplemental": [
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "src/adapter-host/external-owner.ts",
@@ -2097,9 +2097,9 @@
     "supplemental": [
       {
         "path": "src/owner-integrations/acp-stdio.ts",
-        "sha256": "ce25b521eca7113cac23e5df856440fc633f71e8fb3ebc314653a8bb4dfb9782",
+        "sha256": "8b4da4cbefdfb7ef4c98d3814a96ebcdaeb25f19716ad9492ca147053f522906",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       },
       {
         "path": "test/acp-owner.test.js",
@@ -2115,9 +2115,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
       }
     ],
     "external_schema_review": {
@@ -2126,5 +2126,39 @@
       "meta_sha256": "1ef21d5171a2ab4f33f043bec92243fd20abde7310ca9fa4a91619ca03add099",
       "connection_sha256": "e261425e0ba793ab49cb1d697a2a66731102ed23e0bdf3e4034c11e2b34a221c"
     }
+  },
+  {
+    "scope": "Optional standard ACP fixed-wake source review",
+    "baseline": "4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9",
+    "summary": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.",
+    "supplemental": [
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/owner-integrations/acp-stdio.ts",
+        "sha256": "8b4da4cbefdfb7ef4c98d3814a96ebcdaeb25f19716ad9492ca147053f522906",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/owner-integrations/acp-updates.ts",
+        "sha256": "d8d058cbd9c910b9342cd8fb105ebcee7c8f6d72a07c9b1a8f146e35ab223e05",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/acp-fixed-wake-child.js",
+        "sha256": "4f9c01717f4af3d463f846925efe36d67e0f18a85df0f32ba194929206be2c74",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/acp-fixed-wake.test.js",
+        "sha256": "5ff95c341359e4c053837c02c5bcf5ab37adca3f3488c92bc7be938d89600f86",
+        "review": "reviewed"
+      }
+    ],
+    "standard_review": "Read ACP SDK generated schema.py at refs/tags/v0.11.2 without imports: PromptRequest, PromptResponse, CancelNotification and supported SessionNotification union members. Only standard text/tool/plan/commands/mode subset implemented. Unstable message-id fields are not used and provide no durable admission guarantee.",
+    "requirements": "HAB-F02/F03/F07/F11/F16/E09 statements, scopes, citations and manual gates remain unchanged. Owner integration is opt-in outside standard messaging; no core/supervisor execution dispatch or automatic source claim is introduced."
   }
 ]
