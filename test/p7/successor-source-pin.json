@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "40cdfb6861b0a7684aa94ddc4351b84a32267bf8",
+  "source_ref": "25dbe8148127c83e0d0af9151e3ec8e22f4ba5d5",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5"
+      "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -935,11 +935,11 @@
     },
     "test/recipient-messages-fixtures.js": {
       "previous_sha256": null,
-      "sha256": "d114dcf3f1b81e1748959b95776a2685b267528129b3d217e65f53720b03bb0c"
+      "sha256": "fca07f514135cd5eceaaa7f76cf27926feb8d4ae415ab9de1521db0c254d4029"
     },
     "test/recipient-messages.test.js": {
       "previous_sha256": null,
-      "sha256": "be7ffdc7b6d6b77f0af6068f947846b909b128e8fb20fa041633c7e6feeade6f"
+      "sha256": "4729571c018723b52ed8143cae48d8ffbdf02d4621fe94570ca78c048e59f143"
     },
     "test/relay-http-fixtures.js": {
       "previous_sha256": "99dc523f47c1d30653bea641cbc0a83c7eecbd538c37ae1ce23d8e781d5f0dbf",
