@@ -1266,5 +1266,68 @@
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "b19f99ee548291e964899e73966beed7f570113a8ff1b51ffffdce745bfff106",
     "access_outcome": "Read local source only. Connection scope and shared adoption are not native single-session acceptance evidence."
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Retrieved and read primary Auth0 documentation on 2026-11-09 for refresh versus reauthentication, rotating-family reuse detection, and maximum/idle expiration. This does not establish any live tenant configuration or token status.",
+    "revision": "unversioned web documentation; accessed 2026-11-09"
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Retrieved and read primary Auth0 documentation on 2026-11-09 for refresh versus reauthentication, rotating-family reuse detection, and maximum/idle expiration. This does not establish any live tenant configuration or token status.",
+    "revision": "unversioned web documentation; accessed 2026-11-09"
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Retrieved and read primary Auth0 documentation on 2026-11-09 for refresh versus reauthentication, rotating-family reuse detection, and maximum/idle expiration. This does not establish any live tenant configuration or token status.",
+    "revision": "unversioned web documentation; accessed 2026-11-09"
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_oauth.py",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_oauth_provider.py",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_oauth_manager.py",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
+  },
+  {
+    "reader_scope": "Auth0 recovery",
+    "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/hermes_cli/mcp_config.py",
+    "referenced_by": [
+      "docs/auth0-recovery.md"
+    ],
+    "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
+    "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
   }
 ]
