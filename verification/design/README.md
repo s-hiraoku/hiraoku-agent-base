@@ -274,3 +274,15 @@ scope reconciliation; the existing accepted requirements, citations and manual/n
 are unchanged. Eight additional owner tests bring the expected owner inventory to 31 and
 root inventory to 1346; actual executions and cleanup are reported separately. Test evidence
 uses synthetic owners and temporary stores, not production authentication or daily operation.
+
+
+## Source-bound launch claim
+
+The optional source-launch journal records one immutable possible native launch before any
+create/prompt, with actual saved question/ACK proof and existing current recipient/owner guards.
+It adds no native dispatch, Task state, grant, owner acquisition or runtime migration. Duplicate
+or reopened claims prohibit automatic relaunch, even if the native call never happened. Existing
+answer/outbox recovery remains separate. Twenty-five synthetic/SQLite cases add focused coverage;
+expected root inventory1371 is not a full/native acceptance claim. All adopted statements and
+manual/native gates remain unchanged. See the context guide for conservative blocking, capacity,
+whole-snapshot rollback limits and the required real receiver/budget handoff.

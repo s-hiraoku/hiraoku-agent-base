@@ -2184,5 +2184,52 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "Optional durable source-bound native launch claim",
+    "baseline": "c3180530799c83195992bab0fe9a9e23cd58d478",
+    "summary": "Optional owner-local immutable native launch claim before any native create/prompt. Reuses actual SQLiteInbox exact-source receipt-confirmed question proof and existing RecipientAuthorization plus current held-host guard; no owner attach/acquire or native dispatch. Dedicated HMAC-bound SQLite stores only metadata/fingerprints. Duplicate/reopen/lost response returns original claim and never automatic relaunch; count/integrity/capacity/private-file checks fail closed. It is not a Task DB, native admission receipt, answer result, approval or delivery proof. Existing native/manual gates stay unverified; actual receiver handoff and immutable-budget migration remain separate. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order. Outer inbox commit/response failure after the independent claim commit retains the original claim and forbids a second launch.",
+    "supplemental": [
+      {
+        "path": "src/owner-integrations/source-launch-journal.ts",
+        "sha256": "0fe30b9c3b01a06a3921012115368b9c005ed4cc14c1758f07f5ad973da5cc3a",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch.test.js",
+        "sha256": "35e00263bc07db8f2470ce6b474bfb1da7125b8e307c77fccb5cff9498aa710e",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch-fixture.js",
+        "sha256": "33baea6cd347ea640ff3608e4beb79be146b252683399bf24ff0e230296809bc",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch-child.js",
+        "sha256": "97fa98b0c5d67fd7b9d8558142c275f9f2424247d765da9679f6ddeede230c3d",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch-worker.js",
+        "sha256": "b77f85cd70ddc0f14e3e19465abbd151105b69788e7594e497f7447485054aed",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/recipient-messages/contract.ts",
+        "sha256": "7750d2d6889c265926faaec07214f9a09384a5c381c64264e37716f672112905",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/agent-sdk/sqlite-inbox.ts",
+        "sha256": "55c681b1123ca036651d465f9d072a4d583a1101581f258f56ca961dac7367a0",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/sqlite-owner.ts",
+        "sha256": "5d134a7ec3a5d0d41a5e9ad669e4adb389f4aebc87c1cbd8d5e5489f7929a416",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

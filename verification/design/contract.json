@@ -960,12 +960,12 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "b745c0f50060efe0fad9f0b6acfd2640d84a9aac1254fce610d8f06f6d3728d7",
+      "sha256": "82a705609da37bacb814b31cf708722df396b9fecdc3ebac4080173b72953078",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "Reviewed trusted local onBound seam, HAB-C-F09 scope resolution and unchanged accepted/native gates; expected owner31/root1346 inventory, execution evidence is separate."
+      "maintenance": "Reviewed optional immutable launch claim context and focused source tests; no authority/requirement relaxation or native completion claim."
     },
     {
       "path": "verification/design/conflicts.md",
@@ -986,12 +986,12 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "65a66bdbaf70fd30bb90dc39e46b4d809432ccf292c5ec0c3f48403924d6984a",
+      "sha256": "f5ed6e7dcc6e62d606c9f524bddfe800119617513f335c7320a1c819192125c7",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "Reviewed trusted local onBound seam, HAB-C-F09 scope resolution and unchanged accepted/native gates; expected owner31/root1346 inventory, execution evidence is separate."
+      "maintenance": "Reviewed optional immutable launch claim context and focused source tests; no authority/requirement relaxation or native completion claim."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1074,6 +1074,13 @@
       "review": "reviewed",
       "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed.",
       "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+    },
+    {
+      "path": "docs/source-launch-journal.md",
+      "sha256": "4c69f2a5208dce12927db252de0cb2332037e1086bbbf3d0cc3e3245949628e4",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Optional owner-local immutable native launch claim before any native create/prompt. Reuses actual SQLiteInbox exact-source receipt-confirmed question proof and existing RecipientAuthorization plus current held-host guard; no owner attach/acquire or native dispatch. Dedicated HMAC-bound SQLite stores only metadata/fingerprints. Duplicate/reopen/lost response returns original claim and never automatic relaunch; count/integrity/capacity/private-file checks fail closed. It is not a Task DB, native admission receipt, answer result, approval or delivery proof. Existing native/manual gates stay unverified; actual receiver handoff and immutable-budget migration remain separate. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order."
     }
   ],
   "requirements": [
@@ -1124,7 +1131,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1156,7 +1164,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1292,7 +1301,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1381,7 +1391,8 @@
         "js-recipient-messages",
         "js-recipient-host-mcp",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1510,7 +1521,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -3495,7 +3507,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -4626,6 +4639,25 @@
       "protocol": "node-tap",
       "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
       "limitations": "Synthetic executable and capability only. No real product/session/profile/ticket/model/queue, native commit semantics/effective participant verification, authorization bypass or operational deployment. No OS sandbox, descendant or blocked orphan containment. Forced/unconfirmed termination is failure, and native outcome may remain unknown after clean process exit. Overlaps js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-source-launch",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/source-launch.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Actual temporary SQLite/inbox and held-host owner guard, immutable once-only source claim, question/ACK/current context/sender/actor/epoch checks, loss and store faults, private path/binding/capacity/tamper failures, reopen and response-loss reconciliation without relaunch. Owned synthetic SIGKILL-after-claim gap and two concurrent SQLite connections asking the actual parent host for every owner guard. Expected 25 cases, root1371. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order.",
+      "limitations": "Synthetic local policy, no actual native create/model/approval/OAuth/live stores/unattended runtime. Claim is not native admission or outcome; an unknown claim can remain blocked forever. No power/media crash or old-valid-snapshot rollback guarantee. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
