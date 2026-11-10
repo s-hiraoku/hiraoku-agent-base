@@ -14,6 +14,10 @@ export async function createOwnerOptions(signal) {
   assert.equal(process.env.HTTPS_PROXY, undefined);
   writeFileSync("factory-started.json", JSON.stringify({ pid: process.pid, cleanEnvironment: true }), { mode: 0o600 });
   if (config.mode === "hang-before") { for (;;) { /* Deliberately blocks only this owned synthetic child. */ } }
+  if (config.mode === "local-controls-malformed") {
+    process.send?.({ type: "ready", url: "http://127.0.0.1:1/mcp" });
+    process.send?.({ type: "ready", url: "http://127.0.0.1:1/mcp", phase: "active" });
+  }
   const stores = syntheticStores(process.cwd());
   let client, settleStartup;
   const pending = () => {
@@ -63,7 +67,7 @@ export async function createOwnerOptions(signal) {
         if (late) trace("driver-close-end");
       },
     },
-    onBound: config.mode === "local-controls" ? controls => {
+    onBound: config.mode.startsWith("local-controls") ? controls => {
       const paused = controls.updatePermission(controls.status().epoch, true);
       controls.resume(paused.epoch);
       writeFileSync("local-controls.json", JSON.stringify({ paused: controls.status().paused }), { mode: 0o600 });

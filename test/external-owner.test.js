@@ -277,6 +277,7 @@ test("clean-env supervised owner ignores parent secrets, proxy settings and NODE
   let c;
   try { c = await child(t, "normal"); } finally { process.env = saved; }
   const ready = await c.supervisor.ready;
+  assert.equal(ready.phase, "bound-deny");
   assert.equal(JSON.parse(readFileSync(join(c.cwd, "factory-started.json"))).cleanEnvironment, true);
   c.controller.abort(); await c.supervisor.completion;
   assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
@@ -566,11 +567,15 @@ test("native owner loss inside bound hook cannot return ready or regrant", async
 });
 
 
-test("supervised factory composes trusted local controls without a new IPC command", async t => {
-  const c = await child(t, "local-controls");
-  const ready = await c.supervisor.ready;
-  assert.deepEqual(JSON.parse(readFileSync(join(c.cwd, "local-controls.json"))), { paused: false });
-  await c.supervisor.stop(); await c.supervisor.completion; await c.supervisor.exited;
-  assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
-  await assert.rejects(globalThis.fetch(ready.url));
+test("supervised factory reports exact bound phase and refuses malformed ready metadata", async t => {
+  for (const mode of ["local-controls", "local-controls-malformed"]) {
+    const c = await child(t, mode);
+    const ready = await c.supervisor.ready;
+    assert.equal(ready.phase, "bound");
+    assert.notEqual(ready.url, "http://127.0.0.1:1/mcp");
+    assert.deepEqual(JSON.parse(readFileSync(join(c.cwd, "local-controls.json"))), { paused: false });
+    await c.supervisor.stop(); await c.supervisor.completion; await c.supervisor.exited;
+    assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
+    await assert.rejects(globalThis.fetch(ready.url));
+  }
 });

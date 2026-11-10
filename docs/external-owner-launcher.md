@@ -33,7 +33,8 @@ provide a live secret-loading mechanism or approve creating or transmitting a cr
 
 The child receives an empty environment, no inherited Node arguments, and ignored stdin/stdout/
 stderr. Only the internal IPC channel carries fixed ready/stopped/failed messages and a loopback
-URL without credentials. Raw native results/errors and product stderr are not forwarded. A trusted
+URL without credentials plus validated `bound-deny`/`bound` readiness metadata. Neither phase
+is an activation command or permission assertion. Raw native results/errors and product stderr are not forwarded. A trusted
 factory can still write files or start processes; this is not a malicious-code sandbox. The owner
 and driver retain the OS user's filesystem and network rights. A native CLI may read profiles,
 home files or secret stores itself. An empty environment does not prevent those reads.

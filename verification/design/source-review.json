@@ -1992,20 +1992,21 @@
       },
       {
         "path": "src/adapter-host/owner-process.ts",
-        "sha256": "85473ec2841b08e406fd1dd862ac60824fdd62caa947a18d1c90296e4f991277",
-        "review": "reviewed"
+        "sha256": "d873b6089c9a1e7a4c6b8d510ce2b19565c844e95dcb81348ae8c788fa5a279c",
+        "review": "reviewed",
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "src/adapter-host/owner-process-entry.ts",
-        "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b",
+        "sha256": "b52c9ff442a2ef5240568f9bb266f0cbccfebbd11aef4cf719fe5cfa8406436e",
         "review": "reviewed",
-        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "test/external-owner.test.js",
-        "sha256": "6d84f5169a7ca64bed4ceddc0f517631b77586c3eb98439614d66ea032aaabc6",
+        "sha256": "2e17b59f4d56b7ab7fbf8d7e892c536d7b4a9b8f3422888f4de9173c3924857b",
         "review": "reviewed",
-        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "test/external-owner-fixture.js",
@@ -2014,9 +2015,9 @@
       },
       {
         "path": "test/external-owner-child.js",
-        "sha256": "b117babbd5140c381e9063a991b199513c9e3f4e47b5998a70d0cc35d8897366",
+        "sha256": "76ad8eefb76a893c6e2743b72028554bb2edb1afc78546b97a2fbcc44a5050b8",
         "review": "reviewed",
-        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -2079,15 +2080,15 @@
       },
       {
         "path": "test/external-owner-child.js",
-        "sha256": "b117babbd5140c381e9063a991b199513c9e3f4e47b5998a70d0cc35d8897366",
+        "sha256": "76ad8eefb76a893c6e2743b72028554bb2edb1afc78546b97a2fbcc44a5050b8",
         "review": "reviewed",
-        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "test/external-owner.test.js",
-        "sha256": "6d84f5169a7ca64bed4ceddc0f517631b77586c3eb98439614d66ea032aaabc6",
+        "sha256": "2e17b59f4d56b7ab7fbf8d7e892c536d7b4a9b8f3422888f4de9173c3924857b",
         "review": "reviewed",
-        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       }
     ]
   },
@@ -2131,12 +2132,13 @@
   {
     "scope": "Trusted external-owner local activation composition",
     "baseline": "4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9",
-    "summary": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged.",
+    "summary": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged. Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346.",
     "supplemental": [
       {
         "path": "docs/external-owner-launcher.md",
-        "sha256": "85304c2ebd87a84ff37c5fa6129610a7681198ab3cac0362f302388d162e4a4e",
-        "review": "reviewed"
+        "sha256": "2a0a13c0395b1b361b1329beef779d809e42365ff559a83eb66995bc7556cdf6",
+        "review": "reviewed",
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "src/adapter-host/cycle.ts",
@@ -2150,8 +2152,9 @@
       },
       {
         "path": "src/adapter-host/owner-process-entry.ts",
-        "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b",
-        "review": "reviewed"
+        "sha256": "b52c9ff442a2ef5240568f9bb266f0cbccfebbd11aef4cf719fe5cfa8406436e",
+        "review": "reviewed",
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "src/adapter-host/private-http.ts",
@@ -2165,12 +2168,19 @@
       },
       {
         "path": "test/external-owner-child.js",
-        "sha256": "b117babbd5140c381e9063a991b199513c9e3f4e47b5998a70d0cc35d8897366",
-        "review": "reviewed"
+        "sha256": "76ad8eefb76a893c6e2743b72028554bb2edb1afc78546b97a2fbcc44a5050b8",
+        "review": "reviewed",
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "test/external-owner.test.js",
-        "sha256": "6d84f5169a7ca64bed4ceddc0f517631b77586c3eb98439614d66ea032aaabc6",
+        "sha256": "2e17b59f4d56b7ab7fbf8d7e892c536d7b4a9b8f3422888f4de9173c3924857b",
+        "review": "reviewed",
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
+      },
+      {
+        "path": "src/adapter-host/owner-process.ts",
+        "sha256": "d873b6089c9a1e7a4c6b8d510ce2b19565c844e95dcb81348ae8c788fa5a279c",
         "review": "reviewed"
       }
     ]
