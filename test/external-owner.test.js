@@ -84,6 +84,106 @@ test("external owner owns loopback HTTP; discovery and committed binding stay de
   await assert.rejects(globalThis.fetch(ready.url));
 });
 
+test("synchronous native owner loss during stop shares one cleanup attempt", async t => {
+  const f = await fixture(t);
+  const ready = await f.owner.ready;
+  let reenteredStop;
+  f.state.launch.signal.addEventListener("abort", () => {
+    assert.equal(f.owner.status().phase, "stopping");
+    f.nativeOwner.abort();
+    reenteredStop = f.owner.stop();
+  }, { once: true });
+  const firstStop = f.owner.stop();
+  assert.equal(f.state.launch.signal.aborted, true, "stop fences synchronously");
+  await firstStop; await reenteredStop; await f.owner.completion;
+  assert.equal(reenteredStop, firstStop);
+  assert.equal(f.owner.stop(), firstStop);
+  assert.equal(f.state.closes, 1); assert.equal(f.state.storeCloses, 1);
+  assert.equal(f.owner.status().phase, "stopped");
+  assert.equal(f.stores.network(), 0);
+  await assert.rejects(globalThis.fetch(ready.url));
+});
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+test("owner loss before creation never invokes the driver and closes allocated resources", async () => {
+  for (const timing of ["before-start", "while-listening"]) {
+    const controller = new AbortController();
+    let creates = 0, closes = 0, storeCloses = 0;
+    if (timing === "before-start") controller.abort();
+    const starting = startExternalOwner({
+      bearerToken: syntheticToken, serverName: "synthetic-precreate", lifetimeMs: 10000,
+      shutdownTimeoutMs: 100, ownerSignal: controller.signal,
+      driver: { ownerSignal: new AbortController().signal,
+        async create() { creates++; }, async verifyCommitted() { throw Error("unexpected_verification"); },
+        async close() { closes++; } },
+      closeStores() { storeCloses++; },
+    });
+    controller.abort();
+    await assert.rejects(starting, { message: timing === "before-start" ? "invalid_external_owner" : "external_owner_start_failed" });
+    assert.equal(creates, 0);
+    assert.equal(closes, timing === "before-start" ? 0 : 1);
+    assert.equal(storeCloses, timing === "before-start" ? 0 : 1);
+  }
+});
+
+test("startup cancellation rejects readiness but preserves successful cleanup", async t => {
+  for (const stage of ["create", "verify"]) for (const reason of ["stop", "owner", "native", "reentrant"]) {
+    const entered = deferred(), work = deferred();
+    const hook = async () => { entered.resolve(); return work.promise; };
+    const f = await fixture(t, { [stage]: hook, close: async () => { work.resolve({ syntheticCommitted: true }); } });
+    await entered.promise;
+    if (reason === "reentrant") f.state.launch.signal.addEventListener("abort", () => f.nativeOwner.abort(), { once: true });
+    if (reason === "owner") f.controller.abort();
+    else if (reason === "native") f.nativeOwner.abort();
+    const stopped = f.owner.stop();
+    await assert.rejects(f.owner.ready);
+    await stopped; await f.owner.completion;
+    assert.equal(f.owner.stop(), stopped);
+    assert.equal(f.owner.status().phase, "stopped");
+    assert.equal(f.state.closes, 1); assert.equal(f.state.storeCloses, 1);
+    assert.equal(f.state.verifications, stage === "create" ? 0 : 1);
+    assert.equal(f.stores.network(), 0);
+    await assert.rejects(globalThis.fetch(f.state.launch.mcp.url));
+  }
+});
+
+test("real startup errors during stop remain failures even if named like cancellation", async t => {
+  for (const stage of ["create", "verify"]) {
+    const entered = deferred(), work = deferred();
+    const hook = async () => { entered.resolve(); return work.promise; };
+    const f = await fixture(t, { [stage]: hook, close: async () => { work.reject(Error("external_owner_stopping")); } });
+    await entered.promise;
+    const stopped = f.owner.stop();
+    await assert.rejects(f.owner.ready, { message: "external_owner_create_or_verification_failed" });
+    await stopped;
+    await assert.rejects(f.owner.completion, { message: "external_owner_create_or_verification_failed" });
+    assert.equal(f.state.closes, 1); assert.equal(f.state.storeCloses, 1);
+  }
+});
+
+test("startup cancellation never masks driver or store cleanup failure", async t => {
+  for (const failing of ["driver", "stores"]) {
+    let storeAttempts = 0;
+    const entered = deferred(), work = deferred();
+    const f = await fixture(t, {
+      create: async () => { entered.resolve(); return work.promise; },
+      close: async () => { work.resolve({}); if (failing === "driver") throw Error(syntheticToken); },
+      ...(failing === "stores" ? { options: { closeStores() { storeAttempts++; throw Error(syntheticToken); } } } : {}),
+    });
+    await entered.promise;
+    await assert.rejects(f.owner.stop(), { message: "external_owner_cleanup_failed" });
+    await assert.rejects(f.owner.completion, { message: "external_owner_cleanup_failed" });
+    await assert.rejects(f.owner.ready);
+    assert.equal(f.state.closes, 1); assert.equal(f.state.storeCloses, 0);
+    assert.equal(storeAttempts, failing === "stores" ? 1 : 0);
+  }
+});
+
 test("ambiguous native create is never retried or verified and its secret-bearing error is sanitized", async t => {
   const f = await fixture(t, { create: async (launch, state) => {
     state.connection = await connect(launch);
@@ -243,5 +343,22 @@ test("an unconfirmed kill is bounded failure, not exit evidence or a blind retry
     }
     assert.equal(c.supervisor.status().state, "exited");
     await assert.rejects(c.supervisor.completion, /exit_unconfirmed/);
+  }
+});
+
+test("supervised cancellation during create or verification confirms clean child exit", async t => {
+  for (const stage of ["create", "verify"]) {
+    const c = await child(t, `pending-${stage}`);
+    for (let attempt = 0; attempt < 300 && !existsSync(join(c.cwd, "startup-pending.json")); attempt++) await delay(10);
+    assert.equal(existsSync(join(c.cwd, "startup-pending.json")), true);
+    await c.supervisor.stop();
+    await c.supervisor.completion;
+    assert.deepEqual(await c.supervisor.exited, { code: 0, signal: null });
+    await assert.rejects(c.supervisor.ready, /not_ready/);
+    assert.equal(c.supervisor.status().state, "exited");
+    assert.equal(c.supervisor.status().forced, false);
+    assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
+    const { url } = JSON.parse(readFileSync(join(c.cwd, "listener.json")));
+    await assert.rejects(globalThis.fetch(url));
   }
 });

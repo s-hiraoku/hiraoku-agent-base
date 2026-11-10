@@ -84,12 +84,19 @@ export async function startExternalOwner(options: ExternalOwnerOptions) {
   });
   const stop = (): Promise<void> => {
     if (stopAttempt) return stopAttempt;
+    let resolveStop!: () => void, rejectStop!: (error: Error) => void;
+    // Abort listeners may synchronously reenter stop via the native owner signal.
+    // Publish the shared attempt first, while keeping admission fencing synchronous.
+    stopAttempt = new Promise<void>((resolve, reject) => { resolveStop = resolve; rejectStop = reject; });
+    void stopAttempt.then(() => {
+      if (failure) rejectCompletion(failure); else resolveCompletion();
+    }, () => rejectCompletion(Error("external_owner_cleanup_failed")));
     phase = "stopping";
-    controller.abort();
-    const privateStop = api?.stop() ?? Promise.resolve();
-    // Close admission/sockets even if durable drain or driver cleanup later fails.
-    const listenerStop = closeListener();
-    stopAttempt = (async () => {
+    void (async () => {
+      controller.abort();
+      const privateStop = api?.stop() ?? Promise.resolve();
+      // Close admission/sockets even if durable drain or driver cleanup later fails.
+      const listenerStop = closeListener();
       const results = await Promise.allSettled([
         bounded(privateStop, options.shutdownTimeoutMs, "external_owner_host_stop_timeout"),
         bounded(listenerStop, options.shutdownTimeoutMs, "external_owner_listener_stop_timeout"),
@@ -103,10 +110,7 @@ export async function startExternalOwner(options: ExternalOwnerOptions) {
       phase = "stopped";
     })().catch(() => { throw Error("external_owner_cleanup_failed"); }).finally(() => {
       ownerSignal.removeEventListener("abort", ownerLost);
-    });
-    void stopAttempt.then(() => {
-      if (failure) rejectCompletion(failure); else resolveCompletion();
-    }, () => rejectCompletion(Error("external_owner_cleanup_failed")));
+    }).then(resolveStop, rejectStop);
     return stopAttempt;
   };
   const ownerLost = () => { void stop().catch(() => {}); };
@@ -130,22 +134,26 @@ export async function startExternalOwner(options: ExternalOwnerOptions) {
     });
     server.on("error", () => { failure = Error("external_owner_listener_failed"); ownerLost(); });
     void current.completion.then(ownerLost, () => { failure = Error("external_owner_host_failed"); ownerLost(); });
+    // Only our own post-settlement cancellation is not a startup failure.
+    // Driver rejections, including identically named errors, remain failures.
+    const startupCancelled = Error("external_owner_stopping");
     const ready = (async () => {
       // No retry, recovery by label, or activation after an uncertain create outcome.
       driverWork = Promise.resolve().then(() => driver.create(launch));
       const result = await driverWork;
-      if (controller.signal.aborted) throw Error("external_owner_stopping");
+      if (controller.signal.aborted) throw startupCancelled;
       phase = "verifying";
       const receipt = current.discoveryReceipt();
       if (!receipt) throw Error("external_owner_discovery_missing");
       const verification = Promise.resolve().then(() => driver.verifyCommitted(result, launch));
       driverWork = verification;
       const binding = await verification;
-      if (controller.signal.aborted) throw Error("external_owner_stopping");
+      if (controller.signal.aborted) throw startupCancelled;
       current.bindVerified(receipt, binding);
       phase = "bound-deny";
       return Object.freeze({ url: launch.mcp.url, phase: "bound-deny" as const });
-    })().catch(() => {
+    })().catch(error => {
+      if (error === startupCancelled) throw error;
       failure ??= Error("external_owner_create_or_verification_failed");
       void stop().catch(() => {});
       throw failure;

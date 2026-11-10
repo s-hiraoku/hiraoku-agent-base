@@ -70,6 +70,11 @@ the launch, synchronously fences the private host, and closes listener admission
 if durable drain fails. Driver close and outstanding driver work must settle, and the host must
 stop successfully, before stores close. Failure retains stores, rejects completion and does not
 retry cleanup automatically. A late create/verification result cannot bind after stopping.
+Readiness still rejects when startup is cancelled, but successful settlement and cleanup resolve
+completion; the supervised child reports stopped and exits zero. Only the launcher's own
+post-settlement cancellation is exempt from startup failure. Driver creation/verification errors
+(including errors named like cancellation) and real cleanup failures still reject completion.
+Synchronous abort callbacks share one stop attempt, so reentrant owner loss does not close resources twice.
 
 The supervisor's independent timer starts at child spawn, including module load and factory startup.
 On stop it asks the child to close. After its finite shutdown deadline it kills only that owned child

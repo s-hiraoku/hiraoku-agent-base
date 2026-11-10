@@ -1169,13 +1169,13 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "9151f47b762f59da23e88387b57802895b4f032ed441f5466bdbd11f97c58b04",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Expected full-root assertion updated1190 to1207 for17 new cases, then to1208 for the contract-limit reply-release case; acceptance checks and environment handling unchanged. This is an expected count, not an execution claim. Current expected root inventory is 1229; counts are not execution evidence.",
         "limit": "Source inspection only; not an execution-result claim.",
-        "maintenance": "Contract-refused reply maintenance: re-read the diff from 8ada224; the --full root count assertion goes from 1207 to 1208 for the one new host case. Recipient integration review: count-only change 1208 to 1229 for 21 explicit handoff tests; acceptance rules unchanged."
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       },
       {
         "path": "test/a2a-hab-unit.test.js",
@@ -1353,11 +1353,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "7133031196fb954b1a8f3b770394ee68fae333b12683bfff4cc8643815e2d08a",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
-        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       }
     ]
   },
@@ -1426,11 +1427,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "3997aed5b08f115e2e9de88418aeb0407e32fe75b0da45ee2650e00bf8071b27",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
-        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       },
       {
         "path": "docs/testing/p7-lab.md",
@@ -1540,10 +1542,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "d461da3d8db70339f20a50560325da95bcf064765a401e79c1525b78be5de61c",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "review": "reviewed",
         "read_coverage": "count-only diff",
-        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       },
       {
         "path": "docs/testing/p7-lab.md",
@@ -1620,11 +1623,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "c3a870aa46cff5796f8a116a36c2e17b5366ff6f95fb193e826d7048015b0b0f",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
-        "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged."
+        "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       }
     ]
   },
@@ -1646,11 +1650,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "622dbd2991f7a948fbef148c1822a56c0fe10b1a347ea7b63efec0439bb969b7",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
-        "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged."
+        "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       }
     ]
   },
@@ -1681,10 +1686,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "79a1b5e9ce8695f2f8bdc3a3276f2ab2f749e2cc3ae66749a5ccfbbf1707675b",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened."
+        "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       }
     ]
   },
@@ -1729,10 +1735,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "849c9dff96f7758855cd5ca03745c9eac5e691ee093eab2d195de1fb943e74ed",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained."
+        "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained.",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       }
     ]
   },
@@ -1970,8 +1977,9 @@
     "supplemental": [
       {
         "path": "src/adapter-host/external-owner.ts",
-        "sha256": "da137ee3eadbb389d49d23f6b27af63f3d269876b93f3312eceb9cd876263261",
-        "review": "reviewed"
+        "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af",
+        "review": "reviewed",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       },
       {
         "path": "src/adapter-host/owner-process.ts",
@@ -1985,8 +1993,9 @@
       },
       {
         "path": "test/external-owner.test.js",
-        "sha256": "a302db597ee8740cd35432fe84311d6a03c08f4390434d18b01698f154e98669",
-        "review": "reviewed"
+        "sha256": "1634049731b29ca19103454f1389f0096db49243e5739d44f7c9de7195f5fd25",
+        "review": "reviewed",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       },
       {
         "path": "test/external-owner-fixture.js",
@@ -1995,14 +2004,15 @@
       },
       {
         "path": "test/external-owner-child.js",
-        "sha256": "6d599902d1c07ebd2655ad9c0f613b1629382750092b530285e611aa47d07236",
-        "review": "reviewed"
+        "sha256": "1880e7a28e4262fe3cb41e3ddda3bd7e4d589ccaf59be223ad48b27535f89577",
+        "review": "reviewed",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "8ef32feb8d8f6bb81bd0044c113b137e13a11c24a58701218feeed48e89e0788",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
         "review": "reviewed",
-        "maintenance": "Only strict expected top-level count changes from 1264 to 1277 for the thirteen new external-owner cases. Historical group counts, assertions and failure handling are unchanged."
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
       }
     ]
   },
@@ -2036,6 +2046,33 @@
       {
         "path": "test/tools/native-trial-message.test.ts",
         "sha256": "e73abc62f815f4e13e05f07132b8869003339414035e7199b015268eda157d2c",
+        "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "External owner startup cancellation and reentry",
+    "baseline": "e9638c4a376b49cd99e6c089e717c0b402ef2f65",
+    "summary": "Reviewed the startup cancellation and synchronous reentry paths against the existing deny-only owner contract. P2 only exempts the private post-settlement cancellation object from recording a startup failure; genuine driver create/verify rejections remain failures even during shutdown or with identical error messages. Unsettled work, failed host/driver/store cleanup and forced/unconfirmed process exit remain failures. The separate previously unpublished reentry correction publishes one stop promise before abort listeners run, preserving synchronous fencing and exactly-once cleanup. Neither change grants authority or reconciles uncertain native creation. Tests cover pre-create loss, create/verify pending stop and both owner signals, synchronous reentry, genuine errors during stop, cleanup failures and supervised stopped plus observed exit0. The six added top-level cases raise the expected root inventory from 1277 to 1283; counts are not execution evidence. Historical results and all native/manual gates remain unchanged.",
+    "supplemental": [
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/external-owner.ts",
+        "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner-child.js",
+        "sha256": "1880e7a28e4262fe3cb41e3ddda3bd7e4d589ccaf59be223ad48b27535f89577",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner.test.js",
+        "sha256": "1634049731b29ca19103454f1389f0096db49243e5739d44f7c9de7195f5fd25",
         "review": "reviewed"
       }
     ]

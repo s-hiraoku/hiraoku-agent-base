@@ -15,7 +15,11 @@ export async function createOwnerOptions(signal) {
   writeFileSync("factory-started.json", JSON.stringify({ pid: process.pid, cleanEnvironment: true }), { mode: 0o600 });
   if (config.mode === "hang-before") { for (;;) { /* Deliberately blocks only this owned synthetic child. */ } }
   const stores = syntheticStores(process.cwd());
-  let client;
+  let client, settleStartup;
+  const pending = () => {
+    writeFileSync("startup-pending.json", "true", { mode: 0o600 });
+    return new Promise(resolve => { settleStartup = resolve; });
+  };
   return {
     bearerToken: syntheticToken, serverName: "synthetic-dedicated-owner", lifetimeMs: 10000, shutdownTimeoutMs: 200,
     driver: {
@@ -28,13 +32,15 @@ export async function createOwnerOptions(signal) {
           process.stdout.write(syntheticToken); process.stderr.write(syntheticToken);
           throw Error(syntheticToken);
         }
+        if (config.mode === "pending-create") await pending();
         return Object.freeze({ syntheticCommit: true });
       },
       async verifyCommitted() {
+        if (config.mode === "pending-verify") await pending();
         if (config.mode === "hang-after") setTimeout(() => { for (;;) { /* Synthetic watchdog fault. */ } }, 50);
         return stores.binding;
       },
-      async close() { await client?.close(); },
+      async close() { settleStartup?.(); await client?.close(); },
     },
     closeStores() { stores.close(); writeFileSync("stores-closed.json", "true", { mode: 0o600 }); },
   };
