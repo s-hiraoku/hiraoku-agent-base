@@ -233,3 +233,33 @@ The optional command is documented in [helpers](helpers.md), not added to the co
 ## Single-source owner composition preparation
 
 The opt-in composition uses one internally constructed host and a private authorization callback. An already acquired owner and initial pause are required; updates commit pause and require idle, fully drained, held ownership before changing the fixed-source permit. The discarded public callback/bind split is recorded in review notes. Five fresh-store tests raise the current root inventory to 1244; historical optional Python and earlier native records remain unchanged. Source commit precedes successor pin regeneration. Manual/native requirements remain unverified.
+
+## Optional product-neutral ACP owner integration
+
+The opt-in `src/owner-integrations/acp-stdio.ts` implements only the standard ACP v1
+stdio wire/process driver for the existing external owner. It is outside the normal
+Relay, adapter host and agent SDK dependency graph. The new guide is context, not
+normative adoption of a product execution path. Existing HAB-F02/F03/F07/F11/F16/E09
+statements, authority citations, decisions and native/manual gates are unchanged;
+`js-acp-owner` supplies overlapping synthetic regression evidence only.
+
+The successful correlated native reply remains separate from current HTTP discovery,
+exclusive capability delivery and the trusted product/effective-participant verifier.
+No ACP field asserts universal native identity. Missing or lost create outcomes stop
+without retry. All pre/post-bind tools remain denied; no prompt, model, queue, native
+approval, profile/ticket loading or product startup is exercised by the fixtures.
+
+P7's formal generator selects every committed `src/` path, including the new root;
+its explicit includes also select the new top-level test and synthetic child. Root
+TypeScript checks use `src/**/*.ts`, and `js-root` discovers `test/*.test.js`. Source
+must be committed before generating its successor pin, and the generated entries
+must be inspected. Full/hosted P7 and native deployment remain separate acceptance.
+
+On main 3213cc7a5b97274f17f0a993f6a192c1616550f3, thirty-seven ACP top-level cases
+include two current-owner stop/scope-loss composition regressions. Focused execution passes
+ACP37 + external-owner23 + private HTTP11 = 71. Expected root inventory is 1324 (1287 + 37),
+not a full/hosted execution claim. Existing group counts and failure/skip/cleanup
+gates are unchanged. The private ACP close latch is published before synchronous
+abort callbacks; direct reentry checks exactly one owned stdin end.
+
+ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.

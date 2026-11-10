@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "f84d3c9f5576c1b71bd560e0d1fa2c91503ee3ba",
+  "source_ref": "30513dd0754eb70a382727b042e35b92e501accd",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "b6cd0961a742667916ea3a94af74133d8c57af6b0fdc8d592cabbd6953e35cef"
+      "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -257,9 +257,25 @@
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
       "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2"
     },
+    "src/adapter-host/external-owner.ts": {
+      "previous_sha256": null,
+      "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af"
+    },
     "src/adapter-host/mcp.ts": {
       "previous_sha256": null,
       "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e"
+    },
+    "src/adapter-host/owner-process-entry.ts": {
+      "previous_sha256": null,
+      "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b"
+    },
+    "src/adapter-host/owner-process.ts": {
+      "previous_sha256": null,
+      "sha256": "85473ec2841b08e406fd1dd862ac60824fdd62caa947a18d1c90296e4f991277"
+    },
+    "src/adapter-host/private-http.ts": {
+      "previous_sha256": null,
+      "sha256": "06ae7212883f3a533ac13209c216c29eecd9a32f0567878ef0a91a46f0c91a17"
     },
     "src/adapter-host/single-source-authority.ts": {
       "previous_sha256": null,
@@ -464,6 +480,10 @@
     "src/messaging/tool-errors.ts": {
       "previous_sha256": null,
       "sha256": "40f8786cd0890fb6ec39ae3660ff5561813c8c4c0cb9b62d304a50ec603ed4b5"
+    },
+    "src/owner-integrations/acp-stdio.ts": {
+      "previous_sha256": null,
+      "sha256": "ce25b521eca7113cac23e5df856440fc633f71e8fb3ebc314653a8bb4dfb9782"
     },
     "src/recipient-messages/contract.ts": {
       "previous_sha256": null,
@@ -725,6 +745,14 @@
       "previous_sha256": "1e0a880b756b4ad7678fce5e85cd6e9c80168285bfd99ebe773d79c140ce8424",
       "sha256": "a76ffb56d46336da720dc4285dd948b43c4bc0b0632d4e18d088bd356c5afc8a"
     },
+    "test/acp-owner-child.js": {
+      "previous_sha256": null,
+      "sha256": "bf2cff8fccc22763721f17bba27d500d9ebc0ae3a80fdfcca892a7ced9f40418"
+    },
+    "test/acp-owner.test.js": {
+      "previous_sha256": null,
+      "sha256": "89882a0eb99e5aa424a7699ef25171568c94ebc93785a644af7148edb578eff9"
+    },
     "test/adapter-host-fixtures.js": {
       "previous_sha256": null,
       "sha256": "a6d890d3ec185a9156092c609097032478f13b29e31a69e742f083e16a6edf43"
@@ -772,6 +800,18 @@
     "test/design-budget-boundaries.test.js": {
       "previous_sha256": null,
       "sha256": "904da9235935e20b8ea7ea80da38a32c62c6385c471505fcc8741942d30d0106"
+    },
+    "test/external-owner-child.js": {
+      "previous_sha256": null,
+      "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736"
+    },
+    "test/external-owner-fixture.js": {
+      "previous_sha256": null,
+      "sha256": "570b6176400d8827067324afdb2cc360e6e0fe05e46fb6f1d3163f4f06e79f09"
+    },
+    "test/external-owner.test.js": {
+      "previous_sha256": null,
+      "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629"
     },
     "test/generic-a2a.test.js": {
       "previous_sha256": null,
@@ -868,6 +908,10 @@
     "test/p7/runner.test.js": {
       "previous_sha256": null,
       "sha256": "927bd21de1a32e0b279431b22c2ba280d114df64c4e896dab6cb2fd152d2d7dc"
+    },
+    "test/private-recipient-http.test.js": {
+      "previous_sha256": null,
+      "sha256": "f559ae106eb8a60e2b20d469192e384d8295f1bd963e8a031e1acac65f289c5e"
     },
     "test/recipient-host-mcp-size.test.js": {
       "previous_sha256": null,

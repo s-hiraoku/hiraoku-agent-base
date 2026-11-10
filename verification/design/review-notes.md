@@ -112,3 +112,20 @@ revokes recipient authorization before any control IO; every existing guard
 available and regrant is forbidden. The added SDK-close gate observes owner held
 while close is pending and immediately after SDK close completes, before release.
 Independent read-only review checked the final guard, retry and test semantics.
+
+Optional ACP owner source review (2026-11-09): the new integration root depends on
+Node built-ins and the existing external-owner types only; the normal Relay and agent
+SDK do not import it. Standard ACP initialization, HTTP capability/schema and session
+creation were checked against generated official schema v0.11.2 and SDK NDJSON source.
+The native session response is retained only in a private correlation receipt and a
+trusted local deployment callback. Frozen launch/configuration, exactly one attempt,
+current discovery, false client filesystem/terminal capabilities and cancelled native
+permission requests preserve the deny-only boundary. Errors/output are not forwarded.
+New synthetic tests exposed external-owner stop reentrancy when coupled abort signals
+fired synchronously; the dependency is corrected rather than weakening the once-only
+store-close assertion. Native product scope/commit behavior and real authorization
+remain external prerequisites, not assertions proved by the synthetic peer.
+
+Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate.
+
+ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.

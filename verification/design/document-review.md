@@ -249,3 +249,62 @@ Read both complete renderer versions and the new CLI controls against the unchan
 ## Push-run success-path RPC deadline regression (2026-11-09)
 
 Retained the failed branch Design run 42539734275 at 7444c86 separately from successful PR merge-ref run 42539742388. The failed branch root suite completed 1296 cases with one failure: the finite MCP question-answer-ACK success case returned incomplete after 1119ms with a 1000ms fixture RPC deadline; its original assertion did not record the reason. Source/citation audit and all other automatic checks passed with confirmed cleanup. The original code's 1s deadline rejects a controlled 1100ms poll-response delay as poll_transport_failed. The same existing success case now carries that delay and a finite 5000ms RPC budget; all original tool-order, ACK, inbox/outbox, replay and zero-Task assertions remain. The shared helper prints the complete result on assertion failure. This is test-scenario tolerance for a successful finite roundtrip, not a product deadline change, automatic retry, polling loop or relaxed timeout assertion. Dedicated short-deadline and stop/revocation tests remain unchanged. The controlled before/after reproduction supports a deadline-related explanation; the failed hosted log alone does not reveal which transport phase consumed the budget. Historical failed evidence is retained, and new branch/push and PR runs must be checked independently. No requirement or manual/native/production scope changes.
+
+## Private recipient HTTP composition (2026-11-09)
+
+| Document | Classification | Semantic review |
+| --- | --- | --- |
+| docs/private-recipient-http.md | context / reviewed | Owner-composed HTTP transport over the existing MCP surface and fixed-source host. Precommit discovery carries metadata only, with no fabricated verified context; binding requires external owner verification of the committed native launch and exclusive credential/participant scope. Receipts and MCP session IDs are freshness/routing evidence, not identity. Current receipt and quiescent write handling fence promotion. Auth applies to every request; Host/path/Origin checks and no redirects bound the supported endpoint. Initial deny/pause, separate local grant/resume, terminal revocation before IO, failed-shutdown retention and finite owner-controlled lifecycle preserve F02/F03/F07/F16/E09. HTTP socket closure is explicitly not stdio EOF. Real product identity, native approval, credential delivery, live queue and OS isolation remain unverified. Independent source review found and corrected promotion races and opening-close retention; synthetic fault tests do not replace native acceptance. |
+
+No existing requirement, decision authority, source citation or native/manual gate
+was weakened. The HTTP check supplements the existing stdio/authority checks and
+uses real owned MCP/SQLite/private-broker resources with synthetic credentials.
+
+## Generic external owner launcher preparation (2026-11-09)
+
+| Document | Classification | Semantic review |
+| --- | --- | --- |
+| docs/external-owner-launcher.md | context / reviewed | Opt-in product-independent listener and separately supervised owner process. Trusted driver callbacks, not native authentication implementation, supply the committed cause chain and participant scope. One create attempt, current receipt, separate native/outer liveness and deny-only surface preserve source authority. Empty env and ignored raw output are process boundaries, not home/network isolation. Forced/unconfirmed exit, unsettled driver work and failed cleanup remain failure, with state retained until actual exit. No product runner, credential issuance, grant, model, live profile/queue or deployment is adopted. ACP is a feasible subsequent independent driver, explicitly unimplemented. |
+
+Reviewed against HAB-F02/F03/F07/F11/F16/E09, HAB-C-F02 and the existing private HTTP,
+fixed-source and owner contracts. The new focused synthetic check supplements those
+requirements without changing statements, citations, decisions or manual/native gates.
+Real SQLite and owned MCP/process faults are not a product session or native approval.
+
+## Existing Auth0/Hermes connection recovery
+
+Reviewed `docs/auth0-recovery.md` as operational context under the unchanged normative `docs/persistent-mcp-auth.md`. It adds cause-specific recovery and verification procedures, not new product or operator authority. Re-read HAB-A08, HAB-A09, HAB-A11, HAB-A16 and HAB-D17 against the existing verifier, participation design and credential-free tests. Distinguish token issuance/refresh from HAB subject/client authorization; a resource401 with a loaded current token is not proof of refresh failure. Preserve unknown submit outcomes and the same message IDs, allow properly journaled new lease generations, and retain stop/consent boundaries. Reviewed Hermes storage/provider/manager/CLI at clean revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7 and Auth0 primary refresh/rotation/expiry documentation on 2026-11-09. The recipe names CLI cache removal, transient versus permanent failures, native identity checks and separate real refresh/restart/model-path gates. Synthetic test success does not close these operational gates; no requirement/check scope or product source changes.
+
+The recovery recipe now also covers the trial producer boundary. Read the new `scripts/lib/native-trial-message.ts`, offline CLI and four `test/tools/native-trial-message.test.ts` controls: a single sampled time feeds the existing replay-bound ID factory, timestamp and one-hour deadline; the original contract rejects a saved 1ms mismatch; preparation cannot repair a saved submission or overwrite a prior artifact; the pre-submit check rejects expired input without granting identity or send authority. Existing failed intents and results remain historical and are not rewritten or retransmitted. The tooling is included by the existing tools typecheck/lint/test globs, separate from P7 delivery acceptance. No product contract or requirement/check scope changes.
+
+## External owner startup cancellation and reentry (2026-11-10)
+
+Reviewed the startup cancellation and synchronous reentry paths against the existing deny-only owner contract. P2 only exempts the private post-settlement cancellation object from recording a startup failure; genuine driver create/verify rejections remain failures even during shutdown or with identical error messages. Unsettled work, failed host/driver/store cleanup and forced/unconfirmed process exit remain failures. The separate previously unpublished reentry correction publishes one stop promise before abort listeners run, preserving synchronous fencing and exactly-once cleanup. Neither change grants authority or reconciles uncertain native creation. Tests cover pre-create loss, create/verify pending stop and both owner signals, synchronous reentry, genuine errors during stop, cleanup failures and supervised stopped plus observed exit0. The six added top-level cases raise the expected root inventory from 1277 to 1283; counts are not execution evidence. Historical results and all native/manual gates remain unchanged.
+
+## External owner late factory cleanup (2026-11-10)
+
+Reviewed the successful factory return boundary separately from factory failure and composition ownership. Valid options returned after stop/native owner loss now close driver then stores with independent finite steps before reporting stopped/exit0. Driver failure or timeout retains stores; store failure/timeout is nonzero failure. No retry is added after handoff. Invalid options remain outside supported handoff and carry no cleanup guarantee. The fixture exercises actual entry/supervisor IPC, repeated stop, owner loss, lifetime, SIGTERM/SIGINT, disconnect, late rejection and driver/store failure/timeout without creating descendants. Disconnect cannot send stopped evidence even after local cleanup. Factory nonreturn, forced exit, OS containment and descendant guarantees remain unchanged. Four new top-level tests raise expected root inventory from 1283 to 1287; counts alone are not execution evidence.
+
+## Optional ACP stdio owner integration (2026-11-09)
+
+| Document | Classification | Semantic review |
+| --- | --- | --- |
+| docs/acp-owner-driver.md | context / reviewed | Product-neutral, opt-in ACP v1 owner integration outside standard messaging. One owned clean-environment process, standard initialize/HTTP session/new, bounded NDJSON and request correlation supply a local cause-chain receipt. A trusted deployment verifier and native scope monitor remain required; no UUID/name/self-asserted field is identity. Current actual discovery is independently required by the external owner, and all operations remain denied. Failure/response loss/EOF stop without retry; forced or unconfirmed exit remains failure. No product profile, ticket, model, queue, native approval, universal attestation or OS/descendant containment is established. The guide lists exact live model-free approval prerequisites. |
+
+The official Python ACP SDK's generated schema and meta at schema ref v0.11.2 and
+its newline-framing implementation were read as source only. No SDK dependency,
+product import, native execution or new normative product requirement is introduced.
+Existing source authority and manual gates remain unchanged.
+
+The external-owner guide's former future-work paragraph now links the implemented generic
+ACP driver, while retaining the separate product-specific verifier and live-approval gates.
+The ACP driver itself also required the publish-before-abort latch correction; direct idle
+and started-child regression checks shared promise identity and exactly one stdin end.
+
+## ACP integration onto merged owner (2026-11-10)
+
+Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Existing current-count guides change only1287 to1324. All main owner behavior and regression sources stay byte-identical. No historical result, requirement, manual gate or failure/skip/cleanup assertion is weakened.
+
+Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate.
+
+ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.

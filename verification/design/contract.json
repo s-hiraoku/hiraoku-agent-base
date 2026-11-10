@@ -262,7 +262,7 @@
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend. That evidence-verified rule governs the preview composition with HabExecutionEvidence. A separate section records the owner's ADR-016 decision to wire the gateway into the host: off unless the config has an `a2a` section, a separate loopback listener, a host-owned Registry identity attested in-process as `urn:hab:host` with startup refusal codes, per-caller Registry checks of resolve/submit/execution_request with Tasks scoped per caller, private outbox/inbox/Task store, send only inside the owner's SendMessage with no background submit retry, a receiver loop that saves then ACKs only replies to host messages within one day of their request's expiry, ACKs any other or later delivery, and any reply under a new message ID that would not change its Task (previewed with held replies counted as confirmed), without an inbox or ACK record, applies each saved reply to its Task and releases the body once the Task is saved, releases unread a reply whose ACK can no longer be confirmed, fails a Task still without a result when the reply window closes (FAILED, reason result_window_expired, outcome unknown, a later reply changes nothing) in the receive cycle after the earliest open window closes, an ACK history counted per message, a blocking SendMessage that holds the Task serializer only per 25 ms check, an inbox of 2 × max_records reply bodies, outbox collection gated by actual inbox capacity after its minimum horizon, a host submit admitted inside the transaction that rechecks the caller, and reply-attested Task states labelled `attestation: \"recipient_reply\"` that claim no engine verification. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim. The outbox horizon is only a minimum: inbox maintenance and a read-only whole-next-batch capacity gate precede outbox collection, preserving actual-local-terminal ACK retention after a long stop and deferring new admissions rather than accepting results that cannot fit. Window expiry is independent of the maintenance cadence; outbox body expiry still runs when row collection is deferred. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The whole-batch reserve may defer collection and admission longer than the minimum necessary. No live deployment has been checked. Task-store shutdown closes the eagerly opened SQLite connection even without SDK driver initialization, supports repeated close, and leaves saved state for reopening. Nine-candidate follow-up: partial 2(max(0,M-T+p)+W) collection (ordinary T<=M: 2(F+W+p)), tri-state defer with finite-delivery limits, fair bounded overdue pages, source-index hints with unchanged guards, and permanent identity revocation rather than address rotation; unexpected save failures retain bodies."
+      "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded JetStream backend. That evidence-verified rule governs the preview composition with HabExecutionEvidence. A separate section records the owner's ADR-016 decision to wire the gateway into the host: off unless the config has an `a2a` section, a separate loopback listener, a host-owned Registry identity attested in-process as `urn:hab:host` with startup refusal codes, per-caller Registry checks of resolve/submit/execution_request with Tasks scoped per caller, private outbox/inbox/Task store, send only inside the owner's SendMessage with no background submit retry, a receiver loop that saves then ACKs only replies to host messages within one day of their request's expiry, ACKs any other or later delivery, and any reply under a new message ID that would not change its Task (previewed with held replies counted as confirmed), without an inbox or ACK record, applies each saved reply to its Task and releases the body once the Task is saved, releases unread a reply whose ACK can no longer be confirmed, fails a Task still without a result when the reply window closes (FAILED, reason result_window_expired, outcome unknown, a later reply changes nothing) in the receive cycle after the earliest open window closes, an ACK history counted per message, a blocking SendMessage that holds the Task serializer only per 25 ms check, an inbox of 2 \u00d7 max_records reply bodies, outbox collection gated by actual inbox capacity after its minimum horizon, a host submit admitted inside the transaction that rechecks the caller, and reply-attested Task states labelled `attestation: \"recipient_reply\"` that claim no engine verification. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim. The outbox horizon is only a minimum: inbox maintenance and a read-only whole-next-batch capacity gate precede outbox collection, preserving actual-local-terminal ACK retention after a long stop and deferring new admissions rather than accepting results that cannot fit. Window expiry is independent of the maintenance cadence; outbox body expiry still runs when row collection is deferred. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The whole-batch reserve may defer collection and admission longer than the minimum necessary. No live deployment has been checked. Task-store shutdown closes the eagerly opened SQLite connection even without SDK driver initialization, supports repeated close, and leaves saved state for reopening. Nine-candidate follow-up: partial 2(max(0,M-T+p)+W) collection (ordinary T<=M: 2(F+W+p)), tri-state defer with finite-delivery limits, fair bounded overdue pages, source-index hints with unchanged guards, and permanent identity revocation rather than address rotation; unexpected save failures retain bodies."
     },
     {
       "path": "docs/a2a-sdk-preview.md",
@@ -296,7 +296,7 @@
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Recipient-local reply budget permits only question→answer and execution_request→accepted/result. Host explicitly sets finite source/thread/global/capacity limits; proposed 8/thread and60/min are not defaults. Commit reservation before outbox, never refund unknown delivery, reuse exact retry. DB rollback and restore limitations are explicit."
+      "summary": "Recipient-local reply budget permits only question\u2192answer and execution_request\u2192accepted/result. Host explicitly sets finite source/thread/global/capacity limits; proposed 8/thread and60/min are not defaults. Commit reservation before outbox, never refund unknown delivery, reuse exact retry. DB rollback and restore limitations are explicit."
     },
     {
       "path": "docs/agent-address-rename.md",
@@ -633,7 +633,7 @@
       "sha256": "334cb746487d875af3326af23e6f2844f744cf21cec8fd0c19816125481ed6e4",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The journal is schema 4, so rolling back to an earlier build means a pre-upgrade backup restore, original-ID reconciliation of accepted and incomplete-at-backup messages decided by recipient records, and holding the earlier build stopped until every restored ID has expired so the relay delivers none again, while bodies already saved in a restored inbox are settled against copied execution records before their recipient restarts. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect, explicit v1→v2 migration and reserved revoked descriptors. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; group mode follows `registry.authentication_groups`, not the schema version. An optional `a2a` section adds a third loopback listener, a host-owned identity and private A2A stores; A2A callers need an A2A-audience credential bound through relay:admin connect. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services. Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
+      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The journal is schema 4, so rolling back to an earlier build means a pre-upgrade backup restore, original-ID reconciliation of accepted and incomplete-at-backup messages decided by recipient records, and holding the earlier build stopped until every restored ID has expired so the relay delivers none again, while bodies already saved in a restored inbox are settled against copied execution records before their recipient restarts. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect, explicit v1\u2192v2 migration and reserved revoked descriptors. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; group mode follows `registry.authentication_groups`, not the schema version. An optional `a2a` section adds a third loopback listener, a host-owned identity and private A2A stores; A2A callers need an A2A-audience credential bound through relay:admin connect. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services. Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
     },
     {
       "path": "docs/manual-ping-runner.md",
@@ -835,12 +835,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "2951348f72db97e303689e6a5f6e366a9b06bfb1dc7e1a87ac7e482658fa438b",
+      "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -860,12 +860,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "5a9aa475f172825e861a77acf890eb4188c02170ecc6d129bf7c166ab84db13b",
+      "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1253) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1338) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/testing/plan.md",
@@ -877,12 +877,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "8f354b4b63852d7bbd716a49affcb89130883f324664a98e4bf2a22d11931b9a",
+      "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "Inbox-read preparation regression on main f568975: reviewed current root inventory 1245 to 1246 for one delayed-poll and refusal-control test. Historical results, other group counts, transport/authority semantics and manual gates unchanged; count is not execution evidence."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/testing/results.md",
@@ -941,14 +941,14 @@
       "sha256": "d793ce9c22800a41c98add36b2dda576a8ee583461da29ea5e3d2634489f3bbc",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved."
+      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records \u00d7 max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved."
     },
     {
       "path": "src/hab/README.md",
       "sha256": "4b823586b54d995e3d8534083aa43552678e0ba9c0c3f782ac8f9b9a09bc8d82",
       "role": "normative",
       "review": "reviewed",
-      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
+      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry\u2192journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
     },
     {
       "path": "test/p7/README.md",
@@ -960,11 +960,12 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "f6e6770c8e632872e7f25f8fd6731523939b03ef6c411114664d9a9e0107b303",
+      "sha256": "c2fd279aee18f7afdfcee4a0487df3f8db65d9c1ed0c6221b1d69cd8e0f14896",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "verification/design/conflicts.md",
@@ -984,15 +985,16 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "435c27097aef1c1e28b6d73ca6b3ff305b29c325377097a68b151796a62bb7c8",
+      "sha256": "e60233ae42370d0d6372014eae88cb606a19ea3c14c20a264642d994f6e5ea60",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "verification/design/helpers.md",
-      "sha256": "6751e8872864e325f09e200c66d9376530f4052f356a4ba60a8a7823bd9542bc",
+      "sha256": "0d82c4dc0dd7a2990a0c42fe3dc192dfc07c87339b73e00e2c8f9516992de9e5",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1000,11 +1002,12 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "9b278594e58ea9cc5406d971b3aef48da4e0801d90451c9101cafefb392c806b",
+      "sha256": "8852612b93d75b53e4eaad2aa00103c1920e66d98390a81fc142d527d0af1a9f",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/recipient-stdio.md",
@@ -1040,6 +1043,36 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB."
+    },
+    {
+      "path": "docs/private-recipient-http.md",
+      "sha256": "e73ebaa3ad4ac7566262e7c7260ec6b0273440229dbb0b81b5fcad1d5201310e",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Generic private HTTP owner composition: unbound metadata discovery, externally verified launch binding, stable schemas, current receipt and quiescent-write promotion fence, initial deny/pause and explicit local grant/resume. Per-request bearer authentication is not native identity. Finite terminal revocation/drain/close retains owner on failure; HTTP disconnect alone is not stdio EOF. Synthetic SDK/SQLite/private-broker checks do not prove native authentication, approval, credential delivery or production readiness."
+    },
+    {
+      "path": "docs/external-owner-launcher.md",
+      "sha256": "4d196e15437378cee0181634f4a8352d2c8198ce4ca179be81963e9d4524d1fc",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. Optional generic ACP driver linked separately; no product-specific verifier, runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment. Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged.",
+      "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+    },
+    {
+      "path": "docs/auth0-recovery.md",
+      "sha256": "e9c74424a7e69fc2a4e65258618ba2483676a3cf7737e79e83e425119c6c2b7c",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. Offline trial preparation now samples one clock value, uses the existing replay-bound ID factory and contract parser, refuses repair/overwrite of saved intents, and checks the exact saved submission before any separately authorized submit. The 1ms mismatch regression and expiry boundary remain offline controls, not live recovery proof."
+    },
+    {
+      "path": "docs/acp-owner-driver.md",
+      "sha256": "444e347528cca0bb4d739d5f71d7b4b7c72d619f46adacaed05bbe664334cdac",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "verification/experiments/cross-process-handoff/README.md",
@@ -1094,7 +1127,10 @@
         "native-recipient",
         "js-recipient-messages",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http",
+        "js-external-owner",
+        "js-acp-owner"
       ],
       "citations": [
         {
@@ -1123,7 +1159,10 @@
         "ast-boundary",
         "js-recipient-messages",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http",
+        "js-external-owner",
+        "js-acp-owner"
       ],
       "citations": [
         {
@@ -1256,7 +1295,10 @@
       "checks": [
         "js-common-mcp",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http",
+        "js-external-owner",
+        "js-acp-owner"
       ],
       "citations": [
         {
@@ -1343,7 +1385,9 @@
         "js-root",
         "native-recipient",
         "js-recipient-messages",
-        "js-recipient-host-mcp"
+        "js-recipient-host-mcp",
+        "js-external-owner",
+        "js-acp-owner"
       ],
       "citations": [
         {
@@ -1469,7 +1513,10 @@
       "checks": [
         "js-root",
         "js-recipient-host-mcp",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http",
+        "js-external-owner",
+        "js-acp-owner"
       ],
       "citations": [
         {
@@ -1979,7 +2026,7 @@
       "title": "Explicit schema and rollback boundary",
       "statement": "Group schema migration is explicit opt-in, preserves existing identities/bindings and refuses old runtimes. Never lower schema version or restore stale online state that resurrects revoked authority or loses accepted deliveries. Keep DB, keys, config and release in a consistent protected backup set.",
       "rationale": "Authority and delivery history must survive migration/recovery; version edits are not safe rollback.",
-      "scope": "Registry groupv1→v2 migration and deployment/recovery; proposed renamev3 remains separate.",
+      "scope": "Registry groupv1\u2192v2 migration and deployment/recovery; proposed renamev3 remains separate.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -2009,7 +2056,7 @@
     {
       "id": "HAB-A08",
       "title": "Participation is separate from token lifetime",
-      "statement": "Persistent mode requires explicit OAuthv2 participation dates/state and a short-lived access-token maximum1–900seconds. Legacyv1 remains at most15minutes without auto-upgrade. Refresh cannot extend human participation, widen permissions or change group membership. Context expires no later than token or participation end.",
+      "statement": "Persistent mode requires explicit OAuthv2 participation dates/state and a short-lived access-token maximum1\u2013900seconds. Legacyv1 remains at most15minutes without auto-upgrade. Refresh cannot extend human participation, widen permissions or change group membership. Context expires no later than token or participation end.",
       "rationale": "Continuous use must not mean unbounded token authority or repeated manual recreation of stable identities.",
       "scope": "Persistent Relay OAuthv2; actual production durations require separate concrete approval.",
       "decision": "accepted",
@@ -2723,7 +2770,7 @@
     {
       "id": "HAB-D06",
       "title": "Delivery, reading, application handoff and execution remain separate",
-      "statement": "Inbox is a received-message record, not execution queue. Local handoff requires separately durable application save deduplicated by sender/message before explicit release; ACK confirmation and release are independent. No read/release/receipt alone proves exactly-once application effects or Task acceptance. Unreleased body is retained under finite backpressure. The record and byte quotas count unreleased bodies only, so a release frees a slot at once, while a separate finite `max_ack_records` bound limits the dedup history, counted by message, that every saved message enters; a released tombstone still deduplicates. A lease redelivery of a message already in that history adds an ACK row for its new generation without taking another slot, and one message keeps at most `max_attempts` generations (a further one is refused with `inbox_capacity_exceeded`), so the ACK table holds at most `max_ack_records × max_attempts` rows. `releaseUnconfirmable` releases, without handing it to the application, only a body whose receipt can no longer be confirmed: its ACK is unconfirmed, the message has expired so no new generation can be saved, and no ACK request is pending; otherwise it changes nothing, and the released tombstone still deduplicates. Rows of any kind are capped at `max_records + max_ack_records`. A legacy (non-replay-bound) ID's tombstone is never collected, because a replay of it could not be told from a new message, so legacy-ID rows are capped at `max_ack_records`: a new legacy ID past that is refused with `inbox_legacy_id_capacity_exceeded`, replay-bound IDs keep the `max_records` body budget, and a held legacy ID stays deduplicated and is never handed off again. hasCapacityFor(records, bodyBytes) is a read-only check for new replay-bound messages against body/byte, per-message ACK-history and retained-row bounds; it neither reserves nor collects and never shortens retention from actual local terminal time. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
+      "statement": "Inbox is a received-message record, not execution queue. Local handoff requires separately durable application save deduplicated by sender/message before explicit release; ACK confirmation and release are independent. No read/release/receipt alone proves exactly-once application effects or Task acceptance. Unreleased body is retained under finite backpressure. The record and byte quotas count unreleased bodies only, so a release frees a slot at once, while a separate finite `max_ack_records` bound limits the dedup history, counted by message, that every saved message enters; a released tombstone still deduplicates. A lease redelivery of a message already in that history adds an ACK row for its new generation without taking another slot, and one message keeps at most `max_attempts` generations (a further one is refused with `inbox_capacity_exceeded`), so the ACK table holds at most `max_ack_records \u00d7 max_attempts` rows. `releaseUnconfirmable` releases, without handing it to the application, only a body whose receipt can no longer be confirmed: its ACK is unconfirmed, the message has expired so no new generation can be saved, and no ACK request is pending; otherwise it changes nothing, and the released tombstone still deduplicates. Rows of any kind are capped at `max_records + max_ack_records`. A legacy (non-replay-bound) ID's tombstone is never collected, because a replay of it could not be told from a new message, so legacy-ID rows are capped at `max_ack_records`: a new legacy ID past that is refused with `inbox_legacy_id_capacity_exceeded`, replay-bound IDs keep the `max_records` body budget, and a held legacy ID stays deduplicated and is never handed off again. hasCapacityFor(records, bodyBytes) is a read-only check for new replay-bound messages against body/byte, per-message ACK-history and retained-row bounds; it neither reserves nor collects and never shortens retention from actual local terminal time. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
       "rationale": "Receiver storage and user processing have different lifetimes and authority boundaries.",
       "scope": "Recipient-local body lifecycle. The quota and row bounds, the per-message ACK history, the `max_attempts` generation cap `releaseUnconfirmable` and the collection of replay-bound IDs over repeated retention cycles are covered in js-root by test/relay-inbox-maintenance.test.js. The same suite covers the read-only capacity gate and unchanged terminal-time retention.",
       "decision": "accepted",
@@ -2850,7 +2897,7 @@
     {
       "id": "HAB-D10",
       "title": "Cross-DB commits reconcile original records",
-      "statement": "Retired (historical): the upload acceptance, attachment outbox handoff, receive checkpoint and attachment deletion stores were deleted, so these cross-DB commit pairs no longer exist. HAB-D05 still covers original-ID recovery for messages. Original accepted statement, kept for provenance: Treat prepare→Relay commit→confirm, source→outbox handoff, body save→checkpoint clear and deletion→job done as independent commits, not distributed rollback. Preserve original reservations/intent/body/checkpoint where needed and reconcile original ID/job/receipt/fence after response or local commit uncertainty. No new IDs or deadline extension.",
+      "statement": "Retired (historical): the upload acceptance, attachment outbox handoff, receive checkpoint and attachment deletion stores were deleted, so these cross-DB commit pairs no longer exist. HAB-D05 still covers original-ID recovery for messages. Original accepted statement, kept for provenance: Treat prepare\u2192Relay commit\u2192confirm, source\u2192outbox handoff, body save\u2192checkpoint clear and deletion\u2192job done as independent commits, not distributed rollback. Preserve original reservations/intent/body/checkpoint where needed and reconcile original ID/job/receipt/fence after response or local commit uncertainty. No new IDs or deadline extension.",
       "rationale": "The independent stores this requirement coordinated were removed.",
       "scope": "Removed attachment upload acceptance, outbox handoff, checkpoint and server deletion; no current scope.",
       "decision": "historical",
@@ -3138,9 +3185,9 @@
     {
       "id": "HAB-D20",
       "title": "Host A2A sends only inside the owner's request",
-      "statement": "The host A2A outbox, inbox and SDK Task store are private 0600 files in the host state directory; a saved Task, its send intent and received replies survive a host restart, and a replay reuses the original message ID and one-hour expiry. A saved intent is sent only inside its owner's authorized SendMessage, which claims only that message ID from the shared outbox. There is no background submit retry; a retry is a repeated SendMessage with the same messageId. The only background work is the receiver loop, which polls the host mailbox and classifies each delivery before saving anything. A new reply ID is classified against the stored Task and only ACK-confirmed held replies. If it cannot change that state or is refused by validated contract/schema rules, it is discarded with ACK and no inbox record. If it would change that state but would be redundant or conflicting assuming an unconfirmed held reply became usable, it is deferred without save or ACK. Unexpected preview failures also defer rather than proving redundancy. A deferred delivery remains subject to finite relay leases, attempts and TTL, so it may quarantine or expire; recovery is not guaranteed. An ID already held still reaches the inbox for deduplication and ACK confirmation. Unconfirmed replies are never applied. Any other delivery is ACKed without an inbox record or ACK history entry, so unrelated senders spend none of the capacity replies need; dropping it again on a redelivery is harmless, so it needs no dedup record. At most once a minute the loop runs bounded inbox and outbox maintenance. Window closure uses at most 100 overdue Tasks per receive cycle, ordered and paged by the complete stable (tenant, owner, id) key. The cursor advances past individual failed applies; a full page schedules another cycle, and the end resets the cursor for the next scheduled pass. The earliest open window or at most one minute schedules that pass. Thus a failed full batch does not permanently hide later Tasks, but a backlog or persistent storage failure does not promise every transition within one cycle. `max_records` caps the outbox. The inbox holds `2 × max_records` unreleased reply bodies, one `execution_accepted` and one `execution_result` per host message, so an accepted reply never takes the slot its own result needs. The receiver loop applies each ACKed reply to its Task and releases the body once the Task store holds the new state; a reply the Task refuses (a conflict, a malformed body, such as a late reply to a terminal Task, or one over the A2A contract limits) is released the same way, and any other failure keeps the body for the next cycle. A successful durable apply releases the body even without a caller read; unexpected storage failures retain it for retry. A saved reply whose ACK never committed is never applied; once it has expired with no ACK request pending, so no redelivery can confirm it, the loop releases its body unread with `releaseUnconfirmable` and keeps its tombstone for dedup, and its Task waits for another reply or for its reply window to close. A reply is saved only while the current time is before its request's expiry plus one day (the reply window); a later reply is ACKed without a record and does not change its Task. Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance collects the inbox first, then computes a bounded outbox collection allowance. Let M be max_records, T be retained outbox rows, W be retained sources whose reply windows are still open (expires_at > now minus one day), and p be proposed collected rows. It binary-searches p from 0 through 100 against room for 2 × (max(0, M - T + p) + W) new replies. For T <= M this equals 2 × (F + W + p), where F = M - T. If an operator lowers M below T, collecting excess rows creates no usable sender slots until the count falls below M. The check includes those replies and their maximum envelope bytes, checking unreleased body/byte, distinct-message ACK-history and all retained-row capacities. This preserves two future replies for each free slot and open source before freeing additional sender slots. The snapshots and numeric-cap collection have no intervening await in the single-owner host. Only eligible rows are collected, and expiry still runs even when the allowance is zero. This is conservative capacity accounting, not a multi-writer reservation or shortened retention. The inbox keeps an ACK history of three times `max_records` messages for the same 30 days, counted per message, so the lease redeliveries of one reply (up to `max_attempts` generations) take a single slot. A blocking SendMessage holds the handler's Task serializer only for each 25 ms check, which reloads the stored Task, so the receiver loop applies replies during the five-second wait and a result saved in a later receive cycle than its acceptance completes the Task. On close the host refuses new A2A requests with 503 and waits for in-flight requests and the current receiver cycle before closing its stores, leaving unsent intents, unACKed deliveries and saved Tasks on disk. Closing the Task store must close its eagerly opened SQLite connection even if the lazy SDK database driver was never initialized by a load/save, and repeated close is safe. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
+      "statement": "The host A2A outbox, inbox and SDK Task store are private 0600 files in the host state directory; a saved Task, its send intent and received replies survive a host restart, and a replay reuses the original message ID and one-hour expiry. A saved intent is sent only inside its owner's authorized SendMessage, which claims only that message ID from the shared outbox. There is no background submit retry; a retry is a repeated SendMessage with the same messageId. The only background work is the receiver loop, which polls the host mailbox and classifies each delivery before saving anything. A new reply ID is classified against the stored Task and only ACK-confirmed held replies. If it cannot change that state or is refused by validated contract/schema rules, it is discarded with ACK and no inbox record. If it would change that state but would be redundant or conflicting assuming an unconfirmed held reply became usable, it is deferred without save or ACK. Unexpected preview failures also defer rather than proving redundancy. A deferred delivery remains subject to finite relay leases, attempts and TTL, so it may quarantine or expire; recovery is not guaranteed. An ID already held still reaches the inbox for deduplication and ACK confirmation. Unconfirmed replies are never applied. Any other delivery is ACKed without an inbox record or ACK history entry, so unrelated senders spend none of the capacity replies need; dropping it again on a redelivery is harmless, so it needs no dedup record. At most once a minute the loop runs bounded inbox and outbox maintenance. Window closure uses at most 100 overdue Tasks per receive cycle, ordered and paged by the complete stable (tenant, owner, id) key. The cursor advances past individual failed applies; a full page schedules another cycle, and the end resets the cursor for the next scheduled pass. The earliest open window or at most one minute schedules that pass. Thus a failed full batch does not permanently hide later Tasks, but a backlog or persistent storage failure does not promise every transition within one cycle. `max_records` caps the outbox. The inbox holds `2 \u00d7 max_records` unreleased reply bodies, one `execution_accepted` and one `execution_result` per host message, so an accepted reply never takes the slot its own result needs. The receiver loop applies each ACKed reply to its Task and releases the body once the Task store holds the new state; a reply the Task refuses (a conflict, a malformed body, such as a late reply to a terminal Task, or one over the A2A contract limits) is released the same way, and any other failure keeps the body for the next cycle. A successful durable apply releases the body even without a caller read; unexpected storage failures retain it for retry. A saved reply whose ACK never committed is never applied; once it has expired with no ACK request pending, so no redelivery can confirm it, the loop releases its body unread with `releaseUnconfirmable` and keeps its tombstone for dedup, and its Task waits for another reply or for its reply window to close. A reply is saved only while the current time is before its request's expiry plus one day (the reply window); a later reply is ACKed without a record and does not change its Task. Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance collects the inbox first, then computes a bounded outbox collection allowance. Let M be max_records, T be retained outbox rows, W be retained sources whose reply windows are still open (expires_at > now minus one day), and p be proposed collected rows. It binary-searches p from 0 through 100 against room for 2 \u00d7 (max(0, M - T + p) + W) new replies. For T <= M this equals 2 \u00d7 (F + W + p), where F = M - T. If an operator lowers M below T, collecting excess rows creates no usable sender slots until the count falls below M. The check includes those replies and their maximum envelope bytes, checking unreleased body/byte, distinct-message ACK-history and all retained-row capacities. This preserves two future replies for each free slot and open source before freeing additional sender slots. The snapshots and numeric-cap collection have no intervening await in the single-owner host. Only eligible rows are collected, and expiry still runs even when the allowance is zero. This is conservative capacity accounting, not a multi-writer reservation or shortened retention. The inbox keeps an ACK history of three times `max_records` messages for the same 30 days, counted per message, so the lease redeliveries of one reply (up to `max_attempts` generations) take a single slot. A blocking SendMessage holds the handler's Task serializer only for each 25 ms check, which reloads the stored Task, so the receiver loop applies replies during the five-second wait and a result saved in a later receive cycle than its acceptance completes the Task. On close the host refuses new A2A requests with 503 and waits for in-flight requests and the current receiver cycle before closing its stores, leaving unsent intents, unACKed deliveries and saved Tasks on disk. Closing the Task store must close its eagerly opened SQLite connection even if the lazy SDK database driver was never initialized by a load/save, and repeated close is safe. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
       "rationale": "A background resend under the host identity would send without a current check of the caller who asked for it; save-before-ACK keeps replies recoverable across a crash.",
-      "scope": "Opt-in host A2A entry, one host process per state directory. Not multi-host writer coordination, production retention or capacity design. Covered in js-root by test/a2a-host.test.js, including results saved when accepted replies fill the cap, unread completed Tasks freeing their slots after the outbox purge, a Task admitted after a purge whose replies are saved after a late reply, unconfirmable saved replies that release their slots so a later reply still completes its Task, and a blocking SendMessage completing from a result in a later receive cycle than its acceptance. Its case \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" saves and ACK-confirms, offline, an execution_result whose data part is over HAB_A2A_LIMITS, then checks that the running host releases the body instead of retrying it every cycle and that the Task stays SUBMITTED. Its case \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\" sends more repeated acceptances, conflicting acceptances and refused results under fresh IDs than the `3 × max_records` ACK history holds, then a valid result, and checks that the result completes the Task with only two inbox rows. \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" drops the running host's ACKs of one result at its delivery-service transport while the result is live, then checks the real relay's invalid_ack, the unapplied release and completion from a new result. \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" covers the window timing (HAB-E20). The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The bounded allowance remains conservative and does not repair previously lost admission reservations. No live deployment has been checked. test/a2a-sdk-store.test.js covers unused eager connection closure after direct host maintenance reads, closure after SDK initialization, safe repeated close and reopening. This demonstrates the lifecycle defect and its repair, not a universal cause or repair for malformed databases. The outage fixture now ages first_sent_at consistently with the replay-bound ID and expires_at, uses the host Task-store driver for offline Task metadata changes and checks integrity before reopening. It checks the old Task reaches FAILED after its result window and retries only outbox_capacity_exceeded, surfacing other errors immediately without increasing the timeout. A held confirmed body is retained on an unexpected per-Task save failure; no exception-based blanket release is allowed. The mixed-cohort regression injects that failure for one legitimate Task, verifies partial collection and another Task completing while the body remains, then removes the fault and verifies recovery. It does not repair malformed SQLite pages, a globally failed database or invalid JSON that prevents inbox enumeration. Cohort aging changes rm1 IDs and timestamps consistently but does not refresh fingerprints, so it is maintenance/capacity evidence, not a whole-state restore proof. The shutdown controls demonstrate a saved Task retrying under its original identity after close, and synchronous claim-to-admission before a queued close; no normal-shutdown race fix is claimed. The overdue control injects 100 per-Task save failures before a healthy later Task, then removes the fault and checks wrap/retry. It does not establish corrupt metadata reachability through the API.",
+      "scope": "Opt-in host A2A entry, one host process per state directory. Not multi-host writer coordination, production retention or capacity design. Covered in js-root by test/a2a-host.test.js, including results saved when accepted replies fill the cap, unread completed Tasks freeing their slots after the outbox purge, a Task admitted after a purge whose replies are saved after a late reply, unconfirmable saved replies that release their slots so a later reply still completes its Task, and a blocking SendMessage completing from a result in a later receive cycle than its acceptance. Its case \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" saves and ACK-confirms, offline, an execution_result whose data part is over HAB_A2A_LIMITS, then checks that the running host releases the body instead of retrying it every cycle and that the Task stays SUBMITTED. Its case \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\" sends more repeated acceptances, conflicting acceptances and refused results under fresh IDs than the `3 \u00d7 max_records` ACK history holds, then a valid result, and checks that the result completes the Task with only two inbox rows. \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" drops the running host's ACKs of one result at its delivery-service transport while the result is live, then checks the real relay's invalid_ack, the unapplied release and completion from a new result. \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" covers the window timing (HAB-E20). The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The bounded allowance remains conservative and does not repair previously lost admission reservations. No live deployment has been checked. test/a2a-sdk-store.test.js covers unused eager connection closure after direct host maintenance reads, closure after SDK initialization, safe repeated close and reopening. This demonstrates the lifecycle defect and its repair, not a universal cause or repair for malformed databases. The outage fixture now ages first_sent_at consistently with the replay-bound ID and expires_at, uses the host Task-store driver for offline Task metadata changes and checks integrity before reopening. It checks the old Task reaches FAILED after its result window and retries only outbox_capacity_exceeded, surfacing other errors immediately without increasing the timeout. A held confirmed body is retained on an unexpected per-Task save failure; no exception-based blanket release is allowed. The mixed-cohort regression injects that failure for one legitimate Task, verifies partial collection and another Task completing while the body remains, then removes the fault and verifies recovery. It does not repair malformed SQLite pages, a globally failed database or invalid JSON that prevents inbox enumeration. Cohort aging changes rm1 IDs and timestamps consistently but does not refresh fingerprints, so it is maintenance/capacity evidence, not a whole-state restore proof. The shutdown controls demonstrate a saved Task retrying under its original identity after close, and synchronous claim-to-admission before a queued close; no normal-shutdown race fix is claimed. The overdue control injects 100 per-Task save failures before a healthy later Task, then removes the fault and checks wrap/retry. It does not establish corrupt metadata reachability through the API.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -3363,7 +3410,7 @@
     {
       "id": "HAB-E06",
       "title": "Reply loops and budget are finite",
-      "statement": "Automated host replies only allow question→answer and execution_request→accepted/result with one stable reply per source/kind; replies/notices/failures cannot recursively generate answers or Tasks. Explicit finite shared budget is committed before outbox and never refunded to recover unknown delivery.",
+      "statement": "Automated host replies only allow question\u2192answer and execution_request\u2192accepted/result with one stable reply per source/kind; replies/notices/failures cannot recursively generate answers or Tasks. Explicit finite shared budget is committed before outbox and never refunded to recover unknown delivery.",
       "rationale": "Bounds prevent self-amplifying communication, quota bypass and duplicate reply effects.",
       "scope": "Recipient-local automated reply host and optional TaskReplies when budget explicitly connected; proposed8/thread60/min are not defaults.",
       "decision": "accepted",
@@ -3451,7 +3498,10 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "js-single-source-stdio"
+        "js-single-source-stdio",
+        "js-private-recipient-http",
+        "js-external-owner",
+        "js-acp-owner"
       ],
       "citations": [
         {
@@ -3964,7 +4014,8 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "fb15a6cbc08ab768da69f9410f19cfd2b9a9822665b50b6c5a28c9acb1a6c317"
+          "excerpt_sha256": "d4e0bedd92f2e16ddd300ea4666bfaa283f4c556082e4d3621fc5c6f7ff9a693",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -3976,7 +4027,8 @@
           "path": "docs/testing/publication.md",
           "start": 28,
           "end": 28,
-          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa"
+          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -4085,7 +4137,8 @@
           "path": "docs/testing/publication.md",
           "start": 32,
           "end": 34,
-          "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db"
+          "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -4131,13 +4184,15 @@
           "path": "docs/testing/p7-lab.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d"
+          "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 14,
           "end": 14,
-          "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e"
+          "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -4156,19 +4211,22 @@
           "path": "docs/testing/publication.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf"
+          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "a7cbe683537e8d73d4e45c5e9cfcaa63084dd1db8894b7ab77e10c835628e4c3"
+          "excerpt_sha256": "4dc2437849e5502fd6e2d4c7c65ba92acf1e0ff68e23babe84b9df7236de6afe",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 24,
           "end": 28,
-          "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097"
+          "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     }
@@ -4517,6 +4575,63 @@
       "protocol": "node-tap",
       "proves": "Official SDK client over an owned separate stdio process with real recipient SQLite and a parent-owned private JetStream broker. Default deny/pause and explicit local-only grant/resume; fixed source and exact durable reply enqueue/send with revocation; finite lifetime and EOF pause/drain/close/owner release before caller store cleanup; failed drain retains ownership until underlying work settles and a local stop retry succeeds. No Task or arbitrary enqueue is exposed. Stop attempts irreversibly revoke recipient guards before control IO; an injected failed control read followed by resumed-state recovery still denies new calls and delayed poll saves. A gated SDK close independently witnesses owner held while pending and immediately on close completion, before release. Initial resume without a grant remains denied.",
       "limitations": "Recipient/operator identity, policy and chosen answer are synthetic. Relay HTTP uses the existing in-process gateway. Not native session binding, product approval, model judgment, wake, residency, production launcher, process crash or physical restore evidence. Source grant covers the whole dedicated single-producer outbox, not exact-body human approval. Post-call receipt evidence does not replace the independent pre-ACK observer. Tests overlap js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-private-recipient-http",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/private-recipient-http.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Owned loopback MCP with SQLite and private JetStream fixtures; all-request authentication and Host/Origin/path rejection without redirects; unbound tool denial and stable schemas; fresh discovery receipts and delayed-POST promotion fence; explicit grant/resume, fixed-source read and persisted answer prepare/enqueue/send with revocation; owner loss, DELETE, expiry, failed drain/control/startup-close retention and explicit cleanup retry.",
+      "limitations": "Synthetic bearer, recipient/operator contexts and policy only. External listener/credential delivery and native session launch verification remain owner responsibilities. No live agent, model, native approval, production queue, OS isolation or hard real-time guarantee. Tests overlap js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-external-owner",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/external-owner.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry. Startup cancellation rejects readiness but allows confirmed clean completion, including supervised exit0; reentrant stop shares one cleanup; genuine startup and cleanup errors remain failures. Late valid factory results are closed exactly once before handoff for stop/loss/lifetime/signals/disconnect; driver/store errors and timeouts fail, rejected factories retain ownership.",
+      "limitations": "Trusted synthetic driver only; no native verifier or ACP wire driver, credential issuance/delivery, model, live profile/queue or product session. No OS sandbox, descendant kill or parent-death plus blocked-child containment. Forced or unconfirmed termination is failure, not successful cleanup. Overlaps js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-acp-owner",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/acp-owner.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
+      "limitations": "Synthetic executable and capability only. No real product/session/profile/ticket/model/queue, native commit semantics/effective participant verification, authorization bypass or operational deployment. No OS sandbox, descendant or blocked orphan containment. Forced/unconfirmed termination is failure, and native outcome may remain unknown after clean process exit. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
@@ -5154,7 +5269,7 @@
         "HAB-E17",
         "HAB-E19"
       ],
-      "resolution": "No. hermes-connection1–5 and generic profile1–3 expressly choose native common MCP for standard messaging. Runs/inventory adapters remain optional explicit integrations; no default dependency can be inferred.",
+      "resolution": "No. hermes-connection1\u20135 and generic profile1\u20133 expressly choose native common MCP for standard messaging. Runs/inventory adapters remain optional explicit integrations; no default dependency can be inferred.",
       "classification": "resolved-subsystem-scope",
       "citations": [
         {
@@ -5218,7 +5333,7 @@
         "HAB-E17",
         "HAB-E19"
       ],
-      "resolution": "Treat earlier table/diagnostic proposal as its earlier fixed baseline and later explicit fixed-text increment45–53 as source-backed implementation scope. Neither proves actual live OAuth/native compatibility. Avoid absolute current /mcp-only requirement.",
+      "resolution": "Treat earlier table/diagnostic proposal as its earlier fixed baseline and later explicit fixed-text increment45\u201353 as source-backed implementation scope. Neither proves actual live OAuth/native compatibility. Avoid absolute current /mcp-only requirement.",
       "classification": "historical-implementation-status",
       "citations": [
         {
@@ -5288,7 +5403,7 @@
         "HAB-E17",
         "HAB-E19"
       ],
-      "resolution": "No. local-MVP99–108 explicitly keeps historical fixture while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.",
+      "resolution": "No. local-MVP99\u2013108 explicitly keeps historical fixture while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.",
       "classification": "resolved-version-scope",
       "citations": [
         {
@@ -5348,13 +5463,15 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "223223e62d3995132a4697de24398138e13b646f6205dc6e14b29a9ff3dd810f"
+          "excerpt_sha256": "2c3d88df032ee344d24f86b7671e3f64a68af30e7f251d92a5d2f9839aa9b07d",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 28,
           "end": 28,
-          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa"
+          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -5384,7 +5501,8 @@
           "path": "docs/testing/publication.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf"
+          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -5408,7 +5526,8 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 58,
           "end": 58,
-          "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a"
+          "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": ".claude/skills/verify-hab/features/restart-durability.md",
@@ -5467,13 +5586,15 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "faece4e1a6c024fdf17019b9038b0de26975ba9b22f750c54767684447d061cf"
+          "excerpt_sha256": "d5b161125ca1be5ef29f02e46e10b77687d7db48eba231f038287a7c539ca722",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "0b3ded0f4a08dc84cc965f6540144344b58f8fcba6a25f0ec6fc05bceed96456"
+          "excerpt_sha256": "838e95753140562ba144e53d0f0db57059084eb20a0349c4210581eed3138c96",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "test/p7/README.md",
@@ -5482,7 +5603,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
     },
     {
       "status": "resolved",
@@ -5510,7 +5631,8 @@
           "path": "docs/testing/publication.md",
           "start": 20,
           "end": 20,
-          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc"
+          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
