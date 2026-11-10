@@ -1169,13 +1169,13 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Expected full-root assertion updated1190 to1207 for17 new cases, then to1208 for the contract-limit reply-release case; acceptance checks and environment handling unchanged. This is an expected count, not an execution claim. Current expected root inventory is 1229; counts are not execution evidence.",
         "limit": "Source inspection only; not an execution-result claim.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       },
       {
         "path": "test/a2a-hab-unit.test.js",
@@ -1248,19 +1248,21 @@
       },
       {
         "path": "test/recipient-messages-fixtures.js",
-        "sha256": "d114dcf3f1b81e1748959b95776a2685b267528129b3d217e65f53720b03bb0c",
+        "sha256": "fca07f514135cd5eceaaa7f76cf27926feb8d4ae415ab9de1521db0c254d4029",
         "kind": "test",
         "review": "reviewed",
         "read_coverage": "complete implementation and contract; fixture and integration diff plus authority/unknown/reply assertions",
-        "summary": "Synthetic durable native policy store over async JetStream-backed main host fixture. No real model or owner UI."
+        "summary": "Synthetic durable native policy store over async JetStream-backed main host fixture. No real model or owner UI.",
+        "maintenance": "PR161 Design CI correction (2026-11-10): recipient policy/handoff fixtures use a finite 5000 ms outbox lease and 2000 ms RPC budget, replacing inherited 400 ms / 1000 ms values. Production lease validation and shared expiry-test fixture defaults are unchanged. A bounded response-delay reproduction showed stale_sender_lease after remote acceptance with the original outbox claim retained."
       },
       {
         "path": "test/recipient-messages.test.js",
-        "sha256": "be7ffdc7b6d6b77f0af6068f947846b909b128e8fb20fa041633c7e6feeade6f",
+        "sha256": "4729571c018723b52ed8143cae48d8ffbdf02d4621fe94570ca78c048e59f143",
         "kind": "test",
         "review": "reviewed",
         "read_coverage": "complete implementation and contract; fixture and integration diff plus authority/unknown/reply assertions",
-        "summary": "21 explicit-composition cases retain separate receive, handoff, policy and reply phases, including real owned loopback MCP with independent pre-ACK SQLite observation. Async fixture and moved host MCP import preserve assertions."
+        "summary": "21 explicit-composition cases retain separate receive, handoff, policy and reply phases, including real owned loopback MCP with independent pre-ACK SQLite observation. Async fixture and moved host MCP import preserve assertions.",
+        "maintenance": "PR161 Design CI correction (2026-11-10): the existing first end-to-end case delays only relay_submit response by HOST_LEASE_MS+100, crossing the former 400 ms fixture lease, then still requires done, accepted original outbox row, one row and the exact delivered reply. No retry, skip or weaker assertion; 21 top-level cases remain."
       },
       {
         "path": "docs/recipient-messages.md",
@@ -1356,12 +1358,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ]
   },
@@ -1430,12 +1432,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
@@ -1548,11 +1550,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
@@ -1632,12 +1634,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
         "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ]
   },
@@ -1659,12 +1661,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
         "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ]
   },
@@ -1695,11 +1697,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ]
   },
@@ -1744,11 +1746,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained.",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ]
   },
@@ -2021,9 +2023,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ]
   },
@@ -2068,9 +2070,9 @@
     "supplemental": [
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       },
       {
         "path": "src/adapter-host/external-owner.ts",
@@ -2117,9 +2119,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
+        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
         "review": "reviewed",
-        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
       }
     ],
     "external_schema_review": {

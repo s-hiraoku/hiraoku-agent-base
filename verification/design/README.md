@@ -274,3 +274,11 @@ scope reconciliation; the existing accepted requirements, citations and manual/n
 are unchanged. Eight additional owner tests bring the expected owner inventory to 31 and
 root inventory to 1346; actual executions and cleanup are reported separately. Test evidence
 uses synthetic owners and temporary stores, not production authentication or daily operation.
+
+## PR161 hosted CI correction
+
+The initial push and pull-request CI runs both executed 1346 full-root tests successfully with owned cleanup, but `scripts/p7-lab.mjs` still required 1338. The catalog now includes the eight owner-activation regressions. Exact totals, zero failure/skip/cancellation/TODO and cleanup checks remain unchanged. Original failed reports remain historical evidence, not retroactive passes.
+
+The push Design run separately returned `incomplete` in the first recipient-message test. Its inherited 400 ms sender lease was shorter than its 1000 ms RPC budget. A controlled 500 ms submit-response delay reproduced `stale_sender_lease` after remote acceptance while preserving the sending outbox row. Only the recipient policy/handoff fixture now uses a 5000 ms sender lease and 2000 ms RPC budget. The same test deliberately crosses the former short lease and still requires `done`, one accepted original outbox row and the exact delivered reply. Production lease checks and other short-lease tests are unchanged.
+
+These are verification-catalog and fixture corrections. Corrected-head hosted P7, native judgment, production policy and live operation remain separate acceptance gates.
