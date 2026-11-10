@@ -1,7 +1,7 @@
 /** Synthetic ACP peer only. No product, model, profile or credential loader. */
 import assert from "node:assert/strict";
 import process from "node:process";
-import { writeFileSync } from "node:fs";
+import { publishWakeObservations } from "./acp-wake-observations.js";
 import { createInterface } from "node:readline";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -9,7 +9,7 @@ const mode = process.argv[2], events = [], sessionId = "synthetic-session";
 const send = message => process.stdout.write(JSON.stringify(message) + "\n");
 const result = (id, value) => send({ jsonrpc: "2.0", id, result: value });
 const update = value => send({ jsonrpc: "2.0", method: "session/update", params: { sessionId, update: value } });
-const save = () => writeFileSync("synthetic-wake.json", JSON.stringify({ events }), { mode: 0o600 });
+const save = () => publishWakeObservations("synthetic-wake.json", events);
 const input = createInterface({ input: process.stdin });
 let promptId;
 save();

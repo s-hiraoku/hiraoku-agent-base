@@ -186,9 +186,15 @@ pre/post-bind tool denial, EOF/scope loss, environment/output boundaries and exa
 No live product, profile, ticket, model or production queue is touched. These results do not
 prove native commit semantics, effective participant scope, native auth or operational residency.
 
-`test/acp-fixed-wake.test.js` adds 37 synthetic cases for fixed text and standard stop reasons,
+`test/acp-fixed-wake.test.js` adds 38 synthetic cases for fixed text and standard stop reasons,
 disabled/preverification/pending-verifier/second invocation refusals, mutation-resistant constructor
 configuration, matching bounded updates and malformed Unicode/tool/media/size/depth handling,
 timeout/error/EOF/permission failures, scope/launch/lifetime/close cancellation, late completion,
 post-response update rejection and actual external-owner store retention. The original 51 ACP
 cases remain. These finite fixtures do not certify any native product or source orchestration.
+
+Fixture observations use a private same-directory staged file and atomic rename, so concurrent
+parent polling never observes an empty or partial JSON replacement. A deterministic regression
+reads the old public snapshot while the next snapshot is empty, partial and fully staged, then
+checks the complete replacement and private mode. This is test observation integrity, not native
+admission, fsync/power-loss durability or a change to the driver's protocol and time limits.
