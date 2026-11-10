@@ -15,7 +15,7 @@ The installer downloads only the pinned official NATS2.15.2 archive and checks i
 
 The runner retains the original conservative `blockers` checklist, including the historical unknown hosted-CI state. Those fixed strings are not live observations of the current Actions run; use its current status separately. Adoption stays blocked for the remaining deployment gates.
 
-Required groups are A2A53, native A2A10, NATS69, broker startup5, composite5, runner guards8, shared16, and the full root1287. These overlap and are not a unique total. Required failures, skips, cancellations, missing/duplicate cases, timeouts, source drift, cleanup failures, or retained owned processes fail acceptance. The historical `test:delivery-lab` source guard freezes f19 and intentionally rejects the newer composite. Do not refresh that guard from mutable working files to make it green.
+Required groups are A2A53, native A2A10, NATS69, broker startup5, composite5, runner guards8, shared16, and the full root1324. These overlap and are not a unique total. Required failures, skips, cancellations, missing/duplicate cases, timeouts, source drift, cleanup failures, or retained owned processes fail acceptance. The historical `test:delivery-lab` source guard freezes f19 and intentionally rejects the newer composite. Do not refresh that guard from mutable working files to make it green.
 
 Both shared backends run the eight contracts through JetStream; the SQLite delivery store was deleted. P7 separately witnesses all three execution messages in actual JetStream. Saved delivery ACK still leaves the native Task submitted and the engine idle. Explicit acceptance and a confirmed correlated result are required for one Task and one Artifact.
 

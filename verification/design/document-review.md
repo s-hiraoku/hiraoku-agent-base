@@ -268,3 +268,25 @@ Reviewed the startup cancellation and synchronous reentry paths against the exis
 ## External owner late factory cleanup (2026-11-10)
 
 Reviewed the successful factory return boundary separately from factory failure and composition ownership. Valid options returned after stop/native owner loss now close driver then stores with independent finite steps before reporting stopped/exit0. Driver failure or timeout retains stores; store failure/timeout is nonzero failure. No retry is added after handoff. Invalid options remain outside supported handoff and carry no cleanup guarantee. The fixture exercises actual entry/supervisor IPC, repeated stop, owner loss, lifetime, SIGTERM/SIGINT, disconnect, late rejection and driver/store failure/timeout without creating descendants. Disconnect cannot send stopped evidence even after local cleanup. Factory nonreturn, forced exit, OS containment and descendant guarantees remain unchanged. Four new top-level tests raise expected root inventory from 1283 to 1287; counts alone are not execution evidence.
+
+## Optional ACP stdio owner integration (2026-11-09)
+
+| Document | Classification | Semantic review |
+| --- | --- | --- |
+| docs/acp-owner-driver.md | context / reviewed | Product-neutral, opt-in ACP v1 owner integration outside standard messaging. One owned clean-environment process, standard initialize/HTTP session/new, bounded NDJSON and request correlation supply a local cause-chain receipt. A trusted deployment verifier and native scope monitor remain required; no UUID/name/self-asserted field is identity. Current actual discovery is independently required by the external owner, and all operations remain denied. Failure/response loss/EOF stop without retry; forced or unconfirmed exit remains failure. No product profile, ticket, model, queue, native approval, universal attestation or OS/descendant containment is established. The guide lists exact live model-free approval prerequisites. |
+
+The official Python ACP SDK's generated schema and meta at schema ref v0.11.2 and
+its newline-framing implementation were read as source only. No SDK dependency,
+product import, native execution or new normative product requirement is introduced.
+Existing source authority and manual gates remain unchanged.
+
+The external-owner guide's former future-work paragraph now links the implemented generic
+ACP driver, while retaining the separate product-specific verifier and live-approval gates.
+The ACP driver itself also required the publish-before-abort latch correction; direct idle
+and started-child regression checks shared promise identity and exactly one stdin end.
+
+## ACP integration onto merged owner (2026-11-10)
+
+Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Existing current-count guides change only1287 to1324. All main owner behavior and regression sources stay byte-identical. No historical result, requirement, manual gate or failure/skip/cleanup assertion is weakened.
+
+Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate.

@@ -124,3 +124,16 @@ The parent bounds owned child lifetime and cleanup and independently requires ac
 removing scratch. A simulated kill refusal is restored and cleaned by the test's exact owned
 handle; it is not an OS permission-denial bypass. The test leaves native identity/participant
 verification, ACP wire driving, OS containment, descendants and blocked orphan handling unverified.
+
+## Optional ACP owner regression
+
+`node --test --test-reporter=tap test/acp-owner.test.js` starts only the explicitly
+synthetic `test/acp-owner-child.js` through pinned Node, owned stdio pipes and private
+temporary state. Its composition paths use actual owned HTTP MCP and fresh SQLite,
+with all tools denied. There is no broker, product, model, profile or credential read.
+The child writes only synthetic PID/start/boolean/method observations, never config,
+raw protocol or capability data. The tests await each actual owned child exit before
+removing scratch. Injected signal denial restores the test stub and cleans the captured
+owned handle; it is not an operating-system denial bypass. Canonical TMPDIR avoids
+existing suite path-mock ambiguities on macOS. These tests overlap the complete root
+suite and cannot establish real product commit/participant/authentication semantics.
