@@ -275,10 +275,11 @@
     },
     {
       "path": "docs/adapter-host.md",
-      "sha256": "f4bb1a3a7c185cb31c241131ecf527b543a9b82d5e69a782cb1cabeda28bc03c",
+      "sha256": "5c4847bc5a5aee119c4556aaf684e35587f3db0d76e33d4bcace0745b1922760",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Finite explicit local host commands; receive/save/ACK, send, metadata listing and source-authorized inbox_read are separate. inbox_read returns authenticated unreleased saved copy even if ACK confirmation is false, preserving ACK/outbox/Task and existing reply/accept guards. New control starts paused; actor/epoch/source/owner checks surround commits/RPC; timeout retains active work. Optional owner and multiple DB commit/restore limitations remain explicit; no default product wiring/model/task worker."
+      "summary": "Finite explicit local host commands; receive/save/ACK, send, metadata listing and source-authorized inbox_read are separate. inbox_read returns authenticated unreleased saved copy even if ACK confirmation is false, preserving ACK/outbox/Task and existing reply/accept guards. New control starts paused; actor/epoch/source/owner checks surround commits/RPC; timeout retains active work. Optional owner and multiple DB commit/restore limitations remain explicit; no default product wiring/model/task worker. Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
+      "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
     },
     {
       "path": "docs/adapter-owner.md",
@@ -977,20 +978,21 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "b568b5142a2f8acf3d65727afea0cb13974783c803f0742ddbf1fcf712c58101",
-      "role": "excluded",
-      "review": "reviewed",
-      "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
-    },
-    {
-      "path": "verification/design/document-review.md",
-      "sha256": "4c14f15d0548d2eadef53c02a3c538f170dba2caf427293e5cddab55aed1d796",
+      "sha256": "acaba9d933fce536c1bac794ad65c6c0e262c3b8b0e36be1e1860825de9c1c57",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+      "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+    },
+    {
+      "path": "verification/design/document-review.md",
+      "sha256": "fc94fa6453839ec92a64eb98922d730ed552261443273303ba5947def8fb4cdb",
+      "role": "excluded",
+      "review": "reviewed",
+      "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1002,12 +1004,12 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "8852612b93d75b53e4eaad2aa00103c1920e66d98390a81fc142d527d0af1a9f",
+      "sha256": "2866f8735d47e0a35f566d6a848f42aa4b3246dd54460c3a5fb2fdcab50da6e0",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+      "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
     },
     {
       "path": "docs/recipient-stdio.md",
@@ -1123,7 +1125,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-managed-transport"
       ],
       "citations": [
         {
@@ -1501,7 +1504,7 @@
       "title": "Pause and unresolved operations",
       "statement": "New host control begins paused; each command retains actor/epoch and rechecks before/after RPC and commit. Pause/local abort is not remote cancellation. Timeout retains busy/draining until underlying work settles; original ACK IDs/envelopes/task keys survive uncertainty.",
       "rationale": "Prevents stale late responses and overlapping work after a superficial timeout or pause/resume.",
-      "scope": "Finite adapter host/control and optional task ports",
+      "scope": "Finite adapter host/control and optional task ports Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -1509,14 +1512,21 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-managed-transport"
       ],
       "citations": [
         {
           "path": "docs/adapter-host.md",
-          "start": 67,
-          "end": 81,
+          "start": 114,
+          "end": 128,
           "excerpt_sha256": "3129a2dde2c501a4c4c4876f450daef0c7eebc732179b0471c8a676dfd312d7a"
+        },
+        {
+          "path": "docs/adapter-host.md",
+          "start": 63,
+          "end": 109,
+          "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
         }
       ]
     },
@@ -3487,14 +3497,15 @@
       "title": "Owner lock cannot time out into duplicate work",
       "statement": "All hosts for one local identity share dedicated exclusive owner DB; no heartbeat/TTL takeover. Owner loss rejects late save/ACK and release requires paused, not-running and zero draining. Reacquisition alone does not reset execution gate or justify new ID/Task.",
       "rationale": "A slow or timed-out call may still settle after another host begins.",
-      "scope": "Optional SQLiteHostOwner; local-MVP composition requires it, legacy unconfigured compatibility is not evidence of owner enforcement.",
+      "scope": "Optional SQLiteHostOwner; local-MVP composition requires it, legacy unconfigured compatibility is not evidence of owner enforcement. Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
       "decision": "accepted",
       "checks": [
         "js-root",
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-managed-transport"
       ],
       "citations": [
         {
@@ -3508,6 +3519,12 @@
           "start": 21,
           "end": 23,
           "excerpt_sha256": "c708fbc027f1fc151563ead39327bd6cdf0742b884d14d6debc9acafb5717d68"
+        },
+        {
+          "path": "docs/adapter-host.md",
+          "start": 63,
+          "end": 109,
+          "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
         }
       ]
     },
@@ -4625,6 +4642,25 @@
       "protocol": "node-tap",
       "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
       "limitations": "Synthetic executable and capability only. No real product/session/profile/ticket/model/queue, native commit semantics/effective participant verification, authorization bypass or operational deployment. No OS sandbox, descendant or blocked orphan containment. Forced/unconfirmed termination is failure, and native outcome may remain unknown after clean process exit. Overlaps js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-managed-transport",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/managed-transport.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 90,
+      "protocol": "node-tap",
+      "proves": "Product-neutral mutually exclusive managed transport with fresh per-command capability; current actor/epoch/owner checks across waits and retries; pause, failed authorized pause and finalization abort; stale/unauthorized controls cannot cancel; reentrant authorization cannot return successful admission after abort; pending work/outbox claim/owner retention through actual settlement; fresh resume cannot revive old callbacks.",
+      "limitations": "Synthetic managed SDK/transport and fresh private SQLite only. No product code, credential, native OAuth discovery/refresh, actual remote atomic-stop or production ownership cutover. Adapter-specific network guard coverage remains independently required. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
