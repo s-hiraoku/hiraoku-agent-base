@@ -42,7 +42,7 @@ export function validateOrigins(value) {
   }
 }
 export const successorManifestSha256 =
-  "132ce07bce957b987ebf30bedb1c89951e24c4e99df6fb8020a93d10011443ba";
+  "5c16a742c7ee6b15c725ffb2b700d47ce81bf7bdf9ada5a7e77be4a8f81eee00";
 const canonical = (value) =>
   Array.isArray(value)
     ? value.map(canonical)

@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "d49e2a23a62b32e066e3ef71576fbf60017f43cc",
+  "source_ref": "1f1b3c3126596e0483accceeac6500c68a4540e5",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "8ef32feb8d8f6bb81bd0044c113b137e13a11c24a58701218feeed48e89e0788"
+      "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -259,7 +259,7 @@
     },
     "src/adapter-host/external-owner.ts": {
       "previous_sha256": null,
-      "sha256": "da137ee3eadbb389d49d23f6b27af63f3d269876b93f3312eceb9cd876263261"
+      "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af"
     },
     "src/adapter-host/mcp.ts": {
       "previous_sha256": null,
@@ -791,7 +791,7 @@
     },
     "test/external-owner-child.js": {
       "previous_sha256": null,
-      "sha256": "6d599902d1c07ebd2655ad9c0f613b1629382750092b530285e611aa47d07236"
+      "sha256": "1880e7a28e4262fe3cb41e3ddda3bd7e4d589ccaf59be223ad48b27535f89577"
     },
     "test/external-owner-fixture.js": {
       "previous_sha256": null,
@@ -799,7 +799,7 @@
     },
     "test/external-owner.test.js": {
       "previous_sha256": null,
-      "sha256": "a302db597ee8740cd35432fe84311d6a03c08f4390434d18b01698f154e98669"
+      "sha256": "1634049731b29ca19103454f1389f0096db49243e5739d44f7c9de7195f5fd25"
     },
     "test/generic-a2a.test.js": {
       "previous_sha256": null,
