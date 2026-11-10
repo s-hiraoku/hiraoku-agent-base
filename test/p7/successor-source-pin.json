@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "37d7cc9d2d22c03e91d571886b4c803950fb23fc",
+  "source_ref": "b10b69dda62a03841d664eb6e7fe997b30252751",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "0ff5be534fa6060337295605272a22082daf8bce5518d96cfd62560d8b062615"
+      "sha256": "1600d2bd93047c8d1a17667f2c379a9bc5cdada796e696b92cc6ccb8e7fbe7ab"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -751,11 +751,11 @@
     },
     "test/acp-fixed-wake-child.js": {
       "previous_sha256": null,
-      "sha256": "4f9c01717f4af3d463f846925efe36d67e0f18a85df0f32ba194929206be2c74"
+      "sha256": "200dcb00ad283898046847fdf927af3756118da524a91f268ab718cadda1f8d6"
     },
     "test/acp-fixed-wake.test.js": {
       "previous_sha256": null,
-      "sha256": "5ff95c341359e4c053837c02c5bcf5ab37adca3f3488c92bc7be938d89600f86"
+      "sha256": "87dc7dae6f8797fa308b947b18818b73abcf2c806e8f53b25e24ee6602e5c0e4"
     },
     "test/acp-owner-child.js": {
       "previous_sha256": null,
@@ -764,6 +764,10 @@
     "test/acp-owner.test.js": {
       "previous_sha256": null,
       "sha256": "89882a0eb99e5aa424a7699ef25171568c94ebc93785a644af7148edb578eff9"
+    },
+    "test/acp-wake-observations.js": {
+      "previous_sha256": null,
+      "sha256": "007dc7ce35f4109d8d99afb5282a10c2c5581f1313c6b59f1a4bbf57c9ceacb2"
     },
     "test/adapter-host-fixtures.js": {
       "previous_sha256": null,
