@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "1f1b3c3126596e0483accceeac6500c68a4540e5",
+  "source_ref": "96a325db4a38079643a13ced0aacd58f214019fc",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "805a54d9ac52bdc0c147da6a8235df90988b515b23a4f8e0088006237c3b0ccb"
+      "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -267,7 +267,7 @@
     },
     "src/adapter-host/owner-process-entry.ts": {
       "previous_sha256": null,
-      "sha256": "aea3fb0381efd0f4a90c2f2a9eac594220d436dbfa800cada59da8e659e1a6be"
+      "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b"
     },
     "src/adapter-host/owner-process.ts": {
       "previous_sha256": null,
@@ -791,7 +791,7 @@
     },
     "test/external-owner-child.js": {
       "previous_sha256": null,
-      "sha256": "1880e7a28e4262fe3cb41e3ddda3bd7e4d589ccaf59be223ad48b27535f89577"
+      "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736"
     },
     "test/external-owner-fixture.js": {
       "previous_sha256": null,
@@ -799,7 +799,7 @@
     },
     "test/external-owner.test.js": {
       "previous_sha256": null,
-      "sha256": "1634049731b29ca19103454f1389f0096db49243e5739d44f7c9de7195f5fd25"
+      "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629"
     },
     "test/generic-a2a.test.js": {
       "previous_sha256": null,
