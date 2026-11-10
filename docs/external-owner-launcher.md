@@ -103,13 +103,13 @@ or suspended child additionally needs an external OS/service watchdog. No such s
 
 ## Next native step and remaining authorization
 
-A separate product-neutral ACP stdio driver is feasible: a trusted, owner-approved executable can
-receive standard initialize and session/new requests with the dedicated HTTP MCP configuration.
-Its authenticated dedicated pipe and a successful committed session/new response can provide the
-native cause chain, subject to verified product behavior and effective participant scope. Eager
-discovery alone is insufficient. No ACP driver, ACP SDK dependency or native verifier is implemented
-by this stage. A bounded NDJSON JSON-RPC peer and an explicit synthetic ACP executable can be added
-and tested independently before any real product is started.
+The separate [product-neutral ACP stdio driver](acp-owner-driver.md) now implements standard
+initialize and session/new over a dedicated owned channel, with bounded NDJSON parsing and an
+explicit synthetic executable regression. It adds no SDK dependency or product-specific verifier.
+Its correlated successful create response can support the native cause chain only with independently
+verified product commit behavior, exclusive configuration delivery and effective participant scope.
+Eager discovery alone is insufficient. The default Relay does not import or start this integration;
+real product startup remains unapproved by source-code or synthetic-test acceptance.
 
 Before live use, separately approve the actual executable/revision, profile and all effective viewers,
 authentication/ticket scope, new capability creation and delivery, allowed resources, lifetime,
