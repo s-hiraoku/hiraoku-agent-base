@@ -261,3 +261,5 @@ ACP37 + external-owner23 + private HTTP11 = 71. Expected root inventory is 1324 
 not a full/hosted execution claim. Existing group counts and failure/skip/cleanup
 gates are unchanged. The private ACP close latch is published before synchronous
 abort callbacks; direct reentry checks exactly one owned stdin end.
+
+ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.

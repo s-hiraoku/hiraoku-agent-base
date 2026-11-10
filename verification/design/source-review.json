@@ -988,9 +988,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "b5f2e90cfd07cbc93a615631c460cdf7b51737edfe469aad37ebd6c10545d153",
+        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
         "mode": "full",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate.",
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1007,9 +1007,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "9f558c5fb06992a1290de511460faf264ffd7fcc591e643e26264ec0df8c2280",
+        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
         "mode": "full",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate.",
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1020,9 +1020,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "4564cdb7e0868e25113259bc0a0b560673ca4ef576e367f444b090783372ab48",
+        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
         "mode": "full",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate.",
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1169,13 +1169,13 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Expected full-root assertion updated1190 to1207 for17 new cases, then to1208 for the contract-limit reply-release case; acceptance checks and environment handling unchanged. This is an expected count, not an execution claim. Current expected root inventory is 1229; counts are not execution evidence.",
         "limit": "Source inspection only; not an execution-result claim.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "test/a2a-hab-unit.test.js",
@@ -1329,39 +1329,39 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "b5f2e90cfd07cbc93a615631c460cdf7b51737edfe469aad37ebd6c10545d153",
+        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "9f558c5fb06992a1290de511460faf264ffd7fcc591e643e26264ec0df8c2280",
+        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "4564cdb7e0868e25113259bc0a0b560673ca4ef576e367f444b090783372ab48",
+        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -1430,39 +1430,39 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "9f558c5fb06992a1290de511460faf264ffd7fcc591e643e26264ec0df8c2280",
+        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "4564cdb7e0868e25113259bc0a0b560673ca4ef576e367f444b090783372ab48",
+        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "b5f2e90cfd07cbc93a615631c460cdf7b51737edfe469aad37ebd6c10545d153",
+        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -1548,35 +1548,35 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "9f558c5fb06992a1290de511460faf264ffd7fcc591e643e26264ec0df8c2280",
+        "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "4564cdb7e0868e25113259bc0a0b560673ca4ef576e367f444b090783372ab48",
+        "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "b5f2e90cfd07cbc93a615631c460cdf7b51737edfe469aad37ebd6c10545d153",
+        "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "test/adapter-host.test.js",
@@ -1632,12 +1632,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
         "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -1659,12 +1659,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
         "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -1695,11 +1695,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -1744,11 +1744,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained.",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -2020,9 +2020,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "review": "reviewed",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ]
   },
@@ -2067,9 +2067,9 @@
     "supplemental": [
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "review": "reviewed",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "src/adapter-host/external-owner.ts",
@@ -2093,31 +2093,31 @@
   {
     "scope": "Optional product-neutral ACP stdio owner integration",
     "baseline": "3213cc7a5b97274f17f0a993f6a192c1616550f3",
-    "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed. Existing HAB-F02/F03/F07/F11/F16/E09 statements, decisions, authority citations and native/manual gates remain unchanged. The new root is included by TypeScript src/**/*.ts and formal P7 src/ prefix selection; test and child are explicitly included by committed-source successor generation. Standard SDK schema/meta and NDJSON transport were read without importing a product. Source author review and synthetic regression evidence are distinct from independent review and hosted acceptance. Independent source review found and corrected a private close reentry latch: close now publishes its shared attempt before abort callbacks. The direct idle/started-child regression verifies the same promise and exactly one stdin end. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate.",
+    "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed. Existing HAB-F02/F03/F07/F11/F16/E09 statements, decisions, authority citations and native/manual gates remain unchanged. The new root is included by TypeScript src/**/*.ts and formal P7 src/ prefix selection; test and child are explicitly included by committed-source successor generation. Standard SDK schema/meta and NDJSON transport were read without importing a product. Source author review and synthetic regression evidence are distinct from independent review and hosted acceptance. Independent source review found and corrected a private close reentry latch: close now publishes its shared attempt before abort callbacks. The direct idle/started-child regression verifies the same promise and exactly one stdin end. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
     "supplemental": [
       {
         "path": "src/owner-integrations/acp-stdio.ts",
-        "sha256": "697b5b661fa2a1565cb257a086eb036673d3bb3da2fe2b1b740b4fd42f31f355",
+        "sha256": "ce25b521eca7113cac23e5df856440fc633f71e8fb3ebc314653a8bb4dfb9782",
         "review": "reviewed",
-        "maintenance": "Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "test/acp-owner.test.js",
-        "sha256": "fa930bbe657caad833b515f0d20cb0a96d74abebfddeecd28229f705c692174d",
+        "sha256": "89882a0eb99e5aa424a7699ef25171568c94ebc93785a644af7148edb578eff9",
         "review": "reviewed",
-        "maintenance": "Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "test/acp-owner-child.js",
-        "sha256": "bf6b5e00b3ffa7ba3a06ff8cf5eb755fb33ad43771939cc8b56ecdee522cd9ad",
+        "sha256": "bf2cff8fccc22763721f17bba27d500d9ebc0ae3a80fdfcca892a7ced9f40418",
         "review": "reviewed",
-        "maintenance": "Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de",
+        "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5",
         "review": "reviewed",
-        "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+        "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
       }
     ],
     "external_schema_review": {

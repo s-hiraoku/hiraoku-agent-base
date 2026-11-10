@@ -835,12 +835,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "b5f2e90cfd07cbc93a615631c460cdf7b51737edfe469aad37ebd6c10545d153",
+      "sha256": "62834b0a5ffa53e6d35dff2786d5330235b87c13d25065e7c154feec567040b0",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -860,12 +860,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "9f558c5fb06992a1290de511460faf264ffd7fcc591e643e26264ec0df8c2280",
+      "sha256": "bd9829588e5f44ac0646b65d0a41b16763f3f1cb9984dc309eb04e3cc1f4d87c",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1324) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1338) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/testing/plan.md",
@@ -877,12 +877,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "4564cdb7e0868e25113259bc0a0b560673ca4ef576e367f444b090783372ab48",
+      "sha256": "c0cd1d2b83971064d56cbe3ab79b575d9637fe438ac86dcb67489f2c17df3dd4",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/testing/results.md",
@@ -960,11 +960,12 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "daa17536c640468ecd25a12684e269a14f500e495dcf8c271347330bb902143f",
+      "sha256": "c2fd279aee18f7afdfcee4a0487df3f8db65d9c1ed0c6221b1d69cd8e0f14896",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "verification/design/conflicts.md",
@@ -984,12 +985,12 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "d15ca986133bc9d9ab799ccadf61a6a39dfb2f0084c38e0ac22eb5d9b8e03853",
+      "sha256": "4c14f15d0548d2eadef53c02a3c538f170dba2caf427293e5cddab55aed1d796",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "Reviewed late factory ownership and four new regression cases; no authority or native/manual gate changes."
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1001,11 +1002,12 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "6d5fb9d2149bb4d97d82358e7d96800f88174c3db83fc64f62df4a0cf330af27",
+      "sha256": "8852612b93d75b53e4eaad2aa00103c1920e66d98390a81fc142d527d0af1a9f",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     },
     {
       "path": "docs/recipient-stdio.md",
@@ -1066,10 +1068,11 @@
     },
     {
       "path": "docs/acp-owner-driver.md",
-      "sha256": "623424c963fc81311cc149b11c501cd7f8627c8646bd8d0c27ab02e4348166af",
+      "sha256": "444e347528cca0bb4d739d5f71d7b4b7c72d619f46adacaed05bbe664334cdac",
       "role": "context",
       "review": "reviewed",
-      "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed."
+      "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed.",
+      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
     }
   ],
   "requirements": [
@@ -4004,7 +4007,8 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "015948a3f9efc811101b8a222e09d7ccec69c797f1001c2d1f8e150e9aa4e0e8"
+          "excerpt_sha256": "d4e0bedd92f2e16ddd300ea4666bfaa283f4c556082e4d3621fc5c6f7ff9a693",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4016,7 +4020,8 @@
           "path": "docs/testing/publication.md",
           "start": 28,
           "end": 28,
-          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa"
+          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -4125,7 +4130,8 @@
           "path": "docs/testing/publication.md",
           "start": 32,
           "end": 34,
-          "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db"
+          "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -4171,13 +4177,15 @@
           "path": "docs/testing/p7-lab.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d"
+          "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 14,
           "end": 14,
-          "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e"
+          "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -4196,19 +4204,22 @@
           "path": "docs/testing/publication.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf"
+          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "2b6d97ad574788f436eb1680217b78cbe20f59538c663f69fc4c4ae2d97ed7b4"
+          "excerpt_sha256": "4dc2437849e5502fd6e2d4c7c65ba92acf1e0ff68e23babe84b9df7236de6afe",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 24,
           "end": 28,
-          "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097"
+          "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     }
@@ -4612,7 +4623,7 @@
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "node-tap",
-      "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores.",
+      "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.",
       "limitations": "Synthetic executable and capability only. No real product/session/profile/ticket/model/queue, native commit semantics/effective participant verification, authorization bypass or operational deployment. No OS sandbox, descendant or blocked orphan containment. Forced/unconfirmed termination is failure, and native outcome may remain unknown after clean process exit. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
@@ -5445,13 +5456,15 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "22fdba0a037902797e4dd5b13829ab4745097057af1d9435e7b78f53b78c59c1"
+          "excerpt_sha256": "2c3d88df032ee344d24f86b7671e3f64a68af30e7f251d92a5d2f9839aa9b07d",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 28,
           "end": 28,
-          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa"
+          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -5481,7 +5494,8 @@
           "path": "docs/testing/publication.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf"
+          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },
@@ -5505,7 +5519,8 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 58,
           "end": 58,
-          "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a"
+          "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": ".claude/skills/verify-hab/features/restart-durability.md",
@@ -5564,13 +5579,15 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "5e945dcf9ab469e760d48fa4d9917c7f8d03b876d98eb4c8942d678a1dcf6a4f"
+          "excerpt_sha256": "d5b161125ca1be5ef29f02e46e10b77687d7db48eba231f038287a7c539ca722",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "c027aa264d3539773e392a77ddaed1a34abfca6fde4a5b62916234caedf48d08"
+          "excerpt_sha256": "838e95753140562ba144e53d0f0db57059084eb20a0349c4210581eed3138c96",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         },
         {
           "path": "test/p7/README.md",
@@ -5607,7 +5624,8 @@
           "path": "docs/testing/publication.md",
           "start": 20,
           "end": 20,
-          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc"
+          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
         }
       ]
     },

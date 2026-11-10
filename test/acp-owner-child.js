@@ -64,6 +64,16 @@ input.on("line", async line => {
       send({ jsonrpc: "2.0", id: "synthetic-permission", method: mode === "permission" ? "session/request_permission" : "fs/read_text_file", params: {} });
       return;
     }
+    if (mode.startsWith("cancel-response-")) {
+      input.once("close", () => {
+        const response = { jsonrpc: "2.0", id: request.id,
+          ...(mode.endsWith("error") ? { error: { code: -32800, message: "cancelled" } } : { result: { sessionId: "synthetic-session" } }) };
+        if (mode.endsWith("malformed")) response.error = { code: "invalid", message: "invalid" };
+        send(response);
+        if (mode.endsWith("duplicate")) send(response);
+      });
+      return;
+    }
     if (mode === "lost-response") return;
     if (mode === "partial-eof") { process.stdout.write('{"jsonrpc":'); process.stdout.end(); return; }
     if (mode === "raw-output") process.stderr.write("synthetic_secret_must_not_escape\n");
@@ -79,16 +89,27 @@ input.on("line", async line => {
     }
     send({ jsonrpc: "2.0", method: "session/update", params: { sessionId: "synthetic-session", update: { sessionUpdate: "available_commands_update", availableCommands: [] } } });
     send({ jsonrpc: "2.0", id: request.id, result: { sessionId: mode === "invalid-session" ? "" : "synthetic-session" } });
-    if (mode.startsWith("discover-fault-")) {
+    if (mode.startsWith("discover-fault-") || mode.startsWith("tail-")) {
       const faultTimer = setInterval(() => {
         if (!existsSync("synthetic-release-fault")) return;
         clearInterval(faultTimer);
+        if (mode.endsWith("-partial-eof") || mode.endsWith("-utf8-eof") || mode.endsWith("-valid-no-newline") || mode.endsWith("-clean-eof")) {
+          if (mode.endsWith("-partial-eof")) process.stdout.write('{"jsonrpc":"synthetic_secret_must_not_escape"');
+          if (mode.endsWith("-utf8-eof")) process.stdout.write(Buffer.from([0xe3, 0x81]));
+          if (mode.endsWith("-valid-no-newline")) process.stdout.write(JSON.stringify({ jsonrpc: "2.0", method: "session/update", params: {} }));
+          if (mode.endsWith("-clean-eof")) send({ jsonrpc: "2.0", method: "session/update", params: { text: "日本語" } });
+          process.stdout.end(); input.close(); process.stdin.destroy(); return;
+        }
         if (mode === "discover-fault-malformed") process.stdout.write("synthetic-invalid-frame\n");
         else if (mode === "discover-fault-unmatched") send({ jsonrpc: "2.0", id: 999, result: {} });
         else process.stderr.write("x".repeat(9 * 1024 * 1024));
       }, 10);
       input.once("close", () => clearInterval(faultTimer));
     }
+    if (mode.startsWith("shutdown-")) input.once("close", () => {
+      if (mode === "shutdown-malformed") process.stdout.write("synthetic-invalid-frame\n");
+      else process.stdout.write(Buffer.from([0xe3, 0x81]));
+    });
     if (mode === "eof-after") setTimeout(() => process.stdout.end(), 50);
   } catch {
     process.exitCode = 1; input.close(); process.stdin.destroy();

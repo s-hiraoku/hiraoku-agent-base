@@ -246,7 +246,7 @@ for (const reason of ["stop", "scope"]) {
 }
 
 
-for (const fault of ["malformed", "unmatched", "stderr-limit"]) {
+for (const fault of ["malformed", "unmatched", "stderr-limit", "partial-eof", "utf8-eof", "valid-no-newline"]) {
   test(`ACP post-bind ${fault} remains failure after clean child exit and retains stores`, async t => {
     const cwd = mkdtempSync(join(tmpdir(), "hab-acp-postbind-fault-"));
     const scope = new AbortController(), stores = syntheticStores(cwd);
@@ -272,5 +272,94 @@ for (const fault of ["malformed", "unmatched", "stderr-limit"]) {
     assert.deepEqual(await driver.exited, { started: true, code: 0, signal: null });
     assert.equal(driver.status().forced, false); assert.equal(stores.network(), 0);
     await assert.rejects(globalThis.fetch(ready.url));
+  });
+}
+
+for (const mode of ["shutdown-malformed", "shutdown-utf8"]) {
+  test(`ACP ${mode} is not hidden by graceful scope shutdown`, async t => {
+    const f = fixture(t, mode);
+    const receipt = await f.driver.create(f.launch);
+    await f.driver.verifyCommitted(receipt, f.launch);
+    f.scope.abort();
+    await assert.rejects(f.driver.close(), { message: "acp_owner_protocol_failed" });
+    assert.deepEqual(await f.driver.exited, { started: true, code: 0, signal: null });
+    assert.equal(f.driver.status().forced, false);
+  });
+}
+
+for (const tail of ["clean-eof", "partial-eof", "utf8-eof"]) {
+  test(`ACP process exit before stdout drain waits for ${tail}`, async t => {
+    const f = fixture(t, `tail-${tail}`);
+    const emit = ChildProcess.prototype.emit, children = [];
+    ChildProcess.prototype.emit = function (event, ...args) {
+      if (event === "spawn") children.push(this);
+      return emit.call(this, event, ...args);
+    };
+    try {
+      const receipt = await f.driver.create(f.launch);
+      await f.driver.verifyCommitted(receipt, f.launch);
+    } finally { ChildProcess.prototype.emit = emit; }
+    assert.equal(children.length, 1);
+    const child = children[0], stdoutEmit = child.stdout.emit, childEmit = child.emit;
+    const queued = [];
+    // Hold only notifications on this actual owned child's streams. The real child
+    // exits by itself; replay preserves their order but places exit before drain.
+    child.stdout.emit = function (event, ...args) {
+      if (["data", "end", "close"].includes(event)) { queued.push(() => stdoutEmit.call(this, event, ...args)); return true; }
+      return stdoutEmit.call(this, event, ...args);
+    };
+    child.emit = function (event, ...args) {
+      if (event === "close") { queued.push(() => childEmit.call(this, event, ...args)); return true; }
+      return childEmit.call(this, event, ...args);
+    };
+    t.after(() => { child.stdout.emit = stdoutEmit; child.emit = childEmit; });
+    writeFileSync(join(f.cwd, "synthetic-release-fault"), "synthetic-only");
+    await f.driver.exited;
+    let settled = false;
+    const closing = f.driver.close();
+    void closing.then(() => { settled = true; }, () => { settled = true; });
+    await delay(20);
+    const settledBeforeDrain = settled;
+    child.stdout.emit = stdoutEmit; child.emit = childEmit;
+    for (const release of queued) release();
+    if (tail === "clean-eof") await closing;
+    else await assert.rejects(closing, { message: "acp_owner_protocol_failed" });
+    assert.equal(settledBeforeDrain, false, "process exit is not pipe-drain evidence");
+    assert.equal(f.driver.status().forced, false);
+  });
+}
+
+for (const missing of ["end", "close"]) {
+test(`ACP missing pipe ${missing} cannot certify successful drain`, async t => {
+  const f = fixture(t);
+  const emit = ChildProcess.prototype.emit, children = [];
+  ChildProcess.prototype.emit = function (event, ...args) {
+    if (event === "spawn") children.push(this);
+    return emit.call(this, event, ...args);
+  };
+  try { await f.driver.create(f.launch); } finally { ChildProcess.prototype.emit = emit; }
+  const stream = missing === "end" ? children[0].stdout : children[0], streamEmit = stream.emit;
+  stream.emit = function (event, ...args) { return event === missing ? true : streamEmit.call(this, event, ...args); };
+  try { await assert.rejects(f.driver.close(), { message: "acp_owner_drain_unconfirmed" }); }
+  finally { stream.emit = streamEmit; }
+  assert.deepEqual(await f.driver.exited, { started: true, code: 0, signal: null });
+});
+
+}
+
+for (const reply of ["result", "error", "malformed", "duplicate"]) {
+  test(`ACP canceled in-flight request permits only one well-formed correlated ${reply} during drain`, async t => {
+    const f = fixture(t, `cancel-response-${reply}`);
+    const creation = assert.rejects(f.driver.create(f.launch), { message: "acp_create_failed" });
+    for (let i = 0; i < 100; i++) {
+      try { if (f.observations().events.includes("session/new")) break; } catch {}
+      await delay(10);
+    }
+    assert.ok(f.observations().events.includes("session/new"));
+    f.scope.abort(); await creation;
+    if (["result", "error"].includes(reply)) await f.driver.close();
+    else await assert.rejects(f.driver.close(), { message: "acp_owner_protocol_failed" });
+    assert.deepEqual(await f.driver.exited, { started: true, code: 0, signal: null });
+    assert.equal(f.state.verifications, 0);
   });
 }

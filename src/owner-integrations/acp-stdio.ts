@@ -44,7 +44,10 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
   const controller = new AbortController();
   let child: ChildProcessWithoutNullStreams | undefined;
   let started = false, finished = false, stopping = false, forced = false, signalFailed = false;
-  let protocolFailed = false;
+  let protocolFailed = false, stdoutEnded = false, pipesClosed = false;
+  let abandonedRequestId: number | undefined;
+  let resolvePipesClosed!: () => void;
+  const closedPipes = new Promise<void>(resolve => { resolvePipesClosed = resolve; });
   let attempted = false, verified = false, requestId = 0, bytes = 0, frames = 0;
   let buffer: Buffer = Buffer.alloc(0);
   let lifetime: ReturnType<typeof setTimeout> | undefined;
@@ -55,7 +58,7 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
   let resolveExited!: (value: NonNullable<typeof exitValue>) => void;
   const exited = new Promise<NonNullable<typeof exitValue>>(resolve => { resolveExited = resolve; });
   const rejectPending = () => {
-    if (pending) { clearTimeout(pending.timer); pending.reject(Error("acp_request_failed")); pending = undefined; }
+    if (pending) { abandonedRequestId = pending.id; clearTimeout(pending.timer); pending.reject(Error("acp_request_failed")); pending = undefined; }
   };
   const alive = () => {
     if (stopping || controller.signal.aborted || config.scopeSignal.aborted || launchRef?.signal.aborted)
@@ -63,10 +66,11 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
   };
   const loseOwner = () => { controller.abort(); rejectPending(); void close().catch(() => {}); };
   const protocolFault = () => {
-    // Shutdown may itself close pipes. Only an active-channel fault is authoritative.
-    if (!stopping) protocolFailed = true;
+    // Semantic framing faults remain authoritative while graceful shutdown drains.
+    protocolFailed = true;
     loseOwner();
   };
+  const pipeFault = () => { if (!stopping) protocolFault(); };
   const finish = (code: number | null, signal: NodeJS.Signals | null) => {
     if (finished) return;
     finished = true;
@@ -78,6 +82,15 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
     if (finished) return true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const result = await Promise.race([exited.then(() => true), new Promise<false>(resolve => {
+      timer = setTimeout(() => resolve(false), config.shutdownTimeoutMs);
+    })]);
+    if (timer) clearTimeout(timer);
+    return result;
+  };
+  const waitPipesClosed = async () => {
+    if (pipesClosed) return true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const result = await Promise.race([closedPipes.then(() => true), new Promise<false>(resolve => {
       timer = setTimeout(() => resolve(false), config.shutdownTimeoutMs);
     })]);
     if (timer) clearTimeout(timer);
@@ -110,8 +123,12 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
           if (signalFailed || !await waitExit()) throw Error("acp_owner_exit_unconfirmed");
         }
       }
+      // Process exit can precede buffered stdout/stderr. Never release stores on
+      // exit alone or destroy unread protocol bytes before natural EOF validation.
+      const drained = await waitPipesClosed();
       if (forced || signalFailed || exitValue?.code !== 0 || exitValue.signal !== null)
         throw Error("acp_owner_unclean_exit");
+      if (!drained || !stdoutEnded) throw Error("acp_owner_drain_unconfirmed");
       if (protocolFailed) throw Error("acp_owner_protocol_failed");
     }).finally(() => {
       // Release only our pipe handles. This does not claim descendant process cleanup.
@@ -123,7 +140,7 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
     alive();
     const line = JSON.stringify(value) + "\n";
     if (!child || Buffer.byteLength(line) > MAX_FRAME) throw Error("acp_write_failed");
-    child.stdin.write(line, error => { if (error) protocolFault(); });
+    child.stdin.write(line, error => { if (error) pipeFault(); });
   };
   const onFrame = (line: Buffer) => {
     const message: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(line));
@@ -139,13 +156,21 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
       }
       throw Error("acp_unsolicited_request");
     }
+    if (stopping && abandonedRequestId !== undefined && message.id === abandonedRequestId) {
+      // A single response to the request canceled locally by shutdown may drain.
+      if (("result" in message) === ("error" in message) ||
+          ("result" in message ? !record(message.result) : !record(message.error) ||
+            !Number.isSafeInteger(message.error.code) || typeof message.error.message !== "string"))
+        throw Error("acp_invalid_frame");
+      abandonedRequestId = undefined; return;
+    }
     if (!pending || message.id !== pending.id || ("result" in message) === ("error" in message))
       throw Error("acp_unmatched_response");
     if ("error" in message || !record(message.result)) throw Error("acp_request_failed");
     const current = pending; pending = undefined; clearTimeout(current.timer); current.resolve(message.result);
   };
   const onData = (chunk: Buffer) => {
-    if (stopping) return;
+    if (protocolFailed) return;
     try {
       bytes += chunk.length;
       if (bytes > MAX_BYTES) throw Error("acp_output_limit");
@@ -192,14 +217,22 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
       child = spawn(config.executable, config.args, { cwd: config.cwd, env: {}, stdio: ["pipe", "pipe", "pipe"] });
       child.once("spawn", () => { started = true; });
       child.on("error", () => { if (forced) signalFailed = true; loseOwner(); });
-      child.once("exit", finish); child.once("close", finish);
-      child.stdout.on("data", onData); child.stdout.on("end", loseOwner); child.stdout.on("error", protocolFault);
-      child.stdin.on("error", protocolFault);
+      child.once("exit", finish);
+      child.once("close", (code, signal) => { pipesClosed = true; resolvePipesClosed(); finish(code, signal); });
+      child.stdout.on("data", onData);
+      child.stdout.once("end", () => {
+        stdoutEnded = true;
+        // Frames are decoded only after newline, with a fresh fatal decoder. All
+        // unfinished JSON and partial UTF-8 therefore remain in this byte buffer.
+        if (buffer.length !== 0) protocolFault(); else loseOwner();
+      });
+      child.stdout.on("error", pipeFault);
+      child.stdin.on("error", pipeFault);
       // Drain/discard stderr with no decoding, storage, logging or forwarding.
       child.stderr.on("data", (chunk: Buffer) => {
-        if (!stopping && (bytes += chunk.length) > MAX_BYTES) protocolFault();
+        if (!protocolFailed && (bytes += chunk.length) > MAX_BYTES) protocolFault();
       });
-      child.stderr.on("error", protocolFault);
+      child.stderr.on("error", pipeFault);
       const initialized = await request("initialize", { protocolVersion: 1,
         clientInfo: { name: "hab-deny-only-owner", version: "1" },
         clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false } });

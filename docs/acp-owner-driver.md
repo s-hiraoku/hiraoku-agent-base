@@ -58,8 +58,9 @@ requires a separately approved official product operation, not an automatic retr
 The reader accepts one JSON-RPC object per UTF-8 newline-delimited frame. It bounds each frame
 to 256 KiB, total stdout plus stderr to 8 MiB and frames to 2048 over the driver's lifetime.
 It has at most one pending numeric request ID. Unknown/duplicate IDs, malformed JSON/UTF-8,
-batches, error responses and incompatible version/capability replies stop. Partial EOF stops;
-a late response never revives a stopped generation. Extra standard result metadata is discarded.
+batches, error responses and incompatible version/capability replies stop. Partial EOF is a protocol failure, including valid JSON without a newline or unfinished UTF-8;
+one well-formed response matching the single locally canceled pending ID may drain once during
+shutdown, but never revives a stopped generation. Extra standard result metadata is discarded.
 There is no raw protocol/result/error logger. Stderr is drained/discarded, and public failures
 are fixed strings. The capability travels only through the owned stdin and dedicated HTTP
 requests, never argv or a trace written by this driver. Trusted callbacks and native products
@@ -79,13 +80,16 @@ with SIGTERM, after another SIGKILL, then waits one further interval for observe
 signal denial prevents every retry/escalation. Forced termination or nonzero/signalled exit is
 failure, never graceful success. Malformed/unmatched frames, output limits and active pipe/write
 errors also latch a protocol failure. Even subsequent confirmed exit0 cannot make driver close
-or owner completion succeed; stores are retained. Expected EOF, scope/launch abort and lifetime
+or owner completion succeed; stores are retained. EOF at a frame boundary, scope/launch abort and lifetime
 shutdown remain normal ownership endings when cleanup succeeds. Pipe errors induced by an
-already-started shutdown do not turn that shutdown into a new protocol fault. An unconfirmed exit rejects close, keeps `exited` pending and
+already-started shutdown do not turn that shutdown into a new protocol fault. Semantic frame
+faults and buffered tails remain failures even during shutdown. Process exit alone does not prove
+pipe drain: close waits one further bounded shutdown interval for closed pipes and requires
+natural stdout EOF with no unfinished frame. Missing drain evidence rejects close. An unconfirmed exit rejects close, keeps `exited` pending and
 requires retaining state. A later actual exit can settle `exited` but cannot change failed close
 into success. No guessed PID, process-name search or process-group kill is used.
 
-For composition, allow the external owner's driver cleanup budget to exceed three driver
+For composition, allow the external owner's driver cleanup budget to exceed four driver
 shutdown intervals; otherwise its independent shorter deadline may conservatively retain stores.
 Close does not wait for a product-specific verifier that ignores cancellation: the external
 owner tracks that work and retains stores until it settles. Close does not erase native history
