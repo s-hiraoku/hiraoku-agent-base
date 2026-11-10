@@ -244,8 +244,27 @@ No existing requirement, decision authority, source citation or native/manual ga
 was weakened. The HTTP check supplements the existing stdio/authority checks and
 uses real owned MCP/SQLite/private-broker resources with synthetic credentials.
 
+## Generic external owner launcher preparation (2026-11-09)
+
+| Document | Classification | Semantic review |
+| --- | --- | --- |
+| docs/external-owner-launcher.md | context / reviewed | Opt-in product-independent listener and separately supervised owner process. Trusted driver callbacks, not native authentication implementation, supply the committed cause chain and participant scope. One create attempt, current receipt, separate native/outer liveness and deny-only surface preserve source authority. Empty env and ignored raw output are process boundaries, not home/network isolation. Forced/unconfirmed exit, unsettled driver work and failed cleanup remain failure, with state retained until actual exit. No product runner, credential issuance, grant, model, live profile/queue or deployment is adopted. ACP is a feasible subsequent independent driver, explicitly unimplemented. |
+
+Reviewed against HAB-F02/F03/F07/F11/F16/E09, HAB-C-F02 and the existing private HTTP,
+fixed-source and owner contracts. The new focused synthetic check supplements those
+requirements without changing statements, citations, decisions or manual/native gates.
+Real SQLite and owned MCP/process faults are not a product session or native approval.
+
 ## Existing Auth0/Hermes connection recovery
 
 Reviewed `docs/auth0-recovery.md` as operational context under the unchanged normative `docs/persistent-mcp-auth.md`. It adds cause-specific recovery and verification procedures, not new product or operator authority. Re-read HAB-A08, HAB-A09, HAB-A11, HAB-A16 and HAB-D17 against the existing verifier, participation design and credential-free tests. Distinguish token issuance/refresh from HAB subject/client authorization; a resource401 with a loaded current token is not proof of refresh failure. Preserve unknown submit outcomes and the same message IDs, allow properly journaled new lease generations, and retain stop/consent boundaries. Reviewed Hermes storage/provider/manager/CLI at clean revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7 and Auth0 primary refresh/rotation/expiry documentation on 2026-11-09. The recipe names CLI cache removal, transient versus permanent failures, native identity checks and separate real refresh/restart/model-path gates. Synthetic test success does not close these operational gates; no requirement/check scope or product source changes.
 
 The recovery recipe now also covers the trial producer boundary. Read the new `scripts/lib/native-trial-message.ts`, offline CLI and four `test/tools/native-trial-message.test.ts` controls: a single sampled time feeds the existing replay-bound ID factory, timestamp and one-hour deadline; the original contract rejects a saved 1ms mismatch; preparation cannot repair a saved submission or overwrite a prior artifact; the pre-submit check rejects expired input without granting identity or send authority. Existing failed intents and results remain historical and are not rewritten or retransmitted. The tooling is included by the existing tools typecheck/lint/test globs, separate from P7 delivery acceptance. No product contract or requirement/check scope changes.
+
+## External owner startup cancellation and reentry (2026-11-10)
+
+Reviewed the startup cancellation and synchronous reentry paths against the existing deny-only owner contract. P2 only exempts the private post-settlement cancellation object from recording a startup failure; genuine driver create/verify rejections remain failures even during shutdown or with identical error messages. Unsettled work, failed host/driver/store cleanup and forced/unconfirmed process exit remain failures. The separate previously unpublished reentry correction publishes one stop promise before abort listeners run, preserving synchronous fencing and exactly-once cleanup. Neither change grants authority or reconciles uncertain native creation. Tests cover pre-create loss, create/verify pending stop and both owner signals, synchronous reentry, genuine errors during stop, cleanup failures and supervised stopped plus observed exit0. The six added top-level cases raise the expected root inventory from 1277 to 1283; counts are not execution evidence. Historical results and all native/manual gates remain unchanged.
+
+## External owner late factory cleanup (2026-11-10)
+
+Reviewed the successful factory return boundary separately from factory failure and composition ownership. Valid options returned after stop/native owner loss now close driver then stores with independent finite steps before reporting stopped/exit0. Driver failure or timeout retains stores; store failure/timeout is nonzero failure. No retry is added after handoff. Invalid options remain outside supported handoff and carry no cleanup guarantee. The fixture exercises actual entry/supervisor IPC, repeated stop, owner loss, lifetime, SIGTERM/SIGINT, disconnect, late rejection and driver/store failure/timeout without creating descendants. Disconnect cannot send stopped evidence even after local cleanup. Factory nonreturn, forced exit, OS containment and descendant guarantees remain unchanged. Four new top-level tests raise expected root inventory from 1283 to 1287; counts alone are not execution evidence.

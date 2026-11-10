@@ -988,9 +988,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "4756ecc0f4d79de209205d96ca1d4ab8bb1e5b41b7a0e9321e05f3967e4f6d14",
+        "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); it only raises the full-root count from 1163 to 1168. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); it only raises the full-root count from 1168 to 1175. Remaining review-fix maintenance: re-read the diff from 843e5d9; it only raises the full-root count from 1175 to 1183. Local follow-up: reread expected full-root catalog change from 1183 to 1189 for four rollback projection cases and one each inbox and host capacity case. Counts are expectations, not a run claim; older evidence stays historical. Task-store close follow-up on f1b6eb1: reread catalog change from expected root1189 to1190 and A2A producer48 to49 for one new SDK-store close case. Counts remain expected inventories, not execution-result claims; historical evidence is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Contract-refused reply maintenance: re-read the diff from 8ada224; it only raises the full-root count from 1207 to 1208. Recipient integration review: count-only change 1208 to 1229 for 21 explicit handoff tests; acceptance rules unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1007,9 +1007,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "b0117550b5224747e0f6b931602eec548967a7038943ab731f880b2d035f6527",
+        "sha256": "3997cbd11ab81eff7fbd2cd3442dfe4898ee5df3141f5c607fe314bf59d25106",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); it only raises the full-root count from 1163 to 1168. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); it only raises the full-root count from 1168 to 1175. Remaining review-fix maintenance: re-read the diff from 843e5d9; it only raises the full-root count from 1175 to 1183 and the NATS producer catalog from 68 to 69. Local follow-up: reread expected full-root catalog change from 1183 to 1189 for four rollback projection cases and one each inbox and host capacity case. Counts are expectations, not a run claim; older evidence stays historical. Task-store close follow-up on f1b6eb1: reread catalog change from expected root1189 to1190 and A2A producer48 to49 for one new SDK-store close case. Counts remain expected inventories, not execution-result claims; historical evidence is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Contract-refused reply maintenance: re-read the diff from 8ada224; it only raises the full-root count from 1207 to 1208. Recipient integration review: count-only change 1208 to 1229 for 21 explicit handoff tests; acceptance rules unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1020,9 +1020,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "504435a1a6705784e15181da6b463de23846e1cd23e4c0463ac52ba9ab05d621",
+        "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Restored-guarantees maintenance: the diff from 030a608 only raises the NATS producer catalog count from 60 to 68 for the eight restored delivery-guarantee cases. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it only raises the full-root count from 1151 to 1159. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it only raises the full-root count from 1159 to 1163. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); it only raises the full-root count from 1163 to 1168. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); it only raises the full-root count from 1168 to 1175. Remaining review-fix maintenance: re-read the diff from 843e5d9; it only raises the full-root count from 1175 to 1183 and the NATS producer catalog from 68 to 69. Local follow-up: reread expected full-root catalog change from 1183 to 1189 for four rollback projection cases and one each inbox and host capacity case. Counts are expectations, not a run claim; older evidence stays historical. Task-store close follow-up on f1b6eb1: reread catalog change from expected root1189 to1190 and A2A producer48 to49 for one new SDK-store close case. Counts remain expected inventories, not execution-result claims; historical evidence is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Contract-refused reply maintenance: re-read the diff from 8ada224; it only raises the full-root count from 1207 to 1208. Recipient integration review: count-only change 1208 to 1229 for 21 explicit handoff tests; acceptance rules unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1169,13 +1169,13 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "9151f47b762f59da23e88387b57802895b4f032ed441f5466bdbd11f97c58b04",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Expected full-root assertion updated1190 to1207 for17 new cases, then to1208 for the contract-limit reply-release case; acceptance checks and environment handling unchanged. This is an expected count, not an execution claim. Current expected root inventory is 1229; counts are not execution evidence.",
         "limit": "Source inspection only; not an execution-result claim.",
-        "maintenance": "Contract-refused reply maintenance: re-read the diff from 8ada224; the --full root count assertion goes from 1207 to 1208 for the one new host case. Recipient integration review: count-only change 1208 to 1229 for 21 explicit handoff tests; acceptance rules unchanged."
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "test/a2a-hab-unit.test.js",
@@ -1329,35 +1329,39 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "a59a1f9a26b8470743122a9237b5a15bee7924e33d344236f90842c9f32fda3d",
+        "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
-        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "c21215a9fbabc2d53f52c1d49021b1af40bbe9e6e4a350a7544e34c8e0a23d51",
+        "sha256": "3997cbd11ab81eff7fbd2cd3442dfe4898ee5df3141f5c607fe314bf59d25106",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
-        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "2f57d577e874eec5b3dbe756663598da41303dbb741eb0a2f3ffccea124f12eb",
+        "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
-        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "7133031196fb954b1a8f3b770394ee68fae333b12683bfff4cc8643815e2d08a",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
-        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution."
+        "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   },
@@ -1426,35 +1430,39 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "3997aed5b08f115e2e9de88418aeb0407e32fe75b0da45ee2650e00bf8071b27",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
-        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "b961f951c5a170e61cdf99e8e058f13c3ad997b94d1b1315348975bbfeafc1df",
+        "sha256": "3997cbd11ab81eff7fbd2cd3442dfe4898ee5df3141f5c607fe314bf59d25106",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
-        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "4440b82aaa5d709583469108eb5c7f292229cb1a4fd1da9eac0f96d200de2582",
+        "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
-        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "cb49f82f0420419643991af2317889959f152b7078ef481370feb7e74cbbd937",
+        "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
-        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged."
+        "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   },
@@ -1540,31 +1548,35 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "d461da3d8db70339f20a50560325da95bcf064765a401e79c1525b78be5de61c",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "review": "reviewed",
         "read_coverage": "count-only diff",
-        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "0e8140544a41b6f65a20165abdda8c651f37530b827633aeadfd19b2953cce30",
+        "sha256": "3997cbd11ab81eff7fbd2cd3442dfe4898ee5df3141f5c607fe314bf59d25106",
         "review": "reviewed",
         "read_coverage": "count-only diff",
-        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "b2819c2dbb39d19c3fd8267feef1b85d542178190268e27c85aadb058ccc5bba",
+        "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
         "review": "reviewed",
         "read_coverage": "count-only diff",
-        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "afe041244f84c90e3ca8d68f6795da3bca27562525b1dad95eb3111f9dad250e",
+        "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
         "review": "reviewed",
         "read_coverage": "count-only diff",
-        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened."
+        "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       },
       {
         "path": "test/adapter-host.test.js",
@@ -1620,11 +1632,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "c3a870aa46cff5796f8a116a36c2e17b5366ff6f95fb193e826d7048015b0b0f",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
-        "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged."
+        "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   },
@@ -1646,11 +1659,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "622dbd2991f7a948fbef148c1822a56c0fe10b1a347ea7b63efec0439bb969b7",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
-        "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged."
+        "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   },
@@ -1681,10 +1695,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "79a1b5e9ce8695f2f8bdc3a3276f2ab2f749e2cc3ae66749a5ccfbbf1707675b",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened."
+        "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   },
@@ -1729,10 +1744,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "849c9dff96f7758855cd5ca03745c9eac5e691ee093eab2d195de1fb943e74ed",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained."
+        "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained.",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   },
@@ -1964,6 +1980,53 @@
     ]
   },
   {
+    "scope": "Generic deny-only external-owner preparation",
+    "baseline": "28cc847268b5d508c0f0c9ad8f8b2beabebdef8d",
+    "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. No native ACP driver/verifier, product runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment. Existing HAB-F02/F03/F07/F11/F16/E09 authority, accepted statements and native/manual requirements are unchanged. Reread the private HTTP composition, single-source authorization, owner/control lifecycle and HAB principles; no standard runtime imports this opt-in launcher. Code changes include early review fixes for raw store-error suppression and bounded exit-unconfirmed reporting. Independent review also corrected repeated process-error handling and prohibited signal escalation after a known failure. Actual child exit is tracked separately from IPC close because the disconnected synthetic fault exposed missing close notification despite confirmed process death. The final focused synthetic run passes all 13 cases; full suites and hosted evidence remain separate.",
+    "supplemental": [
+      {
+        "path": "src/adapter-host/external-owner.ts",
+        "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af",
+        "review": "reviewed",
+        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+      },
+      {
+        "path": "src/adapter-host/owner-process.ts",
+        "sha256": "85473ec2841b08e406fd1dd862ac60824fdd62caa947a18d1c90296e4f991277",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/owner-process-entry.ts",
+        "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+      },
+      {
+        "path": "test/external-owner.test.js",
+        "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+      },
+      {
+        "path": "test/external-owner-fixture.js",
+        "sha256": "570b6176400d8827067324afdb2cc360e6e0fe05e46fb6f1d3163f4f06e79f09",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner-child.js",
+        "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+      },
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+      }
+    ]
+  },
+  {
     "scope": "Existing Auth0/Hermes connection recovery",
     "baseline": "ad73e36",
     "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. The offline trial producer fix reuses makeReplayBoundMessageId and parseSubmission without changing HAB acceptance. One sampled time, exact saved-input validation and 1ms rejection prevent the previously unvalidated ad hoc producer error; old evidence is retained and no new communication is authorized by these tools.",
@@ -1994,6 +2057,36 @@
         "path": "test/tools/native-trial-message.test.ts",
         "sha256": "e73abc62f815f4e13e05f07132b8869003339414035e7199b015268eda157d2c",
         "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "External owner startup cancellation and reentry",
+    "baseline": "e9638c4a376b49cd99e6c089e717c0b402ef2f65",
+    "summary": "Reviewed the startup cancellation and synchronous reentry paths against the existing deny-only owner contract. P2 only exempts the private post-settlement cancellation object from recording a startup failure; genuine driver create/verify rejections remain failures even during shutdown or with identical error messages. Unsettled work, failed host/driver/store cleanup and forced/unconfirmed process exit remain failures. The separate previously unpublished reentry correction publishes one stop promise before abort listeners run, preserving synchronous fencing and exactly-once cleanup. Neither change grants authority or reconciles uncertain native creation. Tests cover pre-create loss, create/verify pending stop and both owner signals, synchronous reentry, genuine errors during stop, cleanup failures and supervised stopped plus observed exit0. The six added top-level cases raise the expected root inventory from 1277 to 1283; counts are not execution evidence. Historical results and all native/manual gates remain unchanged.",
+    "supplemental": [
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+      },
+      {
+        "path": "src/adapter-host/external-owner.ts",
+        "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner-child.js",
+        "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+      },
+      {
+        "path": "test/external-owner.test.js",
+        "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629",
+        "review": "reviewed",
+        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
       }
     ]
   }

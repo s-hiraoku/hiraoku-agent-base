@@ -113,3 +113,14 @@ Python bounds the session to 25 seconds. The Node parent bounds output (64 KiB s
 The reused `startLocalBroker().stop()` sends TERM and waits for broker exit without a separate deadline. The child/session bounds therefore do not establish a hard end-to-end run deadline.
 
 Retain the command exit and all three JSON records (mode, actual SDK version, passed) plus `RECIPIENT_PYTHON_PARENT_CLEANUP_OK`; absent markers or partial output are not a pass. Review any retained synthetic state before retrying; never stop unowned product services. A successful run proves the specified SDK/fixture path only. Synthetic policy, operator resume, fixed answer selection, post-call receipt observations and first-text-part checks do not establish native identity/approval, whole-body/model-facing preservation, pre-network durability, arbitrary language support, wake, residency or product deployment. Keep `native-recipient` and other manual gates unverified.
+
+## Deny-only external owner regression
+
+`node --test --test-reporter=tap test/external-owner.test.js` starts only owned numeric-loopback
+listeners and fixed synthetic Node factories. It uses real fresh SQLite but no broker or live
+product connection, since every operation remains denied. The factory child's environment is
+empty and its raw stdout/stderr are ignored; all credentials/results are explicitly synthetic.
+The parent bounds owned child lifetime and cleanup and independently requires actual exit before
+removing scratch. A simulated kill refusal is restored and cleaned by the test's exact owned
+handle; it is not an OS permission-denial bypass. The test leaves native identity/participant
+verification, ACP wire driving, OS containment, descendants and blocked orphan handling unverified.

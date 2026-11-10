@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "391d2c924f089350bbc8c04fd4384fadad80ff6b",
+  "source_ref": "96a325db4a38079643a13ced0aacd58f214019fc",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "1e3e7792feac92ad96e92bd174d161a3fc5b96a7cfd2c2bc05a3352f251abe5c"
+      "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -257,9 +257,21 @@
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
       "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2"
     },
+    "src/adapter-host/external-owner.ts": {
+      "previous_sha256": null,
+      "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af"
+    },
     "src/adapter-host/mcp.ts": {
       "previous_sha256": null,
       "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e"
+    },
+    "src/adapter-host/owner-process-entry.ts": {
+      "previous_sha256": null,
+      "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b"
+    },
+    "src/adapter-host/owner-process.ts": {
+      "previous_sha256": null,
+      "sha256": "85473ec2841b08e406fd1dd862ac60824fdd62caa947a18d1c90296e4f991277"
     },
     "src/adapter-host/private-http.ts": {
       "previous_sha256": null,
@@ -776,6 +788,18 @@
     "test/design-budget-boundaries.test.js": {
       "previous_sha256": null,
       "sha256": "904da9235935e20b8ea7ea80da38a32c62c6385c471505fcc8741942d30d0106"
+    },
+    "test/external-owner-child.js": {
+      "previous_sha256": null,
+      "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736"
+    },
+    "test/external-owner-fixture.js": {
+      "previous_sha256": null,
+      "sha256": "570b6176400d8827067324afdb2cc360e6e0fe05e46fb6f1d3163f4f06e79f09"
+    },
+    "test/external-owner.test.js": {
+      "previous_sha256": null,
+      "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629"
     },
     "test/generic-a2a.test.js": {
       "previous_sha256": null,
