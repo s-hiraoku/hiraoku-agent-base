@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "96a325db4a38079643a13ced0aacd58f214019fc",
+  "source_ref": "500376506ae4cb77802d14df638a47ae0cfed4c7",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "bf4d3ee05e2db7888b4fcb571e0f3015fdfbb4868ff0136fd9da5b8f38b694a0"
+      "sha256": "a1725573ff86c7b1d94b9622d1eac5c4d08db97c4c6d682de0d97257029d96de"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -481,6 +481,10 @@
       "previous_sha256": null,
       "sha256": "40f8786cd0890fb6ec39ae3660ff5561813c8c4c0cb9b62d304a50ec603ed4b5"
     },
+    "src/owner-integrations/acp-stdio.ts": {
+      "previous_sha256": null,
+      "sha256": "697b5b661fa2a1565cb257a086eb036673d3bb3da2fe2b1b740b4fd42f31f355"
+    },
     "src/recipient-messages/contract.ts": {
       "previous_sha256": null,
       "sha256": "7750d2d6889c265926faaec07214f9a09384a5c381c64264e37716f672112905"
@@ -740,6 +744,14 @@
     "test/a2a-sdk-store.test.js": {
       "previous_sha256": "1e0a880b756b4ad7678fce5e85cd6e9c80168285bfd99ebe773d79c140ce8424",
       "sha256": "a76ffb56d46336da720dc4285dd948b43c4bc0b0632d4e18d088bd356c5afc8a"
+    },
+    "test/acp-owner-child.js": {
+      "previous_sha256": null,
+      "sha256": "bf6b5e00b3ffa7ba3a06ff8cf5eb755fb33ad43771939cc8b56ecdee522cd9ad"
+    },
+    "test/acp-owner.test.js": {
+      "previous_sha256": null,
+      "sha256": "fa930bbe657caad833b515f0d20cb0a96d74abebfddeecd28229f705c692174d"
     },
     "test/adapter-host-fixtures.js": {
       "previous_sha256": null,
