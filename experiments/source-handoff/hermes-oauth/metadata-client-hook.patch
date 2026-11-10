@@ -1,0 +1,735 @@
+--- a/tools/mcp_oauth_manager.py
++++ b/tools/mcp_oauth_manager.py
+@@ -14,11 +14,15 @@
+ import time
+ from dataclasses import dataclass, field
+ from pathlib import Path
+-from typing import Any, Optional
++from typing import Any, AsyncContextManager, Callable, Optional
+ 
+ from tools.mcp_oauth_provider import HermesProviderMixin
+ 
+ logger = logging.getLogger(__name__)
++
++# The factory owns admission, destination policy, cancellation and complete cleanup.
++# It must return a fresh SDK-compatible client context for this operation only.
++MetadataClientFactory = Callable[[], AsyncContextManager[Any]]
+ 
+ try:
+     from mcp.client.auth.oauth2 import OAuthClientProvider as _SDKOAuthClientProvider
+@@ -53,9 +57,15 @@
+     """
+ 
+     _hermes_logger = logger
+-
+-    def __init__(self, *args: Any, server_name: str = "", preregistered: bool = False, **kwargs: Any):
++    _hermes_metadata_client_factory: MetadataClientFactory | None = None
++    _hermes_guarded_initialization_failed = False
++
++    def __init__(self, *args: Any, server_name: str = "", preregistered: bool = False,
++                 metadata_client_factory: MetadataClientFactory | None = None, **kwargs: Any):
++        if metadata_client_factory is not None and not callable(metadata_client_factory):
++            raise TypeError("metadata_client_factory must be callable")
+         super().__init__(*args, **kwargs)
++        self._hermes_metadata_client_factory = metadata_client_factory
+         # mcp 2.0 uses a task-owned anyio.Lock held across the yielded resource request (a session-long GET blocks
+         # every POST; HTTPX may close the generator from another task). A binary semaphore drops task ownership.
+         import anyio
+@@ -74,6 +84,27 @@
+         logger.debug("MCP OAuth '%s': %s failed (non-fatal): %s", self._hermes_server_name, what, exc)
+ 
+     async def _initialize(self) -> None:
++        if self._hermes_metadata_client_factory is None:
++            await self._initialize_state()
++            return
++        self._check_guarded_initialization()
++        try:
++            await self._initialize_state()
++        except BaseException:
++            # Failure may happen on client exit or after an uncertain storage write.
++            # Never reuse this provider, even if the SDK had already initialized it.
++            self._initialized = False
++            self._hermes_guarded_initialization_failed = True
++            self.context.oauth_metadata = None
++            self.context.protected_resource_metadata = None
++            self.context.auth_server_url = None
++            raise
++
++    def _check_guarded_initialization(self) -> None:
++        if self._hermes_guarded_initialization_failed:
++            raise RuntimeError("guarded OAuth provider initialization failed; discard this provider")
++
++    async def _initialize_state(self) -> None:
+         """Load stored state, seed ``token_expiry_time``, restore/prefetch metadata. The SDK's
+         ``_initialize`` never calls ``update_token_expiry``, so a restarted process would ship stale
+         Bearer tokens as "valid"; seeding the expiry (``HermesTokenStorage`` persists absolute
+@@ -93,7 +124,9 @@
+         if tokens is not None and self.context.oauth_metadata is None:
+             try:
+                 await self._prefetch_oauth_metadata()
+-            except Exception as exc:  # pragma: no cover — the SDK's 401-branch discovery runs next request
++            except Exception as exc:
++                if self._hermes_metadata_client_factory is not None:
++                    raise
+                 self._log_nonfatal("pre-flight metadata discovery", exc)
+             else:
+                 from tools.mcp_oauth_provider import enforce_refresh_token_issuer
+@@ -102,6 +135,9 @@
+     async def _prefetch_oauth_metadata(self) -> None:
+         """Fetch PRM + ASM from the well-known endpoints before the first request, via the SDK's own URL
+         builders/response handlers so we track whatever the pinned SDK expects."""
++        if self._hermes_metadata_client_factory is not None:
++            await self._prefetch_guarded_oauth_metadata()
++            return
+         # The SDK's httpx flavour, not Hermes': `create_oauth_metadata_request` returns *its* (httpx2) Request objects.
+         from tools.mcp_tool import sdk_httpx
+         httpx = sdk_httpx()
+@@ -146,6 +182,64 @@
+                     logger.debug("MCP OAuth '%s': pre-flight ASM discovered token_endpoint=%s",
+                                  self._hermes_server_name, asm.token_endpoint)
+                     break
++
++    async def _prefetch_guarded_oauth_metadata(self) -> None:
++        """Stage validated discovery until the guarded client has fully settled.
++
++        Unlike the legacy best-effort prefetch, guarded discovery requires a valid
++        ASM and enforces the SDK's resource/issuer checks (including Hermes' narrow
++        origin-issued metadata exception). It never guesses a token endpoint after
++        discovery failure or silently re-registers mismatched saved credentials.
++        """
++        from mcp.client.auth.oauth2 import OAuthFlowError
++        from mcp.client.auth.utils import (
++            build_oauth_authorization_server_metadata_discovery_urls,
++            build_protected_resource_metadata_discovery_urls,
++            create_oauth_metadata_request, handle_auth_metadata_response,
++            handle_protected_resource_response)
++        from tools.mcp_oauth_provider import stamp_default_user_agent
++
++        self._check_guarded_initialization()
++        prm = asm = None
++        server_url = self.context.server_url
++        auth_server_url = self.context.auth_server_url
++        async with self._hermes_metadata_client_factory() as client:
++            for url in build_protected_resource_metadata_discovery_urls(None, server_url):
++                resp = await client.send(stamp_default_user_agent(create_oauth_metadata_request(url)))
++                prm = await handle_protected_resource_response(resp)
++                if prm:
++                    await self._validate_resource_match(prm)
++                    auth_server_url = str(prm.authorization_servers[0])
++                    break
++            for url in build_oauth_authorization_server_metadata_discovery_urls(auth_server_url, server_url):
++                resp = await client.send(stamp_default_user_agent(create_oauth_metadata_request(url)))
++                ok, asm = await handle_auth_metadata_response(resp)
++                if not ok:
++                    break
++                if asm:
++                    self._validate_guarded_metadata(asm, auth_server_url, resp)
++                    break
++            if asm is None:
++                raise OAuthFlowError("guarded OAuth metadata discovery did not produce valid metadata")
++        # No context publication or persisted cache before exit succeeds. A close
++        # or exit-guard failure must not create metadata that skips the next guard.
++        storage = self._hermes_storage()
++        if storage is not None:
++            storage.save_oauth_metadata(asm)
++        self.context.protected_resource_metadata = prm
++        self.context.auth_server_url = auth_server_url
++        self.context.oauth_metadata = asm
++
++    def _validate_guarded_metadata(self, metadata, auth_server_url, response) -> None:
++        from mcp.client.auth.oauth2 import OAuthFlowError
++        from mcp.client.auth.utils import credentials_match_issuer, validate_metadata_issuer
++        from tools.mcp_oauth_provider import metadata_issued_by_origin
++        if auth_server_url is not None and not metadata_issued_by_origin(metadata, auth_server_url, response):
++            validate_metadata_issuer(metadata, auth_server_url)
++        client_info = self.context.client_info
++        if client_info is not None and not credentials_match_issuer(
++                client_info, auth_server_url or str(metadata.issuer), self.context.client_metadata_url):
++            raise OAuthFlowError("guarded OAuth metadata does not match saved client issuer")
+ 
+     def _persist_oauth_metadata_if_changed(self) -> None:
+         """Save metadata the SDK discovered lazily (401 branch); no-op when absent/unchanged."""
+@@ -240,8 +334,12 @@
+             f"client_secret), then run `hermes mcp login {name}`.")
+ 
+     async def async_auth_flow(self, request):  # type: ignore[override]
++        self._check_guarded_initialization()
+         try:  # pre-flow hook: reload from disk if it changed (non-fatal on error)
+-            await get_manager().invalidate_if_disk_changed(self._hermes_server_name, hermes_home=self._hermes_home)
++            # Operation-scoped providers start fresh and must not touch another
++            # operation's cached provider through the process-wide disk watcher.
++            if self._hermes_metadata_client_factory is None:
++                await get_manager().invalidate_if_disk_changed(self._hermes_server_name, hermes_home=self._hermes_home)
+         except Exception as exc:  # pragma: no cover — defensive
+             self._log_nonfatal("pre-flow disk-watch", exc)
+         # Bridge the bidirectional generator by hand: a naive ``async for item in inner: yield
+@@ -318,10 +416,25 @@
+         # Strong refs to in-flight 401 tasks so the loop's weak bookkeeping cannot GC them mid-run.
+         self._inflight_tasks: set[asyncio.Task] = set()
+ 
+-    def get_or_build_provider(self, server_name: str, server_url: str, oauth_config: Optional[dict]) -> Optional[Any]:
+-        """Cached OAuth provider for ``server_name``, built on first use (rebuilt when ``server_url`` changes);
+-        None if the MCP SDK's OAuth support is unavailable."""
++    def get_or_build_provider(self, server_name: str, server_url: str, oauth_config: Optional[dict], *,
++                              metadata_client_factory: MetadataClientFactory | None = None) -> Optional[Any]:
++        """Cached OAuth provider, or a fresh operation-scoped provider with an explicit factory.
++
++        The optional metadata client factory is never stored in the shared cache. Its
++        provider and resource client must belong to the same operation and be discarded
++        together after actual I/O and cleanup settle. Callers must guard resource/auth
++        requests as well as metadata. No factory preserves the existing cached behavior.
++        None if the MCP SDK's OAuth support is unavailable.
++        """
++        if metadata_client_factory is not None and not callable(metadata_client_factory):
++            raise TypeError("metadata_client_factory must be callable")
+         key = self._key(server_name)
++        if metadata_client_factory is not None:
++            entry = _ProviderEntry(server_url=server_url, oauth_config=oauth_config)
++            provider = self._build_provider(server_name, entry, metadata_client_factory=metadata_client_factory)
++            if provider is not None:
++                provider._hermes_home = key[0]
++            return provider
+         with self._entries_lock:
+             entry = self._entries.get(key)
+             if entry is not None and entry.server_url != server_url:
+@@ -341,7 +454,8 @@
+         home = Path(hermes_home) if hermes_home is not None else get_hermes_home()
+         return (str(home.expanduser().resolve(strict=False)), server_name)
+ 
+-    def _build_provider(self, server_name: str, entry: _ProviderEntry) -> Optional[Any]:
++    def _build_provider(self, server_name: str, entry: _ProviderEntry, *,
++                        metadata_client_factory: MetadataClientFactory | None = None) -> Optional[Any]:
+         """Build a ``HermesMCPOAuthProvider``; None if the SDK's OAuth support is unavailable."""
+         if _HERMES_PROVIDER_CLS is None:
+             logger.warning("MCP OAuth '%s': SDK auth module unavailable", server_name)
+@@ -358,6 +472,7 @@
+                 f"Run `hermes mcp login {server_name}` interactively first to complete initial authorization.")
+         return _HERMES_PROVIDER_CLS(
+             server_name=server_name, preregistered=bool(cfg.get("client_id")), server_url=entry.server_url,
++            **({"metadata_client_factory": metadata_client_factory} if metadata_client_factory is not None else {}),
+             **build_provider_kwargs(cfg, storage, ssh_proxy_hint=False))
+ 
+     def remove(self, server_name: str, *, hermes_home: str | Path | None = None) -> _ProviderEntry | None:
+--- /dev/null
++++ b/tests/tools/test_mcp_oauth_discovery_client.py
+@@ -0,0 +1,520 @@
++"""Real provider discovery with synthetic storage and MockTransport, never live I/O."""
++import asyncio
++from contextlib import asynccontextmanager
++import logging
++import socket
++import sys
++from types import SimpleNamespace
++from unittest.mock import AsyncMock
++
++import pytest
++import httpx2 as httpx
++from mcp.shared.auth import OAuthClientMetadata, OAuthToken
++from tools import mcp_oauth_manager as manager_module
++from tools.mcp_oauth_manager import HermesMCPOAuthProvider, MCPOAuthManager
++
++RESOURCE = "https://resource.example/mcp"
++AUTH = "https://auth.example"
++
++
++@pytest.fixture(autouse=True)
++def no_network_or_default_client(monkeypatch):
++    original_connect = socket.socket.connect
++
++    def reject_network(sock, *args):
++        if sock.family in (socket.AF_INET, socket.AF_INET6):
++            raise AssertionError("network forbidden in synthetic tests")
++        return original_connect(sock, *args)
++
++    monkeypatch.setattr(socket.socket, "connect", reject_network)
++
++    def default_forbidden(**kwargs):
++        raise AssertionError("unguarded metadata client constructed")
++
++    sdk = SimpleNamespace(HTTPError=httpx.HTTPError, AsyncClient=default_forbidden)
++    monkeypatch.setitem(sys.modules, "tools.mcp_tool", SimpleNamespace(sdk_httpx=lambda: sdk))
++    return sdk
++
++
++def storage():
++    return SimpleNamespace(
++        get_tokens=AsyncMock(return_value=OAuthToken(
++            access_token="synthetic-access-only", token_type="Bearer", expires_in=3600)),
++        get_client_info=AsyncMock(return_value=None),
++        set_tokens=AsyncMock(), set_client_info=AsyncMock(),
++    )
++
++
++def provider(factory=None):
++    return HermesMCPOAuthProvider(
++        server_name="synthetic", server_url=RESOURCE,
++        client_metadata=OAuthClientMetadata(redirect_uris=["http://127.0.0.1/callback"]),
++        storage=storage(), redirect_handler=AsyncMock(), callback_handler=AsyncMock(),
++        metadata_client_factory=factory,
++    )
++
++
++def response(request, auth=AUTH):
++    if "oauth-protected-resource" in request.url.path:
++        return httpx.Response(200, json={"resource": RESOURCE, "authorization_servers": [auth]})
++    return httpx.Response(200, json={
++        "issuer": AUTH, "authorization_endpoint": AUTH + "/authorize",
++        "token_endpoint": AUTH + "/token", "response_types_supported": ["code"],
++    })
++
++
++class Operation:
++    def __init__(self, handler=None, *, follow_redirects=False):
++        self.active = True
++        self.sent = []
++        self.denied = []
++        self.open = 0
++        self.closed = 0
++        self.handler = handler or response
++        self.follow_redirects = follow_redirects
++
++    async def send(self, request):
++        if not self.active or (request.url.scheme, request.url.host) not in {
++            ("https", "resource.example"), ("https", "auth.example")
++        }:
++            self.denied.append(str(request.url))
++            raise PermissionError("operation denied")
++        assert not request.headers.get("authorization")
++        assert not request.headers.get("cookie")
++        self.sent.append(str(request.url))
++        result = self.handler(request)
++        return await result if hasattr(result, "__await__") else result
++
++    @asynccontextmanager
++    async def factory(self):
++        self.open += 1
++        try:
++            async with httpx.AsyncClient(
++                transport=httpx.MockTransport(self.send), auth=None,
++                follow_redirects=self.follow_redirects, trust_env=False, timeout=10,
++            ) as client:
++                yield client
++        finally:
++            self.open -= 1
++            self.closed += 1
++
++
++@pytest.mark.asyncio
++async def test_actual_initialize_scoped_factory_without_credentials(caplog):
++    op = Operation()
++    p = provider(op.factory)
++    caplog.set_level(logging.DEBUG, logger=manager_module.__name__)
++    await p._initialize()
++    assert len(op.sent) == 2
++    assert p.context.auth_server_url == AUTH
++    assert str(p.context.oauth_metadata.token_endpoint) == AUTH + "/token"
++    assert p._initialized and op.open == 0 and op.closed == 1
++    assert "synthetic-access-only" not in caplog.text
++    assert AUTH + "/token" not in caplog.text
++
++
++@pytest.mark.asyncio
++async def test_default_factory_preserves_client_arguments(no_network_or_default_client):
++    calls = []
++
++    def default_client(**kwargs):
++        calls.append(kwargs)
++        return httpx.AsyncClient(transport=httpx.MockTransport(response), **kwargs)
++
++    no_network_or_default_client.AsyncClient = default_client
++    p = provider()
++    await p._initialize()
++    assert calls == [{"timeout": 10.0}] and p.context.oauth_metadata is not None
++
++
++@pytest.mark.asyncio
++async def test_default_discovery_error_remains_nonfatal(no_network_or_default_client):
++    def failed(**kwargs):
++        raise RuntimeError("synthetic client failure")
++
++    no_network_or_default_client.AsyncClient = failed
++    p = provider()
++    await p._initialize()
++    assert p._initialized and p.context.oauth_metadata is None
++
++
++@pytest.mark.asyncio
++async def test_denial_before_first_discovery_and_repeated_use():
++    op = Operation()
++    op.active = False
++    p = provider(op.factory)
++    with pytest.raises(PermissionError, match="operation denied"):
++        await p._initialize()
++    with pytest.raises(RuntimeError, match="discard this provider"):
++        await p._initialize()
++    assert p._initialized is False
++    assert not op.sent and op.closed == 1
++
++
++@pytest.mark.asyncio
++async def test_pause_after_prm_prevents_asm_send():
++    op = Operation()
++
++    def pause(request):
++        result = response(request)
++        op.active = False
++        return result
++
++    op.handler = pause
++    p = provider(op.factory)
++    with pytest.raises(PermissionError):
++        await p._initialize()
++    assert len(op.sent) == 1 and "oauth-protected-resource" in op.sent[0]
++    assert len(op.denied) == 1 and "oauth-authorization-server" in op.denied[0]
++    assert p._initialized is False and p.context.oauth_metadata is None and op.closed == 1
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("redirect", [False, True])
++async def test_unapproved_metadata_destination_never_sent(redirect):
++    def hostile(request):
++        if redirect:
++            return httpx.Response(302, headers={"Location": "https://evil.example/discovery"})
++        return response(request, auth="https://evil.example")
++
++    op = Operation(hostile, follow_redirects=redirect)
++    with pytest.raises(PermissionError):
++        await provider(op.factory)._initialize()
++    assert len(op.sent) == 1 and len(op.denied) == 1 and "evil.example" in op.denied[0]
++    assert op.closed == 1
++
++
++@pytest.mark.asyncio
++async def test_pause_before_redirect_prevents_second_send():
++    op = Operation(follow_redirects=True)
++
++    def redirect(request):
++        op.active = False
++        return httpx.Response(302, headers={"Location": AUTH + "/redirected"})
++
++    op.handler = redirect
++    with pytest.raises(PermissionError):
++        await provider(op.factory)._initialize()
++    assert len(op.sent) == 1 and op.denied == [AUTH + "/redirected"]
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("failure", [RuntimeError, httpx.ConnectError])
++async def test_errors_propagate_without_retry_or_logging(failure, caplog):
++    def fail(request):
++        raise failure("synthetic-secret-must-not-be-logged")
++
++    op = Operation(fail)
++    p = provider(op.factory)
++    caplog.set_level(logging.DEBUG, logger=manager_module.__name__)
++    with pytest.raises(failure):
++        await p._initialize()
++    assert len(op.sent) == 1 and op.closed == 1 and p._initialized is False
++    assert "synthetic-secret-must-not-be-logged" not in caplog.text
++
++
++@pytest.mark.asyncio
++async def test_cancel_waits_for_cleanup_without_fallback():
++    admitted, cleaning, finish = asyncio.Event(), asyncio.Event(), asyncio.Event()
++    op = Operation()
++
++    async def waiting(request):
++        admitted.set()
++        await asyncio.Event().wait()
++
++    op.handler = waiting
++
++    @asynccontextmanager
++    async def factory():
++        try:
++            async with op.factory() as client:
++                yield client
++        finally:
++            cleaning.set()
++            await finish.wait()
++
++    p = provider(factory)
++    task = asyncio.create_task(p._initialize())
++    await asyncio.wait_for(admitted.wait(), 5)
++    task.cancel()
++    await asyncio.wait_for(cleaning.wait(), 5)
++    assert not task.done() and len(op.sent) == 1
++    finish.set()
++    with pytest.raises(asyncio.CancelledError):
++        await task
++    assert p._initialized is False and op.closed == 1
++
++
++def fake_manager_dependencies(monkeypatch):
++    import tools.mcp_oauth as oauth
++    import tools.mcp_oauth_provider as shared
++    import tools.mcp_dashboard_oauth as dashboard
++    monkeypatch.setattr(oauth, "_OAUTH_AVAILABLE", True)
++    monkeypatch.setattr(oauth, "_is_interactive", lambda: True)
++    monkeypatch.setattr(dashboard, "get_dashboard_oauth_flow", lambda: None)
++    monkeypatch.setattr(shared, "prepare_oauth_config", lambda *args: ({}, storage()))
++    monkeypatch.setattr(shared, "build_provider_kwargs", lambda cfg, store, **kw: {
++        "storage": store,
++        "client_metadata": OAuthClientMetadata(redirect_uris=["http://127.0.0.1/callback"]),
++        "redirect_handler": AsyncMock(), "callback_handler": AsyncMock(),
++    })
++
++
++@pytest.mark.asyncio
++async def test_manager_scopes_context_preserving_default_cache(monkeypatch):
++    fake_manager_dependencies(monkeypatch)
++    m = MCPOAuthManager()
++    ordinary = m.get_or_build_provider("synthetic", RESOURCE, {})
++    a, b = Operation(), Operation()
++    pa = m.get_or_build_provider("synthetic", RESOURCE, {}, metadata_client_factory=a.factory)
++    pb = m.get_or_build_provider("synthetic", RESOURCE, {}, metadata_client_factory=b.factory)
++    assert len({id(ordinary), id(pa), id(pb)}) == 3
++    a.active = False
++    with pytest.raises(PermissionError):
++        await pa._initialize()
++    await pb._initialize()
++    assert not a.sent and len(b.sent) == 2
++    assert m.get_or_build_provider("synthetic", RESOURCE, {}) is ordinary
++    assert pa._hermes_home == pb._hermes_home == ordinary._hermes_home
++    assert len(m._entries) == 1
++
++
++@pytest.mark.asyncio
++async def test_old_completion_cannot_replace_new_operation(monkeypatch):
++    fake_manager_dependencies(monkeypatch)
++    entered, release = asyncio.Event(), asyncio.Event()
++    a, b = Operation(), Operation()
++
++    async def slow(request):
++        entered.set()
++        await release.wait()
++        return response(request)
++
++    a.handler = slow
++    m = MCPOAuthManager()
++    pa = m.get_or_build_provider("synthetic", RESOURCE, {}, metadata_client_factory=a.factory)
++    pb = m.get_or_build_provider("synthetic", RESOURCE, {}, metadata_client_factory=b.factory)
++    task = asyncio.create_task(pa._initialize())
++    await asyncio.wait_for(entered.wait(), 5)
++    a.active = False
++    await pb._initialize()
++    release.set()
++    with pytest.raises(PermissionError):
++        await task
++    assert pb._initialized and pb.context.oauth_metadata is not None
++    assert not m._entries and len(a.sent) == 1 and len(b.sent) == 2
++
++
++def test_invalid_factory_rejected_before_storage(monkeypatch):
++    def forbidden(*args):
++        raise AssertionError("must not build or read profile")
++
++    m = MCPOAuthManager()
++    monkeypatch.setattr(m, "_key", forbidden)
++    with pytest.raises(TypeError, match="metadata_client_factory"):
++        m.get_or_build_provider("synthetic", RESOURCE, {}, metadata_client_factory=False)
++    with pytest.raises(TypeError, match="metadata_client_factory"):
++        provider(False)
++
++
++@pytest.mark.asyncio
++async def test_invalid_context_does_not_fallback():
++    p = provider(lambda: None)
++    with pytest.raises(TypeError):
++        await p._initialize()
++    assert p._initialized is False
++
++
++@pytest.mark.asyncio
++async def test_guard_denial_releases_real_auth_lock_and_never_sends_resource(monkeypatch):
++    op = Operation()
++    op.active = False
++    p = provider(op.factory)
++    resource_calls = []
++
++    def unexpected(request):
++        resource_calls.append(request)
++        raise AssertionError("business request escaped denied discovery")
++
++    # An operation-scoped provider cannot invalidate a shared provider's state.
++    def no_shared_manager():
++        raise AssertionError("shared manager accessed")
++
++    monkeypatch.setattr(manager_module, "get_manager", no_shared_manager)
++    async with httpx.AsyncClient(auth=p, transport=httpx.MockTransport(unexpected)) as client:
++        with pytest.raises(PermissionError):
++            await client.get(RESOURCE)
++    assert not resource_calls and not op.sent
++    await asyncio.wait_for(p.context.lock.acquire(), 5)
++    p.context.lock.release()
++
++
++@pytest.mark.asyncio
++async def test_factory_exit_guard_failure_is_fatal():
++    op = Operation()
++
++    @asynccontextmanager
++    async def denied_on_exit():
++        async with op.factory() as client:
++            yield client
++        raise PermissionError("operation expired at settle")
++
++    p = provider(denied_on_exit)
++    with pytest.raises(PermissionError):
++        await p._initialize()
++    assert p._initialized is False and op.closed == 1
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("invalid", ["resource", "issuer"])
++async def test_guarded_discovery_enforces_sdk_resource_and_issuer(invalid):
++    from mcp.client.auth.oauth2 import OAuthFlowError
++
++    def mismatched(request):
++        result = response(request)
++        value = result.json()
++        if invalid == "resource" and "resource" in value:
++            value["resource"] = "https://unrelated.example/mcp"
++        if invalid == "issuer" and "issuer" in value:
++            value["issuer"] = "https://unexpected-issuer.example"
++        return httpx.Response(200, json=value)
++
++    op = Operation(mismatched)
++    p = provider(op.factory)
++    with pytest.raises(OAuthFlowError, match="match"):
++        await p._initialize()
++    assert len(op.sent) == (1 if invalid == "resource" else 2)
++    assert p.context.protected_resource_metadata is None
++    assert p.context.auth_server_url is None and p.context.oauth_metadata is None
++    with pytest.raises(RuntimeError, match="discard this provider"):
++        await p._initialize()
++    assert op.closed == 1
++
++
++@pytest.mark.asyncio
++async def test_guarded_preserves_narrow_origin_issued_metadata_exception():
++    def scoped(request):
++        return response(request, auth=AUTH + "/tenant")
++
++    op = Operation(scoped)
++    p = provider(op.factory)
++    await p._initialize()
++    assert str(p.context.oauth_metadata.issuer) == AUTH
++    assert p.context.auth_server_url == AUTH + "/tenant"
++    assert op.sent[-1] == AUTH + "/.well-known/oauth-authorization-server/tenant"
++
++
++@pytest.mark.asyncio
++async def test_guarded_origin_issued_exception_does_not_accept_redirect():
++    from mcp.client.auth.oauth2 import OAuthFlowError
++
++    def redirected(request):
++        if request.url.path == "/.well-known/oauth-authorization-server/tenant":
++            return httpx.Response(302, headers={"Location": AUTH + "/elsewhere"})
++        return response(request, auth=AUTH + "/tenant")
++
++    op = Operation(redirected, follow_redirects=True)
++    p = provider(op.factory)
++    with pytest.raises(OAuthFlowError, match="issuer mismatch"):
++        await p._initialize()
++    assert p.context.oauth_metadata is None
++
++
++@pytest.mark.asyncio
++async def test_exit_failure_never_publishes_or_persists_metadata(tmp_path, monkeypatch):
++    from tools.mcp_oauth import HermesTokenStorage
++    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
++    store = HermesTokenStorage("synthetic")
++    await store.set_tokens(OAuthToken(
++        access_token="synthetic-access-only", token_type="Bearer", expires_in=3600))
++    op = Operation()
++    factory_calls = []
++
++    @asynccontextmanager
++    async def denied_on_exit():
++        factory_calls.append(True)
++        async with op.factory() as client:
++            yield client
++        raise PermissionError("synthetic settle refusal")
++
++    p = provider(denied_on_exit)
++    p.context.storage = store
++    with pytest.raises(PermissionError):
++        await p._initialize()
++    assert store.load_oauth_metadata() is None
++    assert p.context.oauth_metadata is None and p.context.protected_resource_metadata is None
++    with pytest.raises(RuntimeError, match="discard this provider"):
++        await p._initialize()
++    assert len(factory_calls) == 1
++    # A fresh provider must not find metadata left on disk by the failed one.
++    op.active = False
++    fresh = provider(op.factory)
++    fresh.context.storage = store
++    with pytest.raises(PermissionError):
++        await fresh._initialize()
++    assert len(op.sent) == 2 and len(op.denied) == 1
++
++
++@pytest.mark.asyncio
++async def test_storage_failure_makes_guarded_provider_terminal(monkeypatch):
++    op = Operation()
++    p = provider(op.factory)
++    writes = []
++
++    def uncertain_write(metadata):
++        writes.append(metadata)
++        raise OSError("synthetic storage write failure")
++
++    monkeypatch.setattr(p, "_hermes_storage", lambda: SimpleNamespace(save_oauth_metadata=uncertain_write))
++    with pytest.raises(OSError):
++        await p._initialize()
++    assert not p._initialized and p.context.oauth_metadata is None
++    with pytest.raises(RuntimeError, match="discard this provider"):
++        await p._initialize()
++    assert len(writes) == 1 and op.closed == 1
++
++
++@pytest.mark.asyncio
++async def test_storage_load_failure_is_terminal_before_factory():
++    op = Operation()
++    p = provider(op.factory)
++    p.context.storage.get_tokens.side_effect = OSError("synthetic storage read failure")
++    with pytest.raises(OSError):
++        await p._initialize()
++    with pytest.raises(RuntimeError, match="discard this provider"):
++        await p._initialize()
++    p.context.storage.get_tokens.assert_awaited_once()
++    assert not op.sent and op.closed == 0
++
++
++@pytest.mark.asyncio
++async def test_missing_valid_asm_fails_without_guessing_token_endpoint():
++    from mcp.client.auth.oauth2 import OAuthFlowError
++
++    def malformed(request):
++        if "oauth-protected-resource" in request.url.path:
++            return response(request)
++        return httpx.Response(200, json={"unrelated": "synthetic"})
++
++    op = Operation(malformed)
++    p = provider(op.factory)
++    with pytest.raises(OAuthFlowError, match="did not produce valid metadata"):
++        await p._initialize()
++    assert p.context.oauth_metadata is None
++    assert all(not url.endswith("/token") for url in op.sent)
++
++
++@pytest.mark.asyncio
++async def test_saved_client_issuer_mismatch_fails_without_reregistration():
++    from mcp.client.auth.oauth2 import OAuthFlowError
++    from mcp.shared.auth import OAuthClientInformationFull
++    op = Operation()
++    p = provider(op.factory)
++    p.context.storage.get_client_info.return_value = OAuthClientInformationFull(
++        client_id="synthetic-client", issuer="https://previous.example",
++        redirect_uris=["http://127.0.0.1/callback"],
++    )
++    with pytest.raises(OAuthFlowError, match="saved client issuer"):
++        await p._initialize()
++    assert p.context.oauth_metadata is None and len(op.sent) == 2
++    assert p.context.client_info.client_id == "synthetic-client"
