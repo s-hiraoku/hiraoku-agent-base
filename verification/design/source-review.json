@@ -1986,9 +1986,9 @@
     "supplemental": [
       {
         "path": "src/adapter-host/external-owner.ts",
-        "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af",
+        "sha256": "99f5db94f1d6a7c6b090a9a94877af7bd436e0b61a55a763a2cd6574c8bf0361",
         "review": "reviewed",
-        "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
       },
       {
         "path": "src/adapter-host/owner-process.ts",
@@ -2003,9 +2003,9 @@
       },
       {
         "path": "test/external-owner.test.js",
-        "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629",
+        "sha256": "6d84f5169a7ca64bed4ceddc0f517631b77586c3eb98439614d66ea032aaabc6",
         "review": "reviewed",
-        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
       },
       {
         "path": "test/external-owner-fixture.js",
@@ -2014,9 +2014,9 @@
       },
       {
         "path": "test/external-owner-child.js",
-        "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736",
+        "sha256": "b117babbd5140c381e9063a991b199513c9e3f4e47b5998a70d0cc35d8897366",
         "review": "reviewed",
-        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -2073,20 +2073,21 @@
       },
       {
         "path": "src/adapter-host/external-owner.ts",
-        "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af",
-        "review": "reviewed"
+        "sha256": "99f5db94f1d6a7c6b090a9a94877af7bd436e0b61a55a763a2cd6574c8bf0361",
+        "review": "reviewed",
+        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
       },
       {
         "path": "test/external-owner-child.js",
-        "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736",
+        "sha256": "b117babbd5140c381e9063a991b199513c9e3f4e47b5998a70d0cc35d8897366",
         "review": "reviewed",
-        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
       },
       {
         "path": "test/external-owner.test.js",
-        "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629",
+        "sha256": "6d84f5169a7ca64bed4ceddc0f517631b77586c3eb98439614d66ea032aaabc6",
         "review": "reviewed",
-        "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
+        "maintenance": "Re-read trusted local onBound change against main 4c4663e. Existing default deny-only/startup-cancellation/late-factory semantics retained; optional hook settlement joins startup-work retention and controls fence synchronously on stop."
       }
     ]
   },
@@ -2126,5 +2127,52 @@
       "meta_sha256": "1ef21d5171a2ab4f33f043bec92243fd20abde7310ca9fa4a91619ca03add099",
       "connection_sha256": "e261425e0ba793ab49cb1d697a2a66731102ed23e0bdf3e4034c11e2b34a221c"
     }
+  },
+  {
+    "scope": "Trusted external-owner local activation composition",
+    "baseline": "4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9",
+    "summary": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged.",
+    "supplemental": [
+      {
+        "path": "docs/external-owner-launcher.md",
+        "sha256": "85304c2ebd87a84ff37c5fa6129610a7681198ab3cac0362f302388d162e4a4e",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/cycle.ts",
+        "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/external-owner.ts",
+        "sha256": "99f5db94f1d6a7c6b090a9a94877af7bd436e0b61a55a763a2cd6574c8bf0361",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/owner-process-entry.ts",
+        "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/private-http.ts",
+        "sha256": "06ae7212883f3a533ac13209c216c29eecd9a32f0567878ef0a91a46f0c91a17",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/single-source-authority.ts",
+        "sha256": "50b95d85d703cc3f11f82d9b3fd523d34146f73e587f571a85bcdcb264ddf12d",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner-child.js",
+        "sha256": "b117babbd5140c381e9063a991b199513c9e3f4e47b5998a70d0cc35d8897366",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/external-owner.test.js",
+        "sha256": "6d84f5169a7ca64bed4ceddc0f517631b77586c3eb98439614d66ea032aaabc6",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

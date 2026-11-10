@@ -44,7 +44,7 @@ async function fixture(t, hooks = {}) {
       async verifyCommitted(result, launch) {
         state.verifications++;
         assert.equal(result, state.result); assert.equal(launch, state.launch);
-        if (hooks.verify) await hooks.verify(launch, state);
+        if (hooks.verify) await hooks.verify(launch, state, stores);
         return stores.binding;
       },
       async close() {
@@ -431,4 +431,146 @@ test("late factory fulfillment after IPC disconnect or termination signal closes
     assert.equal(existsSync(join(c.cwd, "listener.json")), false);
     assert.equal(c.supervisor.status().forced, false);
   }
+});
+
+
+test("trusted local bound hook activates existing controls without adding a remote grant API", async t => {
+  let controls, calls = 0, polls = 0;
+  const f = await fixture(t, {
+    verify: (_launch, _state, stores) => {
+      stores.binding.hostOptions.transport = () => ({
+        agentId: "synthetic-recipient", activeRequests: 0,
+        async poll() { polls++; return null; },
+        async ack() { throw Error("unexpected_ack"); },
+        async submit() { throw Error("unexpected_submit"); },
+        async status() { throw Error("unexpected_status"); },
+      });
+    },
+    options: { onBound: async value => {
+      controls = value; calls++;
+      assert.equal(Object.isFrozen(controls), true);
+      assert.deepEqual(Object.keys(controls).sort(), ["pause", "resume", "signal", "status", "updatePermission"]);
+      assert.equal(controls.status().paused, true);
+      const state = controls.updatePermission(controls.status().epoch, true);
+      assert.equal(state.paused, true, "grant alone does not resume");
+      controls.resume(state.epoch);
+    } },
+  });
+  assert.equal((await f.owner.ready).phase, "bound");
+  assert.equal(calls, 1); assert.equal(controls.status().paused, false);
+  assert.equal(f.state.creates, 1); assert.equal(f.state.verifications, 1);
+  const client = f.state.connection.client;
+  assert.equal((await client.callTool({ name: "recipient_receive", arguments: {} })).isError, false);
+  assert.equal(polls, 1);
+  assert.equal((await client.listTools()).tools.length, 6);
+  assert.deepEqual(Object.keys(f.owner).sort(), ["completion", "ready", "status", "stop"]);
+  assert.equal((await client.callTool({ name: "recipient_resume", arguments: {} })).isError, true);
+  const oldEpoch = controls.status().epoch;
+  controls.pause(oldEpoch);
+  assert.throws(() => controls.resume(oldEpoch), /epoch/);
+  assert.equal((await client.callTool({ name: "recipient_receive", arguments: {} })).isError, true);
+  controls.updatePermission(controls.status().epoch, false);
+  controls.resume(controls.status().epoch);
+  assert.equal((await client.callTool({ name: "recipient_receive", arguments: {} })).isError, true);
+  assert.equal(polls, 1);
+  await f.owner.stop(); await f.owner.completion;
+  assert.equal(controls.signal.aborted, true);
+  for (const method of ["status", "pause", "resume", "updatePermission"])
+    assert.throws(() => controls[method](0, true), /external_owner_controls_unavailable/);
+  assert.equal(f.state.storeCloses, 1);
+});
+
+test("bound hook is opt-in and never resumes or grants by its presence", async t => {
+  let controls;
+  const f = await fixture(t, { options: { onBound: value => { controls = value; } } });
+  assert.equal((await f.owner.ready).phase, "bound");
+  assert.equal(controls.status().paused, true);
+  controls.resume(controls.status().epoch);
+  assert.equal((await f.state.connection.client.callTool({ name: "recipient_receive", arguments: {} })).isError, true);
+  assert.equal(f.stores.network(), 0);
+  await f.owner.stop(); await f.owner.completion;
+});
+
+test("binding failure never exposes trusted local controls", async t => {
+  let calls = 0;
+  const f = await fixture(t, { verify: () => { throw Error("synthetic_verification_rejected"); },
+    options: { onBound: () => { calls++; } } });
+  await assert.rejects(f.owner.ready, /external_owner_create_or_verification_failed/);
+  await assert.rejects(f.owner.completion, /external_owner_create_or_verification_failed/);
+  assert.equal(calls, 0); assert.equal(f.stores.network(), 0);
+});
+
+test("bound hook failure is sanitized and fences captured controls", async t => {
+  let controls;
+  const f = await fixture(t, { options: { onBound: value => {
+    controls = value;
+    controls.updatePermission(controls.status().epoch, true);
+    controls.resume(controls.status().epoch);
+    throw Error("synthetic_private_callback_failure");
+  } } });
+  await assert.rejects(f.owner.ready, { message: "external_owner_create_or_verification_failed" });
+  await assert.rejects(f.owner.completion, { message: "external_owner_create_or_verification_failed" });
+  assert.equal(controls.signal.aborted, true);
+  assert.throws(() => controls.resume(0), /external_owner_controls_unavailable/);
+  assert.equal(f.state.closes, 1); assert.equal(f.state.storeCloses, 1);
+});
+
+test("stop during bound hook retains stores until callback settles and prevents late activation", async t => {
+  const entered = deferred(), pending = deferred();
+  let controls;
+  const f = await fixture(t, { options: { onBound: async value => {
+    controls = value; entered.resolve(); await pending.promise;
+    assert.throws(() => controls.updatePermission(controls.status().epoch, true), /external_owner_controls_unavailable/);
+  } } });
+  await entered.promise;
+  const stopping = f.owner.stop();
+  assert.equal(controls.signal.aborted, true);
+  await delay(10);
+  assert.equal(f.state.storeCloses, 0);
+  pending.resolve();
+  await assert.rejects(f.owner.ready, /external_owner_stopping|stopped_before_ready/);
+  await stopping; await f.owner.completion;
+  assert.equal(f.state.storeCloses, 1); assert.equal(f.state.closes, 1);
+  assert.equal(f.stores.network(), 0);
+});
+
+test("unsettled bound hook fails cleanup and retains stores even after late fulfillment", async t => {
+  const entered = deferred(), pending = deferred();
+  let controls;
+  const f = await fixture(t, { options: { shutdownTimeoutMs: 20, onBound: async value => {
+    controls = value; entered.resolve(); await pending.promise;
+  } } });
+  await entered.promise;
+  await assert.rejects(f.owner.stop(), /external_owner_cleanup_failed/);
+  await assert.rejects(f.owner.completion, /external_owner_cleanup_failed/);
+  await assert.rejects(f.owner.ready);
+  assert.equal(f.state.storeCloses, 0);
+  assert.throws(() => controls.resume(0), /external_owner_controls_unavailable/);
+  pending.resolve(); await delay(10);
+  assert.equal(f.state.storeCloses, 0, "late settlement never retries failed cleanup");
+});
+
+test("native owner loss inside bound hook cannot return ready or regrant", async t => {
+  const entered = deferred();
+  let controls;
+  const f = await fixture(t, { options: { onBound: async value => {
+    controls = value; entered.resolve(); await delay(10);
+  } } });
+  await entered.promise;
+  f.nativeOwner.abort();
+  await assert.rejects(f.owner.ready, /external_owner_stopping|stopped_before_ready/);
+  await f.owner.completion;
+  assert.equal(controls.signal.aborted, true);
+  assert.throws(() => controls.updatePermission(0, true), /external_owner_controls_unavailable/);
+  assert.equal(f.state.storeCloses, 1); assert.equal(f.state.closes, 1);
+});
+
+
+test("supervised factory composes trusted local controls without a new IPC command", async t => {
+  const c = await child(t, "local-controls");
+  const ready = await c.supervisor.ready;
+  assert.deepEqual(JSON.parse(readFileSync(join(c.cwd, "local-controls.json"))), { paused: false });
+  await c.supervisor.stop(); await c.supervisor.completion; await c.supervisor.exited;
+  assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
+  await assert.rejects(globalThis.fetch(ready.url));
 });

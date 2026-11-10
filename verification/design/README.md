@@ -263,3 +263,14 @@ gates are unchanged. The private ACP close latch is published before synchronous
 abort callbacks; direct reentry checks exactly one owned stdin end.
 
 ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.
+
+## Trusted owner-local activation seam
+
+Against main `4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9`, optional `onBound` supplies the
+existing private-HTTP status/permission/pause/resume methods only to trusted local factory
+code after verified binding. Omission preserves deny-only behavior. No remote grant channel,
+source selection, model request, receive scheduler or deployment is added. HAB-C-F09 records
+scope reconciliation; the existing accepted requirements, citations and manual/native gates
+are unchanged. Eight additional owner tests bring the expected owner inventory to 31 and
+root inventory to 1346; actual executions and cleanup are reported separately. Test evidence
+uses synthetic owners and temporary stores, not production authentication or daily operation.

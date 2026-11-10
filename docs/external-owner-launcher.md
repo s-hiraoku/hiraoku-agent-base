@@ -1,8 +1,8 @@
-# External owner launcher: deny-only preparation
+# External owner launcher: trusted local composition
 
 This opt-in, product-independent launcher builds on [private recipient HTTP](private-recipient-http.md).
 It is not installed in the normal Relay, does not create Tasks, and supplies no product runner,
-native authentication, live credential issuer or recipient grant. It is reusable orchestration
+native authentication, live credential issuer or permission policy. It is reusable orchestration
 code tested against an explicitly synthetic driver, not a completed native connection.
 
 ## Two deployment boundaries
@@ -16,8 +16,10 @@ Name uniqueness and exclusive delivery are deployment obligations, not inferred 
 
 The listener reuses the existing private HTTP transport, fixed-source authority, acquired SQLite
 owner/control, inbox/outbox, budget and answer journal. Discovery can expose the six schemas,
-but every tool call is denied. After binding, it is still paused and denied. The launcher exposes
-only ready, completion, status and stop; there is intentionally no grant/resume API in this stage.
+but every tool call is denied. After binding, it is initially paused and denied. By default it
+stays deny-only. The returned launcher exposes only ready, completion, status and stop. An optional
+trusted factory callback can retain the existing local controls described below; they are never
+MCP tools or IPC commands.
 No existing recipient queue, database, profile or gateway is discovered or opened automatically.
 
 `superviseExternalOwner` in `src/adapter-host/owner-process.ts` starts the fixed Node bootstrap
@@ -35,6 +37,46 @@ URL without credentials. Raw native results/errors and product stderr are not fo
 factory can still write files or start processes; this is not a malicious-code sandbox. The owner
 and driver retain the OS user's filesystem and network rights. A native CLI may read profiles,
 home files or secret stores itself. An empty environment does not prevent those reads.
+
+## Optional trusted local activation
+
+`ExternalOwnerOptions.onBound(controls)` closes the composition gap between the external owner
+and the existing private HTTP operator methods. It is invoked at most once, after the committed
+native verification and unchanged discovery receipt have successfully bound. The callback is
+trusted local factory code, not a native peer result, MCP argument, remote permission or new
+authorization protocol. It receives a frozen object containing `status`, `updatePermission`,
+`pause`, `resume` and the current owner's `signal`. It receives no context, store, bearer or raw
+host. Omit it for the existing deny-only behavior.
+
+Presence of a callback grants nothing and does not resume. An independently authorized owner
+policy can explicitly use the same current-epoch sequence as private HTTP:
+
+```ts
+onBound(controls) {
+  const paused = controls.updatePermission(controls.status().epoch, true);
+  controls.resume(paused.epoch);
+}
+```
+
+This example does not authorize running it with live stores or a native product. The policy
+still permits exactly the fixed source and whole dedicated outbox chosen in the verified binding.
+Receive still consumes the recipient queue, not a source-filtered queue. No new source can be
+selected through these controls. There is no automatic model request, answer decision, send,
+background receive or multi-question conversation policy. A standard ACP wake, fixed trusted
+wake instruction and recipient-native judgment must be composed separately; do not elevate an
+external message body into an owner instruction.
+
+The hook can be asynchronous. Readiness waits for it and returns `phase: "bound"`, which means
+local composition completed, not that permission is enabled, the host is running, or a message
+was delivered. Without the hook, readiness retains `phase: "bound-deny"`. Read the local controls'
+status for the actual pause/epoch state. A factory must await all its startup work and must not
+await the owner's completion from inside the callback. Do not start detached store work there.
+
+Stop, native scope loss and expiry synchronously fence captured controls before cleanup; none
+can regrant after stop. Unsettled callback work retains stores and failed cleanup remains failure
+even if it settles later. Callback exceptions are sanitized and stop the composition, including
+when a grant happened before the exception. The supervised factory can use this same callback
+without adding a remote grant channel or changing the independent process watchdog.
 
 ## Trusted driver contract
 
@@ -69,9 +111,9 @@ history erasure, broad bootstrap-ticket revocation or approval bypass is claimed
 
 The composition lifetime is 1–900000 ms. Each bounded cleanup step is 1–60000 ms. Stop aborts
 the launch, synchronously fences the private host, and closes listener admission and sockets even
-if durable drain fails. Driver close and outstanding driver work must settle, and the host must
+if durable drain fails. Driver close and outstanding startup work (including the optional bound callback) must settle, and the host must
 stop successfully, before stores close. Failure retains stores, rejects completion and does not
-retry cleanup automatically. A late create/verification result cannot bind after stopping.
+retry cleanup automatically. A late create/verification result cannot bind after stopping; captured controls cannot reactivate it.
 Readiness still rejects when startup is cancelled, but successful settlement and cleanup resolve
 completion; the supervised child reports stopped and exits zero. Only the launcher's own
 post-settlement cancellation is exempt from startup failure. Driver creation/verification errors
@@ -114,8 +156,8 @@ real product startup remains unapproved by source-code or synthetic-test accepta
 Before live use, separately approve the actual executable/revision, profile and all effective viewers,
 authentication/ticket scope, new capability creation and delivery, allowed resources, lifetime,
 private storage and cleanup limitations. Native create without a model still changes product state.
-No prior source-code or synthetic-test approval authorizes that action. Grants, model invocation,
-live queue consumption and production deployment remain outside this deny-only stage.
+No prior source-code or synthetic-test approval authorizes that action. The local callback is only an implementation seam. Live grants, model invocation,
+live queue consumption and production deployment still require their own approval and acceptance.
 
 ## Regressions
 
@@ -123,4 +165,8 @@ live queue consumption and production deployment remain outside this deny-only s
 driver results. It checks pre/post-bind denial, no network dispatch, once-only ambiguous create,
 missing/stale discovery, external/native owner loss, expiry, unresolved-work retention, sanitized
 failure, environment/Node-option noninheritance, normal child cleanup and blocked-child watchdogs.
-These tests use no live product, ticket, profile secret, model or production recipient queue.
+Eight additional local-composition cases cover explicit grant/resume with an empty synthetic
+receive, unchanged deny-only default, no remote grant tool, stale epochs, revoke, failure/late
+settlement fencing, safe store retention and the supervised factory path. This does not prove
+an actual native answer or daily operation. These tests use no live product, ticket, profile secret,
+model or production recipient queue.

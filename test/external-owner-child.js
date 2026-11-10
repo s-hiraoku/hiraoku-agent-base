@@ -63,6 +63,11 @@ export async function createOwnerOptions(signal) {
         if (late) trace("driver-close-end");
       },
     },
+    onBound: config.mode === "local-controls" ? controls => {
+      const paused = controls.updatePermission(controls.status().epoch, true);
+      controls.resume(paused.epoch);
+      writeFileSync("local-controls.json", JSON.stringify({ paused: controls.status().paused }), { mode: 0o600 });
+    } : undefined,
     async closeStores() {
       if (late) trace("stores-close-start");
       if (config.mode === "late-store-failure") throw Error(syntheticToken);

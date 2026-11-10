@@ -960,20 +960,21 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "c2fd279aee18f7afdfcee4a0487df3f8db65d9c1ed0c6221b1d69cd8e0f14896",
+      "sha256": "b745c0f50060efe0fad9f0b6acfd2640d84a9aac1254fce610d8f06f6d3728d7",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+      "maintenance": "Reviewed trusted local onBound seam, HAB-C-F09 scope resolution and unchanged accepted/native gates; expected owner31/root1346 inventory, execution evidence is separate."
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "152641ee0d0af350ff1abbcc127c5b89fc633deb6c976cb56306289d9a7898e3",
+      "sha256": "1da9c4e64b082c1b7eb5fb9ca7445971c24694e1a8eabad270289252c8055fb2",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "Reviewed trusted local onBound seam, HAB-C-F09 scope resolution and unchanged accepted/native gates; expected owner31/root1346 inventory, execution evidence is separate."
     },
     {
       "path": "verification/design/design-principles.md",
@@ -985,12 +986,12 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "4c14f15d0548d2eadef53c02a3c538f170dba2caf427293e5cddab55aed1d796",
+      "sha256": "65a66bdbaf70fd30bb90dc39e46b4d809432ccf292c5ec0c3f48403924d6984a",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+      "maintenance": "Reviewed trusted local onBound seam, HAB-C-F09 scope resolution and unchanged accepted/native gates; expected owner31/root1346 inventory, execution evidence is separate."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1053,11 +1054,11 @@
     },
     {
       "path": "docs/external-owner-launcher.md",
-      "sha256": "4d196e15437378cee0181634f4a8352d2c8198ce4ca179be81963e9d4524d1fc",
+      "sha256": "85304c2ebd87a84ff37c5fa6129610a7681198ab3cac0362f302388d162e4a4e",
       "role": "context",
       "review": "reviewed",
-      "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. Optional generic ACP driver linked separately; no product-specific verifier, runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment. Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged.",
-      "maintenance": "Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate."
+      "summary": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged.",
+      "maintenance": "Reviewed current source and affected accepted requirements against main 4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9. HAB-C-F09 resolves local composition versus deny-only default; expected owner31/root1346, current test execution and native acceptance remain separate."
     },
     {
       "path": "docs/auth0-recovery.md",
@@ -4604,7 +4605,7 @@
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "node-tap",
-      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry. Startup cancellation rejects readiness but allows confirmed clean completion, including supervised exit0; reentrant stop shares one cleanup; genuine startup and cleanup errors remain failures. Late valid factory results are closed exactly once before handoff for stop/loss/lifetime/signals/disconnect; driver/store errors and timeouts fail, rejected factories retain ownership.",
+      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only by default before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry. Startup cancellation rejects readiness but allows confirmed clean completion, including supervised exit0; reentrant stop shares one cleanup; genuine startup and cleanup errors remain failures. Late valid factory results are closed exactly once before handoff for stop/loss/lifetime/signals/disconnect; driver/store errors and timeouts fail, rejected factories retain ownership. Optional trusted local callback is exposed only after binding, preserves six-tool MCP/stop-only IPC, supports explicit epoch-fenced grant/pause/revoke, sanitizes failures and retains stores for unsettled callback work. Supervised factory activation is exercised with synthetic stores. Expected owner31.",
       "limitations": "Trusted synthetic driver only; no native verifier or ACP wire driver, credential issuance/delivery, model, live profile/queue or product session. No OS sandbox, descendant kill or parent-death plus blocked-child containment. Forced or unconfirmed termination is failure, not successful cleanup. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
@@ -5911,6 +5912,20 @@
           "excerpt_sha256": "e4778bdc6b6964e501198b5de9313dc0cbf230e2b26eda17d3f66a79ae0b6169"
         }
       ]
+    },
+    {
+      "id": "HAB-C-F09",
+      "status": "resolved",
+      "question": "Does a trusted external-owner factory callback implicitly grant recipient authority or adopt a product execution path?",
+      "requirements": [
+        "HAB-F02",
+        "HAB-F03",
+        "HAB-F07",
+        "HAB-F11",
+        "HAB-F16",
+        "HAB-E09"
+      ],
+      "resolution": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged."
     }
   ]
 }

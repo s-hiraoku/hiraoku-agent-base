@@ -371,3 +371,13 @@ Classification: proposal-versus-adopted-boundary. Requirements: HAB-F01, HAB-F02
 No. The wrapper is explicitly uninstalled opt-in preparation over existing AdapterHostCycle operations. It reuses trusted per-session context and current host commit guards, exposes no Task, arbitrary message enqueue, control or owner-release tool, and leaves the normal five-tool Relay unchanged. A pulled saved message is external data, not native owner input or permission. RecipientMessagePort admission and exact-reply native callbacks are not serialized or replaced. Existing accepted requirements keep their original authority; the proposal is reviewed context and synthetic MCP/SQLite/JetStream evidence adds regression coverage only. Native product binding, policy, approval and wake remain manual/unverified.
 
 Sources: [docs/implementation/recipient-host-mcp-proposal.md:8](../../docs/implementation/recipient-host-mcp-proposal.md#L8-L23), [docs/implementation/recipient-host-mcp-proposal.md:116](../../docs/implementation/recipient-host-mcp-proposal.md#L116-L125).
+
+## HAB-C-F09 — resolved
+
+Does a trusted external-owner factory callback turn the deny-only preparation into an implicit grant or product execution path?
+
+Classification: scope/implementation composition. Requirements: HAB-F02, HAB-F03, HAB-F07, HAB-F11, HAB-F16, HAB-E09.
+
+No. `onBound` is optional local composition after current-receipt verification, not a native input, MCP tool or IPC command. Its presence alone grants and resumes nothing; omission preserves the former deny-only default. The callback can explicitly reach the already implemented private-HTTP operator controls under independently approved local policy. Fixed-source, dedicated-outbox, current-epoch, drain and owner checks are unchanged. Stop fences retained controls, unsettled startup retains stores, and failed cleanup is never retried automatically. Readiness `bound` describes composition only, not enabled authority or delivery. This implementation closes a composition gap without accepting a daily multi-source policy, model/wake dispatch or actual native setup. All native/manual gates remain unverified.
+
+Sources: [docs/hab-principles.md:13](../../docs/hab-principles.md#L13-L21), [docs/external-owner-launcher.md](../../docs/external-owner-launcher.md#optional-trusted-local-activation), [docs/private-recipient-http.md](../../docs/private-recipient-http.md).
