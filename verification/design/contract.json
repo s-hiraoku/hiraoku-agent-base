@@ -835,12 +835,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "6be7e6fb2fd25d50cef1df8cac45a8b224d734d932fd4ee03d510e7587379e31",
+      "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+      "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -860,12 +860,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "749cf223bb77bbf39bfebf712d85e97d87cec79411cbca9fa916a55873872c96",
+      "sha256": "3997cbd11ab81eff7fbd2cd3442dfe4898ee5df3141f5c607fe314bf59d25106",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1283) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1287) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+      "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
     },
     {
       "path": "docs/testing/plan.md",
@@ -877,12 +877,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "4eadb921fca25d9509613d11b5a43e88894e7a6451f141642b98684bbf2d22f2",
+      "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+      "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
     },
     {
       "path": "docs/testing/results.md",
@@ -984,12 +984,12 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "9a09fe0fff9ff480db78ca008772924b453ee5d4c325ec3f46ef4fd0cd649075",
+      "sha256": "61eef3e674220ce1efb2b451b16073ddab5dfb0afdec2e5be5b3190a62fb7de6",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+      "maintenance": "Reviewed late factory ownership and four new regression cases; no authority or native/manual gate changes."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1051,11 +1051,11 @@
     },
     {
       "path": "docs/external-owner-launcher.md",
-      "sha256": "46758e1141410c231f57853e0d16230ecc49f7a60952b2d8c02de5b6e86ddb37",
+      "sha256": "6ef49c454f95503ce050361d28fc925bb2eb19de517386b73381d357d71f5d36",
       "role": "context",
       "review": "reviewed",
-      "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. No native ACP driver/verifier, product runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment.",
-      "maintenance": "Reviewed startup cancellation separately from real driver/cleanup errors and synchronous stop reentry; six new cases set current expected root inventory to 1283. See the 2026-11-10 document/source review. No authority or native/manual gate changes."
+      "summary": "Opt-in generic deny-only external-owner orchestration over private HTTP; owned numeric-loopback listener, one create attempt, trusted native verification callback, current receipt binding and separate native/outer owner loss. Clean-environment child supervisor bounds startup/lifetime/cleanup, suppresses raw output and distinguishes confirmed exit from forced or unconfirmed termination. No native ACP driver/verifier, product runner, capability issuance, grant, model or production installation. Synthetic SQLite/MCP/process tests do not establish live authentication, participant scope, OS isolation or parent-death-plus-blocked-child containment. Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged.",
+      "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
     },
     {
       "path": "docs/auth0-recovery.md",
@@ -3991,7 +3991,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "3cad3cbd4b8ca6e7884455aaaf647338ce195e58fab2553e5ddcbfe06eb9a724"
+          "excerpt_sha256": "a8731f1dcf6edb061f7c87ab35b7fbb07e969d675b2cecb15039abe67e3fc12c"
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4189,7 +4189,7 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "6d05e0306958eb4a87559656c94b362763e692721ed0d0ed8977ca41f9190f42"
+          "excerpt_sha256": "a8e4cb4dab823ec293338c81a04997018329855e1cced78a59d848cd8f093bee"
         },
         {
           "path": "docs/testing/publication.md",
@@ -4580,7 +4580,7 @@
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "node-tap",
-      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry. Startup cancellation rejects readiness but allows confirmed clean completion, including supervised exit0; reentrant stop shares one cleanup; genuine startup and cleanup errors remain failures.",
+      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry. Startup cancellation rejects readiness but allows confirmed clean completion, including supervised exit0; reentrant stop shares one cleanup; genuine startup and cleanup errors remain failures. Late valid factory results are closed exactly once before handoff for stop/loss/lifetime/signals/disconnect; driver/store errors and timeouts fail, rejected factories retain ownership.",
       "limitations": "Trusted synthetic driver only; no native verifier or ACP wire driver, credential issuance/delivery, model, live profile/queue or product session. No OS sandbox, descendant kill or parent-death plus blocked-child containment. Forced or unconfirmed termination is failure, not successful cleanup. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
@@ -5413,13 +5413,17 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "3aaa9c2000d2cd94ab68c2cbd31919a4827780becb6da3bc010098fe589602e4"
+          "excerpt_sha256": "3aaa9c2000d2cd94ab68c2cbd31919a4827780becb6da3bc010098fe589602e4",
+          "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 28,
           "end": 28,
-          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa"
+          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
+          "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         }
       ]
     },
@@ -5449,7 +5453,9 @@
           "path": "docs/testing/publication.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf"
+          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
+          "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         }
       ]
     },
@@ -5473,7 +5479,9 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 58,
           "end": 58,
-          "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a"
+          "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a",
+          "sha256": "7e9bb5a4d736456153cb10d55397b1f4528b0e80efeb87f84d3f2e69fdd0d818",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         },
         {
           "path": ".claude/skills/verify-hab/features/restart-durability.md",
@@ -5532,13 +5540,17 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "e36621c2ac0f63b9b27c39c4c77b0f19e2382e080bb9c308dc49d87761473fda"
+          "excerpt_sha256": "e36621c2ac0f63b9b27c39c4c77b0f19e2382e080bb9c308dc49d87761473fda",
+          "sha256": "3997cbd11ab81eff7fbd2cd3442dfe4898ee5df3141f5c607fe314bf59d25106",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "1530b2cbf3fc7b80cffe4d7af66bf01bf0eef8ab87f4916dab3b85dc0d86575c"
+          "excerpt_sha256": "1530b2cbf3fc7b80cffe4d7af66bf01bf0eef8ab87f4916dab3b85dc0d86575c",
+          "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         },
         {
           "path": "test/p7/README.md",
@@ -5575,7 +5587,9 @@
           "path": "docs/testing/publication.md",
           "start": 20,
           "end": 20,
-          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc"
+          "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc",
+          "sha256": "1bb516072b71586691df80900633b6b1789d2180a29de4a820b36cc4deca9625",
+          "maintenance": "Reviewed valid late factory fulfillment before composition handoff: cancellation or native owner loss closes driver then stores with bounded steps; cleanup errors/timeouts remain failures, rejection stays factory-owned. Four new top-level cases set current expected root inventory to 1287. Invalid returned options are explicitly outside supported handoff; native/manual gates unchanged."
         }
       ]
     },

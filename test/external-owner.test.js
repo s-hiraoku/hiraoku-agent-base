@@ -362,3 +362,73 @@ test("supervised cancellation during create or verification confirms clean child
     await assert.rejects(globalThis.fetch(url));
   }
 });
+
+async function factoryPending(c) {
+  for (let attempt = 0; attempt < 300 && !existsSync(join(c.cwd, "factory-pending.json")); attempt++) await delay(10);
+  assert.equal(existsSync(join(c.cwd, "factory-pending.json")), true);
+}
+const cleanupTrace = c => readFileSync(join(c.cwd, "cleanup.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+
+test("late factory fulfillment on repeated IPC stop, owner loss or lifetime closes returned resources once", async t => {
+  for (const trigger of ["stop", "abort", "lifetime", "native"]) {
+    const c = await child(t, trigger === "native" ? "late-owner-loss" : "late-success", trigger === "lifetime" ? { lifetimeMs: 1500 } : {});
+    await factoryPending(c);
+    if (trigger === "stop") { void c.supervisor.stop(); void c.supervisor.stop(); }
+    if (trigger === "abort") c.controller.abort();
+    await c.supervisor.completion;
+    assert.deepEqual(await c.supervisor.exited, { code: 0, signal: null });
+    await assert.rejects(c.supervisor.ready, /not_ready/);
+    assert.deepEqual(cleanupTrace(c), ["driver-close-start", "driver-close-end", "stores-close-start"]);
+    assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
+    assert.equal(existsSync(join(c.cwd, "listener.json")), false);
+    assert.equal(c.supervisor.status().forced, false);
+  }
+});
+
+test("late factory cleanup errors and timeouts remain bounded unclean exits with safe close ordering", async t => {
+  for (const stage of ["driver", "store"]) for (const fault of ["failure", "timeout"]) {
+    const c = await child(t, `late-${stage}-${fault}`);
+    await factoryPending(c);
+    await assert.rejects(c.supervisor.stop(), { message: "owner_process_unclean_exit" });
+    assert.deepEqual(await c.supervisor.exited, { code: 1, signal: null });
+    await assert.rejects(c.supervisor.ready, /not_ready/);
+    assert.deepEqual(cleanupTrace(c), stage === "driver" ? ["driver-close-start"] : ["driver-close-start", "driver-close-end", "stores-close-start"]);
+    assert.equal(existsSync(join(c.cwd, "stores-closed.json")), false);
+    assert.equal(existsSync(join(c.cwd, "listener.json")), false);
+    assert.equal(c.supervisor.status().forced, false);
+  }
+});
+
+test("late factory rejection retains factory ownership and is never reported as graceful cancellation", async t => {
+  const c = await child(t, "late-reject");
+  await factoryPending(c);
+  await assert.rejects(c.supervisor.stop(), /unclean_exit/);
+  assert.deepEqual(await c.supervisor.exited, { code: 1, signal: null });
+  assert.deepEqual(cleanupTrace(c), ["factory-rejected-cleanup"]);
+});
+
+test("late factory fulfillment after IPC disconnect or termination signal closes resources before exit", async t => {
+  for (const trigger of ["disconnect", "SIGTERM", "SIGINT"]) {
+    const originalEmit = ChildProcess.prototype.emit;
+    const ownedChildren = [];
+    ChildProcess.prototype.emit = function (event, ...args) {
+      if (event === "spawn") ownedChildren.push(this);
+      return originalEmit.call(this, event, ...args);
+    };
+    let c;
+    try {
+      c = await child(t, "late-success");
+      await factoryPending(c);
+    } finally { ChildProcess.prototype.emit = originalEmit; }
+    assert.equal(ownedChildren.length, 1);
+    if (trigger === "disconnect") ownedChildren[0].disconnect();
+    else assert.equal(ownedChildren[0].kill(trigger), true);
+    if (trigger === "disconnect") await assert.rejects(c.supervisor.completion, /unclean_exit/);
+    else await c.supervisor.completion;
+    assert.deepEqual(await c.supervisor.exited, { code: 0, signal: null });
+    assert.deepEqual(cleanupTrace(c), ["driver-close-start", "driver-close-end", "stores-close-start"]);
+    assert.equal(existsSync(join(c.cwd, "stores-closed.json")), true);
+    assert.equal(existsSync(join(c.cwd, "listener.json")), false);
+    assert.equal(c.supervisor.status().forced, false);
+  }
+});

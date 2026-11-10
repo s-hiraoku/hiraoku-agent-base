@@ -23,7 +23,25 @@ try {
   };
   if (typeof factory.createOwnerOptions !== "function" || controller.signal.aborted) throw Error("owner_process_invalid");
   const options = await factory.createOwnerOptions(controller.signal);
-  if (controller.signal.aborted) throw Error("owner_process_stopping");
+  if (controller.signal.aborted || options.driver?.ownerSignal?.aborted) {
+    // The factory returned ownership, but cancellation prevents composition handoff.
+    // No create/verification work has begun. Do not close stores until driver close settles.
+    const timeout = options.shutdownTimeoutMs;
+    if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 60000) throw Error("owner_process_invalid");
+    const close = async (work: () => void | Promise<void>) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          Promise.resolve().then(work),
+          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error("owner_process_cleanup_failed")), timeout); }),
+        ]);
+      } finally { clearTimeout(timer); }
+    };
+    await close(() => options.driver.close());
+    await close(() => options.closeStores());
+    await send({ type: "stopped" });
+    process.exit(0);
+  }
   const owner = await startExternalOwner({ ...options, ownerSignal: controller.signal });
   void owner.ready.then(result => send({ type: "ready", url: result.url }), () => {});
   await owner.completion;

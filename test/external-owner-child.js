@@ -1,7 +1,7 @@
 /** Owner factory used exclusively by the synthetic process-boundary regressions. */
 import process from "node:process";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { setTimeout } from "node:timers";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -20,10 +20,25 @@ export async function createOwnerOptions(signal) {
     writeFileSync("startup-pending.json", "true", { mode: 0o600 });
     return new Promise(resolve => { settleStartup = resolve; });
   };
+  const trace = event => appendFileSync("cleanup.jsonl", JSON.stringify(event) + "\n", { mode: 0o600 });
+  const late = config.mode.startsWith("late-");
+  const nativeOwner = new AbortController();
+  if (late) {
+    writeFileSync("factory-pending.json", "true", { mode: 0o600 });
+    if (config.mode === "late-owner-loss") nativeOwner.abort();
+    else {
+      if (!signal.aborted) await new Promise(resolve => signal.addEventListener("abort", resolve, { once: true }));
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    if (config.mode === "late-reject") {
+      // A rejected factory still owns its allocation; entry never receives it.
+      stores.close(); trace("factory-rejected-cleanup"); throw Error(syntheticToken);
+    }
+  }
   return {
     bearerToken: syntheticToken, serverName: "synthetic-dedicated-owner", lifetimeMs: 10000, shutdownTimeoutMs: 200,
     driver: {
-      ownerSignal: signal,
+      ownerSignal: late ? nativeOwner.signal : signal,
       async create(launch) {
         writeFileSync("listener.json", JSON.stringify({ url: launch.mcp.url }), { mode: 0o600 });
         client = new Client({ name: "synthetic-owned-child", version: "1" });
@@ -40,8 +55,18 @@ export async function createOwnerOptions(signal) {
         if (config.mode === "hang-after") setTimeout(() => { for (;;) { /* Synthetic watchdog fault. */ } }, 50);
         return stores.binding;
       },
-      async close() { settleStartup?.(); await client?.close(); },
+      async close() {
+        if (late) trace("driver-close-start");
+        if (config.mode === "late-driver-failure") throw Error(syntheticToken);
+        if (config.mode === "late-driver-timeout") await new Promise(() => {});
+        settleStartup?.(); await client?.close();
+        if (late) trace("driver-close-end");
+      },
     },
-    closeStores() { stores.close(); writeFileSync("stores-closed.json", "true", { mode: 0o600 }); },
+    async closeStores() {
+      if (late) trace("stores-close-start");
+      if (config.mode === "late-store-failure") throw Error(syntheticToken);
+      if (config.mode === "late-store-timeout") await new Promise(() => {});
+      stores.close(); writeFileSync("stores-closed.json", "true", { mode: 0o600 }); },
   };
 }

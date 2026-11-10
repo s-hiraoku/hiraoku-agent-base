@@ -23,7 +23,9 @@ No existing recipient queue, database, profile or gateway is discovered or opene
 `superviseExternalOwner` in `src/adapter-host/owner-process.ts` starts the fixed Node bootstrap
 in a separate process, using the current absolute Node executable and an owner-approved absolute
 factory-module path and working directory. The factory exports `createOwnerOptions(signal)`.
-It supplies the driver, stores and approved capability entirely within the owner child. Do not put
+It supplies contract-valid driver/options, stores and approved capability entirely within the owner child.
+The factory must release allocations if it fails before returning options. Invalid returned options
+are outside the supported ownership handoff and carry no resource-cleanup guarantee. Do not put
 credentials in the module path, working directory, argv or factory source. This library does not
 provide a live secret-loading mechanism or approve creating or transmitting a credential.
 
@@ -75,6 +77,14 @@ completion; the supervised child reports stopped and exits zero. Only the launch
 post-settlement cancellation is exempt from startup failure. Driver creation/verification errors
 (including errors named like cancellation) and real cleanup failures still reject completion.
 Synchronous abort callbacks share one stop attempt, so reentrant owner loss does not close resources twice.
+
+If stop or native owner loss occurs while the factory is pending, successfully returned valid
+options are cleaned up before handoff: driver close must settle successfully before stores close,
+with each step bounded by the returned shutdown timeout. No listener or driver create is started.
+Successful cleanup reports stopped and exits zero; failures/timeouts report only fixed failed IPC
+and exit nonzero. This does not retry cleanup after composition handoff. A factory that never
+returns remains subject to the supervisor watchdog and its own allocation/descendant contract.
+IPC disconnect still triggers local cleanup but cannot deliver stopped evidence to the supervisor.
 
 The supervisor's independent timer starts at child spawn, including module load and factory startup.
 On stop it asks the child to close. After its finite shutdown deadline it kills only that owned child
