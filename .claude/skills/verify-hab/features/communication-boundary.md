@@ -31,7 +31,7 @@ For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_W
 
 ## Gotchas
 
-- CI also runs [P7](../../../../docs/testing/p7-lab.md). Changes to files pinned by its successor manifest require a replacement manifest generated from reviewed committed source with `scripts/pin-p7-successor.mjs`, and the full-regression expectation must include added tests. A passing root `npm test` does not exercise the dedicated P7 guard.
+- CI also runs the pinned-broker JetStream stage (`node scripts/ci-nats.mjs --stage p6`) and the full root regression suite. No source or test-count pins are maintained.
 
 - Each test closes only its own listener and stores, then removes its temporary databases. The TAP evidence remains under the separate RUN directory. Confirm that the TAP still exists after completion.
 - The durable sender, receiver and MCP client live in `src/agent-sdk`; the host side (`src/host`, MCP server in `src/host/mcp`) only stores and delivers. The generic NATS text port and its proof script were deleted, so no recipe drives them.

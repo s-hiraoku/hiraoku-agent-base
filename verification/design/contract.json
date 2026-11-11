@@ -192,7 +192,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "2ac8cc3ea38430c365c47acb17925d0ce4fa6174d15f783ba84bd46459f3347d",
+      "sha256": "d2cc9806e6d6a01654b9a782a1d8a756c400df60c52b7441cd7acb9ecea246ca",
       "role": "normative",
       "review": "reviewed",
       "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof.",
@@ -250,7 +250,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "ff3ea3f076a206f7e5eb98ce7aec247dd7ba3fbaac0cdeee6755e32aedfe0c5b",
+      "sha256": "5ec7c2ebba9808a0cdfa9c13bd6be00dc865d4f5f81a2bad5db2eb0d4cda9d6f",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
@@ -608,7 +608,7 @@
     },
     {
       "path": "docs/local-mvp.md",
-      "sha256": "c14c4fd5bcbdb6d0320293b2bb4c0dda8e34e57868568611b193c24ee69d77b1",
+      "sha256": "d330976b7b2c3ca13b0c54ee5de639bd80870ed911d2afd83f58a10ae4d0fd1c",
       "hash": "316f9286a7a0ea1951063ce4ff6062130a0bfc759531d40bb4a6c3f29966bd04",
       "role": "normative",
       "review": "reviewed",
@@ -950,14 +950,6 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
-    },
-    {
-      "path": "test/p7/README.md",
-      "sha256": "e02760ec316842857c0dbbe6e30875b109be6f488d8ffc182c1ec85854880406",
-      "role": "normative",
-      "review": "reviewed",
-      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, the 68-case producer catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
-      "read_scope": "full"
     },
     {
       "path": "verification/design/README.md",
@@ -2945,8 +2937,8 @@
         },
         {
           "path": "README.md",
-          "start": 128,
-          "end": 128,
+          "start": 124,
+          "end": 124,
           "excerpt_sha256": "191704a9f43a004d1b6fd38d44dc44d97e78362dc2ce9af298406c6dda0d3597"
         }
       ]
@@ -3653,71 +3645,6 @@
       ]
     },
     {
-      "id": "HAB-E12",
-      "title": "Optional inventory import policy agrees in TS and Python",
-      "statement": "Inventory-only launcher uses measured fixed noneditable dependencies and pinned -I -S bootstrap before third-party imports; no site/.pth/editable roots or reintroduced excluded packages. TS inspector/Python validator agree; inconclusive EPERM stays fail-closed.",
-      "rationale": "Pre-wrapper executable imports could escape fixed tool bounds; mode bits or mock assertions are insufficient.",
-      "scope": "Existing optional one-shot inventory executor only; not a universal messaging or normal agent-tools restriction.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "python-bridge"
-      ],
-      "citations": [
-        {
-          "path": "docs/hermes-import-boundary.md",
-          "start": 7,
-          "end": 12,
-          "excerpt_sha256": "f8e926ccb4bfbc56d858cdc0380745bd4ee6d04e15e1a2c188ffa16a5fdaf639"
-        },
-        {
-          "path": "docs/hermes-import-boundary.md",
-          "start": 16,
-          "end": 43,
-          "excerpt_sha256": "c555195ab22f53afaf5ed905f9d52bcd69641bff5ccac4b6caaf0fcacc14b6f9"
-        },
-        {
-          "path": "docs/hermes-import-boundary.md",
-          "start": 53,
-          "end": 67,
-          "excerpt_sha256": "e274ade613c0613eff2d174730575215bbdc78c745831d163ab5028d78916062"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E13",
-      "title": "Ephemeral key revocation needs confirmed owned stop",
-      "statement": "Optional one-shot key stays private runtime-only, persists fingerprint/lifecycle metadata and never token. Confirm child and adapter stop before revoked; otherwise stop_failed with retained receipt/artifact. Parent/helper normal exit is not task success or proof all remote work stopped.",
-      "rationale": "Bearer has no intrinsic TTL and strings cannot be reliably zeroized; only owned boundary shutdown can support local revocation.",
-      "scope": "Optional LocalHermesKey/inventory factory/manual handoff; not standard-MCP credential requirement.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "python-token-input",
-        "production-operations"
-      ],
-      "citations": [
-        {
-          "path": "docs/local-hermes-key.md",
-          "start": 9,
-          "end": 17,
-          "excerpt_sha256": "c2544a42f2efc581fedf943351ef3243b86368ddd7857daa560dabf3e0d64ce1"
-        },
-        {
-          "path": "docs/inventory-one-shot.md",
-          "start": 23,
-          "end": 44,
-          "excerpt_sha256": "cf8f14491a74318cdd8293774faec0f2ecf37338e76ce61585e4b6665fc083b6"
-        },
-        {
-          "path": "docs/inventory-token-input.md",
-          "start": 23,
-          "end": 36,
-          "excerpt_sha256": "7c07b96342d2a7c739f71ebde5198549b99f6ecee30f81b90c84aed7b4f3b0f6"
-        }
-      ]
-    },
-    {
       "id": "HAB-E14",
       "title": "Live trial cost and quota require evidence",
       "statement": "For optional live diagnostics/inventory with agreed zero-additional-cost ceiling, unknown included allowance/provider billing or quota stops work. No paid fallback, silent credit use, tick token minting or auto retry. Account-wide token attempts reserve durable shared counters and unknown attempts park until reviewed reconciliation.",
@@ -3814,9 +3741,9 @@
       "citations": [
         {
           "path": "docs/local-mvp.md",
-          "start": 76,
-          "end": 80,
-          "excerpt_sha256": "cf9d87e414f5bf76d6d7c35733282c9864dbe3e309579bdd204526026f816935"
+          "start": 72,
+          "end": 76,
+          "excerpt_sha256": "76ec86eead6e7402d4a3e8c69097afd3aebf19c9b6ed05f3d42dbf8a3f41e015"
         },
         {
           "path": "docs/finite-mcp-trial.md",
@@ -3829,26 +3756,6 @@
           "start": 53,
           "end": 64,
           "excerpt_sha256": "44f8760498ee74432970c9aa7e37f18f52bee62ea4595f864f29354c075abc64"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E18",
-      "title": "Fixed metadata cannot prove product identity",
-      "statement": "Fixed lstat inventory reports candidate metadata as unknown and never claims exact installed product or whole-machine absence; no listing, shell, network or broad filesystem fallback.",
-      "rationale": "Names/missing fixed paths are insufficient identity/exhaustiveness evidence.",
-      "scope": "Optional shift_log_inventory collector only; not standard messaging.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "python-bridge"
-      ],
-      "citations": [
-        {
-          "path": "docs/mvp-inventory.md",
-          "start": 18,
-          "end": 42,
-          "excerpt_sha256": "21f5c1b71508df0b1c0a480448b329fd2f9607c5233001b05b6850bd569e83f9"
         }
       ]
     },
@@ -4056,32 +3963,6 @@
       ]
     },
     {
-      "id": "HAB-V06",
-      "title": "Generate reviewed successor pins from committed blobs",
-      "statement": "Preserve the historical P7 pin, commit feature source, generate a separate successor from explicit committed Git blobs, review the manifest/archive/digest and rerun verification before committing pin updates.",
-      "rationale": "Updating expected hashes from mutable source defeats provenance checking; root tests alone do not cover dedicated P7 guards.",
-      "scope": "P7 source profile, including the current broker-startup catalog. The generic-nats group was removed with the generic-nats code.",
-      "decision": "accepted",
-      "checks": [
-        "js-cli-guards",
-        "current-hosted-p7"
-      ],
-      "citations": [
-        {
-          "path": "test/p7/README.md",
-          "start": 3,
-          "end": 16,
-          "excerpt_sha256": "648d65f0b56734edeb27959107c1f5cfba0bb907826b2c3a66e117c5fecbe9b1"
-        },
-        {
-          "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 34,
-          "end": 34,
-          "excerpt_sha256": "052c00c877d07e3a61e3feb6ad246bf68b6d5f3e50f61a6ff60abd3995ed6d23"
-        }
-      ]
-    },
-    {
       "id": "HAB-V07",
       "title": "Incomplete required groups fail acceptance",
       "statement": "Required acceptance must fail on missing, duplicated, empty, contradictory, failing, skipped, cancelled or timed-out results; timeout remains failure even after exit zero.",
@@ -4169,7 +4050,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 28,
           "end": 39,
-          "excerpt_sha256": "a4db5f1f03fe7cc96a15c5f0fd0528f533a03f10e6a33676762ac6e6c2c04ae3"
+          "excerpt_sha256": "d69c73623607b33f875a3b7f24c140139d13cdd02c43d84f24ebab251e34a509"
         }
       ]
     },
@@ -4411,52 +4292,13 @@
         "--test",
         "--test-reporter=tap",
         "--test-timeout=30000",
-        "test/ci-nats/arguments.test.js",
-        "test/p7/runner.test.js"
+        "test/ci-nats/arguments.test.js"
       ],
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "node-tap",
-      "proves": "Native runner/CLI refusal scenarios: unsafe inputs, missing history, result shape, timeout and owned-child termination are checked.",
-      "limitations": "Guard scenarios only; real P7 broker execution remains separately required in the existing CI workflow."
-    },
-    {
-      "id": "python-bridge",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "python3",
-        "-B",
-        "-m",
-        "unittest",
-        "discover",
-        "-s",
-        "hermes_bridge",
-        "-p",
-        "test_*.py"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "python-unittest",
-      "proves": "Existing optional Python bridge/import/inventory boundary unit tests, separate from TS/JS and protocol checks.",
-      "limitations": "Synthetic bridge dependencies. Does not run Hermes AIAgent, native APIs, live keys or establish any cross-language universal guarantee."
-    },
-    {
-      "id": "python-token-input",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "python3",
-        "-B",
-        "-m",
-        "unittest",
-        "scripts.test_inventory_token_input"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "python-unittest",
-      "proves": "Existing finite Python stdin/token-input helper tests with synthetic secrets and owned fixture child.",
-      "limitations": "Optional helper only; no real token issuance, billing, native model or remote stop proof."
+      "proves": "Native CI runner/CLI refusal scenarios: unsafe inputs, result shape, timeout and owned-child termination are checked.",
+      "limitations": "Guard scenarios only; real broker execution remains separately required in the existing CI workflow."
     },
     {
       "id": "ast-boundary",
@@ -4556,9 +4398,9 @@
       "id": "current-hosted-p7",
       "kind": "manual",
       "tier": "manual",
-      "proves": "This exact candidate has final successful required GitHub Actions including complete current P7 broker groups and cleanup.",
+      "proves": "This exact candidate has final successful required GitHub Actions, including the pinned-broker JetStream stage and the full regression suite.",
       "limitations": "Not executed or automatically satisfied by this harness. Requires scoped external evidence and review; remains unverified.",
-      "instructions": "Read the exact PR head/merge ref Actions result and retained P7 report, official binary identity, source match before/after, all required catalogs, nonempty consistent zero-skip TAP, owned process closure and scratch cleanup. Use current manifest/catalog counts, not old prose totals. Record actual URL/head and status; local output and old reports cannot satisfy current hosted CI. Deployment adoption remains blocked by separate gates."
+      "instructions": "Read the exact PR head/merge ref Actions result: the ci-nats p6 stage against the pinned official binary and the full node --test regression suite must both pass. Record actual URL/head and status; local output and old reports are not evidence for the current head."
     },
     {
       "id": "proposal-review",
@@ -5375,7 +5217,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5404,7 +5245,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5439,7 +5279,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5474,7 +5313,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5509,7 +5347,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5532,7 +5369,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5558,7 +5394,6 @@
       "question": "Early lab records unimplemented A2A/NATS skips, later P7 requires zero skips. Which is current?",
       "id": "HAB-C-V01",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5590,7 +5425,6 @@
       "question": "Older reports say workflow inactive/publication held, current publication guide says active CI.",
       "id": "HAB-C-V02",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5621,7 +5455,6 @@
       "question": "F05 documentation describes actual SIGKILL while restart recipe says no kill-9 verification.",
       "id": "HAB-C-V03",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5652,7 +5485,6 @@
       "question": "Does raw relay_poll plus relay_ack establish durable receiving?",
       "id": "HAB-C-V04",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5682,7 +5514,6 @@
       "question": "P7 guides still name the original 1498 full-root cases and old group set, but the current successor adds the broker-startup group and implementation adds tests. Which numeric counts apply to this exact candidate?",
       "id": "HAB-C-V05",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5720,7 +5551,6 @@
       "question": "Can native A2A acceptance or the shared JetStream D01 stand in for arbitrary six-direction backend behavior?",
       "id": "HAB-C-V06",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5751,7 +5581,6 @@
       "question": "Do diagram manifests and their rendering implementation create additional product topology requirements?",
       "id": "HAB-C-V07",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",

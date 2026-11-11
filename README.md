@@ -2,7 +2,7 @@
 
 HABは、Dots（スタローン）、Grok Bot、Hermes、Claude Code・Codex・Cursorなどのエージェント同士がメッセージをやり取りするための基盤です。メールのように各エージェントへ`<bot_name>@<agent_name>.hab`形式のアドレスを結びつけ、そのアドレスで送受信するセッションを特定します（`agent_name`は製品・実行環境の名前です）。新しいエージェントも、標準のMCPクライアントかA2Aクライアントから接続できることを目指します。受信側のhostがモデルを使わず定期poll・永続保存・ACKを行い、受信エージェントが内容を判断して既存の権限・承認機構で処理します。配送の許可と、開発・業務を実行する権限は別に管理します。
 
-標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。A2A入口は明示的に有効化する入口（既定は無効）で、既存の固定Task・汎用テキストTaskは任意機能です。Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を、ADR-016に現在の構成（単一host、NATS JetStreamだけの配送、エージェントSDK）を記録します。
+標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。A2A入口は明示的に有効化する入口（既定は無効）です。旧Task Hub（固定Task・汎用テキストTask）は2026-11-12に削除しました。Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を、ADR-016に現在の構成（単一host、NATS JetStreamだけの配送、エージェントSDK）を記録します。
 
 GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品仕様](docs/hab-product-spec.md)では、登録・宛先選択・状態表示・privateなPC/モバイル利用を定義します。配送のNATS JetStreamと、エージェント間相互運用の入口としてのA2Aは採用済みです。確定要件と実装・本番配備の状況は区別しています。
 
@@ -30,7 +30,7 @@ store-and-forward、個体認証、受信ACK、期限などの要件は[メッ�
 
 ## ローカルMVPを確認する
 
-Node 26以上で、次の有限コマンドから[15段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DB、一時ディレクトリ内の専用loopback nats-server、模擬3個体のloopback通信だけを使い、終了時に停止・削除します。固定版のnats-server 2.15.2が必要です。`HAB_NATS_SERVER`で指定するか、次のinstall手順で用意します。見つからない場合は`nats_server_required`とinstall手順を表示して終了します。
+Node 26以上で、次の有限コマンドから[13段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DB、一時ディレクトリ内の専用loopback nats-server、模擬3個体のloopback通信だけを使い、終了時に停止・削除します。固定版のnats-server 2.15.2が必要です。`HAB_NATS_SERVER`で指定するか、次のinstall手順で用意します。見つからない場合は`nats_server_required`とinstall手順を表示して終了します。
 
 ```sh
 npm ci
@@ -39,7 +39,7 @@ mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs 
 npm run demo:hab-mvp -- --simulate
 ```
 
-登録・送受信・返信・停止・応答消失・全DB再起動・固定Taskの結果配送まで確認し、配送6通のACK・Task1件・残存実行0件をJSONで返します。実個体の接続、全hostの整合backup／restore、G1全体・本番の受入れは別ゲートです。
+登録・送受信・返信・停止・応答消失・全DB再起動・execution_requestが保存だけされ実行されないことまで確認し、配送4通のACKをJSONで返します。実個体の接続、全hostの整合backup／restore、G1全体・本番の受入れは別ゲートです。
 
 ## 全体図
 
@@ -101,22 +101,18 @@ flowchart LR
 
 | 項目                                                                                       | 状態・根拠                                                                                                                       |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| 永続タスクキュー、HTTP MCP、lease/fencing、監査・outbox、停止・照合                        | **実装済み**。SQLiteとローカルD1で失敗系を検証                                                                                   |
-| 固定テキストの`connectivity_check`、固定候補metadataの`shift_log_inventory`、診断ping/pong | **実装済み**。信頼済みpolicyで個別に許可する限定契約。自由入力・任意shellなし                                                    |
-| JWT/Auth0 resource-server、OAuth discovery、Events、限定キー管理、Hermes隔離bridge         | **実装済み**。通常runtimeと専用inventory入口の認証配線をfixtureで検証。本番の主体・設定・実接続は未確認                          |
 | message契約（`src/messaging`）・JetStream受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はNATS JetStreamのみ（SQLite配送storeは廃止、旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
 | エージェントSDKの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
-| hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run relay:local`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`relay_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限。既存Task用server（`src/server.ts`）とは別entrypoint |
+| hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run relay:local`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`relay_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | A2A入口 | **実装済み／模擬検証済み・既定は無効**。設定の`a2a` sectionでloopback listenerを開き、host所有のアドレスから設定済みの受信者へTaskを送る。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）。本番配備は未実施 |
 | エージェントSDKのMCPクライアント | **実装済み／模擬検証済み**。`src/agent-sdk`に置く。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
-| HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、再利用禁止、権限分離、有効化・失効・blockを実装（改名は明示opt-inのRegistry v3）。`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復。既存Task runtimeへは未配線 |
+| HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、再利用禁止、権限分離、有効化・失効・blockを実装（改名は明示opt-inのRegistry v3）。`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
 | 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
-| Hermesの今回のinventory接続                                                                | **準備済み／実接続未確認**。専用profile・code・dependency bundleと本人Terminalの測定報告あり。実キー/API/model起動・往復は未実施 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-現在のフルroot JavaScriptテストの期待件数（2026-11-12時点で1473件）は`scripts/p7-lab.mjs`と[公開とCIの範囲](docs/testing/publication.md)で管理し、CIではlint・typecheck・Python・Ruffも確認します。これは本番接続の受入れではありません。エージェント側の実装範囲は[エージェントSDK](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+CIはlint・typecheck・固定版nats-serverでのJetStream検査（`scripts/ci-nats.mjs --stage p6`）・root JavaScriptテスト全件を実行します。件数の固定は持ちません。これは本番接続の受入れではありません。エージェント側の実装範囲は[エージェントSDK](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)を参照してください。
 
 ## 残りタスク
 
@@ -127,15 +123,15 @@ flowchart LR
 | 1・進行中 | 登録・アドレス解決・認証binding | 核・MCP lookup・人向け管理フローは実装済み。本番管理認証・接続選択の配線と実個体のbinding実証が残る |
 | 2・廃止 | 管理添付 | 添付bytesの保存・転送・削除は廃止。契約は添付partを拒否し、旧DBの添付tableは移行時に削除 |
 | 3・進行中 | 個体別の容量・公平性 | messageの個体別上限・最低予約枠、送信者巡回・永続scan位置、任意の1プロセス内rate・公平writer受付を模擬検証済み。本番policy・監視・実負荷と複数writer全体の評価が残る |
-| 4・保留 | Task bridge | ADR-016で今回の構成変更の対象外として保留。明示引受け・永続link・固定Taskの同key受付／照合と、accepted／resultの永続返信・送信outbox連携を模擬検証済み。受信側の永続返信budgetも任意構成で模擬検証済み。有限hostの明示操作・停止／照合、質問返信の永続intent・起動時一覧も模擬検証済み。実製品の全入口への適用と本番配線が残る |
+| 4・廃止 | Task bridge | 2026-11-12の簡素化で旧Task Hub（固定Task・inventory・ping・Worker/D1）と受信側のTask連携を削除。受信側の返信budget・質問返信intent・有限hostの明示操作は維持 |
 | 5・進行中 | 運用・復旧 | クリーンsetup、既存runtimeへの明示配線、listener／proxy／header上限、明示migration、保守cycleは実装済み。実runtimeの静止・復元後の昇格、停止・照合・復旧手順 |
 | 6・進行中 | 統合試験 | 人向け登録→HTTP配送→不在・失効・競合・停止・復旧の17シナリオは確認済み。実Adapterのloop制御、運用restore等は機能追加とともに拡張 |
 | 7・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
 | 8・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-**ローカルMVPは[一つの有限コマンド](docs/local-mvp.md)で再現可能です。** 15段階で登録・実HTTP MCP・送受信・返信intentとACKの再開・running Taskのgate維持・停止を確認しました。次は実個体のG0能力・接続条件の確定と、全hostの整合backup／restore・本番運用の受入れです。[単一owner管理](docs/adapter-owner.md)を任意構成として追加し、13件で二重起動、通信中の解放拒否、native process終了後の再取得を検証しました。[質問返信の永続intent](docs/answer-intents.md)を独立部品として追加し、44シナリオでoutbox前の保存、再起動後の一覧・同ID引渡し、応答消失、本文解放、期限・30日GC、権限・並列producerを検証しました。[有限Adapter host](docs/adapter-host.md)で受信・明示回答／Task引受け・返信・送信を組み立て、30シナリオで永続停止・世代・遅い応答・timeout後のslot保持・同ID照合・native HTTP MCPを検証しました。[受信側の永続返信budgetとloop制御](docs/adapter-reply-budget.md)を独立部品として実装し、36シナリオで原要求・thread・個体rate、再起動・不明な送信・通知ループ拒否・Task返信との共通枠を検証しました。[明示引受けとTask link](docs/task-bridge.md)を実装し、30シナリオでACKとの分離・固定Task・応答消失・再起動・fencingを検証しました。受付／結果の返信outboxも実装し、32シナリオで固定ID・期限・不明な引渡しの再照合・権限失効・模擬配送／ACKを検証しました。[公平writer受付とHTTP配線](docs/writer-admission.md)を任意構成として実装し、core20シナリオ・MCP26シナリオで個体別rate・巡回・失効・timeout後のslot保持を検証しました。[公平pollと永続scan位置](docs/relay-fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)を模擬検証済みです。整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+**ローカルMVPは[一つの有限コマンド](docs/local-mvp.md)で再現可能です。** 13段階で登録・実HTTP MCP・送受信・返信intentとACKの再開・execution_requestの非実行・停止を確認しました。次は実個体のG0能力・接続条件の確定と、全hostの整合backup／restore・本番運用の受入れです。[単一owner管理](docs/adapter-owner.md)を任意構成として追加し、13件で二重起動、通信中の解放拒否、native process終了後の再取得を検証しました。[質問返信の永続intent](docs/answer-intents.md)を独立部品として追加し、44シナリオでoutbox前の保存、再起動後の一覧・同ID引渡し、応答消失、本文解放、期限・30日GC、権限・並列producerを検証しました。[有限Adapter host](docs/adapter-host.md)で受信・明示回答・返信・送信を組み立て、永続停止・世代・遅い応答・timeout後のslot保持・同ID照合・native HTTP MCPを検証しました。[受信側の永続返信budgetとloop制御](docs/adapter-reply-budget.md)を独立部品として実装し、36シナリオで原要求・thread・個体rate、再起動・不明な送信・通知ループ拒否を検証しました。[公平writer受付とHTTP配線](docs/writer-admission.md)を任意構成として実装し、core20シナリオ・MCP26シナリオで個体別rate・巡回・失効・timeout後のslot保持を検証しました。[公平pollと永続scan位置](docs/relay-fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[登録・復旧17シナリオ](docs/hab-relay-integration.md)を模擬検証済みです。整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
-汎用の非同期依頼、送信後の会話継続、受信側所有者の承認、結果相関と障害復旧は[追加設計](docs/generic-agent-async-design.md)にまとめています。固定Taskの現行実装と将来案を区別しています。
+汎用の非同期依頼、送信後の会話継続、受信側所有者の承認、結果相関と障害復旧は[追加設計](docs/generic-agent-async-design.md)にまとめています。
 
 ## ドキュメント一覧
 
@@ -153,34 +149,24 @@ flowchart LR
 
 Node 26以上で実行します。fixtureは実エージェントや本番callbackへ接続しません。
 
-試験は非rootユーザーで実行してください。rootは書込み拒否をすり抜けるため、コード改ざん検査やpilot／inventory inspectorの権限系試験は検証できず、root実行時は理由付きでskipされます（Dockerなどのroot CIでは非rootユーザーに切り替えます）。
+試験は非rootユーザーで実行してください。rootは書込み拒否をすり抜けるため、権限系の試験はroot実行時に理由付きでskipされます（Dockerなどのroot CIでは非rootユーザーに切り替えます）。
 
 ```sh
 npm ci
 npm run lint
 npm run typecheck
 npm test
-python3 -B -m unittest discover -s hermes_bridge -p 'test_*.py'
-python3 -B -m unittest scripts.test_inventory_token_input
 ```
 
-`node src/server.ts` はloopback HTTP MCPを起動しますが、既定の認証は全件拒否です。Auth0・peer registry・必要なserviceを明示的に配線するまで本番Hubとして公開しません。`npm run build` はWorker版を生成します。D1/Workerは移植性の検証対象で、既存Task Hubの現在の本番方針はMac＋SQLiteです。メッセージ配送はNATS JetStreamだけを使います。
-
-上記のserverは既存Task用です。配送host（`src/host`、MCP serverは`src/host/mcp`）は別のentrypointで、このserverへは未配線です。エージェントSDKと配送の模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
+エージェントSDKと配送の模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
 
 人向け登録フローは`npm run demo:hab-enrollment -- --simulate`で、中断→DB再起動→有効化を再現できます。対話操作は`--interactive`を指定します。どちらも新規の一時DB・模擬主体のみを使い、終了時に削除します。実Botを登録するコマンドではありません。実hostへの組込み条件と再開時の扱いは[登録フロー](src/hab/README.md#human-enrollment-workflow)を参照してください。
 
 登録からHTTP配送・停止・復旧までの一連の模擬検証は`npm run test:hab-integration`で再現できます。[試験matrix](docs/hab-relay-integration.md)には、17件の結果と障害注入の方法、本番接続に進む前の未確認範囲を記録しています。
 
-配送置換の[現行の隔離テスト](docs/testing/p7-lab.md)は `npm run test:p7 -- --nats-server /absolute/path/to/official/nats-server --full` で実行します。A2Aから実JetStream配送、明示引受け後のTaskと結果、バックアップ復元、改名と再起動、broker障害復旧を合成主体で検証します。[公開とCIの範囲](docs/testing/publication.md)に、固定依存の準備と残る移設ゲートを記載しています。
-
-通常runtimeはinventoryを拒否します。固定1件の専用入口と、認証→子プロセス→結果→停止のモデルなし統合テストは[専用inventory往復](docs/inventory-end-to-end.md)を参照してください。実キー発行・Hermes/model起動の承認や本番往復を済ませたという意味ではありません。
+固定版nats-serverを使うJetStream検査は `node scripts/ci-nats.mjs --stage p6 --nats-server /absolute/path/to/official/nats-server` で実行します。
 
 ## 技術文書
-
-[Hub内部設計](docs/architecture.md)、[認証・Events・worker](docs/local-integration.md)、[Auth0境界](docs/auth0-boundary.md)、[ping/pong](docs/ping-pong-mvp.md)、[inventory MVP](docs/mvp-inventory.md)、[Hermes接続](docs/hermes-connection.md)、[固定pilot履歴](docs/fixed-pilot.md)、[import隔離](docs/hermes-import-boundary.md)、[一時キー](docs/local-hermes-key.md)、[永続停止](docs/durable-stop-gate.md)、[移植とEvents](docs/migration-plan.md)、[Auth0アカウント手順](docs/auth0-account-step.md)を参照してください。実運用の手順・値は承認後に非公開で管理します。
-
-固定1件の次段階は、[positive getとworker主体確認](docs/fixed-readback-worker-identity.md)を参照してください。fixtureの成功結果はHermesの実行成功とは区別します。
 
 hostの起動関数と接続の承認条件は[ローカルhost](docs/local-relay-host.md)を参照してください。loopback・全拒否設定での常駐起動と401/403拒否を確認済みです。実個体の認証・binding、Hermes/Dotsとの往復は未検証です。停止・再起動は[ユーザーLaunchAgent手順](docs/local-relay-launchagent.md)にまとめています。
 
@@ -192,7 +178,5 @@ A2A入口は既定で無効です。サービス設定に[`a2a` section](config/
 
 自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
 任意の[エージェント照会契約](docs/mcp-agent-discovery.md)を明示的に有効化します。
-
-The historical [exact-f19 native A2A lab](docs/testing/a2a-native-acceptance.md) retains its original source guard. Use the composite P7 runner for the current A2A/JetStream tree; the historical runner intentionally rejects these newer component bytes.
 
 同じ個体IDを保持するアドレスの改名は採用済みで、[明示opt-inのRegistry v3](docs/agent-address-rename.md)として提供します。旧名は同じIDに永久予約し、猶予期間（既定30日）だけ同じIDへ解決します（転送aliasではありません）。猶予期間の解決は実装中で、本番には未適用です。
