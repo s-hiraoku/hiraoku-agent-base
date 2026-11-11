@@ -54,7 +54,7 @@ if (options.full)
       .filter((p) => p.endsWith(".test.js"))
       .sort()
       .map((p) => `test/${p}`),
-    count: 1424,
+    count: 1441,
   });
 const abort = new AbortController();
 const interrupt = () => abort.abort();
