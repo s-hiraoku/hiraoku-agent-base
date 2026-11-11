@@ -43,7 +43,7 @@ try {
     process.exit(0);
   }
   const owner = await startExternalOwner({ ...options, ownerSignal: controller.signal });
-  void owner.ready.then(result => send({ type: "ready", url: result.url }), () => {});
+  void owner.ready.then(result => send({ type: "ready", url: result.url, phase: result.phase }), () => {});
   await owner.completion;
   await send({ type: "stopped" });
   // A factory may leave handles behind. Confirm termination instead of waiting indefinitely.

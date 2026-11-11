@@ -6,7 +6,9 @@ import { RecipientMessages } from "../src/recipient-messages/messages.ts";
 
 // Synthetic native input/policy store. This is not a product model or approval API.
 export async function fixture(t) {
-  const f = await hostFixture(t),
+  // These are policy/handoff tests, not short-lease expiry tests. The sending
+  // lease must outlive the bounded RPC budget, including a loaded CI runner.
+  const f = await hostFixture(t, {}, { outboxLeaseMs: 5000 }),
     path = join(f.dir, "synthetic-recipient.sqlite"),
     context = Symbol("recipient-caller"),
     owner = Symbol("recipient-owner"),
@@ -27,6 +29,7 @@ export async function fixture(t) {
       lost: false,
       afterInspect: null,
     };
+  f.state.timeout_ms = 2000;
   let db = new DatabaseSync(path);
   db.exec(
     "CREATE TABLE inputs(key TEXT PRIMARY KEY,hash TEXT NOT NULL,input TEXT NOT NULL,phase TEXT NOT NULL,reply TEXT,allowed INTEGER NOT NULL DEFAULT 0)",
