@@ -18,7 +18,12 @@ async def main():
     expiry = os.environ["HAB_SYNTHETIC_EXPIRY"]
     mode = policy.pop("mode")
     policy["message_ids"] = frozenset(policy["message_ids"])
-    scope = NativeStatusScope(**policy) if mode == "status" else NativeOutboundScope(**policy)
+    if mode == "status":
+        scope = NativeStatusScope(**policy)
+    elif mode == "outbound":
+        scope = NativeOutboundScope(**policy)
+    else:
+        raise ValueError("fixture_scope_mode_invalid")
     fixture = RuntimeFixture()
     fixture.catalog.append("hab_discover")
     config = {"url":"https://relay.example/mcp", "auth":"oauth", "tools":{"include":sorted(TOOLS | {"hab_discover"})}}

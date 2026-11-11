@@ -62,9 +62,7 @@ const fixture = () => {
   return {m,t,controller,save,entry};
 };
 try {
-  // Shipped manifest fails on absent selected deployment, before any native action.
-  assert.throws(()=>prepareNativeDeployment({manifestPath:realpathSync('reference-deployment.json'),
-    manifestSha256:hash('reference-deployment.json'),trusted:{}}),{message:'native_deployment_rejected'}); cases++;
+  // The shipped reference-deployment.json case is omitted: deployment manifests are excluded from this archive.
   for (const mutate of [f=>{f.t.scope.domain_id='other';}, f=>{f.controller.abort();},
     f=>{f.t.binding.actorId='wrong';}, f=>{f.t.binding.source.message_id='wrong';},
     f=>{f.t.binding.verifiedOperatorContext=f.t.binding.verifiedRecipientContext;},

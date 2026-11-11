@@ -285,6 +285,32 @@ class ReceivePeerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(h.native.closed)
         self.assertEqual(h.native.calls, [])
 
+    async def test_unsettled_native_close_still_cancels_pending_reader(self):
+        h = self.harness()
+
+        async def unsettled():
+            h.native.closed = True
+            raise RuntimeError("native_cleanup_unsettled")
+
+        h.native.aclose = unsettled
+
+        def broken(raw):
+            raise OSError("output_closed")
+
+        h.output.write = broken
+        h.source.send(call())
+        with self.assertRaisesRegex(RuntimeError, "native_cleanup_unsettled"):
+            await asyncio.wait_for(asyncio.shield(h.task), 1)
+        self.assertTrue(h.native.closed)
+        h.task = asyncio.sleep(0)
+        readers = [
+            task
+            for task in asyncio.all_tasks()
+            if task is not asyncio.current_task()
+            and getattr(task.get_coro(), "__qualname__", "") == "ReceivePeer._read"
+        ]
+        self.assertEqual(readers, [])
+
     async def test_overlapping_call_fails_closed_without_dispatch(self):
         h = self.harness()
         h.source.send(call())
