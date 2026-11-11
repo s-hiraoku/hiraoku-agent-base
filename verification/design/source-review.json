@@ -1169,13 +1169,13 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Expected full-root assertion updated1190 to1207 for17 new cases, then to1208 for the contract-limit reply-release case; acceptance checks and environment handling unchanged. This is an expected count, not an execution claim. Current expected root inventory is 1229; counts are not execution evidence.",
         "limit": "Source inspection only; not an execution-result claim.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       },
       {
         "path": "test/a2a-hab-unit.test.js",
@@ -1358,12 +1358,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ]
   },
@@ -1432,12 +1432,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
@@ -1550,11 +1550,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       },
       {
         "path": "docs/testing/p7-lab.md",
@@ -1634,12 +1634,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
         "summary": "Only expected full-root count 1244 to 1245; all source and acceptance gates unchanged.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ]
   },
@@ -1661,12 +1661,12 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
         "summary": "Only expected full-root count 1245 to 1246; all source and acceptance gates unchanged.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ]
   },
@@ -1697,11 +1697,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only expected full-regression inventory changes 1246 to 1251 for the five added cases; no validation or provenance requirement weakened.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ]
   },
@@ -1746,11 +1746,11 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Only current expected full-root count is raised to1253 for seven added cases, with existing assertions/provenance retained.",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ]
   },
@@ -2023,9 +2023,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "review": "reviewed",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ]
   },
@@ -2070,9 +2070,9 @@
     "supplemental": [
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "review": "reviewed",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       },
       {
         "path": "src/adapter-host/external-owner.ts",
@@ -2119,9 +2119,9 @@
       },
       {
         "path": "scripts/p7-lab.mjs",
-        "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127",
+        "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3",
         "review": "reviewed",
-        "maintenance": "PR161 CI correction (2026-11-10): both hosted push and pull_request full-regression groups passed exactly 1346 with confirmed owned cleanup, but the runner still required 1338. The fixed count is 1346 for the eight already reviewed owner activation cases. The strict exact-count, zero-failure/skip/cancel/TODO and group-cleanup gate is unchanged. Older counts remain historical; new exact-head hosted acceptance is separate."
+        "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate."
       }
     ],
     "external_schema_review": {
@@ -2183,6 +2183,53 @@
       {
         "path": "src/adapter-host/owner-process.ts",
         "sha256": "d873b6089c9a1e7a4c6b8d510ce2b19565c844e95dcb81348ae8c788fa5a279c",
+        "review": "reviewed"
+      }
+    ]
+  },
+  {
+    "scope": "Optional durable source-bound native launch claim",
+    "baseline": "c3180530799c83195992bab0fe9a9e23cd58d478",
+    "summary": "Optional owner-local immutable native launch claim before any native create/prompt. Reuses actual SQLiteInbox exact-source receipt-confirmed question proof and existing RecipientAuthorization plus current held-host guard; no owner attach/acquire or native dispatch. Dedicated HMAC-bound SQLite stores only metadata/fingerprints. Duplicate/reopen/lost response returns original claim and never automatic relaunch; count/integrity/capacity/private-file checks fail closed. It is not a Task DB, native admission receipt, answer result, approval or delivery proof. Existing native/manual gates stay unverified; actual receiver handoff and immutable-budget migration remain separate. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order. Outer inbox commit/response failure after the independent claim commit retains the original claim and forbids a second launch.",
+    "supplemental": [
+      {
+        "path": "src/owner-integrations/source-launch-journal.ts",
+        "sha256": "0fe30b9c3b01a06a3921012115368b9c005ed4cc14c1758f07f5ad973da5cc3a",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch.test.js",
+        "sha256": "35e00263bc07db8f2470ce6b474bfb1da7125b8e307c77fccb5cff9498aa710e",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch-fixture.js",
+        "sha256": "33baea6cd347ea640ff3608e4beb79be146b252683399bf24ff0e230296809bc",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch-child.js",
+        "sha256": "97fa98b0c5d67fd7b9d8558142c275f9f2424247d765da9679f6ddeede230c3d",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/source-launch-worker.js",
+        "sha256": "b77f85cd70ddc0f14e3e19465abbd151105b69788e7594e497f7447485054aed",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/recipient-messages/contract.ts",
+        "sha256": "7750d2d6889c265926faaec07214f9a09384a5c381c64264e37716f672112905",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/agent-sdk/sqlite-inbox.ts",
+        "sha256": "55c681b1123ca036651d465f9d072a4d583a1101581f258f56ca961dac7367a0",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/adapter-host/sqlite-owner.ts",
+        "sha256": "5d134a7ec3a5d0d41a5e9ad669e4adb389f4aebc87c1cbd8d5e5489f7929a416",
         "review": "reviewed"
       }
     ]

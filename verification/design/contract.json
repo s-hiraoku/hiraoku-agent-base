@@ -960,21 +960,21 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "6abb76ec156c2772a39a54629dab8923ee2e523dfc20bd43d31381340780fab0",
+      "sha256": "5046a0343b32f4d0559835c98158c2279226cb96c5a33bc2694d41bc45f5cd18",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "PR161 CI follow-up: reviewed the strict full-root catalog correction and isolated recipient fixture lease/RPC budgets; production rules, accepted requirements and manual gates are unchanged."
+      "maintenance": "Reviewed the PR163 stacked catalog correction to 1371, inherited PR161 bounded recipient fixture, and unchanged immutable source-launch journal. Accepted requirements and manual gates remain unchanged."
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "2cd0da87a9f784f4cf871d65e85a2d5dc64c6849524f575bc1148c1fcc21796c",
+      "sha256": "220e1d2a91365478a5e64b47514959fcf06223eb8fd7b0b61e40f5442a81b111",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "PR161 CI follow-up: reviewed the strict full-root catalog correction and isolated recipient fixture lease/RPC budgets; production rules, accepted requirements and manual gates are unchanged."
+      "maintenance": "Reviewed the PR163 stacked catalog correction to 1371, inherited PR161 bounded recipient fixture, and unchanged immutable source-launch journal. Accepted requirements and manual gates remain unchanged."
     },
     {
       "path": "verification/design/design-principles.md",
@@ -986,12 +986,12 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "65a66bdbaf70fd30bb90dc39e46b4d809432ccf292c5ec0c3f48403924d6984a",
+      "sha256": "f5ed6e7dcc6e62d606c9f524bddfe800119617513f335c7320a1c819192125c7",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "Reviewed trusted local onBound seam, HAB-C-F09 scope resolution and unchanged accepted/native gates; expected owner31/root1346 inventory, execution evidence is separate."
+      "maintenance": "Reviewed optional immutable launch claim context and focused source tests; no authority/requirement relaxation or native completion claim."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1074,6 +1074,13 @@
       "review": "reviewed",
       "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed.",
       "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+    },
+    {
+      "path": "docs/source-launch-journal.md",
+      "sha256": "4c69f2a5208dce12927db252de0cb2332037e1086bbbf3d0cc3e3245949628e4",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Optional owner-local immutable native launch claim before any native create/prompt. Reuses actual SQLiteInbox exact-source receipt-confirmed question proof and existing RecipientAuthorization plus current held-host guard; no owner attach/acquire or native dispatch. Dedicated HMAC-bound SQLite stores only metadata/fingerprints. Duplicate/reopen/lost response returns original claim and never automatic relaunch; count/integrity/capacity/private-file checks fail closed. It is not a Task DB, native admission receipt, answer result, approval or delivery proof. Existing native/manual gates stay unverified; actual receiver handoff and immutable-budget migration remain separate. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order."
     }
   ],
   "requirements": [
@@ -1124,7 +1131,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1156,7 +1164,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1292,7 +1301,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1381,7 +1391,8 @@
         "js-recipient-messages",
         "js-recipient-host-mcp",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -1510,7 +1521,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -3495,7 +3507,8 @@
         "js-single-source-stdio",
         "js-private-recipient-http",
         "js-external-owner",
-        "js-acp-owner"
+        "js-acp-owner",
+        "js-source-launch"
       ],
       "citations": [
         {
@@ -4629,6 +4642,25 @@
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
+    },
+    {
+      "id": "js-source-launch",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/source-launch.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "protocol": "node-tap",
+      "proves": "Actual temporary SQLite/inbox and held-host owner guard, immutable once-only source claim, question/ACK/current context/sender/actor/epoch checks, loss and store faults, private path/binding/capacity/tamper failures, reopen and response-loss reconciliation without relaunch. Owned synthetic SIGKILL-after-claim gap and two concurrent SQLite connections asking the actual parent host for every owner guard. Expected 25 cases, root1371. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order.",
+      "limitations": "Synthetic local policy, no actual native create/model/approval/OAuth/live stores/unattended runtime. Claim is not native admission or outcome; an unknown claim can remain blocked forever. No power/media crash or old-valid-snapshot rollback guarantee. Overlaps js-root.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
     }
   ],
   "conflicts": [
@@ -5597,7 +5629,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate. PR163 stacked follow-up: the 25 unchanged source-launch cases bring this branch to 1371 expected full-root tests. Its original hosted PR report passed all 1371 but failed the inherited 1338 catalog. The corrected owner-activation source and bounded recipient fixture are inherited without changing journal semantics; exact-count and cleanup gates remain strict."
     },
     {
       "status": "resolved",
