@@ -8,7 +8,7 @@ import { once } from "node:events";
 import { Worker } from "node:worker_threads";
 import { ReplyBudgetError } from "../src/adapter-policy/contract.ts";
 import { hostFixture, limits } from "./adapter-host-fixtures.js";
-import { code } from "./task-bridge-fixtures.js";
+import { code } from "./inbox-fixtures.js";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 import { AnswerIntents } from "../src/answer-intents/answers.ts";
 import {
@@ -110,7 +110,6 @@ test("Answer intents: durable preparation precedes all budget, outbox, Task and 
   assert.equal(v.state, "prepared");
   assert.equal(f.queued().length, 0);
   assert.equal(f.budget.lookup(key, "answer"), null);
-  assert.equal(f.count(), 0);
   assert.equal(f.state.tools.length, 0);
   assert.match(v.reply_id, /^rm1\./);
   assert.equal(
@@ -380,7 +379,6 @@ for (const kind of ["notice", "answer", "execution_request"]) {
         { key } = f.receive(kind);
       assert.throws(() => f.prepare(key), code("invalid_reply_source"));
       assert.equal(f.rows().length, 0);
-      assert.equal(f.count(), 0);
     },
   );
 }
@@ -702,7 +700,6 @@ test("Answer intents: real loopback HTTP MCP receive-restart-answer-send-ACK use
       (await step({ op: "answer_inspect", source: key })).value.state,
       "enqueued",
     );
-    assert.equal(f.count(), 0);
   } finally {
     server.closeAllConnections();
     await new Promise((r) => server.close(r));

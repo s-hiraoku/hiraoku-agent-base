@@ -147,10 +147,5 @@ for (const [kind, body] of Object.entries(bodies))
       "receive",
       "status",
     ]);
-    assert.equal(f.count(), 0);
-    assert.equal(
-      f.raw.prepare("SELECT count(*) n FROM task_bridge_links").get().n,
-      0,
-    );
     assert.equal(f.queued().length, 0);
   });

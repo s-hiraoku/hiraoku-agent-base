@@ -97,7 +97,7 @@ const commands = setInterval(async () => {
         value = entry.pause(entry.status().epoch);
         break;
       case "state":
-        value = { status: entry.status(), outbox: f.queued(), taskCount: f.count(),
+        value = { status: entry.status(), outbox: f.queued(),
           inboxCount: f.inboxRaw.prepare("SELECT count(*) n FROM relay_inbox").get().n };
         break;
       case "hold": {

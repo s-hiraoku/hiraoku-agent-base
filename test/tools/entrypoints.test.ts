@@ -16,12 +16,6 @@ const refusals = [
     diagnostic: /relay_admin_rejected usage/,
   },
   {
-    name: "pilot-preflight",
-    args: ["/missing-hab-typescript-plan"],
-    status: 1,
-    diagnostic: /invalid_or_unreadable_config/,
-  },
-  {
     name: "native-trial-preflight",
     args: [],
     status: 1,

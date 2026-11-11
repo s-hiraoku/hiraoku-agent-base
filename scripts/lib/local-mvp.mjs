@@ -21,10 +21,6 @@ import { SQLiteAnswerJournal } from "../../src/answer-intents/sqlite-journal.ts"
 import { SQLiteHostControl } from "../../src/agent-sdk/sqlite-host-control.ts";
 import { SQLiteHostOwner } from "../../src/agent-sdk/sqlite-host-owner.ts";
 import { AdapterHostCycle } from "../../src/adapter-host/cycle.ts";
-import { SQLiteTaskBridgeJournal } from "../../src/task-bridge/sqlite-journal.ts";
-import { ConnectivityTaskPort } from "../../src/task-bridge/task-port.ts";
-import { Hub } from "../../src/sqlite.ts";
-import { RESPONSE } from "../../src/types.ts";
 import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
 import { HabJetStreamService } from "../../src/host/hab-delivery-service.ts";
 import { startLocalBroker } from "./nats-broker.ts";
@@ -70,28 +66,12 @@ export async function runLocalMvp(signal) {
     relay,
     delivery,
     enrollment,
-    tasks,
     server,
     gateway,
     url,
     port = 0;
   let dropSubmit = true,
     dropAck = true;
-  const binding = {
-    engine_id: "synthetic-mvp-engine",
-    owner_subject: "mvp-task-owner",
-    client_id: null,
-  };
-  const taskOwner = {
-    subject: binding.owner_subject,
-    destination: "hermes",
-    operations: ["submit", "get"],
-  };
-  const worker = {
-    subject: "mvp-model-free-worker",
-    worker: "hermes",
-    operations: ["claim", "get", "complete"],
-  };
   const report = {
     scope: "synthetic-loopback-mvp",
     production_connected: false,
@@ -131,8 +111,6 @@ export async function runLocalMvp(signal) {
         : undefined;
     },
   };
-  const taskCount = () =>
-    Number(tasks.sqlite.db.prepare("SELECT count(*) n FROM tasks").get().n);
   const openCentral = async () => {
     registry = new SQLiteHabRegistry(
       join(directory, "registry.sqlite"),
@@ -187,8 +165,6 @@ export async function runLocalMvp(signal) {
       { max_sessions: 3, busy_timeout_ms: 100 },
     );
     enrollment.migrate();
-    tasks = new Hub(join(directory, "tasks.sqlite"));
-    chmodSync(join(directory, "tasks.sqlite"), 0o600);
     const registered = {};
     for (const productName of new Set(Object.values(products)))
       registered[productName] = registry.registerProduct(admin, {
@@ -373,27 +349,6 @@ export async function runLocalMvp(signal) {
         }),
       );
       answers.migrate();
-      let task;
-      if (n === "c") {
-        const journal = track(
-          components,
-          new SQLiteTaskBridgeJournal(join(directory, "task-bridge.sqlite"), {
-            receiver_id: agent_id,
-            binding,
-            fingerprint_key: key(118),
-            limits,
-            max_records: 10,
-            max_audit_records: 50,
-            lease_ms: 10000,
-            max_submit_attempts: 3,
-          }),
-        );
-        journal.migrate();
-        task = {
-          journal,
-          tasks: new ConnectivityTaskPort(tasks, binding, () => taskOwner),
-        };
-      }
       const host = new AdapterHostCycle({
         control,
         owner,
@@ -402,7 +357,6 @@ export async function runLocalMvp(signal) {
         budget,
         answer_intents: answers,
         limits,
-        task,
         authorization: (ctx) =>
           ctx === operator && !signal?.aborted
             ? { agent_id, actor_id: "synthetic-operator" }
@@ -482,10 +436,10 @@ export async function runLocalMvp(signal) {
     };
   };
   const closeCentral = async () => {
-    for (const s of [tasks, enrollment]) s?.close();
+    enrollment?.close();
     await relay?.close();
     registry?.close();
-    tasks = enrollment = relay = delivery = registry = undefined;
+    enrollment = relay = delivery = registry = undefined;
   };
   const coldRestart = async () => {
     for (const n of ["a", "b", "c"]) {
@@ -557,7 +511,6 @@ export async function runLocalMvp(signal) {
       step("a", { op: "send" }),
       (e) => e.code === "host_paused",
     );
-    assert.equal(taskCount(), 0);
     stage("paused-by-default");
     const recipient = (await client("a").resolve(agents.b.address))
       .recipient_id;
@@ -580,7 +533,6 @@ export async function runLocalMvp(signal) {
       (await client("a").status(original.message_id)).state,
       "acked",
     );
-    assert.equal(taskCount(), 0);
     stage("ambiguous-ack");
     await coldRestart();
     stage("cold-start");
@@ -593,7 +545,6 @@ export async function runLocalMvp(signal) {
     const received = (await done("b", { op: "inbox" }))[0];
     assert.equal(received.receipt_confirmed, true);
     assert.equal(received.message_id, original.message_id);
-    assert.equal(taskCount(), 0);
     stage("same-id-recovery");
     const source = {
       sender_id: received.sender_id,
@@ -631,7 +582,6 @@ export async function runLocalMvp(signal) {
       .inbox.inbox()
       .find((e) => e.message.message_id === prepared.reply_id);
     assert.deepEqual(answer.message.body, text("Synthetic durable answer."));
-    assert.equal(taskCount(), 0);
     stage("reply-roundtrip");
     pause("c");
     const notice = message(
@@ -666,90 +616,26 @@ export async function runLocalMvp(signal) {
     await done("a", { op: "message_enqueue", message: execution });
     await done("a", { op: "send" });
     await done("c", { op: "receive" });
-    assert.equal(taskCount(), 0);
-    const executionKey = {
-      sender_id: agents.a.agent_id,
-      message_id: execution.message_id,
-    };
-    await done("c", { op: "task_accept", source: executionKey });
-    assert.equal(taskCount(), 0);
-    const linked = await done("c", { op: "task_submit", source: executionKey });
-    await done("c", { op: "task_submit", source: executionKey });
-    assert.equal(taskCount(), 1);
-    stage("fixed-task-boundary");
-    await done("c", {
-      op: "task_reply_prepare",
-      source: executionKey,
-      kind: "execution_accepted",
-    });
-    await done("c", {
-      op: "task_reply_enqueue",
-      source: executionKey,
-      kind: "execution_accepted",
-    });
-    await done("c", { op: "send" });
-    await done("a", { op: "receive" });
-    const claimed = await tasks.claim(worker, {});
-    assert.equal(claimed.id, linked.task.id);
-    assert.equal(await tasks.claim(worker, {}), null);
-    await coldRestart();
-    const taskInbox = await done("c", { op: "inbox" });
-    const taskSource = taskInbox.find(
-      (entry) => entry.kind === "execution_request",
-    );
-    assert.ok(taskSource);
-    const startupKey = {
-      sender_id: taskSource.sender_id,
-      message_id: taskSource.message_id,
-    };
-    const observed = await done("c", {
-      op: "task_observe",
-      source: startupKey,
-    });
-    assert.equal(observed.task.id, claimed.id);
-    assert.equal(observed.task.state, "running");
-    assert.equal(observed.task.execution_open, 1);
-    assert.equal(await tasks.claim(worker, {}), null);
-    const workerView = await tasks.get(worker, { id: observed.task.id });
-    assert.equal(workerView.fence, claimed.fence);
-    assert.equal(taskCount(), 1);
-    stage("fixed-task-restart");
-    await tasks.complete(worker, {
-      id: workerView.id,
-      fence: workerView.fence,
-      state: "succeeded",
-      result: RESPONSE,
-    });
-    await done("c", { op: "task_observe", source: executionKey });
-    await done("c", {
-      op: "task_reply_prepare",
-      source: executionKey,
-      kind: "execution_result",
-    });
-    const result = await done("c", {
-      op: "task_reply_enqueue",
-      source: executionKey,
-      kind: "execution_result",
-    });
-    await done("c", { op: "send" });
-    await done("a", { op: "receive" });
-    const savedResult = locals
-      .get("a")
-      .inbox.inbox()
-      .find((e) => e.message.kind === "execution_result");
-    assert.equal(savedResult.message.body.parts[0].value.result, RESPONSE);
+    // Delivery and ACK only store the request; execution stays with the recipient.
+    const saved = await done("c", { op: "inbox" });
     assert.equal(
-      (await client("c").status(result.message.message_id)).state,
+      saved.filter((entry) => entry.kind === "execution_request").length,
+      1,
+    );
+    assert.equal(
+      (await client("a").status(execution.message_id)).state,
       "acked",
     );
-    await done("c", { op: "task_submit", source: executionKey });
-    assert.equal(taskCount(), 1);
-    stage("fixed-task-roundtrip");
+    stage("execution-request-inert");
+    const savedAnswer = locals
+      .get("a")
+      .inbox.inbox()
+      .find((e) => e.message.kind === "answer");
     const loop = await step("a", {
       op: "answer_prepare",
       source: {
-        sender_id: savedResult.sender_id,
-        message_id: savedResult.message.message_id,
+        sender_id: savedAnswer.sender_id,
+        message_id: savedAnswer.message.message_id,
       },
       body: text("Must be rejected."),
     });
@@ -758,7 +644,6 @@ export async function runLocalMvp(signal) {
       (await done("a", { op: "answer_pending", limit: 10 })).items.length,
       0,
     );
-    assert.equal(taskCount(), 1);
     stage("loop-denial");
     const db = new DatabaseSync(join(directory, "jetstream-journal.sqlite"), {
       readOnly: true,
@@ -773,22 +658,14 @@ export async function runLocalMvp(signal) {
         deliveries: count("1"),
         acked: count("state='acked'"),
         ack_receipts: count("ack_receipt_id IS NOT NULL"),
-        tasks: taskCount(),
-        open_executions: Number(
-          tasks.sqlite.db
-            .prepare("SELECT count(*) n FROM tasks WHERE execution_open=1")
-            .get().n,
-        ),
       };
     } finally {
       db.close();
     }
     assert.deepEqual(report.counters, {
-      deliveries: 6,
-      acked: 6,
-      ack_receipts: 6,
-      tasks: 1,
-      open_executions: 0,
+      deliveries: 4,
+      acked: 4,
+      ack_receipts: 4,
     });
     for (const n of ["a", "b", "c"]) {
       pause(n);

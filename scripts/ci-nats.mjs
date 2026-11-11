@@ -29,7 +29,7 @@ const stages = {
       "guarded-commits.test.js",
       "hab-integration.test.js",
     ],
-    count: 68,
+    count: 69,
     shared: true,
   },
 };

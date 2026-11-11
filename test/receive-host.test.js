@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { hostFixture } from "./adapter-host-fixtures.js";
-import { code } from "./task-bridge-fixtures.js";
+import { code } from "./inbox-fixtures.js";
 import { ReceiveHost } from "../src/agent-sdk/receive-host.ts";
 import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";

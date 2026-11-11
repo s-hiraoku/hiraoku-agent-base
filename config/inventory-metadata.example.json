@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "mode": "inventory-metadata",
-  "enabled": false,
-  "oauth": {
-    "issuer": "https://issuer.example/",
-    "resource": "https://hub.example/hab/mcp"
-  }
-}

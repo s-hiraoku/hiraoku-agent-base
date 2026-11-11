@@ -111,7 +111,6 @@ test("recipient owner: receive -> native policy -> fixed reply -> durable send w
     ["reply_ready", "reply_queued"],
   );
   assert.equal(f.states[1].outbox_state, "queued"); // enqueue is not delivery proof
-  assert.equal(f.count(), 0); // no Task/worker fallback
   assert.equal(f.state.inputs[0].origin, "external_agent");
   f.reopen();
   await once(f);

@@ -1,1 +1,0 @@
-ALTER TABLE `tasks` ADD `runner_subject` text;

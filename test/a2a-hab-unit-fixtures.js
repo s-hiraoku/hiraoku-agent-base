@@ -5,7 +5,7 @@ import { SendMessageRequest } from "@a2a-js/sdk";
 import { HabA2aHandler, habRelayAgentCard } from "../src/a2a/hab-adapter.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
-import { RESPONSE } from "../src/types.ts";
+import { RESPONSE } from "../src/task-bridge/contract.ts";
 export { RESPONSE };
 export const request = (messageId = "first", text = "connectivity_check") =>
   SendMessageRequest.fromJSON({

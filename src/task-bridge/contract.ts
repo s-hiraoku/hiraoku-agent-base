@@ -3,7 +3,8 @@ import { z } from "zod";
 import { parseSubmission, validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
 import type { InboxEntry } from "../agent-sdk/receiver.ts";
-import { RESPONSE } from "../types.ts";
+/** Fixed result text of the connectivity_check Task. */
+export const RESPONSE = "Agent Hub connectivity check completed.";
 export class TaskBridgeError extends Error {
   readonly code: string;
   constructor(code: string) {

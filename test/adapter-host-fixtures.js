@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
-import { fixture, limits } from "./task-bridge-fixtures.js";
+import { fixture, limits } from "./inbox-fixtures.js";
 import { message as sourceMessage, policy } from "./relay-http-fixtures.js";
 import { SQLiteHostControl } from "../src/agent-sdk/sqlite-host-control.ts";
 import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
@@ -32,7 +32,7 @@ export async function hostFixture(
   patch = {},
   { outboxLeaseMs = HOST_LEASE_MS } = {},
 ) {
-  const f = await fixture(t, { lease_ms: HOST_LEASE_MS });
+  const f = await fixture(t);
   const outbox = new SQLiteOutbox(join(f.dir, "host-outbox.sqlite"), {
     agent_id: "b",
     fingerprint_key: new Uint8Array(32).fill(62),
@@ -131,7 +131,6 @@ export async function hostFixture(
         if (state.afterNetwork) await state.afterNetwork(tool, response);
         return response;
       },
-      task: { journal: f.journal, tasks: f.tasks },
       authorization: authorize,
       ...extra,
     });

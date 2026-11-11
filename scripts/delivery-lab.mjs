@@ -15,14 +15,8 @@ import {
   tapTotals,
   gateVerdict,
   executeNode,
-  assertLoopbackPortFree,
-} from "./lib/delivery-lab.mjs";
-import { a2aAcceptance } from "../test/delivery-lab/a2a-acceptance.js";
-import {
-  verifyA2aSource,
   observedCases,
-  assessA2aAcceptance,
-} from "./lib/a2a-acceptance.mjs";
+} from "./lib/delivery-lab.mjs";
 import { parseLabOptions, prepareNatsServer } from "./lib/nats-input.mjs";
 import {
   pendingBackends,
@@ -63,11 +57,8 @@ const regressionFiles = [
   "receive-supervisor",
   "relay-inbox-maintenance",
   "relay-outbox-maintenance",
-  "task-bridge",
-  "task-bridge-replies",
 ].map((name) => `test/${name}.test.js`);
 const definitions = [
-  ...a2aAcceptance.groups,
   { id: "shared-contracts", files: ["test/delivery-lab/contracts.test.js"] },
   {
     id: "storage-and-harness",
@@ -75,7 +66,6 @@ const definitions = [
       "test/delivery-lab/sqlite-failures.test.js",
       "test/delivery-lab/harness.test.js",
       "test/delivery-lab/nats-input.test.js",
-      "test/delivery-lab/a2a-harness.test.js",
     ],
   },
   { id: "relay-regressions", files: regressionFiles },
@@ -151,7 +141,6 @@ try {
     env,
     encoding: "utf8",
   }).trim();
-  report.a2a_provenance = verifyA2aSource(repo);
   if (options.natsServer) {
     let prepared;
     try {
@@ -173,26 +162,6 @@ try {
     });
   }
   report.expected_groups = definitions.map(({ id }) => id);
-  if (full) {
-    try {
-      await assertLoopbackPortFree(8789);
-      report.legacy_port_preflight =
-        "127.0.0.1:8789 was available; legacy group runs serially";
-    } catch (error) {
-      report.environment_blocker = `legacy loopback port 8789 unavailable (${error.code}); no request sent and no occupant stopped`;
-      throw Error("legacy port preflight blocked");
-    }
-    report.build = await executeNode({
-      cwd: repo,
-      env,
-      log: join(run, "build.log"),
-      args: ["scripts/build.ts"],
-      signal: controller.signal,
-      timeout_ms: 120000,
-    });
-    if (report.build.exit_code !== 0)
-      throw Error("worker build failed; see build.log");
-  }
   for (const definition of definitions) {
     if (interrupted) throw Error("delivery lab interrupted");
     console.log(`Running ${definition.id}`);
@@ -240,7 +209,6 @@ try {
   report.runner_error = error.message;
 } finally {
   report.finished_at = new Date().toISOString();
-  report.a2a = assessA2aAcceptance(groups);
   report.verdict = report.environment_blocker
     ? "BLOCKED"
     : interrupted || report.runner_error
@@ -251,10 +219,7 @@ try {
           report.release_requested,
           definitions.map(({ id }) => id),
         );
-  if (!report.environment_blocker && report.a2a.state !== "passed")
-    report.verdict = "FAIL";
   try {
-    report.a2a_provenance_after = verifyA2aSource(repo);
     report.sources_unchanged =
       sourceHashes !== undefined &&
       JSON.stringify(snapshot()) === JSON.stringify(sourceHashes);

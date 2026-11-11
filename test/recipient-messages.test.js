@@ -53,10 +53,6 @@ test("explicit recipient handoff, native policy wait, exact approved reply and d
   f.reopen();
   assert.deepEqual(f.make().enqueueReplyOnce(f.context, key), result);
   assert.equal(f.queued().length, 1);
-  assert.equal(
-    f.raw.prepare("SELECT count(*) n FROM task_bridge_links").get().n,
-    0,
-  );
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
   // Cross the old short fixture lease without changing production lease checks.
   f.hostState.afterNetwork = (tool) =>
@@ -459,10 +455,6 @@ test("real loopback MCP receive, synthetic native judgment and policy, outbox an
   ).body.result.structuredContent.delivery;
   assert.equal(reply.message.message_id, result.message_id);
   assert.deepEqual(reply.message.in_reply_to, key);
-  assert.equal(
-    f.raw.prepare("SELECT count(*) n FROM task_bridge_links").get().n,
-    0,
-  );
 });
 
 test("changed saved source is reconciled as a conflict without new native admission", async (t) => {

@@ -8,13 +8,10 @@ import { Worker } from "node:worker_threads";
 import {
   fixture,
   limits,
-  worker,
-  RESPONSE,
   code,
-} from "./task-bridge-fixtures.js";
+} from "./inbox-fixtures.js";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
 import { InboxAnswers } from "../src/adapter-policy/inbox-answers.ts";
-import { TaskReplies } from "../src/task-bridge/replies.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { DurableSender } from "../src/agent-sdk/sender.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
@@ -106,8 +103,6 @@ async function setup(t, patch = {}) {
   };
   return {
     ...f,
-    taskContext: f.context,
-    taskAuthorize: f.authorize,
     budget,
     path,
     options,
@@ -143,6 +138,31 @@ function clock(at, action) {
     DatabaseSync.prototype.prepare = original;
   }
 }
+test("Reply budget: options require explicit finite positive limits and composition identity", async (t) => {
+  const f = await setup(t);
+  for (const patch of [
+    { max_thread_replies: 0 },
+    { max_per_window: Infinity },
+    { window_ms: 0 },
+    { max_records: 10001 },
+    { max_clock_skew_ms: -1 },
+  ])
+    assert.throws(
+      () => f.open(patch, ":memory:"),
+      code("invalid_reply_budget_options"),
+    );
+  assert.throws(
+    () =>
+      new InboxAnswers(
+        f.budget,
+        f.inbox,
+        { agentId: "c", enqueueGuarded() {} },
+        limits,
+      ),
+    code("invalid_reply_composition"),
+  );
+});
+
 test("Reply budget: explicit confirmed inbox answer consumes exactly one reservation", async (t) => {
   const f = await setup(t),
     key = f.key(),
@@ -150,7 +170,6 @@ test("Reply budget: explicit confirmed inbox answer consumes exactly one reserva
   assert.equal(f.answers.enqueueOnce(context, key, message).state, "queued");
   assert.equal(f.records().length, 1);
   assert.equal(f.sent().length, 1);
-  assert.equal(f.count(), 0);
 });
 test("Reply budget: ACK alone neither answers nor consumes a reservation", async (t) => {
   const f = await setup(t);
@@ -627,97 +646,6 @@ test("Reply budget: unknown schema and missing immutable triggers are not auto r
   const unknown = f.open({}, path);
   assert.throws(() => unknown.migrate(), code("unknown_reply_budget_schema"));
 });
-test("Reply budget: options require explicit finite positive limits and composition identity", async (t) => {
-  const f = await setup(t);
-  for (const patch of [
-    { max_thread_replies: 0 },
-    { max_per_window: Infinity },
-    { window_ms: 0 },
-    { max_records: 10001 },
-    { max_clock_skew_ms: -1 },
-  ])
-    assert.throws(
-      () => f.open(patch, ":memory:"),
-      code("invalid_reply_budget_options"),
-    );
-  assert.throws(
-    () =>
-      new InboxAnswers(
-        f.budget,
-        f.inbox,
-        { agentId: "c", enqueueGuarded() {} },
-        limits,
-      ),
-    code("invalid_reply_composition"),
-  );
-  assert.throws(
-    () =>
-      new TaskReplies(f.journal, f.outbox, f.authorize, {
-        agentId: "c",
-        withReply() {},
-      }),
-    code("invalid_bridge_composition"),
-  );
-});
-test("Reply budget: Task accepted and result share the same persistent thread cap", async (t) => {
-  const f = await setup(t, { max_thread_replies: 1 }),
-    key = f.receive();
-  f.bridge.accept(f.taskContext, key);
-  await f.bridge.submitOnce(f.taskContext, key);
-  const replies = new TaskReplies(
-    f.journal,
-    f.outbox,
-    f.taskAuthorize,
-    f.budget,
-  );
-  replies.prepare(f.taskContext, key, "execution_accepted");
-  replies.enqueueOnce(f.taskContext, key, "execution_accepted");
-  const task = await f.hub.claim(worker, {});
-  await f.hub.complete(worker, {
-    id: task.id,
-    fence: task.fence,
-    state: "succeeded",
-    result: RESPONSE,
-  });
-  await f.bridge.observeOnce(f.taskContext, key);
-  replies.prepare(f.taskContext, key, "execution_result");
-  assert.throws(
-    () => replies.enqueueOnce(f.taskContext, key, "execution_result"),
-    code("reply_thread_exhausted"),
-  );
-  assert.equal(f.journal.getReply(key, "execution_result").state, "prepared");
-  assert.equal(f.count(), 1);
-  assert.equal(f.records().length, 1);
-  assert.equal(f.calls.filter((c) => c.op === "submit").length, 1);
-});
-test("Reply budget: normal Task replies use two independent slots without automatic re-execution", async (t) => {
-  const f = await setup(t),
-    key = f.receive();
-  f.bridge.accept(f.taskContext, key);
-  await f.bridge.submitOnce(f.taskContext, key);
-  const replies = new TaskReplies(
-    f.journal,
-    f.outbox,
-    f.taskAuthorize,
-    f.budget,
-  );
-  replies.prepare(f.taskContext, key, "execution_accepted");
-  replies.enqueueOnce(f.taskContext, key, "execution_accepted");
-  const task = await f.hub.claim(worker, {});
-  await f.hub.complete(worker, {
-    id: task.id,
-    fence: task.fence,
-    state: "succeeded",
-    result: RESPONSE,
-  });
-  await f.bridge.observeOnce(f.taskContext, key);
-  replies.prepare(f.taskContext, key, "execution_result");
-  replies.enqueueOnce(f.taskContext, key, "execution_result");
-  replies.enqueueOnce(f.taskContext, key, "execution_result");
-  assert.equal(f.count(), 1);
-  assert.equal(f.records().length, 2);
-  assert.equal(f.sent().length, 2);
-});
 test("Reply budget: real Relay question-answer roundtrip ACKs without starting another conversation", async (t) => {
   const f = await setup(t),
     key = f.key(),
@@ -743,7 +671,6 @@ test("Reply budget: real Relay question-answer roundtrip ACKs without starting a
   await sender.sendOnce();
   assert.equal(f.service.poll(f.contexts.a), null);
   assert.equal(f.records().length, 1);
-  assert.equal(f.count(), 0);
 });
 test("Reply budget: competing native writers cannot exceed a one-reply rate budget", async (t) => {
   const f = await setup(t, { max_per_window: 1 });
@@ -799,62 +726,6 @@ test("Reply budget: competing native writers cannot exceed a one-reply rate budg
   );
   assert.deepEqual(outcomes.sort(), ["admitted", "reply_rate_exhausted"]);
   assert.equal(f.records().length, 1);
-});
-
-test("Reply budget: automatic answers and Task replies share one individual thread budget", async (t) => {
-  const f = await setup(t, { max_thread_replies: 1 }),
-    question = f.key();
-  f.answers.enqueueOnce(context, question, f.message(question));
-  const key = f.receive();
-  f.bridge.accept(f.taskContext, key);
-  await f.bridge.submitOnce(f.taskContext, key);
-  const replies = new TaskReplies(
-    f.journal,
-    f.outbox,
-    f.taskAuthorize,
-    f.budget,
-  );
-  replies.prepare(f.taskContext, key, "execution_accepted");
-  assert.throws(
-    () => replies.enqueueOnce(f.taskContext, key, "execution_accepted"),
-    code("reply_thread_exhausted"),
-  );
-  assert.equal(f.records().length, 1);
-  assert.equal(f.sent().length, 1);
-  assert.equal(f.count(), 1);
-});
-
-test("Reply budget: lost Task reply journal commit recovers without another reservation", async (t) => {
-  const f = await setup(t, { max_records: 1, max_per_window: 1 }),
-    key = f.receive();
-  f.bridge.accept(f.taskContext, key);
-  await f.bridge.submitOnce(f.taskContext, key);
-  const replies = new TaskReplies(
-    f.journal,
-    f.outbox,
-    f.taskAuthorize,
-    f.budget,
-  );
-  const prepared = replies.prepare(f.taskContext, key, "execution_accepted");
-  f.raw.exec(
-    "CREATE TRIGGER fail_task_reply BEFORE UPDATE ON task_bridge_replies BEGIN SELECT RAISE(ABORT,'synthetic');END",
-  );
-  assert.throws(
-    () => replies.enqueueOnce(f.taskContext, key, "execution_accepted"),
-    code("bridge_store_unavailable"),
-  );
-  assert.equal(f.records().length, 1);
-  assert.equal(f.sent().length, 1);
-  assert.equal(f.journal.getReply(key, "execution_accepted").state, "prepared");
-  f.raw.exec("DROP TRIGGER fail_task_reply");
-  replies.enqueueOnce(f.taskContext, key, "execution_accepted");
-  assert.equal(
-    f.journal.getReply(key, "execution_accepted").message.message_id,
-    prepared.message.message_id,
-  );
-  assert.equal(f.records().length, 1);
-  assert.equal(f.sent().length, 1);
-  assert.equal(f.calls.filter((c) => c.op === "submit").length, 1);
 });
 
 test("Reply budget: expired exact replay cannot recreate a missing outbox record or a fresh ID", async (t) => {

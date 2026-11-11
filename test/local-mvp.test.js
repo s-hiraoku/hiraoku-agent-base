@@ -21,9 +21,7 @@ const stages = [
   "reply-intent-restart",
   "reply-roundtrip",
   "offline-store-forward",
-  "fixed-task-boundary",
-  "fixed-task-restart",
-  "fixed-task-roundtrip",
+  "execution-request-inert",
   "loop-denial",
   "stopped",
 ];
@@ -33,7 +31,7 @@ function directory(t) {
   return root;
 }
 test(
-  "Local MVP: documented CLI completes all 15 stages over real HTTP and removes its temporary state",
+  "Local MVP: documented CLI completes all 13 stages over real HTTP and removes its temporary state",
   { timeout: 15000 },
   async (t) => {
     const root = directory(t);
@@ -56,11 +54,9 @@ test(
     );
     assert.ok(report.stages.every((s) => s.status === "passed"));
     assert.deepEqual(report.counters, {
-      deliveries: 6,
-      acked: 6,
-      ack_receipts: 6,
-      tasks: 1,
-      open_executions: 0,
+      deliveries: 4,
+      acked: 4,
+      ack_receipts: 4,
     });
     assert.deepEqual(report.mcp_tools, [
       "relay_ack",
