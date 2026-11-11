@@ -1,5 +1,21 @@
 # Document review
 
+## Cross-process handoff experiment (2026-11-09)
+
+Reviewed `verification/experiments/cross-process-handoff/README.md` against the
+unchanged recipient-messages, answer-intents, receive-supervisor and dedicated
+stdio contracts. Classify it as context: a proposed shared transaction authority
+and a simplified SQLite reference model, not adopted product authority or a
+native port. It explicitly preserves CURRENT permission checks, external origin,
+durable exact identity and unknown outcomes. The required participation of every
+effective native permission writer remains unimplemented. Existing active-conversation
+MCP usage during an authorized conversation is a smaller separate option; no
+background model execution is implied. Synthetic model outbox atomicity does not
+establish atomicity across current HAB/native stores. Existing requirements,
+checks, feature definitions and manual/native gates are unchanged. A separate CI
+step runs the experiment's synthetic interleaving/process-exit tests without
+counting them as native/product acceptance.
+
 Local follow-up on `0fc76a6ebe48602524cf22df08888cff8bbff34a` reread the six changed design documents and the implementation/test diffs: rollback evidence union and retained-body local recovery (HAB-F24), and actual inbox-capacity gating rather than an outbox-horizon guarantee (HAB-D06/D20). Required local-terminal retention is unchanged. New and changed citations use repository-relative links to remain valid on this branch; no remote source pin is invented. Historical evidence and native/production/manual gates are unchanged.
 
 Extraction baseline `c67711e2bb79670402e3b2cac10452344db7df00`. All 122 initial discovered paths were individually classified: 106 included documents read in full, 16 vendored methodology files excluded with a reason. Hashes bind content but do not prove semantic review or source truth. Generated bundle/skill documents are reviewed separately and excluded as product authority to avoid circular justification.
@@ -254,7 +270,7 @@ uses real owned MCP/SQLite/private-broker resources with synthetic credentials.
 
 | Document | Classification | Semantic review |
 | --- | --- | --- |
-| docs/external-owner-launcher.md | context / reviewed | Opt-in product-independent listener and separately supervised owner process. Trusted driver callbacks, not native authentication implementation, supply the committed cause chain and participant scope. One create attempt, current receipt, separate native/outer liveness and deny-only surface preserve source authority. Empty env and ignored raw output are process boundaries, not home/network isolation. Forced/unconfirmed exit, unsettled driver work and failed cleanup remain failure, with state retained until actual exit. No product runner, credential issuance, grant, model, live profile/queue or deployment is adopted. ACP is a feasible subsequent independent driver, explicitly unimplemented. |
+| docs/external-owner-launcher.md | context / reviewed | Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged. |
 
 Reviewed against HAB-F02/F03/F07/F11/F16/E09, HAB-C-F02 and the existing private HTTP,
 fixed-source and owner contracts. The new focused synthetic check supplements those
@@ -298,3 +314,24 @@ Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 wit
 Post-bind malformed/unmatched frames, output limits and active pipe/write errors now latch protocol failure before owner loss. Even confirmed exit0 cannot erase that fault: driver close and owner completion reject, stores remain retained. Expected EOF, scope/launch abort and lifetime shutdown stay separate. Three actual composed fault regressions failed before the latch and pass after it. Current ACP37 + owner23 + private HTTP11 = 71; expected root1324, with full/hosted and native/manual gates separate.
 
 ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.
+
+| docs/source-launch-journal.md | context / reviewed | Optional owner-local immutable native launch claim before any native create/prompt. Reuses actual SQLiteInbox exact-source receipt-confirmed question proof and existing RecipientAuthorization plus current held-host guard; no owner attach/acquire or native dispatch. Dedicated HMAC-bound SQLite stores only metadata/fingerprints. Duplicate/reopen/lost response returns original claim and never automatic relaunch; count/integrity/capacity/private-file checks fail closed. It is not a Task DB, native admission receipt, answer result, approval or delivery proof. Existing native/manual gates stay unverified; actual receiver handoff and immutable-budget migration remain separate. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order. |
+
+
+## Optional standard ACP fixed wake (2026-11-10)
+
+Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.
+
+
+## Atomic synthetic ACP observations
+
+PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.
+
+PR162 integration maintenance (2026-11-11) re-read the merge of main (#161, #163) into the fixed-wake branch: both sides' document rows and sections are kept unchanged, and docs/testing/publication.md, p7-lab.md and delivery-lab.md only raise the full-root count from 1376 to 1409 (1338 + 33 + 38). No row meaning changed.
+
+
+## Managed transport boundary (2026-11-10)
+
+2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate.
+
+PR164 integration maintenance (2026-11-11) re-read the merge of the integrated main (#161, #162, #163) into the managed-transport branch: both sides' rows and sections are kept, and docs/testing/{publication,p7-lab,delivery-lab}.md only raise the full-root count to 1424 (1409 + 15). No row meaning changed.

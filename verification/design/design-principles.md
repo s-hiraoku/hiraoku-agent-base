@@ -196,6 +196,8 @@ Checks: js-root, js-recipient-host-mcp.
 
 Sources: [docs/adapter-host.md:67](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L67-L81).
 
+Managed-transport scope: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. See the [reviewed local source](../../docs/adapter-host.md#product-owned-managed-transport-trusted-local-integration) and exact working-tree lines 63–109 in contract.json. This new source citation is not a claim of published or hosted acceptance.
+
 ### HAB-F17 — One optional Task authority
 
 Where explicit Task integration is used, select one authoritative Task database, retain durable run admission receipts outside it and require current lease/fence/worker for state updates. Unknown admission/cancellation retains slot for exact-boundary reconciliation; results/notifications do not create tasks.
@@ -921,6 +923,8 @@ Scope: Optional SQLiteHostOwner; local-MVP composition requires it, legacy uncon
 Checks: js-root.
 
 Sources: [docs/adapter-owner.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-owner.md#L9-L15), [docs/adapter-owner.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-owner.md#L21-L23).
+
+Managed-transport scope: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. See the [reviewed local source](../../docs/adapter-host.md#product-owned-managed-transport-trusted-local-integration) and exact working-tree lines 63–109 in contract.json. This new source citation is not a claim of published or hosted acceptance.
 
 ### HAB-E10 — Generic text protocol preserves bounded exact input
 

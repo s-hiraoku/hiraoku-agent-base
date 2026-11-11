@@ -2,10 +2,20 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { isAbsolute } from "node:path";
 import { TextDecoder } from "node:util";
+import { acpText, validateAcpUpdate } from "./acp-updates.ts";
 import type { ExternalOwnerDriver, OwnerLaunch, VerifiedOwnerBinding } from "../adapter-host/external-owner.ts";
 
 type Commit = Readonly<{ sessionId: string; launch: OwnerLaunch }>;
+export type AcpStopReason = "end_turn" | "max_tokens" | "max_turn_requests" | "refusal" | "cancelled";
+const stopReason = (value: unknown): value is AcpStopReason =>
+  typeof value === "string" && ["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"].includes(value);
 export type AcpOwnerOptions = {
+  /**
+   * Explicit trusted local opt-in. Snapshot at construction; never supply external inbox text.
+   * Invoke wake only from the trusted factory after actual current binding and policy activation.
+   * Persist a per-source wake-started ledger BEFORE invocation; unknown never authorizes retry.
+   */
+  fixedWake?: Readonly<{ text: string; timeoutMs: number; maxUpdateBytes?: number }>;
   /** Independently approved absolute executable and literal arguments. No shell or secret argv. */
   executable: string;
   args: readonly string[];
@@ -29,23 +39,33 @@ const record = (value: unknown): value is Record<string, unknown> =>
 const duration = (value: number, max: number) => Number.isSafeInteger(value) && value >= 1 && value <= max;
 const literal = (value: string) => typeof value === "string" && !/[\x00-\x1f\x7f]/.test(value);
 
-/** One clean-env, dedicated ACP v1 stdio process; one initialize, one session/new, no prompts. */
+/** One dedicated ACP v1 process/session; no prompt unless locally configured and explicitly woken. */
 export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDriver & {
   exited: Promise<Readonly<{ started: boolean; code: number | null; signal: NodeJS.Signals | null }>>;
-  status(): Readonly<{ state: string; forced: boolean }>;
+  wake(): Promise<Readonly<{ stopReason: AcpStopReason }>>;
+  status(): Readonly<{ state: string; forced: boolean; wake: string }>;
 } {
   if (!literal(options.executable) || !isAbsolute(options.executable) || !literal(options.cwd) || !isAbsolute(options.cwd) ||
       !literal(options.sessionCwd) || !isAbsolute(options.sessionCwd) || !Array.isArray(options.args) ||
       options.args.length > 64 || options.args.some(arg => !literal(arg) || arg.length > 4096) ||
       !duration(options.requestTimeoutMs, 60000) || !duration(options.shutdownTimeoutMs, 60000) ||
       !duration(options.lifetimeMs, 900000) || !options.scopeSignal || options.scopeSignal.aborted ||
-      typeof options.verifyDeployment !== "function") throw Error("invalid_acp_owner");
-  const config = { ...options, args: [...options.args] };
+      typeof options.verifyDeployment !== "function" ||
+      (options.fixedWake !== undefined && (!record(options.fixedWake) ||
+        !acpText(options.fixedWake.text, 16384) || !options.fixedWake.text.trim() ||
+        !duration(options.fixedWake.timeoutMs, 900000) ||
+        !duration(options.fixedWake.maxUpdateBytes ?? 1024 * 1024, 4 * 1024 * 1024))))
+    throw Error("invalid_acp_owner");
+  const config = { ...options, args: [...options.args],
+    fixedWake: options.fixedWake && Object.freeze({ ...options.fixedWake, maxUpdateBytes: options.fixedWake.maxUpdateBytes ?? 1024 * 1024 }) };
   const controller = new AbortController();
   let child: ChildProcessWithoutNullStreams | undefined;
   let started = false, finished = false, stopping = false, forced = false, signalFailed = false;
   let protocolFailed = false, stdoutEnded = false, pipesClosed = false;
-  let abandonedRequestId: number | undefined;
+  let abandonedRequestId: number | undefined, abandonedPrompt = false;
+  let verificationSucceeded = false, wakeAttempted = false, promptInFlight = false, cancelSent = false;
+  let wakeState = config.fixedWake ? "not-started" : "disabled", updateBytes = 0;
+  let observedSessionId: string | undefined;
   let resolvePipesClosed!: () => void;
   const closedPipes = new Promise<void>(resolve => { resolvePipesClosed = resolve; });
   let attempted = false, verified = false, requestId = 0, bytes = 0, frames = 0;
@@ -53,7 +73,7 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
   let lifetime: ReturnType<typeof setTimeout> | undefined;
   let launchRef: OwnerLaunch | undefined, receipt: object | undefined, sessionId: string | undefined;
   let closeAttempt: Promise<void> | undefined;
-  let pending: { id: number; resolve(value: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> } | undefined;
+  let pending: { id: number; method: string; resolve(value: unknown): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> } | undefined;
   let exitValue: Readonly<{ started: boolean; code: number | null; signal: NodeJS.Signals | null }> | undefined;
   let resolveExited!: (value: NonNullable<typeof exitValue>) => void;
   const exited = new Promise<NonNullable<typeof exitValue>>(resolve => { resolveExited = resolve; });
@@ -108,12 +128,20 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
     closeAttempt = new Promise<void>((resolve, reject) => { resolveClose = resolve; rejectClose = reject; });
     void closeAttempt.catch(() => {});
     stopping = true;
+    if (wakeState === "running") wakeState = "unknown";
+    if (promptInFlight) abandonedPrompt = true;
     controller.abort(); rejectPending();
     if (lifetime) clearTimeout(lifetime);
     config.scopeSignal.removeEventListener("abort", loseOwner);
     launchRef?.signal.removeEventListener("abort", loseOwner);
     void Promise.resolve().then(async () => {
       if (!child) { finish(null, null); return; }
+      // Fence first, then notify only this owned session once. Cancellation is not proof of no effects.
+      if (abandonedPrompt && sessionId && !cancelSent && !finished && !child.stdin.destroyed) {
+        cancelSent = true;
+        child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId } }) + "\n",
+          error => { if (error) pipeFault(); });
+      }
       child.stdin.end(); // ACP's owned stdio shutdown, not session deletion or gateway stop.
       if (!await waitExit()) {
         signalChild("SIGTERM");
@@ -130,6 +158,7 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
         throw Error("acp_owner_unclean_exit");
       if (!drained || !stdoutEnded) throw Error("acp_owner_drain_unconfirmed");
       if (protocolFailed) throw Error("acp_owner_protocol_failed");
+      if (wakeState === "unknown") throw Error("acp_wake_outcome_unknown");
     }).finally(() => {
       // Release only our pipe handles. This does not claim descendant process cleanup.
       child?.stdin.destroy(); child?.stdout.destroy(); child?.stderr.destroy(); buffer = Buffer.alloc(0);
@@ -148,7 +177,18 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
     if ("method" in message) {
       if (typeof message.method !== "string" || "result" in message || "error" in message || !record(message.params))
         throw Error("acp_invalid_frame");
-      if (!("id" in message) && message.method === "session/update") return; // Discard, never trace raw updates.
+      if (!("id" in message) && message.method === "session/update") {
+        if (config.fixedWake) {
+          updateBytes += line.length;
+          if (updateBytes > config.fixedWake.maxUpdateBytes) throw Error("acp_update_limit");
+          const id = validateAcpUpdate(message.params, promptInFlight || (stopping && abandonedPrompt));
+          // Metadata can precede session/new's reply. It is correlation, never binding or approval.
+          if (!sessionId && pending?.method !== "session/new") throw Error("acp_update_without_session");
+          if (id !== (sessionId ?? observedSessionId ?? id)) throw Error("acp_update_session_mismatch");
+          observedSessionId = id;
+        }
+        return; // Validated/discarded; never trace, retain or forward raw native content.
+      }
       // No user approvals are delegated to this deny-only driver. Cancel permission requests.
       if (message.method === "session/request_permission" &&
           (typeof message.id === "string" || Number.isSafeInteger(message.id))) {
@@ -162,11 +202,25 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
           ("result" in message ? !record(message.result) : !record(message.error) ||
             !Number.isSafeInteger(message.error.code) || typeof message.error.message !== "string"))
         throw Error("acp_invalid_frame");
-      abandonedRequestId = undefined; return;
+      if (abandonedPrompt && "result" in message && !stopReason((message.result as Record<string, unknown>).stopReason))
+        throw Error("acp_invalid_stop_reason");
+      abandonedRequestId = undefined; abandonedPrompt = false; promptInFlight = false; return;
     }
     if (!pending || message.id !== pending.id || ("result" in message) === ("error" in message))
       throw Error("acp_unmatched_response");
     if ("error" in message || !record(message.result)) throw Error("acp_request_failed");
+    if (pending.method === "session/new" && config.fixedWake) {
+      const id = message.result.sessionId;
+      if (!acpText(id, 512) || !id || !literal(id) || (observedSessionId && observedSessionId !== id))
+        throw Error("acp_invalid_session");
+      // Correlation only. A following coalesced metadata frame must match even before create resumes.
+      sessionId = id;
+    }
+    if (pending.method === "session/prompt") {
+      if (!stopReason(message.result.stopReason)) throw Error("acp_invalid_stop_reason");
+      // The wire boundary, not the awaiting continuation, ends the update window.
+      promptInFlight = false;
+    }
     const current = pending; pending = undefined; clearTimeout(current.timer); current.resolve(message.result);
   };
   const onData = (chunk: Buffer) => {
@@ -187,12 +241,12 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
       }
     } catch { protocolFault(); }
   };
-  const request = (method: "initialize" | "session/new", params: unknown): Promise<unknown> => {
+  const request = (method: "initialize" | "session/new" | "session/prompt", params: unknown, timeoutMs = config.requestTimeoutMs): Promise<unknown> => {
     alive();
     if (pending) throw Error("acp_request_in_flight");
     return new Promise((resolve, reject) => {
       const id = ++requestId;
-      pending = { id, resolve, reject, timer: setTimeout(loseOwner, config.requestTimeoutMs) };
+      pending = { id, method, resolve, reject, timer: setTimeout(loseOwner, timeoutMs) };
       try { write({ jsonrpc: "2.0", id, method, params }); } catch { loseOwner(); }
     });
   };
@@ -245,8 +299,10 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
         headers: [{ name: "Authorization", value: launch.mcp.headers.Authorization }],
       }] });
       alive();
-      if (!record(result) || typeof result.sessionId !== "string" || result.sessionId.length < 1 ||
+      if (!record(result) || !acpText(result.sessionId, 512) || result.sessionId.length < 1 ||
           result.sessionId.length > 512 || !literal(result.sessionId)) throw Error("acp_invalid_session");
+      if (config.fixedWake && observedSessionId && observedSessionId !== result.sessionId)
+        throw Error("acp_update_session_mismatch");
       sessionId = result.sessionId;
       receipt = Object.freeze({}); // Local correlation only, never a serialized native attestation.
       return receipt;
@@ -263,12 +319,32 @@ export function createAcpOwnerDriver(options: AcpOwnerOptions): ExternalOwnerDri
       verified = true;
       const binding = await config.verifyDeployment(Object.freeze({ sessionId, launch }));
       alive();
+      verificationSucceeded = true;
       return binding;
     } catch {
       loseOwner();
       throw Error("acp_verification_failed");
     }
   };
-  return Object.freeze({ ownerSignal: controller.signal, create, verifyCommitted, close, exited,
-    status: () => Object.freeze({ state: finished ? "exited" : signalFailed ? "exit-unconfirmed" : stopping ? "stopping" : attempted ? "running" : "idle", forced }) });
+  async function wake(): Promise<Readonly<{ stopReason: AcpStopReason }>> {
+    if (arguments.length || !config.fixedWake || !verificationSucceeded || !sessionId)
+      throw Error("acp_wake_unavailable");
+    if (wakeAttempted) throw Error("acp_wake_already_attempted");
+    alive();
+    // Latch before writing. Any uncertain write/response/stop is non-retriable.
+    wakeAttempted = true; promptInFlight = true; wakeState = "running";
+    try {
+      const result = await request("session/prompt", { sessionId, prompt: [{ type: "text", text: config.fixedWake.text }] },
+        config.fixedWake.timeoutMs);
+      alive();
+      if (!record(result) || !stopReason(result.stopReason)) throw Error("acp_invalid_stop_reason");
+      promptInFlight = false; wakeState = "completed";
+      return Object.freeze({ stopReason: result.stopReason });
+    } catch {
+      wakeState = "unknown"; loseOwner();
+      throw Error("acp_wake_failed");
+    }
+  }
+  return Object.freeze({ ownerSignal: controller.signal, create, verifyCommitted, close, exited, wake,
+    status: () => Object.freeze({ state: finished ? "exited" : signalFailed ? "exit-unconfirmed" : stopping ? "stopping" : attempted ? "running" : "idle", forced, wake: wakeState }) });
 }
