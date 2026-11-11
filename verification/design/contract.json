@@ -835,7 +835,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "fcb5df8dd77963f8016b2d25b4ef198ab762c51f24adb5f765d065fc7cfc8a1e",
+      "sha256": "790966cbca427e4c2f0d130d969b33e4a21d99118d2b3d558185759718fbfc97",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -860,7 +860,7 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "7cbe41ac29843b5f12095d2d355d92855e89c1bad9f24a1cb35537de90483fc2",
+      "sha256": "a5504dfbffb41a436fa38e4e30f065a864f561505e03bafcb54f71d3007c0172",
       "role": "normative",
       "review": "reviewed",
       "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1338) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
@@ -960,7 +960,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "b1121f58d4103f1a85d8c7cfe66ac264faba02962d2f23b4a6ba60c3687b07fc",
+      "sha256": "19424390e680d872937f954988533819ea16ac18d8cf1b4874f12a785264df1a",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -986,7 +986,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "39effa872769f3c45042af72b967509b93bc6396c07573d5a7340506303d0403",
+      "sha256": "c1d5c8945c53b6fea4a318d45f4386d495e3adfa914bf844b83dc3e9340b526c",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -4021,8 +4021,8 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "f3f5438404dd8b525aee62a579e9fb473a967994fe9fb99ea54977dabcbc6958",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+          "excerpt_sha256": "73b3027f3b3f32a847c99ec5d5dd452b5778215a3244304a397b9e3ea06558d7",
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged."
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
