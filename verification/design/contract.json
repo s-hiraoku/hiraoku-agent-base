@@ -985,7 +985,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "4c14f15d0548d2eadef53c02a3c538f170dba2caf427293e5cddab55aed1d796",
+      "sha256": "b57a1c91517940018f0bf74ed64dfdc653f76288f7f662d153d44b792d2f66cf",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1073,6 +1073,34 @@
       "review": "reviewed",
       "summary": "Optional product-neutral ACP v1 stdio owner integration outside standard messaging: one clean-env owned child, bounded NDJSON correlation, initialize/http capability check and one session/new with dedicated literal HTTP config. Private correlated receipt requires trusted product/effective-participant verification plus actual current discovery. Deny-only client/native permission handling, sanitized output, EOF/scope/lifetime fencing and owned finite cleanup preserve fail-closed behavior. No real product/profile/ticket/model/queue, native attestation, automatic retry, OS sandbox or descendant containment is claimed.",
       "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+    },
+    {
+      "path": "experiments/source-handoff/README.md",
+      "sha256": "6c38f0cf9ac52118debd84797837d438ee4dee7dff5c7549f9a308461e42d6f5",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Source-only review archive guide for unfinished single-owner runtime, Hermes owner binding, Hermes OAuth patches and reply-budget proposals (PR #166, Issue #167). Review context only: not integrated, not deployment-ready, activated by no product entry point, CI hook or package script. Depends on unmerged #161-#164; old pins/checksums cannot authenticate the repackaged bytes. Records static packaging checks only, the review follow-up fixes and the retained materializer template gap. No requirement, accepted policy or native/OAuth/deployment evidence is derived from it."
+    },
+    {
+      "path": "experiments/source-handoff/hermes-oauth/README.md",
+      "sha256": "7c269f77223119645cc0586e145af16ee243c7aaca9b0ffa162e6b7cad480915",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Review-only notes for two Hermes OAuth source patches against Hermes 6705c8c: a metadata-client hook with a historical 50-test synthetic result, and an untested existing-credentials extension that must apply after it. Lists unresolved extension risks (public-builder storage side effects, ambiguous refresh retry, suppressed lock cleanup failures, stale client/token pair). Forbids installing into a real runtime, exercising credentials or pushing upstream. Review context only; no OAuth readiness or HAB requirement is derived from it."
+    },
+    {
+      "path": "experiments/source-handoff/reply-budget/PROPOSAL.md",
+      "sha256": "2d6cad5d9203e7d4ba3022666e4ec6ec7eec2edad1549a864875b7a48c4ff4f7",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Historical V1 draft, superseded by V2, for a local-owner administrative max_records increase on a populated reply budget plus a source-rotation mapping. Not accepted design, implemented API or live authorization; it restates rather than changes HAB-E06/E07/E09/E11 and docs/adapter-reply-budget.md, which still provide no policy change or reset and stop at capacity. Review context only."
+    },
+    {
+      "path": "experiments/source-handoff/reply-budget/PROPOSAL-V2-EMPTY-ONLY.md",
+      "sha256": "95dfeba4e7e6c1e4be43b7169dcbbe8f520d8857c5b5d62d6943357f68d80e61",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Source-only V2 proposal narrowing the capacity exception to one administrative increase on a never-used, fully authenticated budget with a durable maintenance barrier and blanket inbox hold. Its source line references were rechecked against the baseline. Not accepted formal design, operative API or live authorization; six listed gates (formal exception, approval provenance, persistent barrier, receipt semantics, authoritative empty inventory, no startup adoption) still block implementation. Current normative budget policy is unchanged. Review context only."
     }
   ],
   "requirements": [

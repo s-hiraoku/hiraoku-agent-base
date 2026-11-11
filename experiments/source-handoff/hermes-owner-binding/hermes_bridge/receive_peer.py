@@ -202,16 +202,20 @@ class ReceivePeer:
                     break
         finally:
             self.closed = True
-            await self.native.aclose()
-            if reader.done():
-                # Observe read/parse failures without copying their body into logs.
-                try:
-                    reader.result()
-                except Exception:
-                    pass
-            else:
-                reader.cancel()
-                try:
-                    await reader
-                except asyncio.CancelledError:
-                    pass
+            try:
+                await self.native.aclose()
+            finally:
+                # Runs even when native cleanup is unsettled. Cancelling the task
+                # does not interrupt a readline already blocked in its worker thread.
+                if reader.done():
+                    # Observe read/parse failures without copying their body into logs.
+                    try:
+                        reader.result()
+                    except (Exception, asyncio.CancelledError):
+                        pass
+                else:
+                    reader.cancel()
+                    try:
+                        await reader
+                    except asyncio.CancelledError:
+                        pass

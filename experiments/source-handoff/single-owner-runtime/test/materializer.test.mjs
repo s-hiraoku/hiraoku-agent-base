@@ -53,8 +53,8 @@ test('materializer denies missing/mutated/expired source policy before output',t
 test('production root requires concrete current inputs, plans without native/credential actions',t=>{
  const f=fixture(t),s=storesFixture();t.after(()=>{s.close();rmSync(s.dir,{recursive:true,force:true})});let capabilityCalls=0;
  const dir=fileURLToPath(new URL('..',import.meta.url));
- f.input.driverPath=join(dir,'hab/src/owner-integrations/acp-stdio.ts');f.input.ownerPath=join(dir,'hab/src/adapter-host/external-owner.ts');
- for(const rel of ['production_root.ts','runtime.ts','private/source_outbox.ts','private/materialize_native.ts','private/pinned_launch.ts','private/native_deployment.ts','private/fixed_wake_policy.ts','hab/src/owner-integrations/acp-stdio.ts','hab/src/adapter-host/external-owner.ts']){
+ f.input.driverPath=join(dir,'../../../src/owner-integrations/acp-stdio.ts');f.input.ownerPath=join(dir,'../../../src/adapter-host/external-owner.ts');
+ for(const rel of ['production_root.ts','runtime.ts','private/source_outbox.ts','private/materialize_native.ts','private/pinned_launch.ts','private/native_deployment.ts','private/fixed_wake_policy.ts','../../../src/owner-integrations/acp-stdio.ts','../../../src/adapter-host/external-owner.ts']){
  const p=join(dir,rel);f.input.parentFiles[p]=hash(readFileSync(p));}
  const signal=new AbortController(),nativeScope=new AbortController();
  const input={signal:signal.signal,policy:s.options.policy,stores:s.stores,managedTransport:s.options.managedTransport,native:f.input,nativeScope:f.scope,nativeScopeSignal:nativeScope.signal,
