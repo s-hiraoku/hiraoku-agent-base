@@ -38,6 +38,7 @@ const coreModules = new Set([
     "index.ts",
     "sender.ts",
     "receiver.ts",
+    "authentication-recovery.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
   ].map(sdkPath),

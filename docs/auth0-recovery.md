@@ -181,3 +181,12 @@ Hermes側では、採用したsource revisionの標準test環境と`AGENTS.md`�
 - Auth0: [refresh token](https://auth0.com/docs/secure/tokens/refresh-tokens)、
   [rotation/reuse検知](https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation)、
   [最大/idle期限](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration)。
+
+## 共通hostの認証待機gate（製品配線は別）
+
+HAB側には [ReceiveSupervisorの認証復旧契約](receive-supervisor.md#認証失効時の待機と検証後の再開)
+があります。信頼済みnative providerが更新不能を型付きで報告した場合、通信retryへ潰さず
+再認証待ちに入り、本人再認証後の同一主体と既存HAB参加の検証結果だけで受信再開できます。
+これはRT更新や自動ログインの実装ではありません。Hermes標準のrefresh fence/保存責務を維持し、
+製品側のidentity照合・ローカルstatus表示と結線して初めて有効になります。
+この契約や合成テストの成功を、実機での自然期限越え・再認証・常駐復帰の完了とは扱いません。

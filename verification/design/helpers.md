@@ -29,12 +29,12 @@ The communication closure retains the original product/Task boundary across **al
 
 The additional protected core/storage closure starts from the explicit `coreModules` list in the helper, then checks every transitive local/type/module edge with the stricter policy. It rejects all MCP SDK packages, the MCP client/server wrappers, HTTP and OAuth-resource modules, and the outer-only `src/protocol.ts`/`src/security.ts`. It also rejects direct `node:http` and every package except `node:buffer`, `node:crypto`, `node:fs`, `node:path`, `node:sqlite` and `zod`. A core import of an outer wrapper fails even before that wrapper's SDK edge is reached; an intermediate permitted core module cannot hide the reverse dependency.
 
-The reviewed roles follow `docs/hab-relay-spec.md:74–97` and the implementation's actual imports at the generation baseline:
+The reviewed roles follow `docs/hab-relay-spec.md:74–97` and the implementation's actual imports at the generation baseline, plus explicitly reviewed maintenance below:
 
 | Role | Explicit modules | Reason |
 | --- | --- | --- |
 | Protected messaging contract | `src/messaging/index.ts`, `contract.ts`, `delivery-service.ts`, `tool-errors.ts` | Backend-neutral entry point, envelope, `DeliveryService` port and the fixed public tool error codes. |
-| Protected public/domain | `src/agent-sdk/index.ts`, `sender.ts`, `receiver.ts` | Durable sender/receiver entry point with injected transport. |
+| Protected public/domain | `src/agent-sdk/index.ts`, `sender.ts`, `receiver.ts`, `authentication-recovery.ts` | Durable sender/receiver entry point with injected transport; local branded recovery status and owner-local identity gate have no dependencies, IO, credential storage or login/refresh. Their inclusion does not admit the outer OAuth/MCP implementation. |
 | Protected storage | `sqlite-outbox.ts`, `sqlite-inbox.ts`, listed individually in `coreModules` | Dedicated outbox/inbox storage must not acquire transport SDK or credential dependencies. The retired SQLite Relay store (`sqlite-store.ts`) was removed when JetStream became the only delivery backend. A future filename is not implicitly accepted by this description. |
 | Protected host contracts | `src/hab/agent-capacity.ts`, `src/host/mcp/writer-admission.ts` | Registry-owned sender capacity policy and finite host request admission with injected ports; no import of the transport implementation is required. |
 | Outer transport | `src/agent-sdk/mcp-client.ts`; `src/host/mcp/server.ts`, `http.ts`, `http-node.ts`, `oauth-resource.ts` | Optional MCP/HTTP codecs/clients/listener and OAuth metadata. These can depend inward and use the MCP SDK. |

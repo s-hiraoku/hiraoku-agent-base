@@ -37,3 +37,8 @@ node --test test/relay-receiver.test.js test/relay-inbox-maintenance.test.js \
 The fixtures use synthetic keys and new temporary databases only.
 
 An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.
+
+`authentication-recovery.ts` provides local-only branded recovery reasons and an optional
+owner-local identity verification gate. It performs no IO, stores no tokens and does not
+refresh or log in. See [receive recovery](../../docs/receive-supervisor.md#認証失効時の待機と検証後の再開)
+for trusted native-provider wiring, fixed status metadata and the explicit operational limits.

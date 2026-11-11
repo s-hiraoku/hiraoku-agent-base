@@ -714,10 +714,10 @@
     },
     {
       "path": "docs/receive-supervisor.md",
-      "sha256": "0287282a64593542994588d71c41558aabb8a6c3228b20beb10c2bfd04410b66",
+      "sha256": "25328acb9d9718bdb51377c4d43414a1b2c8b1d9ea597e04cb3f5c003fde7bb2",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Model-free version1 scheduler repeats only existing host receive. Requires configured same-agent durable stores/control/owner and explicit resume; no login/grant/pause release/owner takeover/task/reply/model. Explicit bounded interval/backoff/drain; authorization/storage failure stops, outstanding work blocks next receive, stop is not RPC cancel or token revoke. receive_steps counts returned calls only, no auto body processing; restart reuses original ACK and owner/control authority. Product composition/residency is a separate live gate."
+      "summary": "Model-free version1 scheduler repeats only existing host receive. Requires configured same-agent durable stores/control/owner and explicit resume; no login/grant/pause release/owner takeover/task/reply/model. Explicit bounded interval/backoff/drain; authorization/storage failure stops, outstanding work blocks next receive, stop is not RPC cancel or token revoke. receive_steps counts returned calls only, no auto body processing; restart reuses original ACK and owner/control authority. Product composition/residency is a separate live gate. Optional owner-local authentication gate starts blocked on each process start; trusted local provider recovery signals stop or wait without polling/ACK or refresh/login IO. Only fresh one-use gate-local verification of the exact approved issuer/resource/subject/client/connection/agent tuple reopens it. Fixed synchronous status metadata contains no identity; current pause/owner/draining authority is rechecked after notifications. Generic wire errors cannot supply local recovery authority. Native credential ownership, verification, notification delivery and real expiry/restart acceptance remain separate product responsibilities."
     },
     {
       "path": "docs/recipient-messages.md",
@@ -836,12 +836,12 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "4252f9992b58f88255c83cf2fb2dc5c9ff307f7fcc2f0cf109b32749e896cbc0",
+      "sha256": "11241d8bb64a267b2dc7124a02752aaf9ef56d3e176b0838d876ac4d3c796f4a",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
     },
     {
       "path": "docs/testing/p7-ci.yml.example",
@@ -861,12 +861,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "22d3a4c05c11574f8951a5b6eb17fc5294139a71b9f257a977c0e0ebe2a1ce48",
+      "sha256": "c09cb85aa5bd29f8c563e2c4cd1dc21fbfc6c02747a66207789c67689943e78e",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, expected full root 1353) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, expected full root 1451) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
     },
     {
       "path": "docs/testing/plan.md",
@@ -878,12 +878,12 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "bf885071973f838dcc0aa28f199c22b101eb7fb5d67545471aeea64f6637ccef",
+      "sha256": "57365a63e5894ac3aa56135795976129be0c991cd0a6cf9fc02aea205f3c5574",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
     },
     {
       "path": "docs/testing/results.md",
@@ -939,10 +939,10 @@
     },
     {
       "path": "src/agent-sdk/README.md",
-      "sha256": "d793ce9c22800a41c98add36b2dda576a8ee583461da29ea5e3d2634489f3bbc",
+      "sha256": "1da6c3b959179abee679d53a56c0bd6a6a64a0d7e1adfb19e536956b549393cd",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved."
+      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved. Also documents local-only branded authentication recovery reasons and an optional owner-local identity verification gate. They perform no IO, hold no tokens and provide no refresh/login; product-native wiring and acceptance remain explicit separate requirements."
     },
     {
       "path": "src/hab/README.md",
@@ -979,7 +979,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "acaba9d933fce536c1bac794ad65c6c0e262c3b8b0e36be1e1860825de9c1c57",
+      "sha256": "0e532c2dac9cbd1ad5a4e791c345fa02225fd793cec983faf57a9c106c160e7d",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -988,7 +988,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "a5a79444b0fe56053456951e1387ff3d5d26899ceca97913aaf7ec2e50c052e2",
+      "sha256": "fedda90f5864cfa63fa92a3ff96d3b08e3e94d00dd4359c30c94a7aee7488dc9",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -997,7 +997,7 @@
     },
     {
       "path": "verification/design/helpers.md",
-      "sha256": "0d82c4dc0dd7a2990a0c42fe3dc192dfc07c87339b73e00e2c8f9516992de9e5",
+      "sha256": "d64387ab6b9a6feeb02c8ef2c46a690d3279aa8dd196c9cb8a5179ffa94c8a7f",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1064,10 +1064,10 @@
     },
     {
       "path": "docs/auth0-recovery.md",
-      "sha256": "e9c74424a7e69fc2a4e65258618ba2483676a3cf7737e79e83e425119c6c2b7c",
+      "sha256": "7b857a07ee915b24e73fc5375ea3fff389b6beb812f7997de2b16b7a93daca13",
       "role": "context",
       "review": "reviewed",
-      "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. Offline trial preparation now samples one clock value, uses the existing replay-bound ID factory and contract parser, refuses repair/overwrite of saved intents, and checks the exact saved submission before any separately authorized submit. The 1ms mismatch regression and expiry boundary remain offline controls, not live recovery proof."
+      "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. Offline trial preparation now samples one clock value, uses the existing replay-bound ID factory and contract parser, refuses repair/overwrite of saved intents, and checks the exact saved submission before any separately authorized submit. The 1ms mismatch regression and expiry boundary remain offline controls, not live recovery proof. Links the optional common-host local recovery gate without claiming installed Hermes wiring, automatic login, notifications or live recovery acceptance. Same-subject and existing participation verification remain prerequisites; native refresh fence and credential storage responsibilities do not move into HAB."
     },
     {
       "path": "docs/acp-owner-driver.md",
@@ -1220,8 +1220,8 @@
         },
         {
           "path": "docs/receive-supervisor.md",
-          "start": 51,
-          "end": 52,
+          "start": 53,
+          "end": 54,
           "excerpt_sha256": "a7d85ecd1deb45fa85e25766c5ba45f4508b785cee29f3ad62d46b0c50aea969"
         }
       ]
@@ -1380,12 +1380,13 @@
     {
       "id": "HAB-F09",
       "title": "Receive-only supervisor authority",
-      "statement": "Supervisor repeats receive only with same-agent durable stores, current authorization, process owner and explicit resume. It stops on missing/lost owner, pause or local auth failure and never resumes, obtains/releases owner, logs in, updates grants, sends replies, accepts tasks or starts a model.",
+      "statement": "Supervisor repeats receive only with same-agent durable stores, current authorization, process owner and explicit resume. It stops on missing/lost owner, pause or local authorization failure and never clears pause, obtains/releases owner, logs in, updates grants, sends replies, accepts tasks or starts a model. An optional owner-local authentication gate begins blocked after process start and may unblock receive only after fresh verified evidence of the exact approved issuer/resource/subject/client/connection/agent identity; it is not authentication or a replacement for current authorization. Copied, foreign, reused or superseded verification tickets cannot unblock it. Credential refresh/login, independent identity verification and native notification delivery remain product responsibilities.",
       "rationale": "A scheduler must not become privileged agent control or invent operational authorization.",
-      "scope": "ReceiveSupervisor host port v1",
+      "scope": "ReceiveSupervisor host port v1, optional trusted local recovery gate; synthetic recovery checks in test/authentication-recovery.test.js do not establish native OAuth or deployment acceptance.",
       "decision": "accepted",
       "checks": [
-        "js-common-mcp"
+        "js-common-mcp",
+        "js-root"
       ],
       "citations": [
         {
@@ -1393,13 +1394,25 @@
           "start": 5,
           "end": 15,
           "excerpt_sha256": "e91f4dbe29ba9b62ea3b72feb896bd295bd6dc46354630d3249f87fbedee7534"
+        },
+        {
+          "path": "docs/receive-supervisor.md",
+          "start": 90,
+          "end": 99,
+          "excerpt_sha256": "b7304656b8adab8a3e06f187f73b9ba7a7c6a42d08a088c5e0ae372e6fc3bc1a"
+        },
+        {
+          "path": "docs/receive-supervisor.md",
+          "start": 114,
+          "end": 127,
+          "excerpt_sha256": "67981f67c95e85fefe13edfd367f702f832bbfd899a107674003eadce89a4c63"
         }
       ]
     },
     {
       "id": "HAB-F10",
       "title": "Bounded receive and drain",
-      "statement": "Configure finite receive interval/backoff/drain; only poll/ACK transport failures back off. Storage failure stops without deleting data for room. Outstanding work prevents a new receive; stop prevents the next cycle and waits boundedly; drained=false does not certify safe DB/owner closure.",
+      "statement": "Configure finite receive interval/backoff/drain; only poll/ACK transport failures back off. A trusted local provider recovery signal becomes an explicit stop reason without a gate, or a blocked gate with bounded local-only waits and fixed, secret-free synchronous state notifications. Generic HTTP status or wire strings do not confer that local signal. No poll/ACK starts while blocked; current pause/owner/draining authority is rechecked before readmission. Storage failure stops without deleting data for room. Outstanding work prevents a new receive; stop prevents the next cycle and waits boundedly; drained=false does not certify safe DB/owner closure. Recovery retains original body/ACK and deferred send intent without extending existing time/attempt/retention horizons.",
       "rationale": "Avoids overlap, lost durable evidence and false cleanup success.",
       "scope": "ReceiveSupervisor timing, failures and cleanup",
       "decision": "accepted",
@@ -1411,8 +1424,20 @@
         {
           "path": "docs/receive-supervisor.md",
           "start": 30,
-          "end": 48,
-          "excerpt_sha256": "fbf976a14c350bf64ba542a85e6084c5f79874c6230c23d97a0347970f5c857f"
+          "end": 51,
+          "excerpt_sha256": "7342e9473baf10562a41af925e77607b5360c2adec14e7ceaceebcf0141d292d"
+        },
+        {
+          "path": "docs/receive-supervisor.md",
+          "start": 75,
+          "end": 81,
+          "excerpt_sha256": "3601ea9fa012d53b7b3f244b70c2106569aa89a79869abe2e244a60f0b2ad241"
+        },
+        {
+          "path": "docs/receive-supervisor.md",
+          "start": 129,
+          "end": 136,
+          "excerpt_sha256": "7b2d0fa1ea3b0398d93f2ea6da69d863e4b14b9344a7a529ec7480e0b5444f23"
         }
       ]
     },
@@ -4073,8 +4098,8 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "dbf98749f4c41020ac4cdc5576f205e999c60840506507bdeff28a37a23e32c0",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged. Optional recipient owner scheduling (2026-11-11): re-read current required-group and failure/hosted-status text; only expected root inventory changes 1424 to 1441. Acceptance meaning and requirement statement unchanged."
+          "excerpt_sha256": "8521ce8fd940405b396711e117106179b94e77c37e2f43aba3414f1862c4ae83",
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): re-read current required-group and failure/hosted-status text; only expected root inventory changes 1424 to 1441. Acceptance meaning and requirement statement unchanged. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4087,7 +4112,7 @@
           "start": 28,
           "end": 28,
           "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     },
@@ -4197,7 +4222,7 @@
           "start": 32,
           "end": 34,
           "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     },
@@ -4244,14 +4269,14 @@
           "start": 3,
           "end": 3,
           "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 14,
           "end": 14,
           "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     },
@@ -4268,24 +4293,10 @@
       "citations": [
         {
           "path": "docs/testing/publication.md",
-          "start": 3,
-          "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
-        },
-        {
-          "path": "docs/testing/publication.md",
-          "start": 16,
-          "end": 18,
-          "excerpt_sha256": "700ae2c7bbb6e8b85d685e6719111c48ab22fc68c39836985d992a4babca4005",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged. Optional recipient owner scheduling (2026-11-11): re-read current required-group and failure/hosted-status text; only expected root inventory changes 1424 to 1441. Acceptance meaning and requirement statement unchanged."
-        },
-        {
-          "path": "docs/testing/publication.md",
           "start": 24,
           "end": 28,
           "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     }
@@ -5562,15 +5573,15 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "2c3d88df032ee344d24f86b7671e3f64a68af30e7f251d92a5d2f9839aa9b07d",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "excerpt_sha256": "d1df563d1b1ecf482e1d9af50283e5ce748b1426698616d16fe8f0dc0ba7e423",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 28,
           "end": 28,
           "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     },
@@ -5601,7 +5612,7 @@
           "start": 3,
           "end": 3,
           "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     },
@@ -5626,7 +5637,7 @@
           "start": 58,
           "end": 58,
           "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": ".claude/skills/verify-hab/features/restart-durability.md",
@@ -5685,15 +5696,15 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "e16c80ad9b874e554965ce4d1a1265c9fe12114cc860181741c4d46537798e55",
-          "maintenance": "Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
+          "excerpt_sha256": "d194dda2bdd7d7e783cfd1e5c46b5610bbd5a29ba5874a3a1d135c8b6ef1345e",
+          "maintenance": "Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "838e95753140562ba144e53d0f0db57059084eb20a0349c4210581eed3138c96",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "excerpt_sha256": "b9f3e8c8f1c1e799e36c5d6a2e0b622fc0b23b9e952a817888c0f4d886378f26",
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": "test/p7/README.md",
@@ -5731,7 +5742,7 @@
           "start": 20,
           "end": 20,
           "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     },

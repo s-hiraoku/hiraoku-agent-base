@@ -20,6 +20,7 @@ import type { SQLiteTaskBridgeJournal } from "../task-bridge/sqlite-journal.ts";
 import { bindingSchema } from "../task-bridge/contract.ts";
 import type { BridgeTasks } from "../task-bridge/contract.ts";
 import { HostError } from "./sqlite-control.ts";
+import { authenticationRecoveryReason } from "../agent-sdk/authentication-recovery.ts";
 import type { SQLiteHostControl } from "./sqlite-control.ts";
 const kind = z.enum(["execution_accepted", "execution_result"]);
 export const hostCommand = z.discriminatedUnion("op", [
@@ -657,6 +658,7 @@ export class AdapterHostCycle {
       } catch (current) {
         if (current instanceof HostError) reason = current.code;
       }
+      if (!reason) reason = authenticationRecoveryReason(error);
       if (
         !reason &&
         error instanceof Error &&

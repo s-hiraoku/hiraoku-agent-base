@@ -16,3 +16,14 @@ export type {
   OutboxState,
   OutboxMaintenanceResult,
 } from "./sender.ts";
+
+export {
+  AuthenticationRecoveryError,
+  AuthenticationRecoveryGate,
+  authenticationRecoveryReason,
+} from "./authentication-recovery.ts";
+export type {
+  AuthenticationRecoveryReason,
+  AuthenticationRecoveryStatus,
+  RecoveryIdentity,
+} from "./authentication-recovery.ts";

@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "46781eadd205c1878a85f976f72d18a28dc5716c",
+  "source_ref": "f5c9912cc489e5629870b3953942ab95361d8927",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "42489d67fae830a0496d3078ef3d2e6a28e2f2490c7a51b62e33d3da2beb77f7"
+      "sha256": "02b588b1a4c6e34a60c6bc6cf0fac0bd8a05b4aae9abf2c805dd58304650ac41"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -255,7 +255,7 @@
     },
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
-      "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0"
+      "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926"
     },
     "src/adapter-host/external-owner.ts": {
       "previous_sha256": null,
@@ -276,6 +276,10 @@
     "src/adapter-host/private-http.ts": {
       "previous_sha256": null,
       "sha256": "06ae7212883f3a533ac13209c216c29eecd9a32f0567878ef0a91a46f0c91a17"
+    },
+    "src/adapter-host/receive-supervisor.ts": {
+      "previous_sha256": "9ed3028348ac921813d295ffd92862cfe45658bc7f5f6eb207c1efd9f6d0cf27",
+      "sha256": "717bdf202088025f56a20cff92fc384abca5395c6d4b7cfcf7744aa1bca4d3e7"
     },
     "src/adapter-host/single-source-authority.ts": {
       "previous_sha256": null,
@@ -303,23 +307,27 @@
     },
     "src/agent-sdk/README.md": {
       "previous_sha256": null,
-      "sha256": "d793ce9c22800a41c98add36b2dda576a8ee583461da29ea5e3d2634489f3bbc"
+      "sha256": "1da6c3b959179abee679d53a56c0bd6a6a64a0d7e1adfb19e536956b549393cd"
+    },
+    "src/agent-sdk/authentication-recovery.ts": {
+      "previous_sha256": null,
+      "sha256": "123ff8461c6d5178378bac72ba6f603fa322013457d882941d77d72a7f5eb498"
     },
     "src/agent-sdk/index.ts": {
       "previous_sha256": null,
-      "sha256": "5efc38678fc54a2a88e6aa515ed54afdb25f320f7e51191a732029e5caa9a101"
+      "sha256": "216763a064888d8afd8b92d475d8a929e750d6202a4dcd8ada453539bb6dd43c"
     },
     "src/agent-sdk/mcp-client.ts": {
       "previous_sha256": null,
-      "sha256": "f3740e67c6ad353ebb1b4c24abc7b7e4ee24f8a4618b9394571200c2317eea39"
+      "sha256": "6c6262309eaabca946ebe1ccd1c6a8f1098ae72a2a02f24534c8679208a41dab"
     },
     "src/agent-sdk/receiver.ts": {
       "previous_sha256": null,
-      "sha256": "08ccace866166f43b450bafd0e72f6210c7d1ebec6ec807163c239176b653149"
+      "sha256": "c9552cc20a2d37ee858e137b741028c6f3add36ab10960928252a033495ce173"
     },
     "src/agent-sdk/sender.ts": {
       "previous_sha256": null,
-      "sha256": "98881e0ede8cfac4cbb7412efd5333f248eda64b003ebcfcb48137e2e25c5d02"
+      "sha256": "2f427dfc6aa512861eea017e6db4a87982710801ecf4328f62936593cca8bed0"
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
@@ -788,6 +796,10 @@
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
       "sha256": "463333870736ad3f05252d7e64f845dfdc494a431feaa7140db51a10bcc43a0d"
+    },
+    "test/authentication-recovery.test.js": {
+      "previous_sha256": null,
+      "sha256": "d898c42f83bdb65f39eaca6ab25ce2e392645ef0a53edada4fe6aa3dbc48894c"
     },
     "test/ci-nats/install.test.ts": {
       "previous_sha256": null,
