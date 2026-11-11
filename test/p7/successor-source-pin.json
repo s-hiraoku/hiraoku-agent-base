@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "b10b69dda62a03841d664eb6e7fe997b30252751",
+  "source_ref": "65d7265c40feb658c402f6d7736c3bb21e04bfe7",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "1600d2bd93047c8d1a17667f2c379a9bc5cdada796e696b92cc6ccb8e7fbe7ab"
+      "sha256": "17cbbf278564c41382d2a7d19e6991b423828c8ada8eb099f4878864fd4c707c"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -488,6 +488,10 @@
     "src/owner-integrations/acp-updates.ts": {
       "previous_sha256": null,
       "sha256": "d8d058cbd9c910b9342cd8fb105ebcee7c8f6d72a07c9b1a8f146e35ab223e05"
+    },
+    "src/owner-integrations/source-launch-journal.ts": {
+      "previous_sha256": null,
+      "sha256": "0fe30b9c3b01a06a3921012115368b9c005ed4cc14c1758f07f5ad973da5cc3a"
     },
     "src/recipient-messages/contract.ts": {
       "previous_sha256": null,
@@ -985,26 +989,6 @@
       "previous_sha256": null,
       "sha256": "039f4b893209aa08ec92366be07581752e2bbe5902cf8427f7333cade8a12dc1"
     },
-    "test/startup-worker.ts": {
-      "previous_sha256": null,
-      "sha256": "2df411c3b87f53dc2be4f7b34883a24c6813c4305bbc40c89dcb6968106fba7b"
-    },
-    "test/tools/entrypoints.test.ts": {
-      "previous_sha256": null,
-      "sha256": "3f889c9f3a6ef636553a1d3334acc7460217fcd94f12c578fe6d214ecff0c58e"
-    },
-    "tsconfig.json": {
-      "previous_sha256": null,
-      "sha256": "bbee384db99210cf7d2457b504026f98fbe934b0ab84a008e53731bd2732e644"
-    },
-    "tsconfig.tools.json": {
-      "previous_sha256": null,
-      "sha256": "e3ff028ec49fa2ca2f7e72b7edde34e11f2e8c65ce52e52b4df60014b08b9ab1"
-    },
-    "src/owner-integrations/source-launch-journal.ts": {
-      "previous_sha256": null,
-      "sha256": "0fe30b9c3b01a06a3921012115368b9c005ed4cc14c1758f07f5ad973da5cc3a"
-    },
     "test/source-launch-child.js": {
       "previous_sha256": null,
       "sha256": "97fa98b0c5d67fd7b9d8558142c275f9f2424247d765da9679f6ddeede230c3d"
@@ -1020,6 +1004,22 @@
     "test/source-launch.test.js": {
       "previous_sha256": null,
       "sha256": "35e00263bc07db8f2470ce6b474bfb1da7125b8e307c77fccb5cff9498aa710e"
+    },
+    "test/startup-worker.ts": {
+      "previous_sha256": null,
+      "sha256": "2df411c3b87f53dc2be4f7b34883a24c6813c4305bbc40c89dcb6968106fba7b"
+    },
+    "test/tools/entrypoints.test.ts": {
+      "previous_sha256": null,
+      "sha256": "3f889c9f3a6ef636553a1d3334acc7460217fcd94f12c578fe6d214ecff0c58e"
+    },
+    "tsconfig.json": {
+      "previous_sha256": null,
+      "sha256": "bbee384db99210cf7d2457b504026f98fbe934b0ab84a008e53731bd2732e644"
+    },
+    "tsconfig.tools.json": {
+      "previous_sha256": null,
+      "sha256": "e3ff028ec49fa2ca2f7e72b7edde34e11f2e8c65ce52e52b4df60014b08b9ab1"
     }
   }
 }
