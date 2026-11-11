@@ -308,17 +308,15 @@ Sources: [docs/generic-agent-async-design.md:100](https://github.com/s-hiraoku/h
 
 ### HAB-F26 — Transport adoption is separate
 
-JetStream delivery is adopted as the only delivery backend (ADR-016), with no dual-send to a second store and no migration of messages held by the retired SQLite store. Evaluate A2A transport adoption using isolated compatible failure/recovery/migration/value tests before formal adoption; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.
+JetStream delivery is adopted as the only delivery backend (ADR-016), with no dual-send to a second store and no migration of messages held by the retired SQLite store. A2A is adopted (owner, 2026-11-12) as the agent-interoperability entry next to the five MCP tools: the host-owned identity entry, off by default. Its production deployment is a separate decision; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.
 
 Reason: Existing optional code and a successful lab do not decide production adoption.
 
-Scope: Product0.1 transport adoption and rollout: JetStream delivery is adopted; A2A transport adoption remains future. Decision: **proposed**.
+Scope: Product0.1 transport adoption and rollout: JetStream delivery and the A2A entry are adopted; production deployment of either remains a separate gate. Decision: **proposed**.
 
 Checks: proposal-review, production-operations.
 
 Sources: [docs/hab-product-spec.md:136](../../docs/hab-product-spec.md#L136-L159), [docs/hab-product-spec.md:200](../../docs/hab-product-spec.md#L200-L206), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48).
-
-## Authority
 
 ### HAB-A01 — Common transport and recipient authority
 
@@ -524,17 +522,17 @@ Checks: js-root.
 
 Sources: [docs/local-integration.md:25](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/local-integration.md#L25-L29), [docs/migration-plan.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/migration-plan.md#L21-L25).
 
-### HAB-A18 — Address rename remains explicit proposal
+### HAB-A18 — Address rename keeps identity and reserves old names
 
-Proposed same-namespace rename retains immutable agent ID and authority/mailbox identities; old names remain reserved and non-forwarding, with separate rename permission, CAS and migration approval. Do not infer rollout or auto-adopt from implemented prototype.
+Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace-period resolution is specified but not yet implemented.
 
 Reason: Changing names must not reassign authority or silently resolve deployment policy.
 
-Scope: Optional proposed registryv3 rename only. Decision: **proposed**.
+Scope: Opt-in registry v3 rename; grace-period resolution pending implementation. Decision: **proposed**.
 
 Checks: proposal-review.
 
-Sources: [docs/agent-address-rename.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L3-L26), [docs/agent-address-rename.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L28-L44), [docs/agent-address-rename.md:78](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L78-L86).
+Sources: [docs/agent-address-rename.md:3](../../docs/agent-address-rename.md#L3-L48), [docs/agent-address-rename.md:50](../../docs/agent-address-rename.md#L50-L66), [docs/agent-address-rename.md:104](../../docs/agent-address-rename.md#L104-L112).
 
 ### HAB-A19 — Group stop is total and re-grants nothing
 

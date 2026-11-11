@@ -6,9 +6,9 @@
 
 | ID / 状態      | 判断と理由                                                                                                               | 代替案・限界                                                                                                                     |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-001 / 採用 | agentの判断を保持し、共通Hubは依頼・進捗・結果を仲介する                                                                 | 中央の単一super-agentへの統合は当面不採用。個人文脈を全agentへ複製しない                                                         |
+| ADR-001 / 採用 | agentの判断を保持し、共通Hubは依頼・進捗・結果を仲介する（標準のメッセージ交換ではADR-015・016のとおり、HABはアドレス単位の認証・名義・配送だけを担う）                                                                 | 中央の単一super-agentへの統合は当面不採用。個人文脈を全agentへ複製しない                                                         |
 | ADR-002 / 採用 | 現本番候補はMac＋SQLite。状態DBは一つ                                                                                    | Worker/D1核とmockを移植性のため維持。Sites/D1本番は保留で、現在のpilotでは使わない                                               |
-| ADR-003 / 採用 | 既存の限定Task試験ではHTTP MCPと外向きMac worker、独立Hermes Runs、durable receiptを使う。標準通信の接続条件はADR-015で区別する                                                       | A2Aは初期版で当面不採用。Desktop session/API/authの流用もしない                                                                  |
+| ADR-003 / 採用 | 既存の限定Task試験ではHTTP MCPと外向きMac worker、独立Hermes Runs、durable receiptを使う。標準通信の接続条件はADR-015で区別する                                                       | A2Aは初期版で当面不採用とした（2026-11-06のADR-016でhost所有名義の入口として採用、既定は無効）。Desktop session/API/authの流用もしない                                                                  |
 | ADR-004 / 採用 | 原子的claim、lease/fence、要求idempotency、監査/outboxで失敗を扱う                                                       | exactly-once配送を保証しない。有限retryと受信側dedup、未知runの照合が必要                                                        |
 | ADR-005 / 採用 | 固定task、最小scope、並列1、実tool/import境界を最初の受入れにする                                                        | 任意shell・自由入力・自由な宛先・個人データ・自律follow-upは当面不採用                                                           |
 | ADR-006 / 採用 | Auth0をidentity候補とし、主体/clientを分離。未設定は拒否                                                                 | 本番設定・無料feature・client登録方式は未確認。service credentialをuser consentの代わりにしない                                  |
@@ -18,7 +18,7 @@
 | ADR-010 / 採用 | 既存jobは元の担当に残す。費用・停止・照合を先に決める                                                                    | cronの重複作成、有料fallback、不明admissionの無制限retryは当面不採用                                                             |
 | ADR-011 / 保留 | Claude Code・Codex・CursorとCuaを限定executor候補にする                                                                  | Hub adapter、workspace reservation、権限、費用、result provenanceを検証後に選定                                                  |
 | ADR-012 / 保留 | 競合は設計参考として保存し、部品単位で比較する                                                                           | 導入・置換・migrationは未決定。browser本人sessionによるdot代理操作は初期HAB接続に採用しない                                      |
-| ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-relay-spec.md)を通信設計に採用。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014、配送storeと構成はADR-016で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
+| ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-relay-spec.md)を通信設計に採用（Relayという独自実装はADR-016で廃止。message契約・store-and-forward・ACK・期限の要件は存続）。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014、配送storeと構成はADR-016で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
 | ADR-014 / 採用 | 2026-10-25 JST：[認証は参加グループ単位、Botの切り分けはアドレス単位](relay-auth-groups.md)。1認証主体に1件または複数の所属個体を紐付ける | グループ内のBot本人性は要求しない。グループ外の名義使用・受信箱閲覧を拒否。Registryのopt-in拡張を実装。基本5操作のMCP名義選択を実装。常用token更新は未実装で、稼働設定やgrantを変更しない |
 
 ## ADR-015 / 採用：共通MCP通信と受信側の判断を分離する
@@ -46,6 +46,14 @@
 - 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
 
 配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元する。新releaseが受け付けたmessageと、backup時点で未完了だったmessageを元IDで照合する。backup時に未完了のIDだけでなく、backup後の新規IDも、新journalの行が回収されても受信inboxや実行記録に残る証拠から照合対象へ加える。どの写しにも残らないIDはこの一覧だけでは列挙できない。journalの`expired`・`quarantined`は未配達の証明にならず、受信者のinbox・Task結果・実行記録で判断する。復元した状態のIDがすべて期限切れになるまで旧buildを起動しないので、新releaseで実行済みのIDはRelayから再配達されない。ACKは保存の証明で実行の証明ではないため、backup時に受信inboxへ保存済み・未処理だった本文も照合する。復元inboxは期限に関係なく保存済み本文を渡すので、受信者を再開する前に写しの実行記録と照合し、実行済みの本文は再処理させない。backup後に保存され、新inboxの写しだけに未解放で残る本文も別に照合する。drainと期限待ちはその本文を復元先へ移さない。実行記録やTask状態から未引渡しと確認できた場合だけ、元のsender/message IDと重複排除を保つアプリ固有のローカル復旧手順で写しから引き継ぐ。未確認の副作用、欠けた写し、矛盾があれば停止を保ち、自動再送、別ID化、期限延長を行わない（[手順](../packages/relay-nats/OPERATIONS.md#roll-back)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
+
+2026-11-12 JSTのowner確認：旧Relayは廃止し、**配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えた**ものとする。A2Aはhost所有名義の入口として採用し、既定は無効、本番配備は別に判断する。エージェント向けのMCP 5ツール（`relay_*`）はA2Aと並ぶ標準入口として残す。tool名と`relay:local`／`relay:admin`の名前は互換のためだけに残し、文書ではhostと呼ぶ。
+
+2026-11-07のレビュー補足（A2A入口の返信outbox回収）：outbox回収は全件分の返信枠を一括要求せず、上限M、保持行数T、返信期間内のsource数W、今回回収する行数pに対して2×(max(0,M-T+p)+W)件分の本文・byte・ACK履歴・保持行の余裕を確認する。TがM以下なら空き枠F=M-Tとして2×(F+W+p)と同じである。上限を既存行数より下げた場合、超過行の回収だけでは新しい送信枠を生まない。pは100以下で、同一hostの同期区間で集計から回収まで行う。保存エラーの本文を捨てず、期限処理と30日保持は変更しない。通常shutdown、結果期限、identityの永久disconnectは既存の意味を維持する。identity変更による失効解除は提供せず、A2Aを外してMCPだけ起動できる。
+
+## ADR-017 / 採用・未実装：受信ループをエージェントSDKへ移す
+
+2026-11-12 JST、owner判断。標準受信の基準とした受信supervisor（`ReceiveSupervisor`）は`src/adapter-host`にあり、その`AdapterHostCycle`はADR-016で保留としたtask-bridge・answer-intentsと返信budget（`src/adapter-policy`）を構成時に必要とする。host本体も二重起動防止に`src/adapter-host`の`SQLiteHostOwner`を使う。標準経路が保留部品に依存しないよう、受信supervisor、受信だけを行う最小cycle、process ownerを`src/agent-sdk`へ移す。Task引受け・質問返信intent・返信budgetは`src/adapter-host`に残し、明示構成する任意連携とする。新しいエージェントは`src/agent-sdk`だけで送信と保存後ACKの受信を組み込めることを完了条件とする。移動は別PRで行い、それまでは現行の配置が有効である。
 
 ## 次に決める内容
 
@@ -94,4 +102,3 @@ repoは別管理を維持します。実装接続は未着手です。
 実際にどのagentへどの期間・本文範囲を共有するかだけが本人の選択事項です。まず限定Hermes往復を完了し、
 この案を確認してから別repoの必要変更へ進みます。
 
-2026-11-07のレビュー補足：outbox回収は全件分の返信枠を一括要求せず、上限M、保持行数T、返信期間内のsource数W、今回回収する行数pに対して2×(max(0,M-T+p)+W)件分の本文・byte・ACK履歴・保持行の余裕を確認する。TがM以下なら空き枠F=M-Tとして2×(F+W+p)と同じである。上限を既存行数より下げた場合、超過行の回収だけでは新しい送信枠を生まない。pは100以下で、同一hostの同期区間で集計から回収まで行う。保存エラーの本文を捨てず、期限処理と30日保持は変更しない。通常shutdown、結果期限、identityの永久disconnectは既存の意味を維持する。identity変更による失効解除は提供せず、A2Aを外してMCPだけ起動できる。

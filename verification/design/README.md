@@ -323,3 +323,7 @@ Merging the integrated main (#161, #162, #163) into the managed-transport branch
 Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence.
 
 The existing recipient-messages context now documents the explicitly opted-in supervisor, stable native reconciliation, separate operation permissions, current owner/epoch checks and honest local metadata states. The focused check includes its new test file; default receive-only behavior and all native/manual gates stay unchanged. Source must be committed before a separately reviewed successor pin.
+
+## Relay retirement wording and owner decisions (2026-11-12)
+
+Documentation-only maintenance after the owner confirmed that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability, adopted address rename with a 30-day old-name grace period, and chose to move the receive loop into the agent SDK (ADR-017). See the 2026-11-12 entry in [document review](document-review.md). HAB-F26 and HAB-A18 stay `proposed` until production deployment (A2A) and the grace-period implementation (rename) land. New conflicts HAB-C-F10 and HAB-C-A07 are resolved by explicit owner authority. No check argv, helper or product behaviour changed.

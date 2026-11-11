@@ -1,4 +1,4 @@
-# HAB Relay 正式仕様 — draft v2 + store-and-forward
+# HABメッセージ配送の正式仕様（旧称 HAB Relay）— draft v2 + store-and-forward
 
 [README](../README.md) · [設計判断](hab-decisions.md) · [現行Hub内部設計](architecture.md) · [受入れ状況](mvp-acceptance.md)
 
@@ -6,7 +6,7 @@
 | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | 採用設計       | **HAB Relay draft v2 + store-and-forward**。draft v2は採用した設計案の名称であり、稼働済みのprotocol versionを表さない |
 | 採用判断       | 2026-10-17 JST。2026-10-25 JSTに認証グループとアドレスの分離を追加採用                                                                           |
-| 実装照合基準   | `main` `70c438bb6f3f4ab8b201536e437cdb641eeee4d6`                                                                      |
+| 実装照合基準   | 初版は`main` `70c438bb6f3f4ab8b201536e437cdb641eeee4d6`。2026-11-12に冒頭の現行構成・第4.2節・第15節を`main` `28dd393`と照合 |
 | この文書の対象 | 通信部分のHAB Relay、周辺Adapter、既存Task Engineとの境界と受入れ条件                                                  |
 | 承認の境界     | 設計採用は、実装・migration適用・実個体接続・サービス起動・公開・credential発行・権限変更の承認を兼ねない              |
 
@@ -17,6 +17,8 @@
 実装状況：独立RelayとHTTP MCP／永続clientに加え、HAB側のregistry・不変アドレス予約・binding／認可の核、HAB専用MCPの`relay_resolve`、人向け登録フローを実装済み。MCPアドレス解決を含む登録済み模擬3個体の一時HTTP往復、応答消失後のclient／journal再起動と元IDでの復旧を検証した。保存済みoutboxの再送ではアドレスを再解決しない。管理フローは製品選択→アドレス提案・確定→検証済み接続binding→明示有効化を分離し、専用checkpointで同じ要求から再開する。実装範囲は[エージェントSDK](../src/agent-sdk/README.md)、[JetStream配送設計](../packages/relay-nats/DESIGN.md)と[HAB登録・認可境界](../src/hab/README.md)を参照する。本番管理認証・接続選択と既存runtimeへの配線、実個体の認証binding実証、本番HTTP MCP公開・3者接続は未完了であり、模擬配送を本番接続成功とは扱わない。
 
 **2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可をopt-inで実装し、MCPの名義選択v1と通常サービスのopt-in配線も実装した。15分の試験用OAuth入口から常用方式への移行と実製品の受入れは未検証であり、認証設定・公開・自動更新を有効化したとは扱わない。
+
+**現行構成（2026-11-12時点）：独自実装としてのHAB Relayは廃止し、配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。** この文書は、メッセージ契約・store-and-forward・ACK・期限・認可の要件の正本として残す。本文の「Relay」は、この要件を満たすhost側の配送機能（`src/host`とJetStream配送）を指す。エージェントはMCP 5ツール（`relay_*`の名前は互換のため維持）か、既定無効のA2A入口から接続する。
 
 **2026-11-06の改訂（[ADR-016](hab-decisions.md)）：配送はNATS JetStreamだけで行う。** SQLite配送storeは廃止し、旧messageは移行しない。message契約と`DeliveryService` interfaceは`src/messaging`、名義・認可・容量はRegistry（`src/hab`）、唯一のhostは`src/host`（MCP serverは`src/host/mcp`）、送信outbox・保存後ACKの受信inboxとMCP clientは`src/agent-sdk`が持つ。第1章・第3章・第3.1節・第16章の「単一Node + SQLite」「SQLiteは最初の正本」「brokerを増やさない」は初期構成の記述であり、配送storeについてはこの改訂が優先する。Registry、登録journal、配送journal、client側outbox／inboxは引き続きSQLiteを使う。
 
@@ -130,7 +132,7 @@ lab@hermes.hab
 
 **既定では登録確定後の`bot_name`、`agent_name`、完成したHABアドレス、`agent_id`は変更できない。** 別名alias、役割アドレス、転送先変更は初期登録仕様に含めない。別アドレスが必要なら別個体として新規登録し、旧個体は停止・廃止する。廃止してもIDとアドレスの再割当てを禁止し、必要な予約tombstoneを保持する。表示専用ラベルや説明はアドレスと分離し、その変更で配送先を変更しない。
 
-同一`agent_id`での管理者による改名は、[明示opt-inのRegistry v3試作](agent-address-rename.md)として別途用意する。製品名・ID・元の登録行を不変とし、名前台帳で現在名と旧名予約を分離する。旧名転送の有無と同一所有者による改名取消は採用判断が必要な拡張方針であり、本番へ適用済みとは扱わない。
+同一`agent_id`での管理者による改名は採用済み（2026-11-12 owner判断）で、明示opt-inのRegistry v3として提供する。製品名（`agent_name`）・ID・元の登録行を不変とし、名前台帳で現在名と旧名予約を分離する。旧名は同じIDに永久予約し、猶予期間（既定30日）だけ同じIDへ解決してから拒否する。配送はIDで行うため、受付済み・配送中・返信中のmessageは改名の影響を受けない。詳細と、アドレスを文字列で持つ箇所の扱いは[アドレス改名](agent-address-rename.md)を参照する。猶予期間の解決は未実装で、実装までは旧名を即時拒否する。
 
 **現行の1対1 binding実装について：** 実装済みの[人向け管理フロー](../src/hab/enrollment.ts)は通常のMCP toolから独立し、別管理権限で承認済み製品をbounded pageから選ぶ。確定・接続binding・有効化をそれぞれ確認し、途中中断で予約を解放しない。接続確認で保存するのは個体記述子の鍵付き比較digestだけで、binding時にhostの現在の検証済みcontextと一致することを再確認する。digest単体を認証には使わず、claimsやtokenの貼付けで自己登録できない。
 
@@ -423,7 +425,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 ## 15. API／MCPの追加契約案
 
-正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。いずれも既存runtime・公開HTTP APIへは未配線であり、`relay_extend`は未実装。
+正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。`npm run relay:local`で起動するhostがloopbackで5 toolを公開し、任意のOAuth入口も同じ5 toolを提供する。既存Task runtime（`src/server.ts`）へは未配線であり、`relay_extend`は未実装。
 
 `relay_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address, as_address?, expected_agent_id?}`とする。相手側の`address`と自分側の名義を分け、期待IDは`as_address`との一致確認だけに使う。sender・group・mailbox・URL等の未知引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
 

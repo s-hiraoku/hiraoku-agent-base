@@ -1,6 +1,6 @@
 # Current composite tests and publication scope
 
-The active CI workflow runs the mandatory P7 composite profile on Node 24.12.0 / npm 11.6.2. It also requires ten negative CLI tests for the bounded NATS stage wrapper; these nested cases are separate from the historical flat root inventory. It retains diagram validation, lint, both package type checks, the complete root JavaScript inventory, Python tests, and pinned Ruff checks. An independent non-author execution verdict is recorded in each task PR as a Conversation comment, not a GitHub Approve review. Check the current commit's Actions status for hosted success.
+The active CI workflow runs the mandatory P7 composite profile on the Node version in `.node-version` (26.13.0) with npm 11.20.0. It also requires ten negative CLI tests for the bounded NATS stage wrapper; these nested cases are separate from the historical flat root inventory. It retains diagram validation, lint, both package type checks, the complete root JavaScript inventory, Python tests, and pinned Ruff checks. An independent non-author execution verdict is recorded in each task PR as a Conversation comment, not a GitHub Approve review. Check the current commit's Actions status for hosted success.
 
 ## Reproduce the required profile
 
