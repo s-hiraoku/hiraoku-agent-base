@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "30513dd0754eb70a382727b042e35b92e501accd",
+  "source_ref": "ac93d022226301d0cf5066e6cf8e5729781d18f6",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "258989a673748f132067803ab30ee8126a866ea172bdff54e31f9225dacb62a5"
+      "sha256": "069aeb70e0cb0186d26a48a8821ec1e07fc5e2e86025534a0830abf771c1a127"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -259,7 +259,7 @@
     },
     "src/adapter-host/external-owner.ts": {
       "previous_sha256": null,
-      "sha256": "f120a5352dfcc6f50ae890ee71e5b84e76b1f31d78043555783f0640763de7af"
+      "sha256": "99f5db94f1d6a7c6b090a9a94877af7bd436e0b61a55a763a2cd6574c8bf0361"
     },
     "src/adapter-host/mcp.ts": {
       "previous_sha256": null,
@@ -267,11 +267,11 @@
     },
     "src/adapter-host/owner-process-entry.ts": {
       "previous_sha256": null,
-      "sha256": "c2cddb3080938ac6eed88c30547bb04f8278a55ab135332ca65a570c45cae41b"
+      "sha256": "b52c9ff442a2ef5240568f9bb266f0cbccfebbd11aef4cf719fe5cfa8406436e"
     },
     "src/adapter-host/owner-process.ts": {
       "previous_sha256": null,
-      "sha256": "85473ec2841b08e406fd1dd862ac60824fdd62caa947a18d1c90296e4f991277"
+      "sha256": "d873b6089c9a1e7a4c6b8d510ce2b19565c844e95dcb81348ae8c788fa5a279c"
     },
     "src/adapter-host/private-http.ts": {
       "previous_sha256": null,
@@ -803,7 +803,7 @@
     },
     "test/external-owner-child.js": {
       "previous_sha256": null,
-      "sha256": "edd87d50c830a194395d1f993f3a3267bbdefab9268001049a732426a05e7736"
+      "sha256": "76ad8eefb76a893c6e2743b72028554bb2edb1afc78546b97a2fbcc44a5050b8"
     },
     "test/external-owner-fixture.js": {
       "previous_sha256": null,
@@ -811,7 +811,7 @@
     },
     "test/external-owner.test.js": {
       "previous_sha256": null,
-      "sha256": "d8f8a3dd1b388c44a926fbd614f244ddafcff9584f2040fb585bb347e9811629"
+      "sha256": "2e17b59f4d56b7ab7fbf8d7e892c536d7b4a9b8f3422888f4de9173c3924857b"
     },
     "test/generic-a2a.test.js": {
       "previous_sha256": null,
@@ -931,11 +931,11 @@
     },
     "test/recipient-messages-fixtures.js": {
       "previous_sha256": null,
-      "sha256": "d114dcf3f1b81e1748959b95776a2685b267528129b3d217e65f53720b03bb0c"
+      "sha256": "fca07f514135cd5eceaaa7f76cf27926feb8d4ae415ab9de1521db0c254d4029"
     },
     "test/recipient-messages.test.js": {
       "previous_sha256": null,
-      "sha256": "be7ffdc7b6d6b77f0af6068f947846b909b128e8fb20fa041633c7e6feeade6f"
+      "sha256": "4729571c018723b52ed8143cae48d8ffbdf02d4621fe94570ca78c048e59f143"
     },
     "test/relay-http-fixtures.js": {
       "previous_sha256": "99dc523f47c1d30653bea641cbc0a83c7eecbd538c37ae1ce23d8e781d5f0dbf",

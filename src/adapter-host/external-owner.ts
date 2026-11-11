@@ -1,4 +1,4 @@
-/** Optional external-owner wiring. No product authentication or grant is implemented here. */
+/** Optional external-owner wiring. No product authentication or policy selection is implemented here. */
 import { createServer } from "node:http";
 import { createPrivateRecipientHttp } from "./private-http.ts";
 
@@ -25,6 +25,11 @@ export type ExternalOwnerDriver = {
   /** Close only owned channels/processes. Does not imply native history/session deletion. */
   close(): Promise<void>;
 };
+/** Trusted owner-local controls; never serialized or exposed to the native peer/MCP/IPC. */
+export type ExternalOwnerControls = Readonly<Pick<PrivateHttp, "status" | "updatePermission" | "pause" | "resume"> & {
+  /** Aborts before listener/store cleanup. Retained controls are unusable after this signal. */
+  signal: AbortSignal;
+}>;
 export type ExternalOwnerOptions = {
   /** Already authorized for this one launch; never issued, reused or persisted here. */
   bearerToken: string;
@@ -34,6 +39,13 @@ export type ExternalOwnerOptions = {
   shutdownTimeoutMs: number;
   ownerSignal: AbortSignal;
   driver: ExternalOwnerDriver;
+  /**
+   * Optional, trusted owner composition invoked once AFTER verified binding, still paused/denied.
+   * No automatic grant: call the existing current-epoch controls only under approved local policy.
+   * Await all startup work. Shutdown retains stores until this callback settles; never await
+   * this owner's completion from inside it. Omitting the callback preserves deny-only behavior.
+   */
+  onBound?(controls: ExternalOwnerControls): void | Promise<void>;
   /** Called only after the composition has stopped and released its owner. */
   closeStores(): void | Promise<void>;
 };
@@ -47,7 +59,7 @@ function bounded<T>(work: Promise<T>, timeoutMs: number, reason: string): Promis
 }
 
 /**
- * Actually owns one numeric-loopback listener. There is deliberately no grant/resume API.
+ * Actually owns one numeric-loopback listener. Operator controls stay in trusted local composition.
  * Use the separately supervised clean-environment process for a deployable process boundary.
  */
 export async function startExternalOwner(options: ExternalOwnerOptions) {
@@ -58,15 +70,16 @@ export async function startExternalOwner(options: ExternalOwnerOptions) {
       !options.ownerSignal || options.ownerSignal.aborted ||
       !options.driver?.ownerSignal || options.driver.ownerSignal.aborted ||
       typeof options.driver?.create !== "function" || typeof options.driver?.verifyCommitted !== "function" ||
-      typeof options.driver?.close !== "function" || typeof options.closeStores !== "function")
+      typeof options.driver?.close !== "function" || typeof options.closeStores !== "function" ||
+      (options.onBound !== undefined && typeof options.onBound !== "function"))
     throw Error("invalid_external_owner");
 
-  const driver = options.driver, closeStores = options.closeStores;
+  const driver = options.driver, closeStores = options.closeStores, onBound = options.onBound;
   const ownerSignal = AbortSignal.any([options.ownerSignal, driver.ownerSignal]);
   const controller = new AbortController();
   let api: PrivateHttp | undefined;
-  let phase: "creating" | "verifying" | "bound-deny" | "stopping" | "stopped" = "creating";
-  let failure: Error | undefined, stopAttempt: Promise<void> | undefined, driverWork: Promise<unknown> | undefined;
+  let phase: "creating" | "verifying" | "bound-deny" | "bound" | "stopping" | "stopped" = "creating";
+  let failure: Error | undefined, stopAttempt: Promise<void> | undefined, startupWork: Promise<unknown> | undefined;
   let resolveCompletion!: () => void, rejectCompletion!: (error: Error) => void;
   const completion = new Promise<void>((resolve, reject) => { resolveCompletion = resolve; rejectCompletion = reject; });
   void completion.catch(() => {});
@@ -101,7 +114,7 @@ export async function startExternalOwner(options: ExternalOwnerOptions) {
         bounded(privateStop, options.shutdownTimeoutMs, "external_owner_host_stop_timeout"),
         bounded(listenerStop, options.shutdownTimeoutMs, "external_owner_listener_stop_timeout"),
         bounded(Promise.resolve().then(() => driver.close()), options.shutdownTimeoutMs, "external_owner_driver_stop_timeout"),
-        bounded(driverWork?.then(() => {}, () => {}) ?? Promise.resolve(), options.shutdownTimeoutMs, "external_owner_driver_work_timeout"),
+        bounded(startupWork?.then(() => {}, () => {}) ?? Promise.resolve(), options.shutdownTimeoutMs, "external_owner_startup_work_timeout"),
       ]);
       // Never close stores while the underlying host may still own work.
       if (results[0].status === "fulfilled" && results[2].status === "fulfilled" && results[3].status === "fulfilled")
@@ -139,19 +152,38 @@ export async function startExternalOwner(options: ExternalOwnerOptions) {
     const startupCancelled = Error("external_owner_stopping");
     const ready = (async () => {
       // No retry, recovery by label, or activation after an uncertain create outcome.
-      driverWork = Promise.resolve().then(() => driver.create(launch));
-      const result = await driverWork;
+      startupWork = Promise.resolve().then(() => driver.create(launch));
+      const result = await startupWork;
       if (controller.signal.aborted) throw startupCancelled;
       phase = "verifying";
       const receipt = current.discoveryReceipt();
       if (!receipt) throw Error("external_owner_discovery_missing");
       const verification = Promise.resolve().then(() => driver.verifyCommitted(result, launch));
-      driverWork = verification;
+      startupWork = verification;
       const binding = await verification;
       if (controller.signal.aborted) throw startupCancelled;
       current.bindVerified(receipt, binding);
-      phase = "bound-deny";
-      return Object.freeze({ url: launch.mcp.url, phase: "bound-deny" as const });
+      phase = onBound ? "bound" : "bound-deny";
+      if (onBound) {
+        const requireBound = () => {
+          if (controller.signal.aborted || phase !== "bound") throw Error("external_owner_controls_unavailable");
+        };
+        const controls: ExternalOwnerControls = Object.freeze({
+          signal: controller.signal,
+          status: () => { requireBound(); return current.status(); },
+          updatePermission: (epoch, allow) => { requireBound(); return current.updatePermission(epoch, allow); },
+          pause: epoch => { requireBound(); return current.pause(epoch); },
+          resume: epoch => { requireBound(); return current.resume(epoch); },
+        });
+        startupWork = Promise.resolve().then(() => {
+          if (controller.signal.aborted) throw startupCancelled;
+          return onBound(controls);
+        });
+        await startupWork;
+        if (controller.signal.aborted) throw startupCancelled;
+      }
+      // "bound" reports the local composition boundary, not permission, activity or delivery.
+      return Object.freeze({ url: launch.mcp.url, phase });
     })().catch(error => {
       if (error === startupCancelled) throw error;
       failure ??= Error("external_owner_create_or_verification_failed");

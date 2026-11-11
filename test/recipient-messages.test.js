@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { setTimeout as sleep } from "node:timers/promises";
 import { fixture } from "./recipient-messages-fixtures.js";
-import { deferred } from "./adapter-host-fixtures.js";
+import { deferred, HOST_LEASE_MS } from "./adapter-host-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
 import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 
@@ -57,8 +58,14 @@ test("explicit recipient handoff, native policy wait, exact approved reply and d
     0,
   );
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
+  // Cross the old short fixture lease without changing production lease checks.
+  f.hostState.afterNetwork = (tool) =>
+    tool === "relay_submit" ? sleep(HOST_LEASE_MS + 100) : undefined;
   f.resume();
-  assert.equal((await f.step({ op: "send" })).state, "done");
+  const sent = await f.step({ op: "send" });
+  assert.equal(sent.state, "done", JSON.stringify(sent));
+  assert.equal(f.outbox.get(result.message_id).state, "accepted");
+  assert.equal(f.queued().length, 1);
   const reply = f.service.poll(f.contexts.a);
   assert.equal(reply.message.message_id, result.message_id);
   assert.deepEqual(reply.message.in_reply_to, key);
