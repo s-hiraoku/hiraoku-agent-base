@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "b25524b883e40df51cca72f474fb494758f31dda",
+  "source_ref": "81b5be99f73b8a13b62b8aaae14f4e746278024c",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -39,7 +39,7 @@
     },
     "package-lock.json": {
       "previous_sha256": "ebe185da78143dc0ec3a6f10e9dde78fc266c1975a1ec5e3687e356e3f14df66",
-      "sha256": "5f84cd00875ceb3610eb272156416ceea20f08b268bde722b0094b6080a54631"
+      "sha256": "75dec0756e302f941cc10f4208d91ad2ef502428132b7efdf1f73a750991603c"
     },
     "packages/relay-nats/DESIGN.md": {
       "previous_sha256": "9d314b356848e01d78ef65debc74c84e3ab40892d2519dc03c215dd789ee430c",
@@ -59,11 +59,11 @@
     },
     "packages/relay-nats/package-lock.json": {
       "previous_sha256": "32ecafcef0229108e016c40e1fc46d78461f7e8590903b6da1b86ecbf0ed1f90",
-      "sha256": "30672f2d0ea4cca4afd13b49eb92655eae9ea778f03ba1cfcea0c8076edf5862"
+      "sha256": "83ec5094b2cacc93100d35a67e5e4c2e787ec79197b392689d6867b68b570388"
     },
     "packages/relay-nats/package.json": {
       "previous_sha256": "879e76fe085379c7bc3d1e74433b8a74172673d5a128e247f9a91045b47edce1",
-      "sha256": "3cc6138a8d4ff05e879b7a2f1107c08a8713ddcbc38da80304cfa1500446099d"
+      "sha256": "008cff9aa96f54193c02a177a07d13c97e7d0566ee5030b19f4c9261131f73b4"
     },
     "packages/relay-nats/scripts/hab-relay-nats.mjs": {
       "previous_sha256": "8c5d1f55b2de05009d1a82aa3fea00810e21e74039c040e663697263e030f441",
