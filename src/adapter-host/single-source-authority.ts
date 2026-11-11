@@ -4,6 +4,10 @@ import { AdapterHostCycle } from "./cycle.ts";
 import type { AdapterHostOptions, HostAuthorization } from "./cycle.ts";
 import type { SQLiteHostOwner } from "./sqlite-owner.ts";
 
+// Preserve the exclusive transport union when removing owner/auth options.
+type OwnedHostOptions<T = AdapterHostOptions> = T extends AdapterHostOptions
+  ? Omit<T, "authorization" | "owner"> & { owner: SQLiteHostOwner } : never;
+
 /**
  * The trusted composition supplies already verified, distinct opaque contexts.
  * Use with exactly one host/owner, one fixed source and its dedicated outbox;
@@ -11,7 +15,7 @@ import type { SQLiteHostOwner } from "./sqlite-owner.ts";
  * No context, policy update or control method is exposed as an MCP tool.
  */
 export function createSingleSourceHost(options: {
-  hostOptions: Omit<AdapterHostOptions, "authorization" | "owner"> & { owner: SQLiteHostOwner };
+  hostOptions: OwnedHostOptions;
   actorId: string;
   verifiedRecipientContext: object;
   verifiedOperatorContext: object;

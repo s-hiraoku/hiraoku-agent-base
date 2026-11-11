@@ -656,20 +656,24 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2",
+        "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0",
         "read_ranges": [
           [
-            1,
-            110
+            76,
+            190
           ],
           [
-            420,
-            465
+            205,
+            470
+          ],
+          [
+            650,
+            706
           ]
         ],
-        "observation": "Read commands/options and inbox_read branch. Explicit inbox_read copies existing entry under atomic wrapper; Task controls and answer operations separately named, no inferred native agent caller.",
+        "observation": "Reviewed managed transport type exclusivity, constructor selection, exact command/actor/owner/epoch guards, pause failure/abort reentrancy, network branch and finalization. Existing fetch admission unchanged; managed check is cooperative with an explicit check-to-send interval. Abort is checked again after atomic and inside shared authority before local commits.",
         "full_file_read": false,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only renames the durable sender, receiver, inbox and outbox imports to ../agent-sdk; the recorded observation still holds."
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
       },
       {
         "path": "scripts/python_import_guard.py",
@@ -1291,11 +1295,27 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2",
+        "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "stepOnce schemas, authorization, pause/epoch/owner checks, inbox_read, answer-intent dispatch and incomplete-result handling",
-        "summary": "Existing host preserves exact source/current actor/commit guards; the wrapper does not replace this authority."
+        "summary": "Existing host preserves exact source/current actor/commit guards; the wrapper does not replace this authority.",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate.",
+        "read_ranges": [
+          [
+            76,
+            190
+          ],
+          [
+            205,
+            470
+          ],
+          [
+            650,
+            706
+          ]
+        ],
+        "observation": "Reviewed managed transport type exclusivity, constructor selection, exact command/actor/owner/epoch guards, pause failure/abort reentrancy, network branch and finalization. Existing fetch admission unchanged; managed check is cooperative with an explicit check-to-send interval. Abort is checked again after atomic and inside shared authority before local commits."
       },
       {
         "path": "src/answer-intents/answers.ts",
@@ -1529,10 +1549,11 @@
     "supplemental_sources": [
       {
         "path": "src/adapter-host/single-source-authority.ts",
-        "sha256": "637f14485a6742696bc15d32c8e175c213a38f455187a701c08fb88460760d45",
+        "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Private single-host callback, fixed source, management context separation, default deny and committed-pause/drain/held-owner fence; send grants the whole dedicated outbox. No authentication or native approval implementation."
+        "summary": "Private single-host callback, fixed source, management context separation, default deny and committed-pause/drain/held-owner fence; send grants the whole dedicated outbox. No authentication or native approval implementation.",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
       },
       {
         "path": "test/single-source-authority.test.js",
@@ -1711,10 +1732,11 @@
     "supplemental_sources": [
       {
         "path": "src/adapter-host/single-source-authority.ts",
-        "sha256": "50b95d85d703cc3f11f82d9b3fd523d34146f73e587f571a85bcdcb264ddf12d",
+        "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Terminal operator-only in-memory revocation blocks current/new recipient guards independently of control IO and permanently refuses regrant; operator cleanup scope is retained. This is local denial, not proof of durable pause."
+        "summary": "Terminal operator-only in-memory revocation blocks current/new recipient guards independently of control IO and permanently refuses regrant; operator cleanup scope is retained. This is local denial, not proof of durable pause.",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
       },
       {
         "path": "src/adapter-host/stdio.ts",
@@ -2130,6 +2152,42 @@
       "meta_sha256": "1ef21d5171a2ab4f33f043bec92243fd20abde7310ca9fa4a91619ca03add099",
       "connection_sha256": "e261425e0ba793ab49cb1d697a2a66731102ed23e0bdf3e4034c11e2b34a221c"
     }
+  },
+  {
+    "scope": "managed-transport-20261110",
+    "summary": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate.",
+    "supplemental": [
+      {
+        "path": "src/adapter-host/cycle.ts",
+        "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0",
+        "review": "reviewed",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+      },
+      {
+        "path": "src/adapter-host/single-source-authority.ts",
+        "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf",
+        "review": "reviewed",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+      },
+      {
+        "path": "test/managed-transport.test.js",
+        "sha256": "29c869a0b9e3e3083e682b1e2156e014f709dfc46dca2c43dfa9a0744017e37e",
+        "review": "reviewed",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+      }
+    ]
+  },
+  {
+    "scope": "managed-transport-packaging-20261110",
+    "summary": "Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate.",
+    "supplemental": [
+      {
+        "path": "scripts/p7-lab.mjs",
+        "sha256": "eaa83b93947130144822ffa175bb943c96fed3b3ba2f1764593dcd6b1ddef63d",
+        "review": "reviewed",
+        "read_coverage": "changed strict full-regression count; no assertion relaxation"
+      }
+    ]
   },
   {
     "scope": "Optional standard ACP fixed-wake source review",

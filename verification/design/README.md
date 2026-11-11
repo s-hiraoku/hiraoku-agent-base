@@ -312,3 +312,7 @@ PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 a
 ## PR162 integration with main after PR161/PR163 (2026-11-11)
 
 Merging main (owner activation #161 and source-launch claim #163) into the fixed-wake branch keeps both sides' sections and records. The full-root catalog is the sum of the independent additions: 1338 base + 33 (#161/#163) + 38 (#162) = 1409 in `scripts/p7-lab.mjs` and docs/testing/{publication,p7-lab,delivery-lab}.md. The P7 successor pin is regenerated from the committed merge. No requirement, citation, adopted statement or manual/native gate changes.
+
+## PR164 integration with main after PR162 (2026-11-11)
+
+Merging the integrated main (#161, #162, #163) into the managed-transport branch keeps both sides' records. The full-root catalog becomes 1424 (1409 + 15 managed-transport cases) in `scripts/p7-lab.mjs` and docs/testing/{publication,p7-lab,delivery-lab}.md. The P7 successor pin is regenerated from the committed merge. No requirement, citation meaning, adopted statement or manual/native gate changes.

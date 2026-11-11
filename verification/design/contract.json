@@ -275,10 +275,11 @@
     },
     {
       "path": "docs/adapter-host.md",
-      "sha256": "f4bb1a3a7c185cb31c241131ecf527b543a9b82d5e69a782cb1cabeda28bc03c",
+      "sha256": "5c4847bc5a5aee119c4556aaf684e35587f3db0d76e33d4bcace0745b1922760",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Finite explicit local host commands; receive/save/ACK, send, metadata listing and source-authorized inbox_read are separate. inbox_read returns authenticated unreleased saved copy even if ACK confirmation is false, preserving ACK/outbox/Task and existing reply/accept guards. New control starts paused; actor/epoch/source/owner checks surround commits/RPC; timeout retains active work. Optional owner and multiple DB commit/restore limitations remain explicit; no default product wiring/model/task worker."
+      "summary": "Finite explicit local host commands; receive/save/ACK, send, metadata listing and source-authorized inbox_read are separate. inbox_read returns authenticated unreleased saved copy even if ACK confirmation is false, preserving ACK/outbox/Task and existing reply/accept guards. New control starts paused; actor/epoch/source/owner checks surround commits/RPC; timeout retains active work. Optional owner and multiple DB commit/restore limitations remain explicit; no default product wiring/model/task worker. Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
+      "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
     },
     {
       "path": "docs/adapter-owner.md",
@@ -835,7 +836,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "790966cbca427e4c2f0d130d969b33e4a21d99118d2b3d558185759718fbfc97",
+      "sha256": "220bceb1e98e329af1754ace367ab301bf92c8bc3fcfb37964101b6f04f131b6",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -860,12 +861,12 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "a5504dfbffb41a436fa38e4e30f065a864f561505e03bafcb54f71d3007c0172",
+      "sha256": "fbea66d84d03c8b29b915991cea3e3562de5a1467c3316a82af215b2c362c352",
       "role": "normative",
       "review": "reviewed",
-      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, full root 1338) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
+      "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, expected full root 1353) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
     },
     {
       "path": "docs/testing/plan.md",
@@ -877,7 +878,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "7c2ff6c092df92a091f5af5c218d3804db6e3e913e604753fcb9b86be96f17f9",
+      "sha256": "9e6cd03ed975c18cea32019f072b6092511f903b860309090188df55baf83613",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -960,7 +961,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "19424390e680d872937f954988533819ea16ac18d8cf1b4874f12a785264df1a",
+      "sha256": "f7197e9621598102329ec6718e19fab90ba5cde77cbb70670d0269d933216931",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -978,20 +979,21 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "b568b5142a2f8acf3d65727afea0cb13974783c803f0742ddbf1fcf712c58101",
-      "role": "excluded",
-      "review": "reviewed",
-      "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
-      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification."
-    },
-    {
-      "path": "verification/design/document-review.md",
-      "sha256": "c1d5c8945c53b6fea4a318d45f4386d495e3adfa914bf844b83dc3e9340b526c",
+      "sha256": "acaba9d933fce536c1bac794ad65c6c0e262c3b8b0e36be1e1860825de9c1c57",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "Reviewed optional immutable launch claim context and focused source tests; no authority/requirement relaxation or native completion claim. PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+      "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+    },
+    {
+      "path": "verification/design/document-review.md",
+      "sha256": "cf29c217487c49130508c64274b2e6d6507cd7bed438bb5c87e180901b2877dd",
+      "role": "excluded",
+      "review": "reviewed",
+      "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
+      "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
+      "maintenance": "Reviewed optional immutable launch claim context and focused source tests; no authority/requirement relaxation or native completion claim. PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
     },
     {
       "path": "verification/design/helpers.md",
@@ -1003,12 +1005,12 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "1b63dda8b3dc881510bd81eaa4acbcf6db90482ee948803928980982ca0a2c68",
+      "sha256": "f59fd7047c4525b1a5a4f6508a164d70c4ef2f4742a2b0d4e6c2587ec3f4fcef",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
       "exclusion_reason": "Verification output is not independent product-design authority; indexed and change-detected to avoid circular justification.",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
     },
     {
       "path": "docs/recipient-stdio.md",
@@ -1132,6 +1134,7 @@
         "js-private-recipient-http",
         "js-external-owner",
         "js-acp-owner",
+        "js-managed-transport",
         "js-source-launch"
       ],
       "citations": [
@@ -1513,7 +1516,7 @@
       "title": "Pause and unresolved operations",
       "statement": "New host control begins paused; each command retains actor/epoch and rechecks before/after RPC and commit. Pause/local abort is not remote cancellation. Timeout retains busy/draining until underlying work settles; original ACK IDs/envelopes/task keys survive uncertainty.",
       "rationale": "Prevents stale late responses and overlapping work after a superficial timeout or pause/resume.",
-      "scope": "Finite adapter host/control and optional task ports",
+      "scope": "Finite adapter host/control and optional task ports Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -1522,14 +1525,21 @@
         "js-private-recipient-http",
         "js-external-owner",
         "js-acp-owner",
+        "js-managed-transport",
         "js-source-launch"
       ],
       "citations": [
         {
           "path": "docs/adapter-host.md",
-          "start": 67,
-          "end": 81,
+          "start": 114,
+          "end": 128,
           "excerpt_sha256": "3129a2dde2c501a4c4c4876f450daef0c7eebc732179b0471c8a676dfd312d7a"
+        },
+        {
+          "path": "docs/adapter-host.md",
+          "start": 63,
+          "end": 109,
+          "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
         }
       ]
     },
@@ -3500,7 +3510,7 @@
       "title": "Owner lock cannot time out into duplicate work",
       "statement": "All hosts for one local identity share dedicated exclusive owner DB; no heartbeat/TTL takeover. Owner loss rejects late save/ACK and release requires paused, not-running and zero draining. Reacquisition alone does not reset execution gate or justify new ID/Task.",
       "rationale": "A slow or timed-out call may still settle after another host begins.",
-      "scope": "Optional SQLiteHostOwner; local-MVP composition requires it, legacy unconfigured compatibility is not evidence of owner enforcement.",
+      "scope": "Optional SQLiteHostOwner; local-MVP composition requires it, legacy unconfigured compatibility is not evidence of owner enforcement. Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -3508,6 +3518,7 @@
         "js-private-recipient-http",
         "js-external-owner",
         "js-acp-owner",
+        "js-managed-transport",
         "js-source-launch"
       ],
       "citations": [
@@ -3522,6 +3533,12 @@
           "start": 21,
           "end": 23,
           "excerpt_sha256": "c708fbc027f1fc151563ead39327bd6cdf0742b884d14d6debc9acafb5717d68"
+        },
+        {
+          "path": "docs/adapter-host.md",
+          "start": 63,
+          "end": 109,
+          "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
         }
       ]
     },
@@ -4021,8 +4038,8 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "73b3027f3b3f32a847c99ec5d5dd452b5778215a3244304a397b9e3ea06558d7",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged."
+          "excerpt_sha256": "7a17a218c4519738cc0b59962a7a2d68dd5536b85b291117cd916888a3a0f42f",
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged."
         },
         {
           "path": "docs/testing/a2a-native-acceptance.md",
@@ -4192,7 +4209,7 @@
           "start": 3,
           "end": 3,
           "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
         },
         {
           "path": "docs/testing/publication.md",
@@ -4225,8 +4242,8 @@
           "path": "docs/testing/publication.md",
           "start": 16,
           "end": 18,
-          "excerpt_sha256": "9ae121df0416078ceeca0870ba69211a361ae8c4b7a030fe1d63e00eed2341f3",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged."
+          "excerpt_sha256": "0fd7564f187fadcc1b80e31f52b80040ae53bcade4b20956e0eb9465617e29a2",
+          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged."
         },
         {
           "path": "docs/testing/publication.md",
@@ -4640,6 +4657,25 @@
       "protocol": "node-tap",
       "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate. PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.",
       "limitations": "Synthetic executable and capability only. No real product/session/profile/ticket/model/queue, native commit semantics/effective participant verification, authorization bypass or operational deployment. No OS sandbox, descendant or blocked orphan containment. Forced/unconfirmed termination is failure, and native outcome may remain unknown after clean process exit. Overlaps js-root. The configured fixed wake is a standard protocol subset, not a per-source durable deduplication or native input claim. Caller binding and permissions stay external; unsupported media/resource/config/usage/info update variants fail closed.",
+      "env": {
+        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
+      }
+    },
+    {
+      "id": "js-managed-transport",
+      "kind": "command",
+      "tier": "integration",
+      "argv": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "test/managed-transport.test.js"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 90,
+      "protocol": "node-tap",
+      "proves": "Product-neutral mutually exclusive managed transport with fresh per-command capability; current actor/epoch/owner checks across waits and retries; pause, failed authorized pause and finalization abort; stale/unauthorized controls cannot cancel; reentrant authorization cannot return successful admission after abort; pending work/outbox claim/owner retention through actual settlement; fresh resume cannot revive old callbacks.",
+      "limitations": "Synthetic managed SDK/transport and fresh private SQLite only. No product code, credential, native OAuth discovery/refresh, actual remote atomic-stop or production ownership cutover. Adapter-specific network guard coverage remains independently required. Overlaps js-root.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
       }
@@ -5613,8 +5649,8 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "d5b161125ca1be5ef29f02e46e10b77687d7db48eba231f038287a7c539ca722",
-          "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate."
+          "excerpt_sha256": "e16c80ad9b874e554965ce4d1a1265c9fe12114cc860181741c4d46537798e55",
+          "maintenance": "Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
         },
         {
           "path": "docs/testing/publication.md",
@@ -5630,7 +5666,7 @@
           "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
-      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate. PR163 stacked follow-up: the 25 unchanged source-launch cases bring this branch to 1371 expected full-root tests. Its original hosted PR report passed all 1371 but failed the inherited 1338 catalog. The corrected owner-activation source and bounded recipient fixture are inherited without changing journal semantics; exact-count and cleanup gates remain strict."
+      "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate. PR163 stacked follow-up: the 25 unchanged source-launch cases bring this branch to 1371 expected full-root tests. Its original hosted PR report passed all 1371 but failed the inherited 1338 catalog. The corrected owner-activation source and bounded recipient fixture are inherited without changing journal semantics; exact-count and cleanup gates remain strict. The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. Integration of #161/#162/#163 with managed transport (2026-11-11): expected root inventory 1424 (1338 + 33 + 38 + 15), an inventory update, not an execution-result claim."
     },
     {
       "status": "resolved",
