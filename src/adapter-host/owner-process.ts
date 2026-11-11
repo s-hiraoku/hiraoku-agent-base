@@ -26,11 +26,11 @@ export function superviseExternalOwner(options: OwnerProcessOptions) {
   let exitUnconfirmed = false, spawned = false, signalAttempted = false, signalFailed = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
   let exitTimer: ReturnType<typeof setTimeout> | undefined;
-  let resolveReady!: (value: Readonly<{ url: string; phase: "bound-deny" }>) => void;
+  let resolveReady!: (value: Readonly<{ url: string; phase: "bound-deny" | "bound" }>) => void;
   let rejectReady!: (error: Error) => void;
   let resolveCompletion!: () => void, rejectCompletion!: (error: Error) => void;
   let resolveExited!: (value: Readonly<{ code: number | null; signal: NodeJS.Signals | null }>) => void;
-  const ready = new Promise<Readonly<{ url: string; phase: "bound-deny" }>>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+  const ready = new Promise<Readonly<{ url: string; phase: "bound-deny" | "bound" }>>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
   const completion = new Promise<void>((resolve, reject) => { resolveCompletion = resolve; rejectCompletion = reject; });
   const exited = new Promise<Readonly<{ code: number | null; signal: NodeJS.Signals | null }>>(resolve => { resolveExited = resolve; });
   void ready.catch(() => {}); void completion.catch(() => {});
@@ -74,9 +74,10 @@ export function superviseExternalOwner(options: OwnerProcessOptions) {
   child.on("message", message => {
     if (!message || typeof message !== "object" || !("type" in message)) return;
     if (message.type === "ready" && !readySeen && !stopping && "url" in message &&
+        "phase" in message && (message.phase === "bound-deny" || message.phase === "bound") &&
         typeof message.url === "string" && /^http:\/\/127\.0\.0\.1:[1-9][0-9]{0,4}\/mcp$/.test(message.url)) {
       readySeen = true;
-      resolveReady(Object.freeze({ url: message.url, phase: "bound-deny" }));
+      resolveReady(Object.freeze({ url: message.url, phase: message.phase }));
     }
     if (message.type === "stopped") clean = true;
   });
