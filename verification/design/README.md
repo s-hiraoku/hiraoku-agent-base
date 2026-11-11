@@ -316,3 +316,10 @@ Merging main (owner activation #161 and source-launch claim #163) into the fixed
 ## PR164 integration with main after PR162 (2026-11-11)
 
 Merging the integrated main (#161, #162, #163) into the managed-transport branch keeps both sides' records. The full-root catalog becomes 1424 (1409 + 15 managed-transport cases) in `scripts/p7-lab.mjs` and docs/testing/{publication,p7-lab,delivery-lab}.md. The P7 successor pin is regenerated from the committed merge. No requirement, citation meaning, adopted statement or manual/native gate changes.
+
+
+## Optional generic recipient owner scheduling maintenance
+
+Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence.
+
+The existing recipient-messages context now documents the explicitly opted-in supervisor, stable native reconciliation, separate operation permissions, current owner/epoch checks and honest local metadata states. The focused check includes its new test file; default receive-only behavior and all native/manual gates stay unchanged. Source must be committed before a separately reviewed successor pin.

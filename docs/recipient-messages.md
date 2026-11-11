@@ -59,3 +59,39 @@ key の runtime ID は永続的な同一性であり、再起動で新 ID を作
 #137 と #140 を含む main `d0506828f8568cecc68b12893adefe6b341117d7` に統合する。通信契約は `src/messaging`、durable client・inbox・outbox は `src/agent-sdk`、配送は NATS JetStream に従う。SQLite は受信側の inbox / outbox / reply budget と合成 native store に使用し、廃止済みの SQLite 配送backendを復活させない。
 
 この接点と adapter-host / answer-intents は、既定runtimeに配線しない明示構成のローカル部品である。`RecipientReplyAdmission` は受信側が供給する同期契約であり、テストでは現行 `SQLiteReplyBudget` と `AdapterHostCycle` を明示的に構成する。実製品の native port を実装した、または既定の受信で自動実行・返信するという意味ではない。統合後のテストは Node 26 と固定バージョンの実 NATS broker を要する。最新の実行結果は当該 head の検証記録を参照し、過去の SQLite 配送試験や旧 root 件数を現在の成功証拠とみなさない。
+
+## 明示 opt-in の共通 owner supervisor
+
+`src/recipient-messages/supervisor.ts` の `RecipientSupervisor` は、正式な native port を持つ受信側が明示的に選ぶ共通 orchestration である。受信専用 `ReceiveSupervisor` や Relay の通常 MCP catalog は変更しない。import / constructor は IO を開始せず、`run(signal)` だけが既存 host の receive → source 別の inspect / 必要時 handoff → 確定返信の enqueue → send を繰り返す。モデル、製品 runner、新しい状態 journal、権限発行、ログイン、承認 UI は追加しない。
+
+```ts
+const owner = new RecipientSupervisor({
+  version: 1,
+  host, hostContext,              // 既存 AdapterHostCycle、同じ held process owner
+  messages: {
+    binding, inbox, outbox, budget, limits,
+    recipient: nativePort, authorization,
+  },
+  recipientContext,
+  sources: () => currentlyAuthorizedSources(), // trusted 同期選択、最大100件、重複なし
+  observe: (state) => updateLocalStatus(state), // 同期・metadata-only、権限ではない
+}, {
+  interval_ms: 1000,
+  drain_timeout_ms: 5000,
+});
+await owner.run(stop.signal);
+```
+
+構成側は host と messages に**同一の inbox / outbox / budget / agent・owner**を渡し、既存の process owner を保有したまま、承認済みの host resume 後に開始する。この supervisor と受信専用 supervisor を同じ host 上で並行起動しない。`sources` は現在許可した source を返すだけで、本文、表示名、送信者の「許可済み」を authority に変えない。上限を超える場合の公平な選択は所有者側が行う。全件走査・無制限の queue や容量 reset は追加しない。各 source の本文・ACK・署名・現権限は既存 `RecipientMessages` が再検証する。
+
+既存 native 入力は `inspect` 権限で照合し、明示不存在の時だけ `handoff` を使う。確定返信には独立した `reply` 権限と native の現在許可が必要であり、handoff 権限の消費を返信拒否に置き換えない。inspect / admit / reply の既存 check 内にも host の現在 pause / held owner / 同一 epoch を組み込み、途中の pause→resume でも古い操作を続行しない。新規入力の受付後は引き続き native 自身が現在権限を管理する。
+
+poll / ACK の一時的な transport 障害でも、すでに ACK 済みの source と既存 outbox は進められる。未確認 source は独立して拒否される。受信・送信の再送 ID、ACK journal、backoff、lease と unknown の照合は既存 host / inbox / outbox が担当する。native unknown を不存在に変えたり、新 runtime ID・返信 ID を作って再実行したりしない。周期は明示設定した有限間隔であり、native のモデル費用や実行回数の制限ではない。
+
+`observe` は native の `accepted / processing / waiting_owner / reply_ready / declined / unknown`、outbox 保存時の `reply_queued` と `outbox_state`、ローカル拒否の `blocked` と既知の安全な reason だけを通知する。`accepted` は native 入力受付、`waiting_owner` は native が報告した判断待ちである。HAB の受信済みをこの2状態に読み替えない。outbox の `accepted` も Relay 受付であり、相手の受信・ACK・既読ではない。通知は永続記録や送信側 API ではなく、再起動後は元の native / outbox から照合する。observer を承認や後続実行の根拠にしない。
+
+停止は新しい操作を止め、現在の native 呼出しが実際に戻るまで待つ。native 呼出しを timeout で切り離して次の instance を起動しない。host の未完了 IO は有限 drain を行い、`drained=false` なら所有権と store を保持する。停止時に pause / revoke / owner release / journal reset を自動実行しない。source 拒否は `blocked` として他の許可済み source を妨げず、owner・host の不明状態は全体を停止する。
+
+native port がなければ構築時に `recipient_input_unsupported`。MCP 接続・常駐受信・表示専用 feed だけで自動対話可能とは判定しない。別 process の API を呼ぶ前後だけの認可確認は、native admission / outbox commit 内の同期 check を満たさない。正式 API と同じ保護範囲で現権限と exact reply を保証できない製品は、未接続のまま扱う。
+
+`test/recipient-supervisor.test.js` は実 SQLite / JetStream / loopback MCP と合成 native port により、一連の自動巡回、restart の同一 key 照合、独立権限、pause 世代、停止・drain、ACK / submit 応答消失、poll 障害中の返信、状態の区別と例外情報の除去を検証する。既存 root question / notice の範囲、返信上限・容量上限を拡張しない。Hermes / Dots の正式 native port、継続会話の dispatch、native 承認、実製品での自動起動・自動返送・常駐を立証する試験ではない。
