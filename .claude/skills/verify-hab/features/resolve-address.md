@@ -10,7 +10,7 @@ An agent turns a canonical HAB address such as `verify-b@dot.hab` into the recip
 
 ## How to get to it (user POV)
 
-- MCP tool `relay_resolve` with `{"address": "<bot>@<product>.hab"}` on `POST /mcp`.
+- MCP tool `relay_resolve` with `{"address": "<bot_name>@<agent_name>.hab"}` on `POST /mcp`.
 
 ## Driving it with verify-hab
 

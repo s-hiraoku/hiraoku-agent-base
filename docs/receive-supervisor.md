@@ -2,6 +2,8 @@
 
 [有限host](adapter-host.md) · [共通MCP接続](common-mcp-connection.md)
 
+**配置の変更予定（[ADR-017](hab-decisions.md)）：** 現在は`src/adapter-host`にあり、構成時にcontrol・返信budget・送信outboxを必要とします。標準経路が保留中のTask・回答部品に依存しないよう、受信supervisor・受信だけの最小cycle・process ownerを`src/agent-sdk`へ移します。移動までは下記の現行配置が有効です。
+
 `ReceiveSupervisor` は、既存の `AdapterHostCycle` の `receive` だけを反復する
 model-freeのスケジューラーです。製品名、認証値、URL、メッセージ本文を判断材料に
 しません。MCPの登録とは別に、hostを起動する明示的な構成が必要です。

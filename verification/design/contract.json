@@ -160,7 +160,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "212a38fec7d2e903d301119fd3ddb35723b5b5ce3dd9457a01ea452273bc2f11",
+      "sha256": "93cc4cf824ee8486687803895e9668902b32831eb6473d6593297bc9110e8cd1",
       "role": "normative",
       "review": "reviewed",
       "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over a private owned nats-server and the JetStream journal, synthetic enrolled identities, terminal enrollment, deny-all Hub and configured CLI (with restart and an optional A2A mode, plus the a2a.sh and new-reply.sh helpers); launch/doctor/drive/evidence/cleanup/helper ownership. Explicitly separates raw wire ACK from committed receiver evidence (agent SDK DurableReceiver and SQLiteInbox in src/agent-sdk) and production identity/native execution. Reuse, do not create a competing map.",
@@ -209,7 +209,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
-      "sha256": "408051c38102bd04b51cd720aef964d3bd2fe3e283ac55b07bcfe8f93289a075",
+      "sha256": "09a55afcd5d262d5f241f3ddb62c3cfa9a2592072cf3569b3cb30d1df0adb021",
       "role": "normative",
       "review": "reviewed",
       "summary": "Prompt-gated real TTY/tmux enrollment completion, exact-address abort and scripted durable resume; synthetic authority, temporary DB and transcript/exit-code proof. Scripted UI is not proof of an interactive run.",
@@ -226,7 +226,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/resolve-address.md",
-      "sha256": "3cc17110598cffdc31707795d909b75ccf3345c32179a749db5ae1e9d4d42218",
+      "sha256": "bb6d901063fc415d5652c7d062778cfbbf78edde9aa6290429fc5d9bf72d116d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Real relay_resolve success/unknown/malformed recipes: immutable recipient ID, canonical lowercase address, no delivery rights and no unknown-vs-unauthorized existence oracle. Requires operation grant.",
@@ -250,7 +250,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "ff6b1d4ba36daee4b0d4a93c775e368809aaa83a4759b81dbb329260d9d31e66",
+      "sha256": "844930ca7a40280574b7b81689c76cb02c651942b0f18356aa29a18d1f7f4945",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/agent-address-rename.md",
-      "sha256": "44e9e9fd76b1470939f57e0d42c012a1acabd19fee62ce7c018c066c372a19f5",
+      "sha256": "a6674ab895e77762c4cb3eaa3aabd13cb209b61542addffd8315207eaf06607d",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposed opt-in Registry v3 rename extends immutable names while retaining agent ID, authentication, grants and mailbox identities. Historical names stay reserved without forwarding; exact journaled CAS retries and separate rename authority are required. Operator migration, same-owner rename-back and coordinated backups are described, with production adoption explicitly pending."
@@ -317,7 +317,7 @@
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "cf7a839d7162ca34791d3109964dc4b11a3628a86c1aad01cfe0689bd0151ab7",
+      "sha256": "41eb5604aac8b1e04622641b82bf2e11d49da5caa60d56bc1240cc01f3e46a83",
       "role": "normative",
       "review": "reviewed",
       "summary": "Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete."
@@ -338,7 +338,7 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "63453d41165800afbfb8dd6b25bf13af04170dd01ecb189cebf58e8f09061fb6",
+      "sha256": "13c3bf5462f892495e86921d36513b07a5328bf43800a95465e6f8db65630f64",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
@@ -420,7 +420,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "3764de478a4ce5df32d6dd8ab0a4537c965732f7f1af43c33e726256f7333bab",
+      "sha256": "990092b1eb964820db29ec2dda9fdeb2ee5e0992eac0feb56e16069fdbd348e8",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions."
@@ -434,35 +434,35 @@
     },
     {
       "path": "docs/hab-product-spec.md",
-      "sha256": "4a31565470d1ac54dd580ec8476e9e5fc7a79076c913bd8a24a86cdbc7cfbb25",
+      "sha256": "f8d96e2b9859b2d0d411bcc605d9ab9c853caed88ecc7051c37f602a2b454c3f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. JetStream-only delivery is adopted (ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; a same-journal code rollback is limited to builds that open the journal schema, and older builds need a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown."
     },
     {
       "path": "docs/hab-relay-integration.md",
-      "sha256": "b75003c8e277a95b0d371e1d8d878e02c5024e32f9ce6ebf1ae3ce5c6ba3366f",
+      "sha256": "f57f324e1dfe6f5c5ed094d473a7a577b5363002098a483d382a42301741889c",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Dated 17-case model-free native-loopback registration/delivery evidence: real registry/Relay/private sender/inbox, enrollment path and explicit application DB handoff, mock UI/auth/product individuals. Confirms source fixtures for response-loss, save failure, single lease, stop/block/rotation, body-as-data and stable retries. Restart is orderly close/reopen within same Node process; clock fields are fixture-controlled; no kill9, real OAuth, products, TLS or production gate."
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "8a942695a0c8e5f3d3b24d8d1ad0ec5afb03dbb47dbf20ac6e11fd6b022eaeba",
+      "sha256": "b23cf03b6bb5c83db8b886d820bfb2d59ac7845040e6d68a72050f4b8f9aba69",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) makes NATS JetStream the only delivery store and names the current modules; earlier single-Node+SQLite wording is the initial plan. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
     },
     {
       "path": "docs/hab-roadmap.md",
-      "sha256": "db7fd105a4f6c92628d71179927052ffd79ec4898472b614976b93b157ba91ad",
+      "sha256": "f84c82fdecc9234d051f857cf1768f0b7b4223fbd8c05735d648154f286cef08",
       "role": "context",
       "review": "reviewed",
       "summary": "Dated comparison of four external projects and incremental live gates. Author-described README capability is not security/install/cost verification. Retains historical fixed Task sequence, while common MCP/receive supervisor governs standard messaging without inventory prerequisite. Design/test/role/evidence updates are required; published source does not authorize private connection or resident/cost change."
     },
     {
       "path": "docs/hab-roles.md",
-      "sha256": "72eaa52b60231b4924b14a34ff5cf21643fb7c9e4fd197185aeac3e4bb87614b",
+      "sha256": "d299856633ba1859c6013cb56d4c9013eee32ae8c7ba77e78d4c9393836d821a",
       "role": "context",
       "review": "reviewed",
       "summary": "Goal role table distinguishes planned, implementation/mock, owner-reported and actual production evidence. Existing Grok job remains owned; Codex repository work is not a Hub executor connection. Fixed connectivity/inventory/ping/Events are limited opt-in surfaces, not ordinary connection requirements. ShiftLog stays separate/private; new executors need verified auth/workspace/idempotency/tool/cost/stop/provenance boundaries."
@@ -476,7 +476,7 @@
     },
     {
       "path": "docs/hab-topology.md",
-      "sha256": "d914799e34d6a1d228529ff3ad8c56e5ac63a7b07ca31dc785fd240f0d5fdc59",
+      "sha256": "4254c313c7ad6990d4957589e78825cdc14aceacabf7e3cbeedfcd2987177396",
       "role": "context",
       "review": "reviewed",
       "summary": "Dated 2026-10-10 target topology describes historical optional fixed Task execution path, dashed unconnected routes and code-only blue components. Auth0 is issuer rather than MCP proxy; identity/cost/listener and live acceptance cannot be inferred. Markdown Mermaid owns diagrams, generated PNG/manifest follow it. Private existing service/credentials/routes stay distinct; no arbitrary shell or Hub executor evidence arises from diagram."
@@ -617,14 +617,14 @@
     },
     {
       "path": "docs/local-relay-host.md",
-      "sha256": "4fbf9a8851c9dbac73c29e19f44d3b9e7f8d413859b725aef8c3caf147584755",
+      "sha256": "e41f47dcf4b21135ba98ac0d22007c9f212c4eda497686427271ebffc9411950",
       "role": "normative",
       "review": "reviewed",
       "summary": "Product-independent loopback startup (`startHostServer` in `src/host/server.ts`) performs no import-time IO, requires explicit trusted auth/limits/audit/keys and private canonical files, acquires ownership before stores, refuses competing hosts and preserves accepted state on stop/reopen. Proposed fixed-pilot individual bearers and one-task Hermes Runs plan are distinct from adopted shared-group/native MCP mode and do not authorize actual execution."
     },
     {
       "path": "docs/local-relay-launchagent.md",
-      "sha256": "16beca8fbfcb2a2f71adbf98b51d63e2247d38f43fa728a3b51ed83e2ef42254",
+      "sha256": "cf41e26e183039aac50a7453e77d599a88d5790e3c03cd6e07f774086e20cb2f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in operator runbook pins tested merged release/artifact, explicit executable/config and private state, refuses existing jobs/listeners, and verifies all-deny readiness. User LaunchAgent semantics and owned-job cleanup are explicit. Relay supervision supplies no Adapter cycle, model/API launch or agent identity/roundtrip evidence."
@@ -714,7 +714,7 @@
     },
     {
       "path": "docs/receive-supervisor.md",
-      "sha256": "25328acb9d9718bdb51377c4d43414a1b2c8b1d9ea597e04cb3f5c003fde7bb2",
+      "sha256": "182ce3ed5d7b2121f3841173793e65cdab1efad017d25e384d6bf8a6ab0bcb87",
       "role": "normative",
       "review": "reviewed",
       "summary": "Model-free version1 scheduler repeats only existing host receive. Requires configured same-agent durable stores/control/owner and explicit resume; no login/grant/pause release/owner takeover/task/reply/model. Explicit bounded interval/backoff/drain; authorization/storage failure stops, outstanding work blocks next receive, stop is not RPC cancel or token revoke. receive_steps counts returned calls only, no auto body processing; restart reuses original ACK and owner/control authority. Product composition/residency is a separate live gate. Optional owner-local authentication gate starts blocked on each process start; trusted local provider recovery signals stop or wait without polling/ACK or refresh/login IO. Only fresh one-use gate-local verification of the exact approved issuer/resource/subject/client/connection/agent tuple reopens it. Fixed synchronous status metadata contains no identity; current pause/owner/draining authority is rechecked after notifications. Generic wire errors cannot supply local recovery authority. Native credential ownership, verification, notification delivery and real expiry/restart acceptance remain separate product responsibilities."
@@ -836,7 +836,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "11241d8bb64a267b2dc7124a02752aaf9ef56d3e176b0838d876ac4d3c796f4a",
+      "sha256": "b8635aa98da3d00919c07e487fbe83f5867500bf7ff949141dfb044fee55b910",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -878,7 +878,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "57365a63e5894ac3aa56135795976129be0c991cd0a6cf9fc02aea205f3c5574",
+      "sha256": "671a590a4b02d635e43137c4a1d883b3900fc7b8500154ef5d33159d01c89394",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -961,7 +961,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "e4c7f0883df16a93eb7a9931e34ed352a3a373fd13fa80cbf534e7bd665bec5d",
+      "sha256": "678f995e76c05f13691f4256ddf4af59cfd491e3697dd1537ff4897925cc093f",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -970,7 +970,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "220e1d2a91365478a5e64b47514959fcf06223eb8fd7b0b61e40f5442a81b111",
+      "sha256": "4f1a3054f57786778a085f2fe76a0249c47887397e6e2a06c7827f75e5ad578d",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -979,7 +979,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "0e532c2dac9cbd1ad5a4e791c345fa02225fd793cec983faf57a9c106c160e7d",
+      "sha256": "90bdb43010c218a38c5073db8282e13b4ab14198cdfd2c78a68551f9774d10a8",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -988,7 +988,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "fedda90f5864cfa63fa92a3ff96d3b08e3e94d00dd4359c30c94a7aee7488dc9",
+      "sha256": "7c19b932a79a75e0e1ffaefc49b2bd966f0c8def690d066df65b7cb04bda66a4",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1220,8 +1220,8 @@
         },
         {
           "path": "docs/receive-supervisor.md",
-          "start": 53,
-          "end": 54,
+          "start": 55,
+          "end": 56,
           "excerpt_sha256": "a7d85ecd1deb45fa85e25766c5ba45f4508b785cee29f3ad62d46b0c50aea969"
         }
       ]
@@ -1248,8 +1248,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 257,
-          "end": 261,
+          "start": 259,
+          "end": 263,
           "excerpt_sha256": "e074360c4ad50e9710b877ac87bc0b501bbb3fcf2aca586e818bd1505f316a2a"
         },
         {
@@ -1279,8 +1279,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 139,
-          "end": 139,
+          "start": 141,
+          "end": 141,
           "excerpt_sha256": "8b1ad508506b9547729542777d766b5855f260badb3c0efd928f85e0c9f4d5b2"
         },
         {
@@ -1391,20 +1391,20 @@
       "citations": [
         {
           "path": "docs/receive-supervisor.md",
-          "start": 5,
-          "end": 15,
+          "start": 7,
+          "end": 17,
           "excerpt_sha256": "e91f4dbe29ba9b62ea3b72feb896bd295bd6dc46354630d3249f87fbedee7534"
         },
         {
           "path": "docs/receive-supervisor.md",
-          "start": 90,
-          "end": 99,
+          "start": 92,
+          "end": 101,
           "excerpt_sha256": "b7304656b8adab8a3e06f187f73b9ba7a7c6a42d08a088c5e0ae372e6fc3bc1a"
         },
         {
           "path": "docs/receive-supervisor.md",
-          "start": 114,
-          "end": 127,
+          "start": 116,
+          "end": 129,
           "excerpt_sha256": "67981f67c95e85fefe13edfd367f702f832bbfd899a107674003eadce89a4c63"
         }
       ]
@@ -1423,20 +1423,20 @@
       "citations": [
         {
           "path": "docs/receive-supervisor.md",
-          "start": 30,
-          "end": 51,
+          "start": 32,
+          "end": 53,
           "excerpt_sha256": "7342e9473baf10562a41af925e77607b5360c2adec14e7ceaceebcf0141d292d"
         },
         {
           "path": "docs/receive-supervisor.md",
-          "start": 75,
-          "end": 81,
+          "start": 77,
+          "end": 83,
           "excerpt_sha256": "3601ea9fa012d53b7b3f244b70c2106569aa89a79869abe2e244a60f0b2ad241"
         },
         {
           "path": "docs/receive-supervisor.md",
-          "start": 129,
-          "end": 136,
+          "start": 131,
+          "end": 138,
           "excerpt_sha256": "7b2d0fa1ea3b0398d93f2ea6da69d863e4b14b9344a7a529ec7480e0b5444f23"
         }
       ]
@@ -1466,8 +1466,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 93,
-          "end": 97,
+          "start": 95,
+          "end": 99,
           "excerpt_sha256": "d9e964830759292cf626358c1b15dfcf7e89396b48896289aa73df57c1a1f390"
         },
         {
@@ -1497,8 +1497,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 145,
-          "end": 151,
+          "start": 147,
+          "end": 153,
           "excerpt_sha256": "b8a1d5bc2549270e2bfe78d1eef5e8bc44b6dec50c85230bdeb5a505506e5610"
         }
       ]
@@ -1518,8 +1518,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 78,
-          "end": 99,
+          "start": 80,
+          "end": 101,
           "excerpt_sha256": "cccb8d81e3e312da329dd3e35bb15e2e6be2b56db4e2646c5b7ecf9799dcacfd"
         }
       ]
@@ -1539,14 +1539,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 227,
-          "end": 233,
+          "start": 229,
+          "end": 235,
           "excerpt_sha256": "dbec7255dab3e0892b40e1619e04baca1e3dd1fe101fad1f6bcc64398095f699"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 285,
-          "end": 300,
+          "start": 287,
+          "end": 302,
           "excerpt_sha256": "4fd2b012e5129090ed90632050f7d9e9a802c81a9bb5f1fe4eb38a7a05c04dba"
         }
       ]
@@ -1565,8 +1565,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 372,
-          "end": 398,
+          "start": 374,
+          "end": 400,
           "excerpt_sha256": "7c6a982ecd058f2416ff9bf52b02f05fffcab3a9aa1a7212b4a0cdd0a5d52f16"
         }
       ]
@@ -1674,14 +1674,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 303,
-          "end": 309,
+          "start": 305,
+          "end": 311,
           "excerpt_sha256": "e06fae3c55e3980f54ce2e2997880b5e29378afd3bc2eee8cc477670105dd488"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 328,
-          "end": 332,
+          "start": 330,
+          "end": 334,
           "excerpt_sha256": "d68c403a1e66c1129a4e74b7bf1cf71577ebbd1fefbeb9cef6739c4204bd2808"
         }
       ]
@@ -1741,7 +1741,7 @@
           "path": "docs/hab-product-spec.md",
           "start": 200,
           "end": 206,
-          "excerpt_sha256": "5f2c24cba721aac20208ed5ab6a4ab5ad96ce5be2be12963c2540125eb8dc0ce"
+          "excerpt_sha256": "8f43568c59bfc8a345fcfaef148bfbf894afa6c80493ed3fb9612736c29a56fe"
         }
       ]
     },
@@ -1821,8 +1821,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 495,
-          "end": 501,
+          "start": 497,
+          "end": 503,
           "excerpt_sha256": "ae634ca31940762ed56ee03bedbe82a682be1afc5f80df703353970051281de5"
         },
         {
@@ -1885,9 +1885,9 @@
     {
       "id": "HAB-F26",
       "title": "Transport adoption is separate",
-      "statement": "JetStream delivery is adopted as the only delivery backend (ADR-016), with no dual-send to a second store and no migration of messages held by the retired SQLite store. Evaluate A2A transport adoption using isolated compatible failure/recovery/migration/value tests before formal adoption; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.",
+      "statement": "JetStream delivery is adopted as the only delivery backend (ADR-016), with no dual-send to a second store and no migration of messages held by the retired SQLite store. A2A is adopted (owner, 2026-11-12) as the agent-interoperability entry next to the five MCP tools: the host-owned identity entry, off by default. Its production deployment is a separate decision; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.",
       "rationale": "Existing optional code and a successful lab do not decide production adoption.",
-      "scope": "Product0.1 transport adoption and rollout: JetStream delivery is adopted; A2A transport adoption remains future.",
+      "scope": "Product0.1 transport adoption and rollout: JetStream delivery and the A2A entry are adopted; production deployment of either remains a separate gate.",
       "decision": "proposed",
       "checks": [
         "proposal-review",
@@ -1898,13 +1898,13 @@
           "path": "docs/hab-product-spec.md",
           "start": 136,
           "end": 159,
-          "excerpt_sha256": "38ac4194953aba6537eecf1ef7a00e8adb3bc7a80c62a740c6cd04e15210587e"
+          "excerpt_sha256": "073b7804907ef8298c8580982d9140b12ce731cef376d00dfd51f1767705aefe"
         },
         {
           "path": "docs/hab-product-spec.md",
           "start": 200,
           "end": 206,
-          "excerpt_sha256": "5f2c24cba721aac20208ed5ab6a4ab5ad96ce5be2be12963c2540125eb8dc0ce"
+          "excerpt_sha256": "8f43568c59bfc8a345fcfaef148bfbf894afa6c80493ed3fb9612736c29a56fe"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -2091,8 +2091,8 @@
         },
         {
           "path": "docs/agent-address-rename.md",
-          "start": 46,
-          "end": 51,
+          "start": 68,
+          "end": 73,
           "excerpt_sha256": "83537bf94fc2abfecb313c6dbed02c82726d6bf41f6915e752130743b33b801b"
         }
       ]
@@ -2271,8 +2271,8 @@
         {
           "path": "docs/local-relay-host.md",
           "start": 3,
-          "end": 18,
-          "excerpt_sha256": "6652a4f0376df5dfa9d1fa59270496cf70329d83530d5cc145b919985a566629"
+          "end": 19,
+          "excerpt_sha256": "cc53a756aec63ef698286ab381a9366567c0a8e65ffe4828cd8a0693e5df75f7"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -2314,8 +2314,8 @@
       "citations": [
         {
           "path": "docs/local-relay-host.md",
-          "start": 15,
-          "end": 33,
+          "start": 16,
+          "end": 34,
           "excerpt_sha256": "a52f92d19c2693049378eb77486d6b080ac20d6ebc55cd4c67baec20cd861145"
         },
         {
@@ -2326,8 +2326,8 @@
         },
         {
           "path": "docs/local-relay-launchagent.md",
-          "start": 54,
-          "end": 83,
+          "start": 70,
+          "end": 99,
           "excerpt_sha256": "8e3832cc295e3a953de00c9d76f4313f5daa4d4f134ea6130ec2ed8684f67e41"
         },
         {
@@ -2473,10 +2473,10 @@
     },
     {
       "id": "HAB-A18",
-      "title": "Address rename remains explicit proposal",
-      "statement": "Proposed same-namespace rename retains immutable agent ID and authority/mailbox identities; old names remain reserved and non-forwarding, with separate rename permission, CAS and migration approval. Do not infer rollout or auto-adopt from implemented prototype.",
+      "title": "Address rename keeps identity and reserves old names",
+      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace-period resolution is specified but not yet implemented.",
       "rationale": "Changing names must not reassign authority or silently resolve deployment policy.",
-      "scope": "Optional proposed registryv3 rename only.",
+      "scope": "Opt-in registry v3 rename; grace-period resolution pending implementation.",
       "decision": "proposed",
       "checks": [
         "proposal-review"
@@ -2485,19 +2485,19 @@
         {
           "path": "docs/agent-address-rename.md",
           "start": 3,
-          "end": 26,
-          "excerpt_sha256": "0cdb2af5f18bcd993c0ff778888d7147ef365aa80bd30f7808be8ce65438e5a4"
+          "end": 48,
+          "excerpt_sha256": "69be167c133263487fd75a046a0476aa2153d261f265388d2011c26b53cdb5fa"
         },
         {
           "path": "docs/agent-address-rename.md",
-          "start": 28,
-          "end": 44,
+          "start": 50,
+          "end": 66,
           "excerpt_sha256": "b52f77c8727a017606ec6d6b640ce58c0452706a098dae0c24360ce678c1238d"
         },
         {
           "path": "docs/agent-address-rename.md",
-          "start": 78,
-          "end": 86,
+          "start": 104,
+          "end": 112,
           "excerpt_sha256": "b22355cf06a11842df28422f77f2063aa3808eb02fac0c08737d37202d0923bf"
         }
       ]
@@ -2651,14 +2651,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 80,
-          "end": 89,
+          "start": 82,
+          "end": 91,
           "excerpt_sha256": "ab879765544b87a837cabf41eb0274fb1214269a1c8bb0b035c1cfb9d1d8de9b"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 439,
-          "end": 439,
+          "start": 441,
+          "end": 441,
           "excerpt_sha256": "6f480c2b96488d99211c87919e7200c4bbca8e049bbf863f254f70a31cb4fa5d"
         }
       ]
@@ -2690,14 +2690,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 260,
-          "end": 261,
+          "start": 262,
+          "end": 263,
           "excerpt_sha256": "64b8bcc6106da45977852cbcf80348920e1b8f3089194adf165a4f6329e3c0c3"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 291,
-          "end": 291,
+          "start": 293,
+          "end": 293,
           "excerpt_sha256": "3d06952c98d346a96204ffa3119946005d2291432b6b76be883a4afe6ed95fbe"
         },
         {
@@ -2721,26 +2721,26 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 183,
-          "end": 194,
+          "start": 185,
+          "end": 196,
           "excerpt_sha256": "34db17c2d84f78b2c3a96edac01c781f034bf6875d35bb930ef39ee99cd6462b"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 219,
-          "end": 221,
+          "start": 221,
+          "end": 223,
           "excerpt_sha256": "3c293d98a090dcd2b62180d8d0e2504261598beaac502788a8638cb3aea9f610"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 227,
-          "end": 231,
+          "start": 229,
+          "end": 233,
           "excerpt_sha256": "d028594e0af5d41c29f59d44d0c7397611ab2a8035b48884db662db13ff0e2c5"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 372,
-          "end": 372,
+          "start": 374,
+          "end": 374,
           "excerpt_sha256": "7efd6339c650850bf02aeb986be7f01943239d65cac2ca3283d423e71eaead69"
         }
       ]
@@ -2758,14 +2758,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 285,
-          "end": 287,
+          "start": 287,
+          "end": 289,
           "excerpt_sha256": "4c38a82a67e1b6ca886c61bd7c9672e9d68603e856afe96c1ed3e61ee7eae962"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 291,
-          "end": 298,
+          "start": 293,
+          "end": 300,
           "excerpt_sha256": "8aeb86a89be551671a4419d232db2eee3b130d7952ae48829a551d83756d622b"
         },
         {
@@ -2819,14 +2819,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 257,
-          "end": 258,
+          "start": 259,
+          "end": 260,
           "excerpt_sha256": "3c27abf758e0da5e792b038f73c2ee8afd87b0d30bd3fa69f8e90f162bdf22a1"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 304,
-          "end": 306,
+          "start": 306,
+          "end": 308,
           "excerpt_sha256": "3ac00765f5519440674f9926dbc90c685848ab5b6f5f1d1ed32e2977fc425aad"
         },
         {
@@ -2863,14 +2863,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 261,
-          "end": 261,
+          "start": 263,
+          "end": 263,
           "excerpt_sha256": "2d42e4fb2ba0c0e68941be721aa335ffc0795ed81e8dbbb9b551df4a7e676549"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 392,
-          "end": 394,
+          "start": 394,
+          "end": 396,
           "excerpt_sha256": "b8520dfe92aefb31f060f881ee62474fb493bbcbfef3c283916a2cc7ec5f7d67"
         },
         {
@@ -2908,14 +2908,14 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 386,
-          "end": 388,
+          "start": 388,
+          "end": 390,
           "excerpt_sha256": "91969435fd9eaee1656f9ea026c244d9ec5d21c4d4a6e5eec3dc82eac247a7e2"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 396,
-          "end": 398,
+          "start": 398,
+          "end": 400,
           "excerpt_sha256": "f2419f080bc596ca45548dad40913984ae168384b60a25e3bcf05c6f651a4ba2"
         },
         {
@@ -2939,14 +2939,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 223,
-          "end": 223,
+          "start": 225,
+          "end": 225,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         },
         {
           "path": "README.md",
-          "start": 87,
-          "end": 87,
+          "start": 128,
+          "end": 128,
           "excerpt_sha256": "191704a9f43a004d1b6fd38d44dc44d97e78362dc2ce9af298406c6dda0d3597"
         }
       ]
@@ -2964,8 +2964,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 223,
-          "end": 223,
+          "start": 225,
+          "end": 225,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
@@ -2983,8 +2983,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 223,
-          "end": 223,
+          "start": 225,
+          "end": 225,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
@@ -3003,8 +3003,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 223,
-          "end": 223,
+          "start": 225,
+          "end": 225,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
@@ -3185,13 +3185,13 @@
           "path": "docs/hab-relay-integration.md",
           "start": 5,
           "end": 5,
-          "excerpt_sha256": "f2a187abf8166006d9f4a0390554ec92d557edf690047744c09f86e2513a60e5"
+          "excerpt_sha256": "1320b767295099860e02c807e4649d2bcdfa1ededda86fb32852eddabf8ca393"
         },
         {
           "path": "docs/hab-relay-integration.md",
           "start": 57,
           "end": 71,
-          "excerpt_sha256": "e42b4168ddfc577ee510171c662949a6e3a630f4d4a6d97105e1254fc4f528b8"
+          "excerpt_sha256": "77d8fcfa80830c6e0e95ebf4493dbe0a38ec131c46fdf00240995341a36f9593"
         }
       ]
     },
@@ -3208,14 +3208,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 223,
-          "end": 223,
+          "start": 225,
+          "end": 225,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 552,
-          "end": 552,
+          "start": 554,
+          "end": 554,
           "excerpt_sha256": "e3ebd5e5f0569550960ffdd5f3c2f69cffbb089d6d01245994b55ebc02a4ae34"
         },
         {
@@ -3903,8 +3903,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 56,
-          "end": 56,
+          "start": 64,
+          "end": 64,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -4769,7 +4769,7 @@
           "path": "docs/architecture.md",
           "start": 1,
           "end": 7,
-          "excerpt_sha256": "21e48e8407d9de3aca098481a104a35a38cb02958c027390597507b76543ce7c"
+          "excerpt_sha256": "8022f21fb92dff880a1691d0f8f2edfc8f4351a530f6abdb7568ee3ac23eaf5d"
         },
         {
           "path": "docs/hab-workflow.md",
@@ -4779,8 +4779,8 @@
         },
         {
           "path": "docs/hab-topology.md",
-          "start": 5,
-          "end": 9,
+          "start": 7,
+          "end": 11,
           "excerpt_sha256": "dc5c678b4f6272cdc28b1e71ba73833839de42c503cf386e3cfb59d8003bce60"
         },
         {
@@ -4816,8 +4816,8 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 81,
-          "end": 89,
+          "start": 83,
+          "end": 91,
           "excerpt_sha256": "709eb46db18a18cd4c1f2443a8423af4b565876703fa4472b497c54737a04a5c"
         },
         {
@@ -4865,8 +4865,8 @@
         },
         {
           "path": "README.md",
-          "start": 19,
-          "end": 19,
+          "start": 29,
+          "end": 29,
           "excerpt_sha256": "cc95f13d58414483dab2812d84aa43bea33e5900e13faef6b44290fdafa3aa3a"
         },
         {
@@ -4897,26 +4897,26 @@
         "HAB-F18",
         "HAB-F21"
       ],
-      "resolution": "Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). A2A formal adoption and production deployment remain undecided.",
+      "resolution": "Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). Superseded for A2A: the owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability (HAB-C-F10). A2A production deployment remains undecided.",
       "classification": "history/adoption-versus-implementation",
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
           "start": 23,
           "end": 30,
-          "excerpt_sha256": "0dfcbc2d78b8daee461387005be3b8eb25c9705b14480cae9641c4932386d657"
+          "excerpt_sha256": "c58971bc8376ce1f4e10ad590f0c15a0d9bb6b66d4d5d68aa1d5cef582c66713"
         },
         {
           "path": "README.md",
-          "start": 134,
-          "end": 134,
+          "start": 175,
+          "end": 175,
           "excerpt_sha256": "7ca7aba05f423c6b663ea5b90abdd9c367a97ed7c5d44fb3a639874f9d4dd326"
         },
         {
           "path": "docs/hab-product-spec.md",
           "start": 200,
           "end": 206,
-          "excerpt_sha256": "5f2c24cba721aac20208ed5ab6a4ab5ad96ce5be2be12963c2540125eb8dc0ce"
+          "excerpt_sha256": "8f43568c59bfc8a345fcfaef148bfbf894afa6c80493ed3fb9612736c29a56fe"
         }
       ]
     },
@@ -4939,14 +4939,14 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 31,
-          "end": 31,
+          "start": 33,
+          "end": 33,
           "excerpt_sha256": "6b502cf29a3b47d05e7de0a53c298f23eb9c79f5a650263e81c4bf31a054b271"
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 517,
-          "end": 525,
+          "start": 519,
+          "end": 527,
           "excerpt_sha256": "b2b9d12db178026be9050c4f02398db07d9d229c39045a53193b90281a45e2de"
         },
         {
@@ -5148,7 +5148,7 @@
         "HAB-A11",
         "HAB-A18"
       ],
-      "resolution": "No. Rename is an explicit proposal requiring adoption and opt-in migration. Keep immutable default and permanent reservations; do not silently decide forwarding, production rollout or rollback policy.",
+      "resolution": "No for existing deployments: rename stays an explicit opt-in migration and keeps permanent reservations. Superseded on adoption: the owner adopted rename on 2026-11-12 with a grace period in which an old name resolves to its own ID only (HAB-C-A07); production rollout and rollback remain separate decisions.",
       "classification": "authority",
       "citations": [
         {
@@ -5160,8 +5160,8 @@
         {
           "path": "docs/agent-address-rename.md",
           "start": 3,
-          "end": 33,
-          "excerpt_sha256": "1198ac071f5f4a5aa2cede6cf280e51bd8eebe26fb6cad4b207addc60bdecaef"
+          "end": 55,
+          "excerpt_sha256": "150353eb1b942ef56291858113fa099dfabe4259c418db05cb0619f500bc5de6"
         }
       ]
     },
@@ -5211,9 +5211,9 @@
       "citations": [
         {
           "path": "docs/local-relay-host.md",
-          "start": 65,
-          "end": 102,
-          "excerpt_sha256": "4ad992e815cd6561eb5e0a3f77d2f17d61534c69784f3c9463ce9ec66faab7f8"
+          "start": 66,
+          "end": 109,
+          "excerpt_sha256": "e958623adfda7f01f25b920afd4e8e8470367e8e05fbc3b91f81b368f20c8506"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -5334,7 +5334,7 @@
           "path": "docs/hab-relay-integration.md",
           "start": 69,
           "end": 71,
-          "excerpt_sha256": "0043810aaa600cb84cb39c822e34203a415b180855ac03fdc1294e9ea7a9a0ab"
+          "excerpt_sha256": "d2e65e7c38f94b9736ca9aab6f47c8b5c7298a27b0b570652ff6f1d89002612f"
         },
         {
           "path": "packages/relay-nats/OPERATIONS.md",
@@ -5611,7 +5611,7 @@
           "path": "docs/testing/publication.md",
           "start": 3,
           "end": 3,
-          "excerpt_sha256": "02d1d820ed9f101f90ffacba51eb09e192c4f77b8354976714558aa4610fbedf",
+          "excerpt_sha256": "9f03d7725cffa5f97b93de84cc6e63e34d1b886814144ed81784416fc5b00fdd",
           "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
@@ -5791,7 +5791,7 @@
           "path": "docs/hab-product-spec.md",
           "start": 136,
           "end": 136,
-          "excerpt_sha256": "02ffd0f4cb0f792af52c243062f32586ed578d58a9380a25b3a1a43f9ee1c85b"
+          "excerpt_sha256": "603ccafa21036817ca68a962704fbb91239854613f6b971b04152a0dd26f56b0"
         },
         {
           "path": "docs/hab-product-spec.md",
@@ -5899,8 +5899,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 56,
-          "end": 56,
+          "start": 64,
+          "end": 64,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]
@@ -6042,6 +6042,54 @@
         "HAB-E09"
       ],
       "resolution": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged."
+    },
+    {
+      "status": "resolved",
+      "question": "The product spec, roadmap and ADR-003 called A2A a proposal or not adopted, while ADR-016 and the README describe a wired host A2A entry. Is A2A adopted?",
+      "id": "HAB-C-F10",
+      "requirements": [
+        "HAB-F26"
+      ],
+      "resolution": "Yes. The owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability. ADR-016 records it; the product spec, roadmap, ADR-003 and README now describe A2A as the adopted entry, off by default, next to the five MCP tools. Production deployment remains a separate gate.",
+      "classification": "explicit-authority",
+      "citations": [
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 50,
+          "end": 50,
+          "excerpt_sha256": "d4eed80842f221d3bd9778f4ad068f4f368d43e6ee5386f9f9f85b5fa0ff1c7d"
+        },
+        {
+          "path": "docs/hab-product-spec.md",
+          "start": 30,
+          "end": 30,
+          "excerpt_sha256": "eaf5fef0c6bc53a204e91cce7ee798d3b2587acf3937245d258b5b320f07a68b"
+        }
+      ]
+    },
+    {
+      "status": "resolved",
+      "question": "The registry spec says addresses cannot change and the rename prototype refuses old names immediately, while the owner wants renaming without breaking callers that still hold the old address. What happens to the old name?",
+      "id": "HAB-C-A07",
+      "requirements": [
+        "HAB-A18"
+      ],
+      "resolution": "The owner adopted rename on 2026-11-12 and chose a grace period: an old name stays permanently reserved to the same ID and, for a default 30 days, resolves only to that ID (and is accepted as that ID's own as_address), then is refused. Delivery already uses immutable IDs, so accepted, leased and replied messages are unaffected. The grace-period behaviour is pending implementation; until then old names are refused immediately.",
+      "classification": "explicit-authority",
+      "citations": [
+        {
+          "path": "docs/agent-address-rename.md",
+          "start": 3,
+          "end": 48,
+          "excerpt_sha256": "69be167c133263487fd75a046a0476aa2153d261f265388d2011c26b53cdb5fa"
+        },
+        {
+          "path": "docs/hab-relay-spec.md",
+          "start": 135,
+          "end": 135,
+          "excerpt_sha256": "7f4332ca5585be3fc028ed306f7f865a7793eeb57355205c5120c277b25abaae"
+        }
+      ]
     }
   ]
 }

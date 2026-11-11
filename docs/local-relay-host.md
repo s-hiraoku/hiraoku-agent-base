@@ -1,8 +1,9 @@
-# Local Relay host and supervised connection plan
+# Local HAB host and supervised connection plan
 
 `startHostServer` in `src/host/server.ts` is the explicit, product-independent
 programmatic startup entry point. Importing it performs no IO. Calling it opens
-only its dedicated HAB registry, Relay store and process ownership database, then
+only its dedicated HAB registry, JetStream delivery journal and process ownership
+database, connects to the configured loopback NATS JetStream broker, then
 listens on IPv4 `127.0.0.1`. All capacity/transport limits, stable integrity keys,
 individual authority, bearer verifier and audit sink must be supplied by trusted
 operator code. No credential source, fixture identity, public bind or no-auth
@@ -63,6 +64,12 @@ account and route evidence confirms included use and no paid spillover. Do not
 invoke a model to discover its billing path.
 
 ## First real roundtrip, after approvals and technical gates
+
+**Historical plan (October 2026).** This section predates the retirement of the
+former Relay. It routes through the optional Task bridge to the Hermes Runs API
+and is not the standard connection. The real roundtrip that was actually run used
+each agent's own MCP client (see [finite MCP trial](finite-mcp-trial.md)). Keep
+this plan only for the optional fixed execution trial.
 
 Proposed ports are Relay **8792** and temporary isolated Hermes API **8793**, both
 `127.0.0.1` only. Recheck immediately before starting. A collision means stop and

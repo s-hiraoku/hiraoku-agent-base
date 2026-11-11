@@ -2,7 +2,7 @@
 
 [README](../README.md) · [正式仕様](hab-relay-spec.md) · [登録・認可境界](../src/hab/README.md)
 
-2026-10-17時点の、ローカルで再現できる17シナリオを記録する。人向け登録フローと配送を一連で試験するもので、実Grok Bot・Dots・Hermesの個体能力確認や、本番接続の受入れではない。G1の一部を裏付ける証拠とし、管理添付・公平性・実Adapterの返信制御・運用復旧を含むG1全体は未完了とする。
+2026-10-17時点の、ローカルで再現できる17シナリオを記録する。人向け登録フローと配送を一連で試験するもので、実Grok Bot・Dots・Hermesの個体能力確認や、本番接続の受入れではない。G1の一部を裏付ける証拠とし、公平性・実Adapterの返信制御・運用復旧を含むG1全体は未完了とする（管理添付は2026-11に廃止）。
 
 ## 再現
 
@@ -66,6 +66,6 @@ backoffとlease待機はテスト専用DBの`next_retry_at`、`lease_until`、`n
 
 ## 次の実装と接続条件
 
-次は管理添付のupload・finalize・所有者／宛先・digest検証・受信側durable保存へ進む。個体別quota／公平性、固定Task bridge、実Adapterの有限返信budget、retention・migration・backup／restore・運用activationは別項目として残る。本文を解釈しないRelayの試験から、実エージェントの判断・実行ガードレールや自動返信loop停止まで保証したとは扱わない。
+記録時点で次段階としていた管理添付は廃止した（ADR-016）。個体別quota／公平性、固定Task bridge、実Adapterの有限返信budget、retention・migration・backup／restore・運用activationは別項目として残る。本文を解釈しないRelayの試験から、実エージェントの判断・実行ガードレールや自動返信loop停止まで保証したとは扱わない。
 
 本番接続に進むには、製品・個体ごとのG0、管理／個体の検証主体、接続先・scope・送信data・費用・保管／失効・停止手順を具体化し、必要な承認後にhostへ配線する。今回の統合試験を根拠に、新credential発行、公開、実エージェント通信、plugin登録、自動常駐は開始しない。

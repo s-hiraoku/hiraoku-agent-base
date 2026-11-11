@@ -1,6 +1,8 @@
-# 最新構成と接続予定
+# 2026-10-10時点のHub接続計画
 
 [READMEへ](../README.md) · [役割と機能](hab-roles.md) · [セキュリティ](hab-security.md) · [ADR](hab-decisions.md)
+
+**この文書は、メッセージ配送を導入する前のTask Hub計画（固定Task、Mac worker、Hermes Runs）を記録したものです。** 現在のエージェント間通信の構成（単一host、NATS JetStream配送、MCP 5ツールとA2A入口、アドレスによる宛先指定）は[READMEの全体図](../README.md#全体図)と[ADR-016](hab-decisions.md)を参照してください。下の図は任意の限定Task連携の計画として残します。
 
 2026-10-10時点。**Markdown内のMermaidが正本**です。READMEに[確認済みの既存経路](../README.md#全体図)、ここにHABの接続予定を載せます。同じソースからPNG fallbackを生成します。手描きSVGと独立した`.mmd`の二重管理は廃止しました。
 

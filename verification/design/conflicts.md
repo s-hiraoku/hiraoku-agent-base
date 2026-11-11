@@ -38,7 +38,7 @@ Product0.1 labels A2A/JetStream proposal/not current; README later exposes actua
 
 Classification: history/adoption-versus-implementation. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
 
-Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). A2A formal adoption and production deployment remain undecided.
+Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). Superseded for A2A: the owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability (HAB-C-F10). A2A production deployment remains undecided.
 
 Sources: [docs/hab-product-spec.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L23-L30), [README.md:134](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/README.md#L134-L134), [docs/hab-product-spec.md:200](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L200-L206).
 
@@ -108,7 +108,7 @@ Does proposed address rename supersede default immutable-address policy for all 
 
 Classification: authority. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11, HAB-A18.
 
-No. Rename is an explicit proposal requiring adoption and opt-in migration. Keep immutable default and permanent reservations; do not silently decide forwarding, production rollout or rollback policy.
+No for existing deployments: rename stays an explicit opt-in migration and keeps permanent reservations. Superseded on adoption: the owner adopted rename on 2026-11-12 with a grace period in which an old name resolves to its own ID only (HAB-C-A07); production rollout and rollback remain separate decisions.
 
 Sources: [src/hab/README.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L27-L32), [docs/agent-address-rename.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L3-L33).
 
@@ -381,3 +381,23 @@ Classification: scope/implementation composition. Requirements: HAB-F02, HAB-F03
 No. `onBound` is optional local composition after current-receipt verification, not a native input, MCP tool or IPC command. Its presence alone grants and resumes nothing; omission preserves the former deny-only default. The callback can explicitly reach the already implemented private-HTTP operator controls under independently approved local policy. Fixed-source, dedicated-outbox, current-epoch, drain and owner checks are unchanged. Stop fences retained controls, unsettled startup retains stores, and failed cleanup is never retried automatically. Readiness `bound` describes composition only, not enabled authority or delivery. This implementation closes a composition gap without accepting a daily multi-source policy, model/wake dispatch or actual native setup. All native/manual gates remain unverified.
 
 Sources: [docs/hab-principles.md:13](../../docs/hab-principles.md#L13-L21), [docs/external-owner-launcher.md](../../docs/external-owner-launcher.md#optional-trusted-local-activation), [docs/private-recipient-http.md](../../docs/private-recipient-http.md).
+
+## HAB-C-F10 — resolved
+
+The product spec, roadmap and ADR-003 called A2A a proposal or not adopted, while ADR-016 and the README describe a wired host A2A entry. Is A2A adopted?
+
+Classification: explicit-authority. Requirements: HAB-F26.
+
+Yes. The owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability. ADR-016 records it; the product spec, roadmap, ADR-003 and README now describe A2A as the adopted entry, off by default, next to the five MCP tools. Production deployment remains a separate gate.
+
+Sources: [docs/hab-decisions.md:50](../../docs/hab-decisions.md#L50-L50), [docs/hab-product-spec.md:30](../../docs/hab-product-spec.md#L30-L30).
+
+## HAB-C-A07 — resolved
+
+The registry spec says addresses cannot change and the rename prototype refuses old names immediately, while the owner wants renaming without breaking callers that still hold the old address. What happens to the old name?
+
+Classification: explicit-authority. Requirements: HAB-A18.
+
+The owner adopted rename on 2026-11-12 and chose a grace period: an old name stays permanently reserved to the same ID and, for a default 30 days, resolves only to that ID (and is accepted as that ID's own as_address), then is refused. Delivery already uses immutable IDs, so accepted, leased and replied messages are unaffected. The grace-period behaviour is pending implementation; until then old names are refused immediately.
+
+Sources: [docs/agent-address-rename.md:3](../../docs/agent-address-rename.md#L3-L48), [docs/hab-relay-spec.md:135](../../docs/hab-relay-spec.md#L135-L135).

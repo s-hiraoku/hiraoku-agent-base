@@ -10,7 +10,7 @@ For the exact-f19 A2A integration branch, see [native A2A acceptance](a2a-native
 
 ## 起動と証拠
 
-Nodeは `.node-version` の24.12.0。npmは11.6.2で実行確認する。依存は既存 `package-lock.json` を固定し、新規dependencyは追加しない。
+Nodeは `.node-version` の版（2026-11-12時点で26.13.0）、npmは`packageManager`の11.20.0で実行する。記録時点（24.12.0／11.6.2）の結果は[results](results.md)に残す。依存は既存 `package-lock.json` を固定し、新規dependencyは追加しない。
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund

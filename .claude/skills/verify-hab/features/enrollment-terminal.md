@@ -1,6 +1,6 @@
 # Enrollment terminal
 
-A human operator registers a bot from a terminal: choose a product, propose a bot name, confirm the permanent `<bot>@<product>.hab` address, bind the verified connection, choose operations, and activate. Each confirmation requires typing the exact address. The demo uses a temporary DB and synthetic authority and deletes its data on exit.
+A human operator registers a bot from a terminal: choose a product, propose a bot name, confirm the `<bot_name>@<agent_name>.hab` address (`agent_name` is the product slug), bind the verified connection, choose operations, and activate. Each confirmation requires typing the exact address. The demo uses a temporary DB and synthetic authority and deletes its data on exit.
 
 ## Sub-features
 

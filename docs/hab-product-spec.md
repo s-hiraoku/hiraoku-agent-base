@@ -1,6 +1,6 @@
 # HAB製品仕様書
 
-仕様版：0.1。更新日：2026-11-06 UTC。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
+仕様版：0.1。更新日：2026-11-12 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
 
 [README](../README.md) · [Relay契約](hab-relay-spec.md) · [認証group](relay-auth-groups.md) · [discovery](mcp-agent-discovery.md) · [Task bridge](task-bridge.md)
 
@@ -21,13 +21,13 @@ HAB専用GUIは通信基盤の登録・接続・状態・設定・復旧を扱�
 | 区分 | 内容 |
 | --- | --- |
 | 確定した製品要件 | 簡単な異種agent通信、GUIとMCPの共通業務境界、登録/宛先/割当の管理、状態の区別、権限分離、privateなPC/モバイル利用、Kanbanの別アプリ化 |
-| 現行コード基準 | PR #113 merge `d83ad6e`。Registry、基本MCP5操作、Relay保存配送、任意のhab_discover、限定Task bridge。本書の追加だけで配備済みとはしない |
+| 現行コード基準 | `main` `28dd393`（2026-11-12照合）。Registry、基本MCP5操作、host（`src/host`）のNATS JetStream配送、任意のhab_discover、既定無効のA2A入口、限定Task bridge。本書の追加だけで配備済みとはしない |
 | ローカル候補 | 対話登録、session/bot binding、継続poll、inbox/sidecarと表示consumerの統合。mainへの適用・常用受入れとは別 |
 | GUIの現在の範囲 | 既存のread-only成果は登録一覧、検索、状態filter、pagination、宛先copyに限定。登録・割当変更・テスト送信等のmutationは将来実装。本repoへの同梱・配備状況とは別に追跡する |
-| 新規技術の評価 | A2A組込、SDK/driver/版、通知方式、複数host。**A2Aの正式採用と本番配備は未決** |
+| 新規技術の評価 | SDK/driver/版、通知方式、複数host。A2Aは2026-11-12のowner確認で相互運用の入口として採用済み（既定は無効）。**A2Aの本番配備は未決** |
 | 採用済みの配送 | 2026-11-06 UTCの[ADR-016](hab-decisions.md)で、配送をNATS JetStreamだけにした。SQLite配送storeは廃止し、旧messageは移行しない。本番配備・実storageの故障挙動の受入れは別に残る |
 
-既存roadmapにある「初期版ではA2A不採用」は、その時点の初期範囲を示す。本書は将来拡張として再評価する仕様であり、既存の通信を即時廃止する決定ではない。
+既存roadmapにある「初期版ではA2A不採用」は、その時点の初期範囲を示す。旧Relayは廃止し、配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。既存のMCP 5ツールはA2Aと並ぶ標準入口として残す。
 
 ## 3. 利用者フロー
 
@@ -123,7 +123,7 @@ HABはoutbox、宛先ID、期限、再送相関を保存し、配送受付と相
 flowchart LR
   G[GUI: つなぐ / 選ぶ / 送る] --> A[共通application API]
   M[MCP対応製品] --> A
-  X[A2A対応先: 採用評価中] -. 標準入口 .-> A
+  X[A2A対応先: 既定は無効] --> A
   A --> H[HAB: 登録 / 名義 / 割当 / 認可 / 相関]
   H <--> T[Task状態と結果のport]
   H <--> D[配送port]
@@ -133,20 +133,20 @@ flowchart LR
   E --> T
 ```
 
-配送はNATS JetStreamだけで行い、廃止したSQLite配送storeへ同じ要求を二重に配信しない。図のA2Aは提案で、現行機能ではない。
+配送はNATS JetStreamだけで行い、廃止したSQLite配送storeへ同じ要求を二重に配信しない。図のA2Aは採用済みの入口で、現行実装ではhost所有のアドレスから設定済みの受信者へTaskを送る。既定は無効で、本番配備は未決。
 
 | 部分 | 委ねるもの | HABに残すもの |
 | --- | --- | --- |
 | MCP | 公式SDKによるtool接続/呼出し | 共通業務操作、名義、認可、製品差のadapter |
-| A2A候補 | 公式SDKのAgentCard/Message/Task/Artifact/transport | 登録・宛先、既存形式との変換、権限、Taskと実行の相関 |
+| A2A（採用、既定無効） | 公式SDKのAgentCard/Message/Task/Artifact/transport | 登録・宛先、既存形式との変換、権限、Taskと実行の相関 |
 | JetStream（採用） | stream、保存queue、再配送 | HAB期限、receipt/dedup、失効/lease、本文保持、製品binding |
 | GUI | 標準のUI部品や認証部品 | 日常フロー、状態の意味、復旧、設定/管理の権限境界 |
 
 独自の汎用broker、A2Aと重複するTask engine、独自SSE/webhook engineを追加する前に標準実装を評価する。一方、標準を導入してもDots等の閉じた製品に正式な常時受信・起動・表示APIが新たに生まれるわけではない。
 
-### 8.1 A2A評価方針
+### 8.1 A2Aの方針
 
-A2Aは1.0系と公式JS/TS SDKを候補にし、既存MCP入口を維持する。独自kind6種の業務的意味をMessage/Task/Artifactへ段階的に寄せ、legacy互換はadapterへ閉じ込める。question/answer/noticeをすべてTask生成や完了へ機械変換しない。
+A2Aは1.0系と公式JS/TS SDKを使い、既存MCP入口を維持する。独自kind6種の業務的意味をMessage/Task/Artifactへ段階的に寄せ、legacy互換はadapterへ閉じ込める。question/answer/noticeをすべてTask生成や完了へ機械変換しない。
 
 最小PoCは合成2主体と固定connectivity_check。Cardに対応していないstreaming/push/任意実行を広告しない。A2A Task Storeと既存実行engineの正本を分け、配送受付をTask完了にしない。具体SDK版、driver、commit境界、取消port、Task履歴保持は未決。
 
@@ -202,7 +202,7 @@ ACK後のRelay本文解放、brokerの論理除去、file上書き、SSD/backup/
 
 ## 12. 未決事項と保証範囲
 
-未決はA2Aの正式採否、固定するSDK/driver/client/CLI、Task Storeと配送journalのcommit境界、取消port、Task/inbox保持、private GUI認証と配備方式、各製品の正式wake/表示能力、実storageの故障挙動、許容停止時間と運用費用である。
+未決はA2Aの本番配備、固定するSDK/driver/client/CLI、Task Storeと配送journalのcommit境界、取消port、Task/inbox保持、private GUI認証と配備方式、各製品の正式wake/表示能力、実storageの故障挙動、許容停止時間と運用費用である。
 
 HABが提供する簡単な通信は、全製品の自動起動、無期限保存、人間既読の推測、厳密な一度だけの外部実行、全故障での無損失、全コピーの物理消去を保証しない。利用者には、対応範囲と復旧可能な次操作を具体的に示す。
 

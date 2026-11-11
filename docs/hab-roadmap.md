@@ -2,7 +2,7 @@
 
 [READMEへ](../README.md) · [ADR](hab-decisions.md) · [役割と機能](hab-roles.md)
 
-現在の製品要件と、A2A・NATS JetStreamを将来候補として再評価する範囲は[HAB製品仕様](hab-product-spec.md)を参照してください。標準通信は[共通MCP接続](common-mcp-connection.md)と[受信supervisor](receive-supervisor.md)を基準にし、モデル実行・承認は受信側の既存機構へ残します。以下の比較と初期版の限定Taskの判断は記録時点のものです。inventoryや製品専用runnerを通常通信の開始条件にはしません。
+現在の製品要件は[HAB製品仕様](hab-product-spec.md)を参照してください。旧Relayは廃止し、配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えました（[ADR-016](hab-decisions.md)）。標準通信は[共通MCP接続](common-mcp-connection.md)と[受信supervisor](receive-supervisor.md)を基準にし、モデル実行・承認は受信側の既存機構へ残します。以下の比較と初期版の限定Taskの判断は記録時点のものです。inventoryや製品専用runnerを通常通信の開始条件にはしません。
 
 ## 比較の扱い
 
@@ -12,12 +12,14 @@
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Agent Tincan](https://github.com/mvanhorn/agent-tincan)   | Tailscale relay、Grok/Hermes・coding agent等の接続、request/reply・wake、browser extensionによる`dot-web`（依頼は既定で本人承認待ち） | 構成が近い。adapter・handoff・起床の可観測性を参考にする。dotは公式API接続ではなく、ログイン済みChromeのDM操作で本人として送る境界。主体/client分離と最小権限の保証を同等とみなさない |
 | [homelab-agent](https://github.com/TadMSTR/homelab-agent)  | Claude Code中心の五役、task queue、Matrix、manifestでtool surfaceを制御、event ledger                                                 | 役割別manifest、handoff監査、service/runbook分割を参考にする。大きなself-hosted stackであり、HABに全stack・memory基盤を導入する判断はしていない                                       |
-| [Pop Agent](https://github.com/viniciusbuscacio/pop-agent) | single-user self-hosted agent、private Tailscale、MCP client、REST/A2A。A2Aはtext中心でstream/file/pushに制限、beta互換性注意         | 単一ownerとlocal storage、APIの初期無効化を参考にする。HABは独立agent仲介を目的とし、A2Aは初期版不採用。公開Funnelとprivate Tailscaleを混同しない                                     |
+| [Pop Agent](https://github.com/viniciusbuscacio/pop-agent) | single-user self-hosted agent、private Tailscale、MCP client、REST/A2A。A2Aはtext中心でstream/file/pushに制限、beta互換性注意         | 単一ownerとlocal storage、APIの初期無効化を参考にする。HABは独立agent仲介を目的とし、A2Aは当初不採用だったが、2026-11-06にhost所有名義の入口として採用（既定は無効）。公開Funnelとprivate Tailscaleを混同しない                                     |
 | [Athena](https://github.com/faelnor92/Athena)              | 開発中のself-hosted orchestrator。READMEにOIDC、tool RBAC、人の承認、budget・audit機能を記載                                          | 承認・権限・費用の表示方法を参考にする。READMEの機能説明は独立した安全性評価ではなく、実装/coverage/versionを採用時に確認する                                                         |
 
 Agent Tincanのbrowser接続は[web-agents資料](https://github.com/mvanhorn/agent-tincan/blob/main/docs/adapters/web-agents.md)も参照対象です。HABはまず公式MCP/OAuthと限定Runsを検証し、browser本人sessionの代理送信を安易な接続fallbackにしません。
 
 ## 段階と完了条件
+
+以下の段階表は2026-10-10時点のTask Hub計画です。メッセージ配送（アドレス登録・MCP 5ツール・JetStream・A2A入口）の到達点と残りは[READMEの残りタスク](../README.md#残りタスク)で管理します。
 
 | 段階                          | 状態                                                                           | 完了条件                                                                                                                               |
 | ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |

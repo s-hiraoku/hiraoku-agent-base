@@ -1,29 +1,51 @@
-# Agent address rename — local prototype
+# Agent address rename
 
-This is a proposed, explicit extension to the original immutable-address contract.
-Its presence does not imply a production rollout; migration needs separate operator approval. It changes a Bot's canonical name
-inside the same product namespace while retaining its `agent_id`, authentication
-assignment, operation grants, blocks, receipts, inbox and outbox identities. It
-does not rename a host profile, move credentials, start an agent, or grant MCP
-clients management rights. No product-specific dispatch is introduced.
+Renaming is adopted (owner decision, 2026-11-12 JST). An administrator may change a
+Bot's `bot_name` inside the same `agent_name` namespace while it keeps its `agent_id`,
+authentication assignment, operation grants, blocks, receipts, inbox and outbox
+identities. It does not rename a host profile, move credentials, start an agent, or
+grant MCP clients management rights. No product-specific dispatch is introduced.
+The registry v3 schema, the `rename` administrator operation and the permanent
+reservations below are implemented. The grace-period behaviour is the adopted
+specification; until the implementation lands, an old name is refused immediately
+(the earlier prototype behaviour). Migration of an existing deployment still needs
+separate operator approval.
 
-## Proposed address policy — adoption decision required
+## What a rename must not break
 
-- A previous address stays permanently reserved to the same ID and cannot be
-  enrolled or claimed by any other ID. It is not a forwarding alias.
-- `resolve`, `as_address`, `whoami` and directory filtering use the current name.
-  A cached old `as_address` fails closed. `check_address` and enrollment consult
-  every reservation, including historical names.
-- An operator can explicitly rename back to a historical name owned by this ID.
-  This is a new audited CAS operation, not deletion or reassignment of history.
-- Host attestations containing a previous name owned by the same ID become
-  `unknown/stale_address_attestation` until refreshed. They do not become valid
-  ownership attestations or aliases. Foreign-name/ID attestations are rejected.
+Delivery never depends on the address text. A sender resolves an address once and
+saves the immutable `recipient_id` in its outbox before the first submit; retries,
+status, poll, ACK, `in_reply_to` and `thread_id` carry IDs only. Messages already
+accepted, leased, saved or being replied to are therefore unaffected by a rename.
+The places that hold the address as text are handled as follows.
 
-The no-forwarding policy and same-owner rename-back are prototype choices for
-review, not a decision that an existing deployment has already adopted. If old
-address forwarding is wanted, its authorization, expiry and discovery semantics
-need a separate design; this implementation does not silently supply it.
+| Holder of the old address | Behaviour after a rename |
+| --- | --- |
+| Another agent's address book or saved contact | During the grace period `relay_resolve(old)` returns the same `recipient_id`. The v1 output still echoes the requested address, so existing clients keep working; the current name is read with `hab_discover`. After the grace period the old name is refused like any unknown name (`forbidden`). |
+| The renamed agent's own `as_address` (frozen in its MCP client) | During the grace period the old name is accepted as the caller's own name only when the authenticated binding and `expected_agent_id`, if given, select the same `agent_id`. After the grace period it fails closed. Refresh the host's stored address before then. |
+| Host config: `a2a.identity`, `a2a.recipient` | Resolved through the same rule, so the A2A entry keeps working during the grace period. The rename procedure must update the config in the same maintenance window. A start after the grace period with an old name is refused. |
+| Host attestations | Become `unknown/stale_address_attestation` until refreshed. They never become ownership proof for the old name. |
+| Directory, discovery and `check_address` | Show the current name only. A previous name is reported as reserved and can never be enrolled or claimed by another ID. |
+| Credential mappings and OAuth connections | Keyed by connection, not address. Unchanged. |
+
+Rules:
+
+- Every previous name stays permanently reserved to the same `agent_id`. The grace
+  period only decides whether the old name still resolves; it never releases the
+  reservation.
+- The grace period is a registry option, `rename_grace_days`, default 30, measured
+  from the rename event in the registry clock. Each previous name has its own
+  period. Resolution through an old name is recorded in the redacted audit as a
+  category, so the operator can see which callers still use it.
+- An old name resolves only to its own `agent_id` and only with the caller's current
+  resolve/submit rights to that ID. It is not a forwarding alias to another ID and
+  grants nothing new.
+- An administrator can rename back to a historical name owned by the same ID. This
+  is a new audited CAS operation, not deletion or reassignment of history.
+- The `agent_name` (product or execution environment) cannot change. A rename across
+  namespaces is refused.
+- `relay:admin status` lists, for each renamed agent, its previous names with the
+  grace end, and warns when the host config still names an old address.
 
 ## Schema and permissions
 
@@ -50,7 +72,7 @@ before management executes this operation. A chat message, received external
 message, or model-proposed name is not itself administrator authorization. The
 same management contract applies to all participating products.
 
-1. Quiesce the Relay, make an owner-only consistent registry backup, and record
+1. Quiesce the host, make an owner-only consistent registry backup, and record
    the deployed code/config and transport backup checkpoint. Do not copy raw keys
    into commands or logs.
 2. Deploy v3-capable code with the explicit flag and perform initialization.
@@ -69,9 +91,13 @@ same management contract applies to all participating products.
    request ID or epoch to force a concurrent change through.
 6. Refresh the host's stored local address and recreate MCP clients that freeze
    `as_address` on construction, retaining the same ID and authentication. Update
-   durable host attestations through their host-owned mechanism. Profile/path
+   durable host attestations through their host-owned mechanism. If the agent is
+   named in the host config (`a2a.identity` or `a2a.recipient`), update the config
+   and restart the host in the same window. Tell other agents the new name; their
+   old address keeps resolving only until the grace period ends. Profile/path
    renaming is independent and is not performed by this command.
-7. Verify `whoami`, scoped directory, new-address resolution, old-address refusal,
+7. Verify `whoami`, scoped directory, new-address resolution, old-address resolution
+   to the same ID during the grace period (refusal before the grace implementation lands),
    pending delivery/ACK/status, and unchanged grants. Previously accepted envelopes
    and replies continue to use the same immutable sender/recipient IDs.
 
