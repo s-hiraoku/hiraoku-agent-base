@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { hostFixture, deferred } from "./adapter-host-fixtures.js";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 import { createSingleSourceHost } from "../src/adapter-host/single-source-authority.ts";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { limits } from "./adapter-host-fixtures.js";
 
 async function setup(t) {

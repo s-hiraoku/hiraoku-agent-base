@@ -11,7 +11,7 @@ import {
   constants,
 } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { SQLiteHostOwner } from "../adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../agent-sdk/sqlite-host-owner.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { RegistryOptions } from "../hab/sqlite-registry.ts";
 import type {

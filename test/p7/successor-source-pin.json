@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "f5c9912cc489e5629870b3953942ab95361d8927",
+  "source_ref": "538e34759ebab45babfb5e46bb31a913b7e95f08",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -183,7 +183,7 @@
     },
     "scripts/lib/local-mvp.mjs": {
       "previous_sha256": null,
-      "sha256": "f882e915888ddc646e8b60355624ea383304fcc349ff758e5812bab9e1a577e0"
+      "sha256": "47524d0341cc777b7c39a025e9485f4b36bd71f825ce96c059d5448a79006c57"
     },
     "scripts/lib/native-trial-preflight.ts": {
       "previous_sha256": null,
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "02b588b1a4c6e34a60c6bc6cf0fac0bd8a05b4aae9abf2c805dd58304650ac41"
+      "sha256": "96c43107893557c72ab3d58efd8a08e182b9a896468950eaee400b125123cf70"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -255,7 +255,7 @@
     },
     "src/adapter-host/cycle.ts": {
       "previous_sha256": "bf186ca0fcdab8f7405155dae58ae8e330b8422a9edf6518f46cf3861ac012fa",
-      "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926"
+      "sha256": "f0a710617ad13e2d804e1dd72995433fe50e31d590b653186111c89eb24f65b7"
     },
     "src/adapter-host/external-owner.ts": {
       "previous_sha256": null,
@@ -279,11 +279,19 @@
     },
     "src/adapter-host/receive-supervisor.ts": {
       "previous_sha256": "9ed3028348ac921813d295ffd92862cfe45658bc7f5f6eb207c1efd9f6d0cf27",
-      "sha256": "717bdf202088025f56a20cff92fc384abca5395c6d4b7cfcf7744aa1bca4d3e7"
+      "sha256": null
     },
     "src/adapter-host/single-source-authority.ts": {
       "previous_sha256": null,
-      "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf"
+      "sha256": "4b5cdda6a958f9255b058ee176c8683fec452f3385d13b18ece796c257448f81"
+    },
+    "src/adapter-host/sqlite-control.ts": {
+      "previous_sha256": "e6939b2d75f2ecac2cd5c762f7e9da2b4bc3cc76f10d2408a79b8007b657e648",
+      "sha256": null
+    },
+    "src/adapter-host/sqlite-owner.ts": {
+      "previous_sha256": "5d134a7ec3a5d0d41a5e9ad669e4adb389f4aebc87c1cbd8d5e5489f7929a416",
+      "sha256": null
     },
     "src/adapter-host/stdio.ts": {
       "previous_sha256": null,
@@ -291,7 +299,7 @@
     },
     "src/adapter-policy/contract.ts": {
       "previous_sha256": "46f6d5cb1fea588fa516b44ab273ed6f80df43ab235aabf96ad140c4ebdbc168",
-      "sha256": "ca0c319f53bc88f78dce8b068236e73ab40f3de58e8f92b1c5bc269b0321f68a"
+      "sha256": "b6da60dcf3dab18c72d5f4e751a01a702165d88fca020f16acaf2647a09d952e"
     },
     "src/adapter-policy/inbox-answers.ts": {
       "previous_sha256": "9cdb447a9f8add242332a9ffb3fa33366f8b31b38d4a191253962dc023061e55",
@@ -307,11 +315,15 @@
     },
     "src/agent-sdk/README.md": {
       "previous_sha256": null,
-      "sha256": "1da6c3b959179abee679d53a56c0bd6a6a64a0d7e1adfb19e536956b549393cd"
+      "sha256": "41ce7272be8f39809234138fb559071239c5b171332c817150ec62887c5f10be"
     },
     "src/agent-sdk/authentication-recovery.ts": {
       "previous_sha256": null,
       "sha256": "123ff8461c6d5178378bac72ba6f603fa322013457d882941d77d72a7f5eb498"
+    },
+    "src/agent-sdk/guard.ts": {
+      "previous_sha256": null,
+      "sha256": "d75b881d91b51b0b5990265cdffe5a97adb9d2470315c1b5d17f50bd325a5ae3"
     },
     "src/agent-sdk/index.ts": {
       "previous_sha256": null,
@@ -321,6 +333,14 @@
       "previous_sha256": null,
       "sha256": "6c6262309eaabca946ebe1ccd1c6a8f1098ae72a2a02f24534c8679208a41dab"
     },
+    "src/agent-sdk/receive-host.ts": {
+      "previous_sha256": null,
+      "sha256": "a62f55d33f12fc6829ae89f13a16a5a6bf586f2cd803b9f37cbd5d2da1a7c113"
+    },
+    "src/agent-sdk/receive-supervisor.ts": {
+      "previous_sha256": null,
+      "sha256": "70e0bdabfbf5a2b2968368c6c60cdac9d92beeff9f11cbf15257cd1798613346"
+    },
     "src/agent-sdk/receiver.ts": {
       "previous_sha256": null,
       "sha256": "c9552cc20a2d37ee858e137b741028c6f3add36ab10960928252a033495ce173"
@@ -328,6 +348,14 @@
     "src/agent-sdk/sender.ts": {
       "previous_sha256": null,
       "sha256": "2f427dfc6aa512861eea017e6db4a87982710801ecf4328f62936593cca8bed0"
+    },
+    "src/agent-sdk/sqlite-host-control.ts": {
+      "previous_sha256": null,
+      "sha256": "f7643a1bad6ac76101ad58a5accf2bfebc24d0bc0784faa4fe660d6704682fa7"
+    },
+    "src/agent-sdk/sqlite-host-owner.ts": {
+      "previous_sha256": null,
+      "sha256": "49519197e8f833fd1c6a76416cd8c04612c168731ebbd321799e59196eba70e2"
     },
     "src/agent-sdk/sqlite-inbox.ts": {
       "previous_sha256": null,
@@ -467,7 +495,7 @@
     },
     "src/host/server.ts": {
       "previous_sha256": null,
-      "sha256": "81da0abf6b6407a10ee126ecd616e3d8353ad37d6c6a6d76a4db3fdf30a24401"
+      "sha256": "407041b07e952fab0dcda6e0fe0d5c677c01079e457db4e34e52c12520537558"
     },
     "src/host/start.ts": {
       "previous_sha256": null,
@@ -787,19 +815,19 @@
     },
     "test/adapter-host-fixtures.js": {
       "previous_sha256": null,
-      "sha256": "a6d890d3ec185a9156092c609097032478f13b29e31a69e742f083e16a6edf43"
+      "sha256": "77e1a54bfe70c8c7e6d2b0f3bd9ce785f544ec31bdd6643f385d2b0bcc16ee04"
     },
     "test/adapter-host.test.js": {
       "previous_sha256": null,
-      "sha256": "8966a7ffe9c927dc398553130643f574b5f7939df47e0f72381a10671ff30e32"
+      "sha256": "2400149e0907cbc2532e51093f27f0a6a0b14a1ad2b0da50effa695eec74c1c3"
     },
     "test/adapter-inbox-read.test.js": {
       "previous_sha256": null,
-      "sha256": "463333870736ad3f05252d7e64f845dfdc494a431feaa7140db51a10bcc43a0d"
+      "sha256": "16b2cb19dfb80259f5ce7862d0da38c62fe64a66e93dc71eabb1dcfd7ba04efe"
     },
     "test/authentication-recovery.test.js": {
       "previous_sha256": null,
-      "sha256": "d898c42f83bdb65f39eaca6ab25ce2e392645ef0a53edada4fe6aa3dbc48894c"
+      "sha256": "354b51405af39a9b49486ac99d6fed9dd2219a5cab467060b8c3bbb33f8e7eaf"
     },
     "test/ci-nats/install.test.ts": {
       "previous_sha256": null,
@@ -811,7 +839,7 @@
     },
     "test/common-mcp-boundary.test.js": {
       "previous_sha256": null,
-      "sha256": "ffe941209f2a9a40450f8c5d22fd8475b531b22002b4e72b920c5d77263aae04"
+      "sha256": "ef44ff5aa129050d8ffc80b056f913dc3e824e8f9f1f28bdd20a02d95b566cc5"
     },
     "test/compatibility/native-trial-preflight.test.js": {
       "previous_sha256": null,
@@ -843,7 +871,7 @@
     },
     "test/external-owner-fixture.js": {
       "previous_sha256": null,
-      "sha256": "570b6176400d8827067324afdb2cc360e6e0fe05e46fb6f1d3163f4f06e79f09"
+      "sha256": "ba073ced392842d0efba2cb8e41f54e0d42d16c1f1c4b76534746f805e33008a"
     },
     "test/external-owner.test.js": {
       "previous_sha256": null,
@@ -935,7 +963,7 @@
     },
     "test/managed-transport.test.js": {
       "previous_sha256": null,
-      "sha256": "29c869a0b9e3e3083e682b1e2156e014f709dfc46dca2c43dfa9a0744017e37e"
+      "sha256": "cef280893524681dd0ea4525dbcf0d7fec605c8579ab20bb9106b0f504f3883b"
     },
     "test/p7/README.md": {
       "previous_sha256": null,
@@ -951,7 +979,7 @@
     },
     "test/private-recipient-http.test.js": {
       "previous_sha256": null,
-      "sha256": "f559ae106eb8a60e2b20d469192e384d8295f1bd963e8a031e1acac65f289c5e"
+      "sha256": "22fc87db3464c6e19d4fa0a5ce7a34184c08c7b9472188599c90164521d93fb2"
     },
     "test/recipient-host-mcp-size.test.js": {
       "previous_sha256": null,
@@ -979,7 +1007,7 @@
     },
     "test/recipient-supervisor.test.js": {
       "previous_sha256": null,
-      "sha256": "d08576704b45d9f3c03980d05a92f5048fad904663a63b75bff5ea8fd576b3de"
+      "sha256": "c52d7fa137aa84911d4962ad63d015802d30496c94eb3e11d62ab79446cb2373"
     },
     "test/relay-http-fixtures.js": {
       "previous_sha256": "99dc523f47c1d30653bea641cbc0a83c7eecbd538c37ae1ce23d8e781d5f0dbf",
@@ -1003,11 +1031,11 @@
     },
     "test/single-source-authority.test.js": {
       "previous_sha256": null,
-      "sha256": "4d41af1296ae2dd2057f8266e2d37deafab7f27c11307d98d19a72588b40a22f"
+      "sha256": "a35e88a8e1b0ce6a53d82838af7099b3b17e28eafab716df06bea437a93aefb9"
     },
     "test/single-source-stdio-child.js": {
       "previous_sha256": null,
-      "sha256": "76c016875065d4fe298012606786874663b2be3eeb26a39def4883a480c02c26"
+      "sha256": "bf666d997ecccdc4cd89580bf012be589b764bb0dfe3ff61737c84edf056d0cc"
     },
     "test/single-source-stdio.test.js": {
       "previous_sha256": null,

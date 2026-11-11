@@ -3,8 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import { openSync, closeSync, lstatSync, constants } from "node:fs";
 import { isAbsolute } from "node:path";
 import { createHmac } from "node:crypto";
-import { id, checkGuard } from "../adapter-policy/contract.ts";
-import { HostError } from "./sqlite-control.ts";
+import { id, checkGuard } from "./guard.ts";
+import { HostError } from "./sqlite-host-control.ts";
 export interface HostOwnerOptions {
   agent_id: string;
   fingerprint_key: Uint8Array;

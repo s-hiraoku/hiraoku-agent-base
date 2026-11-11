@@ -1,16 +1,12 @@
 /** Receiver-side automatic-reply policy. No dependency on HAB or Task execution. */
 import { z } from "zod";
 import type { Submission } from "../messaging/contract.ts";
-export class ReplyBudgetError extends Error {
-  readonly code: string;
-  constructor(code: string) {
-    super(code);
-    this.code = code;
-  }
-}
-export const id = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
+import {
+  GuardError as ReplyBudgetError,
+  id,
+  checkGuard,
+} from "../agent-sdk/guard.ts";
+export { ReplyBudgetError, id, checkGuard };
 export const sourceKey = z.strictObject({ sender_id: id, message_id: id });
 export const sourceSchema = z.strictObject({
   sender_id: id,
@@ -64,13 +60,4 @@ export function authorizationGuard(
   return () => {
     if (resolve() !== actor) throw new ReplyBudgetError("reply_forbidden");
   };
-}
-export function checkGuard(guard: () => void) {
-  if (typeof guard !== "function")
-    throw new ReplyBudgetError("reply_forbidden");
-  const result: unknown = guard();
-  if (result && typeof result === "object" && "then" in result) {
-    void Promise.resolve(result).catch(() => {});
-    throw new ReplyBudgetError("reply_forbidden");
-  }
 }

@@ -1,15 +1,15 @@
 /** Receive-only scheduling over the existing durable host. No authentication or execution. */
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
-import type { AdapterHostCycle } from "./cycle.ts";
+import type { HostStepResult } from "./receive-host.ts";
 import {
   AuthenticationRecoveryGate,
   authenticationRecoveryReasons,
-} from "../agent-sdk/authentication-recovery.ts";
+} from "./authentication-recovery.ts";
 import type {
   AuthenticationRecoveryReason,
   AuthenticationRecoveryStatus,
-} from "../agent-sdk/authentication-recovery.ts";
+} from "./authentication-recovery.ts";
 
 const policySchema = z
   .strictObject({
@@ -20,10 +20,23 @@ const policySchema = z
   })
   .refine((p) => p.retry_cap_ms >= p.retry_base_ms);
 export type ReceiveSupervisorPolicy = z.infer<typeof policySchema>;
+/** Any host that can run one receive step: ReceiveHost or a richer host built on HostCore. */
+export interface ReceiveCapableHost {
+  status(context: unknown): {
+    paused: boolean;
+    running: boolean;
+    draining: number;
+    owner: "held" | "lost" | "unconfigured";
+  };
+  stepOnce(
+    context: unknown,
+    command: { op: "receive" },
+  ): Promise<HostStepResult<string>>;
+}
 /** Trusted host composition, version 1. Never populated from received messages. */
 export interface ReceiveSupervisorPort {
   version: 1;
-  host: Pick<AdapterHostCycle, "status" | "stepOnce">;
+  host: ReceiveCapableHost;
   context: unknown;
   /** Optional trusted local gate. No IO occurs while it is blocked. */
   authentication?: AuthenticationRecoveryGate;

@@ -51,9 +51,11 @@
 
 2026-11-07のレビュー補足（A2A入口の返信outbox回収）：outbox回収は全件分の返信枠を一括要求せず、上限M、保持行数T、返信期間内のsource数W、今回回収する行数pに対して2×(max(0,M-T+p)+W)件分の本文・byte・ACK履歴・保持行の余裕を確認する。TがM以下なら空き枠F=M-Tとして2×(F+W+p)と同じである。上限を既存行数より下げた場合、超過行の回収だけでは新しい送信枠を生まない。pは100以下で、同一hostの同期区間で集計から回収まで行う。保存エラーの本文を捨てず、期限処理と30日保持は変更しない。通常shutdown、結果期限、identityの永久disconnectは既存の意味を維持する。identity変更による失効解除は提供せず、A2Aを外してMCPだけ起動できる。
 
-## ADR-017 / 採用・未実装：受信ループをエージェントSDKへ移す
+## ADR-017 / 採用・実装済み：受信ループをエージェントSDKへ移す
 
-2026-11-12 JST、owner判断。標準受信の基準とした受信supervisor（`ReceiveSupervisor`）は`src/adapter-host`にあり、その`AdapterHostCycle`はADR-016で保留としたtask-bridge・answer-intentsと返信budget（`src/adapter-policy`）を構成時に必要とする。host本体も二重起動防止に`src/adapter-host`の`SQLiteHostOwner`を使う。標準経路が保留部品に依存しないよう、受信supervisor、受信だけを行う最小cycle、process ownerを`src/agent-sdk`へ移す。Task引受け・質問返信intent・返信budgetは`src/adapter-host`に残し、明示構成する任意連携とする。新しいエージェントは`src/agent-sdk`だけで送信と保存後ACKの受信を組み込めることを完了条件とする。移動は別PRで行い、それまでは現行の配置が有効である。
+2026-11-12 JST、owner判断。標準受信の基準とした受信supervisor（`ReceiveSupervisor`）は`src/adapter-host`にあり、その`AdapterHostCycle`はADR-016で保留としたtask-bridge・answer-intentsと返信budget（`src/adapter-policy`）を構成時に必要とする。host本体も二重起動防止に`src/adapter-host`の`SQLiteHostOwner`を使う。標準経路が保留部品に依存しないよう、受信supervisor、受信だけを行う最小cycle、process ownerを`src/agent-sdk`へ移す。Task引受け・質問返信intent・返信budgetは`src/adapter-host`に残し、明示構成する任意連携とする。新しいエージェントは`src/agent-sdk`だけで送信と保存後ACKの受信を組み込めることを完了条件とする。
+
+実装：`src/agent-sdk/receive-host.ts`の`HostCore`がstop/epoch control（`sqlite-host-control.ts`）・process owner（`sqlite-host-owner.ts`）・transport管理・認可確認を持ち、`ReceiveHost`はその上で`receive`だけを受け付ける。outbox・返信budget・Task bridgeは不要である。`ReceiveSupervisor`は`receive-supervisor.ts`へ移り、`receive`を実行できる任意のhostを受け取る。`src/adapter-host`の`AdapterHostCycle`は同じ`HostCore`を継承し、送信・回答・Task操作を足した任意連携として残る。公開APIとエラーコードは変えていない。
 
 ## 次に決める内容
 

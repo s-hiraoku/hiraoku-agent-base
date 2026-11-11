@@ -12,7 +12,7 @@ import { spawn } from "node:child_process";
 import process from "node:process";
 import { once } from "node:events";
 import { DatabaseSync } from "node:sqlite";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { hostFixture, deferred } from "./adapter-host-fixtures.js";
 import { code } from "./task-bridge-fixtures.js";
 const yes = () => {};
@@ -211,7 +211,7 @@ test("Host owner: WAL and memory cannot be used as process-lifetime ownership", 
 test("Host owner: a terminated native process releases only the ephemeral owner lock", async (t) => {
   const f = await fixture(t);
   const moduleUrl = new URL(
-    "../src/adapter-host/sqlite-owner.ts",
+    "../src/agent-sdk/sqlite-host-owner.ts",
     import.meta.url,
   ).href;
   const source = `
@@ -246,7 +246,7 @@ test("Host owner: closing a failed same-process competitor does not release the 
   for (let i = 0; i < 3; i++)
     assert.throws(() => f.openOwner(), code("host_owner_busy"));
   const moduleUrl = new URL(
-    "../src/adapter-host/sqlite-owner.ts",
+    "../src/agent-sdk/sqlite-host-owner.ts",
     import.meta.url,
   ).href;
   const source = `

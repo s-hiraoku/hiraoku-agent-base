@@ -7,8 +7,8 @@ import {
   authenticationRecoveryReason,
   authenticationRecoveryReasons,
 } from "../src/agent-sdk/authentication-recovery.ts";
-import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
 import { DurableSender } from "../src/agent-sdk/sender.ts";
 import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
