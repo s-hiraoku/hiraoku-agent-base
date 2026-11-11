@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { syntheticStores } from "./external-owner-fixture.js";
 import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
-import { HostError } from "../src/adapter-host/sqlite-control.ts";
+import { HostError } from "../src/agent-sdk/sqlite-host-control.ts";
 const deferred = () => {
   let resolve;
   const promise = new Promise((r) => {

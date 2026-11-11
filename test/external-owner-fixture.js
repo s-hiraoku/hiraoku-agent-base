@@ -1,7 +1,7 @@
 /** Synthetic denied host only: real private SQLite, no broker, product, model or network adapter. */
 import { join } from "node:path";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
-import { SQLiteHostControl } from "../src/adapter-host/sqlite-control.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
+import { SQLiteHostControl } from "../src/agent-sdk/sqlite-host-control.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";

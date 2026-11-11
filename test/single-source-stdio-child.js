@@ -7,7 +7,7 @@ import { setTimeout, clearTimeout, setInterval, clearInterval } from "node:timer
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useParentTestBroker } from "./jetstream-delivery.js";
 import { hostFixture, limits } from "./adapter-host-fixtures.js";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 import { startSingleSourceRecipientStdio } from "../src/adapter-host/stdio.ts";
 

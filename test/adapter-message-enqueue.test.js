@@ -7,7 +7,7 @@ import {
 } from "./adapter-host-fixtures.js";
 import { message } from "./relay-http-fixtures.js";
 import { code } from "./task-bridge-fixtures.js";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 // Healthy send coverage must not expire a deliberately short fault-test lease under suite load.
 const hostFixture = async (t) =>
   baseHostFixture(t, {}, { outboxLeaseMs: 5000 });

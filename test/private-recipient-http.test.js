@@ -7,7 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createPrivateRecipientHttp } from "../src/adapter-host/private-http.ts";
 import { hostFixture, limits, deferred } from "./adapter-host-fixtures.js";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 const token = "synthetic_only_credential_not_native_proof_12345";
 async function endpoint(t, extra = {}) {

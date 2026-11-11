@@ -684,7 +684,7 @@ test("Adapter host: a denied or changed control actor cannot commit a resume", a
 test("Adapter host: native control writers cannot both win the same resume epoch", async (t) => {
   const f = await hostFixture(t);
   const moduleUrl = new URL(
-    "../src/adapter-host/sqlite-control.ts",
+    "../src/agent-sdk/sqlite-host-control.ts",
     import.meta.url,
   ).href;
   const source = `

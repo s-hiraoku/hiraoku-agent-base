@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
-import { id, checkGuard } from "../adapter-policy/contract.ts";
+import { id, checkGuard } from "./guard.ts";
 export class HostError extends Error {
   readonly code: string;
   constructor(code: string) {

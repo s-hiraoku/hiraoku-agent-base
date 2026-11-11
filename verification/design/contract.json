@@ -250,7 +250,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "844930ca7a40280574b7b81689c76cb02c651942b0f18356aa29a18d1f7f4945",
+      "sha256": "ff3ea3f076a206f7e5eb98ce7aec247dd7ba3fbaac0cdeee6755e32aedfe0c5b",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
@@ -420,7 +420,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "990092b1eb964820db29ec2dda9fdeb2ee5e0992eac0feb56e16069fdbd348e8",
+      "sha256": "86c898bb47bb12a3134c979825f2a3414bda0a8275f190e655e81d8573213dbb",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions."
@@ -714,7 +714,7 @@
     },
     {
       "path": "docs/receive-supervisor.md",
-      "sha256": "182ce3ed5d7b2121f3841173793e65cdab1efad017d25e384d6bf8a6ab0bcb87",
+      "sha256": "8bea11c9d9b82c5505b3268d27637350c2672f2988e4405d041b81620f7025f7",
       "role": "normative",
       "review": "reviewed",
       "summary": "Model-free version1 scheduler repeats only existing host receive. Requires configured same-agent durable stores/control/owner and explicit resume; no login/grant/pause release/owner takeover/task/reply/model. Explicit bounded interval/backoff/drain; authorization/storage failure stops, outstanding work blocks next receive, stop is not RPC cancel or token revoke. receive_steps counts returned calls only, no auto body processing; restart reuses original ACK and owner/control authority. Product composition/residency is a separate live gate. Optional owner-local authentication gate starts blocked on each process start; trusted local provider recovery signals stop or wait without polling/ACK or refresh/login IO. Only fresh one-use gate-local verification of the exact approved issuer/resource/subject/client/connection/agent tuple reopens it. Fixed synchronous status metadata contains no identity; current pause/owner/draining authority is rechecked after notifications. Generic wire errors cannot supply local recovery authority. Native credential ownership, verification, notification delivery and real expiry/restart acceptance remain separate product responsibilities."
@@ -836,7 +836,7 @@
     },
     {
       "path": "docs/testing/delivery-lab.md",
-      "sha256": "b8635aa98da3d00919c07e487fbe83f5867500bf7ff949141dfb044fee55b910",
+      "sha256": "eab03930a8e05059b3d5c1a6ef0bb50a6ac18f98e1433ee10cfd1fd386bceb38",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability.",
@@ -861,7 +861,7 @@
     },
     {
       "path": "docs/testing/p7-lab.md",
-      "sha256": "c09cb85aa5bd29f8c563e2c4cd1dc21fbfc6c02747a66207789c67689943e78e",
+      "sha256": "b2fdd983c81ea064fef0c1680a2cfdac22a83fa82d56fbf9019e27ff4fc09b86",
       "role": "normative",
       "review": "reviewed",
       "summary": "P7 current-entry guide requires verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, expected full root 1451) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate.",
@@ -878,7 +878,7 @@
     },
     {
       "path": "docs/testing/publication.md",
-      "sha256": "671a590a4b02d635e43137c4a1d883b3900fc7b8500154ef5d33159d01c89394",
+      "sha256": "174bf82ebc28a7d443d40e105c5a33c4791c9da173196bce798697b08e6687d5",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain.",
@@ -939,7 +939,7 @@
     },
     {
       "path": "src/agent-sdk/README.md",
-      "sha256": "1da6c3b959179abee679d53a56c0bd6a6a64a0d7e1adfb19e536956b549393cd",
+      "sha256": "41ce7272be8f39809234138fb559071239c5b171332c817150ec62887c5f10be",
       "role": "normative",
       "review": "reviewed",
       "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and the JetStream package. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved. Also documents local-only branded authentication recovery reasons and an optional owner-local identity verification gate. They perform no IO, hold no tokens and provide no refresh/login; product-native wiring and acceptance remain explicit separate requirements."
@@ -988,7 +988,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "7c19b932a79a75e0e1ffaefc49b2bd966f0c8def690d066df65b7cb04bda66a4",
+      "sha256": "ef32fceaa319c68f0dfaa13b9b09e182b3b0f4adcb43905a02bd7cf463889e5a",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1393,7 +1393,7 @@
           "path": "docs/receive-supervisor.md",
           "start": 7,
           "end": 17,
-          "excerpt_sha256": "e91f4dbe29ba9b62ea3b72feb896bd295bd6dc46354630d3249f87fbedee7534"
+          "excerpt_sha256": "07f5b088f6f2517f04d75774fa696d4a9977d8398f56957a742879374acb81a7"
         },
         {
           "path": "docs/receive-supervisor.md",
@@ -2684,8 +2684,8 @@
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 17,
-          "end": 17,
+          "start": 21,
+          "end": 21,
           "excerpt_sha256": "c55b59519246310a7fe559f66ab8f9045dad669414c6ffebb07aa50f382ee709"
         },
         {
@@ -2807,14 +2807,14 @@
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 23,
-          "end": 23,
+          "start": 27,
+          "end": 27,
           "excerpt_sha256": "9001e9482a4b61a3d4a29d7073008de86c0592519b6f12feeee5bbdfeeeacde0"
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 27,
-          "end": 27,
+          "start": 31,
+          "end": 31,
           "excerpt_sha256": "f8f645c64da78ab64752d6a3cda4109c39f4a454e738b81908a8913b7fd16762"
         },
         {
@@ -2857,8 +2857,8 @@
       "citations": [
         {
           "path": "src/agent-sdk/README.md",
-          "start": 19,
-          "end": 19,
+          "start": 23,
+          "end": 23,
           "excerpt_sha256": "00b1f2fe7b7d63a9eeba616c9b51a8b757e9412b83334572438252fce006dc9a"
         },
         {
@@ -2902,8 +2902,8 @@
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 19,
-          "end": 19,
+          "start": 23,
+          "end": 23,
           "excerpt_sha256": "00b1f2fe7b7d63a9eeba616c9b51a8b757e9412b83334572438252fce006dc9a"
         },
         {
@@ -3903,8 +3903,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 64,
-          "end": 64,
+          "start": 66,
+          "end": 66,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -4098,7 +4098,7 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 12,
-          "excerpt_sha256": "8521ce8fd940405b396711e117106179b94e77c37e2f43aba3414f1862c4ae83",
+          "excerpt_sha256": "36edbfb7847d97f112d0978d0b93702dd1a78e013f29697ac2b998881e562f56",
           "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): re-read current required-group and failure/hosted-status text; only expected root inventory changes 1424 to 1441. Acceptance meaning and requirement statement unchanged. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
@@ -5573,7 +5573,7 @@
           "path": "docs/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "d1df563d1b1ecf482e1d9af50283e5ce748b1426698616d16fe8f0dc0ba7e423",
+          "excerpt_sha256": "8e6bd50ee28b85ac08e2010595c9dd9937faf4f25f8254bb9c42e81dbebb15f6",
           "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
@@ -5696,14 +5696,14 @@
           "path": "docs/testing/p7-lab.md",
           "start": 10,
           "end": 10,
-          "excerpt_sha256": "d194dda2bdd7d7e783cfd1e5c46b5610bbd5a29ba5874a3a1d135c8b6ef1345e",
+          "excerpt_sha256": "43301a9424dd08516793a7962d43c432ae9862773456ef902826967035ae4ddc",
           "maintenance": "Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
           "path": "docs/testing/publication.md",
           "start": 18,
           "end": 18,
-          "excerpt_sha256": "b9f3e8c8f1c1e799e36c5d6a2e0b622fc0b23b9e952a817888c0f4d886378f26",
+          "excerpt_sha256": "bfd92f1e147398230d37bedc056bb0f5850ea546c9467828a7f72fdb7aa1d7b0",
           "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
@@ -5899,8 +5899,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 64,
-          "end": 64,
+          "start": 66,
+          "end": 66,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]

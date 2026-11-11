@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { ReceiveSupervisor } from "../src/adapter-host/receive-supervisor.ts";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { hostFixture, deferred, limits } from "./adapter-host-fixtures.js";
 

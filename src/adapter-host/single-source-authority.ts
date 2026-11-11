@@ -2,7 +2,7 @@
 import { id, sourceKey } from "../adapter-policy/contract.ts";
 import { AdapterHostCycle } from "./cycle.ts";
 import type { AdapterHostOptions, HostAuthorization } from "./cycle.ts";
-import type { SQLiteHostOwner } from "./sqlite-owner.ts";
+import type { SQLiteHostOwner } from "../agent-sdk/sqlite-host-owner.ts";
 
 // Preserve the exclusive transport union when removing owner/auth options.
 type OwnedHostOptions<T = AdapterHostOptions> = T extends AdapterHostOptions

@@ -116,7 +116,7 @@ flowchart LR
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-現在のフルroot JavaScriptテストの期待件数（2026-11-11時点で1468件）は`scripts/p7-lab.mjs`と[公開とCIの範囲](docs/testing/publication.md)で管理し、CIではlint・typecheck・Python・Ruffも確認します。これは本番接続の受入れではありません。エージェント側の実装範囲は[エージェントSDK](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
+現在のフルroot JavaScriptテストの期待件数（2026-11-12時点で1473件）は`scripts/p7-lab.mjs`と[公開とCIの範囲](docs/testing/publication.md)で管理し、CIではlint・typecheck・Python・Ruffも確認します。これは本番接続の受入れではありません。エージェント側の実装範囲は[エージェントSDK](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)、既存の固定Task接続ゲートは[MVP受入れ表](docs/mvp-acceptance.md)を参照してください。
 
 ## 残りタスク
 

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { join } from "node:path";
 import { RecipientMessageError } from "../src/recipient-messages/contract.ts";
 import { RecipientSupervisor } from "../src/recipient-messages/supervisor.ts";
-import { SQLiteHostOwner } from "../src/adapter-host/sqlite-owner.ts";
+import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { fixture as recipientFixture } from "./recipient-messages-fixtures.js";
 import { deferred, limits } from "./adapter-host-fixtures.js";
 

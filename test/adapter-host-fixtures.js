@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { fixture, limits } from "./task-bridge-fixtures.js";
 import { message as sourceMessage, policy } from "./relay-http-fixtures.js";
-import { SQLiteHostControl } from "../src/adapter-host/sqlite-control.ts";
+import { SQLiteHostControl } from "../src/agent-sdk/sqlite-host-control.ts";
 import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
