@@ -2,7 +2,7 @@
   "version": 1,
   "base_ref": "028b3754175f47668cc3f787a0a149926351f752",
   "base_pin_sha256": "f93a14e6a04fac4d722d8c20d86500b45d47dfa758ec8e4619a3e20e7835a2d7",
-  "source_ref": "25dbe8148127c83e0d0af9151e3ec8e22f4ba5d5",
+  "source_ref": "65d7265c40feb658c402f6d7736c3bb21e04bfe7",
   "root_package_projection": {
     "engines": {
       "node": ">=26"
@@ -207,7 +207,7 @@
     },
     "scripts/p7-lab.mjs": {
       "previous_sha256": null,
-      "sha256": "4618a1ef529c73933daf923688ecca2779d442fcf86a2d2b628f28cebea99ad3"
+      "sha256": "17cbbf278564c41382d2a7d19e6991b423828c8ada8eb099f4878864fd4c707c"
     },
     "scripts/pilot-preflight.mjs": {
       "previous_sha256": null,
@@ -483,7 +483,11 @@
     },
     "src/owner-integrations/acp-stdio.ts": {
       "previous_sha256": null,
-      "sha256": "ce25b521eca7113cac23e5df856440fc633f71e8fb3ebc314653a8bb4dfb9782"
+      "sha256": "8b4da4cbefdfb7ef4c98d3814a96ebcdaeb25f19716ad9492ca147053f522906"
+    },
+    "src/owner-integrations/acp-updates.ts": {
+      "previous_sha256": null,
+      "sha256": "d8d058cbd9c910b9342cd8fb105ebcee7c8f6d72a07c9b1a8f146e35ab223e05"
     },
     "src/owner-integrations/source-launch-journal.ts": {
       "previous_sha256": null,
@@ -749,6 +753,14 @@
       "previous_sha256": "1e0a880b756b4ad7678fce5e85cd6e9c80168285bfd99ebe773d79c140ce8424",
       "sha256": "a76ffb56d46336da720dc4285dd948b43c4bc0b0632d4e18d088bd356c5afc8a"
     },
+    "test/acp-fixed-wake-child.js": {
+      "previous_sha256": null,
+      "sha256": "200dcb00ad283898046847fdf927af3756118da524a91f268ab718cadda1f8d6"
+    },
+    "test/acp-fixed-wake.test.js": {
+      "previous_sha256": null,
+      "sha256": "87dc7dae6f8797fa308b947b18818b73abcf2c806e8f53b25e24ee6602e5c0e4"
+    },
     "test/acp-owner-child.js": {
       "previous_sha256": null,
       "sha256": "bf2cff8fccc22763721f17bba27d500d9ebc0ae3a80fdfcca892a7ced9f40418"
@@ -756,6 +768,10 @@
     "test/acp-owner.test.js": {
       "previous_sha256": null,
       "sha256": "89882a0eb99e5aa424a7699ef25171568c94ebc93785a644af7148edb578eff9"
+    },
+    "test/acp-wake-observations.js": {
+      "previous_sha256": null,
+      "sha256": "007dc7ce35f4109d8d99afb5282a10c2c5581f1313c6b59f1a4bbf57c9ceacb2"
     },
     "test/adapter-host-fixtures.js": {
       "previous_sha256": null,

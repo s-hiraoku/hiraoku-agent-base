@@ -298,3 +298,17 @@ whole-snapshot rollback limits and the required real receiver/budget handoff.
 ## PR163 stacked CI catalog correction
 
 The source-launch journal retains its 25 additional cases, so this stacked branch requires 1371 full-root tests, not the 1346 expected on the owner-activation base. The original hosted PR report executed all 1371 with zero failures, skips, cancellations or TODOs and confirmed owned cleanup, but its inherited 1338 catalog failed. The strict gate is unchanged. The corrected owner-activation source and recipient fixture are inherited locally; journal implementation and tests remain byte-identical to the reviewed source. Source composition is committed before regenerating the separate successor pin. New exact-head hosted acceptance remains required.
+
+
+## Optional standard ACP fixed wake (2026-11-10)
+
+Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.
+
+
+## Atomic synthetic ACP observations
+
+PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.
+
+## PR162 integration with main after PR161/PR163 (2026-11-11)
+
+Merging main (owner activation #161 and source-launch claim #163) into the fixed-wake branch keeps both sides' sections and records. The full-root catalog is the sum of the independent additions: 1338 base + 33 (#161/#163) + 38 (#162) = 1409 in `scripts/p7-lab.mjs` and docs/testing/{publication,p7-lab,delivery-lab}.md. The P7 successor pin is regenerated from the committed merge. No requirement, citation, adopted statement or manual/native gate changes.
