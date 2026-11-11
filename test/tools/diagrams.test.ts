@@ -67,6 +67,18 @@ function changeMarkdown(root: string, transform: (text: string) => string) {
   assert.notEqual(after, before);
   writeFileSync(path, after);
 }
+/** Applies a change to the authoritative block only; README may hold other Mermaid blocks. */
+function changeAuthoritative(
+  root: string,
+  transform: (text: string) => string,
+) {
+  const marker = "<!-- hab-diagram: hab-current -->";
+  changeMarkdown(root, (text) => {
+    const at = text.indexOf(marker);
+    assert.notEqual(at, -1);
+    return text.slice(0, at) + transform(text.slice(at));
+  });
+}
 function changeManifest(root: string, key: string, value: string) {
   const path = join(root, "docs/diagrams/manifest.json");
   const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<
@@ -106,7 +118,9 @@ const refusals = [
     name: "missing authoritative Mermaid block",
     diagnostic: /diagram_mermaid_missing/,
     change: (root: string) =>
-      changeMarkdown(root, (text) => text.replace("```mermaid", "```text")),
+      changeAuthoritative(root, (text) =>
+        text.replace("```mermaid", "```text"),
+      ),
   },
   {
     name: "wrong renderer pin",
@@ -122,7 +136,7 @@ const refusals = [
     name: "changed authoritative Mermaid bytes",
     diagnostic: /diagram_regeneration_required/,
     change: (root: string) =>
-      changeMarkdown(root, (text) =>
+      changeAuthoritative(root, (text) =>
         text.replace("```mermaid\n", "```mermaid\n%% synthetic drift\n"),
       ),
   },
