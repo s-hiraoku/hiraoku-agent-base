@@ -104,7 +104,7 @@ run("lint", [
   "packages/relay-nats/test",
   "packages/relay-nats/scripts",
 ]);
-run("build", ["scripts/build.mjs"]);
+run("build", ["scripts/build.ts"]);
 run("relay-regression", [
   "--test",
   "--test-reporter=tap",

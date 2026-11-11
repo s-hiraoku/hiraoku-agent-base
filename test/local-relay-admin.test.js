@@ -22,9 +22,9 @@ import { fixture, list } from "./local-relay-service-fixtures.js";
 import { eventually, pollUntilDelivered } from "./jetstream-delivery.js";
 import { oauthFixture } from "./relay-oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
-import { main as runRelayAdmin } from "../scripts/hab-relay-admin.mjs";
+import { main as runRelayAdmin } from "../scripts/hab-relay-admin.ts";
 
-const cli = resolve("scripts/hab-relay-admin.mjs");
+const cli = resolve("scripts/hab-relay-admin.ts");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
 
 async function started(t, patch = {}, oauthConfig) {
@@ -671,38 +671,58 @@ test("group mode shares one connection between addresses; disconnect reports eve
 });
 
 test("CLI prints JSON results and fixed refusal codes without secrets", async (t) => {
-  const f = await started(t);
-  const run = async (...args) => {
-    const child = spawn(
-      process.execPath,
-      [cli, "--config", f.configPath, ...args],
-      { stdio: ["ignore", "pipe", "pipe"] },
+  for (const extension of ["ts", "mjs"]) {
+    const f = await started(t);
+    const entrypoint = resolve(`scripts/hab-relay-admin.${extension}`);
+    const run = async (...args) => {
+      const child = spawn(
+        process.execPath,
+        [entrypoint, "--config", f.configPath, ...args],
+        { stdio: ["ignore", "pipe", "pipe"] },
+      );
+      let stdout = "",
+        stderr = "";
+      child.stdout.on("data", (d) => (stdout += d));
+      child.stderr.on("data", (d) => (stderr += d));
+      const [code] = await once(child, "close");
+      return { code, stdout, stderr };
+    };
+    const ok = await run(
+      "connect",
+      "--address",
+      "codex@codex.hab",
+      "--connection-id",
+      "conn-c",
     );
-    let stdout = "",
-      stderr = "";
-    child.stdout.on("data", (d) => (stdout += d));
-    child.stderr.on("data", (d) => (stderr += d));
-    const [code] = await once(child, "exit");
-    return { code, stdout, stderr };
-  };
-  const ok = await run(
-    "connect",
-    "--address",
-    "codex@codex.hab",
-    "--connection-id",
-    "conn-c",
-  );
-  assert.equal(ok.code, 0, ok.stderr);
-  assert.equal(JSON.parse(ok.stdout).address.state, "active");
-  const status = await run("status");
-  assert.equal(status.code, 0);
-  assert.ok(!status.stdout.includes(tokens.c));
-  const refused = await run("disconnect", "--address", "nobody@codex.hab");
-  assert.equal(refused.code, 1);
-  assert.equal(refused.stderr, "relay_admin_rejected address_not_found\n");
-  const usage = await run("status", "--address", "codex@codex.hab");
-  assert.equal(usage.code, 2);
-  assert.match(usage.stderr, /^relay_admin_rejected usage\n/);
+    assert.equal(ok.code, 0, ok.stderr);
+    assert.equal(JSON.parse(ok.stdout).address.state, "active");
+    assert.equal(JSON.parse(ok.stdout).address.address, "codex@codex.hab");
+    assert.equal(ok.stderr, "");
+    const status = await run("status");
+    assert.equal(status.code, 0, status.stderr);
+    assert.ok(
+      JSON.parse(status.stdout).addresses.some(
+        (address) =>
+          address.address === "codex@codex.hab" && address.state === "active",
+      ),
+    );
+    assert.equal(status.stderr, "");
+    assert.ok(!status.stdout.includes(tokens.c));
+    const refused = await run("disconnect", "--address", "nobody@codex.hab");
+    assert.equal(refused.code, 1);
+    assert.equal(refused.stderr, "relay_admin_rejected address_not_found\n");
+    const usage = await run("status", "--address", "codex@codex.hab");
+    assert.equal(usage.code, 2);
+    assert.match(usage.stderr, /^relay_admin_rejected usage\n/);
+    const disconnected = await run(
+      "disconnect",
+      "--address",
+      "codex@codex.hab",
+    );
+    assert.equal(disconnected.code, 0, disconnected.stderr);
+    assert.equal(JSON.parse(disconnected.stdout).address.state, "stopped");
+    assert.equal(disconnected.stderr, "");
+  }
 });
 
 test("admin status cannot implicitly upgrade a v2 registry for rename", async (t) => {

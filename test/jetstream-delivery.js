@@ -20,7 +20,7 @@ import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
 import {
   natsServerBinary,
   startLocalBroker,
-} from "../scripts/lib/nats-broker.mjs";
+} from "../scripts/lib/nats-broker.ts";
 
 // Delivery tests need the pinned nats-server; a missing binary fails the test, it never skips.
 export { natsServerBinary };
@@ -132,7 +132,7 @@ function synchronousPump(t, options) {
   const plain = { ...options };
   delete plain.authorization;
   const worker = new Worker(
-    new URL("./jetstream-pump-worker.js", import.meta.url),
+    new URL("./jetstream-pump-worker.ts", import.meta.url),
     {
       workerData: { port: port2, signal, options: plain },
       transferList: [port2],

@@ -17,7 +17,7 @@ import { join } from "node:path";
 import {
   preflightNativeTrial,
   readNativeTrialPlan,
-} from "../../scripts/lib/native-trial-preflight.mjs";
+} from "../../scripts/lib/native-trial-preflight.ts";
 
 /** Isolated unlaunched synthetic artifacts; no native products or secrets. */
 function fixture(t) {

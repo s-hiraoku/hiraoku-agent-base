@@ -807,7 +807,7 @@ test("enrollment: foreign error codes from injected ports are not exposed", asyn
 test("enrollment demo: explicit synthetic mode reproduces pause/reopen/activation without real connections", () => {
   const output = execFileSync(
     execPath,
-    ["scripts/hab-enrollment-demo.mjs", "--simulate"],
+    ["scripts/hab-enrollment-demo.ts", "--simulate"],
     { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
   );
   assert.match(output, /模擬登録完了: research@grok-bot\.hab \/ active/);
@@ -815,7 +815,7 @@ test("enrollment demo: explicit synthetic mode reproduces pause/reopen/activatio
   assert.doesNotMatch(output, /\/Users\/|\/home\//);
   assert.throws(
     () =>
-      execFileSync(execPath, ["scripts/hab-enrollment-demo.mjs"], {
+      execFileSync(execPath, ["scripts/hab-enrollment-demo.ts"], {
         stdio: "pipe",
       }),
     { status: 1 },
@@ -824,7 +824,7 @@ test("enrollment demo: explicit synthetic mode reproduces pause/reopen/activatio
     () =>
       execFileSync(
         execPath,
-        ["scripts/hab-enrollment-demo.mjs", "--interactive"],
+        ["scripts/hab-enrollment-demo.ts", "--interactive"],
         { stdio: "pipe" },
       ),
     { status: 1 },

@@ -440,7 +440,7 @@ test("shipped admin CLI reports persistent participation and refuses a revoked c
     spawnSync(
       process.execPath,
       [
-        resolve("scripts/hab-relay-admin.mjs"),
+        resolve("scripts/hab-relay-admin.ts"),
         "--config",
         f.configPath,
         ...args,

@@ -186,7 +186,7 @@ try {
       cwd: repo,
       env,
       log: join(run, "build.log"),
-      args: ["scripts/build.mjs"],
+      args: ["scripts/build.ts"],
       signal: controller.signal,
       timeout_ms: 120000,
     });

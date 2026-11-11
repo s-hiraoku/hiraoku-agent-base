@@ -1,9 +1,10 @@
 /** A private loopback nats-server for local simulations and tests. Never a production broker. */
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
 import { createServer, createConnection } from "node:net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { Buffer } from "node:buffer";
 import { randomBytes } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -34,11 +35,14 @@ async function freePort() {
   const server = createServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
-  const { port } = server.address();
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw Error("nats_server_port_unavailable");
+  const { port } = address;
   await new Promise((done) => server.close(done));
   return port;
 }
-async function reachable(port) {
+async function reachable(port: number) {
   const socket = createConnection({ host: "127.0.0.1", port });
   try {
     await Promise.race([
@@ -62,31 +66,31 @@ async function reachable(port) {
  * shared test brokers leave it off so they never keep a finished test process alive.
  */
 export async function startLocalBroker(
-  directory,
+  directory: string,
   { maxFileStore = "1GB", keepAlive = false } = {},
 ) {
   const binary = natsServerBinary();
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const port = await freePort();
-  const password = randomBytes(24).toString("hex");
+  const password = Buffer.from(randomBytes(24)).toString("hex");
   const config = join(directory, "broker.conf");
   writeFileSync(
     config,
     `host: 127.0.0.1\nport: ${port}\njetstream {\n store_dir: ${JSON.stringify(join(directory, "store"))}\n max_file_store: ${maxFileStore}\n max_memory_store: 0\n sync_interval: always\n}\naccounts { HAB {\n jetstream: enabled\n users: [{user: backend, password: ${JSON.stringify(password)}}]\n} }\n`,
     { mode: 0o600 },
   );
-  let child;
+  let child: ChildProcess | undefined;
   const kill = () => child?.kill("SIGKILL");
   const start = async () => {
     child = spawn(binary, ["-c", config], { stdio: "ignore" });
     if (!keepAlive) child.unref();
-    let failure;
-    child.once("error", (error) => (failure = error));
+    const failure: { error?: NodeJS.ErrnoException } = {};
+    child.once("error", (error) => (failure.error = error));
     const deadline = Date.now() + 10000;
     while (!(await reachable(port))) {
-      if (failure || child.exitCode !== null)
+      if (failure.error || child.exitCode !== null)
         throw Error(
-          `nats_server_start_failed (${failure?.code ?? `exit ${child.exitCode}`}); check HAB_NATS_SERVER`,
+          `nats_server_start_failed (${failure.error?.code ?? `exit ${child.exitCode}`}); check HAB_NATS_SERVER`,
         );
       if (Date.now() > deadline) throw Error("nats_server_start_timed_out");
       await delay(20);

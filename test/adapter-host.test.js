@@ -16,7 +16,8 @@ import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function question(f) {
   const source = f.submit();
-  assert.equal((await f.step({ op: "receive" })).state, "done");
+  const result = await f.step({ op: "receive" });
+  assert.equal(result.state, "done", JSON.stringify(result));
   return source;
 }
 test("Adapter host: fresh gate is paused; missing authority cannot resume or use a mailbox", async (t) => {
@@ -39,7 +40,14 @@ test("Adapter host: fresh gate is paused; missing authority cannot resume or use
 test("Adapter host: finite MCP question-answer-ACK path uses explicit actions without Tasks", async (t) => {
   const f = await hostFixture(t);
   f.resume();
+  // Exercise success after a poll response slower than the former 1s fixture
+  // budget. Dedicated timeout cases below retain their short fail-closed limits.
+  f.state.timeout_ms = 5000;
+  f.state.afterNetwork = async (tool) => {
+    if (tool === "relay_poll") await sleep(1100);
+  };
   const { key } = await question(f);
+  f.state.afterNetwork = null;
   assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack"]);
   assert.equal(f.queued().length, 0);
   assert.equal(f.count(), 0);

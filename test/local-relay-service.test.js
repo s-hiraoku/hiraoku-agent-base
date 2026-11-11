@@ -13,7 +13,7 @@ import { readHostConfig } from "../src/host/config.ts";
 import { startHost } from "../src/host/start.ts";
 import { envelope } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
-const cli = resolve("scripts/hab-relay.mjs");
+const cli = resolve("scripts/hab-relay.ts");
 test("explicit group configuration creates registry v2 and stays deny-all across restart", async (t) => {
   const f = await fixture(t);
   f.config.registry.authentication_groups = true;
@@ -243,40 +243,47 @@ test("CLI requires explicit config and prints no config contents", async () => {
   assert.equal(output, "local_relay_start_rejected reason=config_required\n");
 });
 test("CLI uses private state across SIGTERM/restart and closes its owned port", async (t) => {
-  const f = await fixture(t);
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const child = spawn(process.execPath, [cli, "--config", f.configPath], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    t.after(() => {
-      if (child.exitCode === null) child.kill("SIGTERM");
-    });
-    let output = "",
-      errors = "";
-    child.stderr.on("data", (data) => {
-      errors += data;
-    });
-    const ready = new Promise((resolveReady, reject) => {
-      child.once("exit", () =>
-        reject(Error("CLI exited before ready: " + errors)),
+  for (const extension of ["ts", "mjs"]) {
+    const f = await fixture(t);
+    const entrypoint = resolve(`scripts/hab-relay.${extension}`);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const child = spawn(
+        process.execPath,
+        [entrypoint, "--config", f.configPath],
+        {
+          stdio: ["ignore", "pipe", "pipe"],
+        },
       );
-      child.stdout.on("data", (data) => {
-        output += data;
-        const first = output.split("\n")[0];
-        if (first.endsWith("}")) resolveReady(JSON.parse(first));
+      t.after(() => {
+        if (child.exitCode === null) child.kill("SIGTERM");
       });
-    });
-    const info = await ready;
-    assert.equal(info.state, "ready");
-    assert.equal((await list(info.url)).status, 401);
-    const exited = once(child, "exit");
-    child.kill("SIGTERM");
-    const [code, signal] = await exited;
-    assert.equal(code, 0);
-    assert.equal(signal, null);
-    assert.ok(output.includes('"state":"stopped"'));
-    assert.equal(errors, "");
-    await assert.rejects(list(info.url));
+      let output = "",
+        errors = "";
+      child.stderr.on("data", (data) => {
+        errors += data;
+      });
+      const ready = new Promise((resolveReady, reject) => {
+        child.once("exit", () =>
+          reject(Error("CLI exited before ready: " + errors)),
+        );
+        child.stdout.on("data", (data) => {
+          output += data;
+          const first = output.split("\n")[0];
+          if (first.endsWith("}")) resolveReady(JSON.parse(first));
+        });
+      });
+      const info = await ready;
+      assert.equal(info.state, "ready");
+      assert.equal((await list(info.url)).status, 401);
+      const closed = once(child, "close");
+      child.kill("SIGTERM");
+      const [code, signal] = await closed;
+      assert.equal(code, 0);
+      assert.equal(signal, null);
+      assert.ok(output.includes('"state":"stopped"'));
+      assert.equal(errors, "");
+      await assert.rejects(list(info.url));
+    }
   }
 });
 

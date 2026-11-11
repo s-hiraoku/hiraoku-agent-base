@@ -27,7 +27,7 @@ import { Hub } from "../../src/sqlite.ts";
 import { RESPONSE } from "../../src/types.ts";
 import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
 import { HabJetStreamService } from "../../src/host/hab-delivery-service.ts";
-import { startLocalBroker } from "./nats-broker.mjs";
+import { startLocalBroker } from "./nats-broker.ts";
 
 const limits = Object.freeze({
   envelope_bytes: 32768,

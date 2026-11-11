@@ -54,7 +54,7 @@ if (options.full)
       .filter((p) => p.endsWith(".test.js"))
       .sort()
       .map((p) => `test/${p}`),
-    count: 1253,
+    count: 1424,
   });
 const abort = new AbortController();
 const interrupt = () => abort.abort();
@@ -145,7 +145,7 @@ try {
     report.build = await executeOwnedNode({
       cwd: repo,
       env,
-      args: ["scripts/build.mjs"],
+      args: ["scripts/build.ts"],
       log: join(run, "build.log"),
       timeout_ms: 120000,
       signal: abort.signal,

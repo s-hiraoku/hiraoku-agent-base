@@ -80,20 +80,39 @@ export interface HostTransport extends SenderTransport, ReceiverTransport {
   /** Underlying work, including timeouts still settling. Must fail closed on unknown state. */
   readonly activeRequests: number;
 }
-export interface AdapterHostOptions {
+/** Trusted local capability for exactly one command, never an authentication token.
+ * Call check after credential waits and before every network admission/retry. Observe
+ * signal, and report activeRequests until actual native work and cleanup settle.
+ */
+export interface ManagedOperation {
+  readonly signal: AbortSignal;
+  check(): void;
+}
+interface AdapterHostBaseOptions {
   control: SQLiteHostControl;
   inbox: SQLiteInbox;
   outbox: SQLiteOutbox;
   budget: SQLiteReplyBudget;
   limits: ContractLimits;
-  /** Pure factory: construct a fixed client using only the supplied fetch port. */
-  transport: (fetch: typeof globalThis.fetch) => HostTransport;
-  network?: typeof globalThis.fetch;
   authorization?: HostAuthorization;
   task?: { journal: SQLiteTaskBridgeJournal; tasks: BridgeTasks };
   answer_intents?: SQLiteAnswerJournal;
   owner?: SQLiteHostOwner;
 }
+/** Exclusive trusted transport choices. Construction must start no IO. */
+export type AdapterHostOptions = AdapterHostBaseOptions &
+  (
+    | {
+        transport: (fetch: typeof globalThis.fetch) => HostTransport;
+        network?: typeof globalThis.fetch;
+        managedTransport?: never;
+      }
+    | {
+        managedTransport: (operation: ManagedOperation) => HostTransport;
+        transport?: never;
+        network?: never;
+      }
+  );
 export interface HostStepResult {
   op: HostCommand["op"];
   state: "done" | "incomplete";
@@ -107,6 +126,8 @@ export class AdapterHostCycle {
   readonly #budget: SQLiteReplyBudget;
   readonly #limits: ContractLimits;
   readonly #factory: AdapterHostOptions["transport"];
+  readonly #managedFactory: AdapterHostOptions["managedTransport"];
+  #managedActive: AbortController | undefined;
   readonly #network: typeof globalThis.fetch;
   readonly #authorize: HostAuthorization;
   readonly #task?: NonNullable<AdapterHostOptions["task"]>;
@@ -130,7 +151,13 @@ export class AdapterHostCycle {
         budget.agentId,
         options.task?.journal.receiverId ?? control.agentId,
       ].some((value) => value !== control.agentId) ||
-      typeof options.transport !== "function" ||
+      !(
+        (typeof options.transport === "function" &&
+          options.managedTransport === undefined) ||
+        (typeof options.managedTransport === "function" &&
+          options.transport === undefined &&
+          options.network === undefined)
+      ) ||
       (options.network !== undefined &&
         typeof options.network !== "function") ||
       (options.authorization !== undefined &&
@@ -144,6 +171,7 @@ export class AdapterHostCycle {
     this.#budget = budget;
     this.#limits = Object.freeze({ ...options.limits });
     this.#factory = options.transport;
+    this.#managedFactory = options.managedTransport;
     this.#network = options.network ?? globalThis.fetch;
     this.#authorize = options.authorization ?? (() => undefined);
     if (options.task) {
@@ -229,14 +257,39 @@ export class AdapterHostCycle {
       owner,
     };
   }
+  #cancelManaged() {
+    const current = this.#managedActive;
+    this.#managedActive = undefined; // Detach before synchronous abort callbacks reenter.
+    current?.abort();
+  }
   setPaused(context: unknown, paused: boolean, expectedEpoch: number) {
     const guard = this.#guard(context, "control", null);
-    return this.#control.setPaused(
-      paused,
-      expectedEpoch,
-      guard.actor,
-      guard.check,
-    );
+    try {
+      const state = this.#control.setPaused(
+        paused,
+        expectedEpoch,
+        guard.actor,
+        guard.check,
+      );
+      if (paused) this.#cancelManaged();
+      return state;
+    } catch (error) {
+      // An authorized stop with failed persistence must still fence local IO.
+      // Invalid/stale/unauthorized requests cannot cancel someone else's command.
+      if (
+        paused === true &&
+        !(
+          error instanceof HostError &&
+          [
+            "invalid_host_control_request",
+            "host_epoch_changed",
+            "host_forbidden",
+          ].includes(error.code)
+        )
+      )
+        this.#cancelManaged();
+      throw error;
+    }
   }
   releaseOwner(context: unknown) {
     const guard = this.#guard(context, "release_owner", null);
@@ -262,14 +315,19 @@ export class AdapterHostCycle {
     const guard = this.#guard(context, command.op, source),
       snapshot = this.#control.snapshot();
     let live = true;
+    let managedController: AbortController | undefined;
     const authority = () => {
       if (!live) throw new HostError("host_session_closed");
       guard.check();
       this.#ownership?.check();
+      if (managedController?.signal.aborted)
+        throw new HostError("host_session_closed");
     };
     const check = () => {
       authority();
       this.#control.check(snapshot.epoch);
+      if (managedController?.signal.aborted)
+        throw new HostError("host_session_closed");
     };
     check();
     let depth = 0;
@@ -365,7 +423,29 @@ export class AdapterHostCycle {
           }
           return pending;
         };
-        const transport = this.#factory(fetch);
+        let transport: HostTransport;
+        if (this.#managedFactory) {
+          managedController = new AbortController();
+          this.#managedActive = managedController;
+          const controller = managedController;
+          const operation: ManagedOperation = Object.freeze({
+            signal: controller.signal,
+            check: () => {
+              if (controller.signal.aborted)
+                throw new HostError("host_session_closed");
+              try {
+                atomic(() => {});
+                if (controller.signal.aborted)
+                  throw new HostError("host_session_closed");
+              } catch (error) {
+                controller.abort();
+                throw error;
+              }
+            },
+          });
+          operation.check();
+          transport = this.#managedFactory(operation);
+        } else transport = this.#factory!(fetch);
         if (transport && typeof transport === "object")
           this.#draining.push(transport);
         if (
@@ -614,6 +694,11 @@ export class AdapterHostCycle {
       };
     } finally {
       live = false;
+      if (managedController) {
+        if (this.#managedActive === managedController)
+          this.#managedActive = undefined;
+        managedController.abort();
+      }
       this.#running = false;
       this.#pending();
     }

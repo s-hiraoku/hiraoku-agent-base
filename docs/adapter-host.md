@@ -60,6 +60,53 @@ hostは同じ個体にbindingしたcontrol、SQLiteInbox、SQLiteOutbox、SQLite
 
 network clientはreceive／send命令の中で構築し、その命令専用のguarded fetchを使います。factoryはIOを始めず、固定resource・固定個体・現在の認証providerを持つRelayMcpClient等を組み立てるだけです。実認証の検証・tokenの取得は既存client／接続portの責務です。この実装はcredentialの発行・読取り・コピーや接続先の自動探索を行いません。
 
+### Product-owned managed transport (trusted local integration)
+
+The existing `transport(fetch)` and optional `network` path is unchanged. A product
+SDK that must retain its own authentication may instead supply
+`managedTransport(operation)`, mutually exclusive with both `transport` and
+`network`. Both factories are pure constructors: they must start no IO. No product
+SDK, credential source, child process, listener, grant or model is installed by this
+choice. The returned object uses the existing `HostTransport` sender/receiver port.
+
+The frozen `operation` contains `signal` and `check()`, scoped to this exact command.
+`check()` verifies live command, captured epoch, current authorization/actor and
+exclusive owner. The adapter must invoke it at admission, after every credential
+wait, immediately before each network request/retry, after results and before
+publishing completion. It must use only its fixed resource/tool policy and honor
+cancellation. This is trusted local code, not a sandbox against a malicious adapter.
+No operation capability can come from an MCP message or received body.
+
+Successful authorized pause aborts the active managed operation synchronously after
+committing pause. An authorized pause whose persistence fails also cancels local IO;
+that cancellation does not assert durable pause. Invalid, unauthorized and stale
+control requests do not cancel a valid command. Finalization aborts the command's
+signal. Changing authorization or losing ownership fences the next `check()` and
+command result/commit guards. External owners stop through the existing revoke,
+pause, drain and release sequence, not an independent credential cancellation API.
+
+Abort is a request to stop local work, not proof of remote rollback or SDK exit.
+The adapter must report `activeRequests` until all native work and cleanup settle,
+even after caller timeout/abort. Existing running/draining rules retain owner and
+stores and refuse new commands or release. Old callbacks cannot use a later epoch.
+Unlike guarded fetch, which keeps the control transaction through its synchronous
+network() admission, managed check() releases that transaction before the SDK or
+child performs its send. This is an explicit cooperative local-admission boundary.
+A bounded owned check/checked pipe has a check-to-send interval: a stop may occur
+after the parent approves a check but before the child physically sends. That
+already-admitted request may commit after pause and must remain uncertain/draining
+until actual settlement and reconciliation. It is not an atomic remote-stop or
+lock guarantee. The adapter must make a new check for every later request/retry;
+no new admission is permitted after epoch/owner loss. An unguarded side client for
+OAuth discovery or refresh does not satisfy this contract. Product-owned support
+for every such HTTP path and owned cancellation must be reviewed independently.
+
+`test/managed-transport.test.js` uses only synthetic adapters and fresh private
+SQLite. It covers cancellation during credential waits/retries, stale commands,
+actor/owner loss, persistence failure, reentrant abort, retained uncertain outbox
+claims and drain/owner retention. It does not prove a real product's SDK performs
+these checks. Each private integration must test that separately.
+
 質問返信producerは[独立した永続intent](answer-intents.md)を任意指定できます。設定時は新しいanswer_*操作を使い、従来answerを拒否します。未設定の場合、回答envelopeのproducerは呼出し側の責務です。answer命令の呼出し側はID・本文・first_sent_at・expires_atを初回より前に確定・保持し、再起動後も同じenvelopeを渡します。budgetだけから失った回答本文を復元できるとは扱いません。Task返信は既存Task journalがその永続化を担当します。
 
 ## 永続停止と世代

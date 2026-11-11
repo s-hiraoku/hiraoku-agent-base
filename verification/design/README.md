@@ -233,3 +233,86 @@ The optional command is documented in [helpers](helpers.md), not added to the co
 ## Single-source owner composition preparation
 
 The opt-in composition uses one internally constructed host and a private authorization callback. An already acquired owner and initial pause are required; updates commit pause and require idle, fully drained, held ownership before changing the fixed-source permit. The discarded public callback/bind split is recorded in review notes. Five fresh-store tests raise the current root inventory to 1244; historical optional Python and earlier native records remain unchanged. Source commit precedes successor pin regeneration. Manual/native requirements remain unverified.
+
+## Optional product-neutral ACP owner integration
+
+The opt-in `src/owner-integrations/acp-stdio.ts` implements only the standard ACP v1
+stdio wire/process driver for the existing external owner. It is outside the normal
+Relay, adapter host and agent SDK dependency graph. The new guide is context, not
+normative adoption of a product execution path. Existing HAB-F02/F03/F07/F11/F16/E09
+statements, authority citations, decisions and native/manual gates are unchanged;
+`js-acp-owner` supplies overlapping synthetic regression evidence only.
+
+The successful correlated native reply remains separate from current HTTP discovery,
+exclusive capability delivery and the trusted product/effective-participant verifier.
+No ACP field asserts universal native identity. Missing or lost create outcomes stop
+without retry. All pre/post-bind tools remain denied; no prompt, model, queue, native
+approval, profile/ticket loading or product startup is exercised by the fixtures.
+
+P7's formal generator selects every committed `src/` path, including the new root;
+its explicit includes also select the new top-level test and synthetic child. Root
+TypeScript checks use `src/**/*.ts`, and `js-root` discovers `test/*.test.js`. Source
+must be committed before generating its successor pin, and the generated entries
+must be inspected. Full/hosted P7 and native deployment remain separate acceptance.
+
+On main 3213cc7a5b97274f17f0a993f6a192c1616550f3, thirty-seven ACP top-level cases
+include two current-owner stop/scope-loss composition regressions. Focused execution passes
+ACP37 + external-owner23 + private HTTP11 = 71. Expected root inventory is 1324 (1287 + 37),
+not a full/hosted execution claim. Existing group counts and failure/skip/cleanup
+gates are unchanged. The private ACP close latch is published before synchronous
+abort callbacks; direct reentry checks exactly one owned stdin end.
+
+ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate.
+
+## Trusted owner-local activation seam
+
+Against main `4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9`, optional `onBound` supplies the
+existing private-HTTP status/permission/pause/resume methods only to trusted local factory
+code after verified binding. Omission preserves deny-only behavior. No remote grant channel,
+source selection, model request, receive scheduler or deployment is added. HAB-C-F09 records
+scope reconciliation; the existing accepted requirements, citations and manual/native gates
+are unchanged. Eight additional owner tests bring the expected owner inventory to 31 and
+root inventory to 1346; actual executions and cleanup are reported separately. Test evidence
+uses synthetic owners and temporary stores, not production authentication or daily operation.
+
+## PR161 hosted CI correction
+
+The initial push and pull-request CI runs both executed 1346 full-root tests successfully with owned cleanup, but `scripts/p7-lab.mjs` still required 1338. The catalog now includes the eight owner-activation regressions. Exact totals, zero failure/skip/cancellation/TODO and cleanup checks remain unchanged. Original failed reports remain historical evidence, not retroactive passes.
+
+The push Design run separately returned `incomplete` in the first recipient-message test. Its inherited 400 ms sender lease was shorter than its 1000 ms RPC budget. A controlled 500 ms submit-response delay reproduced `stale_sender_lease` after remote acceptance while preserving the sending outbox row. Only the recipient policy/handoff fixture now uses a 5000 ms sender lease and 2000 ms RPC budget. The same test deliberately crosses the former short lease and still requires `done`, one accepted original outbox row and the exact delivered reply. Production lease checks and other short-lease tests are unchanged.
+
+These are verification-catalog and fixture corrections. Corrected-head hosted P7, native judgment, production policy and live operation remain separate acceptance gates.
+
+
+## Source-bound launch claim
+
+The optional source-launch journal records one immutable possible native launch before any
+create/prompt, with actual saved question/ACK proof and existing current recipient/owner guards.
+It adds no native dispatch, Task state, grant, owner acquisition or runtime migration. Duplicate
+or reopened claims prohibit automatic relaunch, even if the native call never happened. Existing
+answer/outbox recovery remains separate. Twenty-five synthetic/SQLite cases add focused coverage;
+expected root inventory1371 is not a full/native acceptance claim. All adopted statements and
+manual/native gates remain unchanged. See the context guide for conservative blocking, capacity,
+whole-snapshot rollback limits and the required real receiver/budget handoff.
+
+## PR163 stacked CI catalog correction
+
+The source-launch journal retains its 25 additional cases, so this stacked branch requires 1371 full-root tests, not the 1346 expected on the owner-activation base. The original hosted PR report executed all 1371 with zero failures, skips, cancellations or TODOs and confirmed owned cleanup, but its inherited 1338 catalog failed. The strict gate is unchanged. The corrected owner-activation source and recipient fixture are inherited locally; journal implementation and tests remain byte-identical to the reviewed source. Source composition is committed before regenerating the separate successor pin. New exact-head hosted acceptance remains required.
+
+
+## Optional standard ACP fixed wake (2026-11-10)
+
+Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate.
+
+
+## Atomic synthetic ACP observations
+
+PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.
+
+## PR162 integration with main after PR161/PR163 (2026-11-11)
+
+Merging main (owner activation #161 and source-launch claim #163) into the fixed-wake branch keeps both sides' sections and records. The full-root catalog is the sum of the independent additions: 1338 base + 33 (#161/#163) + 38 (#162) = 1409 in `scripts/p7-lab.mjs` and docs/testing/{publication,p7-lab,delivery-lab}.md. The P7 successor pin is regenerated from the committed merge. No requirement, citation, adopted statement or manual/native gate changes.
+
+## PR164 integration with main after PR162 (2026-11-11)
+
+Merging the integrated main (#161, #162, #163) into the managed-transport branch keeps both sides' records. The full-root catalog becomes 1424 (1409 + 15 managed-transport cases) in `scripts/p7-lab.mjs` and docs/testing/{publication,p7-lab,delivery-lab}.md. The P7 successor pin is regenerated from the committed merge. No requirement, citation meaning, adopted statement or manual/native gate changes.

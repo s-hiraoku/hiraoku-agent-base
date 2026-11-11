@@ -47,7 +47,7 @@ const { createJetStreamDelivery } = await import(
   join(repo, "src/host/delivery.ts")
 );
 const { startLocalBroker } = await import(
-  join(repo, "scripts/lib/nats-broker.mjs")
+  join(repo, "scripts/lib/nats-broker.ts")
 );
 
 const [runArg, portArg] = process.argv.slice(2);

@@ -89,7 +89,7 @@ const plan = z.strictObject({
 });
 
 /** Compare canonical absolute path components without resolving aliases. */
-function below(path, parent) {
+function below(path: string, parent: string) {
   const r = relative(parent, path);
   return (
     r === "" || (r !== ".." && !r.startsWith(`..${sep}`) && !isAbsolute(r))
@@ -97,26 +97,34 @@ function below(path, parent) {
 }
 
 /** Reject existing symlink components, even above a not-yet-created boundary. */
-function inspectComponents(path, allowMissing = false) {
+function inspectComponents(path: string, allowMissing = false) {
   for (let p = path; ; p = dirname(p)) {
     try {
       if (lstatSync(p).isSymbolicLink()) throw Error("symlink_path");
     } catch (error) {
-      if (!allowMissing || error.code !== "ENOENT") throw error;
+      if (
+        !allowMissing ||
+        !(error instanceof Error && "code" in error && error.code === "ENOENT")
+      )
+        throw error;
     }
     if (p === dirname(p)) break;
   }
 }
 
 /** Inspect path type and optional current-owner private directory metadata. */
-function inspectPath(path, directory, privateDirectory = false) {
+function inspectPath(
+  path: string,
+  directory: boolean,
+  privateDirectory = false,
+) {
   inspectComponents(path);
   const st = lstatSync(path);
   if (directory ? !st.isDirectory() : !st.isFile())
     throw Error("wrong_path_kind");
   if (
     privateDirectory &&
-    ((st.mode & 0o077) !== 0 || st.uid !== process.getuid())
+    ((st.mode & 0o077) !== 0 || st.uid !== process.getuid?.())
   )
     throw Error("nonprivate_directory");
   return st;
@@ -130,7 +138,7 @@ function inspectPath(path, directory, privateDirectory = false) {
  * An offline-valid plan still cannot launch: user approval, effective settings,
  * binary-to-revision provenance, budgets, and runtime ownership remain unproven.
  */
-export function preflightNativeTrial(input) {
+export function preflightNativeTrial(input: unknown) {
   const parsed = plan.safeParse(input);
   const result = { launchAllowed: false, offlineValid: false, errors: [] };
   if (!parsed.success)
@@ -159,7 +167,7 @@ export function preflightNativeTrial(input) {
       [p.hermes.binary, true],
       [p.mcp[0].command, true],
       [p.mcp[0].entrypoint, false],
-    ]) {
+    ] as const) {
       const st = inspectPath(a.path, false);
       if (st.size > 128 * 1024 * 1024) throw Error("artifact_too_large");
       if (executable) {
@@ -207,13 +215,17 @@ export function preflightNativeTrial(input) {
     ]);
     return {
       ...result,
-      errors: [known.has(error.message) ? error.message : "path_unavailable"],
+      errors: [
+        error instanceof Error && known.has(error.message)
+          ? error.message
+          : "path_unavailable",
+      ],
     };
   }
 }
 
 /** Read at most 64 KiB from one regular, non-symlink manifest descriptor. */
-export function readNativeTrialPlan(path) {
+export function readNativeTrialPlan(path: string): unknown {
   const limit = 64 * 1024;
   const fd = openSync(
     path,
@@ -237,7 +249,7 @@ export function readNativeTrialPlan(path) {
 }
 
 /** Hash at most 128 MiB through a regular fd, including a bounded growth probe. */
-function boundedArtifactHash(path) {
+function boundedArtifactHash(path: string) {
   const limit = 128 * 1024 * 1024;
   const fd = openSync(
     path,
