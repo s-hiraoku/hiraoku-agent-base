@@ -38,7 +38,7 @@ Scope: Standard communication, including untrusted execution_request data Decisi
 
 Checks: js-common-mcp, ast-boundary, js-recipient-messages, js-recipient-host-mcp.
 
-Sources: [docs/hab-decisions.md:30](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L30-L30), [docs/adapter-host.md:32](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L32-L34), [docs/receive-supervisor.md:51](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/receive-supervisor.md#L51-L52).
+Sources: [docs/hab-decisions.md:30](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L30-L30), [docs/adapter-host.md:32](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L32-L34), [docs/receive-supervisor.md:53](../../docs/receive-supervisor.md#L53-L54).
 
 ### HAB-F04 — Durable receiver checkpoint before ACK
 
@@ -102,19 +102,19 @@ Sources: [docs/adapter-host.md:47](https://github.com/s-hiraoku/hiraoku-agent-ba
 
 ### HAB-F09 — Receive-only supervisor authority
 
-Supervisor repeats receive only with same-agent durable stores, current authorization, process owner and explicit resume. It stops on missing/lost owner, pause or local auth failure and never resumes, obtains/releases owner, logs in, updates grants, sends replies, accepts tasks or starts a model.
+Supervisor repeats receive only with same-agent durable stores, current authorization, process owner and explicit resume. It stops on missing/lost owner, pause or local authorization failure and never clears pause, obtains/releases owner, logs in, updates grants, sends replies, accepts tasks or starts a model. An optional owner-local authentication gate begins blocked after process start and may unblock receive only after fresh verified evidence of the exact approved issuer/resource/subject/client/connection/agent identity; it is not authentication or a replacement for current authorization. Copied, foreign, reused or superseded verification tickets cannot unblock it. Credential refresh/login, independent identity verification and native notification delivery remain product responsibilities.
 
 Reason: A scheduler must not become privileged agent control or invent operational authorization.
 
-Scope: ReceiveSupervisor host port v1 Decision: **accepted**.
+Scope: ReceiveSupervisor host port v1, optional trusted local recovery gate; synthetic recovery checks in test/authentication-recovery.test.js do not establish native OAuth or deployment acceptance. Decision: **accepted**.
 
-Checks: js-common-mcp.
+Checks: js-common-mcp, js-root.
 
-Sources: [docs/receive-supervisor.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/receive-supervisor.md#L5-L15).
+Sources: [docs/receive-supervisor.md:5](../../docs/receive-supervisor.md#L5-L15), [docs/receive-supervisor.md:90](../../docs/receive-supervisor.md#L90-L99), [docs/receive-supervisor.md:114](../../docs/receive-supervisor.md#L114-L127).
 
 ### HAB-F10 — Bounded receive and drain
 
-Configure finite receive interval/backoff/drain; only poll/ACK transport failures back off. Storage failure stops without deleting data for room. Outstanding work prevents a new receive; stop prevents the next cycle and waits boundedly; drained=false does not certify safe DB/owner closure.
+Configure finite receive interval/backoff/drain; only poll/ACK transport failures back off. A trusted local provider recovery signal becomes an explicit stop reason without a gate, or a blocked gate with bounded local-only waits and fixed, secret-free synchronous state notifications. Generic HTTP status or wire strings do not confer that local signal. No poll/ACK starts while blocked; current pause/owner/draining authority is rechecked before readmission. Storage failure stops without deleting data for room. Outstanding work prevents a new receive; stop prevents the next cycle and waits boundedly; drained=false does not certify safe DB/owner closure. Recovery retains original body/ACK and deferred send intent without extending existing time/attempt/retention horizons.
 
 Reason: Avoids overlap, lost durable evidence and false cleanup success.
 
@@ -122,7 +122,7 @@ Scope: ReceiveSupervisor timing, failures and cleanup Decision: **accepted**.
 
 Checks: js-common-mcp, js-root.
 
-Sources: [docs/receive-supervisor.md:30](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/receive-supervisor.md#L30-L48).
+Sources: [docs/receive-supervisor.md:30](../../docs/receive-supervisor.md#L30-L51), [docs/receive-supervisor.md:75](../../docs/receive-supervisor.md#L75-L81), [docs/receive-supervisor.md:129](../../docs/receive-supervisor.md#L129-L136).
 
 ### HAB-F11 — Current authorization and untrusted input
 

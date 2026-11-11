@@ -271,23 +271,23 @@
     "supplemental_sources": [
       {
         "path": "src/agent-sdk/receiver.ts",
-        "sha256": "08ccace866166f43b450bafd0e72f6210c7d1ebec6ec807163c239176b653149",
+        "sha256": "c9552cc20a2d37ee858e137b741028c6f3add36ab10960928252a033495ce173",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual model-free receiveOnce, injected ReceiverStore/Transport API, save then ACK, stable pending journal flush and overlap guard. InboxLifecycleStore declares releaseBody, releaseUnconfirmable (release a body no ACK can confirm any more, without handing it to the application) and maintain.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/receiver.ts; the recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); InboxLifecycleStore gains releaseUnconfirmable(senderId, messageId)."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/receiver.ts; the recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); InboxLifecycleStore gains releaseUnconfirmable(senderId, messageId). 2026-11-11 recovery diff review: Poll/ACK preserve only the local branded recovery reason; generic errors still become transport failure. Pending ACK data is not rejected or rewritten on this path."
       },
       {
         "path": "src/agent-sdk/sender.ts",
-        "sha256": "98881e0ede8cfac4cbb7412efd5333f248eda64b003ebcfcb48137e2e25c5d02",
+        "sha256": "2f427dfc6aa512861eea017e6db4a87982710801ecf4328f62936593cca8bed0",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation. sendOnce(messageId) attempts only that record's due job; without an argument it claims the next due job as before.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); sendOnce(messageId) claims only that record's due job."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); sendOnce(messageId) claims only that record's due job. 2026-11-11 recovery diff review: Durably defer the original job before propagating local branded recovery; no new identity, intent or quarantine is introduced by this path."
       },
       {
         "path": "src/relay/service.ts",
@@ -311,13 +311,13 @@
       },
       {
         "path": "src/agent-sdk/index.ts",
-        "sha256": "5efc38678fc54a2a88e6aa515ed54afdb25f320f7e51191a732029e5caa9a101",
+        "sha256": "216763a064888d8afd8b92d475d8a929e750d6202a4dcd8ada453539bb6dd43c",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Pure public exports of the durable sender and receiver; contract and DeliveryService now come from src/messaging. No HTTP/SQLite/HAB/Task imports.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/index.ts; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/index.ts; the recorded observation still holds. 2026-11-11 recovery diff review: Exports pure local recovery classes/types alongside sender/receiver without IO dependencies."
       },
       {
         "path": "src/agent-sdk/sqlite-inbox.ts",
@@ -656,7 +656,7 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0",
+        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
         "read_ranges": [
           [
             76,
@@ -673,7 +673,7 @@
         ],
         "observation": "Reviewed managed transport type exclusivity, constructor selection, exact command/actor/owner/epoch guards, pause failure/abort reentrancy, network branch and finalization. Existing fetch admission unchanged; managed check is cooperative with an explicit check-to-send interval. Abort is checked again after atomic and inside shared authority before local commits.",
         "full_file_read": false,
-        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate. 2026-11-11 recovery diff review: Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
       },
       {
         "path": "scripts/python_import_guard.py",
@@ -992,9 +992,9 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "fcb5df8dd77963f8016b2d25b4ef198ab762c51f24adb5f765d065fc7cfc8a1e",
+        "sha256": "4d95e92f3eceb1d58a7d22991a242fc9ace9837f3a36f8c0c84d17c0eb73ed39",
         "mode": "full",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.",
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1011,9 +1011,9 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "7cbe41ac29843b5f12095d2d355d92855e89c1bad9f24a1cb35537de90483fc2",
+        "sha256": "49241e81b1f9909c07a2e3e84c1fa816d485de4a8f5ff995f153ba4eb17efdd2",
         "mode": "full",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.",
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1024,9 +1024,9 @@
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c4ee965842efb4065a8f89f6b9cf341a72ab0f062c66e4c94564cbe9a47a8697",
+        "sha256": "70e9e0598c5c0b9844bf1948c809b9e6d206820c18670f137052135733614d56",
         "mode": "full",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.",
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
@@ -1295,12 +1295,12 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0",
+        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "stepOnce schemas, authorization, pause/epoch/owner checks, inbox_read, answer-intent dispatch and incomplete-result handling",
         "summary": "Existing host preserves exact source/current actor/commit guards; the wrapper does not replace this authority.",
-        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate.",
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate. 2026-11-11 recovery diff review: Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result.",
         "read_ranges": [
           [
             76,
@@ -1351,30 +1351,30 @@
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "fcb5df8dd77963f8016b2d25b4ef198ab762c51f24adb5f765d065fc7cfc8a1e",
+        "sha256": "4d95e92f3eceb1d58a7d22991a242fc9ace9837f3a36f8c0c84d17c0eb73ed39",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "7cbe41ac29843b5f12095d2d355d92855e89c1bad9f24a1cb35537de90483fc2",
+        "sha256": "49241e81b1f9909c07a2e3e84c1fa816d485de4a8f5ff995f153ba4eb17efdd2",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c4ee965842efb4065a8f89f6b9cf341a72ab0f062c66e4c94564cbe9a47a8697",
+        "sha256": "70e9e0598c5c0b9844bf1948c809b9e6d206820c18670f137052135733614d56",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
         "summary": "Only expected full-root inventory 1229 to 1236 for the seven wrapper tests; all historical counts, source guard, required group semantics and native/hosted gates stay unchanged. Count is not evidence of execution.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1461,30 +1461,30 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "7cbe41ac29843b5f12095d2d355d92855e89c1bad9f24a1cb35537de90483fc2",
+        "sha256": "49241e81b1f9909c07a2e3e84c1fa816d485de4a8f5ff995f153ba4eb17efdd2",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c4ee965842efb4065a8f89f6b9cf341a72ab0f062c66e4c94564cbe9a47a8697",
+        "sha256": "70e9e0598c5c0b9844bf1948c809b9e6d206820c18670f137052135733614d56",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "fcb5df8dd77963f8016b2d25b4ef198ab762c51f24adb5f765d065fc7cfc8a1e",
+        "sha256": "4d95e92f3eceb1d58a7d22991a242fc9ace9837f3a36f8c0c84d17c0eb73ed39",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
         "summary": "Only current expected root 1236 to 1239 for three added cases; historical results and required group/cleanup/native/hosted gates unchanged.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       }
     ]
   },
@@ -1579,27 +1579,27 @@
       },
       {
         "path": "docs/testing/p7-lab.md",
-        "sha256": "7cbe41ac29843b5f12095d2d355d92855e89c1bad9f24a1cb35537de90483fc2",
+        "sha256": "49241e81b1f9909c07a2e3e84c1fa816d485de4a8f5ff995f153ba4eb17efdd2",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "docs/testing/publication.md",
-        "sha256": "c4ee965842efb4065a8f89f6b9cf341a72ab0f062c66e4c94564cbe9a47a8697",
+        "sha256": "70e9e0598c5c0b9844bf1948c809b9e6d206820c18670f137052135733614d56",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "docs/testing/delivery-lab.md",
-        "sha256": "fcb5df8dd77963f8016b2d25b4ef198ab762c51f24adb5f765d065fc7cfc8a1e",
+        "sha256": "4d95e92f3eceb1d58a7d22991a242fc9ace9837f3a36f8c0c84d17c0eb73ed39",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
-        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate."
+        "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
       },
       {
         "path": "test/adapter-host.test.js",
@@ -2065,7 +2065,7 @@
     "supplemental": [
       {
         "path": "docs/auth0-recovery.md",
-        "sha256": "e9c74424a7e69fc2a4e65258618ba2483676a3cf7737e79e83e425119c6c2b7c",
+        "sha256": "7b857a07ee915b24e73fc5375ea3fff389b6beb812f7997de2b16b7a93daca13",
         "review": "reviewed"
       },
       {
@@ -2159,9 +2159,9 @@
     "supplemental": [
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "c14e529632bf4c7fce7789f4324f1761618fc2515a185a2f76445d37149f10f0",
+        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
         "review": "reviewed",
-        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
+        "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate. 2026-11-11 recovery diff review: Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
       },
       {
         "path": "src/adapter-host/single-source-authority.ts",
@@ -2267,8 +2267,9 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "8947b71b0a621744f70abe6ac475bf004d36deb08ab6fb2a8f529a89e30e3ff2",
-        "review": "reviewed"
+        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "review": "reviewed",
+        "maintenance": " 2026-11-11 recovery diff review: Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
       },
       {
         "path": "src/adapter-host/external-owner.ts",
@@ -2356,5 +2357,76 @@
         "review": "reviewed"
       }
     ]
+  },
+  {
+    "scope": "Optional local authentication recovery coordination",
+    "baseline": "8b7c2562b83aa71d5c8677217e14a1408ee886cb",
+    "summary": "Reviewed the three documentation additions and recovery implementation diff. This bounded local lifecycle contract preserves native OAuth ownership, exact verified identity, durable intents and current host authority. It is not installed Hermes integration, credential recovery, live OAuth evidence or proof of production readiness. Existing native/manual gates remain unverified. Source hashes describe this worktree review snapshot; subsequent code changes require renewed review.",
+    "supplemental": [
+      {
+        "path": "src/agent-sdk/receiver.ts",
+        "sha256": "c9552cc20a2d37ee858e137b741028c6f3add36ab10960928252a033495ce173",
+        "review": "reviewed",
+        "read_coverage": "recovery diff and relevant surrounding boundary",
+        "observation": "Poll/ACK preserve only the local branded recovery reason; generic errors still become transport failure. Pending ACK data is not rejected or rewritten on this path."
+      },
+      {
+        "path": "src/agent-sdk/sender.ts",
+        "sha256": "2f427dfc6aa512861eea017e6db4a87982710801ecf4328f62936593cca8bed0",
+        "review": "reviewed",
+        "read_coverage": "recovery diff and relevant surrounding boundary",
+        "observation": "Durably defer the original job before propagating local branded recovery; no new identity, intent or quarantine is introduced by this path."
+      },
+      {
+        "path": "src/agent-sdk/index.ts",
+        "sha256": "216763a064888d8afd8b92d475d8a929e750d6202a4dcd8ada453539bb6dd43c",
+        "review": "reviewed",
+        "read_coverage": "recovery diff and relevant surrounding boundary",
+        "observation": "Exports pure local recovery classes/types alongside sender/receiver without IO dependencies."
+      },
+      {
+        "path": "src/agent-sdk/mcp-client.ts",
+        "sha256": "6c6262309eaabca946ebe1ccd1c6a8f1098ae72a2a02f24534c8679208a41dab",
+        "review": "reviewed",
+        "read_coverage": "recovery diff and relevant surrounding boundary",
+        "observation": "Only the trusted authorization provider may supply the local branded signal. A private intermediate error preserves its origin; fetch/wire errors stay generic and timeout/check precedence is retained."
+      },
+      {
+        "path": "src/adapter-host/cycle.ts",
+        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "review": "reviewed",
+        "read_coverage": "recovery diff and relevant surrounding boundary",
+        "observation": "Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
+      },
+      {
+        "path": "src/adapter-host/receive-supervisor.ts",
+        "sha256": "717bdf202088025f56a20cff92fc384abca5395c6d4b7cfcf7744aa1bca4d3e7",
+        "review": "reviewed",
+        "read_coverage": "recovery diff and relevant surrounding boundary",
+        "observation": "Optional blocked gate prevents receive admission and waits locally; fixed synchronous transition sink is fail-closed, and host status/gate revision is rechecked after it. Without a gate, typed recovery stops explicitly."
+      },
+      {
+        "path": "src/agent-sdk/authentication-recovery.ts",
+        "sha256": "123ff8461c6d5178378bac72ba6f603fa322013457d882941d77d72a7f5eb498",
+        "review": "reviewed",
+        "read_coverage": "full new file",
+        "observation": "Read full new file: fixed local WeakMap-branded reasons, exact six-field expected identity copy, one-use gate-local generation ticket, startup blocked state and fixed status. No IO/token handling; supplied verified identity must be independently authenticated by the trusted product. Final review refinement freezes the exported reason tuple at runtime; no reason can be appended through the public array."
+      },
+      {
+        "path": "verification/design/checks/communication-boundary.mjs",
+        "sha256": "30a18ca6131254fc2351d82ce0b7991fa536eafae15d041df99c4c6351f01903",
+        "review": "reviewed",
+        "read_coverage": "one-line coreModules addition and surrounding dependency policy",
+        "observation": "The new local-only authentication-recovery.ts has no imports or IO and belongs to the stricter protected core closure. Explicit classification preserves failure on unknown modules and does not admit an OAuth/HTTP/MCP package or wrapper. Positive/negative controls are separately executed by the coordinating task, not attested by this source review."
+      },
+      {
+        "path": "test/authentication-recovery.test.js",
+        "sha256": "d898c42f83bdb65f39eaca6ab25ce2e392645ef0a53edada4fe6aa3dbc48894c",
+        "review": "reviewed",
+        "read_coverage": "final Object.isFrozen(authenticationRecoveryReasons) assertion within the existing local-brand test",
+        "observation": "Final refinement adds a runtime-frozen reason tuple assertion to an existing case; no new test case is counted. The coordinating task owns full suite review and execution evidence."
+      }
+    ],
+    "inventory_maintenance": "2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
   }
 ]

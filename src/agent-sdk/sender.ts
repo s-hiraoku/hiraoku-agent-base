@@ -1,5 +1,9 @@
 /** Explicit one-step sending; no scheduler, identity provisioning or product logic. */
 import { MessagingError } from "../messaging/delivery-service.ts";
+import {
+  AuthenticationRecoveryError,
+  authenticationRecoveryReason,
+} from "./authentication-recovery.ts";
 import type { Submission } from "../messaging/contract.ts";
 import type { Receipt } from "../messaging/delivery-service.ts";
 export type OutboxState =
@@ -88,6 +92,8 @@ export class DurableSender {
           return;
         }
         this.#store.defer(job);
+        const recovery = authenticationRecoveryReason(error);
+        if (recovery) throw new AuthenticationRecoveryError(recovery);
         throw new MessagingError("sender_transport_failed");
       }
       // Storage failure intentionally keeps the durable claim until lease recovery.

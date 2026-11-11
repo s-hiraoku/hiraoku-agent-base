@@ -1,5 +1,9 @@
 /** Model-free orchestration: no background loop, product integration or execution. */
 import { MessagingError } from "../messaging/delivery-service.ts";
+import {
+  AuthenticationRecoveryError,
+  authenticationRecoveryReason,
+} from "./authentication-recovery.ts";
 import type { AckRequest, Submission } from "../messaging/contract.ts";
 import type { Delivery, AckReceipt } from "../messaging/delivery-service.ts";
 export interface ReceiverTransport {
@@ -61,6 +65,8 @@ export class DurableReceiver {
         this.#store.rejectAck(request, code);
         return code === "invalid_ack";
       }
+      const recovery = authenticationRecoveryReason(error);
+      if (recovery) throw new AuthenticationRecoveryError(recovery);
       throw new MessagingError("ack_transport_failed");
     }
     this.#store.confirmAck(request, receipt);
@@ -74,7 +80,9 @@ export class DurableReceiver {
       let delivery: Delivery | null;
       try {
         delivery = await this.#transport.poll();
-      } catch {
+      } catch (error) {
+        const recovery = authenticationRecoveryReason(error);
+        if (recovery) throw new AuthenticationRecoveryError(recovery);
         throw new MessagingError("poll_transport_failed");
       }
       if (!delivery) return;

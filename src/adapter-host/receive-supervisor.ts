@@ -2,6 +2,14 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import type { AdapterHostCycle } from "./cycle.ts";
+import {
+  AuthenticationRecoveryGate,
+  authenticationRecoveryReasons,
+} from "../agent-sdk/authentication-recovery.ts";
+import type {
+  AuthenticationRecoveryReason,
+  AuthenticationRecoveryStatus,
+} from "../agent-sdk/authentication-recovery.ts";
 
 const policySchema = z
   .strictObject({
@@ -17,13 +25,18 @@ export interface ReceiveSupervisorPort {
   version: 1;
   host: Pick<AdapterHostCycle, "status" | "stepOnce">;
   context: unknown;
+  /** Optional trusted local gate. No IO occurs while it is blocked. */
+  authentication?: AuthenticationRecoveryGate;
+  /** Synchronous local event sink, fixed metadata only. Not a remote notification API. */
+  authenticationChanged?: (status: AuthenticationRecoveryStatus) => void;
 }
 export type ReceiveStopReason =
   | "stopped"
   | "paused"
   | "owner_unavailable"
   | "host_unavailable"
-  | "drain_timeout";
+  | "drain_timeout"
+  | AuthenticationRecoveryReason;
 export interface ReceiveRunResult {
   reason: ReceiveStopReason;
   receive_steps: number;
@@ -57,6 +70,11 @@ export class ReceiveSupervisor {
       port?.version !== 1 ||
       typeof port.host?.status !== "function" ||
       typeof port.host?.stepOnce !== "function" ||
+      (port.authentication !== undefined &&
+        !(port.authentication instanceof AuthenticationRecoveryGate)) ||
+      (port.authenticationChanged !== undefined &&
+        (typeof port.authenticationChanged !== "function" ||
+          !port.authentication)) ||
       (scheduler.wait !== undefined && typeof scheduler.wait !== "function") ||
       (scheduler.now !== undefined && typeof scheduler.now !== "function")
     )
@@ -84,6 +102,7 @@ export class ReceiveSupervisor {
     let receive_steps = 0,
       retries = 0,
       failures = 0;
+    let observedAuthentication: string | undefined;
     let reason: ReceiveStopReason = "stopped";
     try {
       while (!signal.aborted) {
@@ -101,11 +120,70 @@ export class ReceiveSupervisor {
           reason = "host_unavailable";
           break;
         }
+        const authentication = this.#port.authentication?.status();
+        if (authentication) {
+          // Notify once per state transition, not once per retry/poll. Never expose identity.
+          const key = JSON.stringify([
+            authentication.state,
+            authentication.reason,
+          ]);
+          if (key !== observedAuthentication) {
+            const result: unknown =
+              this.#port.authenticationChanged?.(authentication);
+            if (result !== undefined) {
+              // Reject async observers without leaving an unhandled rejection behind.
+              void Promise.resolve(result).catch(() => {});
+              throw new Error("invalid_authentication_observer");
+            }
+            observedAuthentication = key;
+          }
+          // A local observer may have blocked the gate or changed host control.
+          if (
+            this.#port.authentication!.status().revision !==
+            authentication.revision
+          )
+            continue;
+          if (authentication.state !== "ready") {
+            if (!signal.aborted)
+              await this.#wait(this.#policy.interval_ms, signal);
+            continue;
+          }
+        }
+        if (signal.aborted) break;
+        // Recheck after the observer, immediately before admitting another receive.
+        const current = this.#status();
+        if (current.owner !== "held") {
+          reason = "owner_unavailable";
+          break;
+        }
+        if (current.paused) {
+          reason = "paused";
+          break;
+        }
+        if (current.running || current.draining) {
+          reason = "host_unavailable";
+          break;
+        }
         const step = await this.#port.host.stepOnce(this.#port.context, {
           op: "receive",
         });
         receive_steps++;
         if (step.op !== "receive") throw new Error("invalid_receive_result");
+        if (
+          step.state === "incomplete" &&
+          (authenticationRecoveryReasons as readonly unknown[]).includes(
+            step.reason,
+          )
+        ) {
+          const authenticationReason =
+            step.reason as AuthenticationRecoveryReason;
+          if (!this.#port.authentication) {
+            reason = authenticationReason;
+            break;
+          }
+          this.#port.authentication.block(authenticationReason);
+          continue;
+        }
         let next: number;
         if (step.state === "done" && step.reason === null) {
           failures = 0;

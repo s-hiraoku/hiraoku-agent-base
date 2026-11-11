@@ -19,6 +19,18 @@ import type {
 import type { SenderTransport } from "./sender.ts";
 import type { ReceiverTransport } from "./receiver.ts";
 import { isPublicToolError } from "../messaging/tool-errors.ts";
+import {
+  AuthenticationRecoveryError,
+  authenticationRecoveryReason,
+} from "./authentication-recovery.ts";
+import type { AuthenticationRecoveryReason } from "./authentication-recovery.ts";
+class ProviderAuthenticationFailure extends Error {
+  readonly reason: AuthenticationRecoveryReason;
+  constructor(reason: AuthenticationRecoveryReason) {
+    super(reason);
+    this.reason = reason;
+  }
+}
 
 export interface RelayMcpClientPolicy {
   resource_url: string;
@@ -358,6 +370,8 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
         }),
       ]);
     } catch (error) {
+      if (error instanceof ProviderAuthenticationFailure)
+        throw new AuthenticationRecoveryError(error.reason);
       // Only errors constructed inside this boundary can carry semantic server codes.
       throw new MessagingError(
         error instanceof ClientFailure ? error.code : "relay_transport_failed",
@@ -374,10 +388,18 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
     signal: AbortSignal,
     check: () => void,
   ): Promise<unknown> {
-    const authorization = await this.#authorization({
-      resource: this.#policy.resource_url,
-      signal,
-    });
+    let authorization: string;
+    try {
+      authorization = await this.#authorization({
+        resource: this.#policy.resource_url,
+        signal,
+      });
+    } catch (error) {
+      check();
+      const reason = authenticationRecoveryReason(error);
+      if (reason) throw new ProviderAuthenticationFailure(reason);
+      throw error;
+    }
     check();
     if (
       typeof authorization !== "string" ||
