@@ -4,8 +4,8 @@
 # The Relay delivers only through JetStream, so start also runs a private nats-server
 # (HAB_NATS_SERVER or .runtime/nats-install.json) with its store under instance/broker.
 # Usage: configured.sh <run-dir> start [port]   -> instance/state.json usable by mcp.sh/new-message.sh
-#        HAB_VERIFY_GROUPS=1 configured.sh <run-dir> start -> registry.authentication_groups on, plus an
-#          unconnected spare credential "c" (state.agents.c.connection_id) for group reconnects
+#        HAB_VERIFY_GROUPS=1 configured.sh <run-dir> start -> adds an unconnected spare credential "c"
+#          (state.agents.c.connection_id) for group reconnects; every connection uses a group anyway
 #        HAB_VERIFY_A2A=1 configured.sh <run-dir> start -> adds the config `a2a` section (identity
 #          a2a@hab-host.hab, recipient hermes@hermes.hab) and caller "x": a second connection of
 #          codex@codex.hab whose audience is the A2A endpoint (state.a2a_url, state.agents.x)
@@ -45,7 +45,6 @@ const w = (p, o) => fs.writeFileSync(`${inst}/${p}`, JSON.stringify(o), { mode: 
 const cfg = JSON.parse(fs.readFileSync(`${repo}/config/relay-service.example.json`, "utf8"));
 Object.assign(cfg, { directory: `${inst}/state`, port: Number(port), keys_file: `${inst}/keys.local.json`,
   credentials_file: `${inst}/individuals.local.json`, audit_directory: `${inst}/audit` });
-if (groups === "1") cfg.registry.authentication_groups = true;
 if (a2a === "1")
   cfg.a2a = { ...JSON.parse(fs.readFileSync(`${repo}/config/relay-a2a.example.json`, "utf8")).a2a,
     port: Number(aport), recipient: "hermes@hermes.hab", poll_interval_ms: 100 };

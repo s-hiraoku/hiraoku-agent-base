@@ -124,3 +124,7 @@ export async function executeNode({
     await handle.close();
   }
 }
+
+export function observedCases(tap) {
+  return [...tap.matchAll(/^(?:not )?ok \d+ - (.+)$/gm)].map((m) => m[1]);
+}

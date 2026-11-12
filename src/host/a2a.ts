@@ -63,7 +63,10 @@ export const provisioningOperations: ReadonlySet<AdminOperation> = new Set([
   "inspect",
   "product",
   "enroll",
-  "bind",
+  "group_create",
+  "group_bind",
+  "group_member",
+  "group_access",
   "access",
 ]);
 
@@ -86,8 +89,8 @@ const ACK_RETRY_MS = 86400000;
 const STATUS_RETRY_MS = REPLY_WINDOW_MS + ACK_RETRY_MS + 2 * 3600000;
 
 /**
- * Converges the configured address onto an active agent whose only live binding is the
- * host principal. A retired, stopped or revoked identity, or one an operator credential
+ * Converges the configured address onto an active agent that is the only member of its
+ * authentication group, whose only live binding is the host principal. A retired, stopped or revoked identity, or one an operator credential
  * can also authenticate, is refused rather than repaired.
  */
 export function provisionHostA2aIdentity(
@@ -116,17 +119,15 @@ export function provisionHostA2aIdentity(
   }
   let agent = find()!;
   if (agent.state === "retired") throw new HostA2aError("a2a_identity_retired");
-  if (agent.group_id) throw new HostA2aError("a2a_identity_conflict");
   const reservation = registry.findPrincipal(admin, hostPrincipal);
   if (reservation) {
-    if (reservation.kind !== "agent" || reservation.owner_id !== agent.agent_id)
+    if (reservation.group_id !== agent.group_id)
       throw new HostA2aError("a2a_identity_conflict");
     if (reservation.state !== "active")
       throw new HostA2aError("a2a_identity_revoked");
   } else {
-    if (agent.active_binding_ids.length)
-      throw new HostA2aError("a2a_identity_conflict");
-    registry.bind(admin, {
+    if (agent.group_id) throw new HostA2aError("a2a_identity_conflict");
+    registry.createBoundGroup(admin, {
       request_id: request(),
       agent_id: agent.agent_id,
       expected_epoch: registry.inspect(admin, agent.agent_id).epoch,
@@ -134,9 +135,28 @@ export function provisionHostA2aIdentity(
     });
     agent = find()!;
   }
-  if (agent.active_binding_ids.length !== 1)
+  const group = registry
+    .overview(admin)
+    .groups.find((value) => value.group_id === agent.group_id);
+  if (
+    !group ||
+    group.active_binding_ids.length !== 1 ||
+    group.member_ids.length !== 1
+  )
     throw new HostA2aError("a2a_identity_conflict");
-  if (agent.state === "stopped") throw new HostA2aError("a2a_identity_stopped");
+  if (agent.state === "stopped" || group.state === "stopped")
+    throw new HostA2aError("a2a_identity_stopped");
+  if (
+    group.state !== "active" ||
+    group.operations.join() !== hostOperations.join()
+  )
+    registry.setGroupAccess(admin, {
+      request_id: request(),
+      group_id: group.group_id,
+      expected_epoch: group.epoch,
+      state: "active",
+      operations: hostOperations,
+    });
   const current = registry.inspect(admin, agent.agent_id);
   if (
     current.state !== "active" ||

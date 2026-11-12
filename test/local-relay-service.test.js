@@ -14,10 +14,8 @@ import { startHost } from "../src/host/start.ts";
 import { envelope } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
 const cli = resolve("scripts/hab-relay.ts");
-test("explicit group configuration creates registry v2 and stays deny-all across restart", async (t) => {
+test("the host creates registry v2 with authentication groups and stays deny-all across restart", async (t) => {
   const f = await fixture(t);
-  f.config.registry.authentication_groups = true;
-  f.write("service.local.json", f.config);
   const first = await startHost(f.configPath);
   try {
     assert.equal((await list(first.url)).status, 401);

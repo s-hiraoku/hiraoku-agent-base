@@ -344,11 +344,7 @@ test("revoking caller binding or setting durable emergency stop invalidates a pr
     b = f.enroll("b"),
     c = client(f, a, gateway(f));
   assert.equal((await c.resolve(b.address)).recipient_id, b.agent_id);
-  f.registry.revoke(f.admin, {
-    request_id: "revoke-a",
-    binding_id: f.bindings.get("a").binding_id,
-    expected_epoch: a.epoch,
-  });
+  f.revoke("a");
   await assert.rejects(c.resolve(b.address), code("forbidden"));
   f.registry.emergencyStop(f.admin);
   await assert.rejects(

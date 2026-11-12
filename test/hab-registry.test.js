@@ -244,12 +244,12 @@ test("binding and activation require distinct authorized steps and stale epochs 
     expected_epoch: 1,
     principal: principal("a"),
   };
-  const b = f.registry.bind(f.admin, bind);
+  const b = f.registry.createBoundGroup(f.admin, bind);
   assert.equal(
     f.registry.inspect(f.admin, a.agent_id).state,
     "waiting_connection",
   );
-  assert.deepEqual(f.registry.bind(f.admin, bind), b);
+  assert.deepEqual(f.registry.createBoundGroup(f.admin, bind), b);
   assert.throws(
     () => f.registry.setAccess(f.admin, activate),
     code("registry_stale_epoch"),
@@ -286,76 +286,56 @@ test("full principal tuple is exclusive and never rebound, including after revoc
     a = f.enroll("a"),
     b = f.enroll("b", false),
     binding = f.bindings.get("a");
+  const bindB = (request_id, connection) =>
+    f.registry.createBoundGroup(f.admin, {
+      request_id,
+      agent_id: b.agent_id,
+      expected_epoch: 1,
+      principal: connection,
+    });
   assert.throws(
-    () =>
-      f.registry.bind(f.admin, {
-        request_id: "steal",
-        agent_id: b.agent_id,
-        expected_epoch: 1,
-        principal: principal("a"),
-      }),
+    () => bindB("steal", principal("a")),
     code("registry_binding_reserved"),
   );
   const input = {
     request_id: "revoke-a",
     binding_id: binding.binding_id,
-    expected_epoch: a.epoch,
+    expected_epoch: f.registry.inspectGroup(f.admin, binding.group_id).epoch,
   };
-  const revoked = f.registry.revoke(f.admin, input);
+  const revoked = f.registry.revokeGroupBinding(f.admin, input);
   assert.equal(revoked.state, "revoked");
-  assert.deepEqual(f.registry.revoke(f.admin, input), revoked);
+  assert.deepEqual(f.registry.revokeGroupBinding(f.admin, input), revoked);
   assert.equal(f.registry.inspect(f.admin, a.agent_id).state, "stopped");
   assert.throws(
-    () =>
-      f.registry.bind(f.admin, {
-        request_id: "reuse",
-        agent_id: b.agent_id,
-        expected_epoch: 1,
-        principal: principal("a"),
-      }),
+    () => bindB("reuse", principal("a")),
     code("registry_binding_reserved"),
   );
-  const fresh = f.registry.bind(f.admin, {
+  const fresh = f.registry.bindGroup(f.admin, {
     request_id: "rotate",
-    agent_id: a.agent_id,
-    expected_epoch: revoked.agent_epoch,
+    group_id: binding.group_id,
+    expected_epoch: revoked.group_epoch,
     principal: principal("a", { connection_id: "verified-a-rotated" }),
   });
   assert.notEqual(fresh.binding_id, binding.binding_id);
   assert.equal(f.registry.inspect(f.admin, a.agent_id).state, "stopped");
   assert.throws(
     () =>
-      f.registry.bind(f.admin, {
-        request_id: "owner-only",
-        agent_id: b.agent_id,
-        expected_epoch: 1,
-        principal: {
-          issuer: "https://issuer.example/",
-          audience: "resource",
-          subject: "owner",
-          client_id: "shared",
-        },
+      bindB("owner-only", {
+        issuer: "https://issuer.example/",
+        audience: "resource",
+        subject: "owner",
+        client_id: "shared",
       }),
     code("invalid_registry_request"),
   );
-  for (const input of [
-    {
-      request_id: "bad-claim",
-      agent_id: b.agent_id,
-      expected_epoch: 1,
-      principal: principal("b", { subject: "shared-owner\n" }),
-    },
-    {
-      request_id: "bad-id\n",
-      agent_id: b.agent_id,
-      expected_epoch: 1,
-      principal: principal("b"),
-    },
-  ])
-    assert.throws(
-      () => f.registry.bind(f.admin, input),
-      code("invalid_registry_request"),
-    );
+  assert.throws(
+    () => bindB("bad-claim", principal("b", { subject: "shared-owner\n" })),
+    code("invalid_registry_request"),
+  );
+  assert.throws(
+    () => bindB("bad-id\n", principal("b")),
+    code("invalid_registry_request"),
+  );
 });
 
 test("retirement is terminal and database guards preserve ID/address/principal reservations", async (t) => {
@@ -399,8 +379,9 @@ test("retirement is terminal and database guards preserve ID/address/principal r
     "DELETE FROM hab_agents",
     "UPDATE hab_agents SET bot_name='renamed'",
     "UPDATE hab_agents SET agent_id='renamed'",
-    "DELETE FROM hab_bindings",
-    "UPDATE hab_bindings SET fingerprint='rebound'",
+    "DELETE FROM hab_auth_group_bindings",
+    "UPDATE hab_auth_group_bindings SET fingerprint='rebound'",
+    "DELETE FROM hab_auth_group_members",
     "UPDATE hab_products SET agent_name='other'",
     "DELETE FROM hab_products",
   ])
@@ -448,13 +429,15 @@ test("management storage contains no raw principal claims or input bodies in aud
   const rows = f.registryRaw.prepare("SELECT * FROM hab_registry_audit").all();
   assert.ok(
     rows.every((r) =>
-      ["product", "enroll", "bind", "access"].includes(r.event),
+      ["product", "enroll", "group_create", "group_access", "access"].includes(
+        r.event,
+      ),
     ),
   );
   const persisted = JSON.stringify([
     rows,
     f.registryRaw.prepare("SELECT * FROM hab_admin_requests").all(),
-    f.registryRaw.prepare("SELECT * FROM hab_bindings").all(),
+    f.registryRaw.prepare("SELECT * FROM hab_auth_group_bindings").all(),
   ]);
   for (const s of [
     "shared-owner",
@@ -512,9 +495,10 @@ test("file mode, key, schema and explicit migration are checked without changing
   );
   const wrong = f.open({ fingerprint_key: new Uint8Array(32).fill(62) });
   assert.throws(() => wrong.migrate(), code("registry_key_mismatch"));
-  f.registryRaw.exec("UPDATE hab_registry_meta SET version=2");
-  assert.throws(() => unopened.migrate(), code("unsupported_registry_schema"));
+  // Version 1 never has the group tables an upgraded registry carries.
   f.registryRaw.exec("UPDATE hab_registry_meta SET version=1");
+  assert.throws(() => unopened.migrate(), code("unsupported_registry_schema"));
+  f.registryRaw.exec("UPDATE hab_registry_meta SET version=2");
   const unrelatedPath = join(f.dir, "unrelated.sqlite"),
     unrelated = new DatabaseSync(unrelatedPath);
   unrelated.exec("CREATE TABLE user_data(id INTEGER)");
@@ -554,17 +538,13 @@ test("binding reservations keep consuming quota after revocation, while explicit
     c = f.enroll("c");
   const capped = f.open({ max_bindings: 3, max_blocks: 1 });
   capped.migrate();
-  const revoked = capped.revoke(f.admin, {
-    request_id: "revoke-cap",
-    binding_id: f.bindings.get("c").binding_id,
-    expected_epoch: c.epoch,
-  });
+  const revoked = f.revoke("c", capped);
   assert.throws(
     () =>
-      capped.bind(f.admin, {
+      capped.bindGroup(f.admin, {
         request_id: "rotate-cap",
-        agent_id: c.agent_id,
-        expected_epoch: revoked.agent_epoch,
+        group_id: revoked.group_id,
+        expected_epoch: revoked.group_epoch,
         principal: principal("c", { connection_id: "rotated-c" }),
       }),
     code("registry_capacity_exceeded"),

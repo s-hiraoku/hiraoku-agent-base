@@ -39,40 +39,13 @@ jobs:
         run: node --test --test-timeout=30000 test/ci-nats/arguments.test.js
       - name: Check TypeScript tools and legacy CLI entry points
         run: npm run test:tools
-      - name: Run verified NATS checks
+      - name: Run the JetStream package checks against the pinned broker
         run: |
-          node --input-type=module <<'JS'
-          import {readFileSync} from 'node:fs';
-          import {spawnSync} from 'node:child_process';
-          const {binary}=JSON.parse(readFileSync('.runtime/nats-install.json','utf8'));
-          const result=spawnSync(process.execPath,['scripts/p7-lab.mjs','--full','--nats-server',binary],{stdio:'inherit'});
-          process.exit(result.status ?? 1);
-          JS
-      - run: python3 -m unittest discover -s hermes_bridge -p 'test_*.py'
-      - run: python3 -B -m unittest scripts.test_inventory_token_input
-      - run: python3 -m pip install ruff==0.15.11
-      - run: python3 -m ruff check hermes_bridge
-      - run: python3 -m ruff format --check hermes_bridge
-      - run: python3 -m ruff check scripts/inventory_token_input.py scripts/test_inventory_token_input.py
-      - run: python3 -m ruff format --check scripts/inventory_token_input.py scripts/test_inventory_token_input.py
-      - name: Show failing P7 tests
-        if: failure()
+          binary="$(node -p "JSON.parse(require('fs').readFileSync('.runtime/nats-install.json','utf8')).binary")"
+          node scripts/ci-nats.mjs --stage p6 --nats-server "$binary"
+      - name: Run the full regression suite
+        env:
+          NODE_OPTIONS: --disable-warning=ExperimentalWarning
         run: |
-          for tap in .lab/p7-run-*/*.tap; do
-            [ -f "$tap" ] || continue
-            grep -n -A40 -E '^ *not ok ' "$tap" | head -400 | sed "s|^|$(basename "$tap"): |" || true
-          done
-      - name: Retain P7 evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: p7-${{ github.run_id }}-${{ github.run_attempt }}
-          include-hidden-files: true
-          retention-days: 7
-          if-no-files-found: warn
-          path: |
-            .lab/p7-run-*/report.json
-            .lab/p7-run-*/sources.json
-            .lab/p7-run-*/*.tap
-            .lab/p7-run-*/build.log
-            .lab/p7-run-*/cases/*.json
+          export HAB_NATS_SERVER="$(node -p "JSON.parse(require('fs').readFileSync('.runtime/nats-install.json','utf8')).binary")"
+          node --test --test-timeout=120000 test/*.test.js

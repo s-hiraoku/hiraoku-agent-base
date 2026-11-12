@@ -53,11 +53,7 @@ export async function habFixture(t, patch = {}, serverBinary) {
     },
   };
   const path = join(f.dir, "registry.sqlite");
-  let registry = new SQLiteHabRegistry(
-    path,
-    { ...registryOptions, authentication_groups: true },
-    authority,
-  );
+  let registry = new SQLiteHabRegistry(path, registryOptions, authority);
   registry.migrate();
   t.after(() => registry.close());
   let count = 0;
@@ -171,11 +167,7 @@ export async function habFixture(t, patch = {}, serverBinary) {
     async restart() {
       await f.restart();
       registry.close();
-      registry = new SQLiteHabRegistry(
-        path,
-        { ...registryOptions, authentication_groups: true },
-        authority,
-      );
+      registry = new SQLiteHabRegistry(path, registryOptions, authority);
       registry.migrate();
       service = createService();
     },

@@ -7,14 +7,12 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
-    "types": ["node", "@cloudflare/workers-types"],
+    "types": [
+      "node"
+    ],
     "erasableSyntaxOnly": true
   },
   "include": [
-    "src/**/*.ts",
-    "db/**/*.ts",
-    "drizzle.config.ts",
-    "test/worker-fixture.ts",
-    "test/*-worker.ts"
+    "src/**/*.ts"
   ]
 }

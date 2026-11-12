@@ -6,7 +6,7 @@ import {
   deferred,
 } from "./adapter-host-fixtures.js";
 import { message } from "./relay-http-fixtures.js";
-import { code } from "./task-bridge-fixtures.js";
+import { code } from "./inbox-fixtures.js";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 // Healthy send coverage must not expire a deliberately short fault-test lease under suite load.
 const hostFixture = async (t) =>
@@ -56,7 +56,6 @@ test("initial message: persist before network, stable duplicate receipt, and cha
   assert.equal(first.value.submit_attempts, 0);
   assert.equal("body" in first.value, false);
   assert.equal(f.state.tools.length, 0);
-  assert.equal(f.count(), 0);
   assert.deepEqual((await f.step(enqueue(value))).value, first.value);
   const conflict = await f.step(
     enqueue({ ...value, body: { parts: [{ type: "text", text: "changed" }] } }),
@@ -76,7 +75,6 @@ test("initial message: explicit send performs the only submit using the host-bou
   const delivery = f.service.poll(f.contexts.a);
   assert.equal(delivery.message.sender_id, "b");
   assert.equal(delivery.message.message_id, value.message_id);
-  assert.equal(f.count(), 0);
 });
 
 test("initial message: replies cannot bypass source-bound intents and reply budgets", async (t) => {
@@ -114,7 +112,6 @@ test("initial message: malformed sender/URL/attachment input cannot enqueue or t
   }
   assert.equal(f.queued().length, 0);
   assert.equal(f.state.tools.length, 0);
-  assert.equal(f.count(), 0);
 });
 
 test("initial message: current authority is rechecked at the durable outbox boundary", async (t) => {
@@ -155,29 +152,6 @@ test("initial message: lost confirmation keeps one stable intent and reveals no 
   assert.equal(replay.value.expires_at, value.expires_at);
   assert.equal(f.queued().length, 1);
   assert.equal(f.state.tools.length, 0);
-});
-
-test("initial message: inert execution request never creates a Task at enqueue or send", async (t) => {
-  const f = await hostFixture(t);
-  f.resume();
-  const value = initial({
-    kind: "execution_request",
-    body: {
-      parts: [
-        {
-          type: "data",
-          schema_id: "task.execution_request",
-          schema_version: 1,
-          value: { task_type: "connectivity_check" },
-        },
-      ],
-    },
-  });
-  assert.equal((await f.step(enqueue(value))).state, "done");
-  assert.equal(f.count(), 0);
-  assert.equal((await f.step({ op: "send" })).state, "done");
-  assert.equal(f.count(), 0);
-  assert.equal(f.calls.length, 0);
 });
 
 test("initial message: released process owner cannot enqueue through an old host", async (t) => {

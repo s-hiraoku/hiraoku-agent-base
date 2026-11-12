@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import {
   fixture,
   operations,
+  options,
   principal,
   code,
 } from "./hab-registry-fixtures.js";
@@ -155,7 +157,7 @@ test("ordinary clients cannot enroll groups, attach names or change permissions"
   );
 });
 
-test("legacy credential and membership cannot silently be rebound to another group", async (t) => {
+test("a credential and membership cannot silently be rebound to another group", async (t) => {
   const f = await shared(t),
     other = f.registry.createGroup(f.admin, { request_id: f.request() });
   assert.throws(
@@ -182,7 +184,7 @@ test("legacy credential and membership cannot silently be rebound to another gro
   const fresh = f.enroll("fresh", false);
   assert.throws(
     () =>
-      f.registry.bind(f.admin, {
+      f.registry.createBoundGroup(f.admin, {
         request_id: f.request(),
         agent_id: fresh.agent_id,
         expected_epoch: fresh.epoch,
@@ -220,14 +222,19 @@ test("group authorization records distinguish authenticated group from selected 
   );
 });
 
-test("legacy-only registry remains opt-out and accepts its original single mailbox", async (t) => {
+test("an address bound on its own is the only member of its group and reaches only its own mailbox", async (t) => {
   const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
-  assert.throws(
-    () => f.registry.createGroup(f.admin, { request_id: "not-enabled" }),
-    code("registry_groups_disabled"),
+  const view = f.registry.overview(f.admin);
+  const group = view.groups.find(
+    (g) =>
+      g.group_id ===
+      view.agents.find((x) => x.agent_id === a.agent_id).group_id,
   );
+  assert.deepEqual(group.member_ids, [a.agent_id]);
+  assert.equal(group.active_binding_ids.length, 1);
+  assert.equal(f.hab.poll(f.contexts.a), null);
   assert.equal(
     f.hab.poll(f.registry.selectAddress(f.contexts.a, a.address)),
     null,
@@ -237,31 +244,95 @@ test("legacy-only registry remains opt-out and accepts its original single mailb
     code("forbidden"),
   );
 });
+/** Turns the fixture's registry back into an earlier build's v1 file with direct bindings. */
+function legacyV1(f, names) {
+  const raw = f.registryRaw;
+  const agents = Object.fromEntries(
+    names.map((name) => [name, f.enroll(name, false)]),
+  );
+  for (const table of [
+    "hab_auth_group_authorizations",
+    "hab_auth_group_members",
+    "hab_auth_group_bindings",
+    "hab_auth_groups",
+    "hab_auth_group_meta",
+  ])
+    raw.exec(`DROP TABLE ${table}`);
+  raw.exec("UPDATE hab_registry_meta SET version=1");
+  for (const [name, agent] of Object.entries(agents)) {
+    raw
+      .prepare("INSERT INTO hab_bindings VALUES(?,?,?,'active',?,NULL)")
+      .run(
+        `legacy-${name}`,
+        agent.agent_id,
+        fingerprint(principal(name)),
+        new Date().toISOString(),
+      );
+    raw
+      .prepare(
+        "UPDATE hab_agents SET state='active',operations=? WHERE agent_id=?",
+      )
+      .run(JSON.stringify([...operations].sort()), agent.agent_id);
+  }
+  return agents;
+}
+function fingerprint(value) {
+  const canonical = (v) =>
+    !v || typeof v !== "object"
+      ? JSON.stringify(v)
+      : Array.isArray(v)
+        ? `[${v.map(canonical).join(",")}]`
+        : `{${Object.keys(v)
+            .sort()
+            .map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`)
+            .join(",")}}`;
+  return createHmac("sha256", options.fingerprint_key)
+    .update(canonical(["principal-v1", value]))
+    .digest("hex");
+}
 
-test("explicit schema upgrade preserves legacy bindings and prevents an old runtime from opening version 2", async (t) => {
-  const f = await fixture(t),
-    original = f.enroll("a");
-  assert.equal(
-    f.registryRaw.prepare("SELECT version FROM hab_registry_meta").get()
-      .version,
-    1,
-  );
-  const upgraded = f.open({ authentication_groups: true });
+test("migrate moves an earlier build's direct bindings into single-member groups with the same IDs", async (t) => {
+  const f = await fixture(t);
+  const { a, b } = legacyV1(f, ["a", "b"]);
+  const upgraded = f.open();
   upgraded.migrate();
-  assert.throws(
-    () => f.registry.withRelay(f.contexts.a, "poll", () => true),
-    code("registry_schema_changed"),
-  );
   assert.equal(
     f.registryRaw.prepare("SELECT version FROM hab_registry_meta").get()
       .version,
     2,
   );
+  const view = upgraded.overview(f.admin);
+  for (const [name, agent] of Object.entries({ a, b })) {
+    const current = view.agents.find((x) => x.agent_id === agent.agent_id);
+    assert.equal(current.state, "active");
+    const group = view.groups.find((g) => g.group_id === current.group_id);
+    assert.equal(group.state, "active");
+    assert.deepEqual(group.member_ids, [agent.agent_id]);
+    assert.deepEqual(group.active_binding_ids, [`legacy-${name}`]);
+  }
+  assert.deepEqual(
+    f.registryRaw
+      .prepare("SELECT DISTINCT state FROM hab_bindings")
+      .all()
+      .map((r) => r.state),
+    ["revoked"],
+  );
   assert.equal(
     upgraded.withRelay(f.contexts.a, "poll", (_auth, id) => id),
-    original.agent_id,
+    a.agent_id,
   );
-  assert.deepEqual(upgraded.inspect(f.admin, original.agent_id), original);
+  const hab = f.habFor(upgraded);
+  assert.equal(
+    hab.submit(f.contexts.a, { ...message(), recipient_id: b.agent_id })
+      .sender_id,
+    a.agent_id,
+  );
+  // A second migrate converts nothing twice.
+  upgraded.migrate();
+  assert.equal(
+    f.registryRaw.prepare("SELECT count(*) n FROM hab_auth_groups").get().n,
+    2,
+  );
   f.registryRaw.exec("UPDATE hab_auth_group_meta SET version=99");
   assert.throws(
     () => upgraded.migrate(),
@@ -273,8 +344,45 @@ test("explicit schema upgrade preserves legacy bindings and prevents an old runt
   );
 });
 
+test("migrate keeps a revoked direct binding as a revoked group binding and refuses its reuse", async (t) => {
+  const f = await fixture(t);
+  const { a } = legacyV1(f, ["a"]);
+  f.registryRaw.exec(
+    "UPDATE hab_bindings SET state='revoked',revoked_at='2026-01-01T00:00:00.000Z'",
+  );
+  f.registryRaw
+    .prepare(
+      "UPDATE hab_agents SET state='stopped',operations='[]' WHERE agent_id=?",
+    )
+    .run(a.agent_id);
+  const upgraded = f.open();
+  upgraded.migrate();
+  const view = upgraded.overview(f.admin);
+  const group = view.groups.find(
+    (g) =>
+      g.group_id ===
+      view.agents.find((x) => x.agent_id === a.agent_id).group_id,
+  );
+  assert.equal(group.state, "stopped");
+  assert.deepEqual(group.active_binding_ids, []);
+  assert.deepEqual(upgraded.findPrincipal(f.admin, principal("a")), {
+    binding_id: "legacy-a",
+    group_id: group.group_id,
+    state: "revoked",
+  });
+  assert.throws(
+    () =>
+      upgraded.bindGroup(f.admin, {
+        request_id: "rebind-revoked",
+        group_id: group.group_id,
+        expected_epoch: group.epoch,
+        principal: principal("a"),
+      }),
+    code("registry_binding_reserved"),
+  );
+});
 test("a group with one registered address needs no selector; extra members require an explicit selection", async (t) => {
-  const f = await fixture(t, { authentication_groups: true });
+  const f = await fixture(t);
   const group = f.registry.createGroup(f.admin, { request_id: "single-group" });
   const binding = f.registry.bindGroup(f.admin, {
     request_id: "single-bind",
@@ -307,38 +415,25 @@ test("a group with one registered address needs no selector; extra members requi
   assert.equal(f.hab.poll(f.contexts.a), null);
 });
 
-test("disabling groups after migration refuses shared members without releasing reservations", async (t) => {
+test("a config that still turns authentication groups off is ignored", async (t) => {
   const f = await shared(t),
     off = f.open({ authentication_groups: false });
   off.migrate();
-  assert.throws(
-    () =>
-      off.withRelay(
-        off.selectAddress(f.contexts.a, f.first.address),
-        "poll",
-        () => true,
-      ),
-    code("forbidden"),
+  assert.equal(
+    off.withRelay(
+      off.selectAddress(f.contexts.a, f.first.address),
+      "poll",
+      (_auth, id) => id,
+    ),
+    f.first.agent_id,
   );
-  assert.throws(
-    () => off.resolve(f.contexts.b, f.second.address),
-    code("forbidden"),
-  );
-  const fresh = f.enroll("after-disable", false);
-  assert.throws(
-    () =>
-      off.bind(f.admin, {
-        request_id: "try-rebind",
-        agent_id: fresh.agent_id,
-        expected_epoch: fresh.epoch,
-        principal: principal("a"),
-      }),
-    code("registry_binding_reserved"),
+  assert.equal(
+    off.resolve(f.contexts.b, f.second.address).recipient_id,
+    f.second.agent_id,
   );
 });
-
 test("group changes are idempotent and reject stale epochs and changed requests", async (t) => {
-  const f = await fixture(t, { authentication_groups: true });
+  const f = await fixture(t);
   const group = f.registry.createGroup(f.admin, { request_id: "same-create" });
   assert.deepEqual(
     f.registry.createGroup(f.admin, { request_id: "same-create" }),
@@ -371,7 +466,7 @@ test("group changes are idempotent and reject stale epochs and changed requests"
 });
 
 test("group binding requires a fresh verified connection matching the management checkpoint", async (t) => {
-  const f = await fixture(t, { authentication_groups: true });
+  const f = await fixture(t);
   const group = f.registry.createGroup(f.admin, {
     request_id: "verified-group",
   });
@@ -400,8 +495,8 @@ test("group binding requires a fresh verified connection matching the management
   );
 });
 
-test("group binding quotas include legacy reservations and never store raw connection claims", async (t) => {
-  const f = await fixture(t, { authentication_groups: true, max_bindings: 1 });
+test("group binding quotas count every binding and never store raw connection claims", async (t) => {
+  const f = await fixture(t, { max_bindings: 1 });
   const group = f.registry.createGroup(f.admin, { request_id: "quota-group" });
   f.registry.bindGroup(f.admin, {
     request_id: "quota-group-bind",
@@ -409,13 +504,13 @@ test("group binding quotas include legacy reservations and never store raw conne
     expected_epoch: group.epoch,
     principal: principal("a"),
   });
-  const legacy = f.enroll("legacy-after-group", false);
+  const other = f.enroll("after-group", false);
   assert.throws(
     () =>
-      f.registry.bind(f.admin, {
-        request_id: "quota-legacy",
-        agent_id: legacy.agent_id,
-        expected_epoch: legacy.epoch,
+      f.registry.createBoundGroup(f.admin, {
+        request_id: "quota-other",
+        agent_id: other.agent_id,
+        expected_epoch: other.epoch,
         principal: principal("b"),
       }),
     code("registry_capacity_exceeded"),
@@ -583,8 +678,8 @@ test("authorization audit storage failure denies delivery and leaves no receipt"
     () => f.hab.submit(f.select(f.first), input),
     code("registry_unavailable"),
   );
-  assert.equal(f.hab.poll(f.contexts.b), null);
   f.registryRaw.exec("DROP TRIGGER reject_group_audit;");
+  assert.equal(f.hab.poll(f.contexts.b), null);
   assert.equal(
     f.hab.submit(f.select(f.first), input).sender_id,
     f.first.agent_id,
@@ -634,7 +729,7 @@ test("group authorization records keep the newest entries instead of exhausting 
 });
 
 test("createBoundGroup needs group_bind and group_member as well as group_create, and a refusal leaves nothing", async (t) => {
-  const f = await fixture(t, { authentication_groups: true });
+  const f = await fixture(t);
   const agent = f.enroll("research", false);
   const count = (table) =>
     f.registryRaw.prepare(`SELECT count(*) n FROM ${table}`).get().n;

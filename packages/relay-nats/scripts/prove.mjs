@@ -98,13 +98,11 @@ run("root-types", ["node_modules/typescript/bin/tsc", "--noEmit"]);
 run("lint", [
   "node_modules/eslint/bin/eslint.js",
   "src",
-  "db",
   "test",
   "packages/relay-nats/src",
   "packages/relay-nats/test",
   "packages/relay-nats/scripts",
 ]);
-run("build", ["scripts/build.ts"]);
 run("relay-regression", [
   "--test",
   "--test-reporter=tap",

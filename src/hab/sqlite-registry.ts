@@ -32,14 +32,16 @@ import type {
   AgentOperation,
   AgentRecord,
   AdminOperation,
-  BindingRecord,
   ProductRecord,
   RegistryAuthority,
   IndividualPrincipal,
 } from "./registry.ts";
 
 export interface RegistryOptions {
-  /** Explicit opt-in to the additive group schema; never inferred from claims. */
+  /**
+   * Deprecated and ignored. Every connection authenticates through an authentication
+   * group, so the group schema is always created; older configs may still carry it.
+   */
   authentication_groups?: boolean;
   /** Explicit v2→v3 opt-in. Old names stay reserved; no forwarding aliases. */
   agent_rename?: boolean;
@@ -62,30 +64,24 @@ const bounded = z.number().int().min(1).max(1000000);
  * Every RegistryOptions field except `fingerprint_key`. The constructor and the
  * host config both parse with it, so a config the host accepts opens the Registry.
  */
-export const registryOptionsSchema = z
-  .strictObject({
-    authentication_groups: z.boolean().optional(),
-    agent_rename: z.boolean().optional(),
-    discovery: habDiscoveryPolicySchema.optional(),
-    max_products: bounded,
-    max_agents: bounded,
-    max_bindings: bounded,
-    max_requests: bounded,
-    max_blocks: bounded,
-    max_audit_records: bounded,
-    max_context_ms: bounded.max(300000),
-    busy_timeout_ms: bounded.max(1000),
-    allowed_kinds: z
-      .array(id)
-      .min(1)
-      .max(64)
-      .refine((kinds) => new Set(kinds).size === kinds.length),
-  })
-  .refine(
-    (options) =>
-      options.agent_rename !== true || options.authentication_groups === true,
-    { path: ["agent_rename"] },
-  );
+export const registryOptionsSchema = z.strictObject({
+  authentication_groups: z.boolean().optional(),
+  agent_rename: z.boolean().optional(),
+  discovery: habDiscoveryPolicySchema.optional(),
+  max_products: bounded,
+  max_agents: bounded,
+  max_bindings: bounded,
+  max_requests: bounded,
+  max_blocks: bounded,
+  max_audit_records: bounded,
+  max_context_ms: bounded.max(300000),
+  busy_timeout_ms: bounded.max(1000),
+  allowed_kinds: z
+    .array(id)
+    .min(1)
+    .max(64)
+    .refine((kinds) => new Set(kinds).size === kinds.length),
+});
 const slug = z.string().refine((value) => {
   try {
     habSlug(value);
@@ -124,12 +120,6 @@ const renameInput = z.strictObject({
   expected_epoch: epoch,
   expected_address: z.string().max(101).regex(new RegExp(HAB_ADDRESS_PATTERN)),
   bot_name: slug,
-});
-const bindingInput = z.strictObject({
-  request_id: id,
-  agent_id: id,
-  expected_epoch: epoch,
-  principal: principalSchema,
 });
 const revokeInput = z.strictObject({
   request_id: id,
@@ -220,24 +210,18 @@ type AgentRow = Omit<AgentRecord, "operations" | "normalization_version"> & {
   operations: string;
   normalization_version: number;
 };
-type BindingRow = Omit<BindingRecord, "agent_epoch"> & { fingerprint: string };
 export interface RegistryOverview {
-  authentication_groups: boolean;
   stopped: boolean;
   products: ProductRecord[];
-  agents: (AgentRecord & {
-    active_binding_ids: string[];
-    group_id: string | null;
-  })[];
+  agents: (AgentRecord & { group_id: string | null })[];
   groups: (AuthenticationGroup & {
     active_binding_ids: string[];
     member_ids: string[];
   })[];
 }
 export interface PrincipalReservation {
-  kind: "agent" | "group";
   binding_id: string;
-  owner_id: string;
+  group_id: string;
   state: "active" | "revoked";
 }
 
@@ -246,7 +230,6 @@ export class SQLiteHabRegistry {
   readonly #options: RegistryOptions;
   readonly #authority: RegistryAuthority;
   #ready = false;
-  #groupsPresent = false;
   #namesPresent = false;
   #schemaVersion: number | undefined;
   readonly #selections = new WeakMap<
@@ -426,7 +409,6 @@ export class SQLiteHabRegistry {
   }
   migrate(): void {
     this.#ready = false;
-    this.#groupsPresent = false;
     this.#namesPresent = false;
     this.#schemaVersion = undefined;
     const version = this.#tx(() => {
@@ -460,21 +442,17 @@ export class SQLiteHabRegistry {
         .get();
       if (Number(rows[0].version) >= 2 !== Boolean(groupMeta))
         throw new RegistryError("unsupported_registry_schema");
-      if (!groupMeta && this.#options.authentication_groups === true) {
+      if (!groupMeta) {
         this.#db.exec(AUTH_GROUP_SCHEMA);
         this.#db
           .prepare("UPDATE hab_registry_meta SET version=2 WHERE id=1")
           .run();
         groupMeta = { found: 1 };
       }
-      if (groupMeta) {
-        const meta = this.#db
-          .prepare("SELECT * FROM hab_auth_group_meta")
-          .all();
-        if (meta.length !== 1 || meta[0].id !== 1 || meta[0].version !== 1)
-          throw new RegistryError("unsupported_registry_group_schema");
-        this.#groupsPresent = true;
-      }
+      const meta = this.#db.prepare("SELECT * FROM hab_auth_group_meta").all();
+      if (meta.length !== 1 || meta[0].id !== 1 || meta[0].version !== 1)
+        throw new RegistryError("unsupported_registry_group_schema");
+      this.#convertIndividualBindings();
       const namesMeta = this.#db
         .prepare("SELECT 1 FROM sqlite_master WHERE name='hab_agent_name_meta'")
         .get();
@@ -505,10 +483,77 @@ export class SQLiteHabRegistry {
             throw new RegistryError("unsupported_registry_name_schema");
         this.#namesPresent = true;
       }
-      return this.#namesPresent ? 3 : groupMeta ? 2 : 1;
+      return this.#namesPresent ? 3 : 2;
     });
     this.#schemaVersion = version;
     this.#ready = true;
+  }
+  /**
+   * Earlier builds could bind a connection to one address directly. Each such address
+   * becomes the only member of its own group, under the same binding IDs, fingerprints
+   * and timestamps, so a credential authenticates the same address as before. The group
+   * grants every operation and the address keeps its own grants, so the effective
+   * rights (their intersection) do not change. The old rows stay as revoked history.
+   */
+  #convertIndividualBindings() {
+    const rows = this.#db
+      .prepare(
+        "SELECT b.binding_id,b.agent_id,b.fingerprint,b.state,b.created_at,b.revoked_at FROM hab_bindings b WHERE NOT EXISTS (SELECT 1 FROM hab_auth_group_bindings g WHERE g.binding_id=b.binding_id) ORDER BY b.agent_id,b.created_at,b.binding_id",
+      )
+      .all();
+    if (!rows.length) return;
+    const now = this.#iso();
+    const all = JSON.stringify([...relayOperations].sort());
+    for (const agentId of new Set(rows.map((row) => String(row.agent_id)))) {
+      const own = rows.filter((row) => row.agent_id === agentId);
+      const agent = this.#db
+        .prepare("SELECT state FROM hab_agents WHERE agent_id=?")
+        .get(agentId);
+      if (!agent) throw new RegistryError("unsupported_registry_schema");
+      const retired = agent.state === "retired";
+      const live = !retired && own.some((row) => row.state === "active");
+      let groupId = this.#db
+        .prepare("SELECT group_id FROM hab_auth_group_members WHERE agent_id=?")
+        .get(agentId)?.group_id as string | undefined;
+      if (groupId === undefined) {
+        groupId = randomUUID();
+        this.#db
+          .prepare("INSERT INTO hab_auth_groups VALUES(?,?,1,?,?)")
+          .run(
+            groupId,
+            retired ? "retired" : live ? "active" : "stopped",
+            live ? all : "[]",
+            now,
+          );
+        this.#db
+          .prepare("INSERT INTO hab_auth_group_members VALUES(?,?,?)")
+          .run(agentId, groupId, now);
+      } else if (live)
+        // Adding a member always refused an address with a live individual binding.
+        throw new RegistryError("unsupported_registry_schema");
+      for (const row of own) {
+        const active = live && row.state === "active";
+        this.#db
+          .prepare("INSERT INTO hab_auth_group_bindings VALUES(?,?,?,?,?,?)")
+          .run(
+            String(row.binding_id),
+            groupId,
+            String(row.fingerprint),
+            active ? "active" : "revoked",
+            String(row.created_at),
+            active ? null : ((row.revoked_at as string | null) ?? now),
+          );
+      }
+      this.#db
+        .prepare(
+          "UPDATE hab_bindings SET state='revoked',revoked_at=? WHERE agent_id=? AND state='active'",
+        )
+        .run(now, agentId);
+      if (!retired)
+        this.#db
+          .prepare("UPDATE hab_agents SET epoch=epoch+1 WHERE agent_id=?")
+          .run(agentId);
+    }
   }
   #admin(context: unknown, op: AdminOperation): string {
     let decision;
@@ -779,28 +824,6 @@ export class SQLiteHabRegistry {
       return this.#agent(agentId);
     });
   }
-  #binding(bindingId: string): BindingRecord {
-    const row = this.#db
-      .prepare("SELECT * FROM hab_bindings WHERE binding_id=?")
-      .get(bindingId) as BindingRow | undefined;
-    if (!row) throw new RegistryError("registry_not_found");
-    return {
-      binding_id: row.binding_id,
-      agent_id: row.agent_id,
-      state: row.state,
-      created_at: row.created_at,
-      revoked_at: row.revoked_at,
-      agent_epoch: this.#agent(row.agent_id).epoch,
-    };
-  }
-  inspectBinding(context: unknown, bindingId: string): BindingRecord {
-    parse(id, bindingId);
-    this.#assertReady();
-    return this.#tx(() => {
-      this.#admin(context, "inspect");
-      return this.#binding(bindingId);
-    });
-  }
   /** A comparison digest, not a credential or a substitute for fresh verification. */
   inspectConnection(
     context: unknown,
@@ -808,114 +831,11 @@ export class SQLiteHabRegistry {
   ): { connection_fingerprint: string } {
     this.#assertReady();
     return this.#tx(() => {
-      this.#admin(context, "bind");
+      this.#admin(context, "group_bind");
       return {
         connection_fingerprint: this.#principalHash(
           this.#verified(individualContext).principal,
         ),
-      };
-    });
-  }
-  /** Management flow supplies an opaque host context, never pasted principal claims. */
-  bindVerified(
-    context: unknown,
-    value: unknown,
-    individualContext: unknown,
-  ): BindingRecord {
-    const input = parse(
-      z.strictObject({
-        request_id: id,
-        agent_id: id,
-        expected_epoch: epoch,
-        connection_fingerprint: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
-      }),
-      value,
-    );
-    this.#assertReady();
-    return this.#tx(() => {
-      this.#admin(context, "bind");
-      const individual = this.#verified(individualContext);
-      if (
-        this.#principalHash(individual.principal) !==
-        input.connection_fingerprint
-      )
-        throw new RegistryError("registry_connection_changed");
-      // Same canonical request as the existing trusted-host bind port.
-      const prepared = {
-        request_id: input.request_id,
-        agent_id: input.agent_id,
-        expected_epoch: input.expected_epoch,
-        principal: individual.principal,
-      };
-      return this.#mutateLocked(context, "bind", prepared, () =>
-        this.#createBinding(prepared),
-      );
-    });
-  }
-  bind(context: unknown, value: unknown): BindingRecord {
-    const input = parse(bindingInput, value);
-    return this.#mutate(context, "bind", input, () =>
-      this.#createBinding(input),
-    );
-  }
-  #createBinding(input: z.infer<typeof bindingInput>): {
-    result: BindingRecord;
-    object_id: string;
-  } {
-    this.#expected(input.agent_id, input.expected_epoch);
-    const fingerprint = this.#principalHash(input.principal);
-    if (
-      this.#groupsPresent &&
-      (this.#db
-        .prepare("SELECT 1 FROM hab_auth_group_bindings WHERE fingerprint=?")
-        .get(fingerprint) ||
-        this.#db
-          .prepare("SELECT 1 FROM hab_auth_group_members WHERE agent_id=?")
-          .get(input.agent_id))
-    )
-      throw new RegistryError("registry_binding_reserved");
-    if (
-      this.#db
-        .prepare("SELECT 1 FROM hab_bindings WHERE fingerprint=?")
-        .get(fingerprint)
-    )
-      throw new RegistryError("registry_binding_reserved");
-    this.#bindingCapacity();
-    const bindingId = randomUUID();
-    this.#db
-      .prepare("INSERT INTO hab_bindings VALUES(?,?,?,'active',?,NULL)")
-      .run(bindingId, input.agent_id, fingerprint, this.#iso());
-    this.#bump(input.agent_id);
-    return { result: this.#binding(bindingId), object_id: bindingId };
-  }
-  revoke(context: unknown, value: unknown): BindingRecord {
-    const input = parse(revokeInput, value);
-    return this.#mutate(context, "revoke", input, () => {
-      const binding = this.#binding(input.binding_id);
-      this.#expected(binding.agent_id, input.expected_epoch);
-      if (binding.state === "revoked")
-        throw new RegistryError("registry_binding_revoked");
-      this.#db
-        .prepare(
-          "UPDATE hab_bindings SET state='revoked',revoked_at=? WHERE binding_id=?",
-        )
-        .run(this.#iso(), input.binding_id);
-      this.#bump(binding.agent_id);
-      if (
-        !this.#db
-          .prepare(
-            "SELECT 1 FROM hab_bindings WHERE agent_id=? AND state='active'",
-          )
-          .get(binding.agent_id)
-      )
-        this.#db
-          .prepare(
-            "UPDATE hab_agents SET state='stopped',operations='[]' WHERE agent_id=?",
-          )
-          .run(binding.agent_id);
-      return {
-        result: this.#binding(input.binding_id),
-        object_id: input.binding_id,
       };
     });
   }
@@ -929,26 +849,11 @@ export class SQLiteHabRegistry {
         input.state === "active" &&
         !this.#db
           .prepare(
-            "SELECT 1 FROM hab_bindings WHERE agent_id=? AND state='active'",
+            "SELECT 1 FROM hab_auth_group_members m JOIN hab_auth_group_bindings b USING(group_id) JOIN hab_auth_groups g USING(group_id) WHERE m.agent_id=? AND b.state='active' AND g.state!='retired'",
           )
-          .get(input.agent_id) &&
-        !(
-          this.#options.authentication_groups === true &&
-          this.#groupsPresent &&
-          this.#db
-            .prepare(
-              "SELECT 1 FROM hab_auth_group_members m JOIN hab_auth_group_bindings b USING(group_id) JOIN hab_auth_groups g USING(group_id) WHERE m.agent_id=? AND b.state='active' AND g.state!='retired'",
-            )
-            .get(input.agent_id)
-        )
+          .get(input.agent_id)
       )
         throw new RegistryError("registry_binding_required");
-      if (input.state === "retired")
-        this.#db
-          .prepare(
-            "UPDATE hab_bindings SET state='revoked',revoked_at=? WHERE agent_id=? AND state='active'",
-          )
-          .run(this.#iso(), input.agent_id);
       this.#db
         .prepare(
           "UPDATE hab_agents SET state=?,operations=?,epoch=epoch+1 WHERE agent_id=?",
@@ -1025,28 +930,20 @@ export class SQLiteHabRegistry {
   #peer(agentId: string): AgentRecord {
     const agent = this.#agent(agentId);
     if (agent.state !== "active") throw new MessagingError("forbidden");
-    if (this.#groupsPresent) {
-      const member = this.#db
-        .prepare("SELECT group_id FROM hab_auth_group_members WHERE agent_id=?")
-        .get(agentId);
-      if (
-        member &&
-        (this.#options.authentication_groups !== true ||
-          this.#group(String(member.group_id)).state !== "active" ||
-          !this.#db
-            .prepare(
-              "SELECT 1 FROM hab_auth_group_bindings WHERE group_id=? AND state='active'",
-            )
-            .get(member.group_id))
-      )
-        throw new MessagingError("forbidden");
-    }
+    const member = this.#db
+      .prepare("SELECT group_id FROM hab_auth_group_members WHERE agent_id=?")
+      .get(agentId);
+    if (
+      !member ||
+      this.#group(String(member.group_id)).state !== "active" ||
+      !this.#db
+        .prepare(
+          "SELECT 1 FROM hab_auth_group_bindings WHERE group_id=? AND state='active'",
+        )
+        .get(member.group_id)
+    )
+      throw new MessagingError("forbidden");
     return agent;
-  }
-  #requireGroups() {
-    this.#assertReady();
-    if (this.#options.authentication_groups !== true || !this.#groupsPresent)
-      throw new RegistryError("registry_groups_disabled");
   }
   #group(groupId: string): AuthenticationGroup {
     const row = this.#db
@@ -1079,22 +976,11 @@ export class SQLiteHabRegistry {
       .run(groupId);
   }
   #bindingCapacity() {
-    const legacy = Number(
-      this.#db.prepare("SELECT count(*) n FROM hab_bindings").get()!.n,
-    );
-    const groups = this.#groupsPresent
-      ? Number(
-          this.#db
-            .prepare("SELECT count(*) n FROM hab_auth_group_bindings")
-            .get()!.n,
-        )
-      : 0;
-    if (legacy + groups >= this.#options.max_bindings)
-      throw new RegistryError("registry_capacity_exceeded");
+    this.#capacity("hab_auth_group_bindings", this.#options.max_bindings);
   }
   createGroup(context: unknown, value: unknown): AuthenticationGroup {
     const input = parse(z.strictObject({ request_id: id }), value);
-    this.#requireGroups();
+    this.#assertReady();
     return this.#mutate(context, "group_create", input, () => {
       const groupId = this.#insertGroup();
       return { result: this.#group(groupId), object_id: groupId };
@@ -1117,40 +1003,85 @@ export class SQLiteHabRegistry {
    */
   createBoundGroup(context: unknown, value: unknown) {
     const input = parse(boundGroupInput, value);
-    this.#requireGroups();
+    this.#assertReady();
+    return this.#tx(() => this.#createBoundGroupLocked(context, input));
+  }
+  /**
+   * Management flow variant: the host supplies an opaque verified connection context,
+   * never pasted principal claims, and the digest must still match it.
+   */
+  createBoundGroupVerified(
+    context: unknown,
+    value: unknown,
+    connectionContext: unknown,
+  ) {
+    const input = parse(
+      z.strictObject({
+        request_id: id,
+        agent_id: id,
+        expected_epoch: epoch,
+        connection_fingerprint: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
+      }),
+      value,
+    );
     this.#assertReady();
     return this.#tx(() => {
-      this.#admin(context, "group_bind");
-      this.#admin(context, "group_member");
-      return this.#mutateLocked(context, "group_create", input, () => {
-        this.#expected(input.agent_id, input.expected_epoch);
-        const groupId = this.#insertGroup();
-        const binding = this.#createGroupBinding({
-          request_id: input.request_id,
-          group_id: groupId,
-          expected_epoch: this.#group(groupId).epoch,
-          principal: input.principal,
-        }).result;
-        const member = this.#addMember({
-          request_id: input.request_id,
-          group_id: groupId,
-          expected_group_epoch: this.#group(groupId).epoch,
-          agent_id: input.agent_id,
-          expected_epoch: input.expected_epoch,
-        });
-        return {
-          result: { binding_id: binding.binding_id, ...member },
-          object_id: groupId,
-        };
+      this.#admin(context, "group_create");
+      const verified = this.#verified(connectionContext);
+      if (
+        this.#principalHash(verified.principal) !== input.connection_fingerprint
+      )
+        throw new RegistryError("registry_connection_changed");
+      return this.#createBoundGroupLocked(context, {
+        request_id: input.request_id,
+        agent_id: input.agent_id,
+        expected_epoch: input.expected_epoch,
+        principal: verified.principal,
       });
+    });
+  }
+  #createBoundGroupLocked(
+    context: unknown,
+    input: z.infer<typeof boundGroupInput>,
+  ) {
+    this.#admin(context, "group_bind");
+    this.#admin(context, "group_member");
+    return this.#mutateLocked(context, "group_create", input, () => {
+      this.#expected(input.agent_id, input.expected_epoch);
+      const groupId = this.#insertGroup();
+      const binding = this.#createGroupBinding({
+        request_id: input.request_id,
+        group_id: groupId,
+        expected_epoch: this.#group(groupId).epoch,
+        principal: input.principal,
+      }).result;
+      const member = this.#addMember({
+        request_id: input.request_id,
+        group_id: groupId,
+        expected_group_epoch: this.#group(groupId).epoch,
+        agent_id: input.agent_id,
+        expected_epoch: input.expected_epoch,
+      });
+      return {
+        result: { binding_id: binding.binding_id, ...member },
+        object_id: groupId,
+      };
     });
   }
   inspectGroup(context: unknown, groupId: string): AuthenticationGroup {
     parse(id, groupId);
-    this.#requireGroups();
+    this.#assertReady();
     return this.#tx(() => {
       this.#admin(context, "inspect");
       return this.#group(groupId);
+    });
+  }
+  inspectGroupBinding(context: unknown, bindingId: string): GroupBinding {
+    parse(id, bindingId);
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "inspect");
+      return this.#groupBinding(bindingId);
     });
   }
   #groupBinding(bindingId: string): GroupBinding {
@@ -1177,9 +1108,6 @@ export class SQLiteHabRegistry {
     const fingerprint = this.#principalHash(input.principal);
     if (
       this.#db
-        .prepare("SELECT 1 FROM hab_bindings WHERE fingerprint=?")
-        .get(fingerprint) ||
-      this.#db
         .prepare("SELECT 1 FROM hab_auth_group_bindings WHERE fingerprint=?")
         .get(fingerprint)
     )
@@ -1197,7 +1125,7 @@ export class SQLiteHabRegistry {
   /** Trusted administration port; never exposed as a delivery MCP tool. */
   bindGroup(context: unknown, value: unknown): GroupBinding {
     const input = parse(groupBindingInput, value);
-    this.#requireGroups();
+    this.#assertReady();
     return this.#mutate(context, "group_bind", input, () =>
       this.#createGroupBinding(input),
     );
@@ -1216,7 +1144,7 @@ export class SQLiteHabRegistry {
       }),
       value,
     );
-    this.#requireGroups();
+    this.#assertReady();
     return this.#tx(() => {
       this.#admin(context, "group_bind");
       const verified = this.#verified(connectionContext);
@@ -1237,7 +1165,7 @@ export class SQLiteHabRegistry {
   }
   addGroupMember(context: unknown, value: unknown) {
     const input = parse(groupMemberInput, value);
-    this.#requireGroups();
+    this.#assertReady();
     return this.#mutate(context, "group_member", input, () => ({
       result: this.#addMember(input),
       object_id: input.agent_id,
@@ -1249,11 +1177,6 @@ export class SQLiteHabRegistry {
     if (
       this.#db
         .prepare("SELECT 1 FROM hab_auth_group_members WHERE agent_id=?")
-        .get(input.agent_id) ||
-      this.#db
-        .prepare(
-          "SELECT 1 FROM hab_bindings WHERE agent_id=? AND state='active'",
-        )
         .get(input.agent_id)
     )
       throw new RegistryError("registry_binding_reserved");
@@ -1284,7 +1207,7 @@ export class SQLiteHabRegistry {
   }
   setGroupAccess(context: unknown, value: unknown): AuthenticationGroup {
     const input = parse(groupAccessInput, value);
-    this.#requireGroups();
+    this.#assertReady();
     return this.#mutate(context, "group_access", input, () => {
       this.#expectedGroup(input.group_id, input.expected_epoch);
       if (input.state !== "active" && input.operations.length)
@@ -1315,7 +1238,7 @@ export class SQLiteHabRegistry {
   }
   revokeGroupBinding(context: unknown, value: unknown): GroupBinding {
     const input = parse(revokeInput, value);
-    this.#requireGroups();
+    this.#assertReady();
     return this.#mutate(context, "group_revoke", input, () => {
       const binding = this.#groupBinding(input.binding_id);
       this.#expectedGroup(binding.group_id, input.expected_epoch);
@@ -1374,7 +1297,7 @@ export class SQLiteHabRegistry {
       }),
       value,
     );
-    this.#requireGroups();
+    this.#assertReady();
     return this.#tx(() => {
       this.#admin(context, "inspect");
       this.#group(input.group_id);
@@ -1454,55 +1377,36 @@ export class SQLiteHabRegistry {
         throw new MessagingError("forbidden");
       }
       const expiry = Date.parse(individual.expires_at);
-      const binding = this.#db
-        .prepare(
-          "SELECT * FROM hab_bindings WHERE fingerprint=? AND state='active'",
-        )
-        .get(this.#principalHash(individual.principal)) as
-        BindingRow | undefined;
       const selected =
         context && typeof context === "object"
           ? this.#selections.get(context)
           : undefined;
-      let group: AuthenticationGroup | undefined;
-      let local: AgentRecord;
-      if (binding) {
-        local = this.#peer(binding.agent_id);
-        if (selected && local.address !== selected.address)
-          throw new MessagingError("forbidden");
-      } else {
-        if (
-          this.#options.authentication_groups !== true ||
-          !this.#groupsPresent
+      const shared = this.#db
+        .prepare(
+          "SELECT group_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
         )
-          throw new MessagingError("forbidden");
-        const shared = this.#db
-          .prepare(
-            "SELECT group_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
-          )
-          .get(this.#principalHash(individual.principal));
-        if (!shared) throw new MessagingError("forbidden");
-        group = this.#group(String(shared.group_id));
-        if (
-          group.state !== "active" ||
-          !group.operations.includes(operation) ||
-          (operation === "resolve" && !group.operations.includes("submit"))
-        )
-          throw new MessagingError("forbidden");
-        const members = selected
-          ? this.#db
-              .prepare(
-                `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.address=?`,
-              )
-              .all(group.group_id, selected.address)
-          : this.#db
-              .prepare(
-                `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.state='active' LIMIT 2`,
-              )
-              .all(group.group_id);
-        if (members.length !== 1) throw new MessagingError("forbidden");
-        local = this.#peer(String(members[0].agent_id));
-      }
+        .get(this.#principalHash(individual.principal));
+      if (!shared) throw new MessagingError("forbidden");
+      const group = this.#group(String(shared.group_id));
+      if (
+        group.state !== "active" ||
+        !group.operations.includes(operation) ||
+        (operation === "resolve" && !group.operations.includes("submit"))
+      )
+        throw new MessagingError("forbidden");
+      const members = selected
+        ? this.#db
+            .prepare(
+              `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.address=?`,
+            )
+            .all(group.group_id, selected.address)
+        : this.#db
+            .prepare(
+              `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.state='active' LIMIT 2`,
+            )
+            .all(group.group_id);
+      if (members.length !== 1) throw new MessagingError("forbidden");
+      const local = this.#peer(String(members[0].agent_id));
       if (
         selected?.expected_agent_id !== undefined &&
         selected.expected_agent_id !== local.agent_id
@@ -1514,7 +1418,7 @@ export class SQLiteHabRegistry {
         (operation === "resolve" && !local.operations.includes("submit"))
       )
         throw new MessagingError("forbidden");
-      if (group) {
+      {
         // Bounded retention, not a lifetime quota: keep the newest records so routine
         // polling cannot exhaust the table and permanently deny every group member.
         this.#db
@@ -1604,32 +1508,6 @@ export class SQLiteHabRegistry {
       throw new MessagingError("forbidden");
     }
     const fingerprint = this.#principalHash(verified.principal);
-    const binding = this.#db
-      .prepare(
-        "SELECT agent_id,binding_id FROM hab_bindings WHERE fingerprint=? AND state='active'",
-      )
-      .get(fingerprint);
-    if (binding) {
-      const agent = this.#peer(String(binding.agent_id));
-      if (
-        !agent.operations.includes("resolve") ||
-        !agent.operations.includes("submit")
-      )
-        throw new MessagingError("forbidden");
-      return {
-        root,
-        fingerprint,
-        selected,
-        kind: "individual_connection" as const,
-        scope_id: agent.agent_id,
-        binding_id: String(binding.binding_id),
-        group: undefined,
-        agent,
-        operations: agent.operations,
-      };
-    }
-    if (!this.#groupsPresent || this.#options.authentication_groups !== true)
-      throw new MessagingError("forbidden");
     const bindingGroup = this.#db
       .prepare(
         "SELECT group_id,binding_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
@@ -1651,7 +1529,6 @@ export class SQLiteHabRegistry {
       scope_id: group.group_id,
       binding_id: String(bindingGroup.binding_id),
       group,
-      agent: undefined,
       operations: group.operations,
     };
   }
@@ -1669,7 +1546,7 @@ export class SQLiteHabRegistry {
         scope.scope_id,
         scope.fingerprint,
         scope.binding_id,
-        scope.group?.epoch ?? scope.agent!.epoch,
+        scope.group.epoch,
       ]);
       const base = {
         version: 1 as const,
@@ -1678,13 +1555,11 @@ export class SQLiteHabRegistry {
         snapshot,
       };
       const owns = (agentId: string) =>
-        scope.agent
-          ? scope.agent.agent_id === agentId
-          : !!this.#db
-              .prepare(
-                "SELECT 1 FROM hab_auth_group_members WHERE group_id=? AND agent_id=?",
-              )
-              .get(scope.scope_id, agentId);
+        !!this.#db
+          .prepare(
+            "SELECT 1 FROM hab_auth_group_members WHERE group_id=? AND agent_id=?",
+          )
+          .get(scope.scope_id, agentId);
       // The namespace policy reveals no names or IDs outside this connection's directory.
       if (input.action === "check_address") {
         const candidate = parseHabAddress(input.address);
@@ -1791,9 +1666,8 @@ export class SQLiteHabRegistry {
           observed_at: null,
         },
       });
-      const membersSql = scope.agent
-        ? "SELECT agent_id FROM hab_agents WHERE agent_id=?"
-        : "SELECT agent_id FROM hab_auth_group_members WHERE group_id=?";
+      const membersSql =
+        "SELECT agent_id FROM hab_auth_group_members WHERE group_id=?";
       if (input.action === "whoami") {
         const requestedAddress = input.as_address ?? scope.selected?.address;
         const expected =
@@ -1871,8 +1745,8 @@ export class SQLiteHabRegistry {
       }
       const rows = this.#db
         .prepare(
-          `SELECT a.agent_id FROM ${scope.agent ? `${this.#agentTable()} a` : `hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id)`}
-        WHERE ${scope.agent ? "a.agent_id" : "m.group_id"}=? AND a.agent_id>? AND substr(a.address,1,?)=? AND (? IS NULL OR a.state=?) ORDER BY a.agent_id LIMIT ?`,
+          `SELECT a.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id)
+        WHERE m.group_id=? AND a.agent_id>? AND substr(a.address,1,?)=? AND (? IS NULL OR a.state=?) ORDER BY a.agent_id LIMIT ?`,
         )
         .all(
           scope.scope_id,
@@ -1915,52 +1789,40 @@ export class SQLiteHabRegistry {
         )
         .all()
         .map((row) => String(row.agent_id));
-      const activeBindings = this.#db.prepare(
-        "SELECT binding_id FROM hab_bindings WHERE agent_id=? AND state='active' ORDER BY binding_id",
+      const memberOf = this.#db.prepare(
+        "SELECT group_id FROM hab_auth_group_members WHERE agent_id=?",
       );
-      const memberOf = this.#groupsPresent
-        ? this.#db.prepare(
-            "SELECT group_id FROM hab_auth_group_members WHERE agent_id=?",
-          )
-        : undefined;
       const agents = agentIds.map((agentId) => {
-        const agent = this.#agent(agentId);
-        const group = memberOf?.get(agentId);
+        const group = memberOf.get(agentId);
         return {
-          ...agent,
-          active_binding_ids: activeBindings
-            .all(agentId)
-            .map((row) => String(row.binding_id)),
+          ...this.#agent(agentId),
           group_id: group ? String(group.group_id) : null,
         };
       });
-      const groups = this.#groupsPresent
-        ? this.#db
-            .prepare(
-              "SELECT group_id FROM hab_auth_groups ORDER BY created_at,group_id LIMIT 1000",
-            )
-            .all()
-            .map((row) => {
-              const group = this.#group(String(row.group_id));
-              return {
-                ...group,
-                active_binding_ids: this.#db
-                  .prepare(
-                    "SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=? AND state='active' ORDER BY binding_id",
-                  )
-                  .all(group.group_id)
-                  .map((value) => String(value.binding_id)),
-                member_ids: this.#db
-                  .prepare(
-                    "SELECT agent_id FROM hab_auth_group_members WHERE group_id=? ORDER BY agent_id",
-                  )
-                  .all(group.group_id)
-                  .map((value) => String(value.agent_id)),
-              };
-            })
-        : [];
+      const groups = this.#db
+        .prepare(
+          "SELECT group_id FROM hab_auth_groups ORDER BY created_at,group_id LIMIT 1000",
+        )
+        .all()
+        .map((row) => {
+          const group = this.#group(String(row.group_id));
+          return {
+            ...group,
+            active_binding_ids: this.#db
+              .prepare(
+                "SELECT binding_id FROM hab_auth_group_bindings WHERE group_id=? AND state='active' ORDER BY binding_id",
+              )
+              .all(group.group_id)
+              .map((value) => String(value.binding_id)),
+            member_ids: this.#db
+              .prepare(
+                "SELECT agent_id FROM hab_auth_group_members WHERE group_id=? ORDER BY agent_id",
+              )
+              .all(group.group_id)
+              .map((value) => String(value.agent_id)),
+          };
+        });
       return {
-        authentication_groups: this.#groupsPresent,
         stopped: this.#stopRecord().stopped === 1,
         products,
         agents,
@@ -1977,30 +1839,15 @@ export class SQLiteHabRegistry {
     this.#assertReady();
     return this.#tx(() => {
       this.#admin(context, "inspect");
-      const legacy = this.#db
+      const shared = this.#db
         .prepare(
-          "SELECT binding_id,agent_id,state FROM hab_bindings WHERE fingerprint=?",
+          "SELECT binding_id,group_id,state FROM hab_auth_group_bindings WHERE fingerprint=?",
         )
         .get(fingerprint);
-      if (legacy)
-        return {
-          kind: "agent" as const,
-          binding_id: String(legacy.binding_id),
-          owner_id: String(legacy.agent_id),
-          state: legacy.state as "active" | "revoked",
-        };
-      const shared = this.#groupsPresent
-        ? this.#db
-            .prepare(
-              "SELECT binding_id,group_id,state FROM hab_auth_group_bindings WHERE fingerprint=?",
-            )
-            .get(fingerprint)
-        : undefined;
       return shared
         ? {
-            kind: "group" as const,
             binding_id: String(shared.binding_id),
-            owner_id: String(shared.group_id),
+            group_id: String(shared.group_id),
             state: shared.state as "active" | "revoked",
           }
         : null;

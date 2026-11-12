@@ -9,56 +9,34 @@
   "scripts": {
     "demo:hab-enrollment": "node scripts/hab-enrollment-demo.ts",
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
-    "test": "npm run build && npm run test:tools && node --test test/*.test.js",
+    "test": "npm run test:tools && node --test test/*.test.js",
     "check": "npm run typecheck",
-    "lint": "eslint src db test scripts/*.ts scripts/lib/*.ts scripts/build.mjs scripts/hab-relay.mjs scripts/hab-relay-admin.mjs scripts/hab-enrollment-demo.mjs scripts/install-ci-nats.mjs scripts/native-trial-preflight.mjs scripts/pilot-preflight.mjs scripts/hab-mvp-demo.mjs scripts/prove-generic-entrances.mjs scripts/lib/local-mvp.mjs scripts/delivery-lab.mjs scripts/lib/delivery-lab.mjs scripts/lib/nats-input.mjs scripts/lib/a2a-acceptance.mjs scripts/p7-lab.mjs scripts/relay-rollback-reconcile.mjs scripts/lib/p7*.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts docs/diagrams/*.ts docs/diagrams/*.mjs",
+    "lint": "eslint src test scripts/*.ts scripts/lib/*.ts scripts/*.mjs scripts/lib/*.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts docs/diagrams/*.ts docs/diagrams/*.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.diagrams.json",
-    "build": "node scripts/build.ts",
-    "schema:generate": "drizzle-kit generate",
     "demo:hab-mvp": "node scripts/hab-mvp-demo.mjs",
     "test:hab-mvp": "node --test test/local-mvp.test.js",
     "relay:local": "node scripts/hab-relay.ts",
     "relay:admin": "node scripts/hab-relay-admin.ts",
-    "test:communication-boundary": "node --test --test-reporter=tap test/common-mcp-boundary.test.js test/adapter-inbox-read.test.js test/receive-supervisor.test.js test/hab-mcp-resolve.test.js test/generic-jobs.test.js",
-    "test:a2a": "node --test test/a2a-adapter.test.js test/a2a-sdk-store.test.js",
-    "test:a2a-relay": "node --test test/a2a-hab-unit*.test.js test/a2a-relay-e2e.test.js test/a2a-submission-receipts.test.js test/a2a-host.test.js",
-    "proof:a2a-relay": "node scripts/prove-a2a-relay.mjs",
+    "test:communication-boundary": "node --test --test-reporter=tap test/common-mcp-boundary.test.js test/adapter-inbox-read.test.js test/receive-supervisor.test.js test/hab-mcp-resolve.test.js",
+    "test:a2a": "node --test test/a2a-sdk-store.test.js test/a2a-hab-unit.test.js test/a2a-host.test.js",
     "test:delivery-lab": "node scripts/delivery-lab.mjs",
-    "test:p7": "node scripts/p7-lab.mjs",
-    "proof:generic-entrances": "node scripts/prove-generic-entrances.mjs",
     "test:tools": "node --test test/tools/*.test.ts test/ci-nats/*.test.ts test/compatibility/native-trial-preflight.test.js"
   },
   "dependencies": {
     "@a2a-js/sdk": "1.3.0",
-    "@modelcontextprotocol/node": "2.1.1",
     "@modelcontextprotocol/sdk": "1.32.0",
     "@modelcontextprotocol/server": "2.3.1",
     "better-sqlite3": "13.0.3",
-    "drizzle-orm": "^0.45.3",
-    "ipaddr.js": "^2.5.0",
     "kysely": "0.29.7",
-    "standardwebhooks": "^1.1.1",
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261004.1",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "^26.6.4",
-    "drizzle-kit": "^0.31.11",
-    "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
-    "miniflare": "5.20261006.1-alpha",
     "prettier": "^3.9.9",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.0"
-  },
-  "overrides": {
-    "@esbuild-kit/core-utils": {
-      "esbuild": "$esbuild"
-    },
-    "miniflare": {
-      "undici": "7.30.1"
-    }
   },
   "packageManager": "npm@11.20.0"
 }

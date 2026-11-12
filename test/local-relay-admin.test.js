@@ -106,7 +106,10 @@ test("connect registers, binds and grants two addresses for a real roundtrip; re
   assert.deepEqual(codex.steps, [
     "product_registered",
     "address_enrolled",
+    "group_created",
     "connection_bound",
+    "group_member_added",
+    "group_access_granted",
     "address_access_granted",
   ]);
   const hermes = hostAdminConnect(f.configPath, {
@@ -182,7 +185,8 @@ test("disconnect revokes with current epochs, is rerunnable and needs no token m
       (p) => p.code === "credential_revoked" && p.subject === "conn-h",
     ),
   );
-  // A revoked descriptor stays reserved; a fresh connection id rebinds the address.
+  // A revoked descriptor stays reserved; a fresh connection id rebinds the address
+  // in its existing group.
   assert.throws(
     () =>
       hostAdminConnect(f.configPath, {
@@ -196,13 +200,13 @@ test("disconnect revokes with current epochs, is rerunnable and needs no token m
       address: "hermes@hermes.hab",
       connection_id: "conn-x",
     }).steps,
-    ["connection_bound", "address_access_granted"],
+    ["connection_bound", "group_access_granted", "address_access_granted"],
   );
   assert.equal((await f.call(tokens.x, "relay_poll")).delivery, null);
 });
 
 test("configured groups complete a durable reply roundtrip and revoke both connections", async (t) => {
-  const f = await started(t, { authentication_groups: true });
+  const f = await started(t);
   const participants = [
     ["sender@client-a.hab", "c"],
     ["receiver@client-b.hab", "h"],
@@ -371,13 +375,26 @@ test("connect rejects unknown, mismatched-audience and foreign-bound connections
     address: "codex@codex.hab",
     connection_id: "conn-c",
   });
+  // A connection already bound elsewhere joins that address's group instead.
+  const shared = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-c",
+  });
+  assert.deepEqual(shared.group_members.sort(), [
+    "codex@codex.hab",
+    "hermes@hermes.hab",
+  ]);
+  hostAdminConnect(f.configPath, {
+    address: "other@hermes.hab",
+    connection_id: "conn-h",
+  });
   assert.throws(
     () =>
       hostAdminConnect(f.configPath, {
         address: "hermes@hermes.hab",
-        connection_id: "conn-c",
+        connection_id: "conn-h",
       }),
-    { code: "credential_bound_elsewhere" },
+    { code: "address_in_other_group" },
   );
   f.credentials("http://localhost:1/mcp");
   assert.throws(
@@ -397,11 +414,7 @@ test("connect rejects unknown, mismatched-audience and foreign-bound connections
 
 test("admin binds OAuth mappings to a shared group without a local bearer copy", async (t) => {
   const oauth = await oauthFixture(true);
-  const f = await started(
-    t,
-    { authentication_groups: true },
-    oauth.getConfig(),
-  );
+  const f = await started(t, {}, oauth.getConfig());
   const connectionId = oauth.record.connection_id;
   const local = hostAdminConnect(f.configPath, {
     address: "receiver@local.hab",
@@ -424,7 +437,7 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
     first.address.address,
     second.address.address,
   ]);
-  assert.equal(remote.binding.kind, "group");
+  assert.equal(remote.binding.group_id, first.address.group_id);
   assert.ok(
     !status.problems.some((problem) => problem.subject === connectionId),
   );
@@ -603,7 +616,7 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
 test("admin refuses disabled, mismatched and ambiguous OAuth connection registration", async (t) => {
   const oauth = await oauthFixture(true);
   const original = oauth.getConfig();
-  const f = await started(t, { authentication_groups: true }, original);
+  const f = await started(t, {}, original);
   const connect = (connection_id = oauth.record.connection_id) =>
     hostAdminConnect(f.configPath, {
       address: "first@remote.hab",
@@ -631,7 +644,7 @@ test("admin refuses disabled, mismatched and ambiguous OAuth connection registra
 });
 
 test("group mode shares one connection between addresses; disconnect reports every member", async (t) => {
-  const f = await started(t, { authentication_groups: true });
+  const f = await started(t);
   const research = hostAdminConnect(f.configPath, {
     address: "research@hermes.hab",
     connection_id: "conn-h",
@@ -726,7 +739,7 @@ test("CLI prints JSON results and fixed refusal codes without secrets", async (t
 });
 
 test("admin status cannot implicitly upgrade a v2 registry for rename", async (t) => {
-  const f = await started(t, { authentication_groups: true });
+  const f = await started(t);
   f.config.registry.agent_rename = true;
   f.write("service.local.json", f.config);
   assert.throws(() => hostAdminStatus(f.configPath), {
@@ -747,7 +760,6 @@ test("admin status cannot implicitly upgrade a v2 registry for rename", async (t
 
 test("journaled admin rename CLI keeps the credential and exposes the current name through MCP", async (t) => {
   const f = await started(t, {
-    authentication_groups: true,
     agent_rename: true,
     discovery: { availability_namespaces: ["hermes"] },
   });
@@ -833,7 +845,7 @@ test("connect rejects rename-only flags before opening or changing a registry", 
 });
 
 test("reconnecting one group address does not revive a sibling the operator disconnected", async (t) => {
-  const f = await started(t, { authentication_groups: true });
+  const f = await started(t);
   hostAdminConnect(f.configPath, {
     address: "a@app.hab",
     connection_id: "conn-c",
@@ -887,7 +899,7 @@ test("reconnecting one group address does not revive a sibling the operator disc
 });
 
 test("a failed group connect leaves no orphan group and a retry converges", async (t) => {
-  const f = await started(t, { authentication_groups: true, max_bindings: 1 });
+  const f = await started(t, { max_bindings: 1 });
   hostAdminConnect(f.configPath, {
     address: "a@app.hab",
     connection_id: "conn-c",
@@ -929,10 +941,8 @@ test("CLI --operations with an empty list is rejected instead of granting every 
   assert.deepEqual(hostAdminStatus(f.configPath).addresses, []);
 });
 
-test("connect follows registry.authentication_groups, not the registry schema version", async (t) => {
-  const f = await started(t, { authentication_groups: true });
-  f.config.registry.authentication_groups = false;
-  f.write("service.local.json", f.config);
+test("a config that still turns authentication groups off connects through a group", async (t) => {
+  const f = await started(t, { authentication_groups: false });
   const connected = hostAdminConnect(f.configPath, {
     address: "a@app.hab",
     connection_id: "conn-c",
@@ -940,9 +950,38 @@ test("connect follows registry.authentication_groups, not the registry schema ve
   assert.deepEqual(connected.steps, [
     "product_registered",
     "address_enrolled",
+    "group_created",
     "connection_bound",
+    "group_member_added",
+    "group_access_granted",
     "address_access_granted",
   ]);
   assert.equal(connected.address.state, "active");
-  assert.equal(connected.address.group_id, null);
+  assert.notEqual(connected.address.group_id, null);
+});
+
+test("admin refuses a registry whose direct bindings the host has not yet moved into groups", async (t) => {
+  const f = await started(t);
+  const agent = hostAdminConnect(f.configPath, {
+    address: "a@app.hab",
+    connection_id: "conn-c",
+  }).address;
+  const raw = new DatabaseSync(join(f.config.directory, "registry.sqlite"));
+  try {
+    // An earlier build's direct binding, left behind when that build last ran.
+    raw
+      .prepare("INSERT INTO hab_bindings VALUES(?,?,?,'revoked',?,?)")
+      .run(
+        "earlier-build",
+        agent.agent_id,
+        "e".repeat(64),
+        "2026-01-01T00:00:00.000Z",
+        "2026-01-02T00:00:00.000Z",
+      );
+  } finally {
+    raw.close();
+  }
+  assert.throws(() => hostAdminStatus(f.configPath), {
+    code: "registry_upgrade_pending",
+  });
 });

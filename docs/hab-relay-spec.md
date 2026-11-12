@@ -134,7 +134,7 @@ lab@hermes.hab
 
 同一`agent_id`での管理者による改名は採用済み（2026-11-12 owner判断）で、明示opt-inのRegistry v3として提供する。製品名（`agent_name`）・ID・元の登録行を不変とし、名前台帳で現在名と旧名予約を分離する。旧名は同じIDに永久予約し、猶予期間（既定30日）だけ同じIDへ解決してから拒否する。配送はIDで行うため、受付済み・配送中・返信中のmessageは改名の影響を受けない。詳細と、アドレスを文字列で持つ箇所の扱いは[アドレス改名](agent-address-rename.md)を参照する。猶予期間の解決は未実装で、実装までは旧名を即時拒否する。
 
-**現行の1対1 binding実装について：** 実装済みの[人向け管理フロー](../src/hab/enrollment.ts)は通常のMCP toolから独立し、別管理権限で承認済み製品をbounded pageから選ぶ。確定・接続binding・有効化をそれぞれ確認し、途中中断で予約を解放しない。接続確認で保存するのは個体記述子の鍵付き比較digestだけで、binding時にhostの現在の検証済みcontextと一致することを再確認する。digest単体を認証には使わず、claimsやtokenの貼付けで自己登録できない。
+**人向け登録フローについて：** 実装済みの[人向け管理フロー](../src/hab/enrollment.ts)は通常のMCP toolから独立し、別管理権限で承認済み製品をbounded pageから選ぶ。確定・接続binding・有効化をそれぞれ確認し、途中中断で予約を解放しない。接続bindingは、登録したアドレスだけが所属する認証グループを作る。接続確認で保存するのは個体記述子の鍵付き比較digestだけで、binding時にhostの現在の検証済みcontextと一致することを再確認する。digest単体を認証には使わず、claimsやtokenの貼付けで自己登録できない。
 
 専用private checkpointへ各操作前の要求・選択・epochを原子的に保存し、同じflow ID／registry／key／管理主体で再開する。registry応答・checkpoint応答の消失でも元のrequest IDを再利用し、別名や別個体へ自動変更しない。過去の応答は現在の権限や状態を証明しないため、再開時に現在の個体・binding・epochを照合し、停止・失効・後続変更があれば要確認とする。本番管理認証、製品ごとの接続選択・入力上限の配線は別途必要であり、模擬デモの成功を実個体登録と同一視しない。
 
@@ -154,7 +154,7 @@ Grok Bot／dot等がHTTP MCPでHABへ接続できることを設計上の前提�
 
 監査には認証済みグループと選択した個体名義を分けて記録する。credential本体やaccess／refresh tokenを参加台帳、message、監査に置かない。参加承認の有効期間は短期アクセストークンの期限と分離し、許可済みの更新はクライアントが担当する。更新でグループや権限を拡大せず、失効・更新不可時は停止する。この常用方式は現行の15分試験入口へ適用済みではない。
 
-**実装状況：** ローカル実装は管理権限portと検証済み接続portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACによる従来の1対1照合を維持し、opt-inでグループbinding・所属選択・認可・停止・監査を追加した。MCPの基本5操作と通常サービスの明示opt-inにも配線済み。稼働設定や実認証は未変更。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
+**実装状況：** ローカル実装は管理権限portと検証済み接続portを分け、未設定は拒否する。issuer／audience／subject／client_id／connection_id全体のHMACで接続を照合し、認証はすべてグループbinding・所属選択・認可・停止・監査で行う（2026-11-12に1対1 bindingを廃止し、既存分は`migrate()`で単独所属のグループへ移す）。MCPの基本5操作と通常サービスにも配線済み。稼働設定や実認証は未変更。registryのwrite guardを認可からRelay commitまで保持し、すべての管理変更も同じguardを使う。callbackは同期限定で、終了後の認可objectは無効化する。移行でもこの失効とcommitの整合性を維持する。直接SQL更新・別registry・迂回経路や実製品の実証まで保証したものではない。
 
 ### 4.4 メール型の相互送信policy
 

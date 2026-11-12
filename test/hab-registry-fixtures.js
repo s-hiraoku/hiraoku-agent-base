@@ -26,6 +26,26 @@ export function principal(name, patch = {}) {
     ...patch,
   };
 }
+/**
+ * Binds a connection to an address as the only member of a new authentication group,
+ * then activates the group. Returns the group receipt (binding, group and epochs).
+ */
+export function bindAddress(registry, admin, agent, connection, request) {
+  const binding = registry.createBoundGroup(admin, {
+    request_id: request ?? `bind-${agent.agent_id}`,
+    agent_id: agent.agent_id,
+    expected_epoch: agent.epoch,
+    principal: connection,
+  });
+  registry.setGroupAccess(admin, {
+    request_id: `${request ?? `bind-${agent.agent_id}`}-group`,
+    group_id: binding.group_id,
+    expected_epoch: binding.group_epoch,
+    state: "active",
+    operations,
+  });
+  return binding;
+}
 export const code = (wanted) => (e) =>
   e.code === wanted && e.message === wanted;
 async function registryFixture(t, patch = {}) {
@@ -90,19 +110,36 @@ async function registryFixture(t, patch = {}) {
       bot_name: name,
     });
     if (!activate) return agent;
-    const binding = registry.bind(admin, {
+    // Each address is the only member of its own authentication group.
+    const binding = registry.createBoundGroup(admin, {
       request_id: `bind-${name}`,
       agent_id: agent.agent_id,
       expected_epoch: agent.epoch,
       principal: principal(name),
     });
     bindings.set(name, binding);
+    registry.setGroupAccess(admin, {
+      request_id: `activate-group-${name}`,
+      group_id: binding.group_id,
+      expected_epoch: binding.group_epoch,
+      state: "active",
+      operations,
+    });
     return registry.setAccess(admin, {
       request_id: `activate-${name}`,
       agent_id: agent.agent_id,
       expected_epoch: binding.agent_epoch,
       state: "active",
       operations,
+    });
+  };
+  /** Revokes the named address's connection, which stops its single-member group. */
+  const revoke = (name, store = registry) => {
+    const binding = bindings.get(name);
+    return store.revokeGroupBinding(admin, {
+      request_id: `revoke-${name}-${binding.binding_id}`,
+      binding_id: binding.binding_id,
+      expected_epoch: store.inspectGroup(admin, binding.group_id).epoch,
     });
   };
   return {
@@ -118,6 +155,7 @@ async function registryFixture(t, patch = {}) {
     product,
     enroll,
     bindings,
+    revoke,
   };
 }
 /** A synthetic Registry with JetStream delivery behind it, as `hab`. */

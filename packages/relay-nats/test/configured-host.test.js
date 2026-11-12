@@ -55,7 +55,7 @@ test("explicit private config serves the existing five MCP operations, survives 
   const admin = Symbol("synthetic-operator");
   const registry = new SQLiteHabRegistry(
     join(state, "registry.sqlite"),
-    { ...registryOptions, authentication_groups: true },
+    registryOptions,
     {
       administrator: (context) =>
         context === admin ? { actor_id: "synthetic-operator" } : undefined,
@@ -86,7 +86,7 @@ test("explicit private config serves the existing five MCP operations, survives 
     registry_fingerprint_key: "3d".repeat(32),
     relay_fingerprint_key: "2a".repeat(32),
   });
-  const registryConfig = { ...registryOptions, authentication_groups: true };
+  const registryConfig = { ...registryOptions };
   delete registryConfig.fingerprint_key;
   const http = { ...httpPolicy };
   delete http.resource_url;

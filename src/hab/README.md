@@ -146,23 +146,26 @@ or automatic retry; a saved flow advances at most six stages per invocation.
 
 New management reads remain local host APIs: `catalog(context,{limit,after?})`
 has a 1–100 product page cap, keyset cursor and separate `catalog` permission;
-`inspectBinding` requires `inspect`. The flow selects from 50-item pages, with
+`inspectGroupBinding` requires `inspect`. The flow selects from 50-item pages, with
 explicit next-page input and a finite catalog traversal limit. It requires
 current catalog authority before exposing a saved checkpoint to the UI, even
 on resume. A production policy must grant those reads separately. Product
 creation remains an administrator operation outside this flow; nothing
 automatically populates the production catalog.
 
-`inspectConnection` requires management `bind` authority and a freshly verified
-individual context. It returns only a keyed comparison digest of the existing
-versioned principal tuple. The checkpoint stores that digest, not raw claims,
-labels or credentials. `bindVerified` takes the expected digest plus another
-current host context, checks management and fresh identity under the registry
-lock, then compares the tuple before the idempotent mutation. A changed
-connection is refused even when no earlier binding committed. The digest is
-not a credential and never authorizes its holder. Missing, stale, throwing or
-asynchronous authority ports deny; rejected promises are consumed. The existing
-low-level `bind` port remains trusted-host-only and is not a terminal/MCP API.
+`inspectConnection` requires management `group_bind` authority and a freshly
+verified individual context. It returns only a keyed comparison digest of the
+existing versioned principal tuple. The checkpoint stores that digest, not raw
+claims, labels or credentials. `createBoundGroupVerified` takes the expected digest
+plus another current host context, checks management and fresh identity under the
+registry lock, then compares the tuple before the idempotent mutation. It creates a
+group whose only member is the enrolled address and whose only binding is that
+connection. A changed connection is refused even when no earlier binding committed.
+The digest is not a credential and never authorizes its holder. Missing, stale,
+throwing or asynchronous authority ports deny; rejected promises are consumed.
+Activation grants the chosen operations to both the group and the address. The
+low-level `createBoundGroup` port remains trusted-host-only and is not a
+terminal/MCP API.
 
 `./sqlite-enrollment-journal.ts` is a dedicated private, explicit-migration
 SQLite store (schema 1), independent of the existing schema-1 registry and Relay
@@ -339,14 +342,21 @@ No real product is enrolled or contacted. New credential issuance, public routes
 paid contracts, background activation and real connections require their separate
 approved endpoint/scope/data/stop plan; this module grants none of those actions.
 
-## Optional shared authentication groups
+## Authentication groups
 
-The default remains one verified connection per legacy individual. Explicitly setting
-`RegistryOptions.authentication_groups: true` and calling `migrate()` adds the group
-schema and upgrades registry version 1 to 2. Existing individual IDs, addresses and
-bindings are preserved. Older runtimes reject version 2; an already-open pre-upgrade
+Every connection authenticates through an authentication group. An address bound on
+its own is the only member of its own group. `migrate()` always creates the group
+schema and upgrades registry version 1 to 2. Earlier builds could bind a connection
+to one address directly; `migrate()` moves each such address into a new group of its
+own under the same binding IDs, fingerprints and timestamps, so the credential
+authenticates the same address. The new group grants every operation and the address
+keeps its own grants, so the effective rights do not change. The old rows stay as
+revoked history. `RegistryOptions.authentication_groups` is accepted for older
+configs and ignored. Older runtimes reject version 2; an already-open pre-upgrade
 instance also fails closed after the schema changes. Do not rewrite the version for
-rollback; restore a pre-migration backup while the service is stopped.
+rollback; restore a pre-migration backup while the service is stopped. The operator
+CLI refuses a registry whose direct bindings are not moved yet
+(`registry_upgrade_pending`) until the host starts once.
 
 A separately authorized administrator creates a group, binds a freshly verified
 connection, attaches registered addresses, and grants group/address operations.
@@ -354,11 +364,11 @@ connection, attaches registered addresses, and grants group/address operations.
 its verified group's membership under the same write guard used for Relay commit.
 Group members may use one another's names. Foreign-group names, inactive members,
 ambiguous omitted selection and stale/revoked credentials are denied. A group with one
-active member and existing one-to-one bindings can omit selection.
+active member can omit selection.
 
 Group and address permissions intersect. Group stop or final binding revocation
-stops every member and clears its operations in the same transaction, as revoking an
-individual binding does. Reactivating or rebinding the group re-grants no address:
+stops every active member and clears its operations in the same transaction.
+Reactivating or rebinding the group re-grants no address:
 each member needs its own `setAccess`. Stopping one address leaves its siblings usable.
 `createBoundGroup` creates a group, binds the connection and adds the first address in
 one transaction, so a refused step leaves no group behind. Group identity
@@ -371,8 +381,7 @@ The five basic HAB MCP tools accept optional `as_address` and a paired
 `expected_agent_id` consistency check. The selector is removed before core dispatch;
 foreign group names and mismatched immutable IDs are rejected before delivery.
 `HabMcpClient` fixes both values across submit, status, poll and ACK recovery.
-The normal service config accepts the explicit group opt-in, but no live config,
-credential or OAuth refresh policy is changed. Real-agent acceptance remains
+No live config, credential or OAuth refresh policy is changed. Real-agent acceptance remains
 pending. Tests use synthetic verified
 contexts and temporary databases only:
 

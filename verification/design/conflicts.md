@@ -78,7 +78,7 @@ Do individual-exclusive connection requirements prohibit adopted group sharing?
 
 Classification: scope. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11, HAB-A18.
 
-No. Exclusive-binding language describes legacy1:1 enrollment/fixed-pilot scope. The explicit optional shared-group section and adopted group design allow group credential holders to select sibling names/mailboxes; preserve both modes and enforce group boundaries, never promote legacy exclusivity into universal requirement.
+No. Exclusive-binding language describes the earlier 1:1 enrollment/fixed-pilot scope. The adopted group design allows group credential holders to select sibling names/mailboxes; since 2026-11-12 every connection is a group binding and an address bound on its own is its group's only member. Enforce group boundaries; never promote single-member exclusivity into a universal requirement.
 
 Sources: [src/hab/README.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L50-L55), [src/hab/README.md:342](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L342-L376).
 
@@ -228,7 +228,7 @@ Does local-MVP1:1 auth establish Bot-exclusive identity in current shared groups
 
 Classification: resolved-version-scope. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E12, HAB-E17, HAB-E19.
 
-No. local-MVP99–108 explicitly keeps historical fixture while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.
+No. local-MVP 99–108 says each MVP address connects as the only member of its own group, while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.
 
 Sources: [docs/local-mvp.md:105](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/local-mvp.md#L105-L114).
 

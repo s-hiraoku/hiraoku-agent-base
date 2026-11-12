@@ -49,14 +49,6 @@ export interface VerifiedIndividual {
   principal: IndividualPrincipal;
   expires_at: string;
 }
-export interface BindingRecord {
-  binding_id: string;
-  agent_id: string;
-  state: "active" | "revoked";
-  created_at: string;
-  revoked_at: string | null;
-  agent_epoch: number;
-}
 export type AdminOperation =
   | "catalog"
   | "preview"
@@ -64,8 +56,6 @@ export type AdminOperation =
   | "product"
   | "enroll"
   | "rename"
-  | "bind"
-  | "revoke"
   | "access"
   | "block"
   | "group_create"
@@ -82,7 +72,7 @@ export interface RegistryAuthority {
   ): { actor_id: string } | undefined;
   /** Optional current host attestation for this exact verified connection. Never inferred from names. */
   hostIdentity?(context: unknown): HabHostIdentity | undefined;
-  /** Authenticated connection; the registry binds it to a legacy individual or group. */
+  /** Authenticated connection; the registry maps it to its authentication group. */
   individual?(context: unknown): VerifiedIndividual | undefined;
 }
 const slugExpression = "[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?";

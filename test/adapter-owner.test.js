@@ -14,7 +14,7 @@ import { once } from "node:events";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { hostFixture, deferred } from "./adapter-host-fixtures.js";
-import { code } from "./task-bridge-fixtures.js";
+import { code } from "./inbox-fixtures.js";
 const yes = () => {};
 async function fixture(t) {
   const f = await hostFixture(t),
@@ -238,7 +238,6 @@ test("Host owner: a terminated native process releases only the ephemeral owner 
   const host = f.makeHost({ owner: f.owner });
   assert.equal(host.status(f.context).paused, true);
   assert.equal(f.queued().length, 0);
-  assert.equal(f.count(), 0);
 });
 test("Host owner: closing a failed same-process competitor does not release the live OS lock", async (t) => {
   const f = await fixture(t);

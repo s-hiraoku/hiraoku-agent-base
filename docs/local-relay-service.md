@@ -69,7 +69,7 @@ and current clock. Removal, damage, expiry or identity reassignment rejects even
 an already verified context. In-process backwards clock movement fails closed;
 wall-clock integrity across a process restart remains an operator prerequisite.
 The verifier exposes no management authority. Registry enrollment, immutable
-address choice, exact individual binding, operation rights and current stop epoch
+address choice, the connection's group binding, operation rights and current stop epoch
 are separate required operator steps; a valid bearer alone cannot read a mailbox.
 
 To revoke: remove that mapping through an approved private atomic file update,
@@ -116,9 +116,9 @@ npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect 
 - `connect` registers the product and address when missing, binds the mapped
   principal (selected by `connection_id`) from the local mapping or enabled OAuth
   ingress connections, and grants `--operations` (default: all
-  five). With `registry.authentication_groups: true` it creates or reuses that
-  connection's group, so connecting a second address with the same connection id
-  shares the authentication. Every step reads the current epoch and skips work
+  five). It creates or reuses that connection's authentication group, so
+  connecting a second address with the same connection id shares the
+  authentication. Every step reads the current epoch and skips work
   already done, so a rerun after a partial failure converges.
   OAuth descriptors come from the operator-approved private ingress config; this
   command does not perform login, consent, token issuance or JWT verification.
@@ -131,8 +131,8 @@ npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect 
   new connection id re-grants only the address it names; reconnect each other member
   explicitly. A refused group `connect` (for example `registry_capacity_exceeded`)
   creates no group, so a retry converges. `--operations ""` is refused as
-  `invalid_operations`. Group mode follows `registry.authentication_groups` in the
-  config, not the registry schema version.
+  `invalid_operations`. Until the host has started once on a registry from an
+  earlier build, every command refuses with `registry_upgrade_pending`.
 - `status` lists addresses, groups and each mapped credential's remaining lifetime,
   audience and binding, plus `problems` such as `credential_expired`,
   `credential_audience_mismatch`, `credential_unbound`, `credential_revoked` and
@@ -176,7 +176,7 @@ may be unavailable in cloud execution.
 No tunnel, public bind, OAuth grant, remote plugin registration, reused permanent
 credential or new persistent client access is part of this increment. Before any
 real Dots test, confirm the selected agent/context, local vs hosted route, exact
-individual binding, permitted five operations, finite receive trigger, durable
+group binding, permitted five operations, finite receive trigger, durable
 save-before-ACK owner and reply outbox. A real Dots ↔ HAB ↔ real Hermes result must
 be reported separately from a local probe's preparation test. These requirements
 use the common connection contract and Adapter boundary, not product-specific
@@ -206,16 +206,16 @@ describes identity provisioning, authorization, retry, Task states and the start
 refusal reasons.
 
 
-## 認証グループの明示opt-in
+## 認証グループ
 
-Registryの`authentication_groups`は任意のbooleanです。省略またはfalseは従来の
-1対1 bindingを使い、trueの場合だけ起動時の明示migrationがRegistryをv1からv2へ
-移行して認証グループを有効にします。既存ID・アドレス・bindingは維持します。
-この設定を既存サービスへ適用する前に、対象release、停止・backup／復旧手順と
-管理者によるグループ登録・所属・権限を確認してください。v2を旧runtimeで開くために
-versionを書き換えることは禁止します。`delivery.queue.agent_capacity`等の現在の必須設定も
+接続の認証はすべて認証グループで行います。hostの起動時にRegistryをv1からv2へ
+移行し、以前のbuildが作った1対1 bindingは、そのアドレスだけが所属するグループへ
+同じbinding IDのまま移します。既存ID・アドレス・実効権限は維持します。
+Registryの`authentication_groups`は旧設定との互換のために受け付けますが、値は使いません。
+このreleaseを既存サービスへ適用する前に、停止・backup／復旧手順を確認してください。
+v2を旧runtimeで開くためにversionを書き換えることは禁止します。`delivery.queue.agent_capacity`等の現在の必須設定も
 releaseと照合し、不足時に制限を省いて起動しません。
 
-新規空DBで有効化しても、グループや資格情報は自動登録せず全拒否のままです。
+新規空DBでも、グループや資格情報は自動登録せず全拒否のままです。
 実際の短命tokenの発行・保管と、refresh／継続アクセスの許可は別操作です。
 [共通の名義選択と実装範囲](relay-auth-groups.md)を参照してください。

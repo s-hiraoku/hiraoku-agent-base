@@ -248,7 +248,7 @@ test(
     }
     assert.equal(f.count("relay_messages"), 6);
     assert.equal(f.count("hab_agents"), 3);
-    assert.equal(f.count("hab_bindings"), 3);
+    assert.equal(f.count("hab_auth_group_bindings"), 3);
     assert.equal(
       f.raw(
         "jetstream-journal.sqlite",
@@ -648,10 +648,11 @@ test(
     await f.enrollAll();
     const id = f.agents.a.agent_id,
       binding = f.journal.load("flow-a").checkpoint.binding_id;
-    f.registry.revoke(f.admin, {
+    const group = f.registry.inspectGroupBinding(f.admin, binding).group_id;
+    f.registry.revokeGroupBinding(f.admin, {
       request_id: "revoke-original",
       binding_id: binding,
-      expected_epoch: f.agents.a.epoch,
+      expected_epoch: f.registry.inspectGroup(f.admin, group).epoch,
     });
     await f.restart();
     await assert.rejects(f.client("a").poll(), code("forbidden"));
@@ -663,12 +664,12 @@ test(
     ).connection_fingerprint;
     assert.throws(
       () =>
-        f.registry.bindVerified(
+        f.registry.bindGroupVerified(
           f.admin,
           {
             request_id: "reuse-original",
-            agent_id: id,
-            expected_epoch: stopped.epoch,
+            group_id: group,
+            expected_epoch: f.registry.inspectGroup(f.admin, group).epoch,
             connection_fingerprint: oldDigest,
           },
           f.contexts.a,
@@ -680,20 +681,27 @@ test(
       f.admin,
       freshContext,
     ).connection_fingerprint;
-    const rotated = f.registry.bindVerified(
+    const rotated = f.registry.bindGroupVerified(
       f.admin,
       {
         request_id: "new-binding",
-        agent_id: id,
-        expected_epoch: stopped.epoch,
+        group_id: group,
+        expected_epoch: f.registry.inspectGroup(f.admin, group).epoch,
         connection_fingerprint: digest,
       },
       freshContext,
     );
+    f.registry.setGroupAccess(f.admin, {
+      request_id: "activate-rotation-group",
+      group_id: group,
+      expected_epoch: rotated.group_epoch,
+      state: "active",
+      operations,
+    });
     f.registry.setAccess(f.admin, {
       request_id: "activate-rotation",
       agent_id: id,
-      expected_epoch: rotated.agent_epoch,
+      expected_epoch: stopped.epoch,
       state: "active",
       operations,
     });

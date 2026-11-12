@@ -20,7 +20,6 @@ const renamed = (f, agent, bot_name = "renamed", request_id = "rename") =>
 
 test("opt-in rename preserves the birth identity and reserves the old name without forwarding", async (t) => {
   const f = await fixture(t, {
-    authentication_groups: true,
     agent_rename: true,
   });
   const a = f.enroll("a"),
@@ -61,17 +60,17 @@ test("opt-in rename preserves the birth identity and reserves the old name witho
   assert.equal(f.registry.inspect(f.admin, b.agent_id).address, b.address);
 });
 
-test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy credentials", async (t) => {
-  for (const authentication_groups of [false, true]) {
-    const f = await fixture(t, { authentication_groups });
+test("the v2→v3 upgrade is explicit, invalidates old handles, and preserves credentials", async (t) => {
+  {
+    const f = await fixture(t);
     const a = f.enroll("a"),
       b = f.enroll("b");
     assert.equal(
       f.registryRaw.prepare("SELECT version FROM hab_registry_meta").get()
         .version,
-      authentication_groups ? 2 : 1,
+      2,
     );
-    const next = f.open({ authentication_groups: true, agent_rename: true });
+    const next = f.open({ agent_rename: true });
     next.migrate();
     assert.equal(
       f.registryRaw.prepare("SELECT version FROM hab_registry_meta").get()
@@ -96,7 +95,6 @@ test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy c
       a.agent_id,
     );
     const readOnlyFeature = f.open({
-      authentication_groups: true,
       agent_rename: false,
     });
     readOnlyFeature.migrate();
@@ -120,7 +118,6 @@ test("v1/v2 upgrades are explicit, invalidate old handles, and preserve legacy c
 
 test("admin permission, CAS, retired state, immutable birth row and request conflict are enforced", async (t) => {
   const f = await fixture(t, {
-    authentication_groups: true,
     agent_rename: true,
   });
   const a = f.enroll("a");
@@ -185,7 +182,6 @@ test("admin permission, CAS, retired state, immutable birth row and request conf
 
 test("permanent reservations prevent cross-agent reuse and permit an explicit same-ID rollback", async (t) => {
   const f = await fixture(t, {
-    authentication_groups: true,
     agent_rename: true,
   });
   const a = f.enroll("a"),
@@ -360,7 +356,6 @@ test("exhausted group epoch rolls back all name and authority changes", async (t
 
 test("v3 registry backup/reopen retains names, reservations, ID and existing binding without token rotation", async (t) => {
   const f = await fixture(t, {
-    authentication_groups: true,
     agent_rename: true,
   });
   const a = f.enroll("a"),
@@ -369,11 +364,7 @@ test("v3 registry backup/reopen retains names, reservations, ID and existing bin
   const path = join(f.dir, "renamed-backup.sqlite");
   await backup(f.registryRaw, path);
   chmodSync(path, 0o600);
-  const restored = new SQLiteHabRegistry(
-    path,
-    { ...options, authentication_groups: true },
-    f.authority,
-  );
+  const restored = new SQLiteHabRegistry(path, { ...options }, f.authority);
   t.after(() => restored.close());
   restored.migrate();
   assert.equal(restored.inspect(f.admin, a.agent_id).address, current.address);
@@ -392,7 +383,6 @@ test("v3 registry backup/reopen retains names, reservations, ID and existing bin
 
 test("permanent event capacity fails closed without reserving a new address", async (t) => {
   const f = await fixture(t, {
-    authentication_groups: true,
     agent_rename: true,
   });
   const a = f.enroll("a");

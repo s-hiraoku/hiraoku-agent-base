@@ -192,7 +192,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "2ac8cc3ea38430c365c47acb17925d0ce4fa6174d15f783ba84bd46459f3347d",
+      "sha256": "d2cc9806e6d6a01654b9a782a1d8a756c400df60c52b7441cd7acb9ecea246ca",
       "role": "normative",
       "review": "reviewed",
       "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof.",
@@ -200,7 +200,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-relay.md",
-      "sha256": "a183404d28b31cd8faa6e9fba1dae36b0d7567105329c8257b4c47ab976c93a9",
+      "sha256": "1dcf6a151219f8af04fc26393a4d48233c25e9664849bf1fb386599df60bc494",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped Relay, private broker and operator CLI recipe: fixed redacted refusal codes including retired-config and out-of-range registry limits, idempotent connect, credential/binding health, epoch-aware disconnect, a group disconnect that stops every member while a reconnect re-grants only the named address, refusal of empty `--operations`, an atomic refused group connect, two-agent synthetic JetStream roundtrip with attachment-part refusal and exact Host. Separate launcher (with an optional group mode) and a stop that ends the owned Relay and broker but leaves the instance directory for the driver to remove; credential expiry and no real client/model guarantee are explicit.",
@@ -250,7 +250,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "ff3ea3f076a206f7e5eb98ce7aec247dd7ba3fbaac0cdeee6755e32aedfe0c5b",
+      "sha256": "5ec7c2ebba9808a0cdfa9c13bd6be00dc865d4f5f81a2bad5db2eb0d4cda9d6f",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/agent-address-rename.md",
-      "sha256": "a6674ab895e77762c4cb3eaa3aabd13cb209b61542addffd8315207eaf06607d",
+      "sha256": "9a81c57f84960e432297953559a16456b3aa133f6fcc5416572d2ce188c9213e",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposed opt-in Registry v3 rename extends immutable names while retaining agent ID, authentication, grants and mailbox identities. Historical names stay reserved without forwarding; exact journaled CAS retries and separate rename authority are required. Operator migration, same-owner rename-back and coordinated backups are described, with production adoption explicitly pending."
@@ -448,7 +448,7 @@
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "b23cf03b6bb5c83db8b886d820bfb2d59ac7845040e6d68a72050f4b8f9aba69",
+      "sha256": "0b39fa5ef858512430a21d3961a5788f01f56923a41bf85bf26b2bbb42edca2f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) makes NATS JetStream the only delivery store and names the current modules; earlier single-Node+SQLite wording is the initial plan. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
@@ -608,7 +608,7 @@
     },
     {
       "path": "docs/local-mvp.md",
-      "sha256": "c14c4fd5bcbdb6d0320293b2bb4c0dda8e34e57868568611b193c24ee69d77b1",
+      "sha256": "6d7b47d852fb2c2ce3de255d695f27b0a7015c7eb6675e933d623602d399c22e",
       "hash": "316f9286a7a0ea1951063ce4ff6062130a0bfc759531d40bb4a6c3f29966bd04",
       "role": "normative",
       "review": "reviewed",
@@ -631,10 +631,10 @@
     },
     {
       "path": "docs/local-relay-service.md",
-      "sha256": "334cb746487d875af3326af23e6f2844f744cf21cec8fd0c19816125481ed6e4",
+      "sha256": "0992ecc4f1622dc6adb7e017dd437d7a3503d136091095395fefea5083c735f2",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The journal is schema 4, so rolling back to an earlier build means a pre-upgrade backup restore, original-ID reconciliation of accepted and incomplete-at-backup messages decided by recipient records, and holding the earlier build stopped until every restored ID has expired so the relay delivers none again, while bodies already saved in a restored inbox are settled against copied execution records before their recipient restarts. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect, explicit v1→v2 migration and reserved revoked descriptors. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; group mode follows `registry.authentication_groups`, not the schema version. An optional `a2a` section adds a third loopback listener, a host-owned identity and private A2A stores; A2A callers need an A2A-audience credential bound through relay:admin connect. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services. Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
+      "summary": "Configured common Relay reads explicit private files, one `delivery` section (broker, pump, volume, queue) and finite per-sender/queue capacities; the retired SQLite `store` section is refused and its messages are not migrated. The journal is schema 4, so rolling back to an earlier build means a pre-upgrade backup restore, original-ID reconciliation of accepted and incomplete-at-backup messages decided by recipient records, and holding the earlier build stopped until every restored ID has expired so the relay delivers none again, while bodies already saved in a restored inbox are settled against copied execution records before their recipient restarts. The `registry` section is parsed with the Registry's own options schema, so an out-of-range limit is `config_invalid` naming its field. Absent credentials deny startup and empty mappings deny tools. Local verifier rechecks mapping and time before Registry actions. Separate current-authorized management CLI supports exact idempotent connect/disconnect through authentication groups and reserved revoked descriptors; the host start migrates v1→v2 and moves earlier direct bindings into single-member groups, and until then the CLI refuses with registry_upgrade_pending. A group disconnect stops every member and a later connect re-grants only the named address; a refused group connect leaves no group; an empty `--operations` is refused; `registry.authentication_groups` is accepted and ignored. An optional `a2a` section adds a third loopback listener, a host-owned identity and private A2A stores; A2A callers need an A2A-audience credential bound through relay:admin connect. Native five-tool clients remain primary; optional legacy execution, OAuth and group settings do not mutate live services. Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
     },
     {
       "path": "docs/manual-ping-runner.md",
@@ -742,10 +742,10 @@
     },
     {
       "path": "docs/relay-auth-groups.md",
-      "sha256": "63f1d64429aaa54031f0d242862a40e5284e92b89fe7dfa067e03985f6595484",
+      "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Adopted group trust boundary separates verified shared authentication from immutable per-address delivery identities/inboxes. Explicit group migration preserves legacy1:1; all five tools enforce own-side selection, expected ID, current membership/grants/stop under write guard while cross-group destination delivery remains allowed. Within-group credential holders can use sibling names/mailboxes and this is disclosed. Fixed outbox/inbox/ACK identities, bounded redacted provenance, separate admin operations and client-owned refresh are required; live refresh remains limited."
+      "summary": "Adopted group trust boundary separates verified shared authentication from immutable per-address delivery identities/inboxes. Every connection authenticates through a group, and migrate() moves earlier direct 1:1 bindings into single-member groups; all five tools enforce own-side selection, expected ID, current membership/grants/stop under write guard while cross-group destination delivery remains allowed. Within-group credential holders can use sibling names/mailboxes and this is disclosed. Fixed outbox/inbox/ACK identities, bounded redacted provenance, separate admin operations and client-owned refresh are required; live refresh remains limited."
     },
     {
       "path": "docs/relay-fair-poll.md",
@@ -756,7 +756,7 @@
     },
     {
       "path": "docs/relay-oauth-ingress.md",
-      "sha256": "5be6eff570a7d5ccf9b7969c40757efb42f65e7540b549cd1c005f31cdd0a248",
+      "sha256": "d7142ccb85c1a0ab83c83c2f5f0f2928f168a911ee4dd84d955d0343ffda2316",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional product-independent same-owner/Registry/queue OAuth ingress exposes common five operations only. Uses explicit private pinned RSA configuration and canonical resource metadata, exact verified subject/client scopes and immutable context rechecks, no token storage/refresh. Recognizes group-sharing and explicit persistent v2; native trial save/reread/ACK sequence is narrow single-consumer evidence. Its routine end-of-trial revocation is v1 trial scope, not persistent cleanup."
@@ -946,22 +946,14 @@
     },
     {
       "path": "src/hab/README.md",
-      "sha256": "4b823586b54d995e3d8534083aa43552678e0ba9c0c3f782ac8f9b9a09bc8d82",
+      "sha256": "a27646b48ca207d250bb66c5e58e8c1c59cfe951c0de470006352e2c907b6500",
       "role": "normative",
       "review": "reviewed",
       "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabJetStreamService composes the only delivery backend; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in."
     },
     {
-      "path": "test/p7/README.md",
-      "sha256": "e02760ec316842857c0dbbe6e30875b109be6f488d8ffc182c1ec85854880406",
-      "role": "normative",
-      "review": "reviewed",
-      "summary": "Current P7 source-profile procedure retains frozen historical record and separately reviewed committed successor delta. Commit-before-pin, complete history and separately committed reviewed manifest required; the mandatory broker-startup catalog, the 68-case producer catalog, finite real readiness/timeout and process-group closure are distinct from root suite. The generic-nats group was removed with its code.",
-      "read_scope": "full"
-    },
-    {
       "path": "verification/design/README.md",
-      "sha256": "678f995e76c05f13691f4256ddf4af59cfd491e3697dd1537ff4897925cc093f",
+      "sha256": "acfefcb0dd1526360c302324aae5ac19acda0072bf4856eb9ad0acddf404387f",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -970,7 +962,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "4f1a3054f57786778a085f2fe76a0249c47887397e6e2a06c7827f75e5ad578d",
+      "sha256": "ec626f8f0199a8f8c18563d1d140d1eac086943ba620eaedf0df20cdbcb84cd1",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -979,7 +971,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "90bdb43010c218a38c5073db8282e13b4ab14198cdfd2c78a68551f9774d10a8",
+      "sha256": "948885d3610c1dc9987d096e92ee4925b07078e20173e6a7ba88ea6de44d13d5",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -988,7 +980,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "ef32fceaa319c68f0dfaa13b9b09e182b3b0f4adcb43905a02bd7cf463889e5a",
+      "sha256": "3da08a624deb3868c3ac8a7e7e293034bf037ee3d7707a06e2005264a66838f9",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1159,7 +1151,6 @@
       "decision": "accepted",
       "checks": [
         "ts-root",
-        "build",
         "ast-boundary",
         "js-common-mcp",
         "native-recipient",
@@ -1952,7 +1943,7 @@
       "title": "Approved authentication groups",
       "statement": "One approved authentication group may authenticate one or multiple registered addresses; addresses/inboxes remain distinct and credential sharing within that group is allowed. Product names do not determine authentication or delivery.",
       "rationale": "Provides practical shared host authentication without falsely claiming per-Bot credential isolation.",
-      "scope": "Explicit authentication_groups mode; retain legacy1:1 behavior when disabled.",
+      "scope": "Every connection authenticates through a group; an address bound on its own is the only member of its group. Earlier direct 1:1 bindings move into such groups at migrate().",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -1962,7 +1953,7 @@
           "path": "docs/relay-auth-groups.md",
           "start": 5,
           "end": 19,
-          "excerpt_sha256": "d97d327d46979a9a2568d8d5d69e1ede4ed6d2cb576acf0bacbdf00bb950a5f2"
+          "excerpt_sha256": "186f8a5fed9a20ea7f64d05993a2952045403c1d946a23868da78a50a749af32"
         },
         {
           "path": "docs/relay-auth-groups.md",
@@ -1972,9 +1963,9 @@
         },
         {
           "path": "src/hab/README.md",
-          "start": 342,
-          "end": 367,
-          "excerpt_sha256": "7c048d38338b59f230b0ccfacc9e31d8b4fc3cb0c74b0809fde81ceed156edde"
+          "start": 345,
+          "end": 377,
+          "excerpt_sha256": "10c853ee7d4c0abb098c9be43a564572208d3baa7b82af8dae270dd9f3f23cb8"
         }
       ]
     },
@@ -1993,7 +1984,7 @@
           "path": "docs/relay-auth-groups.md",
           "start": 21,
           "end": 48,
-          "excerpt_sha256": "c8754bea9db7ee7662b442da3b5b0976c0a88851e243340fdbb975628c8cea69"
+          "excerpt_sha256": "722cf3253416dbfe96b360663396cc0590ab0d997649b6242234515a7bc9b5ac"
         }
       ]
     },
@@ -2022,8 +2013,8 @@
         },
         {
           "path": "src/hab/README.md",
-          "start": 256,
-          "end": 263,
+          "start": 259,
+          "end": 266,
           "excerpt_sha256": "6f6211e8d45d68dabf10ac1f429a9bc1103a12f724e2e1a47381d9d695aff136"
         }
       ]
@@ -2054,8 +2045,8 @@
         },
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 103,
-          "end": 105,
+          "start": 102,
+          "end": 104,
           "excerpt_sha256": "6addf1c4c51b0235dee5cc113d35ab6a4e85924254bd28bde9d7a8d4b880b5fd"
         }
       ]
@@ -2073,15 +2064,15 @@
       "citations": [
         {
           "path": "docs/relay-auth-groups.md",
-          "start": 54,
-          "end": 54,
-          "excerpt_sha256": "3f1086e47b4ab318f7748259f91db5450cb88d8814871bcccf7141e0ff3790ca"
+          "start": 92,
+          "end": 94,
+          "excerpt_sha256": "db867058b3967d7b1840e4d3ed098a3477e67f99b0954f4dbbca821ff49bf1ff"
         },
         {
           "path": "docs/relay-auth-groups.md",
           "start": 92,
           "end": 94,
-          "excerpt_sha256": "cc8329c2ad884f2eda8a8bb49edd48cdd77a13b557c450eba8f74a606c2d0a6e"
+          "excerpt_sha256": "db867058b3967d7b1840e4d3ed098a3477e67f99b0954f4dbbca821ff49bf1ff"
         },
         {
           "path": "src/hab/README.md",
@@ -2100,7 +2091,7 @@
     {
       "id": "HAB-A07",
       "title": "Explicit schema and rollback boundary",
-      "statement": "Group schema migration is explicit opt-in, preserves existing identities/bindings and refuses old runtimes. Never lower schema version or restore stale online state that resurrects revoked authority or loses accepted deliveries. Keep DB, keys, config and release in a consistent protected backup set.",
+      "statement": "Group schema migration runs at every migrate(), preserves existing identities and moves earlier direct bindings into single-member groups under the same binding IDs and fingerprints without changing effective rights, and refuses old runtimes. The operator CLI refuses an unmoved registry (registry_upgrade_pending). Never lower schema version or restore stale online state that resurrects revoked authority or loses accepted deliveries. Keep DB, keys, config and release in a consistent protected backup set.",
       "rationale": "Authority and delivery history must survive migration/recovery; version edits are not safe rollback.",
       "scope": "Registry groupv1→v2 migration and deployment/recovery; proposed renamev3 remains separate.",
       "decision": "accepted",
@@ -2113,13 +2104,13 @@
           "path": "docs/relay-auth-groups.md",
           "start": 94,
           "end": 94,
-          "excerpt_sha256": "f833acd0021556c79e86221133a4e733a217ff815db7950019b2d63c9b7dd705"
+          "excerpt_sha256": "d5ddfacc6ee945597d0d5d8d0ce47a480e700fed408790b51516f179af10eeee"
         },
         {
           "path": "docs/local-relay-service.md",
           "start": 209,
           "end": 221,
-          "excerpt_sha256": "14dfb0c27be0a82595462117208b023b31608f370d89abd1eee216a04c1e9f40"
+          "excerpt_sha256": "7f7d18bd99e8a0e0317dd2d466ba92d384139193e82c30dce43a037b600e672f"
         },
         {
           "path": "docs/persistent-mcp-auth.md",
@@ -2245,14 +2236,14 @@
       "citations": [
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 53,
-          "end": 76,
+          "start": 52,
+          "end": 75,
           "excerpt_sha256": "c497eb01a49c9744f72a102250d2c0a3bf40ef3b01eaee6f5940232bf60a55cc"
         },
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 96,
-          "end": 105,
+          "start": 95,
+          "end": 104,
           "excerpt_sha256": "fc9d657a2ae9b4c0619c7ebc15b947d12becfe7b844613a83b4647f88cfd8fed"
         }
       ]
@@ -2294,8 +2285,8 @@
         },
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 40,
-          "end": 49,
+          "start": 39,
+          "end": 48,
           "excerpt_sha256": "c9141e96238d205058529997cf8cf87c18bfd671c6051b43d3b176948175153a"
         }
       ]
@@ -2396,8 +2387,8 @@
       "citations": [
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 120,
-          "end": 135,
+          "start": 119,
+          "end": 134,
           "excerpt_sha256": "fbc491bf85ce02e5e28dad29e153cdf29d3897352e050a735c7ded4f346e0908"
         },
         {
@@ -2428,15 +2419,15 @@
         },
         {
           "path": "docs/relay-auth-groups.md",
-          "start": 60,
-          "end": 60,
-          "excerpt_sha256": "6cafeeccef3eb8f399fe6563e5bb40b07833f9dfa26b8d83d0174934cbda7e33"
+          "start": 96,
+          "end": 100,
+          "excerpt_sha256": "511e359577d695f6b482c329daa65c8adcb7d47c8cea8463395add40dc65470d"
         },
         {
           "path": "docs/relay-auth-groups.md",
           "start": 96,
           "end": 100,
-          "excerpt_sha256": "8fa5af7bc182e2a8379c55c378c940d0ae2204527798b9b45769c5be750400bb"
+          "excerpt_sha256": "511e359577d695f6b482c329daa65c8adcb7d47c8cea8463395add40dc65470d"
         },
         {
           "path": "docs/persistent-mcp-auth.md",
@@ -2492,7 +2483,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 50,
           "end": 66,
-          "excerpt_sha256": "b52f77c8727a017606ec6d6b640ce58c0452706a098dae0c24360ce678c1238d"
+          "excerpt_sha256": "5f522be5de47ba458de654987e45fa6bef10a7ff1eb25d3b04699e553d131cb0"
         },
         {
           "path": "docs/agent-address-rename.md",
@@ -2505,7 +2496,7 @@
     {
       "id": "HAB-A19",
       "title": "Group stop is total and re-grants nothing",
-      "statement": "Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction, as revoking an individual binding does. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.",
+      "statement": "Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.",
       "rationale": "A group stop revokes shared authority. Members that stay active, or that a later reconnect of one address silently revives, would undo an operator's disconnect.",
       "scope": "Registry authentication-group mode and the relay:admin group disconnect and reconnect.",
       "decision": "accepted",
@@ -2521,9 +2512,9 @@
         },
         {
           "path": "src/hab/README.md",
-          "start": 355,
-          "end": 362,
-          "excerpt_sha256": "9aa92bf64f733c53ec27c02b359aa114bdc67bc3108de312a975d3569592206b"
+          "start": 365,
+          "end": 372,
+          "excerpt_sha256": "f348d3942f7bd53799480033e0972820bafb85b2ec611d85317620be69a03452"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -2535,14 +2526,14 @@
           "path": ".claude/skills/verify-hab/features/configured-relay.md",
           "start": 12,
           "end": 12,
-          "excerpt_sha256": "3ac5d8b81ff97a8474fd99235be7ca293fc912353f9b1a70951f39002b0a8958"
+          "excerpt_sha256": "53dd1acc4164a66887d09a3569fecbb281a039e05d3b3f289e7af5b69d09846c"
         }
       ]
     },
     {
       "id": "HAB-A20",
       "title": "Management connect is atomic and explicit",
-      "statement": "A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. That transaction requires every right the three separate operations need (group_create, group_bind and group_member), so a context missing any one of them is refused and creates no group, binding or member. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. The management CLI takes group mode from `registry.authentication_groups` in the config, not from the stored registry schema version.",
+      "statement": "A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. That transaction requires every right the three separate operations need (group_create, group_bind and group_member), so a context missing any one of them is refused and creates no group, binding or member. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. Every management connect goes through a group; `registry.authentication_groups` in an older config is accepted and ignored.",
       "rationale": "Management requests change authority. A partial or misread request must fail without orphan state and must never grant more than the operator named.",
       "scope": "Operator management CLI (`relay:admin connect`) and the Registry `createBoundGroup` port. The per-operation rights are implementation evidence (src/hab/sqlite-registry.ts in source-review.json), covered in js-root by test/hab-auth-groups.test.js; no document states them separately.",
       "decision": "accepted",
@@ -2552,21 +2543,21 @@
       "citations": [
         {
           "path": "src/hab/README.md",
-          "start": 363,
-          "end": 364,
+          "start": 373,
+          "end": 374,
           "excerpt_sha256": "969a9270b131c237557f3469d47a00925c9902562e54750403511d9c8dde4f96"
         },
         {
           "path": "docs/local-relay-service.md",
           "start": 132,
           "end": 135,
-          "excerpt_sha256": "6a2f650797f823d0aea505e5ffd291909ad0571357840789d5c435cd0261a53a"
+          "excerpt_sha256": "90f2d2ed6541ad241e94bc2361deda8b5ab4563960218ce8b42efc031900c9de"
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-relay.md",
           "start": 13,
           "end": 13,
-          "excerpt_sha256": "bbbbd9aa7271847339555a253c9217a52abff34d4d744c3490d8c9c2ad012a7b"
+          "excerpt_sha256": "8ad20106691b276d931e6d8b41d88a9ba6b94a4d0f405247392aeb2b58b9429e"
         }
       ]
     },
@@ -2945,8 +2936,8 @@
         },
         {
           "path": "README.md",
-          "start": 128,
-          "end": 128,
+          "start": 124,
+          "end": 124,
           "excerpt_sha256": "191704a9f43a004d1b6fd38d44dc44d97e78362dc2ce9af298406c6dda0d3597"
         }
       ]
@@ -3653,71 +3644,6 @@
       ]
     },
     {
-      "id": "HAB-E12",
-      "title": "Optional inventory import policy agrees in TS and Python",
-      "statement": "Inventory-only launcher uses measured fixed noneditable dependencies and pinned -I -S bootstrap before third-party imports; no site/.pth/editable roots or reintroduced excluded packages. TS inspector/Python validator agree; inconclusive EPERM stays fail-closed.",
-      "rationale": "Pre-wrapper executable imports could escape fixed tool bounds; mode bits or mock assertions are insufficient.",
-      "scope": "Existing optional one-shot inventory executor only; not a universal messaging or normal agent-tools restriction.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "python-bridge"
-      ],
-      "citations": [
-        {
-          "path": "docs/hermes-import-boundary.md",
-          "start": 7,
-          "end": 12,
-          "excerpt_sha256": "f8e926ccb4bfbc56d858cdc0380745bd4ee6d04e15e1a2c188ffa16a5fdaf639"
-        },
-        {
-          "path": "docs/hermes-import-boundary.md",
-          "start": 16,
-          "end": 43,
-          "excerpt_sha256": "c555195ab22f53afaf5ed905f9d52bcd69641bff5ccac4b6caaf0fcacc14b6f9"
-        },
-        {
-          "path": "docs/hermes-import-boundary.md",
-          "start": 53,
-          "end": 67,
-          "excerpt_sha256": "e274ade613c0613eff2d174730575215bbdc78c745831d163ab5028d78916062"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E13",
-      "title": "Ephemeral key revocation needs confirmed owned stop",
-      "statement": "Optional one-shot key stays private runtime-only, persists fingerprint/lifecycle metadata and never token. Confirm child and adapter stop before revoked; otherwise stop_failed with retained receipt/artifact. Parent/helper normal exit is not task success or proof all remote work stopped.",
-      "rationale": "Bearer has no intrinsic TTL and strings cannot be reliably zeroized; only owned boundary shutdown can support local revocation.",
-      "scope": "Optional LocalHermesKey/inventory factory/manual handoff; not standard-MCP credential requirement.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "python-token-input",
-        "production-operations"
-      ],
-      "citations": [
-        {
-          "path": "docs/local-hermes-key.md",
-          "start": 9,
-          "end": 17,
-          "excerpt_sha256": "c2544a42f2efc581fedf943351ef3243b86368ddd7857daa560dabf3e0d64ce1"
-        },
-        {
-          "path": "docs/inventory-one-shot.md",
-          "start": 23,
-          "end": 44,
-          "excerpt_sha256": "cf8f14491a74318cdd8293774faec0f2ecf37338e76ce61585e4b6665fc083b6"
-        },
-        {
-          "path": "docs/inventory-token-input.md",
-          "start": 23,
-          "end": 36,
-          "excerpt_sha256": "7c07b96342d2a7c739f71ebde5198549b99f6ecee30f81b90c84aed7b4f3b0f6"
-        }
-      ]
-    },
-    {
       "id": "HAB-E14",
       "title": "Live trial cost and quota require evidence",
       "statement": "For optional live diagnostics/inventory with agreed zero-additional-cost ceiling, unknown included allowance/provider billing or quota stops work. No paid fallback, silent credit use, tick token minting or auto retry. Account-wide token attempts reserve durable shared counters and unknown attempts park until reviewed reconciliation.",
@@ -3814,9 +3740,9 @@
       "citations": [
         {
           "path": "docs/local-mvp.md",
-          "start": 76,
-          "end": 80,
-          "excerpt_sha256": "cf9d87e414f5bf76d6d7c35733282c9864dbe3e309579bdd204526026f816935"
+          "start": 72,
+          "end": 76,
+          "excerpt_sha256": "76ec86eead6e7402d4a3e8c69097afd3aebf19c9b6ed05f3d42dbf8a3f41e015"
         },
         {
           "path": "docs/finite-mcp-trial.md",
@@ -3829,26 +3755,6 @@
           "start": 53,
           "end": 64,
           "excerpt_sha256": "44f8760498ee74432970c9aa7e37f18f52bee62ea4595f864f29354c075abc64"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E18",
-      "title": "Fixed metadata cannot prove product identity",
-      "statement": "Fixed lstat inventory reports candidate metadata as unknown and never claims exact installed product or whole-machine absence; no listing, shell, network or broad filesystem fallback.",
-      "rationale": "Names/missing fixed paths are insufficient identity/exhaustiveness evidence.",
-      "scope": "Optional shift_log_inventory collector only; not standard messaging.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "python-bridge"
-      ],
-      "citations": [
-        {
-          "path": "docs/mvp-inventory.md",
-          "start": 18,
-          "end": 42,
-          "excerpt_sha256": "21f5c1b71508df0b1c0a480448b329fd2f9607c5233001b05b6850bd569e83f9"
         }
       ]
     },
@@ -4056,32 +3962,6 @@
       ]
     },
     {
-      "id": "HAB-V06",
-      "title": "Generate reviewed successor pins from committed blobs",
-      "statement": "Preserve the historical P7 pin, commit feature source, generate a separate successor from explicit committed Git blobs, review the manifest/archive/digest and rerun verification before committing pin updates.",
-      "rationale": "Updating expected hashes from mutable source defeats provenance checking; root tests alone do not cover dedicated P7 guards.",
-      "scope": "P7 source profile, including the current broker-startup catalog. The generic-nats group was removed with the generic-nats code.",
-      "decision": "accepted",
-      "checks": [
-        "js-cli-guards",
-        "current-hosted-p7"
-      ],
-      "citations": [
-        {
-          "path": "test/p7/README.md",
-          "start": 3,
-          "end": 16,
-          "excerpt_sha256": "648d65f0b56734edeb27959107c1f5cfba0bb907826b2c3a66e117c5fecbe9b1"
-        },
-        {
-          "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 34,
-          "end": 34,
-          "excerpt_sha256": "052c00c877d07e3a61e3feb6ad246bf68b6d5f3e50f61a6ff60abd3995ed6d23"
-        }
-      ]
-    },
-    {
       "id": "HAB-V07",
       "title": "Incomplete required groups fail acceptance",
       "statement": "Required acceptance must fail on missing, duplicated, empty, contradictory, failing, skipped, cancelled or timed-out results; timeout remains failure even after exit zero.",
@@ -4169,7 +4049,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 28,
           "end": 39,
-          "excerpt_sha256": "a4db5f1f03fe7cc96a15c5f0fd0528f533a03f10e6a33676762ac6e6c2c04ae3"
+          "excerpt_sha256": "d69c73623607b33f875a3b7f24c140139d13cdd02c43d84f24ebab251e34a509"
         }
       ]
     },
@@ -4335,21 +4215,6 @@
       "limitations": "No broker started and no production adoption/volume durability established."
     },
     {
-      "id": "build",
-      "kind": "command",
-      "tier": "static",
-      "argv": [
-        "npm",
-        "run",
-        "build"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "exit",
-      "proves": "Actual HAB root build completes.",
-      "limitations": "Build only; functional evidence comes from the following native tests."
-    },
-    {
       "id": "js-root",
       "kind": "command",
       "tier": "integration",
@@ -4411,52 +4276,13 @@
         "--test",
         "--test-reporter=tap",
         "--test-timeout=30000",
-        "test/ci-nats/arguments.test.js",
-        "test/p7/runner.test.js"
+        "test/ci-nats/arguments.test.js"
       ],
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "node-tap",
-      "proves": "Native runner/CLI refusal scenarios: unsafe inputs, missing history, result shape, timeout and owned-child termination are checked.",
-      "limitations": "Guard scenarios only; real P7 broker execution remains separately required in the existing CI workflow."
-    },
-    {
-      "id": "python-bridge",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "python3",
-        "-B",
-        "-m",
-        "unittest",
-        "discover",
-        "-s",
-        "hermes_bridge",
-        "-p",
-        "test_*.py"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "python-unittest",
-      "proves": "Existing optional Python bridge/import/inventory boundary unit tests, separate from TS/JS and protocol checks.",
-      "limitations": "Synthetic bridge dependencies. Does not run Hermes AIAgent, native APIs, live keys or establish any cross-language universal guarantee."
-    },
-    {
-      "id": "python-token-input",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "python3",
-        "-B",
-        "-m",
-        "unittest",
-        "scripts.test_inventory_token_input"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "python-unittest",
-      "proves": "Existing finite Python stdin/token-input helper tests with synthetic secrets and owned fixture child.",
-      "limitations": "Optional helper only; no real token issuance, billing, native model or remote stop proof."
+      "proves": "Native CI runner/CLI refusal scenarios: unsafe inputs, result shape, timeout and owned-child termination are checked.",
+      "limitations": "Guard scenarios only; real broker execution remains separately required in the existing CI workflow."
     },
     {
       "id": "ast-boundary",
@@ -4556,9 +4382,9 @@
       "id": "current-hosted-p7",
       "kind": "manual",
       "tier": "manual",
-      "proves": "This exact candidate has final successful required GitHub Actions including complete current P7 broker groups and cleanup.",
+      "proves": "This exact candidate has final successful required GitHub Actions, including the pinned-broker JetStream stage and the full regression suite.",
       "limitations": "Not executed or automatically satisfied by this harness. Requires scoped external evidence and review; remains unverified.",
-      "instructions": "Read the exact PR head/merge ref Actions result and retained P7 report, official binary identity, source match before/after, all required catalogs, nonempty consistent zero-skip TAP, owned process closure and scratch cleanup. Use current manifest/catalog counts, not old prose totals. Record actual URL/head and status; local output and old reports cannot satisfy current hosted CI. Deployment adoption remains blocked by separate gates."
+      "instructions": "Read the exact PR head/merge ref Actions result: the ci-nats p6 stage against the pinned official binary and the full node --test regression suite must both pass. Record actual URL/head and status; local output and old reports are not evidence for the current head."
     },
     {
       "id": "proposal-review",
@@ -4908,9 +4734,9 @@
         },
         {
           "path": "README.md",
-          "start": 175,
-          "end": 175,
-          "excerpt_sha256": "7ca7aba05f423c6b663ea5b90abdd9c367a97ed7c5d44fb3a639874f9d4dd326"
+          "start": 167,
+          "end": 167,
+          "excerpt_sha256": "0f3277ba44863cc31e4a9e930c20bedfa4fbdab62aa33e022d8958885ddeea3c"
         },
         {
           "path": "docs/hab-product-spec.md",
@@ -5037,7 +4863,7 @@
         "HAB-A11",
         "HAB-A18"
       ],
-      "resolution": "No. Exclusive-binding language describes legacy1:1 enrollment/fixed-pilot scope. The explicit optional shared-group section and adopted group design allow group credential holders to select sibling names/mailboxes; preserve both modes and enforce group boundaries, never promote legacy exclusivity into universal requirement.",
+      "resolution": "No. Exclusive-binding language describes the earlier 1:1 enrollment/fixed-pilot scope. The adopted group design allows group credential holders to select sibling names/mailboxes; since 2026-11-12 every connection is a group binding and an address bound on its own is its group's only member. Enforce group boundaries; never promote single-member exclusivity into a universal requirement.",
       "classification": "scope",
       "citations": [
         {
@@ -5048,9 +4874,9 @@
         },
         {
           "path": "src/hab/README.md",
-          "start": 342,
-          "end": 376,
-          "excerpt_sha256": "37e5e1b3b3bf67ee191998b2edcaebfde70220b9e471d9ffc3dc61daa827de60"
+          "start": 345,
+          "end": 385,
+          "excerpt_sha256": "898e85a7ea45e3f526ba80400b47792118511382bf7b2d9a5dfd0424dda8d545"
         }
       ]
     },
@@ -5071,14 +4897,14 @@
       "citations": [
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 19,
-          "end": 22,
+          "start": 18,
+          "end": 21,
           "excerpt_sha256": "a809b6c5de13a706e8607d83c2db6b8e7ec447e7412997ba22926716735f4441"
         },
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 143,
-          "end": 147,
+          "start": 142,
+          "end": 146,
           "excerpt_sha256": "c9927fa931e7e33e24f860f79b8985067ff52ae6567276d172f63c6438a50ace"
         },
         {
@@ -5130,8 +4956,8 @@
         },
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 40,
-          "end": 44,
+          "start": 39,
+          "end": 43,
           "excerpt_sha256": "1f323b980ed876b53d49e624523446490a952663d01693a27aa48a9adc4c4eca"
         }
       ]
@@ -5161,7 +4987,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 55,
-          "excerpt_sha256": "150353eb1b942ef56291858113fa099dfabe4259c418db05cb0619f500bc5de6"
+          "excerpt_sha256": "89d24f800ad1d81a239b4ae7ffa5d64ab7caa5545a09eedd2cef3f0bac5f5a41"
         }
       ]
     },
@@ -5188,8 +5014,8 @@
         },
         {
           "path": "docs/relay-oauth-ingress.md",
-          "start": 53,
-          "end": 57,
+          "start": 52,
+          "end": 56,
           "excerpt_sha256": "7d516aa13c8ed976e78f982c6d763789002cc75fa287f2badb4d76823259f2d1"
         }
       ]
@@ -5375,7 +5201,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5404,7 +5229,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5439,7 +5263,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5474,7 +5297,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5509,18 +5331,17 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
-      "resolution": "No. local-MVP99–108 explicitly keeps historical fixture while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.",
+      "resolution": "No. local-MVP 99–108 says each MVP address connects as the only member of its own group, while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.",
       "classification": "resolved-version-scope",
       "citations": [
         {
           "path": "docs/local-mvp.md",
-          "start": 105,
-          "end": 114,
-          "excerpt_sha256": "a0824786d6ed7c5ad1d2b11155bab26e78f1b794b0225783b918b7c8592e8d5c"
+          "start": 99,
+          "end": 108,
+          "excerpt_sha256": "e8dbc5b97f7d9d1a76b1d378e99479aa80e4bba4291bf3d01c5b9dfbc5d2a162"
         }
       ]
     },
@@ -5532,7 +5353,6 @@
         "HAB-E01",
         "HAB-E03",
         "HAB-E04",
-        "HAB-E12",
         "HAB-E17",
         "HAB-E19"
       ],
@@ -5558,7 +5378,6 @@
       "question": "Early lab records unimplemented A2A/NATS skips, later P7 requires zero skips. Which is current?",
       "id": "HAB-C-V01",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5590,7 +5409,6 @@
       "question": "Older reports say workflow inactive/publication held, current publication guide says active CI.",
       "id": "HAB-C-V02",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5621,7 +5439,6 @@
       "question": "F05 documentation describes actual SIGKILL while restart recipe says no kill-9 verification.",
       "id": "HAB-C-V03",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5652,7 +5469,6 @@
       "question": "Does raw relay_poll plus relay_ack establish durable receiving?",
       "id": "HAB-C-V04",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5682,7 +5498,6 @@
       "question": "P7 guides still name the original 1498 full-root cases and old group set, but the current successor adds the broker-startup group and implementation adds tests. Which numeric counts apply to this exact candidate?",
       "id": "HAB-C-V05",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5705,12 +5520,6 @@
           "end": 18,
           "excerpt_sha256": "bfd92f1e147398230d37bedc056bb0f5850ea546c9467828a7f72fdb7aa1d7b0",
           "maintenance": "ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
-        },
-        {
-          "path": "test/p7/README.md",
-          "start": 20,
-          "end": 20,
-          "excerpt_sha256": "4a2add99d2670f67b720b5ef532b4cfa8e503997c59c25d93c3e1fc7a4a2e3ee"
         }
       ],
       "resolution": "The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate. PR163 stacked follow-up: the 25 unchanged source-launch cases bring this branch to 1371 expected full-root tests. Its original hosted PR report passed all 1371 but failed the inherited 1338 catalog. The corrected owner-activation source and bounded recipient fixture are inherited without changing journal semantics; exact-count and cleanup gates remain strict. The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. Integration of #161/#162/#163 with managed transport (2026-11-11): expected root inventory 1424 (1338 + 33 + 38 + 15), an inventory update, not an execution-result claim. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence."
@@ -5720,7 +5529,6 @@
       "question": "Can native A2A acceptance or the shared JetStream D01 stand in for arbitrary six-direction backend behavior?",
       "id": "HAB-C-V06",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",
@@ -5751,7 +5559,6 @@
       "question": "Do diagram manifests and their rendering implementation create additional product topology requirements?",
       "id": "HAB-C-V07",
       "requirements": [
-        "HAB-V06",
         "HAB-V07",
         "HAB-V09",
         "HAB-V10",

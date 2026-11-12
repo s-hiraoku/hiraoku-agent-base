@@ -49,10 +49,10 @@ Rules:
 
 ## Schema and permissions
 
-`registry.agent_rename: true` together with `authentication_groups: true` explicitly
-upgrades registry v1/v2 to v3 during Relay initialization. The v2 group schema is
-the base; existing individual bindings remain usable without group enrollment.
-Without this flag existing v1/v2 schemas and immutable-address behavior are unchanged.
+`registry.agent_rename: true` explicitly upgrades registry v2 to v3 during Relay
+initialization. The v2 group schema is the base; every registry has it, because
+every connection authenticates through a group. Without this flag the v2 schema and
+immutable-address behavior are unchanged.
 Admin commands refuse an upgrade-pending registry and never perform this migration.
 
 V3 preserves the original `hab_agents` identity row and its immutable trigger.

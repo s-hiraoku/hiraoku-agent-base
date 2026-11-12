@@ -336,7 +336,7 @@ One approved authentication group may authenticate one or multiple registered ad
 
 Reason: Provides practical shared host authentication without falsely claiming per-Bot credential isolation.
 
-Scope: Explicit authentication_groups mode; retain legacy1:1 behavior when disabled. Decision: **accepted**.
+Scope: Every connection authenticates through a group; an address bound on its own is the only member of its group. Earlier direct 1:1 bindings move into such groups at migrate(). Decision: **accepted**.
 
 Checks: js-root.
 
@@ -392,7 +392,7 @@ Sources: [docs/relay-auth-groups.md:54](https://github.com/s-hiraoku/hiraoku-age
 
 ### HAB-A07 — Explicit schema and rollback boundary
 
-Group schema migration is explicit opt-in, preserves existing identities/bindings and refuses old runtimes. Never lower schema version or restore stale online state that resurrects revoked authority or loses accepted deliveries. Keep DB, keys, config and release in a consistent protected backup set.
+Group schema migration runs at every migrate(), preserves existing identities and moves earlier direct bindings into single-member groups under the same binding IDs and fingerprints without changing effective rights, and refuses old runtimes. The operator CLI refuses an unmoved registry (registry_upgrade_pending). Never lower schema version or restore stale online state that resurrects revoked authority or loses accepted deliveries. Keep DB, keys, config and release in a consistent protected backup set.
 
 Reason: Authority and delivery history must survive migration/recovery; version edits are not safe rollback.
 
@@ -536,7 +536,7 @@ Sources: [docs/agent-address-rename.md:3](../../docs/agent-address-rename.md#L3-
 
 ### HAB-A19 — Group stop is total and re-grants nothing
 
-Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction, as revoking an individual binding does. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.
+Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.
 
 Reason: A group stop revokes shared authority. Members that stay active, or that a later reconnect of one address silently revives, would undo an operator's disconnect.
 
@@ -548,7 +548,7 @@ Sources: [docs/relay-auth-groups.md:56](https://github.com/s-hiraoku/hiraoku-age
 
 ### HAB-A20 — Management connect is atomic and explicit
 
-A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. That transaction requires every right the three separate operations need (group_create, group_bind and group_member), so a context missing any one of them is refused and creates no group, binding or member. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. The management CLI takes group mode from `registry.authentication_groups` in the config, not from the stored registry schema version.
+A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. That transaction requires every right the three separate operations need (group_create, group_bind and group_member), so a context missing any one of them is refused and creates no group, binding or member. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. Every management connect goes through a group; `registry.authentication_groups` in an older config is accepted and ignored.
 
 Reason: Management requests change authority. A partial or misread request must fail without orphan state and must never grant more than the operator named.
 

@@ -110,7 +110,6 @@ test("Receive supervisor: durable host stores and ACKs once, restart does not re
     "relay_poll",
   ]);
   assert.equal(f.inbox.inbox().length, 1);
-  assert.equal(f.count(), 0);
   assert.equal(f.queued().length, 0);
 });
 test("Receive supervisor: lost ACK response is reconciled before polling another message", async (t) => {

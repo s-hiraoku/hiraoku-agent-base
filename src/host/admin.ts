@@ -69,12 +69,20 @@ function open(configPath: string) {
   // Schema upgrades belong to the explicitly configured Relay start, never an admin command.
   if (!existsSync(path)) throw new HostAdminError("relay_not_initialized");
   let version: unknown;
+  let unconverted = false;
   try {
     const raw = new DatabaseSync(path, { readOnly: true });
     try {
       version = raw
         .prepare("SELECT version FROM hab_registry_meta WHERE id=1")
         .get()?.version;
+      // Individual bindings from earlier builds move into groups at the next host start.
+      if (typeof version === "number" && version >= 2)
+        unconverted = !!raw
+          .prepare(
+            "SELECT 1 FROM hab_bindings b WHERE NOT EXISTS (SELECT 1 FROM hab_auth_group_bindings g WHERE g.binding_id=b.binding_id)",
+          )
+          .get();
     } finally {
       raw.close();
     }
@@ -82,7 +90,8 @@ function open(configPath: string) {
     throw new HostAdminError("relay_not_initialized");
   }
   if (
-    (version === 1 && config.registry.authentication_groups === true) ||
+    version === 1 ||
+    unconverted ||
     (typeof version === "number" &&
       version < 3 &&
       config.registry.agent_rename === true)
@@ -157,7 +166,6 @@ function open(configPath: string) {
     registry,
     resources,
     credentials,
-    groups: config.registry.authentication_groups === true,
     a2aIdentity: config.a2a?.identity,
   };
 }
@@ -188,14 +196,17 @@ function withRegistry<T>(
   }
 }
 
-function summary(agent: Agent) {
+type Group = RegistryOverview["groups"][number];
+function summary(agent: Agent, groups: readonly Group[]) {
   return {
     address: agent.address,
     agent_id: agent.agent_id,
     state: agent.state,
     epoch: agent.epoch,
     operations: agent.operations,
-    active_bindings: agent.active_binding_ids.length,
+    active_bindings:
+      groups.find((group) => group.group_id === agent.group_id)
+        ?.active_binding_ids.length ?? 0,
     group_id: agent.group_id,
   };
 }
@@ -208,14 +219,11 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
     const problems: { code: string; subject: string }[] = [];
     const mapped = credentials().map((record) => {
       const reservation = registry.findPrincipal(operator, record.principal);
-      const addresses =
-        reservation?.kind === "agent"
-          ? [byId.get(reservation.owner_id)?.address ?? ""]
-          : reservation?.kind === "group"
-            ? view.agents
-                .filter((agent) => agent.group_id === reservation.owner_id)
-                .map((agent) => agent.address)
-            : [];
+      const addresses = reservation
+        ? view.agents
+            .filter((agent) => agent.group_id === reservation.group_id)
+            .map((agent) => agent.address)
+        : [];
       const remainingMs = Date.parse(record.expires_at) - now;
       const expiresIn = record.participation
         ? Math.max(0, Math.ceil(remainingMs / 1000))
@@ -255,7 +263,7 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
           : { expires_in_seconds: expiresIn }),
         audience: record.principal.audience,
         binding: reservation
-          ? { kind: reservation.kind, state: reservation.state }
+          ? { group_id: reservation.group_id, state: reservation.state }
           : null,
         addresses,
       };
@@ -267,10 +275,7 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
           code: `address_${agent.state}`,
           subject: agent.address,
         });
-      else if (
-        !agent.active_binding_ids.length &&
-        !group?.active_binding_ids.length
-      )
+      else if (!group?.active_binding_ids.length)
         problems.push({ code: "address_unbound", subject: agent.address });
       else if (group && group.state !== "active")
         problems.push({ code: `group_${group.state}`, subject: agent.address });
@@ -279,8 +284,7 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
       problems.push({ code: "emergency_stopped", subject: "*" });
     return {
       resource_urls: resources,
-      authentication_groups: view.authentication_groups,
-      addresses: view.agents.map(summary),
+      addresses: view.agents.map((agent) => summary(agent, view.groups)),
       groups: view.groups.map((group) => ({
         group_id: group.group_id,
         state: group.state,
@@ -343,7 +347,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
     throw new HostAdminError("invalid_operations");
   return withRegistry(
     configPath,
-    ({ registry, resources, credentials, groups, a2aIdentity }) => {
+    ({ registry, resources, credentials, a2aIdentity }) => {
       // A second credential on the host identity could read every A2A reply.
       if (address.address === a2aIdentity)
         throw new HostAdminError("a2a_identity_reserved");
@@ -383,25 +387,8 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
       if (reservation && reservation.state !== "active")
         // Revoked connection descriptors stay reserved forever by design.
         throw new HostAdminError("credential_revoked_use_new_connection_id");
-      const legacy =
-        !groups ||
-        agent.active_binding_ids.length > 0 ||
-        reservation?.kind === "agent";
-      if (legacy) {
-        if (reservation && reservation.owner_id !== agent.agent_id)
-          throw new HostAdminError("credential_bound_elsewhere");
-        if (agent.group_id) throw new HostAdminError("address_in_group");
-        if (!reservation) {
-          registry.bind(operator, {
-            request_id: request(),
-            agent_id: agent.agent_id,
-            expected_epoch: registry.inspect(operator, agent.agent_id).epoch,
-            principal,
-          });
-          steps.push("connection_bound");
-        }
-      } else {
-        let groupId = reservation?.owner_id ?? agent.group_id;
+      {
+        let groupId = reservation?.group_id ?? agent.group_id;
         if (agent.group_id && groupId !== agent.group_id)
           throw new HostAdminError("address_in_other_group");
         if (!groupId) {
@@ -472,7 +459,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
       view = registry.overview(operator);
       return {
         steps,
-        address: summary(agent),
+        address: summary(agent, view.groups),
         ...(agent.group_id
           ? {
               group_members: view.agents
@@ -498,14 +485,6 @@ export function hostAdminDisconnect(configPath: string, addressInput: string) {
       .agents.find((value) => value.address === address);
     if (!agent) throw new HostAdminError("address_not_found");
     let revoked = 0;
-    for (const bindingId of agent.active_binding_ids) {
-      registry.revoke(operator, {
-        request_id: request(),
-        binding_id: bindingId,
-        expected_epoch: registry.inspect(operator, agent.agent_id).epoch,
-      });
-      revoked++;
-    }
     let affected = [address];
     if (agent.group_id) {
       const view = registry.overview(operator);
@@ -522,14 +501,13 @@ export function hostAdminDisconnect(configPath: string, addressInput: string) {
         .filter((a) => a.group_id === agent.group_id)
         .map((a) => a.address);
     }
-    const after = registry
-      .overview(operator)
-      .agents.find((value) => value.address === address)!;
+    const view = registry.overview(operator);
+    const after = view.agents.find((value) => value.address === address)!;
     return {
       revoked_bindings: revoked,
       already_disconnected: revoked === 0,
       affected_addresses: affected,
-      address: summary(after),
+      address: summary(after, view.groups),
     };
   });
 }

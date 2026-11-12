@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
 import { hostFixture } from "./adapter-host-fixtures.js";
-import { code } from "./task-bridge-fixtures.js";
+import { code } from "./inbox-fixtures.js";
 import { call, message } from "./relay-http-fixtures.js";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
@@ -62,7 +62,6 @@ test("inbox read: preparation has a separate finite RPC budget and never retries
   assert.deepEqual(saved.value.message, message);
   assert.equal(saved.value.receipt_confirmed, true);
   assert.equal(f.queued().length, 0);
-  assert.equal(f.count(), 0);
 
   const refused = await hostFixture(t);
   const refusedTimeout = refused.state.timeout_ms;
@@ -91,11 +90,6 @@ test("inbox read: exact saved external data is separate from metadata and repeat
   assert.deepEqual((await read(f, key)).value.message, message);
   assert.deepEqual(f.state.tools, network);
   assert.equal(f.inbox.inbox().length, 1);
-  assert.equal(f.count(), 0);
-  assert.equal(
-    f.raw.prepare("SELECT count(*) n FROM task_bridge_links").get().n,
-    0,
-  );
   assert.equal(f.queued().length, 0);
   await assert.rejects(
     f.step({ op: "inbox_read", source: key, message: "override" }),
@@ -142,7 +136,6 @@ test("inbox read: metadata permission and body access never grant another source
     code("host_forbidden"),
   );
   assert.equal(f.queued().length, 0);
-  assert.equal(f.count(), 0);
 });
 
 test("inbox read: saved ACK-pending content remains readable without retrying or confirming its ACK", async (t) => {
@@ -167,7 +160,6 @@ test("inbox read: saved ACK-pending content remains readable without retrying or
     before,
   );
   assert.deepEqual(f.state.tools, network);
-  assert.equal(f.count(), 0);
   assert.equal(f.queued().length, 0);
   f.state.afterNetwork = null;
   f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
@@ -195,7 +187,6 @@ test("inbox read: missing and released bodies return no partial data", async (t)
       value: null,
     });
   }
-  assert.equal(f.count(), 0);
   assert.equal(f.queued().length, 0);
 });
 
@@ -237,7 +228,6 @@ test("inbox read: pause and authority revocation prevent content return", async 
     reason: "host_forbidden",
     value: null,
   });
-  assert.equal(f.count(), 0);
   assert.equal(f.queued().length, 0);
 });
 
@@ -285,7 +275,6 @@ test("inbox read: native HTTP periodic receive waits for explicit recipient read
   ).run(stop.signal);
   assert.equal(result.receive_steps, 1);
   assert.equal(result.drained, true);
-  assert.equal(f.count(), 0);
   assert.equal(f.queued().length, 0);
   const saved = await read(f, source, host);
   assert.equal(saved.state, "done");
@@ -312,5 +301,4 @@ test("inbox read: native HTTP periodic receive waits for explicit recipient read
     incoming.body.result.structuredContent.delivery.message.in_reply_to,
     source,
   );
-  assert.equal(f.count(), 0);
 });

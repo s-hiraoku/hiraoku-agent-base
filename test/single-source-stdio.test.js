@@ -106,10 +106,9 @@ test("single-source stdio: starts denied and paused; only the local owner can gr
   const denied = await f.command("state");
   assert.equal(denied.inboxCount, 0);
   assert.equal(denied.outbox.length, 0);
-  for (const name of ["pause", "resume", "control", "updatePermission", "message_enqueue", "task_submit"])
+  for (const name of ["pause", "resume", "control", "updatePermission", "message_enqueue"])
     assert.equal((await f.call(name)).isError, true);
   assert.equal((await f.command("state")).outbox.length, 0);
-  assert.equal((await f.command("state")).taskCount, 0);
   assert.equal((await f.command("grant")).paused, true);
   assert.equal((await f.call("receive")).isError, true);
   await f.command("resume");
@@ -141,7 +140,6 @@ test("single-source stdio: exact source/reply roundtrip and revocation protect t
   assert.equal((await f.call("answer_enqueue", { source })).isError, false);
   const before = await f.command("state");
   assert.equal(before.outbox.length, 1);
-  assert.equal(before.taskCount, 0);
   await f.command("revoke");
   await f.command("resume");
   assert.equal((await f.call("send")).isError, true);
@@ -215,7 +213,6 @@ test("single-source stdio: drain timeout retains owner/stores, fences late RPC a
   assert.equal(state.status.owner, "held");
   assert.equal(state.inboxCount, 0); // The delayed poll result never passed the pause/epoch guard.
   assert.equal(state.outbox.length, 0);
-  assert.equal(state.taskCount, 0);
   assert.equal((await f.command("stop")).stopped, true);
   await until(f.cleanupExists);
   await f.closeClient();
@@ -261,7 +258,6 @@ test("single-source stdio: stop snapshot failure irreversibly revokes new and la
   assert.equal(state.status.owner, "held");
   assert.equal(state.inboxCount, 0);
   assert.equal(state.outbox.length, 0);
-  assert.equal(state.taskCount, 0);
   assert.equal(fresh.isError, true, "new body reads must stay revoked after stop failure");
   assert.equal(newReceive.isError, true, "new receive must stay revoked after stop failure");
   assert.equal(retried.stopped, true);

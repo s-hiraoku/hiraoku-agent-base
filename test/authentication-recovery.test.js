@@ -378,7 +378,6 @@ test("durable ACK identity and full body survive recovery and same-identity resu
     assert.equal(confirmed[field], savedAck[field]);
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
   assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack", "relay_poll"]);
-  assert.equal(f.count(), 0);
   assert.equal(f.queued().length, 0);
 });
 test("supervisor without a gate stops at a typed recovery reason instead of retrying forever", async () => {
