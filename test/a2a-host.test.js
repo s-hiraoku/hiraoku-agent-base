@@ -4,7 +4,6 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import Database from "better-sqlite3";
 import { ClientFactory, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
 import { SendMessageRequest, TaskState } from "@a2a-js/sdk";
 import { DatabaseTaskStore } from "@a2a-js/sdk/server/database";
@@ -1600,8 +1599,10 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
     }
     assert.deepEqual(mail.prepare("PRAGMA foreign_key_check").all(), []);
     mail.close();
-    // Use the same driver as the host for the offline Task-store fixture.
-    const tasks = new Database(join(f.config.directory, "a2a-tasks.sqlite"));
+    // The host opens the Task store with node:sqlite too.
+    const tasks = new DatabaseSync(
+      join(f.config.directory, "a2a-tasks.sqlite"),
+    );
     for (const row of tasks
       .prepare("SELECT id,metadata FROM hab_a2a_tasks")
       .all()) {
@@ -1619,9 +1620,10 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
         .prepare("UPDATE hab_a2a_tasks SET metadata=? WHERE id=?")
         .run(JSON.stringify(meta), row.id);
     }
-    assert.deepEqual(tasks.pragma("integrity_check"), [
-      { integrity_check: "ok" },
-    ]);
+    assert.deepEqual(
+      tasks.prepare("PRAGMA integrity_check").get().integrity_check,
+      "ok",
+    );
     tasks.close();
   });
   assert.ok(
@@ -1990,7 +1992,9 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
     }
     assert.deepEqual(mail.prepare("PRAGMA foreign_key_check").all(), []);
     mail.close();
-    const tasks = new Database(join(f.config.directory, "a2a-tasks.sqlite"));
+    const tasks = new DatabaseSync(
+      join(f.config.directory, "a2a-tasks.sqlite"),
+    );
     for (const row of tasks
       .prepare("SELECT id,metadata FROM hab_a2a_tasks")
       .all()) {
@@ -2009,9 +2013,10 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
         .prepare("UPDATE hab_a2a_tasks SET metadata=? WHERE id=?")
         .run(JSON.stringify(meta), row.id);
     }
-    assert.deepEqual(tasks.pragma("integrity_check"), [
-      { integrity_check: "ok" },
-    ]);
+    assert.deepEqual(
+      tasks.prepare("PRAGMA integrity_check").get().integrity_check,
+      "ok",
+    );
     tasks.close();
   });
   assert.ok(
@@ -2285,7 +2290,7 @@ test("a full batch of per-Task store failures does not starve later overdue Task
     // waiting a day or sending 102 relay requests. The fault is a selected
     // TaskStore save failure, not a claim that malformed Task metadata is
     // reachable through the public A2A API.
-    const db = new Database(join(f.config.directory, "a2a-tasks.sqlite"));
+    const db = new DatabaseSync(join(f.config.directory, "a2a-tasks.sqlite"));
     try {
       const row = db
         .prepare("SELECT * FROM hab_a2a_tasks WHERE id=?")

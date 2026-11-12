@@ -337,3 +337,10 @@ The owner approved the simplification review, whose P3a step makes authenticatio
 - `test/hab-auth-groups.test.js` covers the conversion from a v1 registry and of a revoked direct binding; `test/local-relay-admin.test.js` covers the CLI refusal. verify-hab's configured feature no longer turns groups on.
 - Conflict citations: HAB-C-A01 and HAB-C-A04 were re-cited after rereading the changed Registry README and rename text, and HAB-C-E05 now cites the reworded local-MVP paragraph with its resolution updated. The P2 deletions had left three conflict citations stale: HAB-C-F04 now cites the README's JetStream check line, HAB-C-V05 drops the deleted `test/p7/README.md`, and four `docs/relay-oauth-ingress.md` citations only moved.
 - In source-review.json the changed Registry, enrollment, admin and A2A host sources were rehashed with appended summaries.
+
+## A2A Task store on node:sqlite (2026-11-13)
+
+The owner approved dropping the native `better-sqlite3` addon after the technology-stack review. `src/a2a/store.ts` now opens the dedicated Task database with `node:sqlite` and hands Kysely's `SqliteDialect` a small adapter, so the SDK's `DatabaseTaskStore`, the table, the schema file and the host maintenance queries are unchanged and an existing `a2a-tasks.sqlite` opens as before. `better-sqlite3` and `@types/better-sqlite3` leave `package.json`; `kysely` stays because the SDK store requires it. No requirement, citation or adopted statement changes.
+
+- In source-review.json `src/a2a/store.ts` and `test/a2a-sdk-store.test.js` were re-read and rehashed with appended summaries. `test/a2a-host.test.js` only swaps its offline fixture driver to `node:sqlite`; its entry, like `package.json`'s, was already behind the P2 deletion diff and is left for that maintenance.
+- `test/a2a-sdk-store.test.js` adds an upsert and two-page list case through the SDK on `node:sqlite`.

@@ -783,13 +783,13 @@
       },
       {
         "path": "src/a2a/store.ts",
-        "sha256": "4d6e5e5a89045ad84373d5d253ebddf10fa8c74275326e1028abf8c1fee7c3f0",
+        "sha256": "0cbdc1725004a6b0f864be415d0cf45181aa483ceb770b9d629dff9721dc9559",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
-        "summary": "Private dedicated eager better-sqlite3 Task database with lazy Kysely/SDK wrapper and explicit finally-close of any remaining eager connection. Existing source lookup and next-expiry queries remain. overdue selects nonterminal sources at or before cutoff using strict (tenant,owner,id)>cursor and that same stable ordering with a bounded limit; failed saves do not change cursor identity. Empty cursor starts a pass; host owns advancement/wrap. No metadata repair or API corruption claim.",
+        "summary": "Private dedicated eager node:sqlite Task database with lazy Kysely/SDK wrapper and explicit finally-close of any remaining eager connection. Existing source lookup and next-expiry queries remain. overdue selects nonterminal sources at or before cutoff using strict (tenant,owner,id)>cursor and that same stable ordering with a bounded limit; failed saves do not change cursor identity. Empty cursor starts a pass; host owns advancement/wrap. No metadata repair or API corruption claim. Driver change (2026-11-13): the eager connection is node:sqlite DatabaseSync (timeout 5000, WAL, schema in one BEGIN IMMEDIATE transaction), adapted to Kysely's SqliteDialect by a small prepare/all/run/iterate wrapper whose reader flag is statement.columns().length>0; findBySource and overdue return plain {tenant,owner,id} objects. Table, schema, queries and close order are unchanged, so an existing a2a-tasks.sqlite opens as before. better-sqlite3 is no longer a dependency.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-D20. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds overdue(expiredBy, limit). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds nextExpiry(after). Task-store close follow-up on f1b6eb1: full lifecycle review confirms Kysely RuntimeDriver.destroy returns before driver initialization; explicit eager-connection closure is required after direct host reads. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
+        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-D20. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds overdue(expiredBy, limit). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds nextExpiry(after). Task-store close follow-up on f1b6eb1: full lifecycle review confirms Kysely RuntimeDriver.destroy returns before driver initialization; explicit eager-connection closure is required after direct host reads. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Driver maintenance (2026-11-13): re-read the full file after replacing better-sqlite3 with node:sqlite."
       },
       {
         "path": "src/a2a/hab-http.ts",
@@ -1153,13 +1153,13 @@
       },
       {
         "path": "test/a2a-sdk-store.test.js",
-        "sha256": "a76ffb56d46336da720dc4285dd948b43c4bc0b0632d4e18d088bd356c5afc8a",
+        "sha256": "e159e6006174070ff5f8eefd7b8cb27464ab453faf5232c24e1aa899a32df075",
         "kind": "native-regression-test",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
-        "summary": "Existing persistence, owner isolation and eager-close tests retained; new stable-key overdue paging control uses complete tenant/owner/id ordering to reach rows beyond retrying entries.",
+        "summary": "Existing persistence, owner isolation and eager-close tests retained; new stable-key overdue paging control uses complete tenant/owner/id ordering to reach rows beyond retrying entries. Adds \"the node:sqlite Task store overwrites a saved Task and lists caller pages through the SDK\" (upsert, owner-scoped count and two-page cursor through Kysely on node:sqlite); the closed-store assertions also accept node:sqlite's finalized-statement error.",
         "limit": "Supplementary reviewed source, not an execution-result claim.",
-        "maintenance": " Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
+        "maintenance": " Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Driver maintenance (2026-11-13): re-read the full file."
       },
       {
         "path": "test/p7/a2a-cases.json",
