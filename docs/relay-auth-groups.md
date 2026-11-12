@@ -4,7 +4,7 @@
 
 2026-10-25 JSTに採用した設計判断。**認証は参加グループ単位、Botの切り分けはアドレス単位**とする。グループは本人が承認する接続の信頼範囲であり、製品全体や全利用者を表さない。製品名による認証・配送分岐は設けない。
 
-**Registryと共通MCPの名義選択v1を実装済み。** 従来の1対1 bindingは維持し、明示的な`authentication_groups: true`と`migrate()`で追加schemaを有効にする。通常サービスの設定readerもこのopt-inを受け付けるが、稼働設定への適用は行っていない。OAuth入口は最大15分の試験用許可窓のままであり、実接続・常用token更新は別途検証する。
+**Registryと共通MCPの名義選択v1を実装済み。** 2026-11-12に、接続の認証をすべて認証グループへ一本化した。単独で接続したアドレスは、自分だけが所属するグループとして扱う。`migrate()`は常にグループschemaを作り、以前のbuildが作った1対1 bindingを、同じbinding ID・fingerprintのまま、そのアドレスだけのグループへ移す。設定の`authentication_groups`は旧設定との互換のために受け付けるが、値は使わない。稼働設定への適用は行っていない。OAuth入口は最大15分の試験用許可窓のままであり、実接続・常用token更新は別途検証する。
 
 ## 認証とアドレスの役割
 
@@ -22,7 +22,7 @@
 
 1. Relay入口が認証を検証し、server管理のbindingからグループを特定する。OAuthでは署名、issuer、audience、期限、必要scopeを確認する。公開client IDや自己申告のgroup IDだけで認証しない。
 2. 呼出元は送信名義または操作対象の自分側アドレスを選ぶ。serverは登録済み集合への所属、有効状態、必要な操作権限を確認し、確定した`agent_id`をRelay coreへ渡す。
-3. 未登録・別グループ・停止済みの自分側アドレスは拒否する。複数候補があるときの省略・曖昧な指定も拒否し、別名義へ自動で切り替えない。1件だけの従来接続は暗黙の選択を維持できる。
+3. 未登録・別グループ・停止済みの自分側アドレスは拒否する。複数候補があるときの省略・曖昧な指定も拒否し、別名義へ自動で切り替えない。有効な所属が1件だけのグループは暗黙の選択を維持できる。
 4. `submit`の宛先は相手のアドレスであり、自分側の所属検査とは別に、既存のメール型相互通信policyで検証する。別グループへの通常の送信は可能だが、相手の名義で送信したり相手の受信箱を操作したりはできない。
 5. `status`は選択した送信名義のmessage、`poll`と`ack`は選択した受信名義の配送だけを扱う。返信参照、lease／世代、receipt、block、停止、epochの検証は維持する。message ID・thread ID・lease tokenだけで権限を得ない。
 
@@ -89,12 +89,12 @@ HAB参加台帳には承認、状態、権限、所属と認証bindingを保存�
 - グループ失効とアドレス単位の停止を個別に検証し、処理中の変更も認可とcommitの間で取りこぼさない。
 - 監査でグループと名義を区別し、Bot本人性を過大に表示しない。MCP登録だけで受信起動・永続保存・自動返信を保証しない。
 
-Registryの管理portは`createGroup / bindGroupVerified / addGroupMember / setGroupAccess / revokeGroupBinding`。いずれも別管理権限・要求idempotency・epochを検証し、配送MCPからは公開しない。`selectAddress`は不透明な選択contextを作るだけで、`withRelay`が認証・所属を共有write guard内で検証する。`groupAuthorizations`は管理者用のbounded読取りで、認証グループと選択名義を分けた認可記録を返す。配送receiptやBot本人性の証明ではない。認可記録は`max_audit_records`件を上限とする保持期間で、上限に達すると古いものから同じtransaction内で削除し、最新の記録を残す（通常のpollで上限に達して全配送が拒否される状態にしない）。記録の書込み自体に失敗した場合は配送を開始しない。長期保管が必要なら上限に達する前に`groupAuthorizations`で読み出す。
+Registryの管理portは`createGroup / createBoundGroup / createBoundGroupVerified / bindGroup / bindGroupVerified / addGroupMember / setGroupAccess / revokeGroupBinding / inspectGroupBinding`。いずれも別管理権限・要求idempotency・epochを検証し、配送MCPからは公開しない。`selectAddress`は不透明な選択contextを作るだけで、`withRelay`が認証・所属を共有write guard内で検証する。`groupAuthorizations`は管理者用のbounded読取りで、認証グループと選択名義を分けた認可記録を返す。配送receiptやBot本人性の証明ではない。認可記録は`max_audit_records`件を上限とする保持期間で、上限に達すると古いものから同じtransaction内で削除し、最新の記録を残す（通常のpollで上限に達して全配送が拒否される状態にしない）。記録の書込み自体に失敗した場合は配送を開始しない。長期保管が必要なら上限に達する前に`groupAuthorizations`で読み出す。
 
-追加schema自身は`hab_auth_group_meta` version 1で管理し、明示opt-in migrationでRegistry本体をversion 1から2へ上げる。旧runtimeがグループ制約を無視してDBを開くことを防ぐ。version 2から1への書換えによるrollbackは禁止し、移行前backupを停止状態で復元する。グループ数と所属数は`max_agents`、legacyとgroupの合計binding数は`max_bindings`で制限する。既存credentialを暗黙にグループへ付け替えず、予約済みfingerprintを別主体へ再利用しない。機能を無効にして再起動しても所属と予約は残り、グループ個体への操作は拒否する。既存DBのbackup／restoreへ追加tableを含める検証は別途必要。
+グループschema自身は`hab_auth_group_meta` version 1で管理し、`migrate()`がRegistry本体をversion 1から2へ上げる。旧runtimeがグループ制約を無視してDBを開くことを防ぐ。version 2から1への書換えによるrollbackは禁止し、移行前backupを停止状態で復元する。1対1 bindingの移行では、アドレスごとに新しいグループを作り、そのアドレスだけを所属させる。グループは全操作を許可し、アドレスは自分の権限を保つので、実効権限（両者の積）は移行前と変わらない。旧bindingの行は失効済みの履歴として残る。移行前のhostで作られたbindingが残るRegistryには、管理CLIが`registry_upgrade_pending`で応じ、hostを一度起動して移行するまで操作しない。グループ数と所属数は`max_agents`、binding数は`max_bindings`で制限する。予約済みfingerprintを別主体へ再利用しない。既存DBのbackup／restoreへ追加tableを含める検証は別途必要。
 
-`node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-authorization.test.js`で、一時DB・合成主体による共有名義、外部拒否、停止・失効、再起動、idempotency、監査失敗と1対1回帰を確認する。実OAuth更新の試験ではない。
+`node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-authorization.test.js`で、一時DB・合成主体による共有名義、外部拒否、停止・失効、再起動、idempotency、監査失敗と、1対1 bindingからの移行を確認する。実OAuth更新の試験ではない。
 
-`node --test test/hab-address-selection.test.js test/local-relay-service.test.js`では、全5操作の名義選択・グループ外拒否・期待ID不一致の配送前拒否、writer受付、ネイティブHTTPによる永続送信・返信・保存後ACK、受付応答消失後のRegistry／listener再起動と同じ名義での復旧、明示opt-inでの全拒否起動を確認する。これは合成認証による試験であり、実Codex／Hermes等との往復を証明しない。
+`node --test test/hab-address-selection.test.js test/local-relay-service.test.js`では、全5操作の名義選択・グループ外拒否・期待ID不一致の配送前拒否、writer受付、ネイティブHTTPによる永続送信・返信・保存後ACK、受付応答消失後のRegistry／listener再起動と同じ名義での復旧、グループschemaを作る全拒否起動を確認する。これは合成認証による試験であり、実Codex／Hermes等との往復を証明しない。
 
 残作業はグループschemaのbackup／restoreと監査保守、実製品での受入れ、常用token更新。既存サービス・本番DB・認証grant・公開経路は変更していない。

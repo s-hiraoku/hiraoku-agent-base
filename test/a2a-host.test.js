@@ -121,7 +121,7 @@ function identityRow(f) {
   try {
     return db
       .prepare(
-        "SELECT a.agent_id,a.state,a.epoch,a.operations,(SELECT count(*) FROM hab_bindings b WHERE b.agent_id=a.agent_id AND b.state='active') bindings FROM hab_agents a WHERE a.bot_name='a2a'",
+        "SELECT a.agent_id,a.state,a.epoch,a.operations,(SELECT count(*) FROM hab_auth_group_members m JOIN hab_auth_group_bindings b USING(group_id) WHERE m.agent_id=a.agent_id AND b.state='active') bindings FROM hab_agents a WHERE a.bot_name='a2a'",
       )
       .all();
   } finally {

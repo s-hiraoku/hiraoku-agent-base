@@ -66,7 +66,7 @@ async function fixture(t) {
       bot_name: name,
     });
     const fp = reg.inspectConnection(admin, ctx).connection_fingerprint;
-    const b = reg.bindVerified(
+    const b = reg.createBoundGroupVerified(
       admin,
       {
         request_id: "bind-" + name,
@@ -76,6 +76,13 @@ async function fixture(t) {
       },
       ctx,
     );
+    reg.setGroupAccess(admin, {
+      request_id: "group-access-" + name,
+      group_id: b.group_id,
+      expected_epoch: b.group_epoch,
+      state: "active",
+      operations: ["submit", "status", "poll", "ack", "resolve"],
+    });
     return reg.setAccess(admin, {
       request_id: "access-" + name,
       agent_id: a.agent_id,

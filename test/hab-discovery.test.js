@@ -148,10 +148,10 @@ test("group whoami distinguishes a selected alias from the actual host owner; pr
   assert.equal(state(f), before);
 });
 
-test("legacy individual binding only sees its own identity, not the product or another group", async (t) => {
+test("an address bound on its own only sees its own identity, not the product or another group", async (t) => {
   const f = await group(t);
   const result = f.registry.discover(f.contexts.b, { action: "whoami" });
-  assert.equal(result.connection.kind, "individual_connection");
+  assert.equal(result.connection.kind, "authentication_group");
   assert.equal(result.selected_identity.agent_id, f.external.agent_id);
   assert.equal(result.host_identity.state, "unknown");
   const directory = f.registry.discover(f.contexts.b, { action: "directory" });

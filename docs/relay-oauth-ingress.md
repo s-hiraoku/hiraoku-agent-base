@@ -11,8 +11,7 @@
 今後はグループ内で共有する認証に複数アドレスを紐付けられる設計とし、Botごとの
 資格情報の専有は要求しません。別グループの名義使用・受信箱操作は拒否します。
 
-`registry.authentication_groups: true`を明示すると、OAuth接続もRegistryの認証
-グループへbindingでき、`as_address`と`expected_agent_id`で所属する宛先を選べます。
+OAuth接続もRegistryの認証グループへbindingされ、`as_address`と`expected_agent_id`で所属する宛先を選べます。
 グループ内は共有信頼境界であり、Botごとの専有認証は要求しません。
 グループ外の名義使用・受信・ACKは拒否します。
 

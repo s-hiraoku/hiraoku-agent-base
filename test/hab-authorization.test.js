@@ -257,11 +257,7 @@ test("revocation immediately denies retained contexts and exact ACK/receipt retr
   const d = f.hab.poll(f.contexts.b),
     request = ack(d);
   f.hab.ack(f.contexts.b, request);
-  f.registry.revoke(f.admin, {
-    request_id: "revoke-b",
-    binding_id: f.bindings.get("b").binding_id,
-    expected_epoch: b.epoch,
-  });
+  f.revoke("b");
   assert.throws(() => f.hab.ack(f.contexts.b, request), code("forbidden"));
   assert.throws(() => f.hab.poll(f.contexts.b), code("forbidden"));
   access(f, a, "stopped");
@@ -413,21 +409,18 @@ test("missing authoritative stop state fails closed and never initializes an unl
   assert.throws(() => reopened.migrate(), code("registry_unavailable"));
 });
 
-test("explicit overlapping binding rotation revokes only the old verified connection without stopping the individual", async (t) => {
+test("explicit overlapping binding rotation revokes only the old verified connection without stopping the address", async (t) => {
   const f = await fixture(t),
     a = f.enroll("a"),
     rotated = principal("a", { connection_id: "verified-a-rotated" });
-  const added = f.registry.bind(f.admin, {
+  const group = f.bindings.get("a").group_id;
+  f.registry.bindGroup(f.admin, {
     request_id: "overlap-new",
-    agent_id: a.agent_id,
-    expected_epoch: a.epoch,
+    group_id: group,
+    expected_epoch: f.registry.inspectGroup(f.admin, group).epoch,
     principal: rotated,
   });
-  f.registry.revoke(f.admin, {
-    request_id: "overlap-revoke-old",
-    binding_id: f.bindings.get("a").binding_id,
-    expected_epoch: added.agent_epoch,
-  });
+  f.revoke("a");
   assert.equal(f.registry.inspect(f.admin, a.agent_id).state, "active");
   assert.throws(() => f.hab.poll(f.contexts.a), code("forbidden"));
   const current = f.open(

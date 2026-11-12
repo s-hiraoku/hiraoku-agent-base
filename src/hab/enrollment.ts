@@ -114,9 +114,11 @@ type RegistryPort = Pick<
   | "preview"
   | "enroll"
   | "inspect"
-  | "inspectBinding"
+  | "inspectGroup"
+  | "inspectGroupBinding"
   | "inspectConnection"
-  | "bindVerified"
+  | "createBoundGroupVerified"
+  | "setGroupAccess"
   | "setAccess"
 >;
 export interface EnrollmentHost {
@@ -307,7 +309,8 @@ export async function runHabEnrollment(
     current = parseEnrollmentCheckpoint(state);
     if (current.stage === "bind_pending") {
       candidate ??= await host.connection(current.connection_fingerprint);
-      const binding = registry.bindVerified(
+      // The address becomes the only member of its own authentication group.
+      const binding = registry.createBoundGroupVerified(
         admin(),
         {
           request_id: request("bind"),
@@ -319,12 +322,8 @@ export async function runHabEnrollment(
       );
       const agent = registry.inspect(admin(), current.agent_id);
       assertWaiting(agent, { ...current, expected_epoch: binding.agent_epoch });
-      const live = registry.inspectBinding(admin(), binding.binding_id);
-      if (
-        live.agent_id !== agent.agent_id ||
-        live.state !== "active" ||
-        live.agent_epoch !== agent.epoch
-      )
+      const live = registry.inspectGroupBinding(admin(), binding.binding_id);
+      if (live.group_id !== binding.group_id || live.state !== "active")
         throw new EnrollmentError("enrollment_review_required");
       const { connection_fingerprint: _digest, ...rest } = current;
       void _digest;
@@ -339,12 +338,8 @@ export async function runHabEnrollment(
     if (current.stage === "bound") {
       const agent = registry.inspect(admin(), current.agent_id);
       assertWaiting(agent, current);
-      const live = registry.inspectBinding(admin(), current.binding_id);
-      if (
-        live.agent_id !== agent.agent_id ||
-        live.state !== "active" ||
-        live.agent_epoch !== agent.epoch
-      )
+      const live = registry.inspectGroupBinding(admin(), current.binding_id);
+      if (live.state !== "active")
         throw new EnrollmentError("enrollment_review_required");
       const choice = await ui.operations(structuredClone(agent), [
         ...relayOperations,
@@ -366,6 +361,22 @@ export async function runHabEnrollment(
     }
     current = parseEnrollmentCheckpoint(state);
     if (current.stage === "activation_pending") {
+      const live = registry.inspectGroupBinding(admin(), current.binding_id);
+      const group = registry.inspectGroup(admin(), live.group_id);
+      if (live.state !== "active")
+        throw new EnrollmentError("enrollment_review_required");
+      // The group grants what the address is granted, so their intersection is the choice.
+      if (
+        group.state !== "active" ||
+        JSON.stringify(group.operations) !== JSON.stringify(current.operations)
+      )
+        registry.setGroupAccess(admin(), {
+          request_id: request("activate-group"),
+          group_id: group.group_id,
+          expected_epoch: group.epoch,
+          state: "active",
+          operations: current.operations,
+        });
       const receipt = registry.setAccess(admin(), {
         request_id: request("activate"),
         agent_id: current.agent_id,
@@ -379,14 +390,14 @@ export async function runHabEnrollment(
     if (current.stage !== "complete")
       throw new EnrollmentError("enrollment_failed");
     const agent = registry.inspect(admin(), current.agent_id);
-    const live = registry.inspectBinding(admin(), current.binding_id);
+    const live = registry.inspectGroupBinding(admin(), current.binding_id);
+    const group = registry.inspectGroup(admin(), live.group_id);
     if (
       agent.address !== current.address ||
       agent.epoch !== current.expected_epoch ||
       agent.state !== "active" ||
-      live.agent_id !== agent.agent_id ||
       live.state !== "active" ||
-      live.agent_epoch !== agent.epoch ||
+      group.state !== "active" ||
       JSON.stringify(agent.operations) !== JSON.stringify(current.operations)
     )
       throw new EnrollmentError("enrollment_review_required");

@@ -65,9 +65,8 @@ function proxyFetch(currentHost) {
   };
 }
 
-async function setup(t, oauth, groups = true) {
+async function setup(t, oauth) {
   const f = await fixture(t);
-  f.config.registry.authentication_groups = groups;
   f.config.ingress = {
     port: 0,
     resource_url: resource,
@@ -310,7 +309,7 @@ test("persistent configured MCP keeps groups and durable receipts across host to
 
 test("stopped v1 backup restores before new acceptance; explicit v2 upgrade retains address, binding and acked message", async (t) => {
   const oauth = await oauthFixture(true);
-  const f = await setup(t, oauth, false);
+  const f = await setup(t, oauth);
   const remote = f.client(f.remote, true),
     local = f.client(f.local);
   const sent = { ...message(), recipient_id: f.local.agent_id };
@@ -344,22 +343,25 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
       },
     ],
   };
-  const apply = (config, groups) => {
-    f.config.registry.authentication_groups = groups;
+  const apply = (config) => {
     f.write("remote-auth.local.json", config);
     f.write("service.local.json", f.config);
   };
-  apply(v2, true);
+  apply(v2);
   await f.restart();
-  assert.equal(hostAdminStatus(f.configPath).authentication_groups, true);
+  assert.ok(
+    hostAdminStatus(f.configPath).credentials.some((c) => c.participation),
+  );
   // Roll back only before this candidate accepts new work. Keep DBs and keys together.
   await f.stop();
   rmSync(f.config.directory, { recursive: true });
   cpSync(backup, f.config.directory, { recursive: true });
   chmodSync(f.config.directory, 0o700);
-  apply(v1, false);
+  apply(v1);
   await f.restart();
-  assert.equal(hostAdminStatus(f.configPath).authentication_groups, false);
+  assert.ok(
+    !hostAdminStatus(f.configPath).credentials.some((c) => c.participation),
+  );
   assert.equal((await remote.status(sent.message_id)).state, "acked");
   assert.equal(
     (
@@ -374,10 +376,10 @@ test("stopped v1 backup restores before new acceptance; explicit v2 upgrade reta
     ack.receipt_id,
   );
   await f.stop();
-  apply(v2, true);
+  apply(v2);
   await f.restart();
   const status = hostAdminStatus(f.configPath);
-  assert.equal(status.authentication_groups, true);
+  assert.ok(status.credentials.some((c) => c.participation));
   assert.equal(
     status.addresses.find((a) => a.address === f.remote.address).agent_id,
     f.remote.agent_id,

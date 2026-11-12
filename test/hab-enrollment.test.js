@@ -104,7 +104,7 @@ test("enrollment: human choices reserve, bind and explicitly activate one immuta
     "submit",
   ]);
   assert.equal(f.count("hab_agents"), 1);
-  assert.equal(f.count("hab_bindings"), 1);
+  assert.equal(f.count("hab_auth_group_bindings"), 1);
   const before = f.count("hab_admin_requests");
   f.events.length = 0;
   assert.deepEqual(await runHabEnrollment(f.host, "flow-1"), result);
@@ -121,7 +121,10 @@ for (const kind of ["reserve", "bind", "activate"]) {
       { reserve: "unconfirmed", bind: "enrolled", activate: "bound" }[kind],
     );
     assert.equal(f.count("hab_agents"), kind === "reserve" ? 0 : 1);
-    assert.equal(f.count("hab_bindings"), kind === "activate" ? 1 : 0);
+    assert.equal(
+      f.count("hab_auth_group_bindings"),
+      kind === "activate" ? 1 : 0,
+    );
     if (kind !== "reserve") {
       const saved = f.host.journal.load("pause").checkpoint;
       assert.equal(
@@ -174,8 +177,9 @@ for (const stage of ["enrolled", "bound", "complete"]) {
     assert.equal(result.agent.agent_id, agentId);
     assert.equal(result.agent.epoch, 3);
     assert.equal(f.count("hab_agents"), 1);
-    assert.equal(f.count("hab_bindings"), 1);
-    assert.equal(f.count("hab_admin_requests"), 4); // product + three human-confirmed mutations
+    assert.equal(f.count("hab_auth_group_bindings"), 1);
+    // product + three human-confirmed mutations, the last granting both group and address
+    assert.equal(f.count("hab_admin_requests"), 5);
     assert.equal(
       f.events.some((v) => v[0] === "product" || v[0] === "name"),
       false,
@@ -205,7 +209,7 @@ for (const stage of ["enroll_pending", "bind_pending", "activation_pending"]) {
     );
     assert.equal(f.count("hab_agents"), stage === "enroll_pending" ? 0 : 1);
     assert.equal(
-      f.count("hab_bindings"),
+      f.count("hab_auth_group_bindings"),
       stage === "activation_pending" ? 1 : 0,
     );
     assert.equal(
@@ -247,17 +251,30 @@ test("enrollment: a changed or revoked binding after pause requires review", asy
   const f = await setup(t, { confirm: async (p) => p.kind !== "activate" });
   await runHabEnrollment(f.host, "revoke");
   const cp = f.host.journal.load("revoke").checkpoint;
-  f.registry.revoke(f.admin, {
+  const live = f.registry.inspectGroupBinding(f.admin, cp.binding_id);
+  f.registry.revokeGroupBinding(f.admin, {
     request_id: "operator-revoke",
     binding_id: cp.binding_id,
-    expected_epoch: cp.expected_epoch,
+    expected_epoch: live.group_epoch,
   });
   f.host.ui.confirm = async () => true;
   await assert.rejects(
     runHabEnrollment(f.host, "revoke"),
     code("enrollment_review_required"),
   );
-  assert.equal(f.registry.inspect(f.admin, cp.agent_id).state, "stopped");
+  // Revoking the group's last connection stops the group; the never-activated
+  // address stays waiting and cannot be activated without a new binding.
+  assert.equal(
+    f.registry.inspect(f.admin, cp.agent_id).state,
+    "waiting_connection",
+  );
+  assert.equal(
+    f.registry.inspectGroup(
+      f.admin,
+      f.registry.inspectGroupBinding(f.admin, cp.binding_id).group_id,
+    ).state,
+    "stopped",
+  );
 });
 test("enrollment: current management rights are rechecked after human confirmation and on restart", async (t) => {
   const f = await setup(t, {
@@ -297,7 +314,7 @@ test("enrollment: same proposed address won by a concurrent administrator does n
     code("registry_name_reserved"),
   );
   assert.equal(f.count("hab_agents"), 1);
-  assert.equal(f.count("hab_bindings"), 0);
+  assert.equal(f.count("hab_auth_group_bindings"), 0);
 });
 test("enrollment: confirmed connection cannot change even before its first bind commits", async (t) => {
   const f = await setup(t, {
@@ -321,7 +338,7 @@ test("enrollment: confirmed connection cannot change even before its first bind 
     runHabEnrollment(f.host, "connection"),
     code("registry_connection_changed"),
   );
-  assert.equal(f.count("hab_bindings"), 0);
+  assert.equal(f.count("hab_auth_group_bindings"), 0);
   f.host.connection = async () => ({
     context: f.contexts.a,
     label: "Original bot",
@@ -560,7 +577,7 @@ test("management catalog: bounded authorized pagination contains approved produc
     code("registry_forbidden"),
   );
 });
-test("verified binding: fresh exclusive host claims required even for an exact committed retry", async (t) => {
+test("verified group binding: fresh exclusive host claims required even for an exact committed retry", async (t) => {
   const f = await setup(t);
   const agent = f.enroll("waiting", false);
   const digest = f.registry.inspectConnection(
@@ -573,18 +590,23 @@ test("verified binding: fresh exclusive host claims required even for an exact c
     expected_epoch: agent.epoch,
     connection_fingerprint: digest,
   };
-  const binding = f.registry.bindVerified(f.admin, input, f.contexts.a);
+  const binding = f.registry.createBoundGroupVerified(
+    f.admin,
+    input,
+    f.contexts.a,
+  );
   assert.deepEqual(
-    f.registry.bindVerified(f.admin, input, f.contexts.a),
+    f.registry.createBoundGroupVerified(f.admin, input, f.contexts.a),
     binding,
   );
   assert.throws(
-    () => f.registry.bindVerified(f.contexts.a, input, f.contexts.a),
+    () =>
+      f.registry.createBoundGroupVerified(f.contexts.a, input, f.contexts.a),
     code("registry_forbidden"),
   );
   assert.throws(
     () =>
-      f.registry.bindVerified(
+      f.registry.createBoundGroupVerified(
         f.admin,
         { ...input, principal: principal("a") },
         f.contexts.a,
@@ -593,19 +615,21 @@ test("verified binding: fresh exclusive host claims required even for an exact c
   );
   assert.throws(
     () =>
-      f.registry.bindVerified(f.admin, input, { principal: principal("a") }),
+      f.registry.createBoundGroupVerified(f.admin, input, {
+        principal: principal("a"),
+      }),
     code("registry_forbidden"),
   );
   f.mutable.expires_at = new Date(Date.now() - 1).toISOString();
   assert.throws(
-    () => f.registry.bindVerified(f.admin, input, f.contexts.a),
+    () => f.registry.createBoundGroupVerified(f.admin, input, f.contexts.a),
     code("registry_forbidden"),
   );
   f.mutable.expires_at = new Date(
     Date.now() + options.max_context_ms + 5000,
   ).toISOString();
   assert.throws(
-    () => f.registry.bindVerified(f.admin, input, f.contexts.a),
+    () => f.registry.createBoundGroupVerified(f.admin, input, f.contexts.a),
     code("registry_forbidden"),
   );
   assert.equal(
@@ -613,11 +637,11 @@ test("verified binding: fresh exclusive host claims required even for an exact c
     "waiting_connection",
   );
   assert.equal(
-    f.registry.inspectBinding(f.admin, binding.binding_id).state,
+    f.registry.inspectGroupBinding(f.admin, binding.binding_id).state,
     "active",
   );
   assert.throws(
-    () => f.registry.inspectBinding(f.contexts.a, binding.binding_id),
+    () => f.registry.inspectGroupBinding(f.contexts.a, binding.binding_id),
     code("registry_forbidden"),
   );
 });
@@ -724,7 +748,7 @@ test("enrollment: concurrent runners cannot independently advance one flow", asy
     1,
   );
   assert.equal(f.count("hab_agents"), 1);
-  assert.equal(f.count("hab_bindings"), 1);
+  assert.equal(f.count("hab_auth_group_bindings"), 1);
 });
 test("enrollment: a durable checkpoint with a lost save response is recovered without another reservation confirmation", async (t) => {
   const f = await setup(t);

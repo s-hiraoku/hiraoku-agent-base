@@ -1,7 +1,7 @@
 import { fixture, operations, principal } from "./hab-registry-fixtures.js";
 
 export async function groupFixture(t, patch = {}) {
-  const f = await fixture(t, { authentication_groups: true, ...patch });
+  const f = await fixture(t, patch);
   let sequence = 0;
   const request = () => `group-request-${++sequence}`;
   const group = f.registry.createGroup(f.admin, { request_id: request() });

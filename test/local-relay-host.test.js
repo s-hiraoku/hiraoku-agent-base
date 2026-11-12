@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { startHostServer } from "../src/host/server.ts";
+import { bindAddress } from "./hab-registry-fixtures.js";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import {
@@ -65,12 +66,13 @@ async function fixture(t, enroll = true) {
           product_id: product.product_id,
           bot_name: name,
         });
-        const binding = registry.bind(admin, {
-          request_id: "bind-" + name,
-          agent_id: agent.agent_id,
-          expected_epoch: agent.epoch,
-          principal: principal(name),
-        });
+        const binding = bindAddress(
+          registry,
+          admin,
+          agent,
+          principal(name),
+          "bind-" + name,
+        );
         agents[name] = registry.setAccess(admin, {
           request_id: "access-" + name,
           agent_id: agent.agent_id,
