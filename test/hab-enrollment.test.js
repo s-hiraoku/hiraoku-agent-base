@@ -247,6 +247,40 @@ test("enrollment: lost activation response followed by stop is not silently repl
   );
   assert.equal(f.registry.inspect(f.admin, active.agent_id).state, "stopped");
 });
+test("enrollment: a group stopped while activation awaits confirmation stays stopped", async (t) => {
+  let f;
+  f = await setup(t, {
+    confirm: async (p) => {
+      if (p.kind === "activate") {
+        const cp = f.host.journal.load("group-stop").checkpoint;
+        const live = f.registry.inspectGroupBinding(f.admin, cp.binding_id);
+        const group = f.registry.inspectGroup(f.admin, live.group_id);
+        f.registry.setGroupAccess(f.admin, {
+          request_id: "operator-group-stop",
+          group_id: group.group_id,
+          expected_epoch: group.epoch,
+          state: "stopped",
+          operations: [],
+        });
+      }
+      return true;
+    },
+  });
+  await assert.rejects(
+    runHabEnrollment(f.host, "group-stop"),
+    code("registry_stale_epoch"),
+  );
+  const cp = f.host.journal.load("group-stop").checkpoint;
+  const live = f.registry.inspectGroupBinding(f.admin, cp.binding_id);
+  assert.equal(
+    f.registry.inspectGroup(f.admin, live.group_id).state,
+    "stopped",
+  );
+  assert.equal(
+    f.registry.inspect(f.admin, cp.agent_id).state,
+    "waiting_connection",
+  );
+});
 test("enrollment: a changed or revoked binding after pause requires review", async (t) => {
   const f = await setup(t, { confirm: async (p) => p.kind !== "activate" });
   await runHabEnrollment(f.host, "revoke");

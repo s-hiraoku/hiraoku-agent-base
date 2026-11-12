@@ -56,6 +56,9 @@ const checkpointSchema = z.discriminatedUnion("stage", [
     ...bound,
     stage: z.literal("activation_pending"),
     operations: grants,
+    // The group as it stood when the grants were confirmed; a later change needs review.
+    group_id: id.optional(),
+    group_epoch: positive.optional(),
   }),
   z.strictObject({
     ...bound,
@@ -341,6 +344,7 @@ export async function runHabEnrollment(
       const live = registry.inspectGroupBinding(admin(), current.binding_id);
       if (live.state !== "active")
         throw new EnrollmentError("enrollment_review_required");
+      const group = registry.inspectGroup(admin(), live.group_id);
       const choice = await ui.operations(structuredClone(agent), [
         ...relayOperations,
       ]);
@@ -357,26 +361,37 @@ export async function runHabEnrollment(
         })) !== true
       )
         return pause();
-      save({ ...current, stage: "activation_pending", operations });
+      save({
+        ...current,
+        stage: "activation_pending",
+        operations,
+        group_id: group.group_id,
+        group_epoch: group.epoch,
+      });
     }
     current = parseEnrollmentCheckpoint(state);
     if (current.stage === "activation_pending") {
       const live = registry.inspectGroupBinding(admin(), current.binding_id);
-      const group = registry.inspectGroup(admin(), live.group_id);
-      if (live.state !== "active")
+      if (
+        live.state !== "active" ||
+        current.group_id === undefined ||
+        current.group_epoch === undefined ||
+        live.group_id !== current.group_id
+      )
         throw new EnrollmentError("enrollment_review_required");
       // The group grants what the address is granted, so their intersection is the choice.
-      if (
-        group.state !== "active" ||
-        JSON.stringify(group.operations) !== JSON.stringify(current.operations)
-      )
-        registry.setGroupAccess(admin(), {
-          request_id: request("activate-group"),
-          group_id: group.group_id,
-          expected_epoch: group.epoch,
-          state: "active",
-          operations: current.operations,
-        });
+      // The confirmed epoch makes a stop or change made meanwhile fail instead of being undone;
+      // a resumed flow replays the same request.
+      const granted = registry.setGroupAccess(admin(), {
+        request_id: request("activate-group"),
+        group_id: current.group_id,
+        expected_epoch: current.group_epoch,
+        state: "active",
+        operations: current.operations,
+      });
+      const group = registry.inspectGroup(admin(), current.group_id);
+      if (group.epoch !== granted.epoch || group.state !== "active")
+        throw new EnrollmentError("enrollment_review_required");
       const receipt = registry.setAccess(admin(), {
         request_id: request("activate"),
         agent_id: current.agent_id,
@@ -384,7 +399,10 @@ export async function runHabEnrollment(
         state: "active",
         operations: current.operations,
       });
-      save({ ...current, stage: "complete", expected_epoch: receipt.epoch });
+      const { group_id: _group, group_epoch: _epoch, ...done } = current;
+      void _group;
+      void _epoch;
+      save({ ...done, stage: "complete", expected_epoch: receipt.epoch });
     }
     current = parseEnrollmentCheckpoint(state);
     if (current.stage !== "complete")
