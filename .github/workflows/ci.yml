@@ -44,6 +44,8 @@ jobs:
           binary="$(node -p "JSON.parse(require('fs').readFileSync('.runtime/nats-install.json','utf8')).binary")"
           node scripts/ci-nats.mjs --stage p6 --nats-server "$binary"
       - name: Run the full regression suite
+        env:
+          NODE_OPTIONS: --disable-warning=ExperimentalWarning
         run: |
           export HAB_NATS_SERVER="$(node -p "JSON.parse(require('fs').readFileSync('.runtime/nats-install.json','utf8')).binary")"
           node --test --test-timeout=120000 test/*.test.js

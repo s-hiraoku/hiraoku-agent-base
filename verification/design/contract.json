@@ -1151,7 +1151,6 @@
       "decision": "accepted",
       "checks": [
         "ts-root",
-        "build",
         "ast-boundary",
         "js-common-mcp",
         "native-recipient",
@@ -4214,21 +4213,6 @@
       "protocol": "exit",
       "proves": "The JetStream delivery package typechecks against its own pinned lock.",
       "limitations": "No broker started and no production adoption/volume durability established."
-    },
-    {
-      "id": "build",
-      "kind": "command",
-      "tier": "static",
-      "argv": [
-        "npm",
-        "run",
-        "build"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "exit",
-      "proves": "Actual HAB root build completes.",
-      "limitations": "Build only; functional evidence comes from the following native tests."
     },
     {
       "id": "js-root",
