@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "71bb2a79263d7c2b7c9dbe0b2449b744dc47b20e43f4f8e7174ddfe0a8c3e9e0",
+      "sha256": "7ef6c131a0108c99b4b8d6544f633b9e6d1ca972487da5e5939ec12903c8929a",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with nine entries (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting.",
@@ -226,7 +226,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/resolve-address.md",
-      "sha256": "bb6d901063fc415d5652c7d062778cfbbf78edde9aa6290429fc5d9bf72d116d",
+      "sha256": "c652af8fea87a1c0d390d874fc69819ab46e6e7de5c3ff0beddcb68c6fe9a93e",
       "role": "normative",
       "review": "reviewed",
       "summary": "Real relay_resolve success/unknown/malformed recipes: immutable recipient ID, canonical lowercase address, no delivery rights and no unknown-vs-unauthorized existence oracle. Requires operation grant.",
@@ -250,14 +250,14 @@
     },
     {
       "path": "README.md",
-      "sha256": "5ec7c2ebba9808a0cdfa9c13bd6be00dc865d4f5f81a2bad5db2eb0d4cda9d6f",
+      "sha256": "3ef4aef16ecdc6e81ed7ab40a9760cf8d9131342ef0465bc172c30aa81dc5369",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
     },
     {
       "path": "docs/a2a-relay-preview.md",
-      "sha256": "08aa0c0fdfd76ce5ac320e10f8cd407e306b4fc336066a256b161d7feccae6c9",
+      "sha256": "18b4d6761fba94d2dc304bd89b42de977724d97bae897eab949e2ede4f08f5c5",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/agent-address-rename.md",
-      "sha256": "9a81c57f84960e432297953559a16456b3aa133f6fcc5416572d2ce188c9213e",
+      "sha256": "230c500a91e1effd53ffef8d2afb8257a5ba16ada00a2df4daf343efbf21369e",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposed opt-in Registry v3 rename extends immutable names while retaining agent ID, authentication, grants and mailbox identities. Historical names stay reserved without forwarding; exact journaled CAS retries and separate rename authority are required. Operator migration, same-owner rename-back and coordinated backups are described, with production adoption explicitly pending."
@@ -448,7 +448,7 @@
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "0b39fa5ef858512430a21d3961a5788f01f56923a41bf85bf26b2bbb42edca2f",
+      "sha256": "0eb39f5aec7fa561506882e5c4d39d8b58405dfd34a2ef69c3f3fe3eb5875643",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) makes NATS JetStream the only delivery store and names the current modules; earlier single-Node+SQLite wording is the initial plan. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
@@ -962,7 +962,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "ec626f8f0199a8f8c18563d1d140d1eac086943ba620eaedf0df20cdbcb84cd1",
+      "sha256": "ad22c9ea9ac8d6bb6456009a31fe904c3dc33e7038bb8b186c703cf77498be3e",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -971,7 +971,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "948885d3610c1dc9987d096e92ee4925b07078e20173e6a7ba88ea6de44d13d5",
+      "sha256": "480832eae8bc02f349c79b13cbbce37be81560e1d69e1b2aff69aa0873d70707",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -980,7 +980,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "3da08a624deb3868c3ac8a7e7e293034bf037ee3d7707a06e2005264a66838f9",
+      "sha256": "4f1f1172c92529cf732a60f906ce765179c240e1f424ce44063e9c63730f65de",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -2082,8 +2082,8 @@
         },
         {
           "path": "docs/agent-address-rename.md",
-          "start": 68,
-          "end": 73,
+          "start": 75,
+          "end": 80,
           "excerpt_sha256": "83537bf94fc2abfecb313c6dbed02c82726d6bf41f6915e752130743b33b801b"
         }
       ]
@@ -2465,9 +2465,9 @@
     {
       "id": "HAB-A18",
       "title": "Address rename keeps identity and reserves old names",
-      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace-period resolution is specified but not yet implemented.",
+      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace period is the registry option rename_grace_days; each use of a previous name is counted per caller ID, and relay:admin status lists previous names and warns when the host config still names one.",
       "rationale": "Changing names must not reassign authority or silently resolve deployment policy.",
-      "scope": "Opt-in registry v3 rename; grace-period resolution pending implementation.",
+      "scope": "Opt-in registry v3 rename with the grace-period resolution; deployment migration needs separate approval.",
       "decision": "proposed",
       "checks": [
         "proposal-review"
@@ -2476,20 +2476,20 @@
         {
           "path": "docs/agent-address-rename.md",
           "start": 3,
-          "end": 48,
-          "excerpt_sha256": "69be167c133263487fd75a046a0476aa2153d261f265388d2011c26b53cdb5fa"
+          "end": 52,
+          "excerpt_sha256": "406d26388f97186d00ce167645eb67401d79d8f0d56ab166dfd0b90e0bbbadb3"
         },
         {
           "path": "docs/agent-address-rename.md",
-          "start": 50,
-          "end": 66,
-          "excerpt_sha256": "5f522be5de47ba458de654987e45fa6bef10a7ff1eb25d3b04699e553d131cb0"
+          "start": 54,
+          "end": 73,
+          "excerpt_sha256": "d5482934cfd9b78e92877bc43fc41ad52a91e7a9c44b675a3464c6b32b8a0a92"
         },
         {
           "path": "docs/agent-address-rename.md",
-          "start": 104,
-          "end": 112,
-          "excerpt_sha256": "b22355cf06a11842df28422f77f2063aa3808eb02fac0c08737d37202d0923bf"
+          "start": 112,
+          "end": 120,
+          "excerpt_sha256": "6519f536e82b2b75abfdb4a5618d6cc3e59853a407800bad9d690166666b04c2"
         }
       ]
     },
@@ -2581,19 +2581,19 @@
         {
           "path": "docs/a2a-relay-preview.md",
           "start": 84,
-          "end": 93,
-          "excerpt_sha256": "77d000c0e72579616df1d27a02ac01c34a26131b00169ef9a63362ae6316abcb"
+          "end": 94,
+          "excerpt_sha256": "40aa6fa5285b7a6ab2bc067f254d33f2c5fbe731508eb8fb2f9e6c83fed3b33b"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 97,
-          "end": 99,
+          "start": 98,
+          "end": 100,
           "excerpt_sha256": "b1fab60858895b83b2d79efb90bb9861e5839b55f417c431de0cf8c66c97c03b"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 103,
-          "end": 105,
+          "start": 104,
+          "end": 106,
           "excerpt_sha256": "b4ae6ea107f7c317615b9217caa7ab230d300a96a9863e98afd1abcffd4eab48"
         },
         {
@@ -3262,14 +3262,14 @@
       "citations": [
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 109,
-          "end": 111,
+          "start": 110,
+          "end": 112,
           "excerpt_sha256": "0e4cfdd089342cec30a68ea0b8d6b5028714b04cee29c263151a1dd73ff6d83d"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 132,
-          "end": 132,
+          "start": 133,
+          "end": 133,
           "excerpt_sha256": "96f4584f351a4b408823481cc060a48357eafa510b13893d34681063aa39a068"
         },
         {
@@ -3286,8 +3286,8 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 105,
-          "end": 105,
+          "start": 106,
+          "end": 106,
           "excerpt_sha256": "86ec598c42479a94fa0241840ea55a196a868fa57a4fec9454c5f4f66d5be40d"
         },
         {
@@ -3322,8 +3322,8 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 138,
-          "end": 138,
+          "start": 139,
+          "end": 139,
           "excerpt_sha256": "dfe159f75a5c2e1f5383863c6327e04f221c64bb2b202c84a69e6cd36e4ea261"
         }
       ]
@@ -3797,14 +3797,14 @@
       "citations": [
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 105,
-          "end": 105,
+          "start": 106,
+          "end": 106,
           "excerpt_sha256": "86ec598c42479a94fa0241840ea55a196a868fa57a4fec9454c5f4f66d5be40d"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 115,
-          "end": 128,
+          "start": 116,
+          "end": 129,
           "excerpt_sha256": "da81423c0e118d87398dabd1e8c51ea4754179f7f85482ef7e795b4e25a61e50"
         },
         {
@@ -4986,8 +4986,8 @@
         {
           "path": "docs/agent-address-rename.md",
           "start": 3,
-          "end": 55,
-          "excerpt_sha256": "89d24f800ad1d81a239b4ae7ffa5d64ab7caa5545a09eedd2cef3f0bac5f5a41"
+          "end": 59,
+          "excerpt_sha256": "fcae3a8c92ccef8abc558b66b8d058dde82c40dda595e24136c30f3b61ceb367"
         }
       ]
     },
@@ -5688,14 +5688,14 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 115,
-          "end": 115,
+          "start": 116,
+          "end": 116,
           "excerpt_sha256": "adc663ccbac56e809219537514af6d2f60f61c58008f45f8a95203c7f7d2f82d"
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 128,
-          "end": 128,
+          "start": 129,
+          "end": 129,
           "excerpt_sha256": "6e1083f4541b49ab4215539e526d0b07132347862f3213da11a4ec82d1b5d101"
         },
         {
@@ -5788,8 +5788,8 @@
         },
         {
           "path": "docs/a2a-relay-preview.md",
-          "start": 124,
-          "end": 126,
+          "start": 125,
+          "end": 127,
           "excerpt_sha256": "86d3e9d9e35cd2b29351888be8ae03f7633a81bee2e89e3d0c95e6521b6e705a"
         },
         {
@@ -5881,20 +5881,20 @@
       "requirements": [
         "HAB-A18"
       ],
-      "resolution": "The owner adopted rename on 2026-11-12 and chose a grace period: an old name stays permanently reserved to the same ID and, for a default 30 days, resolves only to that ID (and is accepted as that ID's own as_address), then is refused. Delivery already uses immutable IDs, so accepted, leased and replied messages are unaffected. The grace-period behaviour is pending implementation; until then old names are refused immediately.",
+      "resolution": "The owner adopted rename on 2026-11-12 and chose a grace period: an old name stays permanently reserved to the same ID and, for a default 30 days, resolves only to that ID (and is accepted as that ID's own as_address), then is refused. Delivery already uses immutable IDs, so accepted, leased and replied messages are unaffected. The grace period is implemented (rename_grace_days, default 30; 0 refuses at once).",
       "classification": "explicit-authority",
       "citations": [
         {
           "path": "docs/agent-address-rename.md",
           "start": 3,
-          "end": 48,
-          "excerpt_sha256": "69be167c133263487fd75a046a0476aa2153d261f265388d2011c26b53cdb5fa"
+          "end": 52,
+          "excerpt_sha256": "406d26388f97186d00ce167645eb67401d79d8f0d56ab166dfd0b90e0bbbadb3"
         },
         {
           "path": "docs/hab-relay-spec.md",
           "start": 135,
           "end": 135,
-          "excerpt_sha256": "7f4332ca5585be3fc028ed306f7f865a7793eeb57355205c5120c277b25abaae"
+          "excerpt_sha256": "f44958b4f0840d04f557904821b2d38ceb4e5972ce3d8372662e0d62599e63fb"
         }
       ]
     }

@@ -11,6 +11,7 @@ import { readHostConfig, HostStartError } from "./config.ts";
 import { localCredentialsSchema } from "./local-auth.ts";
 import { parseOAuthConfig, oauthConnectionWindow } from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
+import { NAME_SCHEMA_VERSION } from "../hab/agent-names.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
   RegistryError,
@@ -70,6 +71,7 @@ function open(configPath: string) {
   if (!existsSync(path)) throw new HostAdminError("relay_not_initialized");
   let version: unknown;
   let unconverted = false;
+  let namesVersion: unknown;
   try {
     const raw = new DatabaseSync(path, { readOnly: true });
     try {
@@ -83,6 +85,10 @@ function open(configPath: string) {
             "SELECT 1 FROM hab_bindings b WHERE NOT EXISTS (SELECT 1 FROM hab_auth_group_bindings g WHERE g.binding_id=b.binding_id)",
           )
           .get();
+      if (version === 3)
+        namesVersion = raw
+          .prepare("SELECT version FROM hab_agent_name_meta WHERE id=1")
+          .get()?.version;
     } finally {
       raw.close();
     }
@@ -92,6 +98,8 @@ function open(configPath: string) {
   if (
     version === 1 ||
     unconverted ||
+    // Previous-name use counts arrive with the next host start, never from admin.
+    (version === 3 && namesVersion !== NAME_SCHEMA_VERSION) ||
     (typeof version === "number" &&
       version < 3 &&
       config.registry.agent_rename === true)
@@ -167,6 +175,7 @@ function open(configPath: string) {
     resources,
     credentials,
     a2aIdentity: config.a2a?.identity,
+    a2aRecipient: config.a2a?.recipient,
   };
 }
 
@@ -213,89 +222,120 @@ function summary(agent: Agent, groups: readonly Group[]) {
 
 /** Read-only view plus the checks that most often explain a 401/forbidden. */
 export function hostAdminStatus(configPath: string, now = Date.now()) {
-  return withRegistry(configPath, ({ registry, resources, credentials }) => {
-    const view = registry.overview(operator);
-    const byId = new Map(view.agents.map((agent) => [agent.agent_id, agent]));
-    const problems: { code: string; subject: string }[] = [];
-    const mapped = credentials().map((record) => {
-      const reservation = registry.findPrincipal(operator, record.principal);
-      const addresses = reservation
-        ? view.agents
-            .filter((agent) => agent.group_id === reservation.group_id)
-            .map((agent) => agent.address)
-        : [];
-      const remainingMs = Date.parse(record.expires_at) - now;
-      const expiresIn = record.participation
-        ? Math.max(0, Math.ceil(remainingMs / 1000))
-        : Math.floor(remainingMs / 1000);
-      const subject = record.principal.connection_id;
-      if (record.participation ? remainingMs <= 0 : expiresIn <= 0)
-        problems.push({
-          code: record.participation
-            ? "participation_expired"
-            : "credential_expired",
-          subject,
-        });
-      if (record.participation) {
-        if (record.participation.state === "revoked")
-          problems.push({ code: "participation_revoked", subject });
-        if (Date.parse(record.issued_at) > now)
-          problems.push({ code: "participation_not_yet_active", subject });
+  return withRegistry(
+    configPath,
+    ({ registry, resources, credentials, a2aIdentity, a2aRecipient }) => {
+      const view = registry.overview(operator);
+      const byId = new Map(view.agents.map((agent) => [agent.agent_id, agent]));
+      const problems: { code: string; subject: string }[] = [];
+      const mapped = credentials().map((record) => {
+        const reservation = registry.findPrincipal(operator, record.principal);
+        const addresses = reservation
+          ? view.agents
+              .filter((agent) => agent.group_id === reservation.group_id)
+              .map((agent) => agent.address)
+          : [];
+        const remainingMs = Date.parse(record.expires_at) - now;
+        const expiresIn = record.participation
+          ? Math.max(0, Math.ceil(remainingMs / 1000))
+          : Math.floor(remainingMs / 1000);
+        const subject = record.principal.connection_id;
+        if (record.participation ? remainingMs <= 0 : expiresIn <= 0)
+          problems.push({
+            code: record.participation
+              ? "participation_expired"
+              : "credential_expired",
+            subject,
+          });
+        if (record.participation) {
+          if (record.participation.state === "revoked")
+            problems.push({ code: "participation_revoked", subject });
+          if (Date.parse(record.issued_at) > now)
+            problems.push({ code: "participation_not_yet_active", subject });
+        }
+        if (resources.length && !resources.includes(record.principal.audience))
+          problems.push({ code: "credential_audience_mismatch", subject });
+        if (!reservation)
+          problems.push({ code: "credential_unbound", subject });
+        else if (reservation.state !== "active")
+          problems.push({ code: "credential_revoked", subject });
+        return {
+          connection_id: subject,
+          ...(record.participation
+            ? {
+                participation: {
+                  state: record.participation.state,
+                  approved_at: record.issued_at,
+                  approved_until: record.expires_at,
+                  expires_in_seconds: expiresIn,
+                },
+                max_access_token_lifetime_seconds:
+                  record.participation.max_access_token_lifetime_seconds,
+              }
+            : { expires_in_seconds: expiresIn }),
+          audience: record.principal.audience,
+          binding: reservation
+            ? { group_id: reservation.group_id, state: reservation.state }
+            : null,
+          addresses,
+        };
+      });
+      for (const agent of view.agents) {
+        const group = view.groups.find((g) => g.group_id === agent.group_id);
+        if (agent.state !== "active")
+          problems.push({
+            code: `address_${agent.state}`,
+            subject: agent.address,
+          });
+        else if (!group?.active_binding_ids.length)
+          problems.push({ code: "address_unbound", subject: agent.address });
+        else if (group && group.state !== "active")
+          problems.push({
+            code: `group_${group.state}`,
+            subject: agent.address,
+          });
       }
-      if (resources.length && !resources.includes(record.principal.audience))
-        problems.push({ code: "credential_audience_mismatch", subject });
-      if (!reservation) problems.push({ code: "credential_unbound", subject });
-      else if (reservation.state !== "active")
-        problems.push({ code: "credential_revoked", subject });
+      const previous = registry.previousNames(operator);
+      for (const [key, configured] of [
+        ["a2a.identity", a2aIdentity],
+        ["a2a.recipient", a2aRecipient],
+      ] as const) {
+        const name = previous.find((entry) => entry.address === configured);
+        // A host start after the grace period refuses this name; update the config first.
+        if (name)
+          problems.push({
+            code: name.resolves
+              ? "config_previous_address"
+              : "config_previous_address_expired",
+            subject: key,
+          });
+      }
+      if (view.stopped)
+        problems.push({ code: "emergency_stopped", subject: "*" });
       return {
-        connection_id: subject,
-        ...(record.participation
-          ? {
-              participation: {
-                state: record.participation.state,
-                approved_at: record.issued_at,
-                approved_until: record.expires_at,
-                expires_in_seconds: expiresIn,
-              },
-              max_access_token_lifetime_seconds:
-                record.participation.max_access_token_lifetime_seconds,
-            }
-          : { expires_in_seconds: expiresIn }),
-        audience: record.principal.audience,
-        binding: reservation
-          ? { group_id: reservation.group_id, state: reservation.state }
-          : null,
-        addresses,
+        resource_urls: resources,
+        addresses: view.agents.map((agent) => summary(agent, view.groups)),
+        groups: view.groups.map((group) => ({
+          group_id: group.group_id,
+          state: group.state,
+          operations: group.operations,
+          active_bindings: group.active_binding_ids.length,
+          members: group.member_ids.map((id) => byId.get(id)?.address ?? id),
+        })),
+        credentials: mapped,
+        previous_names: previous.map((entry) => ({
+          address: entry.address,
+          agent_id: entry.agent_id,
+          current_address: entry.current_address,
+          renamed_at: entry.renamed_at,
+          grace_until: entry.grace_until,
+          resolves: entry.resolves,
+          callers: entry.callers,
+        })),
+        problems,
       };
-    });
-    for (const agent of view.agents) {
-      const group = view.groups.find((g) => g.group_id === agent.group_id);
-      if (agent.state !== "active")
-        problems.push({
-          code: `address_${agent.state}`,
-          subject: agent.address,
-        });
-      else if (!group?.active_binding_ids.length)
-        problems.push({ code: "address_unbound", subject: agent.address });
-      else if (group && group.state !== "active")
-        problems.push({ code: `group_${group.state}`, subject: agent.address });
-    }
-    if (view.stopped)
-      problems.push({ code: "emergency_stopped", subject: "*" });
-    return {
-      resource_urls: resources,
-      addresses: view.agents.map((agent) => summary(agent, view.groups)),
-      groups: view.groups.map((group) => ({
-        group_id: group.group_id,
-        state: group.state,
-        operations: group.operations,
-        active_bindings: group.active_binding_ids.length,
-        members: group.member_ids.map((id) => byId.get(id)?.address ?? id),
-      })),
-      credentials: mapped,
-      problems,
-    };
-  });
+    },
+  );
 }
 
 function principalFor(

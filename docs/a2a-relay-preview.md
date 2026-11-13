@@ -89,6 +89,7 @@ At start the host converges `identity` to an active agent, using an administrato
 | `a2a_identity_revoked` | The host principal's binding was revoked. Descriptors stay reserved forever. |
 | `a2a_identity_stopped` | The agent was stopped. The host never re-enables it silently. |
 | `a2a_identity_retired` | The address was retired. |
+| `a2a_identity_renamed` | The configured identity is a previous name of a renamed agent whose grace period has ended. Set `identity` to the current name. During the grace period the previous name still starts the host under the same agent ID. |
 
 Changing `identity` is not a general recovery path. Once the fixed host principal has been bound, it stays reserved to that agent in this Registry, even after revocation; configuring another address then fails with `a2a_identity_conflict`. A new address can avoid an address conflict only before the host principal has been bound. `relay:admin connect` refuses the configured identity address with `a2a_identity_reserved`. `relay:admin disconnect` on it is the permanent A2A off switch for this Registry, not a temporary pause. To start the remaining MCP host after that revocation, remove the `a2a` config section. This keeps the Registry and mailbox history intact; the preview provides no host-identity rotation or revocation-reset procedure.
 
