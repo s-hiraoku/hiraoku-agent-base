@@ -373,3 +373,7 @@ PR162 integration maintenance (2026-11-11) re-read the merge of main (#161, #163
 PR164 integration maintenance (2026-11-11) re-read the merge of the integrated main (#161, #162, #163) into the managed-transport branch: both sides' rows and sections are kept, and docs/testing/{publication,p7-lab,delivery-lab}.md only raise the full-root count to 1424 (1409 + 15). No row meaning changed.
 
 ADR-018 maintenance (2026-11-13) re-read every changed document diff since main: the delivery store document is new and normative, packages/relay-nats and docs/testing/p7-ci.yml.example were deleted, the P7, verified-nats and publication guides gained a historical banner, and every document that named JetStream, nats-server or packages/relay-nats as current now names the SQLite delivery store or marks the text historical. Rows above whose summary changed were rewritten from the contract.
+
+## A2A Task store on node:sqlite (2026-11-13)
+
+Driver maintenance re-read the changed documents. `docs/a2a-sdk-preview.md` drops `better-sqlite3` and `@types/better-sqlite3` from its fixed dependencies and says the SDK's `DatabaseTaskStore` runs on Kysely over `node:sqlite` with no native addon; its row meaning is unchanged. `docs/testing/a2a-bounded-performance.md` keeps the recorded runs' driver statement and adds that a new run would also wrap SDK `all` and `run` calls; HAB-V11 was re-cited after rereading lines 13–21, with no change to its statement or scope. `verification/design/README.md` records the change. No requirement, conflict or adopted statement changes.

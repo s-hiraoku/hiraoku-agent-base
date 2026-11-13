@@ -347,3 +347,10 @@ The owner chose a single-VM cloud deployment, so ADR-018 replaces the JetStream 
 - Checks: `ts-nats` and `js-cli-guards` were removed with their sources, `js-root` no longer lists `test/ci-nats`, and `current-hosted-p7` became `current-hosted-ci` for the single CI workflow. `test/sqlite-delivery.test.js` covers the store rules and `test/local-relay-service.test.js` the retired config and the leftover-journal refusal.
 - `communication-boundary.mjs` adds `src/delivery/sqlite-delivery.ts` to the protected core modules. The P7, verified-nats and publication guides carry a historical banner.
 - In source-review.json the deleted sources were removed, the new store and its tests were added, and the changed sources were rehashed after reading their diffs.
+
+## A2A Task store on node:sqlite (2026-11-13)
+
+The owner approved dropping the native `better-sqlite3` addon after the technology-stack review. `src/a2a/store.ts` now opens the dedicated Task database with `node:sqlite` and hands Kysely's `SqliteDialect` a small adapter, so the SDK's `DatabaseTaskStore`, the table, the schema file and the host maintenance queries are unchanged and an existing `a2a-tasks.sqlite` opens as before. `better-sqlite3` and `@types/better-sqlite3` leave `package.json`; `kysely` stays because the SDK store requires it. No requirement, citation or adopted statement changes.
+
+- In source-review.json `src/a2a/store.ts` and `test/a2a-sdk-store.test.js` were re-read and rehashed with appended summaries. `test/a2a-host.test.js` only swaps its offline fixture driver to `node:sqlite`; its entry, like `package.json`'s, was already behind the P2 deletion diff and is left for that maintenance.
+- `test/a2a-sdk-store.test.js` adds an upsert and two-page list case through the SDK on `node:sqlite`.
