@@ -1,7 +1,7 @@
 # Recipient-host MCP preparation (proposal, not enabled)
 
 This change prepares an opt-in recipient-side MCP tool surface over the existing
-`AdapterHostCycle`. It is not installed into the Relay, an agent profile or a
+`AdapterHostCycle`. It is not installed into the host, an agent profile or a
 runtime. No network listener, credentials, model, approval UI, scheduler, native
 session binding or persistent access is created.
 
@@ -13,7 +13,7 @@ assigns receive/save/ACK, source-specific inbox reads and durable answers to the
 recipient host. This wrapper uses those existing operations and their existing
 commit guards. It does not duplicate storage, retry, policy or message schemas.
 
-The normal Relay catalog remains five tools. The separate server is only useful
+The normal delivery catalog remains five tools. The separate server is only useful
 when an operator explicitly composes it inside an authenticated recipient host.
 The caller selects the exposed operations, binds one verified recipient context
 per server, and provides its existing transport/authentication. HostAuthorization
@@ -76,7 +76,7 @@ must not be installed as a production entry point.
 `maxInboxReadResultBytes` is an owner-selected budget for the serialized MCP
 CallToolResult of `inbox_read`, including UTF-8 encoding and the JSON escaping of
 the nested message. The default is 1 MiB; the minimum is 1 KiB so the bounded
-error fits. This is not a Relay message-size policy, an authentication setting,
+error fits. This is not a HAB message-size policy, an authentication setting,
 or a tool argument. The existing host/store ContractLimits remain authoritative.
 
 An oversized read returns `recipient_inbox_read_too_large` and
@@ -167,7 +167,7 @@ and verifies that the parent still reclaims its directory and closes the owned
 broker endpoint; it does not label the missing child marker as clean child
 shutdown. These are cleanup tests, not crash-durability evidence.
 Recipient identity, decisions and
-operator resume are synthetic. The Relay-side fixture uses an in-process gateway;
+operator resume are synthetic. The Host-side fixture uses an in-process gateway;
 this is not an HTTP deployment or real product test. Native wake, human approval,
 session binding, full restoration and production access control remain unverified.
 

@@ -30,7 +30,7 @@ const hostMcpPath = (name) => `src/host/mcp/${name}`;
 const registryCore = ["src/hab/agent-capacity.ts"];
 // The host's delivery store (ADR-018): durable storage, no MCP/OAuth/HTTP.
 const deliveryCore = ["src/delivery/sqlite-delivery.ts"];
-// docs/hab-relay-spec.md section 3.1: domain/durable storage must not depend
+// docs/hab-messaging-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
 const coreModules = new Set([
   ...["index.ts", "contract.ts", "delivery-service.ts", "tool-errors.ts"].map(

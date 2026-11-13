@@ -5,10 +5,10 @@ import { once } from "node:events";
 import { join } from "node:path";
 import { hostFixture } from "./adapter-host-fixtures.js";
 import { code } from "./inbox-fixtures.js";
-import { call, message } from "./relay-http-fixtures.js";
+import { call, message } from "./mcp-http-fixtures.js";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
-import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
+import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 
 async function receive(f) {
   f.resume();
@@ -52,12 +52,12 @@ test("inbox read: preparation has a separate finite RPC budget and never retries
   const f = await hostFixture(t);
   const timeout = f.state.timeout_ms;
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_poll")
+    if (tool === "hab_poll")
       await new Promise((resolve) => setTimeout(resolve, timeout + 100));
   };
   const { key, message } = await receive(f);
   assert.equal(f.state.timeout_ms, timeout);
-  assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack"]);
+  assert.deepEqual(f.state.tools, ["hab_poll", "hab_ack"]);
   const saved = await read(f, key);
   assert.deepEqual(saved.value.message, message);
   assert.equal(saved.value.receipt_confirmed, true);
@@ -70,7 +70,7 @@ test("inbox read: preparation has a separate finite RPC budget and never retries
   };
   await assert.rejects(receive(refused), /poll_transport_failed/);
   assert.equal(refused.state.timeout_ms, refusedTimeout);
-  assert.deepEqual(refused.state.tools, ["relay_poll"]);
+  assert.deepEqual(refused.state.tools, ["hab_poll"]);
   assert.equal(refused.inbox.inbox().length, 0);
 });
 
@@ -143,32 +143,32 @@ test("inbox read: saved ACK-pending content remains readable without retrying or
   f.resume();
   const { key, message } = f.submit();
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_ack") throw Error("private ACK response lost");
+    if (tool === "hab_ack") throw Error("private ACK response lost");
   };
   assert.equal(
     (await f.step({ op: "receive" })).reason,
     "ack_transport_failed",
   );
-  const before = f.inboxRaw.prepare("SELECT * FROM relay_receiver_acks").all();
+  const before = f.inboxRaw.prepare("SELECT * FROM receiver_acks").all();
   const network = [...f.state.tools];
   const saved = await read(f, key);
   assert.equal(saved.state, "done");
   assert.deepEqual(saved.value.message, message);
   assert.equal(saved.value.receipt_confirmed, false);
   assert.deepEqual(
-    f.inboxRaw.prepare("SELECT * FROM relay_receiver_acks").all(),
+    f.inboxRaw.prepare("SELECT * FROM receiver_acks").all(),
     before,
   );
   assert.deepEqual(f.state.tools, network);
   assert.equal(f.queued().length, 0);
   f.state.afterNetwork = null;
-  f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
+  f.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
   assert.equal((await f.step({ op: "receive" })).state, "done");
   const confirmed = await read(f, key);
   assert.deepEqual(confirmed.value.message, message);
   assert.equal(confirmed.value.receipt_confirmed, true);
   assert.equal(
-    f.inboxRaw.prepare("SELECT count(*) n FROM relay_receiver_acks").get().n,
+    f.inboxRaw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
     1,
   );
 });
@@ -193,11 +193,11 @@ test("inbox read: missing and released bodies return no partial data", async (t)
 test("inbox read: changed stored content fails integrity validation without disclosing the body", async (t) => {
   const f = await hostFixture(t);
   const { key } = await receive(f);
-  const row = f.inboxRaw.prepare("SELECT body FROM relay_inbox").get();
+  const row = f.inboxRaw.prepare("SELECT body FROM inbox").get();
   const changed = JSON.parse(row.body);
   changed.body.parts[0].text = "PRIVATE_TAMPERED_CONTENT";
   f.inboxRaw
-    .prepare("UPDATE relay_inbox SET body=?")
+    .prepare("UPDATE inbox SET body=?")
     .run(JSON.stringify(changed));
   const result = await read(f, key);
   assert.equal(result.state, "incomplete");
@@ -251,14 +251,14 @@ test("inbox read: native HTTP periodic receive waits for explicit recipient read
     await new Promise((resolve) => server.close(resolve));
   });
   const url = `http://127.0.0.1:${server.address().port}/mcp`;
-  handle = createRelayNodeHandler(f.gateway({ resource_url: url }));
+  handle = createMcpNodeHandler(f.gateway({ resource_url: url }));
   f.state.resource_url = url;
   const host = f.makeHost({ owner, network: globalThis.fetch });
   f.resume(host);
   const http = { fetch: globalThis.fetch };
   const input = message();
   assert.equal(
-    (await call(http, "relay_submit", input, { url })).response.status,
+    (await call(http, "hab_submit", input, { url })).response.status,
     200,
   );
   const source = { sender_id: "a", message_id: input.message_id };
@@ -292,7 +292,7 @@ test("inbox read: native HTTP periodic receive waits for explicit recipient read
     "done",
   );
   assert.equal((await host.stepOnce(f.context, { op: "send" })).state, "done");
-  const incoming = await call(http, "relay_poll", {}, { url });
+  const incoming = await call(http, "hab_poll", {}, { url });
   assert.equal(
     incoming.body.result.structuredContent.delivery.message.message_id,
     reply.message_id,

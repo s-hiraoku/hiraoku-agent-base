@@ -4,7 +4,7 @@
 
 ## 確認した境界と修正
 
-[共通MCP接続](../common-mcp-connection.md)、[Relay正式仕様](../hab-relay-spec.md)、[設計思想](../hab-principles.md)、[製品仕様](../hab-product-spec.md)、[受信supervisor](../receiver/receive-supervisor.md)を基準に、役割・処理・ADR・内部設計・既存Hermes接続・汎用Task設計と実装を照合した。
+[共通MCP接続](../common-mcp-connection.md)、[Relay正式仕様](../hab-messaging-spec.md)、[設計思想](../hab-principles.md)、[製品仕様](../hab-product-spec.md)、[受信supervisor](../receiver/receive-supervisor.md)を基準に、役割・処理・ADR・内部設計・既存Hermes接続・汎用Task設計と実装を照合した。
 
 | 対象 | 照合結果 | 今回の扱い |
 | --- | --- | --- |

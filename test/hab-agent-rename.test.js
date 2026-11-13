@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { fixture, code } from "./hab-registry-fixtures.js";
 import { groupFixture } from "./hab-group-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 import { backup } from "node:sqlite";
 import { join } from "node:path";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";

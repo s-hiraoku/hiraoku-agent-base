@@ -250,18 +250,18 @@ function roundtripEvidence(out, check, expand) {
   // SQLite delivery makes an accepted message pollable at once; the helper still tolerates a bounded repeat poll (5 s at 25 ms).
   const names = requests.map((row) => row.value.params?.name);
   let polls = 0;
-  while (names[3 + polls] === "relay_poll") polls++;
+  while (names[3 + polls] === "hab_poll") polls++;
   assert(polls >= 1 && polls <= 201, "roundtrip poll retry count out of range");
   equal(
     names,
     [
-      "relay_resolve",
-      "relay_submit",
-      "relay_submit",
-      ...Array(polls).fill("relay_poll"),
-      "relay_ack",
-      "relay_status",
-      "relay_poll",
+      "hab_resolve",
+      "hab_submit",
+      "hab_submit",
+      ...Array(polls).fill("hab_poll"),
+      "hab_ack",
+      "hab_status",
+      "hab_poll",
     ],
     "roundtrip missing/extra/reordered MCP operations",
   );
@@ -787,27 +787,27 @@ function selfTest() {
       },
     ];
     const names = [
-      "relay_resolve",
-      "relay_submit",
-      "relay_submit",
-      ...Array(emptyPolls + 1).fill("relay_poll"),
-      "relay_ack",
-      "relay_status",
-      "relay_poll",
+      "hab_resolve",
+      "hab_submit",
+      "hab_submit",
+      ...Array(emptyPolls + 1).fill("hab_poll"),
+      "hab_ack",
+      "hab_status",
+      "hab_poll",
     ];
     let pollsSeen = 0;
     for (const name of names) {
       const args =
-        name === "relay_submit"
+        name === "hab_submit"
           ? { message_id: "synthetic-message", body: "synthetic" }
-          : name === "relay_ack"
+          : name === "hab_ack"
             ? { message_id: "synthetic-message", request_id: "original-ack" }
             : {};
       trace.push({
         event: "request",
         value: { params: { name, arguments: args } },
       });
-      if (name === "relay_ack")
+      if (name === "hab_ack")
         trace.push({
           event: "independent_pre_ack_read",
           value: {
@@ -819,7 +819,7 @@ function selfTest() {
             receiptConfirmed: false,
           },
         });
-      const retried = name === "relay_poll" && pollsSeen++ < emptyPolls;
+      const retried = name === "hab_poll" && pollsSeen++ < emptyPolls;
       const body = retried
         ? JSON.stringify({
             result: {
@@ -831,7 +831,7 @@ function selfTest() {
         : "{}";
       trace.push({ event: "response", value: { status: 200, body } });
       if (
-        name === "relay_submit" &&
+        name === "hab_submit" &&
         trace.filter(
           (r) => r.event === "request" && r.value.params.name === name,
         ).length === 2
@@ -840,7 +840,7 @@ function selfTest() {
           event: "same_id_replay",
           value: { sameReceipt: true, messageId: "synthetic-message" },
         });
-      if (name === "relay_ack")
+      if (name === "hab_ack")
         trace.push({
           event: "receiver_clean_reopen",
           value: {

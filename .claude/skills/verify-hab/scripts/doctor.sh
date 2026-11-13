@@ -18,7 +18,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$url" "${h[@]}" --data-bi
 for a in a b c; do
   tools=$(curl -s -X POST "$url" "${h[@]}" -H "Authorization: Bearer $(jq -r ".agents.$a.token" "$state")" --data-binary "$b" \
     | jq -r '[.result.tools[].name]|sort|join(",")' 2>/dev/null)
-  [ "$tools" = relay_ack,relay_poll,relay_resolve,relay_status,relay_submit ] \
-    && echo "ok   agent $a $(jq -r ".agents.$a.address" "$state") sees 5 relay tools" || fail "agent $a tools='$tools'"
+  [ "$tools" = hab_ack,hab_poll,hab_resolve,hab_status,hab_submit ] \
+    && echo "ok   agent $a $(jq -r ".agents.$a.address" "$state") sees 5 hab tools" || fail "agent $a tools='$tools'"
 done
 [ $ok = 1 ] && echo "DOCTOR_OK $url" || { echo "DOCTOR_FAIL"; exit 1; }

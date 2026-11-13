@@ -17,8 +17,8 @@ const part = z.discriminatedUnion("type", [
     value: z.unknown(),
   }),
 ]);
-export const relayMcpSchemas = Object.freeze({
-  relay_submit: z.strictObject({
+export const deliveryMcpSchemas = Object.freeze({
+  hab_submit: z.strictObject({
     version: z.literal(1),
     message_id: id,
     recipient_id: id,
@@ -29,9 +29,9 @@ export const relayMcpSchemas = Object.freeze({
     first_sent_at: z.string(),
     expires_at: z.string(),
   }),
-  relay_status: z.strictObject({ message_id: id }),
-  relay_poll: z.strictObject({}),
-  relay_ack: z.strictObject({
+  hab_status: z.strictObject({ message_id: id }),
+  hab_poll: z.strictObject({}),
+  hab_ack: z.strictObject({
     sender_id: id,
     message_id: id,
     generation: z.number().int().positive(),
@@ -40,26 +40,26 @@ export const relayMcpSchemas = Object.freeze({
   }),
 });
 const descriptions = {
-  relay_submit:
-    "Persist a Relay message with its fixed ID, recipient and one-hour deadline. Acceptance is delivery only; it does not execute work.",
-  relay_status:
+  hab_submit:
+    "Persist a HAB message with its fixed ID, recipient and one-hour deadline. Acceptance is delivery only; it does not execute work.",
+  hab_status:
     "Read the authenticated sender's acceptance receipt without body. Delivery state is not work completion.",
-  relay_poll:
+  hab_poll:
     "Lease at most one message for the authenticated receiver. Save it durably before acknowledging it.",
-  relay_ack:
+  hab_ack:
     "Confirm a durably saved delivery using its exact journaled ACK request. This removes the server body and does not execute work.",
 };
 /** Supplied by a trusted host per connection/request; never derived from tool arguments. */
-export type RelayContextResolver = () => unknown | Promise<unknown>;
+export type DeliveryContextResolver = () => unknown | Promise<unknown>;
 /** Optional transport admission/audit guard; it cannot grant identity or permissions. */
-export interface RelayMcpGate {
+export interface DeliveryMcpGate {
   check(): void;
   begin(): Promise<(success: boolean) => Promise<void>>;
 }
 /** Shared optional transport boundary. Operations stay synchronous after verified context resolution. */
-export async function executeRelayMcpOperation(
-  resolveContext: RelayContextResolver,
-  gate: RelayMcpGate | undefined,
+export async function executeDeliveryMcpOperation(
+  resolveContext: DeliveryContextResolver,
+  gate: DeliveryMcpGate | undefined,
   operation: (context: unknown) => unknown,
 ) {
   let finish: ((success: boolean) => Promise<void>) | undefined;
@@ -78,7 +78,7 @@ export async function executeRelayMcpOperation(
     const value = operation(context);
     if (value && typeof value === "object" && "then" in value) {
       void Promise.resolve(value).catch(() => {});
-      throw new MessagingError("relay_operation_failed");
+      throw new MessagingError("operation_failed");
     }
     const output = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
     await finish?.(true);
@@ -97,7 +97,7 @@ export async function executeRelayMcpOperation(
       (error instanceof MessagingError || error instanceof ContractError) &&
       isPublicToolError(error.code)
         ? error.code
-        : "relay_operation_failed";
+        : "operation_failed";
     return {
       isError: true,
       content: [
@@ -108,25 +108,25 @@ export async function executeRelayMcpOperation(
   }
 }
 /** Trusted transport composition only; a preparation hook cannot bypass service authorization. */
-export interface RelayMcpToolBinding {
-  schemas: Readonly<Record<keyof typeof relayMcpSchemas, z.ZodType>>;
+export interface DeliveryMcpToolBinding {
+  schemas: Readonly<Record<keyof typeof deliveryMcpSchemas, z.ZodType>>;
   prepare(
     context: unknown,
-    tool: keyof typeof relayMcpSchemas,
+    tool: keyof typeof deliveryMcpSchemas,
     input: unknown,
   ): { context: unknown; input: unknown };
 }
-export function createRelayMcpServer(
+export function createDeliveryMcpServer(
   service: DeliveryService,
-  resolveContext: RelayContextResolver = () => null,
-  gate?: RelayMcpGate,
+  resolveContext: DeliveryContextResolver = () => null,
+  gate?: DeliveryMcpGate,
   oauthScopes?: readonly string[],
-  binding?: RelayMcpToolBinding,
+  binding?: DeliveryMcpToolBinding,
 ): McpServer {
-  const server = new McpServer({ name: "hab-relay", version: "0.1.0" });
+  const server = new McpServer({ name: "hab", version: "0.1.0" });
   server.server.registerCapabilities({ tools: { listChanged: false } });
-  for (const [name, schema] of Object.entries(relayMcpSchemas)) {
-    const tool = name as keyof typeof relayMcpSchemas;
+  for (const [name, schema] of Object.entries(deliveryMcpSchemas)) {
+    const tool = name as keyof typeof deliveryMcpSchemas;
     server.registerTool(
       tool,
       {
@@ -142,27 +142,27 @@ export function createRelayMcpServer(
         // Even status may expire old records. These are hints, never authorization.
         annotations: {
           readOnlyHint: false,
-          idempotentHint: tool !== "relay_poll",
+          idempotentHint: tool !== "hab_poll",
         },
       },
       (input: unknown) =>
-        executeRelayMcpOperation(resolveContext, gate, (verified) => {
+        executeDeliveryMcpOperation(resolveContext, gate, (verified) => {
           const { context, input: prepared } = binding?.prepare(
             verified,
             tool,
             input,
           ) ?? { context: verified, input };
           switch (tool) {
-            case "relay_submit":
+            case "hab_submit":
               return service.submit(context, prepared);
-            case "relay_status":
+            case "hab_status":
               return service.status(
                 context,
-                relayMcpSchemas.relay_status.parse(prepared).message_id,
+                deliveryMcpSchemas.hab_status.parse(prepared).message_id,
               );
-            case "relay_poll":
+            case "hab_poll":
               return { delivery: service.poll(context) };
-            case "relay_ack":
+            case "hab_ack":
               return service.ack(context, prepared);
           }
         }),

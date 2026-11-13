@@ -1,7 +1,7 @@
 /** Local opaque credentials only. No issuance, secret persistence, OAuth or IO on import. */
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type { RelayHttpVerifier } from "./mcp/http.ts";
+import type { McpHttpVerifier } from "./mcp/http.ts";
 import type { RegistryAuthority } from "../hab/registry.ts";
 const claim = z
   .string()
@@ -71,7 +71,7 @@ export class LocalBearerAuthority {
     }
     return { now, records: parsed.credentials };
   }
-  readonly verify: RelayHttpVerifier = ({
+  readonly verify: McpHttpVerifier = ({
     authorization,
     resource,
     signal,

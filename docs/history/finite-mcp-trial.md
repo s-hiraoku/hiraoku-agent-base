@@ -32,7 +32,7 @@ message ID・lease token・実行ログは公開repoに保存しません。
 ```sh
 npm ci
 npm run build
-node --test test/local-relay-admin.test.js
+node --test test/host-admin.test.js
 npm run demo:hab-mvp -- --simulate
 ```
 
@@ -52,7 +52,7 @@ npm run demo:hab-mvp -- --simulate
 
 ### 1. 実体と設定を固定する
 
-- Relayと[公式管理CLI](../local-relay-service.md)を同じrevisionにする。
+- Relayと[公式管理CLI](../host-service.md)を同じrevisionにする。
   `delivery.queue.agent_capacity`を含む現行設定を使い、既存DB・サービスと分離する。
 - CLIの実ファイルと`--version`を確認する。PATH上の旧Codex `0.149.0`では
   `gpt-6.1-sol`が`400 model_not_found`となり、同梱版では成功しました。

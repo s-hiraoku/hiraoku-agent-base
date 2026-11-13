@@ -2,10 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
 import { spawn } from "node:child_process";
-import { NativeRelayStdioPort } from "./native_stdio.ts";
+import { NativeHabStdioPort } from "./native_stdio.ts";
 
 const options = {
-  resource_url: "https://relay.example/mcp",
+  resource_url: "https://hab.example/mcp",
   max_frame_bytes: 4096,
   shutdown_timeout_ms: 100,
 };
@@ -49,7 +49,7 @@ readline.createInterface({ input: process.stdin }).on('line', line => {
 });
 `;
 function start(t, mode = "normal", patch = {}) {
-  const port = NativeRelayStdioPort.start({
+  const port = NativeHabStdioPort.start({
     ...options,
     command: process.execPath,
     args: ["-e", peer, mode],
@@ -72,7 +72,7 @@ async function waitUntil(predicate) {
   assert.fail("fixture_did_not_reach_expected_state");
 }
 
-test("Native stdio: explicit child has fixed relay tools and guarded requests", async (t) => {
+test("Native stdio: explicit child has fixed HAB tools and guarded requests", async (t) => {
   const port = start(t);
   let checked = 0;
   const guard = control(() => {
@@ -81,12 +81,12 @@ test("Native stdio: explicit child has fixed relay tools and guarded requests", 
   assert.equal(port.version, 1);
   assert.equal(port.resource_url, options.resource_url);
   const result = JSON.parse(
-    await port.callTool("relay_poll", { as_address: "worker@demo.hab" }, guard),
+    await port.callTool("hab_poll", { as_address: "worker@demo.hab" }, guard),
   );
   assert.equal(result.structuredContent.delivery, null);
   assert.equal(checked, 3); // local admission, peer RPC boundary, final settlement
   assert.equal(port.activeRequests, 0);
-  for (const name of ['relay_submit','relay_status']) {
+  for (const name of ['hab_submit','hab_status']) {
     const value=JSON.parse(await port.callTool(name,{},guard));
     assert.equal(value.structuredContent.delivery,null);
   }
@@ -96,7 +96,7 @@ test("Native stdio: explicit child has fixed relay tools and guarded requests", 
 
 test("Native stdio: fragmented multibyte frames preserve exact result strings", async (t) => {
   const port = start(t, "fragment");
-  const result = await port.callTool("relay_poll", {}, control());
+  const result = await port.callTool("hab_poll", {}, control());
   assert.equal(JSON.parse(result).structuredContent.label, "受信");
   assert.equal(port.activeRequests, 0);
 });
@@ -106,7 +106,7 @@ test("Native stdio: guard is checked again after native credential wait", async 
   let allowed = true,
     checks = 0;
   const pending = port.callTool(
-    "relay_poll",
+    "hab_poll",
     {},
     control(() => {
       checks++;
@@ -126,7 +126,7 @@ test("Native stdio: abort terminates only the owned child and retains admission 
   let checks = 0,
     settled = false;
   const pending = port.callTool(
-    "relay_poll",
+    "hab_poll",
     {},
     control(() => {
       checks++;
@@ -145,7 +145,7 @@ test("Native stdio: abort terminates only the owned child and retains admission 
   controller.abort();
   assert.equal(port.activeRequests, 1);
   assert.equal(settled, false);
-  await assert.rejects(port.callTool("relay_poll", {}, control()), {
+  await assert.rejects(port.callTool("hab_poll", {}, control()), {
     code: "native_stdio_closed",
   });
   await outcome;
@@ -163,12 +163,12 @@ test("Native stdio: malformed, oversized, stale and duplicate frames fail closed
   ]) {
     const port = start(t, mode);
     await assert.rejects(
-      port.callTool("relay_poll", {}, control()),
+      port.callTool("hab_poll", {}, control()),
       (error) => error.message === "native_stdio_failed",
     );
     await port.close();
     assert.equal(port.activeRequests, 0);
-    await assert.rejects(port.callTool("relay_poll", {}, control()), {
+    await assert.rejects(port.callTool("hab_poll", {}, control()), {
       code: "native_stdio_closed",
     });
   }
@@ -176,7 +176,7 @@ test("Native stdio: malformed, oversized, stale and duplicate frames fail closed
 
 test("Native stdio: result without a guard cannot become native receive success", async (t) => {
   const port = start(t, "no_check");
-  await assert.rejects(port.callTool("relay_poll", {}, control()), {
+  await assert.rejects(port.callTool("hab_poll", {}, control()), {
     code: "native_stdio_cancelled",
   });
   assert.equal(port.activeRequests, 0);
@@ -184,7 +184,7 @@ test("Native stdio: result without a guard cannot become native receive success"
 
 test("Native stdio: child exit settles uncertain work and close does not target any other process", async (t) => {
   const port = start(t, "crash");
-  await assert.rejects(port.callTool("relay_ack", {}, control()), (error) =>
+  await assert.rejects(port.callTool("hab_ack", {}, control()), (error) =>
     ["native_stdio_failed", "native_stdio_closed"].includes(error.code),
   );
   await port.close();
@@ -197,14 +197,14 @@ test("Native stdio: owned child which ignores SIGTERM is closed before admission
     env: {},
     stdio: ["pipe", "pipe", "pipe"],
   });
-  const port = new NativeRelayStdioPort(child, {
+  const port = new NativeHabStdioPort(child, {
     ...options,
     shutdown_timeout_ms: 20,
   });
   t.after(async () => port.close());
   let checks = 0;
   const pending = port.callTool(
-    "relay_poll",
+    "hab_poll",
     {},
     control(() => {
       checks++;
@@ -224,11 +224,11 @@ test("Native stdio: owned child which ignores SIGTERM is closed before admission
 test("Native stdio: outbound oversized request refuses before dispatch without breaking the native session", async (t) => {
   const port = start(t, "normal", { max_frame_bytes: 512 });
   await assert.rejects(
-    port.callTool("relay_poll", { injected: "x".repeat(600) }, control()),
+    port.callTool("hab_poll", { injected: "x".repeat(600) }, control()),
     { code: "native_stdio_frame_limit" },
   );
   assert.equal(port.activeRequests, 0);
-  await port.callTool("relay_poll", {}, control());
+  await port.callTool("hab_poll", {}, control());
   assert.equal(port.activeRequests, 0);
 });
 
@@ -243,12 +243,12 @@ test("Native stdio: unsafe or incomplete launch configuration fails before spawn
   for (const patch of [
     { command: "relative-python" },
     { cwd: "relative" },
-    { resource_url: "https://relay.example/mcp?token=x" },
+    { resource_url: "https://hab.example/mcp?token=x" },
     { max_frame_bytes: 0 },
     { shutdown_timeout_ms: 0 },
     { env: { TOKEN: "bad\0value" } },
   ]) {
-    assert.throws(() => NativeRelayStdioPort.start({ ...valid, ...patch }), {
+    assert.throws(() => NativeHabStdioPort.start({ ...valid, ...patch }), {
       code: "invalid_native_stdio_composition",
     });
   }
@@ -257,7 +257,7 @@ test("Native stdio: unsafe or incomplete launch configuration fails before spawn
 test("Native stdio: cancellation interrupts a stuck credential wait with no further peer checks", async (t) => {
   const port = start(t, "ignore_sigterm");
   const controller = new AbortController(); let checks = 0;
-  const pending = port.callTool("relay_status", {}, control(() => { checks++; }, controller));
+  const pending = port.callTool("hab_status", {}, control(() => { checks++; }, controller));
   const outcome = assert.rejects(pending, {code:"native_stdio_cancelled"});
   await waitUntil(() => checks >= 2);
   controller.abort();

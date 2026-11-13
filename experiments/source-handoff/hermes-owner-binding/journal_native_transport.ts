@@ -4,7 +4,7 @@ import type { SQLiteAnswerJournal } from '../../../src/answer-intents/sqlite-jou
 import type { SQLiteInbox } from '../../../src/agent-sdk/sqlite-inbox.ts';
 import type { SQLiteOutbox } from '../../../src/agent-sdk/sqlite-outbox.ts';
 import type { Submission } from '../../../src/messaging/contract.ts';
-import { NativeHabMcpClient, type NativeRelayPort } from './native_mcp_client.ts';
+import { NativeHabMcpClient, type NativeHabPort } from './native_mcp_client.ts';
 
 type Key = Readonly<{ sender_id: string; message_id: string }>;
 export type JournalNativeStores = Readonly<{
@@ -21,13 +21,13 @@ export type NativePeerScope =
   | (Identity & Readonly<{ mode: 'receive' }>)
   | (Reply & Readonly<{ mode: 'submit'; thread_id: string }>)
   | (Reply & Readonly<{ mode: 'status' }>);
-export interface OwnedNativePeer extends NativeRelayPort {
+export interface OwnedNativePeer extends NativeHabPort {
   /** Must resolve only after actual owned process exit. Rejection is not settlement. */
   close(): Promise<void>;
 }
 export type JournalNativeOptions = Readonly<{
   client: ConstructorParameters<typeof NativeHabMcpClient>[1];
-  /** Trusted synchronous root opener, normally NativeRelayStdioPort.start.
+  /** Trusted synchronous root opener, normally NativeHabStdioPort.start.
    * Scope is derived here, never from an MCP argument or guessed latest row.
    * A thrown opener has uncertain side effects and permanently retains admission.
    */

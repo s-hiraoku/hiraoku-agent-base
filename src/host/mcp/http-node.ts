@@ -1,7 +1,7 @@
 /** Node callback only: the host owns listener/headers/socket policy and explicit activation. */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
-import type { RelayHttpGateway } from "./http.ts";
+import type { McpHttpGateway } from "./http.ts";
 const forwarded = [
   "host",
   "origin",
@@ -14,7 +14,7 @@ const forwarded = [
   "mcp-name",
   "mcp-protocol-version",
 ];
-export function createRelayNodeHandler(gateway: RelayHttpGateway) {
+export function createMcpNodeHandler(gateway: McpHttpGateway) {
   let active = 0;
   const resource = new URL(gateway.policy.resource_url);
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -120,7 +120,7 @@ export function createRelayNodeHandler(gateway: RelayHttpGateway) {
                 if (item.done) controller.close();
                 else controller.enqueue(item.value);
               } catch {
-                if (!stopped) controller.error(Error("Relay input closed"));
+                if (!stopped) controller.error(Error("MCP input closed"));
               }
             },
             // Cancelling an unread IncomingMessage destroys its socket. Defer that

@@ -12,7 +12,7 @@
         "docs/hab-decisions.md",
         "docs/hab-principles.md",
         "docs/hab-product-spec.md",
-        "docs/hab-relay-spec.md",
+        "docs/hab-messaging-spec.md",
         "docs/history/hab-roadmap.md",
         "docs/history/hab-roles.md",
         "docs/history/hab-topology.md",
@@ -23,10 +23,10 @@
       ],
       "supplemental": [
         {
-          "path": "docs/relay-auth-groups.md",
-          "sha256": "50a8e601eea8a11226614261f0ebd75145ebaf82c638d26ac369289f08d871f9",
+          "path": "docs/auth-groups.md",
+          "sha256": "fe50d28b87c3c07f1bd67a8a49841eced258fb4a3412661ef62bb5567562b54f",
           "review": "reviewed",
-          "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+          "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
         },
         {
           "path": "docs/history/generic-nats-dispatch.md",
@@ -41,9 +41,9 @@
         },
         {
           "path": "docs/history/task-bridge.md",
-          "sha256": "0ad8718518f7436357ecb3a78059282bbfb3699b52b952530b1e2a7ea397f527",
+          "sha256": "1201613f141c1c1f76674c4f346646797ec5735c671c676f4909482780194917",
           "review": "reviewed",
-          "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only repoints the deleted src/relay README link to src/agent-sdk/README.md."
+          "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only repoints the deleted src/relay README link to src/agent-sdk/README.md. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
         },
         {
           "path": "docs/hab-security.md",
@@ -57,9 +57,9 @@
         },
         {
           "path": "docs/operations/persistent-mcp-auth.md",
-          "sha256": "7fc79eb8ad15c1e237861610e7db6bb1dea0316390647b39e8e044c5d524bc0f",
+          "sha256": "b2b13667677f5bc314adf81e5d4098d5b57f69441811893520a044ebb972f944",
           "review": "reviewed",
-          "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+          "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
         }
       ],
       "method": [
@@ -82,8 +82,8 @@
       {
         "path": "docs/agent-address-rename.md",
         "scope": "full",
-        "sha256": "f809768248a2281ad403ca4bdbf7dac7ea0b3808eb809cdb7e136b0c6d17f565",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "sha256": "607ef22126c70d4966eeea3754511f7c2aef07d4804ea60d0bdfe713db5d357e",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/operations/auth0-account-step.md",
@@ -113,27 +113,28 @@
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
-        "path": "docs/operations/local-relay-host.md",
+        "path": "docs/operations/host-composition.md",
         "scope": "full",
-        "sha256": "8fd7af00269c4da014245d3ca6002d92c37ed2a6a0823c8e8bf63ef21d20a7f6",
-        "maintenance": "Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
+        "sha256": "6beb4094e6eb983b4fec21504763003b2764d512672fb3231d6d8cd6e070bcbb",
+        "maintenance": "Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "docs/operations/local-relay-launchagent.md",
+        "path": "docs/operations/host-launchagent.md",
         "scope": "full",
-        "sha256": "f877fe164cf3b625d60724a1801ed9ebfb29a547958f341fabb4695f5bb87ab5"
+        "sha256": "1cda97c8306c906924e22fcc0e83999ff298cff7d81e76992a51be552c014ab4",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "docs/local-relay-service.md",
+        "path": "docs/host-service.md",
         "scope": "full",
-        "sha256": "bd1afb177b74d5c35421d41189f9dde586ec0dc2205d436269439b7a264aea95",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a/a2a-relay-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); the rollback sentence now also reconciles IDs incomplete in the backup, lets the recipient's records decide expired or quarantined rows, and keeps the earlier build stopped until every restored ID has expired. The recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the rollback sentence now says the hold stops the relay from delivering again, and that a body already saved in a restored inbox is settled against the copied execution records before its recipient restarts. The recorded observation still holds. Local follow-up on 0fc76a6: Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
+        "sha256": "0e0077453e6693f6704d8e307942d423a8e5df92eb458c0a73947971820a655b",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a/a2a-host-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); the rollback sentence now also reconciles IDs incomplete in the backup, lets the recipient's records decide expired or quarantined rows, and keeps the earlier build stopped until every restored ID has expired. The recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the rollback sentence now says the hold stops the relay from delivering again, and that a body already saved in a restored inbox is settled against the copied execution records before its recipient restarts. The recorded observation still holds. Local follow-up on 0fc76a6: Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/connections/mcp-agent-discovery.md",
         "scope": "full",
-        "sha256": "ec465854645a666ab6513c3dd43b25ffef7d15040fa8f579c13b9fa45f8db53c",
-        "maintenance": "Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
+        "sha256": "9bdb2623fdf900bdb7d9d54e1c994e5182ca42757aefd58bcbdd92a6ebbb343e",
+        "maintenance": "Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/history/migration-plan.md",
@@ -143,19 +144,20 @@
       {
         "path": "docs/operations/persistent-mcp-auth.md",
         "scope": "full",
-        "sha256": "7fc79eb8ad15c1e237861610e7db6bb1dea0316390647b39e8e044c5d524bc0f",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "sha256": "b2b13667677f5bc314adf81e5d4098d5b57f69441811893520a044ebb972f944",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "docs/relay-auth-groups.md",
+        "path": "docs/auth-groups.md",
         "scope": "full",
-        "sha256": "50a8e601eea8a11226614261f0ebd75145ebaf82c638d26ac369289f08d871f9",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "sha256": "fe50d28b87c3c07f1bd67a8a49841eced258fb4a3412661ef62bb5567562b54f",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "docs/operations/relay-oauth-ingress.md",
+        "path": "docs/operations/oauth-ingress.md",
         "scope": "full",
-        "sha256": "d362a02bec9323fbca8f349692d6b1ead828877910f739226de51fc2f650caeb"
+        "sha256": "04d834a90b5a543a3ef40cdff0c9e4b1cb711c0a0e42442e2895583acaddea5a",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/history/security-audit-limits.md",
@@ -165,8 +167,8 @@
       {
         "path": "src/hab/README.md",
         "scope": "full",
-        "sha256": "b08a41176c24bc6c609571c1112d45374d288d4b6e2700af39de25d0e06b8663",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withAuthorization called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds."
+        "sha256": "edc95d5c2b37cf0831ead6b493a2d54f65a3300ea13745cc930652f49b0e64cf",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withAuthorization called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/hab/auth-groups.ts",
@@ -185,11 +187,11 @@
         "scope": "lines1–115 and180–267 (schema and startup composition)"
       },
       {
-        "path": "config/relay-oauth-persistent.example.json",
+        "path": "config/host-oauth-persistent.example.json",
         "scope": "full"
       },
       {
-        "path": "config/relay-oauth.example.json",
+        "path": "config/host-oauth.example.json",
         "scope": "full"
       },
       {
@@ -208,53 +210,53 @@
     "supplemental_sources": [
       {
         "path": "src/hab/sqlite-registry.ts",
-        "sha256": "45a5faef26155821ddb71e447d223efd3664735aa161466871c0cf6ae9d694f3",
+        "sha256": "a6055b185f7c82a57569c13e2eb2b3f2d2dac85992b6bf0b678270bef35722d1",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (registryOptionsSchema, createBoundGroup, #addMember, #stopMembers, setGroupAccess, revokeGroupBinding, omitted-selection query); diff from efa2435 (createBoundGroup rights, #authorizedTx)",
         "summary": "registryOptionsSchema is the single Registry limit schema used by the constructor and the host config. setGroupAccess to stopped/retired and revocation of the last group binding run #stopMembers, which sets every active member to stopped with operations '[]' and a bumped epoch in the same mutation. createBoundGroup runs in one transaction that checks the group_bind and group_member admin rights and then, through #mutateLocked with group_create, inserts the group, binds the connection and adds the member, so a missing right leaves nothing. withAuthorization goes through #authorizedTx: a withAuthorization called inside another's action runs in the enclosing transaction instead of opening one, so a guard and the operation it admits share one Registry lock. Omitted selection joins members to the agent table and counts only active ones. Rest of the Registry not re-read. P3a group-only binding (2026-11-12): migrate() always creates the group schema and #convertIndividualBindings moves every earlier direct hab_bindings row into a new single-member group (state active with every operation when a binding is live, stopped otherwise, retired for a retired address) under the same binding ID, fingerprint and timestamps, then marks the old rows revoked; bind/bindVerified/revoke/inspectBinding are removed, createBoundGroupVerified and inspectGroupBinding are added, withAuthorization/discovery/#peer authenticate only through group bindings and membership, and authentication_groups is accepted but ignored.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); createBoundGroup also checks group_bind and group_member, and withAuthorization joins an enclosing withAuthorization transaction through #authorizedTx."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); createBoundGroup also checks group_bind and group_member, and withAuthorization joins an enclosing withAuthorization transaction through #authorizedTx. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/host/admin.ts",
-        "sha256": "345200225cca279357b5b54b1ff05f3ce1c4c8f23d2f04ecfc3ab13f1244b2b3",
+        "sha256": "2cbdcd320585fc1a38141686c9762fdc78ddc5c929039020234792e4531443a3",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (open(), hostAdminConnect group branch, operations parsing)",
-        "summary": "A connect with no existing group calls createBoundGroup and reports group_created, connection_bound and group_member_added together; an existing group keeps the separate bind and member steps. hostAdminConnect refuses an empty operation list or any unknown name with invalid_operations, and scripts/hab-relay-admin.mjs now passes `--operations \"\"` through (one empty name) instead of dropping it to the all-operations default. Status/disconnect paths not re-read. P3a (2026-11-12): every connect uses the group branch; open() refuses with registry_upgrade_pending while version 1 or an unmoved hab_bindings row remains; status reports each credential's group_id and disconnect revokes only group bindings.",
+        "summary": "A connect with no existing group calls createBoundGroup and reports group_created, connection_bound and group_member_added together; an existing group keeps the separate bind and member steps. hostAdminConnect refuses an empty operation list or any unknown name with invalid_operations, and scripts/hab-admin.mjs now passes `--operations \"\"` through (one empty name) instead of dropping it to the all-operations default. Status/disconnect paths not re-read. P3a (2026-11-12): every connect uses the group branch; open() refuses with registry_upgrade_pending while version 1 or an unmoved hab_bindings row remains; status reports each credential's group_id and disconnect revokes only group bindings.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); open() lists the A2A endpoint among credential resources and passes a2aIdentity, and hostAdminConnect refuses the configured identity address with a2a_identity_reserved before any binding."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); open() lists the A2A endpoint among credential resources and passes a2aIdentity, and hostAdminConnect refuses the configured identity address with a2a_identity_reserved before any binding. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/host/config.ts",
-        "sha256": "c1df6a21fa57dc75be42ab2f4f74aaac8816b61dd2280520d4d1743db33be198",
+        "sha256": "b8f0d94ca6481efa9688fc926a67903e97570b9c2fa853a976352f315303f943",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-100",
         "summary": "The host config parses its `registry` section with registryOptionsSchema from src/hab/sqlite-registry.ts and its `delivery` section with deliverySchema from src/host/delivery.ts, so an out-of-range Registry limit is a config_invalid field error before any store opens. The optional strict `a2a` section (port, identity and recipient addresses that must differ, poll_interval_ms, max_active_requests, max_records) is absent by default, which means no A2A listener, mailbox or host identity.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the optional strict a2a section."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the optional strict a2a section. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/host/a2a.ts",
-        "sha256": "9ca4553a32ae012e1961073f400af888923e04ef8eb97d7c2e27c5404572fe24",
+        "sha256": "b506c7c8338f0028adb5ba5ee030d0ce250a75db47120d7db862e97bf092d44d",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Integrated host review: identity provisioning, current caller guards and owner-only synchronous claim-to-admission remain unchanged. Receiver classifies save/discard/defer using confirmed held replies, deferring unexpected preview failures and candidates whose redundancy depends on unconfirmed replies without saving or ACKing; held IDs still deduplicate. applyReplies retains unexpected-error bodies. Inbox-first maintenance computes T=retained total, M=configured cap, W=retained sources with expires_at>now-REPLY_WINDOW_MS and binary-searches p<=100 using all inbox capacities for 2(max(0,M-T+p)+W) messages (equivalent to 2(F+W+p) for ordinary T<=M, F=M-T) and maximum envelope bytes. No await separates counts/checks and numeric-cap collection; expiry remains independent. Stable full-key overdue pages advance past failed applies and wrap at pass end, scheduling full pages immediately and later passes at next window or within one minute. Source-scoped inbox reads retain correlation and authorization. Close rejects new requests and drains current work before stores close; no normal-shutdown bug or repair is claimed. A saved reply whose apply raises ContractError, RequestMalformedError or ZodError is released as refused; any other apply failure keeps the body for the next cycle. P3a (2026-11-12): the host identity is the only member of a group whose only live binding is the host principal (createBoundGroup, then setGroupAccess and setAccess to the host operations); provisioning rights are inspect, product, enroll, group_create, group_bind, group_member, group_access and access.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withAuthorization. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); routes name replyWindowMs, an unconfirmed reply is passed to releaseUnconfirmable instead of being applied, and once-a-minute maintenance runs inbox and outbox maintenance and then closeWindows over store.overdue(), one try per Task (52d7fdf). Re-read the diff to the release-before-poll fix: each cycle now runs applyReplies once before polling, so bodies no ACK can confirm are released before a new reply is saved, and again after polling. Remaining review-fix maintenance: re-read the diff from 843e5d9; the receiver's poll passes a correlated reply on only if changesTask previews it as changing its Task (a2a.ts changesTask), and the window pass runs in each cycle once windowsDueAt passes, refreshed from store.nextExpiry and with maintenance. Local follow-up on 0fc76a6: Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 × max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; applyReplies also treats ContractError as a refusal, releasing the body and leaving the Task unchanged, as classifyReply already discards it before save."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withAuthorization. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); routes name replyWindowMs, an unconfirmed reply is passed to releaseUnconfirmable instead of being applied, and once-a-minute maintenance runs inbox and outbox maintenance and then closeWindows over store.overdue(), one try per Task (52d7fdf). Re-read the diff to the release-before-poll fix: each cycle now runs applyReplies once before polling, so bodies no ACK can confirm are released before a new reply is saved, and again after polling. Remaining review-fix maintenance: re-read the diff from 843e5d9; the receiver's poll passes a correlated reply on only if changesTask previews it as changing its Task (a2a.ts changesTask), and the window pass runs in each cycle once windowsDueAt passes, refreshed from store.nextExpiry and with maintenance. Local follow-up on 0fc76a6: Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 × max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; applyReplies also treats ContractError as a refusal, releasing the body and leaving the Task unchanged, as classifyReply already discards it before save. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/host/server.ts",
-        "sha256": "407041b07e952fab0dcda6e0fe0d5c677c01079e457db4e34e52c12520537558",
+        "sha256": "e5f77967dca3e85b1833ecb25d8ba9db199b434372bc88c9c6db4a8eb805486f",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from cddd9f4 (a2a option validation, hostContext and provisioner contexts, Registry administrator and individual callbacks, provisioning, startHostA2a wiring, close order)",
         "summary": "The a2a port must be 0 or at least 1024 and differ from the MCP and ingress ports. Two frozen in-process objects are the host A2A context and the provisioning administrator; the Registry administrator callback answers only while provisioning is true, for that object and the five provisioning operations. The individual callback returns the host principal only for hostContext and drops any operator or ingress individual whose issuer is urn:hab:host. Provisioning runs after registry.migrate() and before delivery opens; the A2A entry starts after the listeners and closes before delivery and the Registry. Rest of the host not re-read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ],
     "attestation": {
@@ -321,23 +323,23 @@
       },
       {
         "path": "src/agent-sdk/sqlite-inbox.ts",
-        "sha256": "55c681b1123ca036651d465f9d072a4d583a1101581f258f56ca961dac7367a0",
+        "sha256": "020282156f64fe0b6063175f6cfc196cf8febef32e537136f03c22f09ee4df29",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Read-only scoped inbox(source?) validates both identifiers, selects unreleased rows by exact JSON reply-source pair and retains received_at/sender/message ordering and pending ACKs. Migrate adds an idempotent partial expression index only for unreleased bodies, excluding empty released tombstones; schema version4 and record format stay unchanged. Unfiltered inbox remains supported. Existing body/bytes, message ACK-history and retained-row capacity checks, release rules and terminal-time retention are unchanged.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-inbox.ts; the recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the record and byte capacity query now counts only rows with released_at IS NULL. The max_ack_records check and the tombstone dedup are unchanged. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the total-row and legacy-ID bounds to the capacity check. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the ACK-history capacity check counts distinct messages and caps one message at max_attempts generations, and releaseUnconfirmable is added. Local follow-up on 0fc76a6: Read hasCapacityFor in full and surrounding maintenance: validates nonnegative safe integer inputs, checks current body count/UTF-8 bytes, distinct sender/message ACK history and retained rows by a SELECT, changes no rows, makes no reservation, and preserves maintenance retention from local terminal time. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-inbox.ts; the recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the record and byte capacity query now counts only rows with released_at IS NULL. The max_ack_records check and the tombstone dedup are unchanged. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the total-row and legacy-ID bounds to the capacity check. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the ACK-history capacity check counts distinct messages and caps one message at max_attempts generations, and releaseUnconfirmable is added. Local follow-up on 0fc76a6: Read hasCapacityFor in full and surrounding maintenance: validates nonnegative safe integer inputs, checks current body count/UTF-8 bytes, distinct sender/message ACK history and retained rows by a SELECT, changes no rows, makes no reservation, and preserves maintenance retention from local terminal time. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/agent-sdk/sqlite-outbox.ts",
-        "sha256": "79fa991c1ff64233140aa86a32e7105f6da4305fa50ed2e1f3404b3b4b87cb8e",
+        "sha256": "8eff042cf1d3ba84961202768445a44713f11d17372e7162e451765c9adbc8c8",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "retainedCounts reads total rows and those whose expiry is strictly after a safe-integer horizon, without reservations. maintain accepts boolean or integer collection budget from0 to limit: expiry runs first and collection is capped by both remaining work budget and requested collection count. Eligible states, replay-bound GC safety, horizons and retention remain required; false/zero never disables body expiry.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); claim(messageId) validates the identifier and selects only that queued record, so a shared outbox never sends another caller's intent. Local follow-up on 0fc76a6: Read maintain(limit, collect=true): the optional boolean only disables the due-row DELETE batch; #expire still runs, removing expired payloads while preserving rows/admission slots. Invalid nonboolean values are refused; default behavior is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); claim(messageId) validates the identifier and selects only that queued record, so a shared outbox never sends another caller's intent. Local follow-up on 0fc76a6: Read maintain(limit, collect=true): the optional boolean only disables the due-row DELETE batch; #expire still runs, removing expired payloads while preserving rows/admission slots. Invalid nonboolean values are refused; default behavior is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/relay/sqlite-store.ts",
@@ -411,23 +413,23 @@
       },
       {
         "path": "src/host/mcp/server.ts",
-        "sha256": "73f498e2b7ce5f543d9764622d489080ac81cf70364f65f828e15c00e49d321b",
+        "sha256": "13531a2e8354e2732330c47a632b5553682eace1cec24bf876cd1b56831c6f12",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "125-195; strict schema/catalog locations found by rg",
         "summary": "Actual four-operation tool registration dispatch under resolver/gate; the attachment part schema was removed, so the published submit schema accepts only text and data parts. No general execution tool in factory switch.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from src/relay/mcp.ts to src/host/mcp/server.ts in b5168ce; the diff only rewrites relative import paths line for line, so the summary and read_coverage still hold."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from src/relay/mcp.ts to src/host/mcp/server.ts in b5168ce; the diff only rewrites relative import paths line for line, so the summary and read_coverage still hold. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "config/relay-service.example.json",
-        "sha256": "c41c8decc4bc14dd77098710d257c64b048a84fd26fd23fba427275d6bce63cb",
+        "path": "config/host-service.example.json",
+        "sha256": "aa3a204a5871fd45b5d0f8cef5f1676bf74e6ce5b65f7b2ffcc38266876a7c3b",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Public dummy host policy shape: one `delivery` section (broker, pump, volume, queue with finite limits, agent_capacity, fair_poll) and allowed kinds; attachment limits and the `store` section are gone. Not approved live policy; no private config read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "packages/relay-nats/config/jetstream.example.json",
@@ -437,7 +439,7 @@
         "summary": "Public opt-in routing disabled example, finite pump/broker and explicit volume identity fields, migration opt-in.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
         "retired_sha256": "ee68d24e222d9488dd8c3e966a3df6ffc5a26762ab8d0d20edc02d1e64e1a803",
-        "disposition": "Deleted: the separate JetStream config was folded into the `delivery` section of config/relay-service.example.json."
+        "disposition": "Deleted: the separate JetStream config was folded into the `delivery` section of config/host-service.example.json."
       },
       {
         "path": "packages/relay-nats/config/nats-server.example.conf",
@@ -480,13 +482,13 @@
       },
       {
         "path": "src/host/delivery.ts",
-        "sha256": "5aee258aa77188ea1c411722808dea69e96fb00c68431773749f63aaeb63c9e0",
+        "sha256": "a4491cee3523ef1e59d41313e1d95b93d72729e8026750bbc49b981825f355cc",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-97,177-247",
         "summary": "Diff reviewed: strict `delivery` schema (broker, pump, volume, queue) replaces the store plus routing/extension configuration; journal path is a private file; volume marker/device fail-closed setup retained. Intermediate factory wiring not fully read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from packages/relay-nats/src/configured.ts to src/host/delivery.ts in b5168ce; the diff only rewrites relative import paths, so the summary still holds and read_coverage was shifted to the new line numbers."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from packages/relay-nats/src/configured.ts to src/host/delivery.ts in b5168ce; the diff only rewrites relative import paths, so the summary still holds and read_coverage was shifted to the new line numbers. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/relay-rollback-reconcile.mjs",
@@ -512,8 +514,8 @@
         "docs/attachment-transport.md",
         "docs/history/hab-relay-integration.md",
         "docs/managed-attachments.md",
-        "docs/delivery/relay-agent-capacity.md",
-        "docs/delivery/relay-fair-poll.md",
+        "docs/delivery/agent-capacity.md",
+        "docs/delivery/fair-poll.md",
         "docs/sqlite-snapshot-bundle.md",
         "docs/upload-journal.md",
         "docs/delivery/writer-admission.md",
@@ -544,7 +546,7 @@
   {
     "scope": "execution",
     "read_files": [
-      "docs/a2a/a2a-relay-preview.md",
+      "docs/a2a/a2a-host-preview.md",
       "docs/a2a/a2a-sdk-preview.md",
       "docs/receiver/adapter-owner.md",
       "docs/receiver/adapter-reply-budget.md",
@@ -576,7 +578,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "f11f4d2ea6edd328c151fc84ded72ead0a31b5b01181701b0f49b3770efa222a",
+        "sha256": "83f1d1da813b46b649261f1db6d3c057e70fb5659caaf1b6555a12f520ef42ab",
         "read_ranges": [
           [
             1,
@@ -585,7 +587,7 @@
         ],
         "observation": "Read full package manifest. Native verification is Node test runner plus TS build/typecheck; Python exists for optional import/token executor boundaries.",
         "full_file_read": true,
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); test:a2a-relay now also runs test/a2a-host.test.js. The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); lint now also covers scripts/relay-rollback-reconcile.mjs. The recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): the diff only removes scripts/prove-generic-nats.mjs from lint and the proof:generic-nats script; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); test:a2a-relay now also runs test/a2a-host.test.js. The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); lint now also covers scripts/relay-rollback-reconcile.mjs. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/server.ts",
@@ -750,7 +752,7 @@
       },
       {
         "path": "docs/history/generic-agent-async-design.md",
-        "sha256": "a39a86607afa3f5a4bb1d8a54fccee44e1997e1af88c2eb957a14d54ec6fd587",
+        "sha256": "321618913d6a25609f26c6e79c182ef63adb18c67ba55bcf6b97415fe1df5d6a",
         "read_ranges": [
           [
             1,
@@ -759,7 +761,7 @@
         ],
         "observation": "Read supplemental prefix including current optional-only scope and working coordinator semantics; complete file is assigned to another reader, so no full-file review attestation here.",
         "full_file_read": false,
-        "maintenance": "Phase 6 maintenance: the diff from 0bf74ef drops the deleted NATS path from the working-state row and links the generic-nats record as historical; working remains coordinator state."
+        "maintenance": "Phase 6 maintenance: the diff from 0bf74ef drops the deleted NATS path from the working-state row and links the generic-nats record as historical; working remains coordinator state. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/a2a/hab-contract.ts",
@@ -773,23 +775,23 @@
       },
       {
         "path": "src/a2a/hab-adapter.ts",
-        "sha256": "04f0fe17694e3b64780055b908f108d434eb8c3ac2198c377a60f52bc2f6486d",
+        "sha256": "f439427983e30a9a09e3193d57eda6026be6f1691f82dd5a2a47f5081de44a7d",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Existing Task state machine, authorization around asynchronous reads/saves/evidence and confirmed-reply correlation remain. Evaluation passes a copied exact original source key as an optional route hint, then still filters receipt confirmation, kind, sender/recipient and source reference, validates thread/schema and engine correlation. Hint mutation or an unfiltered provider cannot replace the canonical key. Existing expiry failure semantics and no revival after result_window_expired are unchanged.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds apply(taskId, context, route) and settles a reply-attested route's replies after any save, not only a terminal one. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds the result_window_expired failure and its reason metadata, skips replies once it is set, and runs the blocking wait outside the serializer, reloading the stored Task at each step. Remaining review-fix maintenance: re-read the diff from 843e5d9; #observe is split into #evaluate (the Task the route's confirmed replies make, without saving) and the save and settle step, and preview(taskId, context, route) runs #evaluate under the serializer. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds apply(taskId, context, route) and settles a reply-attested route's replies after any save, not only a terminal one. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds the result_window_expired failure and its reason metadata, skips replies once it is set, and runs the blocking wait outside the serializer, reloading the stored Task at each step. Remaining review-fix maintenance: re-read the diff from 843e5d9; #observe is split into #evaluate (the Task the route's confirmed replies make, without saving) and the save and settle step, and preview(taskId, context, route) runs #evaluate under the serializer. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/a2a/store.ts",
-        "sha256": "0cbdc1725004a6b0f864be415d0cf45181aa483ceb770b9d629dff9721dc9559",
+        "sha256": "4107230b25a050b0ace3b3c7f89b42733d9587393e5183aed99ac88844602283",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Private dedicated eager node:sqlite Task database with lazy Kysely/SDK wrapper and explicit finally-close of any remaining eager connection. Existing source lookup and next-expiry queries remain. overdue selects nonterminal sources at or before cutoff using strict (tenant,owner,id)>cursor and that same stable ordering with a bounded limit; failed saves do not change cursor identity. Empty cursor starts a pass; host owns advancement/wrap. No metadata repair or API corruption claim. Driver change (2026-11-13): the eager connection is node:sqlite DatabaseSync (timeout 5000, WAL, schema in one BEGIN IMMEDIATE transaction), adapted to Kysely's SqliteDialect by a small prepare/all/run/iterate wrapper whose reader flag is statement.columns().length>0; findBySource and overdue return plain {tenant,owner,id} objects. Table, schema, queries and close order are unchanged, so an existing a2a-tasks.sqlite opens as before. better-sqlite3 is no longer a dependency.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-D20. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds overdue(expiredBy, limit). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds nextExpiry(after). Task-store close follow-up on f1b6eb1: full lifecycle review confirms Kysely RuntimeDriver.destroy returns before driver initialization; explicit eager-connection closure is required after direct host reads. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Driver maintenance (2026-11-13): re-read the full file after replacing better-sqlite3 with node:sqlite."
+        "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-D20. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds overdue(expiredBy, limit). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds nextExpiry(after). Task-store close follow-up on f1b6eb1: full lifecycle review confirms Kysely RuntimeDriver.destroy returns before driver initialization; explicit eager-connection closure is required after direct host reads. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Driver maintenance (2026-11-13): re-read the full file after replacing better-sqlite3 with node:sqlite. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/a2a/hab-http.ts",
@@ -895,20 +897,21 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "17c70fe9c4c92a81fd7d968b67f220910a41534d214b168a9cefd7f75606f655",
+        "sha256": "2104917ce24de9dbd0bbadcf3fb320f5f38675ff46f99fa04dd27293a530c66c",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "1c99342dbc5489fa70e00c526b97c894b1a767ff877c889eb2bbfeab738a4622",
+        "sha256": "fad09138f4ce96f116034919cadaef36dff619379e04731d5c948bdeeaacba29",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/access-control.md",
-        "sha256": "63401bcd6d9a927d648052ac0e2e5b2a73b890d1e605c7978721a3f3035ecaaa",
-        "mode": "full"
+        "sha256": "c47b01dbbb17a3f04c689d0fe45964f728e12a9c43860312f8c0bfd1cfab1c93",
+        "mode": "full",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/communication-boundary.md",
@@ -917,38 +920,40 @@
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
-        "path": ".claude/skills/verify-hab/features/configured-relay.md",
-        "sha256": "307a1206c2117bcbb7399f7956aa25cdb44a6c4efba98916b5e904e4c76624a8",
+        "path": ".claude/skills/verify-hab/features/configured-host.md",
+        "sha256": "0c6475a22d6d5a55b965a70b94d91f6c8bec698f1757579953cbfee47c1345bc",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
-        "sha256": "09a55afcd5d262d5f241f3ddb62c3cfa9a2592072cf3569b3cb30d1df0adb021",
+        "sha256": "c0ae900e69944c98522f39474cd72f194c7f15b9a1fa9f85d8477d6e2ce27621",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/receive-ack.md",
-        "sha256": "a00229c0cfd7d1dbc51f3c260dae30c7c2f870f8284dddbfcf5a053192499f7a",
+        "sha256": "df7a26cfe0afa5434adb076958e6e5345e40ba53b58d248a7c66bca44f0f48ba",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
-        "sha256": "91edcf77e6030379d8be2e56a7b879249a4f0d5e10ad4b557db1a8d8f5074714",
-        "mode": "full"
+        "sha256": "481d55853e3a1976ccabc5f81aeb693718df6d264b5254d102fe2c5deabd2bc8",
+        "mode": "full",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/restart-durability.md",
-        "sha256": "a4103e7a3943d28922a64ace39feff735b8bd61fb20b85f406a4a2d072e03f58",
-        "mode": "full"
+        "sha256": "17469f57df3848dc757446319b44ed15e1ead5c2040780e5f3d8a9ad1f5cc263",
+        "mode": "full",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/send-message.md",
-        "sha256": "117d8d92fb6604e2dea38a0edd229ebf74fe658635800cd41d05a8479c2e7dc7",
+        "sha256": "3f2323a67060bf82a602f7d1f509c6bc3956b01e52f7ca620adcd4c5f18b246e",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/diagrams/manifest.json",
@@ -1103,24 +1108,24 @@
       },
       {
         "path": "test/a2a-host.test.js",
-        "sha256": "98eacd2fb3bd662ea681fa1f931de5a52cfbb2f7bb2a8d1c363d8d50f3ba1a13",
+        "sha256": "88b2f3605351eb3b73a4ad04f4b98e7bd22cbc64c17b1666fe74934ec69753e2",
         "mode": "test titles and assertions",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes\", \"Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge\" and \"a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply\" (evidence for HAB-D20 and HAB-E20). The last ACKs two replies sent two days after their request's expiry but does not read that Task's state. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"saved replies whose ACK can never be confirmed release their slots, so a later reply is still saved and completes its Task\" (HAB-D20), \"a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance\" (HAB-D20) and \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" (HAB-E20, HAB-C-E09). The last ages the request two days while the host is stopped, waits for the stored Task to be TASK_STATE_FAILED without a caller read, asserts reason result_window_expired, an outcome-unknown status message and no Artifacts, and asserts that a late result is ACKed with no record and leaves the status unchanged. Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\", \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" (both evidence for HAB-D20; the second drops the running host's ACKs of one reply at HabJetStreamService.ack while it is live) and \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" (evidence for HAB-E20). The recipient helper's send takes an expiry and an ID entropy. Local follow-up on 0fc76a6: The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. Task-store close follow-up on f1b6eb1: reread the long-stop diff. The offline Task metadata change now uses better-sqlite3 like the host and moves first_sent_at with the rm1 ID and expires_at, then asserts PRAGMA integrity_check is ok before reopening. It checks the old Task reaches FAILED after its expired reply window and retries only outbox_capacity_exceeded; any other exception is surfaced immediately and the timeout is unchanged. These strengthen fixture consistency and diagnostics, not the production capacity gate or retention policy. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; adds \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" (evidence for HAB-D20): offline it saves and ACK-confirms an execution_result with a 5000-character result, over HAB_A2A_LIMITS, then checks the running host releases it within 8 seconds and the Task stays SUBMITTED.",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes\", \"Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge\" and \"a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply\" (evidence for HAB-D20 and HAB-E20). The last ACKs two replies sent two days after their request's expiry but does not read that Task's state. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"saved replies whose ACK can never be confirmed release their slots, so a later reply is still saved and completes its Task\" (HAB-D20), \"a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance\" (HAB-D20) and \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" (HAB-E20, HAB-C-E09). The last ages the request two days while the host is stopped, waits for the stored Task to be TASK_STATE_FAILED without a caller read, asserts reason result_window_expired, an outcome-unknown status message and no Artifacts, and asserts that a late result is ACKed with no record and leaves the status unchanged. Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\", \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" (both evidence for HAB-D20; the second drops the running host's ACKs of one reply at HabJetStreamService.ack while it is live) and \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" (evidence for HAB-E20). The recipient helper's send takes an expiry and an ID entropy. Local follow-up on 0fc76a6: The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. Task-store close follow-up on f1b6eb1: reread the long-stop diff. The offline Task metadata change now uses better-sqlite3 like the host and moves first_sent_at with the rm1 ID and expires_at, then asserts PRAGMA integrity_check is ok before reopening. It checks the old Task reaches FAILED after its expired reply window and retries only outbox_capacity_exceeded; any other exception is surfaced immediately and the timeout is unchanged. These strengthen fixture consistency and diagnostics, not the production capacity gate or retention policy. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; adds \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" (evidence for HAB-D20): offline it saves and ACK-confirms an execution_result with a 5000-character result, over HAB_A2A_LIMITS, then checks the running host releases it within 8 seconds and the Task stays SUBMITTED. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds.",
         "review": "reviewed",
         "summary": "Eight added host cases cover held-unconfirmed reply defer and finite-attempt quarantine, mixed-cohort partial collection with one injected legitimate-Task save failure and held body, general post-collection free-slot arithmetic/bytes bounds, including a lowered cap below retained count, two legal close boundaries retaining original intent/admission, permanent disconnect despite changed address with MCP-only startup, and stable-page traversal beyond100 injected saves plus wrap recovery. Cohort timestamps/IDs are synthetic and fingerprints are not regenerated; no whole-state restore, corruption reachability or universal recovery claim.",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow"
       },
       {
         "path": "test/hab-auth-groups.test.js",
-        "sha256": "04102b950be5661bfee4c483b268774346942bb74a9f64a8880f2d2fdf2173c1",
+        "sha256": "0d8fc8de44ec4d19989a420a304a03d6800c182e172af1bf166eac729919bd6b",
         "mode": "test titles and assertions",
-        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-A20. Runs in js-root (test/*.test.js). New case: createBoundGroup is refused with registry_forbidden without group_bind, without group_member or without both, leaving the group, binding, member counts and Registry epoch unchanged, and succeeds once every right is granted. The other group cases were not re-read."
+        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-A20. Runs in js-root (test/*.test.js). New case: createBoundGroup is refused with registry_forbidden without group_bind, without group_member or without both, leaving the group, binding, member counts and Registry epoch unchanged, and succeeds once every right is granted. The other group cases were not re-read. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "test/relay-inbox-maintenance.test.js",
-        "sha256": "1c207ed8d0eb6269bfa293c139b1055a252d51f63714f58c3c7be48517dbde38",
+        "path": "test/inbox-maintenance.test.js",
+        "sha256": "0aefe6581ee480920b017a0f23dfd624ea90bc60805ce20a390f6c71683131c6",
         "mode": "test titles and assertions",
-        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-D06. Runs in js-root (test/*.test.js). New case: with max_records 1 a second message is refused until releaseBody frees the slot, a redelivery of the released message is deduplicated by its tombstone, and with max_ack_records 3 a third distinct message is refused once three ACK records exist, although every body is released. The other inbox cases were not re-read. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"legacy IDs cannot grow the retained rows past the dedup bound across retention cycles\" (evidence for HAB-D06): new legacy IDs past max_ack_records are refused with inbox_legacy_id_capacity_exceeded, held ones stay deduplicated, and total rows stay within max_records + max_ack_records. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"lease redeliveries of one message take one ACK history slot, so its reply still fits\", \"a body whose ACK can never be confirmed is released once it expires, and only then\" and \"one message keeps at most max_attempts ACK generations\" (evidence for HAB-D06). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again\" (evidence for HAB-D06 and HAB-D07): five cycles under max_records 1 and max_ack_records 1, aging rows by renaming each rm1 ID to its shifted send time, with nothing collected before retention ends, every row and both ACK generations collected after it, and a replay of the collected ID refused as expired_delivery. Local follow-up on 0fc76a6: New capacity case checks batch fit, two pending ACK histories retained after unconfirmable body release, refusal of a two-message batch despite empty bodies, one-message fit, unchanged 30-day terminal retention and invalid-input rejection. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence.",
+        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-D06. Runs in js-root (test/*.test.js). New case: with max_records 1 a second message is refused until releaseBody frees the slot, a redelivery of the released message is deduplicated by its tombstone, and with max_ack_records 3 a third distinct message is refused once three ACK records exist, although every body is released. The other inbox cases were not re-read. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"legacy IDs cannot grow the retained rows past the dedup bound across retention cycles\" (evidence for HAB-D06): new legacy IDs past max_ack_records are refused with inbox_legacy_id_capacity_exceeded, held ones stay deduplicated, and total rows stay within max_records + max_ack_records. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"lease redeliveries of one message take one ACK history slot, so its reply still fits\", \"a body whose ACK can never be confirmed is released once it expires, and only then\" and \"one message keeps at most max_attempts ACK generations\" (evidence for HAB-D06). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again\" (evidence for HAB-D06 and HAB-D07): five cycles under max_records 1 and max_ack_records 1, aging rows by renaming each rm1 ID to its shifted send time, with nothing collected before retention ends, every row and both ACK generations collected after it, and a replay of the collected ID refused as expired_delivery. Local follow-up on 0fc76a6: New capacity case checks batch fit, two pending ACK histories retained after unconfirmable body release, refusal of a two-message batch despite empty bodies, one-message fit, unchanged 30-day terminal retention and invalid-input rejection. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds.",
         "review": "reviewed",
         "summary": "Existing maintenance regressions remain; expected index list includes the additive unreleased reply-source index.",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow"
@@ -1142,24 +1147,24 @@
         "maintenance": " Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
       },
       {
-        "path": "test/relay-outbox-maintenance.test.js",
-        "sha256": "435451fb78246d3eb3b0ac0ec9f66b15486dfd1eeccde7383b0421d314bc9b3a",
+        "path": "test/outbox-maintenance.test.js",
+        "sha256": "72f159526d0d7ba57fa4b82027424cba0caac76859dff891f3f12fe60df94701",
         "kind": "native-regression-test",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "New retainedCounts/numeric-cap regression verifies bounded collection, free-slot reservation inputs and expiry preservation, and rejects invalid caps. Existing retention and original-ID tests remain.",
         "limit": "Supplementary changed-test source review, not an execution-result claim.",
-        "maintenance": " Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence."
+        "maintenance": "Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/a2a-sdk-store.test.js",
-        "sha256": "e159e6006174070ff5f8eefd7b8cb27464ab453faf5232c24e1aa899a32df075",
+        "sha256": "50ab34b5d8a305e919340623daf81ead9fe130fc11060e49e9dc9fe08d07edcc",
         "kind": "native-regression-test",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Existing persistence, owner isolation and eager-close tests retained; new stable-key overdue paging control uses complete tenant/owner/id ordering to reach rows beyond retrying entries. Adds \"the node:sqlite Task store overwrites a saved Task and lists caller pages through the SDK\" (upsert, owner-scoped count and two-page cursor through Kysely on node:sqlite); the closed-store assertions also accept node:sqlite's finalized-statement error.",
         "limit": "Supplementary reviewed source, not an execution-result claim.",
-        "maintenance": " Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Driver maintenance (2026-11-13): re-read the full file."
+        "maintenance": "Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Driver maintenance (2026-11-13): re-read the full file. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/p7/a2a-cases.json",
@@ -1183,12 +1188,13 @@
       },
       {
         "path": "test/a2a-hab-unit.test.js",
-        "sha256": "a5f64f244bbf11a72ab01c552370d2175214c8037020546d1bd864f113bd1998",
+        "sha256": "deb40f4f12e5ba097c130a1a1583c73e595def75651cde9fd02b8ddf62f876ec",
         "kind": "native-regression-test",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Added control: pre-window saved but unconfirmed result does not postpone expiry failure and later confirmation cannot revive it. Added source-hint control retains canonical correlation even with unfiltered or hint-mutating providers. Existing lifecycle/evidence cases retained.",
-        "limit": "Source inspection only; not an execution-result claim."
+        "limit": "Source inspection only; not an execution-result claim.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/a2a/hab-route.ts",
@@ -1200,13 +1206,14 @@
         "limit": "Source inspection only; not an execution-result claim."
       },
       {
-        "path": "test/relay-inbox-source.test.js",
-        "sha256": "4f67ae4ed1715607eff72d967fd9323bb48c405bb1c644dfec786a63a072e545",
+        "path": "test/inbox-source.test.js",
+        "sha256": "03487f1627cb20feb5e8c33499b8c32dcda115d526e4cb91ef7728d3c42301e4",
         "kind": "native-regression-test",
         "review": "reviewed",
         "read_coverage": "integrated diff and relevant surrounding implementation",
         "summary": "Three scoped-read cases cover exact source pairs, pending and confirmed entries/order, exclusion of released and unrelated bodies, additive schema4 index/reopen, and query plan without scan/temp order. Synthetic200-body backlog and64 lookups parse64 rather than12800 bodies; diagnostic timing is not production latency or MCP starvation evidence.",
-        "limit": "Source inspection only; not an execution-result claim."
+        "limit": "Source inspection only; not an execution-result claim.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/a2a-hab-unit-route.test.js",
@@ -1261,21 +1268,21 @@
       },
       {
         "path": "test/recipient-messages.test.js",
-        "sha256": "98641d576c1b5b685b31538ca003e686339590c000cc65195a6d7e15ba6be3a5",
+        "sha256": "2a8e922c8292d282022a1c4d271b92fa39a15dc5d7bd62482ce3c6e8fbb64493",
         "kind": "test",
         "review": "reviewed",
         "read_coverage": "complete implementation and contract; fixture and integration diff plus authority/unknown/reply assertions",
         "summary": "21 explicit-composition cases retain separate receive, handoff, policy and reply phases, including real owned loopback MCP with independent pre-ACK SQLite observation. Async fixture and moved host MCP import preserve assertions.",
-        "maintenance": "PR161 Design CI correction (2026-11-10): the existing first end-to-end case delays only relay_submit response by HOST_LEASE_MS+100, crossing the former 400 ms fixture lease, then still requires done, accepted original outbox row, one row and the exact delivered reply. No retry, skip or weaker assertion; 21 top-level cases remain."
+        "maintenance": "PR161 Design CI correction (2026-11-10): the existing first end-to-end case delays only relay_submit response by HOST_LEASE_MS+100, crossing the former 400 ms fixture lease, then still requires done, accepted original outbox row, one row and the exact delivered reply. No retry, skip or weaker assertion; 21 top-level cases remain. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/receiver/recipient-messages.md",
-        "sha256": "f934c775159541c67d42bbb36d943bf31a8a1e8e626f1aef5ddd6411b9691453",
+        "sha256": "1e61f97b4ca6edfc66341cf0db786a078ca54d5a4c14cff8b14967ce95c5ca05",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "complete implementation and contract; fixture and integration diff plus authority/unknown/reply assertions",
         "summary": "Explicit composition on messaging/agent-sdk and JetStream-only main, retained native prerequisites and no default integration. Attachment rejection corrected to match current contract.",
-        "maintenance": "2026-11-11 semantic review: appended optional native-port owner scheduling, current host guard inside native checks, independent operation authority and honest metadata states. Original source/root scope and native/manual limitations are retained."
+        "maintenance": "2026-11-11 semantic review: appended optional native-port owner scheduling, current host guard inside native checks, independent operation authority and honest metadata states. Original source/root scope and native/manual limitations are retained. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1344,11 +1351,12 @@
       },
       {
         "path": "docs/receiver/recipient-host-mcp-proposal.md",
-        "sha256": "f0b6fa10cd0c263cf4dd25671b793a6e7b609d083d8d652673d5e6f344b9ad98",
+        "sha256": "f7f3468c542dab2e8f3372c3f1ca092178a1342893adbd39551ccf407e893dc1",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Reviewed proposal contract, usable owner-composition example, explicit RecipientMessagePort distinction and synthetic/native evidence limits."
+        "summary": "Reviewed proposal contract, usable owner-composition example, explicit RecipientMessagePort distinction and synthetic/native evidence limits.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/history/testing/delivery-lab.md",
@@ -1445,11 +1453,12 @@
       },
       {
         "path": "docs/receiver/recipient-host-mcp-proposal.md",
-        "sha256": "f0b6fa10cd0c263cf4dd25671b793a6e7b609d083d8d652673d5e6f344b9ad98",
+        "sha256": "f7f3468c542dab2e8f3372c3f1ca092178a1342893adbd39551ccf407e893dc1",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "full changed proposal and evidence",
-        "summary": "Reviewed byte-budget/framing/blocked-client limits and parent-owned cleanup wording; remains opt-in uninstalled proposal with native gates unverified."
+        "summary": "Reviewed byte-budget/framing/blocked-client limits and parent-owned cleanup wording; remains opt-in uninstalled proposal with native gates unverified.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1532,11 +1541,12 @@
       },
       {
         "path": "docs/receiver/recipient-python-mcp-acceptance.md",
-        "sha256": "70502a50d31cdbb0eb4d23281083c826d0d2ee4d68ec68ac73c2133b60ea2bb0",
+        "sha256": "f261ca47df10b2e16ef6192183eee4fd5310852404c827c07fbbf3a31383f3fa",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "full; cleanup/body/deadline wording reconciled with implementation",
-        "summary": "Optional direct official Python MCP SDK recipe over the existing synthetic recipient-host stdio fixture, real temporary SQLite and private parent-owned JetStream. Covers initial pause refusal, receipt-confirmed read and explicit fixed reply, rejected authority arguments and same-session synthetic policy revocation. No Hermes runtime, product binding, native approval, independent pre-ACK observer, full-body/model-facing preservation, wake or deployment evidence. The caller supplies an already installed SDK; no mandatory contract/CI dependency or Node-root count change. Process-group cleanup and broker ownership are distinguished from clean store shutdown; the broker exit wait has no hard deadline. Native/manual gates remain unverified."
+        "summary": "Optional direct official Python MCP SDK recipe over the existing synthetic recipient-host stdio fixture, real temporary SQLite and private parent-owned JetStream. Covers initial pause refusal, receipt-confirmed read and explicit fixed reply, rejected authority arguments and same-session synthetic policy revocation. No Hermes runtime, product binding, native approval, independent pre-ACK observer, full-body/model-facing preservation, wake or deployment evidence. The caller supplies an already installed SDK; no mandatory contract/CI dependency or Node-root count change. Process-group cleanup and broker ownership are distinguished from clean store shutdown; the broker exit wait has no hard deadline. Native/manual gates remain unverified.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1565,10 +1575,11 @@
       },
       {
         "path": "test/adapter-host-fixtures.js",
-        "sha256": "944f973bd17ec002d279dddb249341b67983a18252e84a3520831e6d1fcbcafc",
+        "sha256": "d69371f831ef01419af2185b5b02d19c429011be73d68a182eb628689a75f1f3",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Extracts the existing AdapterHostOptions object into hostOptions; makeHost still uses identical options and defaults. Existing host regressions pass. Added JSDoc describing isolated synthetic scope, option controls and owned cleanup; executable behavior unchanged."
+        "summary": "Extracts the existing AdapterHostOptions object into hostOptions; makeHost still uses identical options and defaults. Existing host regressions pass. Added JSDoc describing isolated synthetic scope, option controls and owned cleanup; executable behavior unchanged.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1604,10 +1615,11 @@
       },
       {
         "path": "test/adapter-host.test.js",
-        "sha256": "aba206464de3970e03b56e95275ccc5c21f29c946648610b7b2cf4ae6ac8b259",
+        "sha256": "2bcbcc8f87090d9f75ce8e5ceefa8430ea4cfd72434501d8fc0b2670ccba7659",
         "review": "reviewed",
         "read_coverage": "full two-case diff and corresponding host/sender/lease code",
-        "summary": "Separates intentional short timeout from fresh recovery; awaits bounded drain. Case-local recovery lease exceeds transport budget, with same-ID replay delayed beyond the old lease as a regression control. All state/correlation assertions remain; no production behavior change."
+        "summary": "Separates intentional short timeout from fresh recovery; awaits bounded drain. Case-local recovery lease exceeds transport budget, with same-ID replay delayed beyond the old lease as a regression control. All state/correlation assertions remain; no production behavior change.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1648,11 +1660,12 @@
     "supplemental_sources": [
       {
         "path": "test/adapter-host.test.js",
-        "sha256": "aba206464de3970e03b56e95275ccc5c21f29c946648610b7b2cf4ae6ac8b259",
+        "sha256": "2bcbcc8f87090d9f75ce8e5ceefa8430ea4cfd72434501d8fc0b2670ccba7659",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
-        "summary": "Scoped journal clock and explicit success/expiry assertions without changing production safety."
+        "summary": "Scoped journal clock and explicit success/expiry assertions without changing production safety.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1675,11 +1688,12 @@
     "supplemental_sources": [
       {
         "path": "test/adapter-inbox-read.test.js",
-        "sha256": "f01e7ba8bbcd9ae984f22a409784897155bcb3507348033ad24dd7ac6e746a10",
+        "sha256": "eaa7bca2de6ae1497a520d3b71a3df10c9c6fdad6201296cd609ee7b83b480fb",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
-        "summary": "Separate bounded transport preparation from saved-body authority assertions; require exact source and confirmed ACK, restore timeout, and reject failed preparation without retry."
+        "summary": "Separate bounded transport preparation from saved-body authority assertions; require exact source and confirmed ACK, restore timeout, and reject failed preparation without retry.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1712,10 +1726,11 @@
       },
       {
         "path": "test/single-source-stdio-child.js",
-        "sha256": "b38031082dea1d9a82cba6c4cf765e5380a3cc5f41522604da10dfd894908467",
+        "sha256": "4ab83be57cef127fb7d465d6a7b6c320d9254d8f6ee41e0e7d9db72a150f1347",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Test-only private command file controls synthetic owner outside MCP; borrows parent broker descriptor, uses real owned SQLite stores, emits cleanup only after stopped owner and store closure. SIGTERM fallback is a failure marker, not graceful proof."
+        "summary": "Test-only private command file controls synthetic owner outside MCP; borrows parent broker descriptor, uses real owned SQLite stores, emits cleanup only after stopped owner and store closure. SIGTERM fallback is a failure marker, not graceful proof.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1762,10 +1777,11 @@
       },
       {
         "path": "test/single-source-stdio-child.js",
-        "sha256": "b38031082dea1d9a82cba6c4cf765e5380a3cc5f41522604da10dfd894908467",
+        "sha256": "4ab83be57cef127fb7d465d6a7b6c320d9254d8f6ee41e0e7d9db72a150f1347",
         "review": "reviewed",
         "read_coverage": "full changed code",
-        "summary": "Fault injection is isolated to the synthetic child: one snapshot throw restores the original method, held poll response, child-only SDK close gate, independent close-complete owner observation and cleanup after successful stop/retry."
+        "summary": "Fault injection is isolated to the synthetic child: one snapshot throw restores the original method, held poll response, child-only SDK close gate, independent close-complete owner observation and cleanup after successful stop/retry.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -1789,18 +1805,21 @@
       },
       {
         "path": "scripts/hab-enrollment-demo.ts",
-        "sha256": "2219a5cb2059612641096630fd55f73e6c2d972f0b2d44c28d16a8824ca3b75f",
-        "review": "reviewed"
+        "sha256": "4848c4414644c8efc3169567b946233c91393a97806c1ac62414aebf14ea65d4",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "scripts/hab-relay-admin.ts",
-        "sha256": "189b9be8e0d141b197d220ac87f69661288a21048b9ee2961c9c246f6de8aef5",
-        "review": "reviewed"
+        "path": "scripts/hab-admin.ts",
+        "sha256": "3410839651e5967ae5115335b6ca978eb7595a34eeaff595a1c8c74a7c809999",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "scripts/hab-relay.ts",
-        "sha256": "e16cda769a5de59309a4473f02ab0ba6afb5883334bbfcbddbd4fe730aedc4d4",
-        "review": "reviewed"
+        "path": "scripts/hab-host.ts",
+        "sha256": "8d82423a198bee6b8c8ac66a48db0e939b109bd36183ddb34b4f205d1cb6b208",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/install-ci-nats.ts",
@@ -1834,8 +1853,9 @@
       },
       {
         "path": "test/tools/entrypoints.test.ts",
-        "sha256": "fb0347a37194810162c88cb647e389efbe7a24d65bb72d1244e087092a0eb4f2",
-        "review": "reviewed"
+        "sha256": "0681572d36873532213512698de1c981b0a067cda29175ad5961bbfd29c19dbb",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "tsconfig.tools.json",
@@ -1856,18 +1876,21 @@
     "supplemental": [
       {
         "path": "test/tools/entrypoints.test.ts",
-        "sha256": "fb0347a37194810162c88cb647e389efbe7a24d65bb72d1244e087092a0eb4f2",
-        "review": "reviewed"
+        "sha256": "0681572d36873532213512698de1c981b0a067cda29175ad5961bbfd29c19dbb",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "test/local-relay-service.test.js",
-        "sha256": "1a4d7680557ca21f96e434e91a5b6c57d8abb05f7e76a71dc49fb259bb25f3e8",
-        "review": "reviewed"
+        "path": "test/host-service.test.js",
+        "sha256": "8cfa767cb2119ef69391ad1838d9a19ad50d325ac1f08d9c8a985697d2e6ff61",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "test/local-relay-admin.test.js",
-        "sha256": "99177020d524f925537a597c82a1b0b6d98e64b1654286331c31033c0d0acf5f",
-        "review": "reviewed"
+        "path": "test/host-admin.test.js",
+        "sha256": "9f43ba6d4ed7cbc668a0f537fa4858539204e55790a381f5cce71f54e5fadc62",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1899,14 +1922,16 @@
     "summary": "Reviewed the admin CLI and Relay SIGTERM/restart compatibility cases. Both now await child close before inspecting captured stdout/stderr, so process exit alone cannot race pending pipe data. The Relay close listener is registered before SIGTERM; the readiness failure listener still observes exit. Existing exit code/signal, stopped output, empty stderr, address state, secret omission and owned-port closure assertions remain unchanged for both .ts and .mjs. No product code, test catalog count, timeout, authority or native/manual acceptance gate changes. This source review supersedes only the two changed test hashes; historical evidence is retained.",
     "supplemental": [
       {
-        "path": "test/local-relay-admin.test.js",
-        "sha256": "99177020d524f925537a597c82a1b0b6d98e64b1654286331c31033c0d0acf5f",
-        "review": "reviewed"
+        "path": "test/host-admin.test.js",
+        "sha256": "9f43ba6d4ed7cbc668a0f537fa4858539204e55790a381f5cce71f54e5fadc62",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "test/local-relay-service.test.js",
-        "sha256": "1a4d7680557ca21f96e434e91a5b6c57d8abb05f7e76a71dc49fb259bb25f3e8",
-        "review": "reviewed"
+        "path": "test/host-service.test.js",
+        "sha256": "8cfa767cb2119ef69391ad1838d9a19ad50d325ac1f08d9c8a985697d2e6ff61",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1947,8 +1972,9 @@
       },
       {
         "path": "docs/history/typescript-migration.md",
-        "sha256": "b3bf5bea6b8550c052b89e85d99daa0d499062eaf5a8910a0c8be99dcfd7194b",
-        "review": "reviewed"
+        "sha256": "01218a1e0244833567ac051624f7fc780c52c616c54b4a072355c7cb65da4e1d",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1982,13 +2008,15 @@
       },
       {
         "path": "package.json",
-        "sha256": "f11f4d2ea6edd328c151fc84ded72ead0a31b5b01181701b0f49b3770efa222a",
-        "review": "reviewed"
+        "sha256": "83f1d1da813b46b649261f1db6d3c057e70fb5659caaf1b6555a12f520ef42ab",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/history/typescript-migration.md",
-        "sha256": "b3bf5bea6b8550c052b89e85d99daa0d499062eaf5a8910a0c8be99dcfd7194b",
-        "review": "reviewed"
+        "sha256": "01218a1e0244833567ac051624f7fc780c52c616c54b4a072355c7cb65da4e1d",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -1999,8 +2027,9 @@
     "supplemental": [
       {
         "path": "test/adapter-host.test.js",
-        "sha256": "aba206464de3970e03b56e95275ccc5c21f29c946648610b7b2cf4ae6ac8b259",
-        "review": "reviewed"
+        "sha256": "2bcbcc8f87090d9f75ce8e5ceefa8430ea4cfd72434501d8fc0b2670ccba7659",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ]
   },
@@ -2035,8 +2064,9 @@
       },
       {
         "path": "test/external-owner-fixture.js",
-        "sha256": "ba073ced392842d0efba2cb8e41f54e0d42d16c1f1c4b76534746f805e33008a",
-        "review": "reviewed"
+        "sha256": "69d045baf0a7996ab9dbdb2ae76c5930cbc1842b655c6512addef782847169a1",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/external-owner-child.js",
@@ -2066,8 +2096,9 @@
     "supplemental": [
       {
         "path": "docs/operations/auth0-recovery.md",
-        "sha256": "faed01531672adef3726e2c200c4458a046fa7b801074322cc6986e2d2f6e104",
-        "review": "reviewed"
+        "sha256": "5a845b3114015df82e8137701ad530db27d9311388be1faac460b4e25790f9ae",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/native-trial-message.ts",
@@ -2124,9 +2155,9 @@
     "supplemental": [
       {
         "path": "src/owner-integrations/acp-stdio.ts",
-        "sha256": "8b4da4cbefdfb7ef4c98d3814a96ebcdaeb25f19716ad9492ca147053f522906",
+        "sha256": "1d38c7ebf5e981274b437a0e37f1586face31a0162f771e670e6b6cf1bc3f81d",
         "review": "reviewed",
-        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate."
+        "maintenance": "Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/acp-owner.test.js",
@@ -2204,8 +2235,9 @@
       },
       {
         "path": "src/owner-integrations/acp-stdio.ts",
-        "sha256": "8b4da4cbefdfb7ef4c98d3814a96ebcdaeb25f19716ad9492ca147053f522906",
-        "review": "reviewed"
+        "sha256": "1d38c7ebf5e981274b437a0e37f1586face31a0162f771e670e6b6cf1bc3f81d",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/owner-integrations/acp-updates.ts",
@@ -2264,9 +2296,9 @@
     "supplemental": [
       {
         "path": "docs/receiver/external-owner-launcher.md",
-        "sha256": "2a0a13c0395b1b361b1329beef779d809e42365ff559a83eb66995bc7556cdf6",
+        "sha256": "130d003a0dcbbfc6264bb7ca1b2a9e458d5a1ad3adfc595004a4d79f6551f767",
         "review": "reviewed",
-        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
+        "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/adapter-host/cycle.ts",
@@ -2331,8 +2363,9 @@
       },
       {
         "path": "test/source-launch-fixture.js",
-        "sha256": "33baea6cd347ea640ff3608e4beb79be146b252683399bf24ff0e230296809bc",
-        "review": "reviewed"
+        "sha256": "2d5ff62daedcb7fb2bfa8e4e374b6666aad33076099b1204a3dbc9158da33586",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/source-launch-child.js",
@@ -2351,8 +2384,9 @@
       },
       {
         "path": "src/agent-sdk/sqlite-inbox.ts",
-        "sha256": "55c681b1123ca036651d465f9d072a4d583a1101581f258f56ca961dac7367a0",
-        "review": "reviewed"
+        "sha256": "020282156f64fe0b6063175f6cfc196cf8febef32e537136f03c22f09ee4df29",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/adapter-host/sqlite-owner.ts",
@@ -2389,10 +2423,11 @@
       },
       {
         "path": "src/agent-sdk/mcp-client.ts",
-        "sha256": "6c6262309eaabca946ebe1ccd1c6a8f1098ae72a2a02f24534c8679208a41dab",
+        "sha256": "3e37a14867b295a1d2feade02767262c4cc28fc7553cdfd85d7980b9d146308c",
         "review": "reviewed",
         "read_coverage": "recovery diff and relevant surrounding boundary",
-        "observation": "Only the trusted authorization provider may supply the local branded signal. A private intermediate error preserves its origin; fetch/wire errors stay generic and timeout/check precedence is retained."
+        "observation": "Only the trusted authorization provider may supply the local branded signal. A private intermediate error preserves its origin; fetch/wire errors stay generic and timeout/check precedence is retained.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/adapter-host/cycle.ts",
@@ -2417,17 +2452,19 @@
       },
       {
         "path": "verification/design/checks/communication-boundary.mjs",
-        "sha256": "e9c93ec606fd0b5c626d0f49b9c85e196bed560da9c9d68f6601eada56f303b5",
+        "sha256": "e2c060e0243aede83f7b929b7845ff6501792db1893d5365ef14c96783ea50d5",
         "review": "reviewed",
         "read_coverage": "one-line coreModules addition and surrounding dependency policy",
-        "observation": "The new local-only authentication-recovery.ts has no imports or IO and belongs to the stricter protected core closure. Explicit classification preserves failure on unknown modules and does not admit an OAuth/HTTP/MCP package or wrapper. Positive/negative controls are separately executed by the coordinating task, not attested by this source review."
+        "observation": "The new local-only authentication-recovery.ts has no imports or IO and belongs to the stricter protected core closure. Explicit classification preserves failure on unknown modules and does not admit an OAuth/HTTP/MCP package or wrapper. Positive/negative controls are separately executed by the coordinating task, not attested by this source review.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/authentication-recovery.test.js",
-        "sha256": "6addb76764aa6babbd022ef30f57a682d994eb7df67455d44a1690ffc84700b2",
+        "sha256": "0c57fbc9cfd14d2120897c092a703e4284ee3563cc9911cedbedd8112b4c6c79",
         "review": "reviewed",
         "read_coverage": "final Object.isFrozen(authenticationRecoveryReasons) assertion within the existing local-brand test",
-        "observation": "Final refinement adds a runtime-frozen reason tuple assertion to an existing case; no new test case is counted. The coordinating task owns full suite review and execution evidence."
+        "observation": "Final refinement adds a runtime-frozen reason tuple assertion to an existing case; no new test case is counted. The coordinating task owns full suite review and execution evidence.",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       }
     ],
     "inventory_maintenance": "2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result."
@@ -2439,18 +2476,21 @@
     "supplemental": [
       {
         "path": "src/recipient-messages/supervisor.ts",
-        "sha256": "8c0978b08c67bf09181af0ed5d528c531531edda6867f325a7303084c2b9fe20",
-        "review": "reviewed"
+        "sha256": "1fe662b453f2ba67964acc88e7b69e35b292f247b4921db22453fe63842972b0",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/recipient-supervisor.test.js",
-        "sha256": "092b0c19b190ed15592fec20fbbd4cdd732d1376a236b978d501fafa4bff3414",
-        "review": "reviewed"
+        "sha256": "64f5ce9e8c13aae9b798fdccbb268488fb9071751abe438bb2cff24a1daba08c",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "docs/receiver/recipient-messages.md",
-        "sha256": "f934c775159541c67d42bbb36d943bf31a8a1e8e626f1aef5ddd6411b9691453",
-        "review": "reviewed"
+        "sha256": "1e61f97b4ca6edfc66341cf0db786a078ca54d5a4c14cff8b14967ce95c5ca05",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/p7-lab.mjs",
@@ -2472,8 +2512,9 @@
       },
       {
         "path": "test/sqlite-delivery.test.js",
-        "sha256": "82ee7af59179c7bf60b8285df37921633c0a23674b45d64ffda48fd6ebf5118c",
-        "review": "reviewed"
+        "sha256": "f9ce3e6174a3a3b4cb38679dca9e3e0c9d231021392a6f1fd5128d80ce160246",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/delivery-fixture.js",
@@ -2482,8 +2523,9 @@
       },
       {
         "path": "src/host/delivery.ts",
-        "sha256": "5aee258aa77188ea1c411722808dea69e96fb00c68431773749f63aaeb63c9e0",
-        "review": "reviewed"
+        "sha256": "a4491cee3523ef1e59d41313e1d95b93d72729e8026750bbc49b981825f355cc",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/host/hab-delivery-service.ts",
@@ -2492,8 +2534,9 @@
       },
       {
         "path": "src/host/start.ts",
-        "sha256": "deb48378a519e5b51160c8725b0006e9af798401ed4bc92290ac492c39f93029",
-        "review": "reviewed"
+        "sha256": "29b669afe5fd161c04036a5467933e93a126db0ac3ace616cf6a7e886f62ea72",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "src/messaging/delivery-service.ts",
@@ -2501,14 +2544,16 @@
         "review": "reviewed"
       },
       {
-        "path": "config/relay-service.example.json",
-        "sha256": "c41c8decc4bc14dd77098710d257c64b048a84fd26fd23fba427275d6bce63cb",
-        "review": "reviewed"
+        "path": "config/host-service.example.json",
+        "sha256": "aa3a204a5871fd45b5d0f8cef5f1676bf74e6ce5b65f7b2ffcc38266876a7c3b",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "package.json",
-        "sha256": "f11f4d2ea6edd328c151fc84ded72ead0a31b5b01181701b0f49b3770efa222a",
-        "review": "reviewed"
+        "sha256": "83f1d1da813b46b649261f1db6d3c057e70fb5659caaf1b6555a12f520ef42ab",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "tsconfig.tools.json",
@@ -2517,8 +2562,9 @@
       },
       {
         "path": "scripts/lib/local-mvp.mjs",
-        "sha256": "e28a8a9061987f87b970c68357c85a3a8b0bd99f37be30a6ae0c710872eb6d60",
-        "review": "reviewed"
+        "sha256": "5701a1f9d80f42d0aae77fa560b5332fbd8df9bdc70b6b942800673ada632edd",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "scripts/check-recipient-python-mcp.mjs",
@@ -2532,33 +2578,39 @@
       },
       {
         "path": "scripts/delivery-lab.mjs",
-        "sha256": "3942134923735a1a87baa06a38dff0b4980c294d0e769338b7767001424f020b",
-        "review": "reviewed"
+        "sha256": "a1da34f6a2473848b78392f89455ac68ab9846d82f220a9d68b516bb0c0dabf9",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
-        "path": "test/local-relay-service.test.js",
-        "sha256": "1a4d7680557ca21f96e434e91a5b6c57d8abb05f7e76a71dc49fb259bb25f3e8",
-        "review": "reviewed"
+        "path": "test/host-service.test.js",
+        "sha256": "8cfa767cb2119ef69391ad1838d9a19ad50d325ac1f08d9c8a985697d2e6ff61",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "test/delivery-lab/sqlite-failures.test.js",
-        "sha256": "58272a22959821e520d427ab4d926f49bf6393cb6c41080949626c540aa41d5d",
-        "review": "reviewed"
+        "sha256": "3fb52d44dedb93b0afd5488de943af7e9a5e80bd97ccd230d8ff99a38b5e7582",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": "verification/design/checks/communication-boundary.mjs",
-        "sha256": "e9c93ec606fd0b5c626d0f49b9c85e196bed560da9c9d68f6601eada56f303b5",
-        "review": "reviewed"
+        "sha256": "e2c060e0243aede83f7b929b7845ff6501792db1893d5365ef14c96783ea50d5",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/scripts/stack.mjs",
-        "sha256": "b8a7aee1ff49070051e2c89ade66e9545258b653028f24fca5e3d96357e49d65",
-        "review": "reviewed"
+        "sha256": "7b75eeeb045a8e9ae88ff9e721fe9522d8c64291d6775c7f7187ed0c429f7822",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/scripts/inspect.mjs",
-        "sha256": "8ee7ed2188ec1cb80db735dfdd654fa38f9cc43fa765138e83ba15481e985124",
-        "review": "reviewed"
+        "sha256": "5b9e1923ed20180e10ef31ad90078e35bc89c84304f79fede064e9e50cdb0990",
+        "review": "reviewed",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
       },
       {
         "path": ".github/workflows/ci.yml",

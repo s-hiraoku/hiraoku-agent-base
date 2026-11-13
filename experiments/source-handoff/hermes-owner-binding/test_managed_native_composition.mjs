@@ -13,10 +13,10 @@ function setup(t){
   t.after(()=>{stores.close();rmSync(dir,{recursive:true,force:true})});
   const {transport,...base}=stores.binding.hostOptions;
   const state={requests:0,wait:null,active:0};
-  const port={version:1,resource_url:'https://relay.example/mcp',get activeRequests(){return state.active},
+  const port={version:1,resource_url:'https://hab.example/mcp',get activeRequests(){return state.active},
     async callTool(name,args,control){state.active++;
       try{control.check();if(state.wait)await state.wait.promise;control.check();state.requests++;
-        assert.equal(name,'relay_submit');assert.equal(args.expected_agent_id,base.control.agentId);assert.equal(args.as_address,'worker@demo.hab');
+        assert.equal(name,'hab_submit');assert.equal(args.expected_agent_id,base.control.agentId);assert.equal(args.as_address,'worker@demo.hab');
         const value={sender_id:base.control.agentId,message_id:args.message_id,recipient_id:args.recipient_id,receipt_id:'fixture-receipt',
           accepted_at:new Date().toISOString(),expires_at:args.expires_at,state:'pending'};
         control.check();return JSON.stringify({content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value});

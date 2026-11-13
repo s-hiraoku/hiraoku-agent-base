@@ -5,8 +5,8 @@ import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
-import { limits, policy } from "./relay-http-fixtures.js";
+import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
+import { limits, policy } from "./mcp-http-fixtures.js";
 
 export async function setup(t, f, hab = f.hab) {
   let handle;
@@ -28,7 +28,7 @@ export async function setup(t, f, hab = f.hab) {
     await once(server, "listening");
     port = server.address().port;
     url = `http://127.0.0.1:${port}/mcp`;
-    handle = createRelayNodeHandler(
+    handle = createMcpNodeHandler(
       new HabHttpGateway(
         service,
         { ...policy, resource_url: url },

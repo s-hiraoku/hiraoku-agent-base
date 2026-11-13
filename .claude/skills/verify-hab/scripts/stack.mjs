@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * VERIFICATION SCAFFOLDING ONLY. Composes the repo's own HAB Relay classes
+ * VERIFICATION SCAFFOLDING ONLY. Composes the repo's own HAB host classes
  * (SQLiteHabRegistry, runHabEnrollment, the SQLite delivery the host wires
- * via createSqliteDelivery, HabHttpGateway, createRelayNodeHandler) on a
+ * via createSqliteDelivery, HabHttpGateway, createMcpNodeHandler) on a
  * loopback port, and keeps it listening for an agent to drive over real MCP
  * HTTP. Synthetic authority and static bearer tokens; never reads config/*.local.json, .env
  * or any credential.
@@ -40,7 +40,7 @@ const { SQLiteEnrollmentJournal } = await import(
 );
 const { runHabEnrollment } = await import(src("hab/enrollment.ts"));
 const { HabHttpGateway } = await import(src("hab/http.ts"));
-const { createRelayNodeHandler } = await import(src("host/mcp/http-node.ts"));
+const { createMcpNodeHandler } = await import(src("host/mcp/http-node.ts"));
 const { createSqliteDelivery } = await import(
   join(repo, "src/host/delivery.ts")
 );
@@ -60,7 +60,7 @@ const statePath = join(instance, "state.json");
 const reopening = existsSync(statePath);
 const previous = reopening ? JSON.parse(readFileSync(statePath, "utf8")) : {};
 
-// Same bounded limits the integration tests use (test/relay-http-fixtures.js).
+// Same bounded limits the integration tests use (test/mcp-http-fixtures.js).
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
@@ -79,7 +79,7 @@ for (const name of Object.keys(names)) {
 }
 const principal = (name) => ({
   issuer: "https://issuer.example/",
-  audience: "https://relay.example/mcp",
+  audience: "https://hab.example/mcp",
   subject: "verify-owner",
   client_id: "verify-client",
   connection_id: `verify-${name}`,
@@ -233,7 +233,7 @@ server.listen(Number(portArg ?? previous.port ?? 0), "127.0.0.1");
 await once(server, "listening");
 const port = server.address().port,
   url = `http://127.0.0.1:${port}/mcp`;
-const handle = createRelayNodeHandler(
+const handle = createMcpNodeHandler(
   new HabHttpGateway(
     delivery.service,
     {

@@ -10,9 +10,9 @@ import {
   call,
   request,
   decode,
-} from "./relay-http-fixtures.js";
+} from "./mcp-http-fixtures.js";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { RelayHttpGateway } from "../src/host/mcp/http.ts";
+import { McpHttpGateway } from "../src/host/mcp/http.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
@@ -41,7 +41,7 @@ async function direct(t, admission = false) {
   };
 }
 
-test("HAB discovers exactly five tools with the optional address selector; core Relay stays independent", async (t) => {
+test("HAB discovers exactly five tools with the optional address selector; core delivery catalog stays independent", async (t) => {
   const f = await direct(t);
   const listed = await decode(await f.gateway.fetch(request("tools/list")));
   assert.equal(listed.result.tools.length, 5);
@@ -49,7 +49,7 @@ test("HAB discovers exactly five tools with the optional address selector; core 
     assert.ok(tool.inputSchema.properties.as_address);
     assert.ok(!(tool.inputSchema.required ?? []).includes("as_address"));
   }
-  const core = new RelayHttpGateway(f.hab, policy, f.audit, f.verifier);
+  const core = new McpHttpGateway(f.hab, policy, f.audit, f.verifier);
   const coreList = await decode(await core.fetch(request("tools/list")));
   assert.equal(coreList.result.tools.length, 4);
   for (const tool of coreList.result.tools)
@@ -59,7 +59,7 @@ test("HAB discovers exactly five tools with the optional address selector; core 
 test("one authenticated group selects two sender names over standard MCP", async (t) => {
   const f = await direct(t);
   for (const [index, agent] of [f.first, f.second].entries()) {
-    const resolved = await call(f.gateway, "relay_resolve", {
+    const resolved = await call(f.gateway, "hab_resolve", {
       as_address: agent.address,
       address: f.external.address,
     });
@@ -72,9 +72,9 @@ test("one authenticated group selects two sender names over standard MCP", async
       recipient_id: f.external.agent_id,
       as_address: agent.address,
     };
-    const sent = await call(f.gateway, "relay_submit", input);
+    const sent = await call(f.gateway, "hab_submit", input);
     assert.equal(sent.body.result.structuredContent.sender_id, agent.agent_id);
-    const status = await call(f.gateway, "relay_status", {
+    const status = await call(f.gateway, "hab_status", {
       as_address: agent.address,
       message_id: input.message_id,
     });
@@ -88,11 +88,11 @@ test("one authenticated group selects two sender names over standard MCP", async
 test("all five MCP operations refuse foreign local names and do not infer identity from extra fields", async (t) => {
   const f = await direct(t);
   const args = {
-    relay_resolve: { address: f.first.address },
-    relay_submit: { ...message(), recipient_id: f.first.agent_id },
-    relay_status: { message_id: message().message_id },
-    relay_poll: {},
-    relay_ack: {
+    hab_resolve: { address: f.first.address },
+    hab_submit: { ...message(), recipient_id: f.first.agent_id },
+    hab_status: { message_id: message().message_id },
+    hab_poll: {},
+    hab_ack: {
       sender_id: f.external.agent_id,
       message_id: message().message_id,
       generation: 1,
@@ -132,7 +132,7 @@ test("all five MCP operations refuse foreign local names and do not infer identi
     );
   }
   assert.equal(f.count(), 0);
-  const unpaired = await call(f.gateway, "relay_poll", {
+  const unpaired = await call(f.gateway, "hab_poll", {
     expected_agent_id: f.first.agent_id,
   });
   assert.equal(unpaired.body.result.structuredContent.error, "invalid_request");
@@ -140,13 +140,13 @@ test("all five MCP operations refuse foreign local names and do not infer identi
 
 test("writer admission uses the validated selected member and rechecks group stop", async (t) => {
   const f = await direct(t, true);
-  const result = await call(f.gateway, "relay_poll", {
+  const result = await call(f.gateway, "hab_poll", {
     as_address: f.second.address,
   });
   assert.equal(result.response.status, 200);
   assert.deepEqual(result.body.result.structuredContent, { delivery: null });
   f.access("stopped");
-  const stopped = await call(f.gateway, "relay_poll", {
+  const stopped = await call(f.gateway, "hab_poll", {
     as_address: f.second.address,
   });
   assert.equal(stopped.response.status, 403);
@@ -161,13 +161,13 @@ test("selector capability is fail-closed if a host only supplies the legacy serv
     ]),
   );
   const gateway = new HabHttpGateway(legacy, policy, f.audit, f.verifier);
-  const denied = await call(gateway, "relay_poll", {
+  const denied = await call(gateway, "hab_poll", {
     as_address: f.first.address,
   });
   assert.equal(denied.body.result.structuredContent.error, "forbidden");
   const old = await call(
     gateway,
-    "relay_poll",
+    "hab_poll",
     {},
     { headers: { Authorization: "Bearer fixture-b" } },
   );
@@ -272,7 +272,7 @@ test(
         address: body.params.arguments.as_address,
       });
       const response = await globalThis.fetch(url, init);
-      if (body.params.name === "relay_submit" && !lost) {
+      if (body.params.name === "hab_submit" && !lost) {
         lost = true;
         await response.arrayBuffer();
         throw Error("synthetic lost acceptance");
@@ -299,7 +299,7 @@ test(
     net.close(outbox);
     const raw = new DatabaseSync(join(f.dir, "outbox-recover-selected.sqlite"));
     try {
-      raw.exec("UPDATE relay_outbox SET next_retry_at=0");
+      raw.exec("UPDATE outbox SET next_retry_at=0");
     } finally {
       raw.close();
     }

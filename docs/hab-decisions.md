@@ -18,12 +18,12 @@
 | ADR-010 / 採用 | 既存jobは元の担当に残す。費用・停止・照合を先に決める                                                                    | cronの重複作成、有料fallback、不明admissionの無制限retryは当面不採用                                                             |
 | ADR-011 / 保留 | Claude Code・Codex・CursorとCuaを限定executor候補にする                                                                  | Hub adapter、workspace reservation、権限、費用、result provenanceを検証後に選定                                                  |
 | ADR-012 / 保留 | 競合は設計参考として保存し、部品単位で比較する                                                                           | 導入・置換・migrationは未決定。browser本人sessionによるdot代理操作は初期HAB接続に採用しない                                      |
-| ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-relay-spec.md)を通信設計に採用（Relayという独自実装はADR-016で廃止。message契約・store-and-forward・ACK・期限の要件は存続）。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014、配送storeと構成はADR-016で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
-| ADR-014 / 採用 | 2026-10-25 JST：[認証は参加グループ単位、Botの切り分けはアドレス単位](relay-auth-groups.md)。1認証主体に1件または複数の所属個体を紐付ける | グループ内のBot本人性は要求しない。グループ外の名義使用・受信箱閲覧を拒否。Registryのopt-in拡張を実装。基本5操作のMCP名義選択を実装。常用token更新は未実装で、稼働設定やgrantを変更しない |
+| ADR-013 / 採用 | [HAB Relay draft v2 + store-and-forward](hab-messaging-spec.md)を通信設計に採用（Relayという独自実装はADR-016で廃止。message契約・store-and-forward・ACK・期限の要件は存続）。Relay／Task Engine／Adapter／認可を分離する | 単一Node＋SQLiteから開始。認証境界はADR-014、配送storeと構成はADR-016で改訂。durable outbox/inbox等の実能力はG0未確認。仕様採用は実接続・公開・credential発行の承認ではない |
+| ADR-014 / 採用 | 2026-10-25 JST：[認証は参加グループ単位、Botの切り分けはアドレス単位](auth-groups.md)。1認証主体に1件または複数の所属個体を紐付ける | グループ内のBot本人性は要求しない。グループ外の名義使用・受信箱閲覧を拒否。Registryのopt-in拡張を実装。基本5操作のMCP名義選択を実装。常用token更新は未実装で、稼働設定やgrantを変更しない |
 
 ## ADR-015 / 採用：共通MCP通信と受信側の判断を分離する
 
-2026-11-04 UTC。標準経路の構成（Relay、NATS実行port）はADR-016で改訂した。受信側の判断・承認の分担は引き続き有効である。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receiver/receive-supervisor.md)、[Relay責務](hab-relay-spec.md#3-構成と責務)とする。
+2026-11-04 UTC。標準経路の構成（Relay、NATS実行port）はADR-016で改訂した。受信側の判断・承認の分担は引き続き有効である。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receiver/receive-supervisor.md)、[Relay責務](hab-messaging-spec.md#3-構成と責務)とする。
 
 - HABは認証・名義・宛先・配送・相関を担当する。受信側hostが定期poll・重複排除・永続保存後ACKを行う。ACKは表示・引受け・実行・承認・完了を証明しない。
 - 内容の判断、返信、作業の実行、既存の権限・承認の適用は受信エージェント側が担当する。HABは製品専用モデルrunnerや承認実装を標準接続へ組み込まない。
@@ -36,13 +36,13 @@
 
 ## ADR-016 / 採用：単一host、JetStream配送、エージェントSDKで標準接続を構成する
 
-2026-11-06 UTC。ADR-015の受信側の判断・承認の分担は維持し、標準経路の構成と配送storeをこの判断で改訂する。配送storeの部分（JetStream）は2026-11-13のADR-018でSQLite単独に置き換えた。以下のJetStream・journal schema 4・rollback照合の記述は当時の判断の記録である。基準は当時の`packages/relay-nats/DESIGN.md`（削除済み）、[エージェントSDK](../src/agent-sdk/README.md)、[HAB登録・認可境界](../src/hab/README.md)、[ローカルRelayサービス](local-relay-service.md)とする。
+2026-11-06 UTC。ADR-015の受信側の判断・承認の分担は維持し、標準経路の構成と配送storeをこの判断で改訂する。配送storeの部分（JetStream）は2026-11-13のADR-018でSQLite単独に置き換えた。以下のJetStream・journal schema 4・rollback照合の記述は当時の判断の記録である。基準は当時の`packages/relay-nats/DESIGN.md`（削除済み）、[エージェントSDK](../src/agent-sdk/README.md)、[HAB登録・認可境界](../src/hab/README.md)、[ローカルRelayサービス](host-service.md)とする。
 
 - 配送はNATS JetStreamだけで行う。SQLite配送storeは廃止し、保存済みの旧messageは移行しない。host設定の配送sectionは`delivery`で、旧`store` sectionを含む設定は`config_invalid`で拒否する。
 - `src/messaging`がmessage契約と`DeliveryService` interfaceを持つ。`src/hab`のRegistryが名義・認証group・権限・容量を判定する。配送backendは名義や権限を判断しない。
 - `src/host`が唯一のhostである。設定、HTTP、監査、管理CLI、MCP server（`src/host/mcp`）を組み立て、JetStream配送を`DeliveryService`として注入する。起動は`npm run relay:local`、管理は`npm run relay:admin`を使う。
 - エージェント側は`src/agent-sdk`の永続sender／outbox、保存後ACKのreceiver／inbox、MCP clientを使う。MCP tool名`relay_*`は既存の接続設定との互換のため維持する。
-- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。返信は依頼の期限から1日の返信期間だけ保存する。2026-11-07のowner判断により、期間内に結果が反映されなかったTaskは標準の`FAILED`へ移し、理由`result_window_expired`と「受信者が実行したかは不明」の旨をstatusに示す。WORKINGのまま残さず、独自のA2A状態も追加しない。期間後の返信は記録せずACKし、Taskは変えない。新しいmessage IDの返信は、Taskを変える場合だけ保存する。保存の前に受信loopが保存済みTaskの写しへ適用し、ACK確認済みの保持返信だけを根拠にする。状態を変えない返信やTaskが拒否する返信は、期間後の返信と同じく記録せずACKする。未確認の保持返信が確定した場合だけ重複または競合する新IDの返信は、容量を守るため保存もACKもせず保留する。有限のlease再試行やTTLにより保留返信がquarantined／expiredになる場合があるため、送信者はstatusを確認する。未確認返信を適用したり、回復を必ず保証したりするものではない。確認済みの状態から重複と判断できる返信はACK履歴の枠を使わない。保留された返信の到達やTaskの完了は保証しない。inboxが保持しているIDは必ずinboxへ渡すので、重複排除と未確定ACKの確定は保たれる。返信期間が閉じる時刻はTask storeの次の期限から求め、最も早い期間が閉じた受信cycleから、tenant・owner・idの安定キーで1回100件まで処理する。個別保存の失敗を越えて次のページへ進み、一巡後の次回処理で再試行する。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
+- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a/a2a-host-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。返信は依頼の期限から1日の返信期間だけ保存する。2026-11-07のowner判断により、期間内に結果が反映されなかったTaskは標準の`FAILED`へ移し、理由`result_window_expired`と「受信者が実行したかは不明」の旨をstatusに示す。WORKINGのまま残さず、独自のA2A状態も追加しない。期間後の返信は記録せずACKし、Taskは変えない。新しいmessage IDの返信は、Taskを変える場合だけ保存する。保存の前に受信loopが保存済みTaskの写しへ適用し、ACK確認済みの保持返信だけを根拠にする。状態を変えない返信やTaskが拒否する返信は、期間後の返信と同じく記録せずACKする。未確認の保持返信が確定した場合だけ重複または競合する新IDの返信は、容量を守るため保存もACKもせず保留する。有限のlease再試行やTTLにより保留返信がquarantined／expiredになる場合があるため、送信者はstatusを確認する。未確認返信を適用したり、回復を必ず保証したりするものではない。確認済みの状態から重複と判断できる返信はACK履歴の枠を使わない。保留された返信の到達やTaskの完了は保証しない。inboxが保持しているIDは必ずinboxへ渡すので、重複排除と未確定ACKの確定は保たれる。返信期間が閉じる時刻はTask storeの次の期限から求め、最も早い期間が閉じた受信cycleから、tenant・owner・idの安定キーで1回100件まで処理する。個別保存の失敗を越えて次のページへ進み、一巡後の次回処理で再試行する。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
 - 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
 
 配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元する。新releaseが受け付けたmessageと、backup時点で未完了だったmessageを元IDで照合する。backup時に未完了のIDだけでなく、backup後の新規IDも、新journalの行が回収されても受信inboxや実行記録に残る証拠から照合対象へ加える。どの写しにも残らないIDはこの一覧だけでは列挙できない。journalの`expired`・`quarantined`は未配達の証明にならず、受信者のinbox・Task結果・実行記録で判断する。復元した状態のIDがすべて期限切れになるまで旧buildを起動しないので、新releaseで実行済みのIDはRelayから再配達されない。ACKは保存の証明で実行の証明ではないため、backup時に受信inboxへ保存済み・未処理だった本文も照合する。復元inboxは期限に関係なく保存済み本文を渡すので、受信者を再開する前に写しの実行記録と照合し、実行済みの本文は再処理させない。backup後に保存され、新inboxの写しだけに未解放で残る本文も別に照合する。drainと期限待ちはその本文を復元先へ移さない。実行記録やTask状態から未引渡しと確認できた場合だけ、元のsender/message IDと重複排除を保つアプリ固有のローカル復旧手順で写しから引き継ぐ。未確認の副作用、欠けた写し、矛盾があれば停止を保ち、自動再送、別ID化、期限延長を行わない（当時の手順は削除済みの`packages/relay-nats/OPERATIONS.md`。現在の移行と復旧は[配送store](delivery-store.md#back-up-and-restore)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
@@ -66,6 +66,14 @@
 - 理由：brokerはloopback専用・1 replica・consumerなしで本文置き場としか使っておらず、受付・lease・再試行・ACK履歴はすでにSQLite journalが持っていた。別processの運用、pumpによる最大1周期の可視化遅延、journalとbroker storeの2つを揃えて戻す復旧手順は、1台構成では利点がない。
 - `DeliveryService`契約、MCP 5ツール（`relay_*`）、Registryの認可、agent SDKのoutbox/inbox、A2A入口は変えない。旧JetStream journalのmessageは移行しない。`jetstream-journal.sqlite`が状態ディレクトリに残っている間は`legacy_jetstream_journal_present`で起動を拒否する。移行は送信を止め、最後の受付から1時間と`max_clock_skew_ms`を待ってから旧journalを外す（[手順](delivery-store.md#upgrade-from-the-jetstream-build)）。この待ち時間により旧IDは期限切れになり、新storeで再受付されない。
 - 複数host・HA・外部consumerが必要になった場合は、この判断を見直す。そのときはJetStreamをbrokerとして本来の形（consumer、複数replica）で使う案を含めて比較する。本判断は本番接続・公開・credential発行の承認を兼ねない。
+
+## ADR-019 / 採用：Relayの名前を残さず、MCPツールと内部名をhab_*へ作り替える
+
+2026-11-14 JST、owner判断。サービス開始前のため互換性は持たせず、ADR-016で互換のため残した`relay_*`の名前を一括で作り替える。
+
+- MCP 5ツールは`hab_resolve`／`hab_submit`／`hab_status`／`hab_poll`／`hab_ack`、OAuth scopeは`hab:resolve`〜`hab:ack`とし、既存の`hab_discover`とそろえる。旧名のエイリアスは置かない。MCP server名は`hab`、A2A Taskのmetadata keyも`hab`とする。
+- agent SDKのSQLite table（`inbox`・`outbox`・`receiver_acks`ほか）、固定エラーコード（`transport_failed`・`host_start_rejected`ほか）、host設定の秘密`delivery_fingerprint_key`、npm script（`hab:host`・`hab:admin`のみ）、script・設定例・試験・文書のファイル名からもrelayを外す。旧名のinbox/outbox DBは開けないため作り直す。
+- 配置済みの接続はOAuth scopeの付与、Hermesの`tools.include`、Dotsのコネクタ、受信サービスを新しい名前へ同時に切り替える必要がある。`docs/history`と過去のADR本文は当時の名前のまま残す。
 
 ## 次に決める内容
 

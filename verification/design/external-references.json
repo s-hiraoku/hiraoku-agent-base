@@ -341,7 +341,7 @@
   },
   {
     "reader_scope": "foundations",
-    "url": "https://relay.example/hab/mcp",
+    "url": "https://hab.example/hab/mcp",
     "referenced_by": [
       "docs/operations/persistent-mcp-auth.md"
     ],
@@ -456,7 +456,7 @@
     "referenced_by": [
       "docs/history/auth0-boundary.md",
       "docs/history/local-integration.md",
-      "docs/operations/relay-oauth-ingress.md"
+      "docs/operations/oauth-ingress.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -556,7 +556,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/model_tools.py",
     "referenced_by": [
-      "docs/operations/local-relay-host.md"
+      "docs/operations/host-composition.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -567,7 +567,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/agent/agent_init.py",
     "referenced_by": [
-      "docs/operations/local-relay-host.md"
+      "docs/operations/host-composition.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -578,7 +578,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/website/docs/user-guide/features/api-server.md",
     "referenced_by": [
-      "docs/operations/local-relay-host.md"
+      "docs/operations/host-composition.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -589,7 +589,7 @@
     "reader_scope": "authority",
     "url": "http://www.apple.com/DTDs/PropertyList-1.0.dtd\"",
     "referenced_by": [
-      "docs/operations/local-relay-launchagent.md"
+      "docs/operations/host-launchagent.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -600,7 +600,7 @@
     "reader_scope": "authority",
     "url": "https://learn.chatgpt.com/docs/extend/mcp#use-mcp-backed-tools-in-chatgpt-web",
     "referenced_by": [
-      "docs/local-relay-service.md"
+      "docs/host-service.md"
     ],
     "access": "not_accessed",
     "status": "pending",

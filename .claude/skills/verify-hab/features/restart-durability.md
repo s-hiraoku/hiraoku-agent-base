@@ -1,10 +1,10 @@
 # Restart durability
 
-This recipe verifies that an accepted message remains deliverable after a graceful Relay process restart using the same data.
+This recipe verifies that an accepted message remains deliverable after a graceful host process restart using the same data.
 
 ## Sub-features
 
-- `restart-pending` a `pending` message submitted before stop is delivered by `relay_poll` after reopen.
+- `restart-pending` a `pending` message submitted before stop is delivered by `hab_poll` after reopen.
 - `restart-identity` agent ids, addresses and tokens are unchanged after reopen (no re-enrollment).
 
 ## How to get to it (user POV)
@@ -17,10 +17,10 @@ Preconditions:
 
 - Baseline run, doctor OK.
 
-- **Submit before stop.** Run `MSG=$($S/new-message.sh "$RUN" c "survive restart")` and `$S/mcp.sh "$RUN" a relay_submit "$MSG"`. `state: "pending"`.
+- **Submit before stop.** Run `MSG=$($S/new-message.sh "$RUN" c "survive restart")` and `$S/mcp.sh "$RUN" a hab_submit "$MSG"`. `state: "pending"`.
 - **Stop, keep data.** Run `$S/cleanup.sh "$RUN" --stop-only`. Prints `stopped <pid>`; `$RUN/evidence/stack.log` ends with `HAB_VERIFY_STOPPED`; `$RUN/instance/*.sqlite` still exist.
 - **Reopen.** Run `$S/launch.sh "$RUN"`. `stack.log` shows a new `--- launch` block with `reopened verify-a@grok-bot.hab=<same id> …` and `DOCTOR_OK` on the same URL.
-- **Receive after restart.** Run `$S/mcp.sh "$RUN" c relay_poll`. Delivery body text is `survive restart`, `generation: 1`.
+- **Receive after restart.** Run `$S/mcp.sh "$RUN" c hab_poll`. Delivery body text is `survive restart`, `generation: 1`.
 - **Proof.** `stack.log` (both launch blocks), the pre-stop submit `.res`, the post-restart poll `.res`, and `node $S/inspect.mjs "$RUN" after-restart`.
 
 ## Gotchas

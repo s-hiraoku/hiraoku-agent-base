@@ -1,14 +1,14 @@
-/** Fixed HAB directory client using the same bounded Relay transport/admission. */
-import { RelayMcpClient } from "../agent-sdk/mcp-client.ts";
-import type { RelayMcpClientOptions } from "../agent-sdk/mcp-client.ts";
+/** Fixed HAB directory client using the same bounded delivery MCP transport/admission. */
+import { DeliveryMcpClient } from "../agent-sdk/mcp-client.ts";
+import type { DeliveryMcpClientOptions } from "../agent-sdk/mcp-client.ts";
 import { parseHabAddress } from "./registry.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabResolution } from "./directory.ts";
-export interface HabMcpClientOptions extends RelayMcpClientOptions {
+export interface HabMcpClientOptions extends DeliveryMcpClientOptions {
   /** Immutable local address; added to every call, including recovery status and ACK. */
   as_address?: string;
 }
-export class HabMcpClient extends RelayMcpClient {
+export class HabMcpClient extends DeliveryMcpClient {
   readonly #asAddress: string | undefined;
   readonly #expectedAgentId: string;
   constructor(options: HabMcpClientOptions) {
@@ -35,7 +35,7 @@ export class HabMcpClient extends RelayMcpClient {
   async resolve(address: string): Promise<HabResolution> {
     const input = parseHabResolveInput({ address });
     return parseHabResolution(
-      await this.requestTool("relay_resolve", input),
+      await this.requestTool("hab_resolve", input),
       input.address,
     );
   }

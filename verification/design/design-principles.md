@@ -50,7 +50,7 @@ Scope: Durable receive and standard/native MCP handoff Decision: **accepted**.
 
 Checks: js-common-mcp, mcp-durable-roundtrip, ack-observer-controls, js-process-crash.
 
-Sources: [docs/common-mcp-connection.md:45](../../docs/common-mcp-connection.md#L45-L61), [docs/hab-relay-spec.md:259](../../docs/hab-relay-spec.md#L259-L263), [docs/hab-product-spec.md:163](../../docs/hab-product-spec.md#L163-L163).
+Sources: [docs/common-mcp-connection.md:45](../../docs/common-mcp-connection.md#L45-L61), [docs/hab-messaging-spec.md:259](../../docs/hab-messaging-spec.md#L259-L263), [docs/hab-product-spec.md:163](../../docs/hab-product-spec.md#L163-L163).
 
 ### HAB-F05 — Durable sender identity and uncertainty
 
@@ -62,7 +62,7 @@ Scope: Sender outbox and resume/retry Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [docs/common-mcp-connection.md:45](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L45-L48), [docs/hab-relay-spec.md:139](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L139-L139), [docs/receiver/adapter-host.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/adapter-host.md#L27-L29).
+Sources: [docs/common-mcp-connection.md:45](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L45-L48), [docs/hab-messaging-spec.md:139](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L139-L139), [docs/receiver/adapter-host.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/adapter-host.md#L27-L29).
 
 ### HAB-F06 — ACK is receipt only
 
@@ -134,7 +134,7 @@ Scope: All public entry points and recipient action integration Decision: **acce
 
 Checks: js-root, native-recipient, js-recipient-messages, js-recipient-host-mcp.
 
-Sources: [docs/hab-principles.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-principles.md#L21-L21), [docs/hab-relay-spec.md:93](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L93-L97).
+Sources: [docs/hab-principles.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-principles.md#L21-L21), [docs/hab-messaging-spec.md:93](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L93-L97).
 
 ### HAB-F12 — Group scope and address scope
 
@@ -146,7 +146,7 @@ Scope: HAB authentication groups and five common MCP operations Decision: **acce
 
 Checks: js-root.
 
-Sources: [docs/common-mcp-connection.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L10-L16), [docs/hab-relay-spec.md:145](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L145-L151).
+Sources: [docs/common-mcp-connection.md:10](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L10-L16), [docs/hab-messaging-spec.md:145](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L145-L151).
 
 ### HAB-F13 — Reusable inner Relay boundary
 
@@ -158,7 +158,7 @@ Scope: Relay core/storage/client and composition boundaries Decision: **accepted
 
 Checks: ast-boundary, ast-controls, architecture-review.
 
-Sources: [docs/hab-relay-spec.md:78](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L78-L99).
+Sources: [docs/hab-messaging-spec.md:78](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L78-L99).
 
 ### HAB-F14 — Idempotency and fenced receipt replay
 
@@ -170,7 +170,7 @@ Scope: Relay submit/poll/ACK/status Decision: **accepted**.
 
 Checks: js-root, mcp-durable-roundtrip.
 
-Sources: [docs/hab-relay-spec.md:227](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L227-L233), [docs/hab-relay-spec.md:285](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L285-L300).
+Sources: [docs/hab-messaging-spec.md:227](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L227-L233), [docs/hab-messaging-spec.md:285](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L285-L300).
 
 ### HAB-F15 — TTL retention and handoff
 
@@ -182,7 +182,7 @@ Scope: Relay and client retention/GC Decision: **accepted**.
 
 Checks: js-root, production-operations.
 
-Sources: [docs/hab-relay-spec.md:372](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L372-L398).
+Sources: [docs/hab-messaging-spec.md:372](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L372-L398).
 
 ### HAB-F16 — Pause and unresolved operations
 
@@ -208,7 +208,7 @@ Scope: Common communication and explicitly configured automation Decision: **acc
 
 Checks: js-root, production-operations.
 
-Sources: [docs/hab-principles.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-principles.md#L27-L33), [docs/hab-relay-spec.md:303](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L303-L309), [docs/hab-relay-spec.md:328](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L328-L332).
+Sources: [docs/hab-principles.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-principles.md#L27-L33), [docs/hab-messaging-spec.md:303](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L303-L309), [docs/hab-messaging-spec.md:328](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L328-L332).
 
 ### HAB-F20 — GUI and MCP shared authority
 
@@ -256,7 +256,7 @@ Scope: Publication and operational handoff Decision: **accepted**.
 
 Checks: source-publication.
 
-Sources: [README.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/README.md#L9-L9), [docs/hab-principles.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-principles.md#L23-L23), [docs/hab-relay-spec.md:13](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-relay-spec.md#L13-L13).
+Sources: [README.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/README.md#L9-L9), [docs/hab-principles.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-principles.md#L23-L23), [docs/hab-messaging-spec.md:13](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-relay-spec.md#L13-L13).
 
 ### HAB-F24 — Restore conservatively
 
@@ -264,11 +264,11 @@ Quiesce delivery and execution before restoring; reconcile original IDs, epochs,
 
 Reason: Restoring old local proof can erase knowledge without undoing remote effects.
 
-Scope: Backup/restore/migration and evidence claims. test/sqlite-delivery.test.js and test/local-relay-service.test.js cover reopen, the legacy journal refusal and the retired config; the restore and upgrade procedures are operations gates. Decision: **accepted**.
+Scope: Backup/restore/migration and evidence claims. test/sqlite-delivery.test.js and test/host-service.test.js cover reopen, the legacy journal refusal and the retired config; the restore and upgrade procedures are operations gates. Decision: **accepted**.
 
 Checks: js-root, production-operations.
 
-Sources: [docs/hab-relay-spec.md:497](../../docs/hab-relay-spec.md#L497-L503), [docs/hab-product-spec.md:167](../../docs/hab-product-spec.md#L167-L169), [docs/local-relay-service.md:16](../../docs/local-relay-service.md#L16-L27), [docs/hab-decisions.md:48](../../docs/hab-decisions.md#L48-L48), [docs/delivery-store.md:40](../../docs/delivery-store.md#L40-L58).
+Sources: [docs/hab-messaging-spec.md:497](../../docs/hab-messaging-spec.md#L497-L503), [docs/hab-product-spec.md:167](../../docs/hab-product-spec.md#L167-L169), [docs/host-service.md:16](../../docs/host-service.md#L16-L27), [docs/hab-decisions.md:48](../../docs/hab-decisions.md#L48-L48), [docs/delivery-store.md:40](../../docs/delivery-store.md#L40-L58).
 
 ### HAB-F26 — Transport adoption is separate
 
@@ -292,7 +292,7 @@ Scope: Standard common MCP Relay; legacy Task integration remains optional. Deci
 
 Checks: js-common-mcp, native-recipient, js-recipient-messages.
 
-Sources: [docs/hab-security.md:5](../../docs/hab-security.md#L5-L5), [docs/local-relay-service.md:147](../../docs/local-relay-service.md#L147-L161), [docs/operations/persistent-mcp-auth.md:3](../../docs/operations/persistent-mcp-auth.md#L3-L6).
+Sources: [docs/hab-security.md:5](../../docs/hab-security.md#L5-L5), [docs/host-service.md:147](../../docs/host-service.md#L147-L161), [docs/operations/persistent-mcp-auth.md:3](../../docs/operations/persistent-mcp-auth.md#L3-L6).
 
 ### HAB-A02 — Approved authentication groups
 
@@ -304,7 +304,7 @@ Scope: Every connection authenticates through a group; an address bound on its o
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L5-L19), [docs/relay-auth-groups.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L50-L60), [src/hab/README.md:342](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L342-L367).
+Sources: [docs/auth-groups.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L5-L19), [docs/auth-groups.md:50](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L50-L60), [src/hab/README.md:342](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L342-L367).
 
 ### HAB-A03 — Authorized own-side selection
 
@@ -316,7 +316,7 @@ Scope: Five HAB Relay operations in group mode. Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L21-L48).
+Sources: [docs/auth-groups.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L21-L48).
 
 ### HAB-A04 — Stable send and receipt identities
 
@@ -328,7 +328,7 @@ Scope: HAB common client and durable sender/receiver integration. Decision: **ac
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L27-L46), [src/hab/README.md:109](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L109-L117), [src/hab/README.md:256](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L256-L263).
+Sources: [docs/auth-groups.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L27-L46), [src/hab/README.md:109](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L109-L117), [src/hab/README.md:256](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L256-L263).
 
 ### HAB-A05 — Current authorization through commit
 
@@ -340,7 +340,7 @@ Scope: HAB Registry-composed SQLite delivery (HabDeliveryService); separate IO a
 
 Checks: js-root, js-recipient-messages.
 
-Sources: [src/hab/README.md:71](../../src/hab/README.md#L71-L107), [docs/relay-auth-groups.md:54](../../docs/relay-auth-groups.md#L54-L60), [docs/operations/relay-oauth-ingress.md:102](../../docs/operations/relay-oauth-ingress.md#L102-L104).
+Sources: [src/hab/README.md:71](../../src/hab/README.md#L71-L107), [docs/auth-groups.md:54](../../docs/auth-groups.md#L54-L60), [docs/operations/oauth-ingress.md:102](../../docs/operations/oauth-ingress.md#L102-L104).
 
 ### HAB-A06 — Separate management authority
 
@@ -352,7 +352,7 @@ Scope: HAB registry administration and all optional metadata tools. Decision: **
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:54](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L54-L54), [docs/relay-auth-groups.md:92](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L92-L94), [src/hab/README.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L19-L40), [docs/agent-address-rename.md:46](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L46-L51).
+Sources: [docs/auth-groups.md:54](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L54-L54), [docs/auth-groups.md:92](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L92-L94), [src/hab/README.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/src/hab/README.md#L19-L40), [docs/agent-address-rename.md:46](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/agent-address-rename.md#L46-L51).
 
 ### HAB-A07 — Explicit schema and rollback boundary
 
@@ -364,7 +364,7 @@ Scope: Registry groupv1→v2 migration and deployment/recovery; proposed renamev
 
 Checks: js-root, production-operations.
 
-Sources: [docs/relay-auth-groups.md:94](../../docs/relay-auth-groups.md#L94-L94), [docs/local-relay-service.md:206](../../docs/local-relay-service.md#L206-L218), [docs/operations/persistent-mcp-auth.md:93](../../docs/operations/persistent-mcp-auth.md#L93-L108).
+Sources: [docs/auth-groups.md:94](../../docs/auth-groups.md#L94-L94), [docs/host-service.md:206](../../docs/host-service.md#L206-L218), [docs/operations/persistent-mcp-auth.md:93](../../docs/operations/persistent-mcp-auth.md#L93-L108).
 
 ### HAB-A08 — Participation is separate from token lifetime
 
@@ -376,7 +376,7 @@ Scope: Persistent Relay OAuthv2; actual production durations require separate co
 
 Checks: js-root, production-operations.
 
-Sources: [docs/operations/persistent-mcp-auth.md:8](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L8-L12), [docs/operations/persistent-mcp-auth.md:34](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L34-L46), [docs/operations/persistent-mcp-auth.md:61](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L61-L65), [docs/relay-auth-groups.md:77](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-auth-groups.md#L77-L81).
+Sources: [docs/operations/persistent-mcp-auth.md:8](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L8-L12), [docs/operations/persistent-mcp-auth.md:34](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L34-L46), [docs/operations/persistent-mcp-auth.md:61](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L61-L65), [docs/auth-groups.md:77](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-auth-groups.md#L77-L81).
 
 ### HAB-A09 — Host owns OAuth secrets and refresh
 
@@ -388,7 +388,7 @@ Scope: Relay ingress and common MCP host integration; real issuer/host compatibi
 
 Checks: js-root, native-recipient.
 
-Sources: [docs/relay-auth-groups.md:77](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-auth-groups.md#L77-L81), [docs/operations/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L3-L6), [docs/operations/persistent-mcp-auth.md:124](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L124-L143).
+Sources: [docs/auth-groups.md:77](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-auth-groups.md#L77-L81), [docs/operations/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L3-L6), [docs/operations/persistent-mcp-auth.md:124](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L124-L143).
 
 ### HAB-A10 — Persistent connections survive acceptance
 
@@ -412,7 +412,7 @@ Scope: Pinned Relay OAuth ingress; separate legacy Auth0 resource server has its
 
 Checks: js-root, production-operations.
 
-Sources: [docs/operations/relay-oauth-ingress.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L53-L76), [docs/operations/relay-oauth-ingress.md:96](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L96-L105).
+Sources: [docs/operations/oauth-ingress.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/oauth-ingress.md#L53-L76), [docs/operations/oauth-ingress.md:96](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/oauth-ingress.md#L96-L105).
 
 ### HAB-A12 — Explicit fail-closed local startup
 
@@ -424,7 +424,7 @@ Scope: Configured local Relay with its single `delivery` section, and optional i
 
 Checks: js-root.
 
-Sources: [docs/operations/local-relay-host.md:3](../../docs/operations/local-relay-host.md#L3-L18), [docs/local-relay-service.md:3](../../docs/local-relay-service.md#L3-L7), [docs/local-relay-service.md:16](../../docs/local-relay-service.md#L16-L46), [docs/local-relay-service.md:79](../../docs/local-relay-service.md#L79-L84), [docs/operations/relay-oauth-ingress.md:39](../../docs/operations/relay-oauth-ingress.md#L39-L48).
+Sources: [docs/operations/host-composition.md:3](../../docs/operations/host-composition.md#L3-L18), [docs/host-service.md:3](../../docs/host-service.md#L3-L7), [docs/host-service.md:16](../../docs/host-service.md#L16-L46), [docs/host-service.md:79](../../docs/host-service.md#L79-L84), [docs/operations/oauth-ingress.md:39](../../docs/operations/oauth-ingress.md#L39-L48).
 
 ### HAB-A13 — Owned release and service lifecycle
 
@@ -436,7 +436,7 @@ Scope: Local Relay host and optional user LaunchAgent runbook. Decision: **accep
 
 Checks: js-root, production-operations.
 
-Sources: [docs/operations/local-relay-host.md:15](../../docs/operations/local-relay-host.md#L15-L33), [docs/operations/local-relay-launchagent.md:11](../../docs/operations/local-relay-launchagent.md#L11-L24), [docs/operations/local-relay-launchagent.md:63](../../docs/operations/local-relay-launchagent.md#L63-L92).
+Sources: [docs/operations/host-composition.md:15](../../docs/operations/host-composition.md#L15-L33), [docs/operations/host-launchagent.md:11](../../docs/operations/host-launchagent.md#L11-L24), [docs/operations/host-launchagent.md:63](../../docs/operations/host-launchagent.md#L63-L92).
 
 ### HAB-A14 — Discovery separates name and host identity
 
@@ -460,7 +460,7 @@ Scope: Finite single-consumer trial recipe; coordinator must map stronger common
 
 Checks: mcp-durable-roundtrip, ack-observer-controls.
 
-Sources: [docs/operations/relay-oauth-ingress.md:120](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L120-L135).
+Sources: [docs/operations/oauth-ingress.md:120](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/oauth-ingress.md#L120-L135).
 
 ### HAB-A16 — Redacted evidence and honest identity provenance
 
@@ -472,7 +472,7 @@ Scope: Public repository and verification output; detailed audit formats remain 
 
 Checks: source-publication.
 
-Sources: [docs/hab-security.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-security.md#L23-L31), [docs/relay-auth-groups.md:60](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L60-L60), [docs/relay-auth-groups.md:96](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L96-L100), [docs/operations/persistent-mcp-auth.md:136](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/persistent-mcp-auth.md#L136-L143).
+Sources: [docs/hab-security.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-security.md#L23-L31), [docs/auth-groups.md:60](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L60-L60), [docs/auth-groups.md:96](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-auth-groups.md#L96-L100), [docs/operations/persistent-mcp-auth.md:136](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/persistent-mcp-auth.md#L136-L143).
 
 ### HAB-A18 — Address rename keeps identity and reserves old names
 
@@ -496,7 +496,7 @@ Scope: Registry authentication-group mode and the hab:admin group disconnect and
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:56](../../docs/relay-auth-groups.md#L56-L56), [src/hab/README.md:365](../../src/hab/README.md#L365-L372), [docs/local-relay-service.md:124](../../docs/local-relay-service.md#L124-L129), [.claude/skills/verify-hab/features/configured-relay.md:12](../../.claude/skills/verify-hab/features/configured-relay.md#L12-L12).
+Sources: [docs/auth-groups.md:56](../../docs/auth-groups.md#L56-L56), [src/hab/README.md:365](../../src/hab/README.md#L365-L372), [docs/host-service.md:124](../../docs/host-service.md#L124-L129), [.claude/skills/verify-hab/features/configured-host.md:12](../../.claude/skills/verify-hab/features/configured-host.md#L12-L12).
 
 ### HAB-A20 — Management connect is atomic and explicit
 
@@ -508,7 +508,7 @@ Scope: Operator management CLI (`hab:admin connect`) and the Registry `createBou
 
 Checks: js-root.
 
-Sources: [src/hab/README.md:373](../../src/hab/README.md#L373-L374), [docs/local-relay-service.md:129](../../docs/local-relay-service.md#L129-L132), [.claude/skills/verify-hab/features/configured-relay.md:13](../../.claude/skills/verify-hab/features/configured-relay.md#L13-L13).
+Sources: [src/hab/README.md:373](../../src/hab/README.md#L373-L374), [docs/host-service.md:129](../../docs/host-service.md#L129-L132), [.claude/skills/verify-hab/features/configured-host.md:13](../../.claude/skills/verify-hab/features/configured-host.md#L13-L13).
 
 ### HAB-A21 — Host A2A identity cannot act as a confused deputy
 
@@ -520,7 +520,7 @@ Scope: Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier on
 
 Checks: js-root.
 
-Sources: [docs/a2a/a2a-relay-preview.md:67](../../docs/a2a/a2a-relay-preview.md#L67-L67), [docs/a2a/a2a-relay-preview.md:84](../../docs/a2a/a2a-relay-preview.md#L84-L94), [docs/a2a/a2a-relay-preview.md:98](../../docs/a2a/a2a-relay-preview.md#L98-L100), [docs/a2a/a2a-relay-preview.md:104](../../docs/a2a/a2a-relay-preview.md#L104-L106), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/local-relay-service.md:193](../../docs/local-relay-service.md#L193-L203), [src/hab/README.md:81](../../src/hab/README.md#L81-L88).
+Sources: [docs/a2a/a2a-host-preview.md:67](../../docs/a2a/a2a-host-preview.md#L67-L67), [docs/a2a/a2a-host-preview.md:84](../../docs/a2a/a2a-host-preview.md#L84-L94), [docs/a2a/a2a-host-preview.md:98](../../docs/a2a/a2a-host-preview.md#L98-L100), [docs/a2a/a2a-host-preview.md:104](../../docs/a2a/a2a-host-preview.md#L104-L106), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/host-service.md:193](../../docs/host-service.md#L193-L203), [src/hab/README.md:81](../../src/hab/README.md#L81-L88).
 
 ## Delivery
 
@@ -534,7 +534,7 @@ Scope: Relay/HAB common delivery and recipient orchestration Decision: **accepte
 
 Checks: ast-boundary, js-common-mcp.
 
-Sources: [src/agent-sdk/README.md:3](../../src/agent-sdk/README.md#L3-L5), [src/agent-sdk/README.md:9](../../src/agent-sdk/README.md#L9-L9), [docs/hab-relay-spec.md:82](../../docs/hab-relay-spec.md#L82-L91), [docs/hab-relay-spec.md:441](../../docs/hab-relay-spec.md#L441-L441).
+Sources: [src/agent-sdk/README.md:3](../../src/agent-sdk/README.md#L3-L5), [src/agent-sdk/README.md:9](../../src/agent-sdk/README.md#L9-L9), [docs/hab-messaging-spec.md:82](../../docs/hab-messaging-spec.md#L82-L91), [docs/hab-messaging-spec.md:441](../../docs/hab-messaging-spec.md#L441-L441).
 
 ### HAB-D02 — Durable recipient save before ACK
 
@@ -546,7 +546,7 @@ Scope: DurableReceiver and recipient-owned SQLite inbox/ACK journal Decision: **
 
 Checks: js-common-mcp, mcp-durable-roundtrip, js-process-crash.
 
-Sources: [src/agent-sdk/README.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L9-L9), [src/agent-sdk/README.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L17-L17), [docs/hab-relay-spec.md:260](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L260-L261), [docs/hab-relay-spec.md:291](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L291-L291).
+Sources: [src/agent-sdk/README.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L9-L9), [src/agent-sdk/README.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L17-L17), [docs/hab-messaging-spec.md:260](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L260-L261), [docs/hab-messaging-spec.md:291](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L291-L291).
 
 ### HAB-D03 — Immutable versioned message identity and lifetime
 
@@ -558,7 +558,7 @@ Scope: Version1 common Relay envelope Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:183](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L183-L194), [docs/hab-relay-spec.md:219](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L219-L221), [docs/hab-relay-spec.md:227](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L227-L231), [docs/hab-relay-spec.md:372](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L372-L372).
+Sources: [docs/hab-messaging-spec.md:183](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L183-L194), [docs/hab-messaging-spec.md:219](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L219-L221), [docs/hab-messaging-spec.md:227](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L227-L231), [docs/hab-messaging-spec.md:372](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L372-L372).
 
 ### HAB-D04 — Current authority and one fenced recipient lease
 
@@ -570,7 +570,7 @@ Scope: Server poll/ACK in the SQLite delivery store, HAB's only delivery backend
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:287](../../docs/hab-relay-spec.md#L287-L289), [docs/hab-relay-spec.md:293](../../docs/hab-relay-spec.md#L293-L300), [docs/delivery-store.md:7](../../docs/delivery-store.md#L7-L7), [docs/delivery-store.md:17](../../docs/delivery-store.md#L17-L19).
+Sources: [docs/hab-messaging-spec.md:287](../../docs/hab-messaging-spec.md#L287-L289), [docs/hab-messaging-spec.md:293](../../docs/hab-messaging-spec.md#L293-L300), [docs/delivery-store.md:7](../../docs/delivery-store.md#L7-L7), [docs/delivery-store.md:17](../../docs/delivery-store.md#L17-L19).
 
 ### HAB-D05 — Bounded recovery keeps unknown outcomes
 
@@ -582,7 +582,7 @@ Scope: Sender/outbox and all HTTP/async boundaries Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [src/agent-sdk/README.md:11](../../src/agent-sdk/README.md#L11-L11), [src/agent-sdk/README.md:23](../../src/agent-sdk/README.md#L23-L23), [src/agent-sdk/README.md:27](../../src/agent-sdk/README.md#L27-L27), [docs/hab-relay-spec.md:257](../../docs/hab-relay-spec.md#L257-L258), [docs/hab-relay-spec.md:304](../../docs/hab-relay-spec.md#L304-L306), [docs/delivery/writer-admission.md:42](../../docs/delivery/writer-admission.md#L42-L44).
+Sources: [src/agent-sdk/README.md:11](../../src/agent-sdk/README.md#L11-L11), [src/agent-sdk/README.md:23](../../src/agent-sdk/README.md#L23-L23), [src/agent-sdk/README.md:27](../../src/agent-sdk/README.md#L27-L27), [docs/hab-messaging-spec.md:257](../../docs/hab-messaging-spec.md#L257-L258), [docs/hab-messaging-spec.md:304](../../docs/hab-messaging-spec.md#L304-L306), [docs/delivery/writer-admission.md:42](../../docs/delivery/writer-admission.md#L42-L44).
 
 ### HAB-D06 — Delivery, reading, application handoff and execution remain separate
 
@@ -590,11 +590,11 @@ Inbox is a received-message record, not execution queue. Local handoff requires 
 
 Reason: Receiver storage and user processing have different lifetimes and authority boundaries.
 
-Scope: Recipient-local body lifecycle. The quota and row bounds, the per-message ACK history, the `max_attempts` generation cap `releaseUnconfirmable` and the collection of replay-bound IDs over repeated retention cycles are covered in js-root by test/relay-inbox-maintenance.test.js. The same suite covers the read-only capacity gate and unchanged terminal-time retention. Decision: **accepted**.
+Scope: Recipient-local body lifecycle. The quota and row bounds, the per-message ACK history, the `max_attempts` generation cap `releaseUnconfirmable` and the collection of replay-bound IDs over repeated retention cycles are covered in js-root by test/inbox-maintenance.test.js. The same suite covers the read-only capacity gate and unchanged terminal-time retention. Decision: **accepted**.
 
 Checks: js-root, native-recipient.
 
-Sources: [src/agent-sdk/README.md:19](../../src/agent-sdk/README.md#L19-L19), [docs/hab-relay-spec.md:261](../../docs/hab-relay-spec.md#L261-L261), [docs/hab-relay-spec.md:392](../../docs/hab-relay-spec.md#L392-L394), [docs/a2a/a2a-relay-preview.md:55](../../docs/a2a/a2a-relay-preview.md#L55-L55).
+Sources: [src/agent-sdk/README.md:19](../../src/agent-sdk/README.md#L19-L19), [docs/hab-messaging-spec.md:261](../../docs/hab-messaging-spec.md#L261-L261), [docs/hab-messaging-spec.md:392](../../docs/hab-messaging-spec.md#L392-L394), [docs/a2a/a2a-host-preview.md:55](../../docs/a2a/a2a-host-preview.md#L55-L55).
 
 ### HAB-D07 — Bounded metadata collection preserves replay safety
 
@@ -606,7 +606,7 @@ Scope: SQLite delivery store (server, docs/delivery-store.md), and the agent SDK
 
 Checks: js-root, current-hosted-ci, production-operations.
 
-Sources: [src/agent-sdk/README.md:10](../../src/agent-sdk/README.md#L10-L12), [src/agent-sdk/README.md:23](../../src/agent-sdk/README.md#L23-L23), [docs/hab-relay-spec.md:388](../../docs/hab-relay-spec.md#L388-L390), [docs/hab-relay-spec.md:398](../../docs/hab-relay-spec.md#L398-L400), [docs/delivery-store.md:28](../../docs/delivery-store.md#L28-L28).
+Sources: [src/agent-sdk/README.md:10](../../src/agent-sdk/README.md#L10-L12), [src/agent-sdk/README.md:23](../../src/agent-sdk/README.md#L23-L23), [docs/hab-messaging-spec.md:388](../../docs/hab-messaging-spec.md#L388-L390), [docs/hab-messaging-spec.md:398](../../docs/hab-messaging-spec.md#L398-L400), [docs/delivery-store.md:28](../../docs/delivery-store.md#L28-L28).
 
 ### HAB-D08 — Attachments are explicit bounded optional composition
 
@@ -618,7 +618,7 @@ Scope: Removed attachment upload/read/admission/delivery/client; no current scop
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:225](../../docs/hab-relay-spec.md#L225-L225), [README.md:122](../../README.md#L122-L122).
+Sources: [docs/hab-messaging-spec.md:225](../../docs/hab-messaging-spec.md#L225-L225), [README.md:122](../../README.md#L122-L122).
 
 ### HAB-D09 — Verified local attachment bytes gate body save and ACK
 
@@ -630,7 +630,7 @@ Scope: Removed AttachmentInbox and AttachmentReceiver; no current scope. Decisio
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223).
+Sources: [docs/hab-messaging-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223).
 
 ### HAB-D10 — Cross-DB commits reconcile original records
 
@@ -642,7 +642,7 @@ Scope: Removed attachment upload acceptance, outbox handoff, checkpoint and serv
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223).
+Sources: [docs/hab-messaging-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223).
 
 ### HAB-D11 — Terminal disposal and local release are distinct
 
@@ -654,7 +654,7 @@ Scope: Removed server attachment deletion and recipient retained bytes; no curre
 
 Checks: js-root, production-operations.
 
-Sources: [docs/hab-relay-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223).
+Sources: [docs/hab-messaging-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223).
 
 ### HAB-D12 — Admission capacity is finite and atomic
 
@@ -666,7 +666,7 @@ Scope: Required delivery.queue.agent_capacity policy in the SQLite delivery stor
 
 Checks: js-root, production-operations.
 
-Sources: [docs/delivery/relay-agent-capacity.md:3](../../docs/delivery/relay-agent-capacity.md#L3-L25).
+Sources: [docs/delivery/agent-capacity.md:3](../../docs/delivery/agent-capacity.md#L3-L25).
 
 ### HAB-D13 — Scope fair selection separately from rate and execution
 
@@ -678,7 +678,7 @@ Scope: Opt-in delivery.queue.fair_poll in the SQLite delivery store and WriterAd
 
 Checks: js-root, production-operations.
 
-Sources: [docs/delivery/relay-fair-poll.md:3](../../docs/delivery/relay-fair-poll.md#L3-L25), [docs/delivery/writer-admission.md:5](../../docs/delivery/writer-admission.md#L5-L27), [docs/delivery/writer-admission.md:40](../../docs/delivery/writer-admission.md#L40-L46).
+Sources: [docs/delivery/fair-poll.md:3](../../docs/delivery/fair-poll.md#L3-L25), [docs/delivery/writer-admission.md:5](../../docs/delivery/writer-admission.md#L5-L27), [docs/delivery/writer-admission.md:40](../../docs/delivery/writer-admission.md#L40-L46).
 
 ### HAB-D14 — Snapshot restore requires offline original-ID reconciliation
 
@@ -726,7 +726,7 @@ Scope: Version-1 messaging contract, MCP submit and the SQLite delivery store De
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:225](../../docs/hab-relay-spec.md#L225-L225), [docs/hab-relay-spec.md:554](../../docs/hab-relay-spec.md#L554-L554), [.claude/skills/verify-hab/features/send-message.md:12](../../.claude/skills/verify-hab/features/send-message.md#L12-L12).
+Sources: [docs/hab-messaging-spec.md:225](../../docs/hab-messaging-spec.md#L225-L225), [docs/hab-messaging-spec.md:554](../../docs/hab-messaging-spec.md#L554-L554), [.claude/skills/verify-hab/features/send-message.md:12](../../.claude/skills/verify-hab/features/send-message.md#L12-L12).
 
 ### HAB-D19 — Delivery audit is atomic and redacted
 
@@ -750,7 +750,7 @@ Scope: Opt-in host A2A entry, one host process per state directory. Not multi-ho
 
 Checks: js-root.
 
-Sources: [docs/a2a/a2a-relay-preview.md:109](../../docs/a2a/a2a-relay-preview.md#L109-L111), [docs/a2a/a2a-relay-preview.md:132](../../docs/a2a/a2a-relay-preview.md#L132-L132), [.claude/skills/verify-hab/features/a2a-host.md:40](../../.claude/skills/verify-hab/features/a2a-host.md#L40-L40), [docs/a2a/a2a-relay-preview.md:80](../../docs/a2a/a2a-relay-preview.md#L80-L80), [docs/a2a/a2a-relay-preview.md:105](../../docs/a2a/a2a-relay-preview.md#L105-L105), [docs/a2a/a2a-relay-preview.md:53](../../docs/a2a/a2a-relay-preview.md#L53-L53), [.claude/skills/verify-hab/features/a2a-host.md:45](../../.claude/skills/verify-hab/features/a2a-host.md#L45-L45), [.claude/skills/verify-hab/features/a2a-host.md:14](../../.claude/skills/verify-hab/features/a2a-host.md#L14-L14), [.claude/skills/verify-hab/features/a2a-host.md:39](../../.claude/skills/verify-hab/features/a2a-host.md#L39-L39), [docs/a2a/a2a-relay-preview.md:55](../../docs/a2a/a2a-relay-preview.md#L55-L55), [docs/a2a/a2a-relay-preview.md:138](../../docs/a2a/a2a-relay-preview.md#L138-L138).
+Sources: [docs/a2a/a2a-host-preview.md:109](../../docs/a2a/a2a-host-preview.md#L109-L111), [docs/a2a/a2a-host-preview.md:132](../../docs/a2a/a2a-host-preview.md#L132-L132), [.claude/skills/verify-hab/features/a2a-host.md:40](../../.claude/skills/verify-hab/features/a2a-host.md#L40-L40), [docs/a2a/a2a-host-preview.md:80](../../docs/a2a/a2a-host-preview.md#L80-L80), [docs/a2a/a2a-host-preview.md:105](../../docs/a2a/a2a-host-preview.md#L105-L105), [docs/a2a/a2a-host-preview.md:53](../../docs/a2a/a2a-host-preview.md#L53-L53), [.claude/skills/verify-hab/features/a2a-host.md:45](../../.claude/skills/verify-hab/features/a2a-host.md#L45-L45), [.claude/skills/verify-hab/features/a2a-host.md:14](../../.claude/skills/verify-hab/features/a2a-host.md#L14-L14), [.claude/skills/verify-hab/features/a2a-host.md:39](../../.claude/skills/verify-hab/features/a2a-host.md#L39-L39), [docs/a2a/a2a-host-preview.md:55](../../docs/a2a/a2a-host-preview.md#L55-L55), [docs/a2a/a2a-host-preview.md:138](../../docs/a2a/a2a-host-preview.md#L138-L138).
 
 ## Execution
 
@@ -776,7 +776,7 @@ Scope: Explicit fixed TaskBridge and the A2A Relay preview composed with HabExec
 
 Checks: js-root.
 
-Sources: [docs/a2a/a2a-relay-preview.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/e772a7c6959a3bf9ef367870278f1aa363470a7e/docs/a2a-relay-preview.md#L23-L27).
+Sources: [docs/a2a/a2a-host-preview.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/e772a7c6959a3bf9ef367870278f1aa363470a7e/docs/a2a-host-preview.md#L23-L27).
 
 ### HAB-E06 — Reply loops and budget are finite
 
@@ -850,7 +850,7 @@ Scope: Opt-in host A2A entry only. The preview composition with HabExecutionEvid
 
 Checks: js-root, native-recipient.
 
-Sources: [docs/a2a/a2a-relay-preview.md:106](../../docs/a2a/a2a-relay-preview.md#L106-L106), [docs/a2a/a2a-relay-preview.md:116](../../docs/a2a/a2a-relay-preview.md#L116-L129), [docs/hab-decisions.md:76](../../docs/hab-decisions.md#L76-L76), [.claude/skills/verify-hab/features/a2a-host.md:3](../../.claude/skills/verify-hab/features/a2a-host.md#L3-L3), [.claude/skills/verify-hab/features/a2a-host.md:43](../../.claude/skills/verify-hab/features/a2a-host.md#L43-L43), [docs/a2a/a2a-relay-preview.md:80](../../docs/a2a/a2a-relay-preview.md#L80-L80), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [.claude/skills/verify-hab/features/a2a-host.md:15](../../.claude/skills/verify-hab/features/a2a-host.md#L15-L15), [.claude/skills/verify-hab/features/a2a-host.md:44](../../.claude/skills/verify-hab/features/a2a-host.md#L44-L44).
+Sources: [docs/a2a/a2a-host-preview.md:106](../../docs/a2a/a2a-host-preview.md#L106-L106), [docs/a2a/a2a-host-preview.md:116](../../docs/a2a/a2a-host-preview.md#L116-L129), [docs/hab-decisions.md:76](../../docs/hab-decisions.md#L76-L76), [.claude/skills/verify-hab/features/a2a-host.md:3](../../.claude/skills/verify-hab/features/a2a-host.md#L3-L3), [.claude/skills/verify-hab/features/a2a-host.md:43](../../.claude/skills/verify-hab/features/a2a-host.md#L43-L43), [docs/a2a/a2a-host-preview.md:80](../../docs/a2a/a2a-host-preview.md#L80-L80), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [.claude/skills/verify-hab/features/a2a-host.md:15](../../.claude/skills/verify-hab/features/a2a-host.md#L15-L15), [.claude/skills/verify-hab/features/a2a-host.md:44](../../.claude/skills/verify-hab/features/a2a-host.md#L44-L44).
 
 ## Verification
 

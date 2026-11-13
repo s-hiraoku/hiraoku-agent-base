@@ -38,24 +38,24 @@ import {
 import { HAB_A2A_LIMITS, type HabA2aRoute } from "./hab-contract.ts";
 import { connectivityAgentCard } from "./adapter.ts";
 
-export function habRelayAgentCard(endpoint: string): AgentCard {
+export function habAgentCard(endpoint: string): AgentCard {
   const card = connectivityAgentCard(endpoint);
   return {
     ...card,
-    name: "HAB Relay connectivity check",
+    name: "HAB connectivity check",
     description:
-      "Deliver a fixed connectivity_check through HAB Relay. Recipient storage ACK does not accept execution. A recipient must explicitly accept the request. Completion requires its durable result reply and independently verified closed execution.",
+      "Deliver a fixed connectivity_check through HAB delivery. Recipient storage ACK does not accept execution. A recipient must explicitly accept the request. Completion requires its durable result reply and independently verified closed execution.",
     skills: card.skills.map((skill) => ({
       ...skill,
       description:
-        "Send connectivity_check through Relay. Explicit recipient acceptance is required. Use returnImmediately=true to poll, or wait up to five seconds for the confirmed result. Cancellation and execution deadlines are unsupported.",
+        "Send connectivity_check through HAB delivery. Explicit recipient acceptance is required. Use returnImmediately=true to poll, or wait up to five seconds for the confirmed result. Cancellation and execution deadlines are unsupported.",
     })),
   };
 }
 
 /** Card for the host-wired, reply-attested route (no engine evidence port). */
 export function habHostAgentCard(endpoint: string): AgentCard {
-  const card = habRelayAgentCard(endpoint);
+  const card = habAgentCard(endpoint);
   return {
     ...card,
     name: "HAB host connectivity check",
@@ -112,11 +112,11 @@ const closedState = (state: "succeeded" | "failed" | "cancelled") =>
 const routeBinding = (route: HabA2aRoute) =>
   route.evidence ? bindingSchema.parse(route.evidence.binding) : undefined;
 function publicTask(task: Task, length: number | undefined): Task {
-  const link = linkSchema.parse(task.metadata?.hab_relay);
+  const link = linkSchema.parse(task.metadata?.hab);
   return {
     ...task,
     metadata: {
-      hab_relay: {
+      hab: {
         version: link.version,
         sender_id: link.sender_id,
         recipient_id: link.recipient_id,
@@ -176,7 +176,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
     return route;
   }
   #link(task: Task, route: HabA2aRoute) {
-    const link = linkSchema.parse(task.metadata?.hab_relay);
+    const link = linkSchema.parse(task.metadata?.hab);
     const source = parseSubmission(link.source, HAB_A2A_LIMITS);
     if (
       link.owner_id !== route.ownerId ||
@@ -351,7 +351,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
           message: undefined,
         },
         artifacts,
-        metadata: { hab_relay: link },
+        metadata: { hab: link },
       };
     }
     if (
@@ -375,10 +375,10 @@ export class HabA2aHandler extends DefaultRequestHandler {
                 text: "result_window_expired: no execution result arrived before the reply window closed. The outcome is unknown: the recipient may or may not have executed the request.",
               },
             ],
-            metadata: { hab_relay: { reason: "result_window_expired" } },
+            metadata: { hab: { reason: "result_window_expired" } },
           }),
         },
-        metadata: { hab_relay: link },
+        metadata: { hab: link },
       };
     } else if (!terminal(next)) {
       let expired = Date.parse(link.source.expires_at) <= Date.now();
@@ -529,7 +529,7 @@ export class HabA2aHandler extends DefaultRequestHandler {
           status: { state: "TASK_STATE_SUBMITTED", timestamp: at },
           history: [Message.toJSON(message)],
           metadata: {
-            hab_relay: {
+            hab: {
               version: 1,
               owner_id: route.ownerId,
               sender_id: route.senderId,

@@ -13,7 +13,7 @@ import { DatabaseSync } from "node:sqlite";
 import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
 import { DurableReceiver } from "../../src/agent-sdk/index.ts";
 import { SqliteDelivery } from "../../src/delivery/sqlite-delivery.ts";
-import { limits, message } from "../relay-http-fixtures.js";
+import { limits, message } from "../mcp-http-fixtures.js";
 import { authorizedDelivery } from "../delivery-fixture.js";
 import { ackRequest } from "./backends.js";
 import { spawn } from "node:child_process";

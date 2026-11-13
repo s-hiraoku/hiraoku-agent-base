@@ -1,11 +1,11 @@
-/** Optional HAB catalog: basic Relay delivery plus exactly one directory operation. */
+/** Optional HAB catalog: the four delivery tools plus exactly one directory operation. */
 import { z } from "zod";
 import {
-  createRelayMcpServer,
-  executeRelayMcpOperation,
-  relayMcpSchemas,
+  createDeliveryMcpServer,
+  executeDeliveryMcpOperation,
+  deliveryMcpSchemas,
 } from "../host/mcp/server.ts";
-import type { RelayContextResolver, RelayMcpGate } from "../host/mcp/server.ts";
+import type { DeliveryContextResolver, DeliveryMcpGate } from "../host/mcp/server.ts";
 import type { DeliveryService } from "../messaging/delivery-service.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
@@ -41,11 +41,11 @@ const selection = {
     .optional(),
 };
 export const habMcpSchemas = Object.freeze({
-  relay_submit: relayMcpSchemas.relay_submit.extend(selection),
-  relay_status: relayMcpSchemas.relay_status.extend(selection),
-  relay_poll: relayMcpSchemas.relay_poll.extend(selection),
-  relay_ack: relayMcpSchemas.relay_ack.extend(selection),
-  relay_resolve: z.strictObject({
+  hab_submit: deliveryMcpSchemas.hab_submit.extend(selection),
+  hab_status: deliveryMcpSchemas.hab_status.extend(selection),
+  hab_poll: deliveryMcpSchemas.hab_poll.extend(selection),
+  hab_ack: deliveryMcpSchemas.hab_ack.extend(selection),
+  hab_resolve: z.strictObject({
     ...selection,
     address: z.string().max(101).regex(new RegExp(HAB_ADDRESS_PATTERN)),
   }),
@@ -79,13 +79,13 @@ export function prepareHabInvocation(
 }
 export function createHabMcpServer(
   service: HabMcpService,
-  resolveContext: RelayContextResolver = () => null,
-  gate?: RelayMcpGate,
+  resolveContext: DeliveryContextResolver = () => null,
+  gate?: DeliveryMcpGate,
   oauthScopes?: readonly string[],
 ) {
   if (typeof service?.resolve !== "function")
     throw new MessagingError("invalid_hab_mcp_service");
-  const server = createRelayMcpServer(
+  const server = createDeliveryMcpServer(
     service,
     resolveContext,
     gate,
@@ -97,11 +97,11 @@ export function createHabMcpServer(
     },
   );
   server.registerTool(
-    "relay_resolve",
+    "hab_resolve",
     {
       description:
         "Resolve one canonical HAB address to an immutable recipient ID. Optional as_address selects your registered local name, never grants identity. Save the result in the durable outbox; never re-resolve on retry. This grants no mailbox or execution rights.",
-      inputSchema: habMcpSchemas.relay_resolve,
+      inputSchema: habMcpSchemas.hab_resolve,
       ...(oauthScopes
         ? {
             _meta: {
@@ -112,11 +112,11 @@ export function createHabMcpServer(
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     (input: unknown) =>
-      executeRelayMcpOperation(resolveContext, gate, (context) => {
+      executeDeliveryMcpOperation(resolveContext, gate, (context) => {
         const prepared = prepareHabInvocation(
           service,
           context,
-          "relay_resolve",
+          "hab_resolve",
           input,
         );
         const { address } = parseHabResolveInput(prepared.input);
@@ -145,7 +145,7 @@ export function createHabMcpServer(
           : {}),
       },
       (input: unknown) =>
-        executeRelayMcpOperation(resolveContext, gate, (context) =>
+        executeDeliveryMcpOperation(resolveContext, gate, (context) =>
           service.discover!(context, input),
         ),
     );

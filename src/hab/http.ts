@@ -1,10 +1,10 @@
-import { RELAY_OAUTH_SCOPES } from "../host/mcp/oauth-resource.ts";
+import { HAB_OAUTH_SCOPES } from "../host/mcp/oauth-resource.ts";
 import type { WriterAdmission } from "../host/mcp/writer-admission.ts";
 /** Explicit HAB HTTP composition; constructing starts no listener or connection. */
-import { RelayHttpGateway } from "../host/mcp/http.ts";
-import type { RelayHttpPolicy, RelayHttpVerifier } from "../host/mcp/http.ts";
+import { McpHttpGateway } from "../host/mcp/http.ts";
+import type { McpHttpPolicy, McpHttpVerifier } from "../host/mcp/http.ts";
 import type { AuditSink } from "../security.ts";
-import type { RelayContextResolver, RelayMcpGate } from "../host/mcp/server.ts";
+import type { DeliveryContextResolver, DeliveryMcpGate } from "../host/mcp/server.ts";
 import {
   createHabMcpServer,
   habMcpSchemas,
@@ -13,13 +13,13 @@ import {
 import type { HabMcpService } from "./mcp.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
-export class HabHttpGateway extends RelayHttpGateway {
+export class HabHttpGateway extends McpHttpGateway {
   readonly #hab: HabMcpService;
   constructor(
     service: HabMcpService,
-    policy: RelayHttpPolicy,
+    policy: McpHttpPolicy,
     audit: AuditSink,
-    verify: RelayHttpVerifier = () => null,
+    verify: McpHttpVerifier = () => null,
     admission?: WriterAdmission,
   ) {
     if (typeof service?.resolve !== "function")
@@ -28,7 +28,7 @@ export class HabHttpGateway extends RelayHttpGateway {
     this.#hab = service;
   }
   protected override get writerOperations() {
-    return { ...super.writerOperations, relay_resolve: "resolve" as const };
+    return { ...super.writerOperations, hab_resolve: "resolve" as const };
   }
   protected override get toolSchemas() {
     return this.#hab.discoveryEnabled === true
@@ -50,14 +50,14 @@ export class HabHttpGateway extends RelayHttpGateway {
       : super.writerContext(context, tool, input);
   }
   protected override createServer(
-    resolve: RelayContextResolver,
-    gate: RelayMcpGate,
+    resolve: DeliveryContextResolver,
+    gate: DeliveryMcpGate,
   ) {
     return createHabMcpServer(
       this.#hab,
       resolve,
       gate,
-      this.oauth ? RELAY_OAUTH_SCOPES : undefined,
+      this.oauth ? HAB_OAUTH_SCOPES : undefined,
     );
   }
 }

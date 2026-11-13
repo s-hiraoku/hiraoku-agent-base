@@ -32,18 +32,18 @@ export interface OutboxOptions {
   max_status_attempts: number;
   status_retry_ms: number;
 }
-const SCHEMA = `CREATE TABLE relay_outbox_meta(version INTEGER NOT NULL,agent_id TEXT NOT NULL,key_check TEXT NOT NULL);
-CREATE TABLE relay_outbox(message_id TEXT PRIMARY KEY,recipient_id TEXT NOT NULL,expires_at INTEGER NOT NULL,first_sent_at INTEGER NOT NULL,fingerprint TEXT NOT NULL,body TEXT,
+const SCHEMA = `CREATE TABLE outbox_meta(version INTEGER NOT NULL,agent_id TEXT NOT NULL,key_check TEXT NOT NULL);
+CREATE TABLE outbox(message_id TEXT PRIMARY KEY,recipient_id TEXT NOT NULL,expires_at INTEGER NOT NULL,first_sent_at INTEGER NOT NULL,fingerprint TEXT NOT NULL,body TEXT,
  state TEXT NOT NULL CHECK(state IN ('queued','sending','accepted','quarantined','expired_unknown')),
  fence INTEGER NOT NULL DEFAULT 0,lease_until INTEGER,next_retry_at INTEGER NOT NULL DEFAULT 0,
  submit_attempts INTEGER NOT NULL DEFAULT 0,status_attempts INTEGER NOT NULL DEFAULT 0,status_only INTEGER NOT NULL DEFAULT 0,
  status_until INTEGER NOT NULL,operation TEXT CHECK(operation IN ('submit','status')),receipt TEXT,reason TEXT);
-CREATE UNIQUE INDEX relay_outbox_one_active ON relay_outbox(state) WHERE state='sending';`;
-const MIGRATION_2 = `ALTER TABLE relay_outbox ADD COLUMN terminal_at INTEGER;
-ALTER TABLE relay_outbox ADD COLUMN retain_until INTEGER;
-CREATE INDEX relay_outbox_retention ON relay_outbox(state,retain_until);
-CREATE TABLE relay_outbox_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired INTEGER NOT NULL,purged INTEGER NOT NULL);
-INSERT INTO relay_outbox_maintenance_totals VALUES(1,0,0,0);`;
+CREATE UNIQUE INDEX outbox_one_active ON outbox(state) WHERE state='sending';`;
+const MIGRATION_2 = `ALTER TABLE outbox ADD COLUMN terminal_at INTEGER;
+ALTER TABLE outbox ADD COLUMN retain_until INTEGER;
+CREATE INDEX outbox_retention ON outbox(state,retain_until);
+CREATE TABLE outbox_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired INTEGER NOT NULL,purged INTEGER NOT NULL);
+INSERT INTO outbox_maintenance_totals VALUES(1,0,0,0);`;
 type Row = {
   message_id: string;
   recipient_id: string;
@@ -150,7 +150,7 @@ export class SQLiteOutbox implements SenderStore {
         "PRAGMA busy_timeout=5000;PRAGMA synchronous=FULL;PRAGMA secure_delete=ON",
       );
       this.#db.function(
-        "relay_outbox_gc_safe",
+        "outbox_gc_safe",
         { deterministic: true },
         (id, expiry) => Number(isReplayBoundMessageId(id, expiry)),
       );
@@ -195,7 +195,7 @@ export class SQLiteOutbox implements SenderStore {
     this.#tx(() => {
       if (
         !this.#db
-          .prepare("SELECT 1 FROM sqlite_master WHERE name='relay_outbox_meta'")
+          .prepare("SELECT 1 FROM sqlite_master WHERE name='outbox_meta'")
           .get()
       ) {
         if (
@@ -208,10 +208,10 @@ export class SQLiteOutbox implements SenderStore {
           throw new MessagingError("unknown_schema");
         this.#db.exec(SCHEMA);
         this.#db
-          .prepare("INSERT INTO relay_outbox_meta VALUES(1,?,?)")
+          .prepare("INSERT INTO outbox_meta VALUES(1,?,?)")
           .run(this.#options.agent_id, this.#keyCheck());
       }
-      const rows = this.#db.prepare("SELECT * FROM relay_outbox_meta").all();
+      const rows = this.#db.prepare("SELECT * FROM outbox_meta").all();
       if (rows.length !== 1 || ![1, 2].includes(Number(rows[0].version)))
         throw new MessagingError("unsupported_schema");
       if (
@@ -226,10 +226,10 @@ export class SQLiteOutbox implements SenderStore {
         // retention window at this explicit upgrade, without changing receipts.
         this.#db
           .prepare(
-            "UPDATE relay_outbox SET terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE state IN ('accepted','expired_unknown')",
+            "UPDATE outbox SET terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE state IN ('accepted','expired_unknown')",
           )
           .run(now, now, RECORD_RETENTION_MS);
-        this.#db.exec("UPDATE relay_outbox_meta SET version=2");
+        this.#db.exec("UPDATE outbox_meta SET version=2");
       }
     });
     this.#ready = true;
@@ -249,13 +249,13 @@ export class SQLiteOutbox implements SenderStore {
   }
   #row(id: string) {
     return this.#db
-      .prepare("SELECT * FROM relay_outbox WHERE message_id=?")
+      .prepare("SELECT * FROM outbox WHERE message_id=?")
       .get(id) as Row | undefined;
   }
   #expire(now: number, limit: number): number {
     const rows = this.#db
       .prepare(
-        `SELECT * FROM relay_outbox WHERE expires_at<=? AND (
+        `SELECT * FROM outbox WHERE expires_at<=? AND (
         (body IS NOT NULL AND state IN ('queued','sending','quarantined')) OR state='quarantined' OR
         (state IN ('queued','sending') AND (status_until<=? OR status_attempts>=?)
           AND (state='queued' OR lease_until<=?)))
@@ -272,7 +272,7 @@ export class SQLiteOutbox implements SenderStore {
       if (closed) {
         this.#db
           .prepare(
-            "UPDATE relay_outbox SET state='expired_unknown',body=NULL,status_only=1,fence=fence+1,lease_until=NULL,operation=NULL,reason=?,terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE message_id=?",
+            "UPDATE outbox SET state='expired_unknown',body=NULL,status_only=1,fence=fence+1,lease_until=NULL,operation=NULL,reason=?,terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE message_id=?",
           )
           .run(
             row.state === "quarantined"
@@ -287,7 +287,7 @@ export class SQLiteOutbox implements SenderStore {
         // An in-flight request keeps its fence and may still commit acceptance.
         this.#db
           .prepare(
-            "UPDATE relay_outbox SET body=NULL,status_only=1 WHERE message_id=?",
+            "UPDATE outbox SET body=NULL,status_only=1 WHERE message_id=?",
           )
           .run(row.message_id);
       }
@@ -337,7 +337,7 @@ export class SQLiteOutbox implements SenderStore {
       const body = JSON.stringify(message),
         usage = this.#db
           .prepare(
-            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_outbox",
+            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM outbox",
           )
           .get()!;
       if (
@@ -348,7 +348,7 @@ export class SQLiteOutbox implements SenderStore {
         throw new MessagingError("outbox_capacity_exceeded");
       this.#db
         .prepare(
-          "INSERT INTO relay_outbox(message_id,recipient_id,expires_at,first_sent_at,fingerprint,body,state,status_until) VALUES(?,?,?,?,?,?,'queued',?)",
+          "INSERT INTO outbox(message_id,recipient_id,expires_at,first_sent_at,fingerprint,body,state,status_until) VALUES(?,?,?,?,?,?,'queued',?)",
         )
         .run(
           message.message_id,
@@ -378,18 +378,18 @@ export class SQLiteOutbox implements SenderStore {
       this.#cleanup(now);
       this.#db
         .prepare(
-          "UPDATE relay_outbox SET state='queued',fence=fence+1,lease_until=NULL,reason='lease_expired' WHERE state='sending' AND lease_until<=?",
+          "UPDATE outbox SET state='queued',fence=fence+1,lease_until=NULL,reason='lease_expired' WHERE state='sending' AND lease_until<=?",
         )
         .run(now);
       if (
         this.#db
-          .prepare("SELECT 1 FROM relay_outbox WHERE state='sending'")
+          .prepare("SELECT 1 FROM outbox WHERE state='sending'")
           .get()
       )
         return null;
       const rows = this.#db
         .prepare(
-          "SELECT * FROM relay_outbox WHERE state='queued' AND next_retry_at<=? AND (? IS NULL OR message_id=?) ORDER BY next_retry_at,message_id",
+          "SELECT * FROM outbox WHERE state='queued' AND next_retry_at<=? AND (? IS NULL OR message_id=?) ORDER BY next_retry_at,message_id",
         )
         .all(now, messageId ?? null, messageId ?? null) as Row[];
       for (const row of rows) {
@@ -407,7 +407,7 @@ export class SQLiteOutbox implements SenderStore {
           const expired = row.expires_at <= now;
           this.#db
             .prepare(
-              "UPDATE relay_outbox SET state=?,body=CASE WHEN ? THEN NULL ELSE body END,reason='status_retry_exhausted',terminal_at=?,retain_until=? WHERE message_id=?",
+              "UPDATE outbox SET state=?,body=CASE WHEN ? THEN NULL ELSE body END,reason='status_retry_exhausted',terminal_at=?,retain_until=? WHERE message_id=?",
             )
             .run(
               expired ? "expired_unknown" : "quarantined",
@@ -450,7 +450,7 @@ export class SQLiteOutbox implements SenderStore {
           operation === "submit" ? "submit_attempts" : "status_attempts";
         this.#db
           .prepare(
-            `UPDATE relay_outbox SET state='sending',fence=fence+1,lease_until=?,operation=?,${column}=${column}+1 WHERE message_id=?`,
+            `UPDATE outbox SET state='sending',fence=fence+1,lease_until=?,operation=?,${column}=${column}+1 WHERE message_id=?`,
           )
           .run(now + this.#options.lease_ms, operation, row.message_id);
         if (operation === "status")
@@ -512,7 +512,7 @@ export class SQLiteOutbox implements SenderStore {
       };
       this.#db
         .prepare(
-          "UPDATE relay_outbox SET state='accepted',body=NULL,receipt=?,lease_until=NULL,reason=NULL,terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE message_id=?",
+          "UPDATE outbox SET state='accepted',body=NULL,receipt=?,lease_until=NULL,reason=NULL,terminal_at=?,retain_until=max(expires_at,status_until,?)+? WHERE message_id=?",
         )
         .run(
           JSON.stringify(safe),
@@ -538,7 +538,7 @@ export class SQLiteOutbox implements SenderStore {
       );
       this.#db
         .prepare(
-          "UPDATE relay_outbox SET state='queued',lease_until=NULL,next_retry_at=?,status_only=max(status_only,?),reason='retry_pending' WHERE message_id=?",
+          "UPDATE outbox SET state='queued',lease_until=NULL,next_retry_at=?,status_only=max(status_only,?),reason='retry_pending' WHERE message_id=?",
         )
         .run(now + delay, Number(forceStatus), row.message_id);
     });
@@ -558,7 +558,7 @@ export class SQLiteOutbox implements SenderStore {
         row = this.#owned(job, now);
       this.#db
         .prepare(
-          "UPDATE relay_outbox SET state='quarantined',lease_until=NULL,reason=? WHERE message_id=?",
+          "UPDATE outbox SET state='quarantined',lease_until=NULL,reason=? WHERE message_id=?",
         )
         .run(reason, row.message_id);
       this.#cleanup(now);
@@ -579,7 +579,7 @@ export class SQLiteOutbox implements SenderStore {
     this.#now();
     const row = this.#db
       .prepare(
-        "SELECT count(*) total,coalesce(sum(expires_at>?),0) expires_after FROM relay_outbox",
+        "SELECT count(*) total,coalesce(sum(expires_at>?),0) expires_after FROM outbox",
       )
       .get(expiresAfter)!;
     return {
@@ -604,7 +604,7 @@ export class SQLiteOutbox implements SenderStore {
       const now = this.#now();
       if (
         !this.#db
-          .prepare("SELECT 1 FROM relay_outbox_maintenance_totals WHERE id=1")
+          .prepare("SELECT 1 FROM outbox_maintenance_totals WHERE id=1")
           .get()
       )
         throw new MessagingError("maintenance_state_unavailable");
@@ -616,7 +616,7 @@ export class SQLiteOutbox implements SenderStore {
         AND terminal_at<=? AND expires_at<=? AND status_until<=? AND retain_until<=?`;
       const rows = this.#db
         .prepare(
-          `SELECT message_id FROM relay_outbox WHERE ${eligible} AND relay_outbox_gc_safe(message_id,expires_at)=1
+          `SELECT message_id FROM outbox WHERE ${eligible} AND outbox_gc_safe(message_id,expires_at)=1
          ORDER BY retain_until,message_id LIMIT ?`,
         )
         .all(
@@ -628,18 +628,18 @@ export class SQLiteOutbox implements SenderStore {
         );
       for (const row of rows)
         this.#db
-          .prepare("DELETE FROM relay_outbox WHERE message_id=?")
+          .prepare("DELETE FROM outbox WHERE message_id=?")
           .run(row.message_id);
       const safetyHeld = Number(
         this.#db
           .prepare(
-            `SELECT count(*) n FROM relay_outbox WHERE ${eligible} AND relay_outbox_gc_safe(message_id,expires_at)=0`,
+            `SELECT count(*) n FROM outbox WHERE ${eligible} AND outbox_gc_safe(message_id,expires_at)=0`,
           )
           .get(cutoff, cutoff, cutoff, now)!.n,
       );
       this.#db
         .prepare(
-          "UPDATE relay_outbox_maintenance_totals SET last_at=?,expired=expired+?,purged=purged+? WHERE id=1",
+          "UPDATE outbox_maintenance_totals SET last_at=?,expired=expired+?,purged=purged+? WHERE id=1",
         )
         .run(now, expired, rows.length);
       return { expired, purged: rows.length, safety_held: safetyHeld };

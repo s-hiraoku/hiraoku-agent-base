@@ -1,6 +1,6 @@
 # A2A SDK preview
 
-This is the P1 SDK foundation for the [replacement plan](../hab-product-spec.md). It is disabled by default. Importing these modules starts no listener and changes no Relay, Registry, MCP catalog, account, or production configuration.
+This is the P1 SDK foundation for the [replacement plan](../hab-product-spec.md). It is disabled by default. Importing these modules starts no listener and changes no host, Registry, MCP catalog, account, or production configuration.
 
 Run the proof with Node 26 and `npm ci`, then `npm run test:a2a`. The tests own temporary private databases, loopback ports, synthetic bearer tokens, and cleanup. They use the official A2A client and a real SQLite TaskService. The fixed worker result is a connectivity fixture, not evidence of a production agent completing work.
 
@@ -25,7 +25,7 @@ node node_modules/@a2a-js/sdk/dist/cli/a2a_db.js upgrade \
 
 `createA2aGateway({endpoint,card,store,authorize})` returns a Fetch handler. The host's `authorize(request)` must verify authentication and execution policy, then return `{subject,tasks}`. `subject` is a stable authenticated caller ID. `tasks` implements the existing `BridgeTasks` contract. The fixture composes the existing `ConnectivityTaskPort`, which verifies a separate Task principal. A message body never grants Task permissions. `createA2aNodeHandler(endpoint,gateway)` adapts the Fetch handler to an explicitly created Node HTTP server.
 
-The gateway scopes SDK storage by authenticated owner. TaskStore itself also supports tenant isolation, which the store tests check independently. The preview does not accept an untrusted tenant field or derive an execution principal from a Relay name. A production HAB integration must resolve immutable IDs and current group policy before returning an authorization.
+The gateway scopes SDK storage by authenticated owner. TaskStore itself also supports tenant isolation, which the store tests check independently. The preview does not accept an untrusted tenant field or derive an execution principal from a host name. A production HAB integration must resolve immutable IDs and current group policy before returning an authorization.
 
 ## Identity, recovery, and execution state
 
@@ -33,7 +33,7 @@ One caller and `messageId` map deterministically to one A2A Task ID and one engi
 
 Before submission, the SDK saves an intent containing the binding and request key. A lost engine response leaves submission uncertain. A repeated send or `GetTask` can resume that recorded intent with the same key. TaskService's existing idempotency constraint prevents duplicate work. Changing the engine binding fails rather than silently submitting to another engine.
 
-A queued engine Task maps to A2A `SUBMITTED`. Running maps to `WORKING`. Confirmed success with `execution_open=0` and the validated fixed result maps to `COMPLETED` with one result Artifact. A failure produces no success Artifact. Engine cancellation with execution still open maps to `INPUT_REQUIRED`, because it does not prove the worker stopped. Neither Relay acceptance nor recipient storage ACK participates in this preview or counts as execution completion.
+A queued engine Task maps to A2A `SUBMITTED`. Running maps to `WORKING`. Confirmed success with `execution_open=0` and the validated fixed result maps to `COMPLETED` with one result Artifact. A failure produces no success Artifact. Engine cancellation with execution still open maps to `INPUT_REQUIRED`, because it does not prove the worker stopped. Neither host acceptance nor recipient storage ACK participates in this preview or counts as execution completion.
 
 `GetTask` and `ListTasks` recheck the TaskPort before returning execution evidence. The proof checks owner isolation, rejected credentials, and revoked execution access. The SDK store tests also read the same Task and Artifact from a separate Node process after closing the original store.
 
@@ -41,7 +41,7 @@ A queued engine Task maps to A2A `SUBMITTED`. Running maps to `WORKING`. Confirm
 
 This preview supports one adapter instance per database. It has no multi-host writer coordination, storage retention job, or production capacity policy. List pages use the SDK's current persisted ordering; updates observed during pagination can change that ordering.
 
-The separate [HAB Relay preview](a2a-relay-preview.md) implements P2/P3 with Registry group policy, original Relay correlation, durable storage ACK, explicit TaskBridge acceptance and the result path. This document describes only the direct P1 TaskPort proof. Delivery-store integration, production hosting and the product GUI remain separate gates.
+The separate [HAB A2A host preview](a2a-host-preview.md) implements P2/P3 with Registry group policy, original delivery correlation, durable storage ACK, explicit TaskBridge acceptance and the result path. This document describes only the direct P1 TaskPort proof. Delivery-store integration, production hosting and the product GUI remain separate gates.
 
 ## Fixed dependencies
 

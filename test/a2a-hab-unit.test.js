@@ -8,13 +8,13 @@ import {
   RESPONSE,
 } from "./a2a-hab-unit-fixtures.js";
 import { createHabA2aGateway } from "../src/a2a/hab-http.ts";
-import { habRelayAgentCard } from "../src/a2a/hab-adapter.ts";
+import { habAgentCard } from "../src/a2a/hab-adapter.ts";
 
 const get = (id, patch = {}) => GetTaskRequest.fromJSON({ id, ...patch });
-test("HAB A2A retains one original Relay intent and delivery ACK cannot create execution evidence", async () => {
+test("HAB A2A retains one original delivery intent and delivery ACK cannot create execution evidence", async () => {
   const f = fixture();
   const first = await f.handler.sendMessage(request(), context());
-  const source = first.metadata.hab_relay.source;
+  const source = first.metadata.hab.source;
   assert.notEqual(first.id, first.contextId);
   assert.notEqual(source.thread_id, first.id);
   assert.equal(
@@ -40,7 +40,7 @@ test("HAB A2A retains one original Relay intent and delivery ACK cannot create e
   const again = await f.handler.sendMessage(request(), context());
   assert.equal(again.id, first.id);
   assert.equal(
-    JSON.stringify(again.metadata.hab_relay.source),
+    JSON.stringify(again.metadata.hab.source),
     JSON.stringify(source),
   );
   assert.equal(f.state.records.size, 1);
@@ -151,7 +151,7 @@ test("HAB A2A validates reply identity, reference, thread and schema before veri
     /correlation/,
   );
   assert.equal(f.state.verifyCalls, 0);
-  forged.message.thread_id = first.metadata.hab_relay.source.thread_id;
+  forged.message.thread_id = first.metadata.hab.source.thread_id;
   forged.message.body.parts[0].schema_id = "unrelated";
   await assert.rejects(
     () => f.handler.getTask(get(first.id), context()),
@@ -201,7 +201,7 @@ test("HAB A2A Get and List preserve full history, owner isolation, and perform n
 test("HAB A2A expired unknown delivery keeps original identity without creating execution", async () => {
   const f = fixture();
   const first = await f.handler.sendMessage(request(), context());
-  const source = first.metadata.hab_relay.source;
+  const source = first.metadata.hab.source;
   const now = Date.now;
   Date.now = () => now() + 3600001;
   try {
@@ -209,7 +209,7 @@ test("HAB A2A expired unknown delivery keeps original identity without creating 
     assert.equal(expired.status.state, TaskState.TASK_STATE_INPUT_REQUIRED);
     const replay = await f.handler.sendMessage(request(), context());
     assert.equal(
-      JSON.stringify(replay.metadata.hab_relay.source),
+      JSON.stringify(replay.metadata.hab.source),
       JSON.stringify(source),
     );
     assert.equal(f.state.enqueueCalls, 1);
@@ -236,13 +236,13 @@ test("a reply saved before the window but still unconfirmed cannot postpone fail
     TaskState.TASK_STATE_WORKING,
   );
   const deadline =
-    Date.parse(first.metadata.hab_relay.source.expires_at) +
+    Date.parse(first.metadata.hab.source.expires_at) +
     f.route.replyWindowMs;
   assert.ok(Date.parse(result.received_at) < deadline);
   t.mock.method(Date, "now", () => deadline);
   const failed = await f.handler.apply(first.id, context(), f.route);
   assert.equal(failed.status.state, TaskState.TASK_STATE_FAILED);
-  assert.equal(failed.metadata.hab_relay.failure, "result_window_expired");
+  assert.equal(failed.metadata.hab.failure, "result_window_expired");
   assert.deepEqual(failed.artifacts, []);
   result.receipt_confirmed = true;
   const later = await f.handler.apply(first.id, context(), f.route);
@@ -252,8 +252,8 @@ test("a reply saved before the window but still unconfirmed cannot postpone fail
     "ACK confirmation after failure cannot revive the Task",
   );
   assert.equal(
-    JSON.stringify(later.metadata.hab_relay.source),
-    JSON.stringify(first.metadata.hab_relay.source),
+    JSON.stringify(later.metadata.hab.source),
+    JSON.stringify(first.metadata.hab.source),
   );
   assert.equal(f.state.enqueueCalls, 1);
   assert.equal(f.state.flushCalls, 1);
@@ -282,12 +282,12 @@ test("HAB A2A flush uncertainty preserves one intent and Get never retries submi
   assert.equal(f.state.records.size, 1);
 });
 
-test("HAB gateway keeps Card private and denies unsupported input before Relay enqueue", async () => {
+test("HAB gateway keeps Card private and denies unsupported input before delivery enqueue", async () => {
   const f = fixture();
   const endpoint = "http://127.0.0.1:12345/a2a";
   const gateway = createHabA2aGateway({
     endpoint,
-    card: habRelayAgentCard(endpoint),
+    card: habAgentCard(endpoint),
     store: f.store,
     authorize: (req) =>
       req.headers.get("authorization") === "Bearer synthetic"
@@ -420,13 +420,13 @@ test("HAB gateway separates recipient routes in SDK storage for the same authent
   const secondEndpoint = "http://127.0.0.1:12346/a2a";
   const first = createHabA2aGateway({
     endpoint: firstEndpoint,
-    card: habRelayAgentCard(firstEndpoint),
+    card: habAgentCard(firstEndpoint),
     store: f.store,
     authorize: () => f.route,
   });
   const second = createHabA2aGateway({
     endpoint: secondEndpoint,
-    card: habRelayAgentCard(secondEndpoint),
+    card: habAgentCard(secondEndpoint),
     store: f.store,
     authorize: () => ({ ...f.route, recipientId: "recipient-c" }),
   });
@@ -500,15 +500,15 @@ test("HAB A2A supplies the exact source hint and still filters an unscoped reply
   const observed = await f.handler.getTask(get(first.id), context());
   assert.deepEqual(hints, [
     {
-      sender_id: first.metadata.hab_relay.sender_id,
-      message_id: first.metadata.hab_relay.source.message_id,
+      sender_id: first.metadata.hab.sender_id,
+      message_id: first.metadata.hab.source.message_id,
     },
   ]);
   assert.equal(f.state.verifyCalls, 1);
   assert.equal(observed.status.state, TaskState.TASK_STATE_SUBMITTED);
   // A hint is not the canonical correlation key, even if an implementation mutates it.
   f.route.replies = (source) => {
-    source.message_id = other.metadata.hab_relay.source.message_id;
+    source.message_id = other.metadata.hab.source.message_id;
     return f.state.entries;
   };
   await f.handler.getTask(get(first.id), context());

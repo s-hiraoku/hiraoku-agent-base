@@ -23,8 +23,8 @@ import type { HabMcpService } from "../hab/mcp.ts";
 import { HabHttpGateway } from "../hab/http.ts";
 import { validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
-import type { RelayHttpPolicy, RelayHttpVerifier } from "./mcp/http.ts";
-import { createRelayNodeHandler } from "./mcp/http-node.ts";
+import type { McpHttpPolicy, McpHttpVerifier } from "./mcp/http.ts";
+import { createMcpNodeHandler } from "./mcp/http-node.ts";
 import type { AuditSink } from "../security.ts";
 import {
   HOST_A2A_ISSUER,
@@ -43,7 +43,7 @@ export interface HostServerOptions {
   limits: ContractLimits;
   registry: RegistryOptions;
   http: Omit<
-    RelayHttpPolicy,
+    McpHttpPolicy,
     "resource_url" | "allowed_origins" | "oauth_issuer"
   >;
   /** Separate loopback ingress behind approved TLS; same owner, Registry and queue. */
@@ -53,11 +53,11 @@ export interface HostServerOptions {
     issuer: string;
     allowed_origins: readonly string[];
     authority: RegistryAuthority;
-    verify: RelayHttpVerifier;
+    verify: McpHttpVerifier;
   };
   /** Independently verified individual mapping; no model-supplied agent name. */
   authority: RegistryAuthority;
-  verify: RelayHttpVerifier;
+  verify: McpHttpVerifier;
   audit: AuditSink;
   /** The delivery backend. The host wires it and never chooses between backends. */
   delivery: DeliveryFactory;
@@ -88,7 +88,7 @@ function privatePath(path: string, directory: boolean) {
     (s.mode & 0o077) !== 0 ||
     (!directory && s.nlink !== 1)
   )
-    throw Error("local_relay_private_path_required");
+    throw Error("host_private_path_required");
 }
 function prepareFile(path: string) {
   try {
@@ -108,7 +108,7 @@ function prepareFile(path: string) {
 }
 
 /**
- * Owns only dedicated registry/Relay files and the inbound loopback listener.
+ * Owns only dedicated registry/delivery files and the inbound loopback listener.
  * No credentials, enrollment, outbound IO, model, background cycles or launchd.
  * A trusted operator composition must separately supply verified auth and policy.
  */
@@ -126,7 +126,7 @@ export async function startHostServer(options: HostServerOptions) {
     (options.delivery.preflight !== undefined &&
       typeof options.delivery.preflight !== "function")
   )
-    throw Error("invalid_local_relay_options");
+    throw Error("invalid_host_options");
   const ingress = options.ingress;
   if (
     ingress &&
@@ -136,7 +136,7 @@ export async function startHostServer(options: HostServerOptions) {
       typeof ingress.authority?.individual !== "function" ||
       typeof ingress.verify !== "function")
   )
-    throw Error("invalid_local_relay_ingress");
+    throw Error("invalid_host_ingress");
   const a2aConfig = options.a2a;
   if (
     a2aConfig &&
@@ -145,20 +145,20 @@ export async function startHostServer(options: HostServerOptions) {
       a2aConfig.port === options.port ||
       a2aConfig.port === ingress?.port)
   )
-    throw Error("invalid_local_relay_a2a");
+    throw Error("invalid_host_a2a");
   privatePath(options.directory, true);
   validateLimits(options.limits);
   const preflight: unknown = options.delivery.preflight?.(options.directory);
   if (preflight !== undefined) {
     if (preflight && typeof preflight === "object" && "then" in preflight)
       void Promise.resolve(preflight).catch(() => {});
-    throw Error("invalid_local_relay_options");
+    throw Error("invalid_host_options");
   }
   const registryOptions = options.registry;
   let owner: SQLiteHostOwner | undefined,
     registry: SQLiteHabRegistry | undefined,
-    handler: ReturnType<typeof createRelayNodeHandler> | undefined,
-    ingressHandler: ReturnType<typeof createRelayNodeHandler> | undefined,
+    handler: ReturnType<typeof createMcpNodeHandler> | undefined,
+    ingressHandler: ReturnType<typeof createMcpNodeHandler> | undefined,
     ingressServer: Server | undefined,
     serviceClose: (() => Promise<void>) | undefined,
     a2a: Awaited<ReturnType<typeof startHostA2a>> | undefined,
@@ -250,7 +250,7 @@ export async function startHostServer(options: HostServerOptions) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
     owner = new SQLiteHostOwner(ownerPath, {
-      agent_id: "local-relay-host",
+      agent_id: "hab-host",
       fingerprint_key: registryOptions.fingerprint_key,
     });
     owner.migrate();
@@ -265,7 +265,7 @@ export async function startHostServer(options: HostServerOptions) {
           provisioning &&
           context === provisioner &&
           provisioningOperations.has(operation)
-            ? { actor_id: "local-relay-host" }
+            ? { actor_id: "hab-host" }
             : undefined,
         hostIdentity: (context) => {
           ownership.check();
@@ -302,14 +302,14 @@ export async function startHostServer(options: HostServerOptions) {
     }
     const privateFile = (name: string) => {
       if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(name))
-        throw Error("invalid_local_relay_options");
+        throw Error("invalid_host_options");
       const path = join(options.directory, name);
       prepareFile(path);
       return path;
     };
     const assertOwner = () => {
       ownership.check();
-      if (stopping) throw Error("local_relay_stopping");
+      if (stopping) throw Error("host_stopping");
     };
     const delivery = await options.delivery({
       registry,
@@ -359,7 +359,7 @@ export async function startHostServer(options: HostServerOptions) {
       typeof address === "string" ||
       address.address !== "127.0.0.1"
     )
-      throw Error("local_relay_listener_rejected");
+      throw Error("host_listener_rejected");
     const gateway = new HabHttpGateway(
       service,
       policy(address.port),
@@ -371,10 +371,10 @@ export async function startHostServer(options: HostServerOptions) {
         return stopping ? null : context;
       },
     );
-    handler = createRelayNodeHandler(gateway);
+    handler = createMcpNodeHandler(gateway);
     let ingressPort: number | undefined;
     if (ingress && ingressGateway) {
-      ingressHandler = createRelayNodeHandler(ingressGateway);
+      ingressHandler = createMcpNodeHandler(ingressGateway);
       ingressServer = makeServer(() => ingressHandler);
       ingressServer.maxConnections = options.http.max_active_requests;
       ingressServer.listen(ingress.port, "127.0.0.1");
@@ -385,7 +385,7 @@ export async function startHostServer(options: HostServerOptions) {
         typeof remoteAddress === "string" ||
         remoteAddress.address !== "127.0.0.1"
       )
-        throw Error("local_relay_ingress_rejected");
+        throw Error("host_ingress_rejected");
       ingressPort = remoteAddress.port;
     }
     if (a2aConfig && identity)

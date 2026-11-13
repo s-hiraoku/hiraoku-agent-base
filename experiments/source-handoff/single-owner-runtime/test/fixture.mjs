@@ -31,25 +31,25 @@ export function fixture(mode='normal',directory){
  const port={version:1,resource_url:'https://synthetic.invalid/mcp',get activeRequests(){return state.active},async callTool(name,args,control){
   state.active++;try{
    control.check();assert.equal(args.expected_agent_id,m.recipient_id);assert.equal(args.as_address,'synthetic@demo.hab');let value;
-   if(name==='relay_poll'){state.polls++;if(state.failPoll)throw Error('synthetic_inbound_outage');value={delivery:state.received?null:{message:{...m,sender_id:source.sender_id},generation:1,lease_token:'x'.repeat(43),lease_until:new Date(Date.now()+60000).toISOString()}};}
-   else if(name==='relay_ack'){
+   if(name==='hab_poll'){state.polls++;if(state.failPoll)throw Error('synthetic_inbound_outage');value={delivery:state.received?null:{message:{...m,sender_id:source.sender_id},generation:1,lease_token:'x'.repeat(43),lease_until:new Date(Date.now()+60000).toISOString()}};}
+   else if(name==='hab_ack'){
     // Independent committed SQLite reader observes full saved body AND original request BEFORE ACK.
     const db=new DatabaseSync(paths.inbox,{readOnly:true});try{
-      const row=db.prepare('SELECT * FROM relay_inbox WHERE message_id=?').get(m.message_id);
+      const row=db.prepare('SELECT * FROM inbox WHERE message_id=?').get(m.message_id);
       assert.equal(JSON.parse(row.body).body.parts[0].text,m.body.parts[0].text);
-      const ack=db.prepare('SELECT request FROM relay_receiver_acks WHERE request_id=?').get(args.request_id);
+      const ack=db.prepare('SELECT request FROM receiver_acks WHERE request_id=?').get(args.request_id);
       assert.deepEqual(JSON.parse(ack.request),Object.fromEntries(Object.entries(args).filter(([k])=>!['as_address','expected_agent_id'].includes(k))));
     }finally{db.close();}
     log({savedBeforeAck:true});if(state.failAck)throw Error('synthetic_lost_ack');
     state.received=true;state.acks++;value={recipient_id:m.recipient_id,sender_id:source.sender_id,message_id:m.message_id,request_id:args.request_id,receipt_id:'synthetic-inbound-ack',acked_at:new Date().toISOString(),state:'acked'};
-   }else if(name==='relay_submit'){
+   }else if(name==='hab_submit'){
     state.submits++;state.replyId=args.message_id;
     const message=Object.fromEntries(Object.entries(args).filter(([k])=>!['as_address','expected_agent_id'].includes(k)));
     peer.save({message:{...message,sender_id:m.recipient_id},generation:1,lease_token:'y'.repeat(43),lease_until:new Date(Date.now()+60000).toISOString()});
     const ack=peer.claimAck();peer.withEntry(m.recipient_id,args.message_id,e=>assert.equal(e.message.body.parts[0].text,'SYNTHETIC_RECIPIENT_ANSWER'));
     peer.confirmAck(ack,{recipient_id:'synthetic-peer',sender_id:m.recipient_id,message_id:args.message_id,request_id:ack.request_id,receipt_id:'synthetic-peer-ack',acked_at:new Date().toISOString(),state:'acked'});
     receipt={sender_id:m.recipient_id,message_id:args.message_id,recipient_id:'synthetic-peer',receipt_id:'synthetic-outbound-receipt',accepted_at:new Date().toISOString(),expires_at:args.expires_at,state:'acked'};value=receipt;
-   }else if(name==='relay_status'){state.statuses++;assert.equal(args.message_id,state.replyId);value=receipt;}
+   }else if(name==='hab_status'){state.statuses++;assert.equal(args.message_id,state.replyId);value=receipt;}
    else throw Error('forbidden');control.check();return JSON.stringify({content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value});
   }finally{state.active--;}
  }};

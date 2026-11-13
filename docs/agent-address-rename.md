@@ -19,7 +19,7 @@ The places that hold the address as text are handled as follows.
 
 | Holder of the old address | Behaviour after a rename |
 | --- | --- |
-| Another agent's address book or saved contact | During the grace period `relay_resolve(old)` returns the same `recipient_id`. The v1 output still echoes the requested address, so existing clients keep working; the current name is read with `hab_discover`. After the grace period the old name is refused like any unknown name (`forbidden`). |
+| Another agent's address book or saved contact | During the grace period `hab_resolve(old)` returns the same `recipient_id`. The v1 output still echoes the requested address, so existing clients keep working; the current name is read with `hab_discover`. After the grace period the old name is refused like any unknown name (`forbidden`). |
 | The renamed agent's own `as_address` (frozen in its MCP client) | During the grace period the old name is accepted as the caller's own name only when the authenticated binding and `expected_agent_id`, if given, select the same `agent_id`. After the grace period it fails closed. Refresh the host's stored address before then. |
 | Host config: `a2a.identity`, `a2a.recipient` | Resolved through the same rule, so the A2A entry keeps working during the grace period: the identity stays the same agent and the recipient resolves to the same ID. The rename procedure must update the config in the same maintenance window. A start after the grace period with an old identity is refused with `a2a_identity_renamed`; an old recipient is refused like any unknown name. |
 | Host attestations | Become `unknown/stale_address_attestation` until refreshed. They never become ownership proof for the old name. |
@@ -34,7 +34,7 @@ Rules:
 - The grace period is a registry option, `rename_grace_days` (0–365, default 30),
   measured in the registry clock from the latest rename away from that name. Each
   previous name has its own period; 0 refuses a previous name at once. Each use of a
-  previous name (a `relay_resolve`, or the agent's own frozen `as_address`) is counted
+  previous name (a `hab_resolve`, or the agent's own frozen `as_address`) is counted
   per caller ID in `hab_previous_name_uses`, with no message content, so the operator
   can see which callers still use it. The table holds at most `max_audit_records`
   rows; when it is full, existing counts keep growing and new callers are not listed.
@@ -53,7 +53,7 @@ Rules:
 
 ## Schema and permissions
 
-`registry.agent_rename: true` explicitly upgrades registry v2 to v3 during Relay
+`registry.agent_rename: true` explicitly upgrades registry v2 to v3 during host
 initialization. The v2 group schema is the base; every registry has it, because
 every connection authenticates through a group. Without this flag the v2 schema and
 immutable-address behavior are unchanged.

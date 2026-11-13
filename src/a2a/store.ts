@@ -89,7 +89,7 @@ export function openA2aTaskStore(path: string) {
         throw error;
       }
     }
-    const source = "json_extract(metadata,'$.hab_relay.source.message_id')";
+    const source = "json_extract(metadata,'$.hab.source.message_id')";
     sqlite.exec(
       `CREATE INDEX IF NOT EXISTS hab_a2a_tasks_source ON hab_a2a_tasks(${source})`,
     );
@@ -97,17 +97,17 @@ export function openA2aTaskStore(path: string) {
       `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE ${source}=?`,
     );
     const overdue = sqlite.prepare(
-      `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab_relay.source.expires_at')<=? AND (tenant,owner,id)>(?,?,?) ORDER BY tenant,owner,id LIMIT ?`,
+      `SELECT tenant,owner,id FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab.source.expires_at')<=? AND (tenant,owner,id)>(?,?,?) ORDER BY tenant,owner,id LIMIT ?`,
     );
     const nextExpiry = sqlite.prepare(
-      `SELECT min(json_extract(metadata,'$.hab_relay.source.expires_at')) at FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab_relay.source.expires_at')>?`,
+      `SELECT min(json_extract(metadata,'$.hab.source.expires_at')) at FROM hab_a2a_tasks WHERE status_state NOT IN ('TASK_STATE_COMPLETED','TASK_STATE_FAILED','TASK_STATE_CANCELED','TASK_STATE_REJECTED') AND json_extract(metadata,'$.hab.source.expires_at')>?`,
     );
     const db = new Kysely({
       dialect: new SqliteDialect({ database: kyselyDatabase(sqlite) }),
     });
     return {
       store: new DatabaseTaskStore(db, { tableName: "hab_a2a_tasks" }),
-      /** The stored Task whose relay request has this message ID, without a caller scope. */
+      /** The stored Task whose delivery request has this message ID, without a caller scope. */
       findBySource: (messageId: string) => taskKey(bySource.get(messageId)),
       /** Bounded stable-key page; a failed apply need not block later overdue Tasks. */
       overdue: (expiredBy: string, limit: number, after?: StoredTaskKey) =>
@@ -120,7 +120,7 @@ export function openA2aTaskStore(path: string) {
             limit,
           )
           .map((row) => taskKey(row) as StoredTaskKey),
-      /** The earliest relay request expiry after `after` among non-terminal Tasks. */
+      /** The earliest delivery request expiry after `after` among non-terminal Tasks. */
       nextExpiry: (after: string) =>
         (nextExpiry.get(after) as unknown as { at: string | null }).at ??
         undefined,

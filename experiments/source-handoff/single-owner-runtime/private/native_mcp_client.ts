@@ -8,14 +8,14 @@ import { isPublicToolError } from '../../../../src/messaging/tool-errors.ts';
 
 import type { ManagedOperation } from '../../../../src/adapter-host/cycle.ts';
 export type NativeCallControl = ManagedOperation;
-export type NativeTool = 'relay_poll' | 'relay_ack' | 'relay_submit' | 'relay_status';
-export interface NativeRelayPort {
+export type NativeTool = 'hab_poll' | 'hab_ack' | 'hab_submit' | 'hab_status';
+export interface NativeHabPort {
   readonly version: 1;
   readonly resource_url: string;
   readonly activeRequests: number;
   callTool(name: NativeTool, args: Readonly<Record<string, unknown>>, control: NativeCallControl): Promise<string>;
 }
-const failure = () => new MessagingError('relay_transport_failed');
+const failure = () => new MessagingError('transport_failed');
 function bounded(raw: string, max: number, depthLimit: number, nodeLimit: number): unknown {
   if (typeof raw !== 'string' || Buffer.byteLength(raw) > max) throw failure();
   const value: unknown = JSON.parse(raw), pending = [{value, depth: 1}]; let nodes = 0;
@@ -36,11 +36,11 @@ function same(a: unknown, b: unknown): boolean {
   const keys = Object.keys(l); return keys.length === Object.keys(r).length && keys.every(k => Object.hasOwn(r,k) && same(l[k],r[k]));
 }
 export class NativeHabMcpClient extends HabMcpClient {
-  readonly #port: NativeRelayPort;
+  readonly #port: NativeHabPort;
   readonly #options: HabMcpClientOptions;
   readonly #control: NativeCallControl;
   #active = 0;
-  constructor(port: NativeRelayPort, options: Omit<HabMcpClientOptions,'authorization'|'fetch'> & {as_address: string}, control: NativeCallControl) {
+  constructor(port: NativeHabPort, options: Omit<HabMcpClientOptions,'authorization'|'fetch'> & {as_address: string}, control: NativeCallControl) {
     super(options);
     if (port?.version !== 1 || port.resource_url !== options.policy.resource_url || typeof port.callTool !== 'function' ||
       port.activeRequests !== 0 || options.policy.max_active_requests !== 1 || !options.as_address ||
@@ -56,8 +56,8 @@ export class NativeHabMcpClient extends HabMcpClient {
     return Math.max(value, this.#active);
   }
   protected override async requestTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    if (!['relay_poll','relay_ack','relay_submit','relay_status'].includes(name)) throw new MessagingError('forbidden');
-    if (this.activeRequests) throw new MessagingError('relay_client_busy');
+    if (!['hab_poll','hab_ack','hab_submit','hab_status'].includes(name)) throw new MessagingError('forbidden');
+    if (this.activeRequests) throw new MessagingError('client_busy');
     const policy = this.#options.policy, controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, this.#control.signal]);
     const check = () => {
