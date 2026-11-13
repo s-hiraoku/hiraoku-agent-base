@@ -6,7 +6,7 @@ Scope/history resolution does not approve deployment. A later date or implementa
 
 Do fixed no-tools/Hermes Runs/one-task constraints and the older Task topology apply to every standard connection?
 
-Classification: scope/history/explicit-authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: scope/history/explicit-authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 No. Architecture/workflow explicitly own optional limited Task path, and ADR015/common-MCP explicitly retain Tasks optional and recipient existing authority; ADR-016 revises the standard composition and keeps that division. Diagram remains dated historical Task integration rather than standard communication target.
 
@@ -16,7 +16,7 @@ Sources: [docs/architecture.md:1](../../docs/architecture.md#L1-L7), [docs/histo
 
 Relay specification allows outer Product adapter/API handoff, while common-MCP prohibits dedicated product adapters. Is every product API forbidden?
 
-Classification: scope/authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: scope/authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 No. Reusable Relay permits outer capability integration without reverse dependency; standard messaging cannot require HAB product execution/approval runner. Verify native MCP/formal display/wake binding and leave absent capabilities unverified; independent explicitly configured execution integration remains scoped.
 
@@ -26,7 +26,7 @@ Sources: [docs/hab-relay-spec.md:81](https://github.com/s-hiraoku/hiraoku-agent-
 
 ADR014/group/Relay tables say persistent token updates unimplemented, while README and persistent-auth describe implementation. Which proves live refresh?
 
-Classification: history/implementation-status. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: history/implementation-status. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 None proves live refresh. Older table is historical implementation snapshot; persistent-auth documents explicit v2 implemented contract and synthetic/loopback tests, with real Auth0/host refresh still unverified. Preserve version/mode and evidence scope rather than treating all common auth as 15-minute one-shot.
 
@@ -36,7 +36,7 @@ Sources: [docs/hab-decisions.md:22](https://github.com/s-hiraoku/hiraoku-agent-b
 
 Product0.1 labels A2A/JetStream proposal/not current; README later exposes actual P7 lab and optional code. Is transport formally production adopted?
 
-Classification: history/adoption-versus-implementation. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: history/adoption-versus-implementation. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). Superseded for A2A: the owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability (HAB-C-F10). A2A production deployment remains undecided. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
@@ -46,7 +46,7 @@ Sources: [docs/hab-product-spec.md:23](../../docs/hab-product-spec.md#L23-L30), 
 
 Relay G0/G1/G2/G3 sequence says fixed Task before real agents. Must a normal native MCP conversation implement Task first?
 
-Classification: scope/explicit-authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: scope/explicit-authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 Interpret G2 as optional execution-path gate, not ordinary communication prerequisite: Relay says ordinary question/answer Task unnecessary and ADR015 explicitly denies making optional Task mandatory. Native messaging capabilities and durable receipt still need G0/live evidence.
 
@@ -56,7 +56,7 @@ Sources: [docs/hab-relay-spec.md:31](https://github.com/s-hiraoku/hiraoku-agent-
 
 Old generic design interpreted working as recipient processing while implementation has pre-runtime claim. Is a current contradiction left?
 
-Classification: history/state-meaning. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: history/state-meaning. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 Current fixed source explicitly resolves working to coordinator claim before runtime acceptance. Preserve this meaning in API/UI/evidence and do not treat working as model start/approval/completion.
 
@@ -66,7 +66,7 @@ Sources: [docs/history/design-boundary-alignment.md:15](https://github.com/s-hir
 
 Does reading saved body with receipt_confirmed=false bypass ACK-confirmed reply/task-accept preconditions?
 
-Classification: scope/authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F18, HAB-F21.
+Classification: scope/authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F06, HAB-F08, HAB-F12, HAB-F21.
 
 No. Pure inbox_read preserves false receipt and does no action/ACK update; existing reply/task acceptance still independently require confirmed ACK and current authorization. Read authority is separate from metadata/receive and actions.
 
@@ -136,7 +136,7 @@ Sources: [docs/operations/local-relay-host.md:65](../../docs/operations/local-re
 
 Do early incremental pending statements mean attachment outbox/receiver/writer are unimplemented?
 
-Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
+Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16.
 
 No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in. The cumulative src/relay/README.md was itself deleted when the durable sender and receiver moved to src/agent-sdk; its successor README describes only the current agent SDK and has no stage claims, so the question is moot.
 
@@ -146,7 +146,7 @@ Sources: [src/agent-sdk/README.md:3](../../src/agent-sdk/README.md#L3-L3), [docs
 
 Does fair polling or writer admission promise global recipient execution fairness?
 
-Classification: scope. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
+Classification: scope. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16.
 
 No. fair_poll guarantees bounded candidate rotation for a stable eligible set; WriterAdmission is shared single-process volatile rate/queue. The attachment receiver's single checkpoint slot was deleted with attachments. Bytes/time/processing/SLO/fleet fairness remain excluded.
 
@@ -156,7 +156,7 @@ Sources: [docs/delivery/relay-fair-poll.md:15](https://github.com/s-hiraoku/hira
 
 Does optional SQLite snapshot fulfill JetStream whole-deployment restore gate?
 
-Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
+Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16.
 
 No, and the question is now moot: SQLiteSnapshotBundle was deleted. It never captured Registry/authority/Task/config/keys or broker data. JetStream operations require broker stream/consumer, admission journal, authority/config and recipient state quiesced and reconciled. P5/P6 remaining proof statements are package-scope/time-bounded; later P7 evidence must be reviewed separately by coordinator. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
@@ -166,7 +166,7 @@ Sources: [docs/delivery-store.md:3](../../docs/delivery-store.md#L3-L3), [docs/h
 
 Which actual host policies, identity bindings, backup/IO quiescence and fault model are approved for production?
 
-Classification: unresolved. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
+Classification: unresolved. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16.
 
 Open: actual production host/policy/fault assumptions require an explicit concrete decision; local verification cannot invent them.
 
@@ -176,7 +176,7 @@ Sources: [docs/history/hab-relay-integration.md:69](../../docs/history/hab-relay
 
 Are NATS issues listed as open on 2026-11-01 current proof of a fixed/unfixed 2.15.2 fault?
 
-Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16, HAB-D17.
+Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16.
 
 They are dated risk references; this reading records external metadata access but does not revalidate issue status or fixes. No safety conclusion is derived. Platform-specific fault testing stays unverified. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
@@ -186,7 +186,7 @@ Sources: [docs/delivery-store.md:3](../../docs/delivery-store.md#L3-L3), [docs/h
 
 Does optional Runs driver mean standard Hermes connection must execute models through HAB?
 
-Classification: resolved-subsystem-scope. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E12, HAB-E17, HAB-E19.
+Classification: resolved-subsystem-scope. Requirements: HAB-E01, HAB-E17.
 
 No. hermes-connection1–5 and generic profile1–3 expressly choose native common MCP for standard messaging. Runs/inventory adapters remain optional explicit integrations; no default dependency can be inferred.
 
@@ -196,7 +196,7 @@ Sources: [docs/history/hermes-connection.md:1](https://github.com/s-hiraoku/hira
 
 Earlier successful fixed pilot conflicts with newer inventory readiness still blocked?
 
-Classification: resolved-historical-scope. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E12, HAB-E17, HAB-E19.
+Classification: resolved-historical-scope. Requirements: HAB-E01, HAB-E17.
 
 Distinct request/runtime/import/key contracts. Earlier trial records finite connectivity only; current inventory/no-site and native acceptance gates remain separate. Do not erase earlier evidence or reuse it as current approval.
 
@@ -206,7 +206,7 @@ Sources: [docs/history/fixed-pilot.md:3](https://github.com/s-hiraoku/hiraoku-ag
 
 MVP table says OAuthResource only exact /mcp and wiring unfinished, while same page later reports selected HTTPS path configuration?
 
-Classification: historical-implementation-status. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E12, HAB-E17, HAB-E19.
+Classification: historical-implementation-status. Requirements: HAB-E01, HAB-E17.
 
 Treat earlier table/diagnostic proposal as its earlier fixed baseline and later explicit fixed-text increment45–53 as source-backed implementation scope. Neither proves actual live OAuth/native compatibility. Avoid absolute current /mcp-only requirement.
 
@@ -216,7 +216,7 @@ Sources: [docs/history/mvp-acceptance.md:12](https://github.com/s-hiraoku/hiraok
 
 Does working or waiting_approval prove remote model execution or recipient owner approval?
 
-Classification: resolved-state-semantics. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E12, HAB-E17, HAB-E19.
+Classification: resolved-state-semantics. Requirements: HAB-E01, HAB-E17.
 
 Current assigned generic application/profile/NATS docs consistently define coordinator claim and unknown reconciliation/cancellation; inspected GenericTextJobs projection agrees. Separate proposed recipient-owner approval is not implemented and must not overwrite this state meaning.
 
@@ -226,7 +226,7 @@ Sources: [docs/history/generic-job-application.md:21](https://github.com/s-hirao
 
 Does local-MVP1:1 auth establish Bot-exclusive identity in current shared groups?
 
-Classification: resolved-version-scope. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E17, HAB-E19.
+Classification: resolved-version-scope. Requirements: HAB-E01, HAB-E17.
 
 No. local-MVP 99–108 says each MVP address connects as the only member of its own group, while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.
 
@@ -236,7 +236,7 @@ Sources: [docs/local-mvp.md:95](../../docs/local-mvp.md#L95-L104).
 
 Can EPERM be reclassified as immutable code evidence or switch to another identity automatically?
 
-Classification: proposed-architecture-not-authorized. Requirements: HAB-E01, HAB-E03, HAB-E04, HAB-E12, HAB-E17, HAB-E19.
+Classification: proposed-architecture-not-authorized. Requirements: HAB-E01, HAB-E17.
 
 No. Proposed OS read-only image/dedicated identity needs separately reviewed TS/Python identity, import/native closure and credential handoff contract. Current EPERM remains inconclusive and blocked.
 
@@ -246,7 +246,7 @@ Sources: [docs/history/inventory-preparation.md:43](https://github.com/s-hiraoku
 
 Early lab records unimplemented A2A/NATS skips, later P7 requires zero skips. Which is current?
 
-Classification: historical-versus-current profile. Requirements: HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: historical-versus-current profile. Requirements: HAB-V09, HAB-V10.
 
 Retain old baseline as historical evidence. Current composite P7 and successor catalogs are authoritative for mandatory groups; no old skip becomes a pass. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
@@ -256,7 +256,7 @@ Sources: [docs/history/testing/delivery-lab.md:1](../../docs/history/testing/del
 
 Older reports say workflow inactive/publication held, current publication guide says active CI.
 
-Classification: historical publication and hosted-CI scope. Requirements: HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: historical publication and hosted-CI scope. Requirements: HAB-V09, HAB-V10.
 
 The older statements describe fixed local runs. The active workflow and actual current Actions result establish current CI, not the inert example or historical report.
 
@@ -266,7 +266,7 @@ Sources: [docs/history/testing/p7-independent-results.md:1](../../docs/history/t
 
 F05 documentation describes actual SIGKILL while restart recipe says no kill-9 verification.
 
-Classification: different fault injection boundary. Requirements: HAB-V06, HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: different fault injection boundary. Requirements: HAB-V09, HAB-V10.
 
 F05 actually spawns/kills an isolated receiver child after save at an injected service-port seam. test:hab-integration only closes/reopens in process; verify-hab marked stop is graceful. These prove different scopes; none proves power-loss/physical failure.
 
@@ -276,7 +276,7 @@ Sources: [docs/history/testing/delivery-lab.md:58](../../docs/history/testing/de
 
 Does raw relay_poll plus relay_ack establish durable receiving?
 
-Classification: wire-versus-recipient-storage evidence. Requirements: HAB-V06, HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: wire-versus-recipient-storage evidence. Requirements: HAB-V09, HAB-V10.
 
 No. Corrected wire recipe explicitly does not save receiver state; only independent pre-network-ACK SQLite/body/request evidence supports durable receiver claims.
 
@@ -286,7 +286,7 @@ Sources: [.claude/skills/verify-hab/features/receive-ack.md:22](https://github.c
 
 P7 guides still name the original 1498 full-root cases and old group set, but the current successor adds the broker-startup group and implementation adds tests. Which numeric counts apply to this exact candidate?
 
-Classification: stale operational count within historical reference guide. Requirements: HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: stale operational count within historical reference guide. Requirements: HAB-V09, HAB-V10.
 
 The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate. PR163 stacked follow-up: the 25 unchanged source-launch cases bring this branch to 1371 expected full-root tests. Its original hosted PR report passed all 1371 but failed the inherited 1338 catalog. The corrected owner-activation source and bounded recipient fixture are inherited without changing journal semantics; exact-count and cleanup gates remain strict. The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. Integration of #161/#162/#163 with managed transport (2026-11-11): expected root inventory 1424 (1338 + 33 + 38 + 15), an inventory update, not an execution-result claim. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
@@ -296,7 +296,7 @@ Sources: [docs/history/testing/p7-lab.md:12](../../docs/history/testing/p7-lab.m
 
 Can native A2A acceptance or the shared JetStream D01 stand in for arbitrary six-direction backend behavior?
 
-Classification: generic compatibility-versus-native protocol scope. Requirements: HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: generic compatibility-versus-native protocol scope. Requirements: HAB-V09, HAB-V10.
 
 No for native A2A: it has a fixed SDK route with no generic poll/ACK API, and native relationships do not verify generic requirements. The hybrid D01 is gone: both shared backends now run D01 to D08 through JetStream, so D01 covers six directed synthetic round trips on JetStream only. That is still a synthetic three-agent contract, not arbitrary product traffic. Keep both scopes visible. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
@@ -306,7 +306,7 @@ Sources: [docs/history/testing/a2a-native-acceptance.md:43](../../docs/history/t
 
 Do diagram manifests and their rendering implementation create additional product topology requirements?
 
-Classification: documentation-integrity artifact versus product authority. Requirements: HAB-V06, HAB-V07, HAB-V09, HAB-V10, HAB-V11, HAB-V12, HAB-V14.
+Classification: documentation-integrity artifact versus product authority. Requirements: HAB-V09, HAB-V10.
 
 Manifest hashes verify correspondence of two rendered images to Markdown Mermaid source, not running topology. Derive principles from the authoritative Markdown current/target scope; keep binary image access separate.
 
@@ -326,7 +326,7 @@ Sources: [docs/hab-product-spec.md:28](../../docs/hab-product-spec.md#L28-L28), 
 
 docs/history/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?
 
-Classification: historical. Requirements: HAB-E03, HAB-E11, HAB-E17.
+Classification: historical. Requirements: HAB-E11, HAB-E17.
 
 No. The Relay removal deleted src/generic-nats, packages/relay-nats/src/text-port.ts, their tests, scripts/prove-generic-nats.mjs, the proof:generic-nats script and the P7 generic-nats group. The port had no production caller, its transport used the JetStream backend's own authorization callback instead of the Registry, and its production auth and startup were never enabled. The dispatch document now opens with a note that it is a historical record of removed code, and the async-text-v1 profile links it as that record. It stays context. HAB-E03, HAB-E11 and HAB-E17 no longer cite it and keep their TaskBridge, reply-journal and proof-label sources.
 
@@ -336,7 +336,7 @@ Sources: [docs/history/generic-nats-dispatch.md:3](../../docs/history/generic-na
 
 The bundle said the A2A gateway is not wired into the host, pending an owner decision, and that A2A COMPLETED needs a correlated durable result plus independently verified closed engine evidence. Since 4d34aa1 the host wires the gateway with a host-owned identity, and host-routed Tasks become COMPLETED from the configured recipient's durable execution_result reply with no engine evidence. Does the host route weaken the evidence rule?
 
-Classification: explicit-authority. Requirements: HAB-E02, HAB-V12, HAB-E20, HAB-A21, HAB-D20, HAB-F26.
+Classification: explicit-authority. Requirements: HAB-E02, HAB-E20, HAB-A21, HAB-D20, HAB-F26.
 
 No, the two routes carry different, labelled claims. The owner decided on 2026-11-06 (ADR-016, decision item 5) to wire the gateway into the host with a host-owned A2A identity, off by default, and recorded that its result is the recipient's durable reply report (`attestation: "recipient_reply"`), not an independent verification of the recipient's engine. The not-wired text is replaced. The preview composition with HabExecutionEvidence is unchanged and keeps its rule: HAB-E02 and HAB-V12 keep their statements and their scopes now name that composition. HAB-E20 states the reply-attested semantics and the label; HAB-A21 states the identity, per-caller authorization and Task scoping that keep the host identity from acting as a confused deputy; HAB-D20 states the durability, owner-only send and save-then-ACK receiver properties. test/a2a-host.test.js runs in js-root and covers them, including the attestation label, provisioning idempotence, the refused impostor and reserved address, the 401/403 refusals, the cross-owner GetTask, the quarantined forged reply, the named-intent claim and restart completion. HAB-F26 stays proposed: the entry is opt-in and the product spec still lists formal A2A adoption as undecided.
 

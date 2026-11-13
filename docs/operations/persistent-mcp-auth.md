@@ -50,7 +50,7 @@ Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクラ
 30日以上使わなかったhostはRT idle期限により次の利用時に再loginが必要です。
 365日/30日は未承認の提案であり、issuerのプランやhostの能力によって実効性も確認します。
 
-操作者は`relay:admin status`の参加終了を確認し、期限前に人間の承認を得てprivate設定の
+操作者は`hab:admin status`の参加終了を確認し、期限前に人間の承認を得てprivate設定の
 `approved_until`を新しい終了日時へ更新します。権限・主体が同じ有効参加の更新なら、
 `approved_at / connection_id`を維持でき、アドレスやbindingを作り直しません。
 新しい承認開始日時を設定した場合、それより前の`iat`を持つATは拒否するため、
@@ -66,11 +66,11 @@ issuerのRT family絶対期限は通常の回転で延長されないため、�
 
 ## 登録・状態確認・明示的な失効
 
-操作者が検証した主体を参加descriptorへ設定し、既存`relay:admin connect`で承認した
+操作者が検証した主体を参加descriptorへ設定し、既存`hab:admin connect`で承認した
 アドレスへbindingします。JWT更新ごとにアドレス・connection ID・bindingを作り直しません。
 同じ認証を共有するBotはグループ内の信頼境界を共有し、グループ外の名義・受信・ACKは拒否します。
 
-`relay:admin status`はv2で`participation`の開始/終了/状態/残秒と
+`hab:admin status`はv2で`participation`の開始/終了/状態/残秒と
 `max_access_token_lifetime_seconds`を分けて表示します。ATを読まない管理CLIは、
 実ATの期限やrefreshの成功を知りません。v1/localの`expires_in_seconds`表示は従来どおりです。
 `participation_expired / participation_not_yet_active / participation_revoked`を別に診断し、
@@ -79,7 +79,7 @@ issuerのRT family絶対期限は通常の回転で延長されないため、�
 停止や漏洩時は次のように明示的に失効します。これは通常の送受信確認後の自動cleanupではありません。
 
 1. 参加descriptorの`state:revoked`または入口の無効化で、新規認証と既存contextを止める。
-2. 保管鍵を保持して公式`relay:admin disconnect`を実行し、Registryのbindingを失効する。
+2. 保管鍵を保持して公式`hab:admin disconnect`を実行し、Registryのbindingを失効する。
    mappingがなくても実行可能。同じグループの全memberへ影響するので対象を確認する。
 3. 対象hostの接続とissuerのRT/grantも取り消す。RT取消だけでは発行済みATの即時拒否を保証しない。
 4. 設定・DB・失効予約・監査を保持する。失効済みconnection IDで再bindingしない。

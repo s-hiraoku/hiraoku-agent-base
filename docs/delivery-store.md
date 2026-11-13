@@ -4,7 +4,7 @@ The host delivers through one private SQLite file, `delivery.sqlite`, in its sta
 
 ## Operations and authority
 
-`HabDeliveryService` (`src/host/hab-delivery-service.ts`) implements `submit`, `status`, `poll` and `ack` for `HabMcpClient` and the MCP tools. Each call takes a fresh `SQLiteHabRegistry.withRelay` scope and commits one synchronous SQLite transaction inside it, so no Promise crosses the Registry guard. The guard checks the current credential, selected immutable ID, group membership, operation rights, sender, kind, block policy, credential expiry and Registry epoch. A stopped or revoked subject cannot use an earlier scope. An admission that committed before revocation stays admitted, while later delivery needs current rights.
+`HabDeliveryService` (`src/host/hab-delivery-service.ts`) implements `submit`, `status`, `poll` and `ack` for `HabMcpClient` and the MCP tools. Each call takes a fresh `SQLiteHabRegistry.withAuthorization` scope and commits one synchronous SQLite transaction inside it, so no Promise crosses the Registry guard. The guard checks the current credential, selected immutable ID, group membership, operation rights, sender, kind, block policy, credential expiry and Registry epoch. A stopped or revoked subject cannot use an earlier scope. An admission that committed before revocation stays admitted, while later delivery needs current rights.
 
 Admission commits the record and the body in the same transaction. That commit is the acceptance point: a `pending` receipt means the body is stored and is pollable at once. It does not prove a recipient save.
 
@@ -53,7 +53,7 @@ Builds before ADR-018 delivered through JetStream and kept `jetstream-journal.sq
 4. List the `expired` and `quarantined` rows for their senders: their outcome is unknown, and only the recipient's records decide.
 5. Stop the host and the broker. Back up the state directory and the broker store.
 6. Move `jetstream-journal.sqlite` and `jetstream-health.local.json` out of the state directory, and delete `delivery.broker` and `delivery.pump` from the config.
-7. Start the new build, check `relay:admin status`, then start the senders again.
+7. Start the new build, check `hab:admin status`, then start the senders again.
 
 To roll back, repeat steps 2 to 4 on the new build, stop it, move `delivery.sqlite` aside, put back the drained journal and broker store from step 5 with the old config, and start the earlier build. The drained journal holds no live message, so nothing is delivered twice. Agent SDK inbox and outbox files are unchanged by this release.
 

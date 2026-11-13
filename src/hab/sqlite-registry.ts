@@ -249,7 +249,7 @@ export class SQLiteHabRegistry {
     { context: unknown; address: string; expected_agent_id?: string }
   >();
   #inside = false;
-  #relayDepth = 0;
+  #authorizedDepth = 0;
   constructor(
     path: string,
     options: RegistryOptions,
@@ -1384,7 +1384,7 @@ export class SQLiteHabRegistry {
       };
     });
   }
-  /** Selection is untrusted until withRelay verifies its group membership under the registry lock. */
+  /** Selection is untrusted until withAuthorization verifies its group membership under the registry lock. */
   selectAddress(
     context: unknown,
     address: string,
@@ -1452,28 +1452,28 @@ export class SQLiteHabRegistry {
     });
   }
   /**
-   * A withRelay called inside another's action joins its transaction, so a guard that
+   * A withAuthorization called inside another's action joins its transaction, so a guard that
    * checks one context and the operation it admits for another share one Registry lock.
    */
-  #relayTx<T>(action: () => T): T {
-    if (this.#relayDepth) return action();
+  #authorizedTx<T>(action: () => T): T {
+    if (this.#authorizedDepth) return action();
     return this.#tx(() => {
-      this.#relayDepth++;
+      this.#authorizedDepth++;
       try {
         return action();
       } finally {
-        this.#relayDepth--;
+        this.#authorizedDepth--;
       }
     });
   }
-  /** Registry lock precedes Relay's write lock and remains held through Relay COMMIT. */
-  withRelay<T>(
+  /** Checks the caller and runs the action under the Registry lock, held through the delivery store's COMMIT. */
+  withAuthorization<T>(
     context: unknown,
     operation: AgentOperation,
     action: (authorization: Authorization, agentId: string) => T,
   ): T {
     this.#assertReady();
-    return this.#relayTx(() => {
+    return this.#authorizedTx(() => {
       try {
         if (this.#stopRecord().stopped !== 0)
           throw new MessagingError("forbidden");
@@ -1607,34 +1607,38 @@ export class SQLiteHabRegistry {
     address: string,
   ): { recipient_id: string; address: string; normalization_version: 1 } {
     const canonicalAddress = parseHabAddress(address).address;
-    return this.withRelay(context, "resolve", (_authorization, senderId) => {
-      const active = `SELECT agent_id FROM ${this.#agentTable()} WHERE state='active' AND `;
-      let row = this.#db.prepare(active + "address=?").get(canonicalAddress);
-      let previous = false;
-      if (!row) {
-        // A renamed agent's previous name selects only that same ID, and only for its grace period.
-        const graceId = this.#graceAgentId(canonicalAddress);
-        if (graceId) {
-          row = this.#db.prepare(active + "agent_id=?").get(graceId);
-          previous = row !== undefined;
+    return this.withAuthorization(
+      context,
+      "resolve",
+      (_authorization, senderId) => {
+        const active = `SELECT agent_id FROM ${this.#agentTable()} WHERE state='active' AND `;
+        let row = this.#db.prepare(active + "address=?").get(canonicalAddress);
+        let previous = false;
+        if (!row) {
+          // A renamed agent's previous name selects only that same ID, and only for its grace period.
+          const graceId = this.#graceAgentId(canonicalAddress);
+          if (graceId) {
+            row = this.#db.prepare(active + "agent_id=?").get(graceId);
+            previous = row !== undefined;
+          }
         }
-      }
-      if (!row || this.#blocked(senderId, String(row.agent_id)))
-        throw new MessagingError("forbidden");
-      this.#peer(String(row.agent_id));
-      if (previous)
-        this.#recordPreviousUse(
-          canonicalAddress,
-          String(row.agent_id),
-          senderId,
-        );
-      // v1 output echoes the requested address; hab_discover shows the current name.
-      return {
-        recipient_id: String(row.agent_id),
-        address: canonicalAddress,
-        normalization_version: 1,
-      };
-    });
+        if (!row || this.#blocked(senderId, String(row.agent_id)))
+          throw new MessagingError("forbidden");
+        this.#peer(String(row.agent_id));
+        if (previous)
+          this.#recordPreviousUse(
+            canonicalAddress,
+            String(row.agent_id),
+            senderId,
+          );
+        // v1 output echoes the requested address; hab_discover shows the current name.
+        return {
+          recipient_id: String(row.agent_id),
+          address: canonicalAddress,
+          normalization_version: 1,
+        };
+      },
+    );
   }
   get discoveryEnabled(): boolean {
     return this.#options.discovery !== undefined;

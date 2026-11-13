@@ -8,7 +8,7 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
-以前の通信部分**HAB Relay**（独自のSQLite配送storeを持つ独立コンポーネント）は2026-11-07に廃止し、**エージェント間の相互運用はA2Aへ置き換えました**（[ADR-016](docs/hab-decisions.md)）。配送は一度NATS JetStreamへ移しましたが、2026-11-13にhost内の1つのSQLiteファイルだけで行う形へ戻しました（ADR-018、[配送store](docs/delivery-store.md)）。残したのはmessage契約（`src/messaging`）とエージェント向けMCPの5ツールです。MCP tool名`relay_*`と起動・管理コマンド`npm run relay:local`／`relay:admin`は、既存の接続設定との互換のため名前だけ残しています。各部分の置き場所は次のとおりです。
+以前の通信部分**HAB Relay**（独自のSQLite配送storeを持つ独立コンポーネント）は2026-11-07に廃止し、**エージェント間の相互運用はA2Aへ置き換えました**（[ADR-016](docs/hab-decisions.md)）。配送は一度NATS JetStreamへ移しましたが、2026-11-13にhost内の1つのSQLiteファイルだけで行う形へ戻しました（ADR-018、[配送store](docs/delivery-store.md)）。残したのはmessage契約（`src/messaging`）とエージェント向けMCPの5ツールです。MCP tool名`relay_*`は既存の接続設定との互換のため名前だけ残しています。起動・管理コマンドは`npm run hab:host`／`hab:admin`で、旧名の`relay:local`／`relay:admin`も同じコマンドの別名として使えます。各部分の置き場所は次のとおりです。
 
 | 部分 | 場所 |
 | --- | --- |
@@ -101,7 +101,7 @@ flowchart LR
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | message契約（`src/messaging`）・SQLite配送storeの受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はhostのSQLite配送storeのみ（ADR-018。JetStream版の旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
 | エージェントSDKの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
-| hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run relay:local`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`relay_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
+| hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run hab:host`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`relay_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | A2A入口 | **実装済み／模擬検証済み・既定は無効**。設定の`a2a` sectionでloopback listenerを開き、host所有のアドレスから設定済みの受信者へTaskを送る。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）。本番配備は未実施 |
 | エージェントSDKのMCPクライアント | **実装済み／模擬検証済み**。`src/agent-sdk`に置く。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
 | HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、再利用禁止、権限分離、有効化・失効・blockを実装（改名は明示opt-inのRegistry v3）。`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復 |
@@ -168,7 +168,7 @@ npm test
 
 hostの起動関数と接続の承認条件は[ローカルhost](docs/operations/local-relay-host.md)を参照してください。loopback・全拒否設定での常駐起動と401/403拒否を確認済みです。実個体の認証・binding、Hermes/Dotsとの往復は未検証です。停止・再起動は[ユーザーLaunchAgent手順](docs/operations/local-relay-launchagent.md)にまとめています。
 
-承認後の非公開設定を明示して起動する共通CLIと、アドレス登録・接続・失効を行う管理CLI（`npm run relay:admin`）は[ローカルRelayサービス](docs/local-relay-service.md)を参照してください。コードの検証と実エージェント接続の結果は区別します。各エージェント自身のMCPクライアントによる[共通接続手順](docs/common-mcp-connection.md)では、個体認証、受信の起動、保存後のACK、実エージェント往復の完了条件を分けています。外部実行APIは必須ではありません。
+承認後の非公開設定を明示して起動する共通CLIと、アドレス登録・接続・失効を行う管理CLI（`npm run hab:admin`）は[ローカルRelayサービス](docs/local-relay-service.md)を参照してください。コードの検証と実エージェント接続の結果は区別します。各エージェント自身のMCPクライアントによる[共通接続手順](docs/common-mcp-connection.md)では、個体認証、受信の起動、保存後のACK、実エージェント往復の完了条件を分けています。外部実行APIは必須ではありません。
 
 OAuthを使う共通MCP公開入口は[接続手順](docs/operations/relay-oauth-ingress.md)を参照してください。任意の第2loopback入口とローカルMCPは同じRegistry・キューを使い、既定は全拒否です。公開経路・OAuth登録・実Dots往復は別途検証します。
 
@@ -177,4 +177,4 @@ A2A入口は既定で無効です。サービス設定に[`a2a` section](config/
 自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
 任意の[エージェント照会契約](docs/connections/mcp-agent-discovery.md)を明示的に有効化します。
 
-同じ個体IDを保持するアドレスの改名は採用済みで、[明示opt-inのRegistry v3](docs/agent-address-rename.md)として提供します。旧名は同じIDに永久予約し、猶予期間（既定30日）だけ同じIDへ解決します（転送aliasではありません）。猶予期間の解決と`relay:admin status`の旧名一覧は実装済みで、本番には未適用です。
+同じ個体IDを保持するアドレスの改名は採用済みで、[明示opt-inのRegistry v3](docs/agent-address-rename.md)として提供します。旧名は同じIDに永久予約し、猶予期間（既定30日）だけ同じIDへ解決します（転送aliasではありません）。猶予期間の解決と`hab:admin status`の旧名一覧は実装済みで、本番には未適用です。

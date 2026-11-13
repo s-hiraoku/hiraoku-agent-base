@@ -117,7 +117,7 @@ New and re-rendered source links pin to the reviewed commit above.
 
 ## Maintenance after the review fixes
 
-The review fixes (reviewed at `74c02b7e8e4b59d3c41eefe9c8949ddd554bd472`) count only unreleased bodies against the agent SDK inbox's record and byte quotas, make the A2A host ACK every delivery that is not a reply to a host message without an inbox or ACK record, require `group_bind` and `group_member` in `createBoundGroup`, let a nested `withRelay` join the enclosing transaction so the host submit runs inside the caller's check, and rewrite the rollback procedure. `test/a2a-host.test.js`, `test/hab-auth-groups.test.js` and `test/relay-inbox-maintenance.test.js` cover the fixes. The audit drift was handled by rereading, not rehashing:
+The review fixes (reviewed at `74c02b7e8e4b59d3c41eefe9c8949ddd554bd472`) count only unreleased bodies against the agent SDK inbox's record and byte quotas, make the A2A host ACK every delivery that is not a reply to a host message without an inbox or ACK record, require `group_bind` and `group_member` in `createBoundGroup`, let a nested `withAuthorization` join the enclosing transaction so the host submit runs inside the caller's check, and rewrite the rollback procedure. `test/a2a-host.test.js`, `test/hab-auth-groups.test.js` and `test/relay-inbox-maintenance.test.js` cover the fixes. The audit drift was handled by rereading, not rehashing:
 
 - Opened and resolved HAB-C-D07. OPERATIONS.md and the product spec said a rollback restarts the earlier build on the same journal, while DESIGN.md makes the v4 journal migration one-way and earlier builds refuse schema 4. The procedure is now a whole pre-upgrade backup restore with original-ID reconciliation, and same-journal rollback is allowed only to builds that open schema 4. No requirement statement claimed the same-journal rollback. The OPERATIONS.md document summary did, and it is corrected.
 - Sharpened, not weakened: HAB-F24 states the schema bound, the whole-generation restore and the reconciliation, and cites the roll-back section. HAB-A20 requires every right of the three separate operations in the one transaction. HAB-A21 states that the host submit shares the transaction that rechecks the caller, so a revocation lands before the check or after admission. HAB-D20 states that only replies to host messages are saved before ACK and other deliveries are ACKed without records, plus the `max_records` and three-times ACK history caps. HAB-D06 states that the inbox quotas count unreleased bodies and that a separate ACK-record bound limits dedup history.
@@ -362,3 +362,23 @@ The owner approved dropping the native `better-sqlite3` addon after the technolo
 
 - In source-review.json `src/a2a/store.ts` and `test/a2a-sdk-store.test.js` were re-read and rehashed with appended summaries. `test/a2a-host.test.js` only swaps its offline fixture driver to `node:sqlite`; its entry, like `package.json`'s, was already behind the P2 deletion diff and is left for that maintenance.
 - `test/a2a-sdk-store.test.js` adds an upsert and two-page list case through the SDK on `node:sqlite`.
+
+## Command and Registry names (P3b, 2026-11-13)
+
+The simplification review's naming step renames the host and operator commands to `npm run hab:host` and `npm run hab:admin`. The old `relay:local` and `relay:admin` stay as aliases for the same scripts, and the script files are unchanged so installed LaunchAgents keep working. The Registry's `withRelay` is now `withAuthorization`, because it authorizes every delivery operation rather than a separate Relay. MCP tool names (`relay_*`) are unchanged.
+
+- Re-worded without weakening: HAB-A18 and HAB-A21 statements and HAB-A19 and HAB-A20 scopes name the new commands.
+- Citations whose excerpts changed only by these names were rehashed after checking that the token change was the only difference; those in `docs/local-relay-service.md` also moved three lines for the alias note.
+- `test/tools/entrypoints.test.ts` checks that each new command and its alias run the same script. In source-review.json the renamed Registry method appears in the existing summaries; the sources were rehashed.
+
+## Requirements narrowed to current design (2026-11-13)
+
+The simplification review's last step narrows the contract to the design that is still in the code. Everything under `docs/history` is now an **excluded** document. It stays indexed with its sha256 because the hirastack audit hashes every file under `docs/`, so a changed or new history file is still caught, but no requirement cites it any more. Requirements fell from 97 to 78 and requirement citations from 276 to 220.
+
+- Retired with the deleted code they constrained: HAB-F17 and HAB-F18 (Task Engine and generic Task state), HAB-F25 (approval profile proposal for the deleted generic jobs), HAB-A17 (Hermes Runs reconciliation), HAB-E03, HAB-E04, HAB-E08, HAB-E10 and HAB-E16 (TaskBridge, generic text jobs, durable stop gate and audit writer of the Task Hub), HAB-E14 and HAB-E19 (live Hermes trial and fixed pilot), HAB-E15 (ping and inventory), HAB-V11 and HAB-V13 (A2A characterization and the P7 broker lab).
+- Retired as duplicates of a kept requirement: HAB-E05 (covered by HAB-F11), HAB-D17 (covered by HAB-E17), HAB-V12 (covered by HAB-E02 and HAB-E20).
+- Retired because only historical test guides stated them: HAB-V07 and HAB-V14. The report gate still enforces HAB-V07's rule, and CI runs its self-test as a separate step, so the `report-gate-controls` check, which no remaining requirement uses, was removed from the contract.
+- Re-cited, not weakened: HAB-E01 (Task-free messaging) now cites `docs/hab-principles.md:15` and `docs/hab-decisions.md:30` instead of the deleted Hermes and generic-job guides.
+- History citations were dropped from HAB-F06, F11, A10, A13, A15, D02, D05, E02, E06, E11 and E17; each keeps its current-document citations and its statement is unchanged.
+- Conflicts keep their records; retired IDs were removed from their requirement lists. Conflict citations are not hash-audited.
+- The mirror also dropped the stale HAB-E12, E13, E18 and V06 sections removed from the contract in the Task Hub deletion.

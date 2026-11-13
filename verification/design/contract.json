@@ -160,7 +160,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "6b7042438d7ad11a7611a4e94c5906e8035968c9a4ee27b70dd00b82c63c8087",
+      "sha256": "17c70fe9c4c92a81fd7d968b67f220910a41534d214b168a9cefd7f75606f655",
       "role": "normative",
       "review": "reviewed",
       "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over the SQLite delivery store (delivery.sqlite) with no broker process, synthetic enrolled identities, terminal enrollment, owned run directory, evidence capture and pid-checked cleanup.",
@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "4fc01ff5f1288ddf207072a924e9c7979a4f0323b679a0a76cdcd60abbb42733",
+      "sha256": "1c99342dbc5489fa70e00c526b97c894b1a767ff877c889eb2bbfeab738a4622",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with nine entries (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
@@ -176,7 +176,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/a2a-host.md",
-      "sha256": "06bec27876c6a32f9ffa98a1fff17aad13bb5b1e5c7ec6fc758bdffa6d5bd1e4",
+      "sha256": "825413b05cbe6ba27cfa1011ce6c6e5f851ef7c6604302635acf8bca006f7cc0",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured Relay A2A recipe: no listener, mailbox or identity without an `a2a` section; host identity provisioning with one binding, unchanged agent ID and epoch across restart and the a2a_identity_reserved connect refusal; Card; 401 for missing, unknown and MCP-audience bearers and 403 for Origin or a wrong Host; SendMessage from the host identity staying SUBMITTED after storage ACK and restart; WORKING and COMPLETED from the recipient's replies with the result Artifact; `a2a-fresh-id` a reply under a new ID that would not change the Task is ACKed without a host inbox record and a later valid result still completes it, with a live Fresh ID drive; `a2a-window` FAILED with reason result_window_expired and an outcome-unknown message once a Task has no result one day after its deadline, unchanged by a later reply, which a live drive cannot wait out and test/a2a-host.test.js covers. Gotchas state there is no background resend, that COMPLETED is the recipient's report, not engine verification, that result_window_expired does not mean the recipient did not execute, and that a blocking SendMessage no longer stalls the receive loop. Synthetic identities only.",
@@ -200,7 +200,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-relay.md",
-      "sha256": "3f1901ea5707938d125e00838c58986a286a5e36c70475f52f3a88cedf87f9f4",
+      "sha256": "307a1206c2117bcbb7399f7956aa25cdb44a6c4efba98916b5e904e4c76624a8",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped Relay and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop.",
@@ -226,7 +226,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/resolve-address.md",
-      "sha256": "c652af8fea87a1c0d390d874fc69819ab46e6e7de5c3ff0beddcb68c6fe9a93e",
+      "sha256": "91edcf77e6030379d8be2e56a7b879249a4f0d5e10ad4b557db1a8d8f5074714",
       "role": "normative",
       "review": "reviewed",
       "summary": "Real relay_resolve success/unknown/malformed recipes: immutable recipient ID, canonical lowercase address, no delivery rights and no unknown-vs-unauthorized existence oracle. Requires operation grant.",
@@ -250,14 +250,14 @@
     },
     {
       "path": "README.md",
-      "sha256": "29f1d7eb3eac203197fe9f08e75b512bce2f9a5a579f4d10df71a62a3556bcee",
+      "sha256": "b631328e0074150d957f434c603d8592ee64d85994be91c108def253c352f071",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition as revised by ADR-018: the single host (src/host, MCP server in src/host/mcp), the host's single-file SQLite delivery store and the agent SDK; JetStream and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs no broker. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "docs/a2a/a2a-relay-preview.md",
-      "sha256": "8cc321b56abbb71bd176a702d8a2ff3638386aaba4361e4490cd47eb9bbaa3bc",
+      "sha256": "4911fdd41e1ee397f8308183434c8dad4d04cc749abcc29a6e6c6f67007e4262",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/agent-address-rename.md",
-      "sha256": "230c500a91e1effd53ffef8d2afb8257a5ba16ada00a2df4daf343efbf21369e",
+      "sha256": "f809768248a2281ad403ca4bdbf7dac7ea0b3808eb809cdb7e136b0c6d17f565",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposed opt-in Registry v3 rename extends immutable names while retaining agent ID, authentication, grants and mailbox identities. Historical names stay reserved without forwarding; exact journaled CAS retries and separate rename authority are required. Operator migration, same-owner rename-back and coordinated backups are described, with production adoption explicitly pending."
@@ -318,13 +318,14 @@
     {
       "path": "docs/history/task-engine.md",
       "sha256": "9ad927725f8a97ca0f8f030efa83b371fcdf0a8a786ec5584c0d49f7695ba973",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Former docs/architecture.md, moved unchanged except link targets when the Task Hub code was deleted (2026-11-12). Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete."
+      "summary": "Former docs/architecture.md, moved unchanged except link targets when the Task Hub code was deleted (2026-11-12). Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "e735b7c21b4ca19cb9b69bd60438c8cf0a1efa07abf2d9da571d02139c6fbe5f",
+      "sha256": "65bb5996d845ef83be784393cc00009e342bd1daaacb628d03e55f4da7936c8d",
       "role": "context",
       "review": "reviewed",
       "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, the single-file SQLite delivery store (ADR-018), agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement.",
@@ -341,10 +342,11 @@
     {
       "path": "docs/history/README.md",
       "sha256": "0b2f954d8f1ce5b072d4dd7f3f0a4cce02b1ba13071ecb8476d40def759ae4e7",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "States that docs/history holds removed-code descriptions, test records and earlier plans kept unchanged except link targets; current structure is docs/architecture.md. No requirement.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/operations/auth0-account-step.md",
@@ -356,13 +358,14 @@
     {
       "path": "docs/history/auth0-boundary.md",
       "sha256": "fa31c8305a1cf607b0c74804e35f30cda3c16ddb7beef0cdb4d05d143aae7f63",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Defines optional legacy fixed-task Auth0 resource-server boundary: deny-all absent private configuration, exact issuer/audience and approved subject/client plus scope intersection, bounded JWKS network/cache policy, and durable local denial follow-up. Supports explicit HTTPS port/prefix paths while preserving other metadata routes. Fixture integration does not prove live OAuth, revocation synchronization or real agent connection; its legacy task identity restrictions are not group-mode requirements."
+      "summary": "Defines optional legacy fixed-task Auth0 resource-server boundary: deny-all absent private configuration, exact issuer/audience and approved subject/client plus scope intersection, bounded JWKS network/cache policy, and durable local denial follow-up. Supports explicit HTTPS port/prefix paths while preserving other metadata routes. Fixture integration does not prove live OAuth, revocation synchronization or real agent connection; its legacy task identity restrictions are not group-mode requirements.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "b8d48c8cd94755904844eec96fb9462d8d2fe27b9bfaa1c6595e78a70c542927",
+      "sha256": "b5db4cdda0a271b18c0f02be605aa6a0d1a6b18023e64b2bfc9a25b1a993400d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
@@ -394,57 +397,63 @@
     {
       "path": "docs/history/dots-hermes-connection-plan.md",
       "sha256": "2e21dd8a3c371e7abb5c9b04bf7f9c4d69d14f32708bcbb64134050ebd9a5bad",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Concrete unexecuted native MCP connection preparation reuses existing Relay plugin, route, DB and addresses. Separates cloud tool exposure, release/schema compatibility, OAuth grant/refresh and model budgets; requires receiver durable save and independent reread before ACK. Persistent settings survive acceptance. KeepAlive is Relay supervision, not automatic agent receipt; no Hermes execution API becomes standard."
+      "summary": "Concrete unexecuted native MCP connection preparation reuses existing Relay plugin, route, DB and addresses. Separates cloud tool exposure, release/schema compatibility, OAuth grant/refresh and model budgets; requires receiver durable save and independent reread before ACK. Persistent settings survive acceptance. KeepAlive is Relay supervision, not automatic agent receipt; no Hermes execution API becomes standard.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/durable-stop-gate.md",
       "sha256": "d51c31394edc4c81a0093251e48cba36f1566affdf42a24532f3458a3349e8b3",
       "hash": "d51c31394edc4c81a0093251e48cba36f1566affdf42a24532f3458a3349e8b3",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Additional deny gate for verified Task principals: durable epoch and state share the transaction with task/grant/audit/outbox effects. Stop/restore invalidates old requests but restores no identity, subscription or unknown run. External HTTPS/model work is not atomically canceled; operator capability is local only, production authenticator still denies by default."
+      "summary": "Additional deny gate for verified Task principals: durable epoch and state share the transaction with task/grant/audit/outbox effects. Stop/restore invalidates old requests but restores no identity, subscription or unknown run. External HTTPS/model work is not atomically canceled; operator capability is local only, production authenticator still denies by default.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/finite-mcp-trial.md",
       "sha256": "426a2cfb8602bb217593dded2a21e7a4a85e00cfefa4681f2260f920da0d7883",
       "hash": "418b04acba5e7eb5748bfda36e6dea7fec4caca72c421375bd4f19333fbc6121",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
       "summary": "Historical finite2026-10-25 native Codex/Hermes common-MCP fixed-text exchange. File fsync/reread preceded ACK but this is not generic transactional inbox/crash proof or recurring/native automatic processing acceptance. Separate credential-free Node regression and explicit live-test/cleanup gates; no Runs/Task Engine used. Appended concrete next-trial approval checklist and distinction between historical native basic-five-tool evidence and the new synthetic recipient SDK checks; no live authorization inferred. Adds an optional read-only finite trial planning preflight; offline-valid never grants launch, native authorization, environment isolation, provenance or runtime budget/cleanup proof. Explicitly selected artifact bytes must be reviewed non-secret inputs.",
-      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
+      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/fixed-pilot.md",
       "sha256": "36513770de448422a3e49ad2ec09baf5fafafe69626366bcfb7a59177f5bcacf",
       "hash": "36513770de448422a3e49ad2ec09baf5fafafe69626366bcfb7a59177f5bcacf",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Historical constrained fixed-connectivity Hermes Runs pilot. Exact input/output/provider and pinned immutable process/import closure, scope, deadline and receipt were required only for that pilot. Prior mutable runtime failed; later authorized five-root snapshot trial succeeded locally. This is not current inventory acceptance or mandatory standard MCP architecture."
+      "summary": "Historical constrained fixed-connectivity Hermes Runs pilot. Exact input/output/provider and pinned immutable process/import closure, scope, deadline and receipt were required only for that pilot. Prior mutable runtime failed; later authorized five-root snapshot trial succeeded locally. This is not current inventory acceptance or mandatory standard MCP architecture.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/fixed-readback-worker-identity.md",
       "sha256": "7101f8f4ce923dd799a021647dd6348becc2f25a209253e1612a879e1286a380",
       "hash": "7101f8f4ce923dd799a021647dd6348becc2f25a209253e1612a879e1286a380",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Manual synthetic result-read fixture is explicitly distinct from actual Hermes execution. Worker candidate JWT inspection provides enrolled:false and requires separate identity enrollment. One inventory trial has exact finite model/tool/iteration/time/cost and cleanup gates; signed fixture success is not real Mac process/model attestation."
+      "summary": "Manual synthetic result-read fixture is explicitly distinct from actual Hermes execution. Worker candidate JWT inspection provides enrolled:false and requires separate identity enrollment. One inventory trial has exact finite model/tool/iteration/time/cost and cleanup gates; signed fixture success is not real Mac process/model attestation.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/generic-agent-async-design.md",
       "sha256": "a39a86607afa3f5a4bb1d8a54fccee44e1997e1af88c2eb957a14d54ec6fd587",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Optional Task integration additional design, explicitly not standard messaging prerequisite. Separates delivery/display/work and preserves conversation correlation, recipient-owner authority, real effective operation boundaries, stable execution keys and unknown-outcome reconciliation. working is coordinator claim and not model start. Proposed A2A approval profile, long approval/job deadlines, cross-owner and T01-T13 requirements remain optional future integration work, not implementation/deployment evidence. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Optional Task integration additional design, explicitly not standard messaging prerequisite. Separates delivery/display/work and preserves conversation correlation, recipient-owner authority, real effective operation boundaries, stable execution keys and unknown-outcome reconciliation. working is coordinator claim and not model start. Proposed A2A approval profile, long approval/job deadlines, cross-owner and T01-T13 requirements remain optional future integration work, not implementation/deployment evidence. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/delivery-store.md",
-      "sha256": "04455bacfba18fd87bf0bb0b63a1f1ac6ea59863d2897c4b79f8de4d4543d304",
+      "sha256": "e03ed0dc5c70d34cee3242ac767958bf45d229fb1c5a04a3f277543736171b64",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-018 delivery store: one private SQLite file holds admission, body, leases, retries, saved ACKs and the redacted audit; synchronous Registry guard per operation; store rules commit in the state-changing transaction; expiry, 30-day retention and replay-bound collection; file/volume checks; whole-generation backup/restore with an expiry hold; drained upgrade from and rollback to the JetStream build; single-VM failure domain."
@@ -473,13 +482,14 @@
     {
       "path": "docs/history/hab-relay-integration.md",
       "sha256": "66e351991d074d28c0c703d90d8c96f4a4307ae043efd82ea3a1ce1af07a2bd8",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Dated 17-case model-free native-loopback registration/delivery evidence: real registry/Relay/private sender/inbox, enrollment path and explicit application DB handoff, mock UI/auth/product individuals. Confirms source fixtures for response-loss, save failure, single lease, stop/block/rotation, body-as-data and stable retries. Restart is orderly close/reopen within same Node process; clock fields are fixture-controlled; no kill9, real OAuth, products, TLS or production gate. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Dated 17-case model-free native-loopback registration/delivery evidence: real registry/Relay/private sender/inbox, enrollment path and explicit application DB handoff, mock UI/auth/product individuals. Confirms source fixtures for response-loss, save failure, single lease, stop/block/rotation, body-as-data and stable retries. Restart is orderly close/reopen within same Node process; clock fields are fixture-controlled; no kill9, real OAuth, products, TLS or production gate. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "545f2ea895ca512d2ee17deec2e492efca8df473f1ee2c43627e38f7348c0aaf",
+      "sha256": "da13cbdc8d82ad2f3c67cc5fd140ef023a97e89db241016cb0dd16aeda4271ac",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
@@ -487,16 +497,18 @@
     {
       "path": "docs/history/hab-roadmap.md",
       "sha256": "97d1de79423a7f5c1ad00114c205b430ac565a7665f245256afdadd2848f7b11",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Dated comparison of four external projects and incremental live gates. Author-described README capability is not security/install/cost verification. Retains historical fixed Task sequence, while common MCP/receive supervisor governs standard messaging without inventory prerequisite. Design/test/role/evidence updates are required; published source does not authorize private connection or resident/cost change. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Dated comparison of four external projects and incremental live gates. Author-described README capability is not security/install/cost verification. Retains historical fixed Task sequence, while common MCP/receive supervisor governs standard messaging without inventory prerequisite. Design/test/role/evidence updates are required; published source does not authorize private connection or resident/cost change. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/hab-roles.md",
       "sha256": "1cb75bc38f627be57a1fa3ace97f205ed8cd2b2779f0ae3047a54ea0fdf1bbd5",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Goal role table distinguishes planned, implementation/mock, owner-reported and actual production evidence. Existing Grok job remains owned; Codex repository work is not a Hub executor connection. Fixed connectivity/inventory/ping/Events are limited opt-in surfaces, not ordinary connection requirements. ShiftLog stays separate/private; new executors need verified auth/workspace/idempotency/tool/cost/stop/provenance boundaries. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Goal role table distinguishes planned, implementation/mock, owner-reported and actual production evidence. Existing Grok job remains owned; Codex repository work is not a Hub executor connection. Fixed connectivity/inventory/ping/Events are limited opt-in surfaces, not ordinary connection requirements. ShiftLog stays separate/private; new executors need verified auth/workspace/idempotency/tool/cost/stop/provenance boundaries. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/hab-security.md",
@@ -508,68 +520,76 @@
     {
       "path": "docs/history/hab-topology.md",
       "sha256": "6fde7b4187c1cdbdce6e3b0db15220cf702c6c9cac75c03ca285b9e4579609a9",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Dated 2026-10-10 target topology describes historical optional fixed Task execution path, dashed unconnected routes and code-only blue components. Auth0 is issuer rather than MCP proxy; identity/cost/listener and live acceptance cannot be inferred. Markdown Mermaid owns diagrams, generated PNG/manifest follow it. Private existing service/credentials/routes stay distinct; no arbitrary shell or Hub executor evidence arises from diagram."
+      "summary": "Dated 2026-10-10 target topology describes historical optional fixed Task execution path, dashed unconnected routes and code-only blue components. Auth0 is issuer rather than MCP proxy; identity/cost/listener and live acceptance cannot be inferred. Markdown Mermaid owns diagrams, generated PNG/manifest follow it. Private existing service/credentials/routes stay distinct; no arbitrary shell or Hub executor evidence arises from diagram.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/hab-workflow.md",
       "sha256": "c87b982e522a148cefc16703fc48640120d4fcc7717092efb616b3714254627b",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Starts with standard durable common messaging then explicitly scopes numbered flow/diagram to optional fixed Tasks. Task policy/owner keys, lease/fence/run journal, per-operation approvals and transactional result/audit/outbox; no automatic conversation classifier/execution. waiting_approval is safe hold rather than proof of deployed approval UI. Pause/cancel/local abort do not establish remote termination; unknown fixed execution retains slot until trusted exact reconciliation."
+      "summary": "Starts with standard durable common messaging then explicitly scopes numbered flow/diagram to optional fixed Tasks. Task policy/owner keys, lease/fence/run journal, per-operation approvals and transactional result/audit/outbox; no automatic conversation classifier/execution. waiting_approval is safe hold rather than proof of deployed approval UI. Pause/cancel/local abort do not establish remote termination; unknown fixed execution retains slot until trusted exact reconciliation.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/hermes-connection.md",
       "sha256": "6a931f21cedce27e53f7be9fbc0cc97c21a1616508ae708dc012e610be39a5ad",
       "hash": "da2d73c3ca75d6c214d98984c3ef4e0652dedc88d464619c6bc8f62af8f1f16b",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Explicitly optional fixed-task Runs driver; standard Hermes messaging uses native common MCP with recipient poll/store/ACK and no HAB model/approval adapter. Optional driver requires independent fresh evidence, fixed scoped idempotency/deadline and uncertain-run retention; mocks prove neither real client continuation nor live authority."
+      "summary": "Explicitly optional fixed-task Runs driver; standard Hermes messaging uses native common MCP with recipient poll/store/ACK and no HAB model/approval adapter. Optional driver requires independent fresh evidence, fixed scoped idempotency/deadline and uncertain-run retention; mocks prove neither real client continuation nor live authority.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/hermes-import-boundary.md",
       "sha256": "21aed702043c318bd2c310c6c9678de623772cf8006c62a4b2b6f26ace3dea61",
       "hash": "21aed702043c318bd2c310c6c9678de623772cf8006c62a4b2b6f26ace3dea61",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Offline inventory Python boundary: pinned interpreter -I -S prevents pre-wrapper site/.pth execution. Measured noneditable fixed dependencies, exact import/native closure and TS/Python agreement are required for this opt-in executor. EACCES alone proves write-refusal, EPERM remains inconclusive. Guard is not a general OS sandbox or live execution evidence."
+      "summary": "Offline inventory Python boundary: pinned interpreter -I -S prevents pre-wrapper site/.pth execution. Measured noneditable fixed dependencies, exact import/native closure and TS/Python agreement are required for this opt-in executor. EACCES alone proves write-refusal, EPERM remains inconclusive. Guard is not a general OS sandbox or live execution evidence.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/design-boundary-alignment.md",
       "sha256": "37cae58405e756e1f375a0e0863fb8fce27c11d136ef8c0744fd902b2d689edd",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Historical main c667095 and PR132 comparison record underpinning ADR015. Standard supervisor already receive-only; optional generic code unconnected; PR132 is isolated not merged/operationally broken proof. Records added independent pre-ACK SQLite observation, task/outbox zero, coordinator working semantics and historical CI source-guard refresh. Clean temp/loopback/injected scheduler evidence excludes actual product delivery/model/UI/resident auth; historical 1685/61 totals are scoped."
+      "summary": "Historical main c667095 and PR132 comparison record underpinning ADR015. Standard supervisor already receive-only; optional generic code unconnected; PR132 is isolated not merged/operationally broken proof. Records added independent pre-ACK SQLite observation, task/outbox zero, coordinator working semantics and historical CI source-guard refresh. Clean temp/loopback/injected scheduler evidence excludes actual product delivery/model/UI/resident auth; historical 1685/61 totals are scoped.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/generic-job-application.md",
       "sha256": "73fa117946fcc58a0274720b1a5d35a8b230ee9b03c50ddb7c6c04a5b19a9bf3",
       "hash": "efdb11537a862b0bccb07b892c86f0bedcf8f9134adbc520fa8ac649853d5a9e",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Opt-in GenericTextJobs shares existing TaskService across A2A/MCP; verified current host binding supplies authority, never message text. Operations have distinct grants, sanitized data, bounded32KiB valid Unicode and20-row scoped pages. working means coordinator claim, reconciliation/cancel uncertainty is not owner approval or confirmed stop."
+      "summary": "Opt-in GenericTextJobs shares existing TaskService across A2A/MCP; verified current host binding supplies authority, never message text. Operations have distinct grants, sanitized data, bounded32KiB valid Unicode and20-row scoped pages. working means coordinator claim, reconciliation/cancel uncertainty is not owner approval or confirmed stop.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/generic-nats-dispatch.md",
       "sha256": "5d2c40440474bdcd0af1516b5c42ba506bef3d2b11e65d05aca323804a89d12a",
       "hash": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Historical record of the deleted opt-in generic NATS text port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs). An opening note says the code was removed because it had no production caller and bypassed Registry authorization, and points at the current JetStream design and ADR-016. HAB-C-E07 records the disposition. No requirement cites it. Its execution rules survive only where TaskBridge, reply-journal and proof-label sources state them. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Historical record of the deleted opt-in generic NATS text port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs). An opening note says the code was removed because it had no production caller and bypassed Registry authorization, and points at the current JetStream design and ADR-016. HAB-C-E07 records the disposition. No requirement cites it. Its execution rules survive only where TaskBridge, reply-journal and proof-label sources state them. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/generic-text-preview.md",
       "sha256": "5d0b249aad8dad03ccf079d4a5b6b75376e27d8a572fe10fc0356cd7f595aae2",
       "hash": "30b218f5651fdb813ea69e1f18ac80284d6eb72043db51b2e34ceaae462b2680",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional generic-text engine stores immutable correlation1:1 with existing Task, host-authenticated binding and stable execution key. Separate structured text runtime has no fallback to fixed prompt. Synthetic two-runtime acceptance excludes real tools/owner approval/reply. Retention covers original acceptedAt/deadline; waiting_approval here is legacy reconciliation, not owner permission."
+      "summary": "Optional generic-text engine stores immutable correlation1:1 with existing Task, host-authenticated binding and stable execution key. Separate structured text runtime has no fallback to fixed prompt. Synthetic two-runtime acceptance excludes real tools/owner approval/reply. Retention covers original acceptedAt/deadline; waiting_approval here is legacy reconciliation, not owner permission.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/receiver/recipient-host-mcp-proposal.md",
@@ -589,53 +609,59 @@
       "path": "docs/history/inventory-end-to-end.md",
       "sha256": "56f8c640130bcb0ad7e14ae79ed0ac455042ede8efccbd1849e7a6f2360d7762",
       "hash": "56f8c640130bcb0ad7e14ae79ed0ac455042ede8efccbd1849e7a6f2360d7762",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Dedicated explicit inventory entry composes authenticated one-shot factory, separate fixed requester/worker authority and exclusive fresh artifacts. Declared120-second admission/work window includes idle; cleanup may continue and uncertain stop retains evidence. Real Node child/Runs/SQLite tests use synthetic signing and OS probe. Metadata bootstrap creates no execution authority and cannot self-promote."
+      "summary": "Dedicated explicit inventory entry composes authenticated one-shot factory, separate fixed requester/worker authority and exclusive fresh artifacts. Declared120-second admission/work window includes idle; cleanup may continue and uncertain stop retains evidence. Real Node child/Runs/SQLite tests use synthetic signing and OS probe. Metadata bootstrap creates no execution authority and cannot self-promote.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/inventory-one-shot.md",
       "sha256": "07708b63d1e12a436a2c0d50a164c85a69dd28d541f540dde16b58c4d8a55045",
       "hash": "07708b63d1e12a436a2c0d50a164c85a69dd28d541f540dde16b58c4d8a55045",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional trusted runInventoryOnce performs read-only preparation, ephemeral key, exclusive private artifact creation, -I -S owned child and fixed worker receipt. All work follows one Task; cleanup confirms only owned stop/revocation and preserves unsettled evidence. Import does not provision; no OAuth acquisition, general runner, or hostile same-user OS-sandbox guarantee."
+      "summary": "Optional trusted runInventoryOnce performs read-only preparation, ephemeral key, exclusive private artifact creation, -I -S owned child and fixed worker receipt. All work follows one Task; cleanup confirms only owned stop/revocation and preserves unsettled evidence. Import does not provision; no OAuth acquisition, general runner, or hostile same-user OS-sandbox guarantee.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/inventory-preparation.md",
       "sha256": "c43c7583a74512255c363cde19b53988e4eec821630cdd44c5b1abdeb1252df4",
       "hash": "c43c7583a74512255c363cde19b53988e4eec821630cdd44c5b1abdeb1252df4",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Read-only inventory preparation precedes stdin credential, Hub DB/listener, entropy and child/worker side effects, but is not live isolation. Two snapshots and actual later Inspector remain required. EPERM is not permission evidence; future dedicated OS identity/read-only mount is proposed only and cannot be substituted without reviewed TS/Python identity/auth contract."
+      "summary": "Read-only inventory preparation precedes stdin credential, Hub DB/listener, entropy and child/worker side effects, but is not live isolation. Two snapshots and actual later Inspector remain required. EPERM is not permission evidence; future dedicated OS identity/read-only mount is proposed only and cannot be substituted without reviewed TS/Python identity/auth contract.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/inventory-token-input.md",
       "sha256": "28a434fe2bb7dc715cf08ddfe8db0474dd206b573a182f9f73cd08008f2a86e9",
       "hash": "28a434fe2bb7dc715cf08ddfe8db0474dd206b573a182f9f73cd08008f2a86e9",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Manual Python token handoff reads only an already acquired JWT through real hidden TTY, fixed Node command and minimal environment/stdin, with suppressed child output. Entry exit is not Task success.130-second wait plus bounded TERM/KILL confirms only owned process or reports uncertainty; no automatic resubmit or artifact deletion. Future OS isolation remains a proposal."
+      "summary": "Manual Python token handoff reads only an already acquired JWT through real hidden TTY, fixed Node command and minimal environment/stdin, with suppressed child output. Entry exit is not Task success.130-second wait plus bounded TERM/KILL confirms only owned process or reports uncertainty; no automatic resubmit or artifact deletion. Future OS isolation remains a proposal.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/local-hermes-key.md",
       "sha256": "659cf5b66357ceb890cc1d756c64e1ca95978dca065fb51d8b8abd7f2792dd0e",
       "hash": "659cf5b66357ceb890cc1d756c64e1ca95978dca065fb51d8b8abd7f2792dd0e",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional one-task local API key lifecycle persists fingerprint/status, not bearer; at-most120-second provisioner does not cryptographically scope/expire token. Revocation requires confirmed child and adapter stop; unknown stop stays stop_failed. Offline manifest/pins do not prove runtime. Live permission/cost/route remain gates; fixed Codex route is not entitlement or remaining-allowance proof."
+      "summary": "Optional one-task local API key lifecycle persists fingerprint/status, not bearer; at-most120-second provisioner does not cryptographically scope/expire token. Revocation requires confirmed child and adapter stop; unknown stop stays stop_failed. Offline manifest/pins do not prove runtime. Live permission/cost/route remain gates; fixed Codex route is not entitlement or remaining-allowance proof.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/local-integration.md",
       "sha256": "6ce9a02658c54107abfe3257075ce96c918e0e28cecf54b0cd01013a3dd550ac",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Optional legacy three-agent Task/Events foundation: pinned JWT and separate user/worker/operator authority, revocable result-reader grants, approved callback egress with AES-GCM secret lifecycle, fenced finite notification delivery and task-free notification payloads. Worker/reconciliation binds original run/scope and retains uncertain admissions. Two-task fixed connectivity trial and resident activation are separate deployment proposals, not normal Relay prerequisites."
+      "summary": "Optional legacy three-agent Task/Events foundation: pinned JWT and separate user/worker/operator authority, revocable result-reader grants, approved callback egress with AES-GCM secret lifecycle, fenced finite notification delivery and task-free notification payloads. Worker/reconciliation binds original run/scope and retains uncertain admissions. Two-task fixed connectivity trial and resident activation are separate deployment proposals, not normal Relay prerequisites.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/local-mvp.md",
@@ -662,7 +688,7 @@
     },
     {
       "path": "docs/local-relay-service.md",
-      "sha256": "a9be28c1a04a70281e796aac722747f597f1acb7cdae561fd5e198f99ea5d374",
+      "sha256": "bd1afb177b74d5c35421d41189f9dde586ec0dc2205d436269439b7a264aea95",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed."
@@ -671,10 +697,11 @@
       "path": "docs/history/manual-ping-runner.md",
       "sha256": "386b164550d60f4234da61567a61c6b3ff5836a31952567766f7817a72ac11aa",
       "hash": "386b164550d60f4234da61567a61c6b3ff5836a31952567766f7817a72ac11aa",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Manual fixed ping runner pins separate subject/client policies and four ping-only scopes, bounded fresh private storage/listener lifetime, audited authorization and explicit correlated pong. No native wake/model/recurring poll or public route installed. HTTP200 alone is insufficient; uncertainty must preserve state and never silently retry."
+      "summary": "Manual fixed ping runner pins separate subject/client policies and four ping-only scopes, bounded fresh private storage/listener lifetime, audited authorization and explicit correlated pong. No native wake/model/recurring poll or public route installed. HTTP200 alone is insufficient; uncertainty must preserve state and never silently retry.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/connections/mcp-agent-discovery.md",
@@ -686,32 +713,35 @@
     {
       "path": "docs/history/migration-plan.md",
       "sha256": "f52e6de7490b9fa3239cb60fe7e7ab0908e8bd13301ef90bb74ddb645e76bbe7",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Legacy Task storage/runtime portability status selects Mac+SQLite for pilot while Workers/D1/Sites remain portability work. Async atomic migration and local contention fixtures are distinguished from deployed D1/Sites evidence; applied migrations are not rewritten. Original-run receipts, optional Events and Node-only pinned egress retain explicit platform and activation limits; no implication that common Relay requires Task/Hermes execution."
+      "summary": "Legacy Task storage/runtime portability status selects Mac+SQLite for pilot while Workers/D1/Sites remain portability work. Async atomic migration and local contention fixtures are distinguished from deployed D1/Sites evidence; applied migrations are not rewritten. Original-run receipts, optional Events and Node-only pinned egress retain explicit platform and activation limits; no implication that common Relay requires Task/Hermes execution.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/mvp-acceptance.md",
       "sha256": "5ced306c72bac0d446a7feb923990e0e449735235739340e2b3570900db30cc4",
       "hash": "e9aee0958b635495c9267e09042ef1128484a27af7de8f0bb2665ef50b6d9ea1",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
       "summary": "Mixed current gate/checklist and earlier implementation snapshots. Synthetic MVP is reproducible, live/G1 not accepted. Auth0/model additional cost is constrained to zero and unknown entitlement/quota parks optional work. Token broker reserves durable account-wide attempts, no tick minting/automatic retries/reset; explicit currently configured Node increment supersedes older missing-wiring rows.",
-      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
+      "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/mvp-inventory.md",
       "sha256": "2f5d815262d36c62eaee3fcb73cdc9aea8368534bbb077c2cb376dddd3948ad2",
       "hash": "2f5d815262d36c62eaee3fcb73cdc9aea8368534bbb077c2cb376dddd3948ad2",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Narrow optional inventory request/result. Fixed lstat candidates produce unknown, never product identity or whole-machine absence; no general filesystem/shell runner. Verified minimal separate requester/worker identities, actual OAuth/callback/route and included cost gates required. Signed mock completion is not actual inventory/model or Dots acceptance."
+      "summary": "Narrow optional inventory request/result. Fixed lstat candidates produce unknown, never product identity or whole-machine absence; no general filesystem/shell runner. Verified minimal separate requester/worker identities, actual OAuth/callback/route and included cost gates required. Signed mock completion is not actual inventory/model or Dots acceptance.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/operations/persistent-mcp-auth.md",
-      "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
+      "sha256": "7fc79eb8ad15c1e237861610e7db6bb1dea0316390647b39e8e044c5d524bc0f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted explicit OAuth v2 separates finite human participation from short-lived access tokens; v1 remains maximum-15-minute trial without auto migration. Host/issuer own refresh and secret storage, Relay only validates pinned keys/current config and immutable connection binding. Participation expiry/revocation bounds contexts, refresh never extends approval. Persistent setup survives acceptance, explicit targeted revocation preserves DB/keys/history, schema migration and rollback preserve accepted/revoked state. Proposed365/30-day production values and real host refresh remain unapproved/unverified."
@@ -720,28 +750,31 @@
       "path": "docs/history/ping-discovery.md",
       "sha256": "cbd6e0d3306ddb03bc898bc3b21c1f4face58ef74578fe0df73f01c9c1a84706",
       "hash": "cbd6e0d3306ddb03bc898bc3b21c1f4face58ef74578fe0df73f01c9c1a84706",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Disabled ping-discovery diagnostic publishes auth metadata only, returns401 to all MCP requests, ignores Bearer without decoding and creates no DB/JWT verifier/worker. Finite listener/config cannot promote itself to active runner; metadata availability never establishes callback/identity/OAuth/live ping acceptance."
+      "summary": "Disabled ping-discovery diagnostic publishes auth metadata only, returns401 to all MCP requests, ignores Bearer without decoding and creates no DB/JWT verifier/worker. Finite listener/config cannot promote itself to active runner; metadata availability never establishes callback/identity/OAuth/live ping acceptance.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/ping-pong-mvp.md",
       "sha256": "daaeee3ab5b8e41fe746baf4148e57590b6c0330df17aa30d9a8eea30ac3e96b",
       "hash": "032c1c2da80dda58e4aaa39d8acbec91b9d2fe106aa6febdab55656c0cfd548e",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Earlier fixed bidirectional diagnostic is opt-in, literal ping/pong only, exact verified subject/client identity and server-selected peer. Correlated authorized pong proves reply; trusted wake HTTP acceptance does not. Durable pre-attempt marker parks uncertain callbacks without automatic retry. Proposed live route/wiring rows are historical alongside later manual-runner docs."
+      "summary": "Earlier fixed bidirectional diagnostic is opt-in, literal ping/pong only, exact verified subject/client identity and server-selected peer. Correlated authorized pong proves reply; trusted wake HTTP acceptance does not. Durable pre-attempt marker parks uncertain callbacks without automatic retry. Proposed live route/wiring rows are historical alongside later manual-runner docs.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/async-text-v1.md",
       "sha256": "dee01f1317447a3158b6670416fd1253c50113dbc7f1ee1111a1c5c01777884c",
       "hash": "ddecab54237ebd41b62832278b4fb6c757bd3ea7b14bad42d2739f5921603798",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional async-text profile shares authorized TaskService and IDs across official A2A/MCP, nonblocking send and later explicit result read. Scope-bound stable message IDs, strict Unicode/size/deadline constraints, current per-operation binding, sanitized pages. working is coordinator claim and unknown cancel/lease cannot imply approval/stop. Factory is not production/native-product integration."
+      "summary": "Optional async-text profile shares authorized TaskService and IDs across official A2A/MCP, nonblocking send and later explicit result read. Scope-bound stable message IDs, strict Unicode/size/deadline constraints, current per-operation binding, sanitized pages. working is coordinator claim and unknown cancel/lease cannot imply approval/stop. Factory is not production/native-product integration.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/receiver/receive-supervisor.md",
@@ -773,7 +806,7 @@
     },
     {
       "path": "docs/relay-auth-groups.md",
-      "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
+      "sha256": "50a8e601eea8a11226614261f0ebd75145ebaf82c638d26ac369289f08d871f9",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted group trust boundary separates verified shared authentication from immutable per-address delivery identities/inboxes. Every connection authenticates through a group, and migrate() moves earlier direct 1:1 bindings into single-member groups; all five tools enforce own-side selection, expected ID, current membership/grants/stop under write guard while cross-group destination delivery remains allowed. Within-group credential holders can use sibling names/mailboxes and this is disclosed. Fixed outbox/inbox/ACK identities, bounded redacted provenance, separate admin operations and client-owned refresh are required; live refresh remains limited."
@@ -787,7 +820,7 @@
     },
     {
       "path": "docs/operations/relay-oauth-ingress.md",
-      "sha256": "c1fe579805c0e209183ea3670ce010666585e8e7034589a178e172798a499493",
+      "sha256": "d362a02bec9323fbca8f349692d6b1ead828877910f739226de51fc2f650caeb",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional product-independent same-owner/Registry/queue OAuth ingress exposes common five operations only. Uses explicit private pinned RSA configuration and canonical resource metadata, exact verified subject/client scopes and immutable context rechecks, no token storage/refresh. Recognizes group-sharing and explicit persistent v2; native trial save/reread/ACK sequence is narrow single-consumer evidence. Its routine end-of-trial revocation is v1 trial scope, not persistent cleanup."
@@ -796,141 +829,158 @@
       "path": "docs/history/review-fixes.md",
       "sha256": "bf561076e4772a6b4bb8a81a73a33aa3f03b6920825bf987c5e1b128a6061b3f",
       "hash": "bf561076e4772a6b4bb8a81a73a33aa3f03b6920825bf987c5e1b128a6061b3f",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Review fixes document bounded acknowledged audit writer, fail-closed queue/ACK failures, finite native and portable protocol I/O and fixed-category redacted diagnostics. After-action failure cannot undo committed work; unknown work keeps admission until settled. OS write ACK is not fsync and tests/fixes in another service are separately scoped."
+      "summary": "Review fixes document bounded acknowledged audit writer, fail-closed queue/ACK failures, finite native and portable protocol I/O and fixed-category redacted diagnostics. After-action failure cannot undo committed work; unknown work keeps admission until settled. OS write ACK is not fsync and tests/fixes in another service are separately scoped.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/security-audit-limits.md",
       "sha256": "5d1163c4ce43bd9abe8360791a55987aba951f768b0db1b86a2a1daf5b48d12b",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Local legacy ingress implementation/evidence note preserves durable stop, fences, idempotency and transactional Task audit. Finite global request/tool/row/body bounds and redacted bounded local audit fail closed; post-action audit failure requires reconciliation. Explicit correction replaces synchronous logging with isolated acknowledged audit worker and response/deadline guard. Proxy/deployed authentication and OS isolation remain unverified; this is not universal Relay logging format authority."
+      "summary": "Local legacy ingress implementation/evidence note preserves durable stop, fences, idempotency and transactional Task audit. Finite global request/tool/row/body bounds and redacted bounded local audit fail closed; post-action audit failure requires reconciliation. Explicit correction replaces synchronous logging with isolated acknowledged audit worker and response/deadline guard. Proxy/deployed authentication and OS isolation remain unverified; this is not universal Relay logging format authority.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/task-bridge.md",
       "sha256": "0ad8718518f7436357ecb3a78059282bbfb3699b52b952530b1e2a7ea397f527",
       "hash": "de33807668de97a595cdd4c5bade9259b233e29f6a2a543b0a31547b97a282c6",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Optional TaskBridge separates durable recipient ACK, explicit accept, independent Task authority, stable pre-RPC key and one-task linkage. Fenced/leased uncertain submit keeps original key; observe is get-only and canceled-open cannot complete/release gate. Replies are separately prepared/outboxed with closed evidence and stable IDs/deadlines; cross-DB uncertainty and restore need reconciliation."
+      "summary": "Optional TaskBridge separates durable recipient ACK, explicit accept, independent Task authority, stable pre-RPC key and one-task linkage. Fenced/leased uncertain submit keeps original key; observe is get-only and canceled-open cannot complete/release gate. Replies are separately prepared/outboxed with closed evidence and stable IDs/deadlines; cross-DB uncertainty and restore need reconciliation.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/a2a-bounded-performance.md",
       "sha256": "a3bd6fb7e058afbbfa47ab7639c18a1e0a66302dd47d0fb70b01193322053bba",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Fixed P1-P3 local 5x5 serial characterization and one expected lost-submit-response fault/run, actual SDK/Relay/stores with synthetic immediate execution. Defines invariant counts and timing/sample/provenance/cleanup boundaries; expressly no production SLO, capacity or speed comparison.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/a2a-independent-results.md",
       "sha256": "f15db86e069c4b76aee8db7e77a037c9976362a47c70de6c5f910aba1202ee02",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical independent b4bc2fc combined/f19 acceptance: native SDK/Relay and producer groups passed with NATS skips/release BLOCKED. Source/migration pins, negative preflight and finite proof are recorded; unavailable local raw evidence, overlap, local macOS scope and deployment gaps retained.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/a2a-native-acceptance.md",
       "sha256": "3c6699c21f7650a5521a219a3084f0770380fe5cc031b426b093b1a7820dda2f",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical fixed-f19 A2A acceptance guide and migration-pin correction: ten real native boundary cases, independent pre-ACK storage, actual SDK current authorization and correlated Artifact semantics. Eight former generic placeholders remain reclassified, never generic passes; current composite deliberately uses a different runner.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/a2a-p1-p3-scope.md",
       "sha256": "2b0db770ab1362572d222b6e2bd698291e0a91727b659a81821492f5c5f59a57",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Fixed connectivity route and optional rename dependency acceptance scope; delivery, explicit execution and Artifact completion differ. Follow-up identity does not rewrite frozen original pins; generic body/attachment/mailbox/cancellation and deployment/performance remain deferred.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/architecture.md",
       "sha256": "9bfb2943327ed85ba5993a2499f918967068926595d438c959e9b16b6c5d577a",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Delivery-lab architecture chooses ordinary async scenarios and backend adapters over interpreter DSL or only a suite list. One lifecycle owner, real HTTP/SQLite independent observation, honest skips/runner verdicts; design comparison is a post-scaffold review, not retroactive up-front completion.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/decisions.tsv",
       "sha256": "ba0f4f975e362466f15472294404175be2639670abbb3519e05317fc121d00b8",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Append-only historical decision/audit trail with reason/evidence/outcome per change; corrects JST-as-UTC, speculative bind diagnosis and warning-suppression scope while retaining failed attempts. Process narrative and review scores are not product behavior or current adoption requirements.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/delivery-lab.md",
       "sha256": "f283cf250f4157dd30255f7ce59a64d5f1c6757cd0fe67746f02dcb04484476b",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/p7-independent-results.md",
       "sha256": "86f3f87134e6fd4aaa88639fae1811da8d7f8078f6aa871e57fe8b871732d033",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical clean 2750a7e local P7_LOGICAL_PASS with exact composite input derivation, real broker messages, explicit Task/Artifact, same-SSD closed restore, route rollback and broker outage recovery. Source/cleanup/negative results reported; inactive-CI/publication-hold text is scoped to historical run, not current CI. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/p7-lab.md",
       "sha256": "3222cebdc1648541da128177271744fdfe4d6b1f59e80047378468d436a6f2e0",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical (ADR-018 removed the P7 runner and broker) P7 guide that required verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, expected full root 1451) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/plan.md",
       "sha256": "33e6ddeb27ddfd1d23abd275dae62658c6cd07eb20cee61bff92424a849ba767",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical completed delivery-lab work checklist and limited source ownership; baseline/test/decision trail and native-context workflow details. Explicitly records that initial code preceded all design phases; not proof those tests pass current source.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/publication.md",
       "sha256": "267c763329f1a56ae222b45421257bcf836741bcf01594124d9ee0d8f9aa28c6",
-      "role": "normative",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical (ADR-018 removed the broker CI stage) composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full",
-      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
+      "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/results.md",
       "sha256": "461ac64419e9007585ccb836819fce91252c8e6b2abb68bdfba7b974bea59900",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical 216e639 baseline with 1436 JS plus focused/Python results, sixteen genuine backend skips and blocked migration. Failed attempts, corrections, source identities and cleanup retained; neither current all-backend success nor CI/production result.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/verified-nats-input.md",
       "sha256": "ea561e24ddf9982c47009988668eb6f8ef77976849c0b4b0f4e58d1e29d7fecf",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical preparatory binary-verification and sanitized Node-child handoff, exact official archive/executable pins, bounded FD read/private copy, public negative controls. backend_executed=false and no broker start distinguish this from later real P7 broker tests. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/testing/verified-nats-results.md",
       "sha256": "d5d6ee0ab0e711e8e7e2dd5a08c6d7d82759a2570a4c125a9d694602253508a4",
-      "role": "evidence",
+      "role": "excluded",
       "review": "reviewed",
       "summary": "Historical clean caef55b public positive official binary handoff and negative guard results, JS/local YAML checks and cleanup; broker never executed, Python not rerun in this phase, backend skips unchanged. Four-platform pin derivation is not four-platform execution. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
-      "read_scope": "full"
+      "read_scope": "full",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/delivery/writer-admission.md",
@@ -948,14 +998,14 @@
     },
     {
       "path": "src/hab/README.md",
-      "sha256": "ef6e2787b3b8cf955c24ee92ef182bae982098c1d7b16c5de36a1ff6a0638e73",
+      "sha256": "b08a41176c24bc6c609571c1112d45374d288d4b6e2700af39de25d0e06b8663",
       "role": "normative",
       "review": "reviewed",
-      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabDeliveryService composes the only delivery backend, the SQLite delivery store; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withAuthorization joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabDeliveryService composes the only delivery backend, the SQLite delivery store; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "9eef98e9e162fe8f965425890b07989887073ba3d4dbfc86060c55e5c5b1cfa1",
+      "sha256": "636b0b664a81ed98c557486157a37447e6b73e506a54ed05c4da4a59c67a9e75",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -964,7 +1014,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "a2852c4a48e4248c79096ddd5f2c403bf02730c90b2ebb86240c7154527cae8b",
+      "sha256": "7e0721f8d380bc18a75a12bd3cc87cda34b6242da6dd5d24a1f812039d1f4208",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -973,7 +1023,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "c094ee2b686e6607cf9830cc3484762f609f8e53b9e79c912481b5783a2b6976",
+      "sha256": "f62f05de97ab1150dea75c6b903140b5b775f32e2b8527f1f1bcf1a13c40a65e",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -982,7 +1032,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "791a2f8e73a216a48f0dfabf2dce267f18146b086cc403a6580d2e7f32939733",
+      "sha256": "7a78a80d1c5a0f3850e365ba1d3951acaed2b536a8994c6740798e5f77cc4320",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1016,16 +1066,18 @@
     {
       "path": "docs/history/muse-connection.md",
       "sha256": "787eff64b8ba61c328c0e3416a3b365a63616afb49269673b17cbe11de7ec772",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction. Main HTTP/2 refused-stream failure is separately recorded; only the pinned fetch/stream/code7 diagnostic joins the shared retry budget, with adjacent-code/TLS negative controls."
+      "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction. Main HTTP/2 refused-stream failure is separately recorded; only the pinned fetch/stream/code7 diagnostic joins the shared retry budget, with adjacent-code/TLS negative controls.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/history/typescript-migration.md",
       "sha256": "b3bf5bea6b8550c052b89e85d99daa0d499062eaf5a8910a0c8be99dcfd7194b",
-      "role": "context",
+      "role": "excluded",
       "review": "reviewed",
-      "summary": "Engineering inventory of the staged TypeScript tooling migration: strict compiler coverage, Node native stripping, seven compatibility aliases, explicit remaining owned sources and excluded third-party/generated/historical inputs. Does not adopt product behavior or claim native/production acceptance. The next stage types the three SQLite/JetStream test workers and their existing message contracts, extends root compiler coverage and preserves exact historical fixture bytes; the remaining test/helper inventory is 157 files. Diagram renderer maintenance adds a typed implementation, preserved legacy alias and eleven isolated CLI controls without real-browser/native acceptance; sequencing on the worker PR is explicit. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Engineering inventory of the staged TypeScript tooling migration: strict compiler coverage, Node native stripping, seven compatibility aliases, explicit remaining owned sources and excluded third-party/generated/historical inputs. Does not adopt product behavior or claim native/production acceptance. The next stage types the three SQLite/JetStream test workers and their existing message contracts, extends root compiler coverage and preserves exact historical fixture bytes; the remaining test/helper inventory is 157 files. Diagram renderer maintenance adds a typed implementation, preserved legacy alias and eleven isolated CLI controls without real-browser/native acceptance; sequencing on the worker PR is explicit. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "exclusion_reason": "Historical record of deleted or superseded code, trials and plans (docs/history). Kept for provenance only; not current design authority, and no current requirement cites it."
     },
     {
       "path": "docs/connections/claude-code-connection.md",
@@ -1306,12 +1358,6 @@
           "excerpt_sha256": "3ff61784d4b5b8e74c054c88509bff0d7af3e3efb5526382160bb5f5458d9774"
         },
         {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 103,
-          "end": 103,
-          "excerpt_sha256": "5b9b997b2edfbc021dee52d2c79107f8083be680c9f9c4f73f30040b647ccf7d"
-        },
-        {
           "path": "docs/hab-decisions.md",
           "start": 28,
           "end": 28,
@@ -1462,12 +1508,6 @@
           "start": 95,
           "end": 99,
           "excerpt_sha256": "d9e964830759292cf626358c1b15dfcf7e89396b48896289aa73df57c1a1f390"
-        },
-        {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 83,
-          "end": 87,
-          "excerpt_sha256": "1af7c58e4f61854c8f21e375f72ac5b9384f45f20f39dfbdabfa31b968cd477d"
         }
       ]
     },
@@ -1593,56 +1633,6 @@
           "start": 63,
           "end": 109,
           "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
-        }
-      ]
-    },
-    {
-      "id": "HAB-F17",
-      "title": "One optional Task authority",
-      "statement": "Where explicit Task integration is used, select one authoritative Task database, retain durable run admission receipts outside it and require current lease/fence/worker for state updates. Unknown admission/cancellation retains slot for exact-boundary reconciliation; results/notifications do not create tasks.",
-      "rationale": "A broker/journal is not another Task engine and timeout does not prove no external effect.",
-      "scope": "Optional fixed Task Engine and execution adapters only",
-      "decision": "accepted",
-      "checks": [
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/task-engine.md",
-          "start": 15,
-          "end": 29,
-          "excerpt_sha256": "1c6054efba7d77663d4ce4ffc2541164a6e17b05b1231a87cc31c6190c17c234"
-        },
-        {
-          "path": "docs/history/hab-workflow.md",
-          "start": 31,
-          "end": 48,
-          "excerpt_sha256": "dc19c9cb4b88e8b73a79d5819c80863c0b9618a0e300585866bcd8a3fb9138bf"
-        }
-      ]
-    },
-    {
-      "id": "HAB-F18",
-      "title": "Working is coordinator state",
-      "statement": "Generic Task working means claimed/coordinator processing and may precede external runtime acceptance/model invocation; do not label it recipient model execution or success.",
-      "rationale": "Keeps user-visible execution claims tied to actual runtime evidence.",
-      "scope": "Optional GenericTextJobs/A2A/NATS state projection",
-      "decision": "accepted",
-      "checks": [
-        "js-common-mcp"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 110,
-          "end": 112,
-          "excerpt_sha256": "26454a174f8acf5e57268422a616a26fb68f2dfdd9ce387d1ba4d9cfc07ae4ae"
-        },
-        {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 142,
-          "end": 142,
-          "excerpt_sha256": "1caf159306753ef953febb995bc3c6b964b5ee9877cb370705ac07bbb9e110bc"
         }
       ]
     },
@@ -1826,8 +1816,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 16,
-          "end": 27,
+          "start": 19,
+          "end": 30,
           "excerpt_sha256": "053c23318812dc7ed12817ca6ddf534ad12bbe4a5396131c909bd754dfb0777d"
         },
         {
@@ -1840,38 +1830,7 @@
           "path": "docs/delivery-store.md",
           "start": 40,
           "end": 58,
-          "excerpt_sha256": "24fe8ae7cf898b2c2937d56b6a16c9a3b6d0d06e04623de49fffb4352f515e6b"
-        }
-      ]
-    },
-    {
-      "id": "HAB-F25",
-      "title": "Optional approval profile proposal",
-      "statement": "If an optional asynchronous Task integration adopts the proposed A2A recipient-owner approval profile, keep receiver authenticated approval, operation/content/target hash, epoch/expiry and consumption records separate from sender input; negotiate profile schema/version before implementation.",
-      "rationale": "A proposed profile must not be mistaken for existing standard-state functionality or general messaging prerequisite.",
-      "scope": "Optional future Task/profile implementation only",
-      "decision": "proposed",
-      "checks": [
-        "proposal-review"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 100,
-          "end": 122,
-          "excerpt_sha256": "b82d441e58bf1b160db50e0927a820a7dae162c44e6cd6f275491a09237ac982"
-        },
-        {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 162,
-          "end": 170,
-          "excerpt_sha256": "c7fe8167a2471be65ee26ad0e664a67d15eff17c5692ecdba11b6efefa0c5464"
-        },
-        {
-          "path": "docs/history/generic-agent-async-design.md",
-          "start": 233,
-          "end": 240,
-          "excerpt_sha256": "9b6a124d02356d83849d088d054b5893e20804289f5e05a85c8030a5b7fb0a2e"
+          "excerpt_sha256": "b163b0dbb2cf116bedfb09833824480c9de044efeab9bc07410a87ac21b6ba0b"
         }
       ]
     },
@@ -1934,8 +1893,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 147,
-          "end": 161,
+          "start": 150,
+          "end": 164,
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {
@@ -1973,7 +1932,7 @@
           "path": "src/hab/README.md",
           "start": 345,
           "end": 377,
-          "excerpt_sha256": "10c853ee7d4c0abb098c9be43a564572208d3baa7b82af8dae270dd9f3f23cb8"
+          "excerpt_sha256": "9ece9a66d40961d40b6325fc1faeea1e26864b9eaed5bd65a1b106c287e7a04b"
         }
       ]
     },
@@ -2043,7 +2002,7 @@
           "path": "src/hab/README.md",
           "start": 71,
           "end": 107,
-          "excerpt_sha256": "4fe45774b2f9ab64f228e716c2e34e05814cbbd20e9c809032bb05c27a39c088"
+          "excerpt_sha256": "3c917e057c68062be2975a928df462a07bcde59aaef595e75f5dbb5261499442"
         },
         {
           "path": "docs/relay-auth-groups.md",
@@ -2074,13 +2033,13 @@
           "path": "docs/relay-auth-groups.md",
           "start": 92,
           "end": 94,
-          "excerpt_sha256": "db867058b3967d7b1840e4d3ed098a3477e67f99b0954f4dbbca821ff49bf1ff"
+          "excerpt_sha256": "271dcaaccce4eafb8bd909b10f8c33892ec772df203089fc2735030d818699e6"
         },
         {
           "path": "docs/relay-auth-groups.md",
           "start": 92,
           "end": 94,
-          "excerpt_sha256": "db867058b3967d7b1840e4d3ed098a3477e67f99b0954f4dbbca821ff49bf1ff"
+          "excerpt_sha256": "271dcaaccce4eafb8bd909b10f8c33892ec772df203089fc2735030d818699e6"
         },
         {
           "path": "src/hab/README.md",
@@ -2116,8 +2075,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 206,
-          "end": 218,
+          "start": 209,
+          "end": 221,
           "excerpt_sha256": "7f7d18bd99e8a0e0317dd2d466ba92d384139193e82c30dce43a037b600e672f"
         },
         {
@@ -2220,13 +2179,7 @@
           "path": "docs/operations/persistent-mcp-auth.md",
           "start": 79,
           "end": 91,
-          "excerpt_sha256": "107fa290563d87e501f78c1d6e09897784d5384e6d9a910520b061253554b7be"
-        },
-        {
-          "path": "docs/history/dots-hermes-connection-plan.md",
-          "start": 53,
-          "end": 55,
-          "excerpt_sha256": "bed581a84ebc64ba61f448946adb090d017eba29cca7ce8a5004590daaec15d9"
+          "excerpt_sha256": "fd8758b3b01921cb6b419df55f7bed8b719c98eec922fe213ae26d6e8d3f1621"
         }
       ]
     },
@@ -2281,14 +2234,14 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 16,
-          "end": 46,
+          "start": 19,
+          "end": 49,
           "excerpt_sha256": "0e6d8045246092035df7e800135ea03b3b8a76f86b212cce327fa687899a492b"
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 79,
-          "end": 84,
+          "start": 82,
+          "end": 87,
           "excerpt_sha256": "1ccd4b29f822d62ee78a96eb4d41b851cb014d7c1454bdc2402c8d3a2b7daec6"
         },
         {
@@ -2328,12 +2281,6 @@
           "start": 63,
           "end": 92,
           "excerpt_sha256": "8e3832cc295e3a953de00c9d76f4313f5daa4d4f134ea6130ec2ed8684f67e41"
-        },
-        {
-          "path": "docs/history/dots-hermes-connection-plan.md",
-          "start": 32,
-          "end": 35,
-          "excerpt_sha256": "a20cb01fe59baaa9bb6d79ac58c06dc2a81d747618a0d67aa538d28ded4ee070"
         }
       ]
     },
@@ -2398,12 +2345,6 @@
           "start": 119,
           "end": 134,
           "excerpt_sha256": "fbc491bf85ce02e5e28dad29e153cdf29d3897352e050a735c7ded4f346e0908"
-        },
-        {
-          "path": "docs/history/dots-hermes-connection-plan.md",
-          "start": 50,
-          "end": 52,
-          "excerpt_sha256": "55269e63a144af98da6151052c4a584c6ec55b4dfd1225086942c3fefb133c74"
         }
       ]
     },
@@ -2446,34 +2387,9 @@
       ]
     },
     {
-      "id": "HAB-A17",
-      "title": "Original-run reconciliation",
-      "statement": "Unknown legacy Task admission keeps original run/scope/receipt and execution gate; retry/reconcile original run under trusted current operator authority instead of creating a replacement run or accepting stop ACK as completion proof.",
-      "rationale": "Prevents duplicate external execution and false release after uncertain outcomes.",
-      "scope": "Optional fixed-task/worker/Runs subsystem only; not required to exchange normal Relay messages.",
-      "decision": "accepted",
-      "checks": [
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/local-integration.md",
-          "start": 25,
-          "end": 29,
-          "excerpt_sha256": "6ebf7501542f9a2ccae80797b7dedfa844f0f61d005b6a6d0570a4f79b02c049"
-        },
-        {
-          "path": "docs/history/migration-plan.md",
-          "start": 21,
-          "end": 25,
-          "excerpt_sha256": "040636dd8e7ee01e2fefe1fc9232c6f05717ef70f72d86e15271b34b798c4eb3"
-        }
-      ]
-    },
-    {
       "id": "HAB-A18",
       "title": "Address rename keeps identity and reserves old names",
-      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace period is the registry option rename_grace_days; each use of a previous name is counted per caller ID, and relay:admin status lists previous names and warns when the host config still names one.",
+      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace period is the registry option rename_grace_days; each use of a previous name is counted per caller ID, and hab:admin status lists previous names and warns when the host config still names one.",
       "rationale": "Changing names must not reassign authority or silently resolve deployment policy.",
       "scope": "Opt-in registry v3 rename with the grace-period resolution; deployment migration needs separate approval.",
       "decision": "proposed",
@@ -2485,7 +2401,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 52,
-          "excerpt_sha256": "406d26388f97186d00ce167645eb67401d79d8f0d56ab166dfd0b90e0bbbadb3"
+          "excerpt_sha256": "3d87712db10b0d7fc3be977365686a0f653eb36614d81bab7384110802c5166b"
         },
         {
           "path": "docs/agent-address-rename.md",
@@ -2506,7 +2422,7 @@
       "title": "Group stop is total and re-grants nothing",
       "statement": "Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.",
       "rationale": "A group stop revokes shared authority. Members that stay active, or that a later reconnect of one address silently revives, would undo an operator's disconnect.",
-      "scope": "Registry authentication-group mode and the relay:admin group disconnect and reconnect.",
+      "scope": "Registry authentication-group mode and the hab:admin group disconnect and reconnect.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -2526,8 +2442,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 124,
-          "end": 129,
+          "start": 127,
+          "end": 132,
           "excerpt_sha256": "0a438b645c0df5a6d82cb127b2ba3e7e4190eb5fb8df290af48c8a046c710be5"
         },
         {
@@ -2543,7 +2459,7 @@
       "title": "Management connect is atomic and explicit",
       "statement": "A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. That transaction requires every right the three separate operations need (group_create, group_bind and group_member), so a context missing any one of them is refused and creates no group, binding or member. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. Every management connect goes through a group; `registry.authentication_groups` in an older config is accepted and ignored.",
       "rationale": "Management requests change authority. A partial or misread request must fail without orphan state and must never grant more than the operator named.",
-      "scope": "Operator management CLI (`relay:admin connect`) and the Registry `createBoundGroup` port. The per-operation rights are implementation evidence (src/hab/sqlite-registry.ts in source-review.json), covered in js-root by test/hab-auth-groups.test.js; no document states them separately.",
+      "scope": "Operator management CLI (`hab:admin connect`) and the Registry `createBoundGroup` port. The per-operation rights are implementation evidence (src/hab/sqlite-registry.ts in source-review.json), covered in js-root by test/hab-auth-groups.test.js; no document states them separately.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -2557,8 +2473,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 129,
-          "end": 132,
+          "start": 132,
+          "end": 135,
           "excerpt_sha256": "90f2d2ed6541ad241e94bc2361deda8b5ab4563960218ce8b42efc031900c9de"
         },
         {
@@ -2572,7 +2488,7 @@
     {
       "id": "HAB-A21",
       "title": "Host A2A identity cannot act as a confused deputy",
-      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and relay:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withRelay called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable. The fixed host principal remains reserved to its original agent after revocation. Disconnect is a permanent A2A off switch for this Registry; changing the identity address cannot undo it. Removing the a2a section permits MCP-only startup without deleting stored history. No identity rotation or revocation reset is provided.",
+      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and hab:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withAuthorization called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable. The fixed host principal remains reserved to its original agent after revocation. Disconnect is a permanent A2A off switch for this Registry; changing the identity address cannot undo it. Removing the a2a section permits MCP-only startup without deleting stored history. No identity rotation or revocation reset is provided.",
       "rationale": "The host identity submits under its own rights. Without a current per-request check of the caller it could deliver to a recipient the caller cannot reach, or expose another caller's replies.",
       "scope": "Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier only; the OAuth ingress does not serve A2A, and a group-authenticated caller with several addresses is refused. Covered in js-root by test/a2a-host.test.js.",
       "decision": "accepted",
@@ -2590,19 +2506,19 @@
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 84,
           "end": 94,
-          "excerpt_sha256": "40aa6fa5285b7a6ab2bc067f254d33f2c5fbe731508eb8fb2f9e6c83fed3b33b"
+          "excerpt_sha256": "62e6e074cf5bb76751f4dfb8db4da39ff9755983c6be315ae805cedba4cc447f"
         },
         {
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 98,
           "end": 100,
-          "excerpt_sha256": "91a9119495a74a0abb071a2e51bb9c45a5c8d58553076cdb4932f3e9f2f44c2f"
+          "excerpt_sha256": "366cd580a1db1502c41007fcd5b8b3ada5e76e379e3642203e8895e6d48b60b3"
         },
         {
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 104,
           "end": 106,
-          "excerpt_sha256": "b4ae6ea107f7c317615b9217caa7ab230d300a96a9863e98afd1abcffd4eab48"
+          "excerpt_sha256": "19a76f280cb536d31c5a6a98db517fc63a116fea19d889a6f7b36ee7594c7c47"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -2612,15 +2528,15 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 193,
-          "end": 203,
-          "excerpt_sha256": "ab1bf9e8be5db3cd0d88a447f6de78acc0d80377a23cc6a43e9d6f10985ba86b"
+          "start": 196,
+          "end": 206,
+          "excerpt_sha256": "41d3812bfabf3d4105e59f20657cda20e51678276f3e4691757fee9c86b3061f"
         },
         {
           "path": "src/hab/README.md",
           "start": 81,
           "end": 88,
-          "excerpt_sha256": "a1a9d7e438e3d332a5fafc565d4586ce2e3193a348ee17c7684aa732bdde82b9"
+          "excerpt_sha256": "b6c410416b7ae7028ed94a3114c2e70953bc0fe1d956109c588f5597810790e9"
         }
       ]
     },
@@ -2698,12 +2614,6 @@
           "start": 293,
           "end": 293,
           "excerpt_sha256": "3d06952c98d346a96204ffa3119946005d2291432b6b76be883a4afe6ed95fbe"
-        },
-        {
-          "path": "docs/history/hab-relay-integration.md",
-          "start": 39,
-          "end": 44,
-          "excerpt_sha256": "266aa49df92905c4abb48d9a1ff997d92fa27cc3a13b3a2886ead5647cfbe55e"
         }
       ]
     },
@@ -2771,7 +2681,7 @@
           "path": "docs/delivery-store.md",
           "start": 7,
           "end": 7,
-          "excerpt_sha256": "a011f21dd45167aa115c69b2cec984fc09c981b489ca3f1ceecf6a02610f321a"
+          "excerpt_sha256": "70ae27225f42bfd0301b0b9d1cd99000f0ddfda812d5e1d24b909b81fba141b7"
         },
         {
           "path": "docs/delivery-store.md",
@@ -2821,12 +2731,6 @@
           "start": 306,
           "end": 308,
           "excerpt_sha256": "3ac00765f5519440674f9926dbc90c685848ab5b6f5f1d1ed32e2977fc425aad"
-        },
-        {
-          "path": "docs/history/security-audit-limits.md",
-          "start": 5,
-          "end": 5,
-          "excerpt_sha256": "b8d31165c514f8b5f979d9d220c0d21634bfb461d4707ab341919b8fefa6723b"
         },
         {
           "path": "docs/delivery/writer-admission.md",
@@ -3096,7 +3000,7 @@
           "path": "docs/delivery-store.md",
           "start": 7,
           "end": 9,
-          "excerpt_sha256": "fa330bb38d0c4a8e8ab1b096d547676f58035bb32b0b20c3d9bf40d112d92d0e"
+          "excerpt_sha256": "0c0138a855f8faef528b6789db06f624bfb99003edd845e2d37c776764777cc7"
         },
         {
           "path": "docs/delivery-store.md",
@@ -3135,32 +3039,6 @@
           "start": 62,
           "end": 62,
           "excerpt_sha256": "414a0b0ebb00e1e012205783348ab27899f8f1e950fc46bd02ef27183a572bba"
-        }
-      ]
-    },
-    {
-      "id": "HAB-D17",
-      "title": "Verification must name real path and substitutions",
-      "statement": "Distinguish native loopback protocol+real SQLite proof from in-process/synthetic lease fixtures, mock authorization from real product binding, orderly same-process close/reopen from kill9/power faults, and local clock aging from real retention passage. Local success cannot complete real products, operational restore, OAuth, deployment or approval/execution acceptance.",
-      "rationale": "The verification harness must prevent overclaiming the exact integration failures it is intended to detect.",
-      "scope": "All local integration claims and generated harness reporting",
-      "decision": "accepted",
-      "checks": [
-        "source-publication",
-        "native-recipient"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/hab-relay-integration.md",
-          "start": 5,
-          "end": 5,
-          "excerpt_sha256": "1320b767295099860e02c807e4649d2bcdfa1ededda86fb32852eddabf8ca393"
-        },
-        {
-          "path": "docs/history/hab-relay-integration.md",
-          "start": 57,
-          "end": 71,
-          "excerpt_sha256": "77d8fcfa80830c6e0e95ebf4493dbe0a38ec131c46fdf00240995341a36f9593"
         }
       ]
     },
@@ -3314,22 +3192,16 @@
       ],
       "citations": [
         {
-          "path": "docs/history/hermes-connection.md",
-          "start": 1,
-          "end": 5,
-          "excerpt_sha256": "ea6ae67d5fcae684a13a7129a8268a3f12e0cd6c892e9fffa297ae1da7f6c004"
+          "path": "docs/hab-principles.md",
+          "start": 15,
+          "end": 15,
+          "excerpt_sha256": "5e25a86231ae757e62bff566ef62d2a1db79c1b9c197c12d3f166f5c451c5ecd"
         },
         {
-          "path": "docs/history/async-text-v1.md",
-          "start": 1,
-          "end": 3,
-          "excerpt_sha256": "cbebd1b652db3fdc1b681cb405a7313af410213ebbb3dfe4a6aa8507b7576fb4"
-        },
-        {
-          "path": "docs/history/generic-job-application.md",
-          "start": 1,
-          "end": 5,
-          "excerpt_sha256": "1b1eed161e3f6a32d2c58560a40ce3e5a2a263d448ab8ceeac34ac9dd0dc5153"
+          "path": "docs/hab-decisions.md",
+          "start": 30,
+          "end": 30,
+          "excerpt_sha256": "2ad2ba4fb2dd330048f0b623d279bcca7c89cc09de9166744a15ec1f580a58d8"
         }
       ]
     },
@@ -3345,104 +3217,10 @@
       ],
       "citations": [
         {
-          "path": "docs/history/task-bridge.md",
-          "start": 15,
-          "end": 23,
-          "excerpt_sha256": "724c7437ddcf2950e67759a1b794f9e246baafea44cc32f1949a9e644aa92f84"
-        },
-        {
-          "path": "docs/history/task-bridge.md",
-          "start": 53,
-          "end": 58,
-          "excerpt_sha256": "8abff7ef9c6be7685fb7c3d9b07952b8a56eed8bdac1e7268a5ce00e3fda1c0f"
-        },
-        {
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 23,
           "end": 27,
           "excerpt_sha256": "5fd414c5f135244338af02799a5cb3a686ba079e7d92f2b15333a1da5ec7ac7a"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E03",
-      "title": "Unknown execution cannot trigger fresh work",
-      "statement": "Save stable key and original scope/deadline before external admission. Unknown execution may only reconcile original key/known run; timeout, abort, missing lookup result or expired retention never establish no external effect and never authorize a fresh key/create.",
-      "rationale": "An ambiguous external call could already have committed; fresh work could duplicate effects.",
-      "scope": "Explicit execution integrations; fixed TaskBridge may resubmit only through its same-key engine idempotency contract.",
-      "decision": "accepted",
-      "checks": [
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/hermes-connection.md",
-          "start": 25,
-          "end": 27,
-          "excerpt_sha256": "9fd0c1ec72bbcfa14968a088e4cdd7f8669dfde885aa52bd959e6ccd8d1887d3"
-        },
-        {
-          "path": "docs/history/task-bridge.md",
-          "start": 37,
-          "end": 43,
-          "excerpt_sha256": "ca5c3ddb856c27f8d148b5649d7521e51f16aede81578311dfba552efaf1872f"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E04",
-      "title": "Coordinator and unknown state stay truthful",
-      "statement": "working means coordinator claim, including before remote runtime acceptance; lease uncertainty is execution_reconciliation, unconfirmed cancellation is cancellation_confirmation with unknown outcome. Neither means owner approval, model running, successful termination or permission to retry.",
-      "rationale": "Status projection must not imply unobserved execution or transfer owner authority.",
-      "scope": "Optional generic Task A2A/MCP/NATS projection.",
-      "decision": "accepted",
-      "checks": [
-        "js-common-mcp"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/generic-job-application.md",
-          "start": 21,
-          "end": 23,
-          "excerpt_sha256": "171ab7a442249d905d8b2e4c2b2a0a91c5643b7fab0583f31fee24655c8374b7"
-        },
-        {
-          "path": "docs/history/async-text-v1.md",
-          "start": 40,
-          "end": 42,
-          "excerpt_sha256": "175407fee15fe92953d300ea1da10791514ecfb8f33c584cda018974671338d6"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E05",
-      "title": "Message fields cannot select execution authority",
-      "statement": "Resolve verified subject/client, full binding and current operation-specific authority at each action; message text, names, ROLE_USER and claimed approval do not create principals, owner scope, recipient or permissions. Distinct clients remain distinct even for same human.",
-      "rationale": "Authenticated transport body is not a recipient-owner grant.",
-      "scope": "Optional generic jobs, bridge and receiver-host handoff; no production identity is established by synthetic fixtures.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "native-recipient"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/generic-job-application.md",
-          "start": 7,
-          "end": 17,
-          "excerpt_sha256": "a1fa0125a2daf12e0f15de71d104e708ee18298cc34482f457ce84a52a447331"
-        },
-        {
-          "path": "docs/history/generic-text-preview.md",
-          "start": 15,
-          "end": 27,
-          "excerpt_sha256": "6d6b8c33eb72da7fe32f5e49777d71e3865706548c3374c271c969faa0d3433c"
-        },
-        {
-          "path": "docs/history/task-bridge.md",
-          "start": 19,
-          "end": 25,
-          "excerpt_sha256": "5e279257ff45d911bce10aa53286499e76a83df611b241a56d85abc440ccf90a"
         }
       ]
     },
@@ -3468,12 +3246,6 @@
           "start": 40,
           "end": 44,
           "excerpt_sha256": "871638080d588df74fe110a62629905e22bec1639bdf892a46b813a9279a1c3c"
-        },
-        {
-          "path": "docs/history/task-bridge.md",
-          "start": 74,
-          "end": 74,
-          "excerpt_sha256": "747aeecdf46b2613c3c9fbee34d3f534b47d3cdd078816944bd6117187eabfd5"
         }
       ]
     },
@@ -3500,31 +3272,6 @@
           "start": 18,
           "end": 38,
           "excerpt_sha256": "8eaaa4a53935d19281e69e58aff177eab5072e58ee48f883f009e2c5e42bace9"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E08",
-      "title": "Stop epoch is atomic but not remote cancellation",
-      "statement": "Bind verified principal to current durable epoch and validate gate with local Task effects atomically. Restore invalidates old requests and never grants identity, restores subscription or retries unknown run. Stop cannot recall sent bytes or prove external model cessation.",
-      "rationale": "Prevent stale authority after stop/restore without overstating cross-system atomicity.",
-      "scope": "Task authorization and separately authorized notifications; standard receive control covered by other reader.",
-      "decision": "accepted",
-      "checks": [
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/durable-stop-gate.md",
-          "start": 18,
-          "end": 35,
-          "excerpt_sha256": "4504a3740e3c61f9b69afa052ea5f14f00683044f021aefa1fb560ebbaccdeab"
-        },
-        {
-          "path": "docs/history/durable-stop-gate.md",
-          "start": 39,
-          "end": 67,
-          "excerpt_sha256": "55b21a5040eba5aca95cc901b6c0d375c534f65d0c24ec6a8ef3bb84ebf6889d"
         }
       ]
     },
@@ -3566,31 +3313,6 @@
       ]
     },
     {
-      "id": "HAB-E10",
-      "title": "Generic text protocol preserves bounded exact input",
-      "statement": "Optional generic profile accepts only explicit nonblocking structured text with bounded valid Unicode excluding NUL/lone surrogates; max text/result32768UTF8 bytes, request256KiB,response512KiB. No silent replace/truncate/normalization; changed bound payload/deadline on stable ID conflicts.",
-      "rationale": "Prevent storage conversion and retry ambiguity while keeping finite protocol resources.",
-      "scope": "async-text-v1 and GenericTextJobs; fixed connectivity/ping contracts remain separate.",
-      "decision": "accepted",
-      "checks": [
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/async-text-v1.md",
-          "start": 28,
-          "end": 32,
-          "excerpt_sha256": "1f67f53f774f627a8d63bc87362e28eb4b9ee101336a43ef3e8068e3889f8585"
-        },
-        {
-          "path": "docs/history/generic-job-application.md",
-          "start": 25,
-          "end": 25,
-          "excerpt_sha256": "9f7f16ceb4019661529e5f4e117369fa2d2d8efa25ff412248d48ad483aacf11"
-        }
-      ]
-    },
-    {
       "id": "HAB-E11",
       "title": "Capacity does not evict active dedup evidence",
       "statement": "Private execution/reply journals reject binding/key/schema/corruption/capacity failures and preserve existing unknown/dedup records. Reopen does not extend original deadline or convert delivery expiry into failed/nonexistent execution. Independent restore needs quiescent reconciliation.",
@@ -3602,99 +3324,10 @@
       ],
       "citations": [
         {
-          "path": "docs/history/task-bridge.md",
-          "start": 78,
-          "end": 82,
-          "excerpt_sha256": "19339016a77b597fb424eaff7edd60d00391f15359a38145e2b41e922251f924"
-        },
-        {
           "path": "docs/receiver/adapter-reply-budget.md",
           "start": 50,
           "end": 54,
           "excerpt_sha256": "18a721c9ae2abeff88f7909361c3c70525b86cfba4ffbb5e53e6c2892eecaec8"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E14",
-      "title": "Live trial cost and quota require evidence",
-      "statement": "For optional live diagnostics/inventory with agreed zero-additional-cost ceiling, unknown included allowance/provider billing or quota stops work. No paid fallback, silent credit use, tick token minting or auto retry. Account-wide token attempts reserve durable shared counters and unknown attempts park until reviewed reconciliation.",
-      "rationale": "Model-route success and cached plan claims do not establish entitlement, allowance or safe quota.",
-      "scope": "User-selected zero-cost optional live trials and token broker; not assertion of current provider prices/plans and no live trial authorized by this contract.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "production-operations"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/mvp-acceptance.md",
-          "start": 19,
-          "end": 29,
-          "excerpt_sha256": "6b0163464b74c5328840d0abff7b59b5d4b05c648d75d24b9ca67acf06096eb5"
-        },
-        {
-          "path": "docs/history/mvp-acceptance.md",
-          "start": 37,
-          "end": 41,
-          "excerpt_sha256": "5336c00b6e8c6a5a87f8b0523fddba033b89e00434b3dcd92129188f93a3263a"
-        },
-        {
-          "path": "docs/history/local-hermes-key.md",
-          "start": 80,
-          "end": 91,
-          "excerpt_sha256": "c8657808cb7166491321e1b617a200aabc26913308321131bfdf25b26f7c558e"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E15",
-      "title": "Metadata cannot promote into execution",
-      "statement": "Discovery-only/metadata modes create no Task/worker/model authority, reject all task calls and cannot become active by config mutation. Actual authenticated correlated result and owned cleanup are separate acceptance gates.",
-      "rationale": "HTTP metadata/readback/200 can otherwise be mistaken for authenticated executable product integration.",
-      "scope": "Explicit ping-discovery and inventory-metadata diagnostics; live OAuth/native client readiness remains manual.",
-      "decision": "accepted",
-      "checks": [
-        "js-root",
-        "native-recipient"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/ping-discovery.md",
-          "start": 3,
-          "end": 20,
-          "excerpt_sha256": "df4ea6aa576f1a158ab0d02c724f288feaded1158ba3a36e6531b71ca9475813"
-        },
-        {
-          "path": "docs/history/inventory-end-to-end.md",
-          "start": 109,
-          "end": 134,
-          "excerpt_sha256": "363febf8b2506d32e28aaa0d48510777f2c77a02ec389702501b245cd21ba3ad"
-        },
-        {
-          "path": "docs/history/manual-ping-runner.md",
-          "start": 61,
-          "end": 72,
-          "excerpt_sha256": "7bdaef601e8d4bdcf0a5a28eea3146768b42f2b739d612d26933abd3dd15f8a9"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E16",
-      "title": "Audit acknowledgement is finite and truthful",
-      "statement": "Before-action audit must receive bounded writer acknowledgement or deny, with no automatic writer restart. After-action failure cannot undo committed effects and unknown work keeps its admission. Fixed redacted bounded diagnostics do not leak body/token/raw authority; OS write ACK is not fsync.",
-      "rationale": "Avoid audit floods blocking event loop or timeout enabling duplicate work; do not overclaim durability.",
-      "scope": "Existing Node task runtime/native and portable protocol review fixes, not generic app logging convention.",
-      "decision": "accepted",
-      "checks": [
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/review-fixes.md",
-          "start": 15,
-          "end": 19,
-          "excerpt_sha256": "127273ae29d6e05f1d3b9c665bc634deb75a9b7a8ae1f5ea72345eaa6191536d"
         }
       ]
     },
@@ -3715,43 +3348,6 @@
           "start": 68,
           "end": 72,
           "excerpt_sha256": "76ec86eead6e7402d4a3e8c69097afd3aebf19c9b6ed05f3d42dbf8a3f41e015"
-        },
-        {
-          "path": "docs/history/finite-mcp-trial.md",
-          "start": 24,
-          "end": 28,
-          "excerpt_sha256": "e560d8fe60f24b345c314d582ab6bfd0c365a4de3b9d77ae6156e6b2d90c1952"
-        },
-        {
-          "path": "docs/history/inventory-end-to-end.md",
-          "start": 53,
-          "end": 64,
-          "excerpt_sha256": "44f8760498ee74432970c9aa7e37f18f52bee62ea4595f864f29354c075abc64"
-        }
-      ]
-    },
-    {
-      "id": "HAB-E19",
-      "title": "Fixed pilot success remains historical",
-      "statement": "Earlier exact fixed-connectivity Hermes Runs success establishes only its finite reviewed route and cannot accept current inventory imports/key lifecycle or ordinary standard-MCP product connection.",
-      "rationale": "Earlier route success is useful evidence but not universal architecture or permission.",
-      "scope": "Earlier hermes-hub-fixed-pilot-v1 local prototype.",
-      "decision": "historical",
-      "checks": [
-        "proposal-review"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/fixed-pilot.md",
-          "start": 3,
-          "end": 9,
-          "excerpt_sha256": "42c29357f5af82f3360b440d365ee1f1dbd2952b57978bf5e7b05459ac3cf99b"
-        },
-        {
-          "path": "docs/history/fixed-pilot.md",
-          "start": 35,
-          "end": 46,
-          "excerpt_sha256": "bb930a596baa7556a936525d986c7c0b2ac2a13100063baa02e14fb3ad84a2ef"
         }
       ]
     },
@@ -3760,7 +3356,7 @@
       "title": "Host-routed A2A completion is reply-attested and labelled",
       "statement": "The host-routed A2A entry has no engine evidence port. Recipient storage ACK leaves the Task SUBMITTED. A durable execution_accepted reply makes it WORKING, and a durable execution_result reply makes it COMPLETED (succeeded, with the result text as the only Artifact), FAILED or CANCELED; an expired or quarantined request with no reply becomes INPUT_REQUIRED until its reply window closes. A reply counts only when the configured recipient sent it, it references that Task's own host source message, its thread matches and its schema is exact. A reply counts only if it arrives before its request's expiry plus one day (the reply window); a later one is ACKed without a record and never changes the Task. By the owner's 2026-11-07 decision (ADR-016), a Task with no result applied when its reply window closes, whether SUBMITTED, WORKING or INPUT_REQUIRED, moves to the standard TASK_STATE_FAILED with no Artifact, `reason: \"result_window_expired\"` in its status message metadata and its public `hab_relay` metadata, and a status message that starts with `result_window_expired` and says the outcome is unknown, because the recipient may or may not have executed the request; no custom A2A state is added and the Task never stays WORKING. The host receiver loop makes this transition without a caller read through bounded stable-key pages from the Task store's `overdue()`, starting when the earliest window closes; later pages and failed applies can require later cycles. A read after the window attempts the transition at once. A reply arriving afterwards never revives or changes the Task. FAILED with result_window_expired never claims that the recipient did not execute the request. A later reply with another engine Task ID, or a second terminal result with another state, is refused without replacing the saved Task. Every such Task's public metadata carries `attestation: \"recipient_reply\"`, and the Card and Artifact describe the result as the recipient's report. COMPLETED here claims no verification of the recipient's engine and never satisfies the evidence-verified rule of HAB-E02 and HAB-V12.",
       "rationale": "The host cannot read a remote recipient's engine. The label keeps a recipient's self-report from passing as independently verified execution.",
-      "scope": "Opt-in host A2A entry only. The preview composition with HabExecutionEvidence keeps HAB-E02 and HAB-V12. Covered in js-root by test/a2a-host.test.js; an actual product recipient's reply is not exercised. Its case \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" ages the request two days while the host is stopped, waits for the stored Task to fail without a caller read, checks the reason, the outcome-unknown message and the empty Artifacts, and checks that a late result is ACKed without a record and leaves the status unchanged. Its case \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" ages the request so that its window closes five seconds after a restart, after the restart's first maintenance pass, and checks that the stored Task fails within 20 seconds of that time without a read. A live drive cannot wait out the day (features/a2a-host.md a2a-window). A new unit control holds a pre-window result unconfirmed, reaches FAILED at the window, then confirms it and checks that it cannot revive the failed Task. It preserves the existing deadline semantics, not a new grace period. One-cycle timing is an unobstructed fixture claim, not a backlog guarantee.",
+      "scope": "Opt-in host A2A entry only. The preview composition with HabExecutionEvidence keeps HAB-E02. Covered in js-root by test/a2a-host.test.js; an actual product recipient's reply is not exercised. Its case \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" ages the request two days while the host is stopped, waits for the stored Task to fail without a caller read, checks the reason, the outcome-unknown message and the empty Artifacts, and checks that a late result is ACKed without a record and leaves the status unchanged. Its case \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" ages the request so that its window closes five seconds after a restart, after the restart's first maintenance pass, and checks that the stored Task fails within 20 seconds of that time without a read. A live drive cannot wait out the day (features/a2a-host.md a2a-window). A new unit control holds a pre-window result unconfirmed, reaches FAILED at the window, then confirms it and checks that it cannot revive the failed Task. It preserves the existing deadline semantics, not a new grace period. One-cycle timing is an unobstructed fixture claim, not a backlog guarantee.",
       "decision": "accepted",
       "checks": [
         "js-root",
@@ -3934,40 +3530,6 @@
       ]
     },
     {
-      "id": "HAB-V07",
-      "title": "Incomplete required groups fail acceptance",
-      "statement": "Required acceptance must fail on missing, duplicated, empty, contradictory, failing, skipped, cancelled or timed-out results; timeout remains failure even after exit zero.",
-      "rationale": "A harness must not convert absent work or incomplete backends into green product acceptance.",
-      "scope": "Current required local P7/native profile; historical permitted skips remain historical evidence only.",
-      "decision": "accepted",
-      "checks": [
-        "current-hosted-ci",
-        "report-gate-controls"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/testing/p7-lab.md",
-          "start": 12,
-          "end": 14,
-          "excerpt_sha256": "36edbfb7847d97f112d0978d0b93702dd1a78e013f29697ac2b998881e562f56",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): re-read current required-group and failure/hosted-status text; only expected root inventory changes 1424 to 1441. Acceptance meaning and requirement statement unchanged. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
-        },
-        {
-          "path": "docs/history/testing/a2a-native-acceptance.md",
-          "start": 37,
-          "end": 37,
-          "excerpt_sha256": "d5d95ea1088b5f3b4aba70191435826056b82f43061c4f7f87dd31b9e9d4f810"
-        },
-        {
-          "path": "docs/history/testing/publication.md",
-          "start": 30,
-          "end": 30,
-          "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
-        }
-      ]
-    },
-    {
       "id": "HAB-V08",
       "title": "Owned isolation and retained evidence",
       "statement": "Use fresh isolated state, drive only an instance owned by this run, clean up owned processes after success and failure, and confirm retained evidence survives disposable-state removal.",
@@ -4042,112 +3604,6 @@
           "start": 28,
           "end": 30,
           "excerpt_sha256": "083f8b64b4efd1ff5b034ffef2f8076fd28863180d16fa7ad9767f7c63cf0c8d"
-        }
-      ]
-    },
-    {
-      "id": "HAB-V11",
-      "title": "Finite characterization is not a production budget",
-      "statement": "Keep the serial local characterization workload, substitutions, recovery faults, timing exclusions and counts explicit; report no production SLO/capacity/comparative result or power/storage guarantee.",
-      "rationale": "Small shared-host samples and synthetic immediate execution cannot select operator acceptance budgets.",
-      "scope": "Optional fixed-connectivity 5x5 measurement, not generic MCP cadence or delivery store capacity.",
-      "decision": "accepted",
-      "checks": [
-        "production-operations"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/testing/a2a-bounded-performance.md",
-          "start": 3,
-          "end": 7,
-          "excerpt_sha256": "5305850a87a8d64ae1321b328d9949630b1ba6ed4fd39f599ba25a14456eb2c4"
-        },
-        {
-          "path": "docs/history/testing/a2a-bounded-performance.md",
-          "start": 13,
-          "end": 21,
-          "excerpt_sha256": "adc139d3724ba041910304888ccc66e33994f35d266f960d448f54a4e062586a",
-          "maintenance": "Driver maintenance (2026-11-13): re-read lines 13-21 after line 17 kept the recorded runs' driver and added that a new run would also wrap SDK all/run calls on node:sqlite; the requirement is unchanged."
-        },
-        {
-          "path": "docs/history/testing/publication.md",
-          "start": 34,
-          "end": 36,
-          "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
-        }
-      ]
-    },
-    {
-      "id": "HAB-V12",
-      "title": "Optional A2A delivery and completion are separate",
-      "statement": "In the fixed optional A2A route, recipient storage ACK leaves engine count unchanged and Task submitted; explicit acceptance creates one execution Task and a confirmed correlated execution result plus authorized closed evidence releases the Artifact.",
-      "rationale": "Delivery/coordination progress must not masquerade as executed user work or published completion.",
-      "scope": "Optional fixed connectivity route composed with HabExecutionEvidence (P7 producer and native A2A groups) only; the host-routed entry is reply-attested under HAB-E20 and never satisfies this requirement. It is not an ordinary-message Task requirement.",
-      "decision": "accepted",
-      "checks": [
-        "current-hosted-ci",
-        "js-root"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/testing/a2a-bounded-performance.md",
-          "start": 11,
-          "end": 11,
-          "excerpt_sha256": "2aedf50e7a085c45e2fe1263816d4fc998e596d096635772b9694e1eb37d7b55"
-        },
-        {
-          "path": "docs/history/testing/a2a-native-acceptance.md",
-          "start": 26,
-          "end": 35,
-          "excerpt_sha256": "0d57fd94236f628619c1d9b6094a2532371b92939a48c8fb46cfab44308383ba"
-        }
-      ]
-    },
-    {
-      "id": "HAB-V13",
-      "title": "Official broker identity before execution",
-      "statement": "Retired (historical): ADR-018 deleted the pinned nats-server, its installer, the P7 runner and the CI broker stage, so no broker executable is accepted as input any more. Original accepted statement, kept for provenance: For P7 broker checks verify official version-pinned executable size/SHA256 and use an exclusive private copy; public input must not accept an endpoint/credential/arbitrary forwarded executable.",
-      "rationale": "Version strings and attacker-specified checksums do not identify reviewed bytes or owned test infrastructure.",
-      "scope": "Retired P7 NATS verification infrastructure; kept for provenance only.",
-      "decision": "historical",
-      "checks": [
-        "current-hosted-ci"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/testing/p7-lab.md",
-          "start": 5,
-          "end": 5,
-          "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
-        },
-        {
-          "path": "docs/history/testing/publication.md",
-          "start": 16,
-          "end": 16,
-          "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
-        }
-      ]
-    },
-    {
-      "id": "HAB-V14",
-      "title": "Current CI is separate from historical results",
-      "statement": "Check the actual current commit Actions result independently; historical local results, fixed blockers, workflow examples and passed overlapping counts do not establish current hosted success or a unique coverage total.",
-      "rationale": "Recorded run identities and scope prevent stale evidence from approving a changed source/deployment.",
-      "scope": "Reports/PR verification claims, all languages and protocol suites.",
-      "decision": "accepted",
-      "checks": [
-        "current-hosted-ci"
-      ],
-      "citations": [
-        {
-          "path": "docs/history/testing/publication.md",
-          "start": 26,
-          "end": 30,
-          "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097",
-          "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         }
       ]
     }
@@ -4339,21 +3795,6 @@
       "instructions": "Review actual initialization, injected ports and reachable runtime code for import-time DB/listener/network effects and hidden product/Task authority. AST module graphs deliberately do not prove package internals, aliased loaders, reflection or runtime side effects. Record exact reviewed paths/revision and scope before claiming this entire invariant."
     },
     {
-      "id": "report-gate-controls",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "{bundle}/checks/assert-automated.mjs",
-        "--self-test"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 60,
-      "protocol": "exit",
-      "proves": "Nineteen negative controls reject missing/partial/forged/zero/skip/manual-pass/hash/cleanup/trace evidence; a complete internally consistent synthetic report passes without promoting manual scope.",
-      "limitations": "CI report-consistency gate controls only. Synthetic artifacts establish no HAB behavior, signature/provenance authenticity or native/production compliance. Real report is checked after the run."
-    },
-    {
       "id": "js-recipient-messages",
       "kind": "command",
       "tier": "integration",
@@ -4521,7 +3962,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "No. Architecture/workflow explicitly own optional limited Task path, and ADR015/common-MCP explicitly retain Tasks optional and recipient existing authority; ADR-016 revises the standard composition and keeps that division. Diagram remains dated historical Task integration rather than standard communication target.",
@@ -4570,7 +4010,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "No. Reusable Relay permits outer capability integration without reverse dependency; standard messaging cannot require HAB product execution/approval runner. Verify native MCP/formal display/wake binding and leave absent capabilities unverified; independent explicitly configured execution integration remains scoped.",
@@ -4613,7 +4052,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "None proves live refresh. Older table is historical implementation snapshot; persistent-auth documents explicit v2 implemented contract and synthetic/loopback tests, with real Auth0/host refresh still unverified. Preserve version/mode and evidence scope rather than treating all common auth as 15-minute one-shot.",
@@ -4656,7 +4094,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). Superseded for A2A: the owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability (HAB-C-F10). A2A production deployment remains undecided. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).",
@@ -4693,7 +4130,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "Interpret G2 as optional execution-path gate, not ordinary communication prerequisite: Relay says ordinary question/answer Task unnecessary and ADR015 explicitly denies making optional Task mandatory. Native messaging capabilities and durable receipt still need G0/live evidence.",
@@ -4730,7 +4166,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "Current fixed source explicitly resolves working to coordinator claim before runtime acceptance. Preserve this meaning in API/UI/evidence and do not treat working as model start/approval/completion.",
@@ -4767,7 +4202,6 @@
         "HAB-F06",
         "HAB-F08",
         "HAB-F12",
-        "HAB-F18",
         "HAB-F21"
       ],
       "resolution": "No. Pure inbox_read preserves false receipt and does no action/ACK update; existing reply/task acceptance still independently require confirmed ACK and current authorization. Read authority is separate from metadata/receive and actions.",
@@ -4812,7 +4246,7 @@
           "path": "src/hab/README.md",
           "start": 345,
           "end": 385,
-          "excerpt_sha256": "898e85a7ea45e3f526ba80400b47792118511382bf7b2d9a5dfd0424dda8d545"
+          "excerpt_sha256": "dff203e262b52f055709d4d9a78412d37bce4a90cba9e77d3ab422a9632beea2"
         }
       ]
     },
@@ -4853,7 +4287,7 @@
           "path": "docs/operations/persistent-mcp-auth.md",
           "start": 79,
           "end": 86,
-          "excerpt_sha256": "476421ca3dcd8daf895527ccb0cff47402440b8fa0030210769c091a9751a833"
+          "excerpt_sha256": "eef1918dc6d694bfa0a19e891c07e0804e8b8801dea41470fe0f81e24326c4f9"
         }
       ]
     },
@@ -4923,7 +4357,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 59,
-          "excerpt_sha256": "fcae3a8c92ccef8abc558b66b8d058dde82c40dda595e24136c30f3b61ceb367"
+          "excerpt_sha256": "bd86c81b0919f46a8b7025c2ea9afc125963df0d2c175d2990684337b97582e1"
         }
       ]
     },
@@ -4979,8 +4413,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 147,
-          "end": 161,
+          "start": 150,
+          "end": 164,
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {
@@ -5000,8 +4434,7 @@
         "HAB-D13",
         "HAB-D14",
         "HAB-D15",
-        "HAB-D16",
-        "HAB-D17"
+        "HAB-D16"
       ],
       "resolution": "No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in. The cumulative src/relay/README.md was itself deleted when the durable sender and receiver moved to src/agent-sdk; its successor README describes only the current agent SDK and has no stage claims, so the question is moot.",
       "classification": "historical",
@@ -5029,8 +4462,7 @@
         "HAB-D13",
         "HAB-D14",
         "HAB-D15",
-        "HAB-D16",
-        "HAB-D17"
+        "HAB-D16"
       ],
       "resolution": "No. fair_poll guarantees bounded candidate rotation for a stable eligible set; WriterAdmission is shared single-process volatile rate/queue. The attachment receiver's single checkpoint slot was deleted with attachments. Bytes/time/processing/SLO/fleet fairness remain excluded.",
       "classification": "scope",
@@ -5058,8 +4490,7 @@
         "HAB-D13",
         "HAB-D14",
         "HAB-D15",
-        "HAB-D16",
-        "HAB-D17"
+        "HAB-D16"
       ],
       "resolution": "No, and the question is now moot: SQLiteSnapshotBundle was deleted. It never captured Registry/authority/Task/config/keys or broker data. JetStream operations require broker stream/consumer, admission journal, authority/config and recipient state quiesced and reconciled. P5/P6 remaining proof statements are package-scope/time-bounded; later P7 evidence must be reviewed separately by coordinator. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).",
       "classification": "historical",
@@ -5087,8 +4518,7 @@
         "HAB-D13",
         "HAB-D14",
         "HAB-D15",
-        "HAB-D16",
-        "HAB-D17"
+        "HAB-D16"
       ],
       "classification": "unresolved",
       "citations": [
@@ -5121,8 +4551,7 @@
         "HAB-D13",
         "HAB-D14",
         "HAB-D15",
-        "HAB-D16",
-        "HAB-D17"
+        "HAB-D16"
       ],
       "resolution": "They are dated risk references; this reading records external metadata access but does not revalidate issue status or fixes. No safety conclusion is derived. Platform-specific fault testing stays unverified. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).",
       "classification": "historical",
@@ -5147,10 +4576,7 @@
       "id": "HAB-C-E01",
       "requirements": [
         "HAB-E01",
-        "HAB-E03",
-        "HAB-E04",
-        "HAB-E17",
-        "HAB-E19"
+        "HAB-E17"
       ],
       "resolution": "No. hermes-connection1–5 and generic profile1–3 expressly choose native common MCP for standard messaging. Runs/inventory adapters remain optional explicit integrations; no default dependency can be inferred.",
       "classification": "resolved-subsystem-scope",
@@ -5175,10 +4601,7 @@
       "id": "HAB-C-E02",
       "requirements": [
         "HAB-E01",
-        "HAB-E03",
-        "HAB-E04",
-        "HAB-E17",
-        "HAB-E19"
+        "HAB-E17"
       ],
       "resolution": "Distinct request/runtime/import/key contracts. Earlier trial records finite connectivity only; current inventory/no-site and native acceptance gates remain separate. Do not erase earlier evidence or reuse it as current approval.",
       "classification": "resolved-historical-scope",
@@ -5209,10 +4632,7 @@
       "id": "HAB-C-E03",
       "requirements": [
         "HAB-E01",
-        "HAB-E03",
-        "HAB-E04",
-        "HAB-E17",
-        "HAB-E19"
+        "HAB-E17"
       ],
       "resolution": "Treat earlier table/diagnostic proposal as its earlier fixed baseline and later explicit fixed-text increment45–53 as source-backed implementation scope. Neither proves actual live OAuth/native compatibility. Avoid absolute current /mcp-only requirement.",
       "classification": "historical-implementation-status",
@@ -5243,10 +4663,7 @@
       "id": "HAB-C-E04",
       "requirements": [
         "HAB-E01",
-        "HAB-E03",
-        "HAB-E04",
-        "HAB-E17",
-        "HAB-E19"
+        "HAB-E17"
       ],
       "resolution": "Current assigned generic application/profile/NATS docs consistently define coordinator claim and unknown reconciliation/cancellation; inspected GenericTextJobs projection agrees. Separate proposed recipient-owner approval is not implemented and must not overwrite this state meaning.",
       "classification": "resolved-state-semantics",
@@ -5277,10 +4694,7 @@
       "id": "HAB-C-E05",
       "requirements": [
         "HAB-E01",
-        "HAB-E03",
-        "HAB-E04",
-        "HAB-E17",
-        "HAB-E19"
+        "HAB-E17"
       ],
       "resolution": "No. local-MVP 99–108 says each MVP address connects as the only member of its own group, while actual connection uses approved groups, distinct address selection and no same-group Bot exclusivity guarantee.",
       "classification": "resolved-version-scope",
@@ -5299,10 +4713,7 @@
       "id": "HAB-C-E06",
       "requirements": [
         "HAB-E01",
-        "HAB-E03",
-        "HAB-E04",
-        "HAB-E17",
-        "HAB-E19"
+        "HAB-E17"
       ],
       "resolution": "No. Proposed OS read-only image/dedicated identity needs separately reviewed TS/Python identity, import/native closure and credential handoff contract. Current EPERM remains inconclusive and blocked.",
       "classification": "proposed-architecture-not-authorized",
@@ -5326,12 +4737,8 @@
       "question": "Early lab records unimplemented A2A/NATS skips, later P7 requires zero skips. Which is current?",
       "id": "HAB-C-V01",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "resolution": "Retain old baseline as historical evidence. Current composite P7 and successor catalogs are authoritative for mandatory groups; no old skip becomes a pass. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).",
       "classification": "historical-versus-current profile",
@@ -5355,12 +4762,8 @@
       "question": "Older reports say workflow inactive/publication held, current publication guide says active CI.",
       "id": "HAB-C-V02",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "resolution": "The older statements describe fixed local runs. The active workflow and actual current Actions result establish current CI, not the inert example or historical report.",
       "classification": "historical publication and hosted-CI scope",
@@ -5384,12 +4787,8 @@
       "question": "F05 documentation describes actual SIGKILL while restart recipe says no kill-9 verification.",
       "id": "HAB-C-V03",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "resolution": "F05 actually spawns/kills an isolated receiver child after save at an injected service-port seam. test:hab-integration only closes/reopens in process; verify-hab marked stop is graceful. These prove different scopes; none proves power-loss/physical failure.",
       "classification": "different fault injection boundary",
@@ -5414,12 +4813,8 @@
       "question": "Does raw relay_poll plus relay_ack establish durable receiving?",
       "id": "HAB-C-V04",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "resolution": "No. Corrected wire recipe explicitly does not save receiver state; only independent pre-network-ACK SQLite/body/request evidence supports durable receiver claims.",
       "classification": "wire-versus-recipient-storage evidence",
@@ -5443,12 +4838,8 @@
       "question": "P7 guides still name the original 1498 full-root cases and old group set, but the current successor adds the broker-startup group and implementation adds tests. Which numeric counts apply to this exact candidate?",
       "id": "HAB-C-V05",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "classification": "stale operational count within historical reference guide",
       "citations": [
@@ -5472,12 +4863,8 @@
       "question": "Can native A2A acceptance or the shared JetStream D01 stand in for arbitrary six-direction backend behavior?",
       "id": "HAB-C-V06",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "resolution": "No for native A2A: it has a fixed SDK route with no generic poll/ACK API, and native relationships do not verify generic requirements. The hybrid D01 is gone: both shared backends now run D01 to D08 through JetStream, so D01 covers six directed synthetic round trips on JetStream only. That is still a synthetic three-agent contract, not arbitrary product traffic. Keep both scopes visible. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).",
       "classification": "generic compatibility-versus-native protocol scope",
@@ -5501,12 +4888,8 @@
       "question": "Do diagram manifests and their rendering implementation create additional product topology requirements?",
       "id": "HAB-C-V07",
       "requirements": [
-        "HAB-V07",
         "HAB-V09",
-        "HAB-V10",
-        "HAB-V11",
-        "HAB-V12",
-        "HAB-V14"
+        "HAB-V10"
       ],
       "resolution": "Manifest hashes verify correspondence of two rendered images to Markdown Mermaid source, not running topology. Derive principles from the authoritative Markdown current/target scope; keep binary image access separate.",
       "classification": "documentation-integrity artifact versus product authority",
@@ -5574,7 +4957,6 @@
       "question": "docs/history/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?",
       "id": "HAB-C-E07",
       "requirements": [
-        "HAB-E03",
         "HAB-E11",
         "HAB-E17"
       ],
@@ -5607,7 +4989,6 @@
       "id": "HAB-C-E08",
       "requirements": [
         "HAB-E02",
-        "HAB-V12",
         "HAB-E20",
         "HAB-A21",
         "HAB-D20",
@@ -5687,8 +5068,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 16,
-          "end": 27,
+          "start": 19,
+          "end": 30,
           "excerpt_sha256": "053c23318812dc7ed12817ca6ddf534ad12bbe4a5396131c909bd754dfb0777d"
         },
         {
@@ -5825,7 +5206,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 52,
-          "excerpt_sha256": "406d26388f97186d00ce167645eb67401d79d8f0d56ab166dfd0b90e0bbbadb3"
+          "excerpt_sha256": "3d87712db10b0d7fc3be977365686a0f653eb36614d81bab7384110802c5166b"
         },
         {
           "path": "docs/hab-relay-spec.md",
@@ -5863,7 +5244,7 @@
           "path": "docs/delivery-store.md",
           "start": 46,
           "end": 58,
-          "excerpt_sha256": "633938867107eb5cad51221cf7aa771402ab9c4450b9acf7a35483aabd876480"
+          "excerpt_sha256": "c365b1a53c63089f62be37cf65d84365b3a0c003a0155c50c6641e63526158b4"
         }
       ],
       "resolution": "No. ADR-018 (owner, 2026-11-13) replaces the JetStream delivery part of ADR-016 with one SQLite file per host. The broker was loopback-only with one replica and no consumer, and the SQLite journal already held admission, leases, retries and ACK history, so the broker only stored bodies. packages/relay-nats, the pinned nats-server, its installers, the pump, the broker config and the CI broker stage were deleted. Messages of the JetStream build are not migrated; the host refuses to start while jetstream-journal.sqlite remains, and the upgrade waits one hour plus max_clock_skew_ms after the last acceptance so no old ID can be admitted again. Revisit if multi-host, HA or external consumers are needed."

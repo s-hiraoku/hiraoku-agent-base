@@ -15,7 +15,7 @@ HAB は、エージェント同士がメッセージをやり取りするため�
 | エージェント SDK | `src/agent-sdk` | 送信側の永続 outbox、保存後に ACK する受信 inbox、MCP client、受信 supervisor |
 | 受信側の任意部品 | `src/adapter-host` ほか | 返信 budget、質問返信 intent、単一 owner、ACP 起動など。標準接続には不要（[receiver](receiver/)） |
 
-host は `npm run relay:local` で起動し、アドレスの登録と接続は `npm run relay:admin` で行います。名前に残る `relay` は既存の接続設定との互換のためです。旧 HAB Relay は 2026-11-07 に廃止し（ADR-016）、配送は一時 NATS JetStream を経て、2026-11-13 から host の SQLite ファイル 1 つで行っています（ADR-018）。
+host は `npm run hab:host` で起動し、アドレスの登録と接続は `npm run hab:admin` で行います。旧名の `relay:local`・`relay:admin` も同じコマンドの別名として残しています。MCP ツール名の `relay_*` は既存の接続設定との互換のために残しています。旧 HAB Relay は 2026-11-07 に廃止し（ADR-016）、配送は一時 NATS JetStream を経て、2026-11-13 から host の SQLite ファイル 1 つで行っています（ADR-018）。
 
 ## アドレスと認証
 

@@ -104,3 +104,14 @@ test("importing the legacy operator modules preserves exports without starting a
   assert.equal(result.stdout, "");
   assert.equal(result.stderr, "");
 });
+
+test("hab:host and hab:admin run the same scripts as their relay:* aliases", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { scripts } = JSON.parse(await readFile("package.json", "utf8")) as {
+    scripts: Record<string, string>;
+  };
+  assert.equal(scripts["hab:host"], "node scripts/hab-relay.ts");
+  assert.equal(scripts["hab:admin"], "node scripts/hab-relay-admin.ts");
+  assert.equal(scripts["relay:local"], scripts["hab:host"]);
+  assert.equal(scripts["relay:admin"], scripts["hab:admin"]);
+});

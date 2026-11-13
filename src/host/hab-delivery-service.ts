@@ -28,7 +28,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     action: (authorization: Authorization) => T,
   ): T {
     this.#assertCurrent();
-    return this.#registry.withRelay(
+    return this.#registry.withAuthorization(
       context,
       operation,
       (authorization, agentId) => {
