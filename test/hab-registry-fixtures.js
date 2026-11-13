@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { identities, limits } from "./relay-http-fixtures.js";
-import { jetstreamDelivery } from "./jetstream-delivery.js";
+import { sqliteDelivery } from "./delivery-fixture.js";
 export const options = {
   fingerprint_key: new Uint8Array(32).fill(61),
   max_products: 10,
@@ -158,16 +158,16 @@ async function registryFixture(t, patch = {}) {
     revoke,
   };
 }
-/** A synthetic Registry with JetStream delivery behind it, as `hab`. */
+/** A synthetic Registry with SQLite delivery behind it, as `hab`. */
 export async function fixture(t, patch = {}, queue = {}) {
   const f = await registryFixture(t, patch);
-  const delivery = await jetstreamDelivery(t, {
+  const delivery = await sqliteDelivery(t, {
     registry: f.registry,
     limits,
     directory: f.dir,
     queue,
   });
-  const raw = new DatabaseSync(join(f.dir, "jetstream-journal.sqlite"));
+  const raw = new DatabaseSync(join(f.dir, "delivery.sqlite"));
   t.after(() => raw.close());
   return {
     ...f,
@@ -177,6 +177,7 @@ export async function fixture(t, patch = {}, queue = {}) {
       return delivery.service;
     },
     habFor: (registry) => delivery.serviceFor(registry),
-    count: () => raw.prepare("SELECT count(*) n FROM nats_messages").get().n,
+    count: () =>
+      raw.prepare("SELECT count(*) n FROM delivery_messages").get().n,
   };
 }

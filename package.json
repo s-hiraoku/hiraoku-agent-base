@@ -11,7 +11,7 @@
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
     "test": "npm run test:tools && node --test test/*.test.js",
     "check": "npm run typecheck",
-    "lint": "eslint src test scripts/*.ts scripts/lib/*.ts scripts/*.mjs scripts/lib/*.mjs packages/relay-nats/src packages/relay-nats/test packages/relay-nats/scripts docs/diagrams/*.ts docs/diagrams/*.mjs",
+    "lint": "eslint src test scripts/*.ts scripts/lib/*.ts scripts/*.mjs scripts/lib/*.mjs docs/diagrams/*.ts docs/diagrams/*.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.diagrams.json",
     "demo:hab-mvp": "node scripts/hab-mvp-demo.mjs",
     "test:hab-mvp": "node --test test/local-mvp.test.js",
@@ -20,23 +20,21 @@
     "test:communication-boundary": "node --test --test-reporter=tap test/common-mcp-boundary.test.js test/adapter-inbox-read.test.js test/receive-supervisor.test.js test/hab-mcp-resolve.test.js",
     "test:a2a": "node --test test/a2a-sdk-store.test.js test/a2a-hab-unit.test.js test/a2a-host.test.js",
     "test:delivery-lab": "node scripts/delivery-lab.mjs",
-    "test:tools": "node --test test/tools/*.test.ts test/ci-nats/*.test.ts test/compatibility/native-trial-preflight.test.js"
+    "test:tools": "node --test test/tools/*.test.ts test/compatibility/native-trial-preflight.test.js"
   },
   "dependencies": {
     "@a2a-js/sdk": "1.3.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@modelcontextprotocol/server": "2.3.1",
-    "better-sqlite3": "13.0.3",
     "kysely": "0.29.9",
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "9.6.0",
     "@types/node": "^26.6.4",
     "eslint": "^10.12.0",
     "prettier": "^3.9.9",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.0"
   },
-  "packageManager": "npm@11.20.0"
+  "packageManager": "npm@11.21.2"
 }

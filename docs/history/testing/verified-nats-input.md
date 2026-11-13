@@ -1,5 +1,7 @@
 # Prepare a verified NATS executable input
 
+**履歴文書（ADR-018で削除した経路）**：本書が使う`packages/relay-nats`、nats-serverの導入script、`--nats-server`入力、P7 runnerは削除済みです。2026-11-13の[ADR-018](../../hab-decisions.md)で配送はhostのSQLite配送storeだけになりました（[配送store](../../delivery-store.md)）。現在のCIは`.github/workflows/ci.yml`を参照してください。以下は当時の記録で、現在のコードや手順を表しません。
+
 The delivery lab accepts an explicit local NATS Server file for a controlled input-handoff check. This preparation does not start the file, start a broker, register a backend, contact a server, or satisfy a migration requirement. Existing backend skips remain.
 
 Run the normal baseline without a server input.

@@ -1,6 +1,6 @@
 # Messageの個体別容量と最低予約枠
 
-JetStream journal（`packages/relay-nats`）のhost設定 `delivery.queue.agent_capacity` は必須で、既存の全体上限・宛先別pending件数と組み合わせます。旧SQLite配送storeは廃止しました。既定runtime・認証・登録・MCP catalogを有効化せず、wireのagent名や追加fieldを権限に使いません。
+SQLite配送store（`src/delivery`、[ADR-018](../hab-decisions.md)）のhost設定 `delivery.queue.agent_capacity` は必須で、既存の全体上限・宛先別pending件数と組み合わせます。既定runtime・認証・登録・MCP catalogを有効化せず、wireのagent名や追加fieldを権限に使いません。
 
 ## 上限と予約
 

@@ -749,7 +749,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -764,7 +765,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -779,7 +781,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -794,7 +797,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -809,7 +813,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -824,7 +829,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -839,7 +845,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -854,7 +861,8 @@
     "access_outcome": "accessible via web open; title/initial excerpt only",
     "review": "pending",
     "pending_scope": "Full external source review and immutable revision/compatibility or current issue-status verification were not completed. No external standards/fix conclusion is claimed.",
-    "access_date": "2026-11-05"
+    "access_date": "2026-11-05",
+    "source_disposition": "packages/relay-nats was deleted by ADR-018 (2026-11-13), which replaced JetStream delivery with the host's SQLite delivery store (docs/delivery-store.md). No current document references this URL. Kept as a historical reference record."
   },
   {
     "reader_scope": "delivery",
@@ -1002,7 +1010,7 @@
     "occurrences": [
       {
         "path": "docs/a2a/a2a-sdk-preview.md",
-        "line": 57
+        "line": 55
       }
     ],
     "recorded_revision": "local source reference only; remote revision not independently retrieved",

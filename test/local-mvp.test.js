@@ -167,27 +167,3 @@ test(
     assert.deepEqual(readdirSync(root), []);
   },
 );
-
-test("Local MVP: a missing nats-server binary prints the install hint and leaves no state", async (t) => {
-  const root = directory(t);
-  const result = await execute(process.execPath, [cli.pathname, "--simulate"], {
-    timeout: 12000,
-    env: {
-      ...process.env,
-      TMPDIR: root,
-      HAB_NATS_SERVER: join(root, "missing-nats-server"),
-    },
-    maxBuffer: 65536,
-  }).then(
-    () => assert.fail("the demo must refuse to run without a broker"),
-    (error) => error,
-  );
-  assert.equal(result.code, 1);
-  assert.equal(result.stdout, "");
-  assert.equal(
-    result.stderr,
-    "local_mvp_failed reason=nats_server_required: set HAB_NATS_SERVER to the pinned nats-server 2.15.2, or run `mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`; no production connection attempted\n",
-  );
-  assert.doesNotMatch(result.stderr, new RegExp(root));
-  assert.deepEqual(readdirSync(root), []);
-});

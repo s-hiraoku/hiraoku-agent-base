@@ -1,6 +1,6 @@
 # Agent SDK: durable sender and save-then-ACK receiver
 
-This directory is the agent-side client of HAB delivery. An agent embeds it to call the host's MCP entry (`relay_submit`, `relay_status`, `relay_poll`, `relay_ack`) without losing a message across crashes, lost responses or restarts. The server side is elsewhere. The message contract and the `DeliveryService` port live in [`../messaging`](../messaging/index.ts), the Registry in [`../hab`](../hab/README.md), and the one host in [`../host`](../host). JetStream is the only delivery backend ([packages/relay-nats/DESIGN.md](../../packages/relay-nats/DESIGN.md)).
+This directory is the agent-side client of HAB delivery. An agent embeds it to call the host's MCP entry (`relay_submit`, `relay_status`, `relay_poll`, `relay_ack`) without losing a message across crashes, lost responses or restarts. The server side is elsewhere. The message contract and the `DeliveryService` port live in [`../messaging`](../messaging/index.ts), the Registry in [`../hab`](../hab/README.md), and the one host in [`../host`](../host). The host delivers through one SQLite file ([delivery store](../../docs/delivery-store.md), ADR-018).
 
 Importing `./index.ts` performs no IO. It exports the pure `DurableSender` and `DurableReceiver` and their store and transport ports. The SQLite stores and the MCP transport are separate entry points, so a caller opts into each IO dependency by name.
 

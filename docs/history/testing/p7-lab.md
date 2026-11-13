@@ -1,5 +1,7 @@
 # Run the isolated A2A and JetStream acceptance
 
+**Historical record (removed path)**: `packages/relay-nats`, the nats-server installer, the `--nats-server` input and the P7 runner were deleted by [ADR-018](../../hab-decisions.md) on 2026-11-13; delivery now runs only through the host's SQLite [delivery store](../../delivery-store.md). The current CI is `.github/workflows/ci.yml`. What follows records that time and does not describe current code or procedure.
+
 Use Node 26.13.0, the pinned root and relay-nats dependencies, and an official nats-server 2.15.2 file. The P7 command verifies the binary's size and SHA256 before making an exclusive executable copy. It starts private loopback brokers with synthetic credentials and removes its private state afterward.
 
 ```sh

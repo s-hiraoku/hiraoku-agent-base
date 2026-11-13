@@ -23,21 +23,14 @@ Never substitute fixture credentials. Stop on a port collision; do not terminate
 an existing listener. Review finite capacity and maintenance policy before enabling
 unattended message acceptance. This runbook starts no Adapter cycle, model or API.
 
-## Supervise the JetStream broker first
+## Keep the delivery store with the host state
 
-The host delivers only through NATS JetStream and does not start a broker itself.
-Run the pinned `nats-server` (installed by `packages/relay-nats/scripts/install-server.mjs`)
-as its own user job before the host job, with a private config based on
-[the broker example](../../packages/relay-nats/config/nats-server.example.conf):
-loopback only, File storage, `sync_interval: always`, and its store on the same
-persistent volume as the host state. Give the broker its own label (for example
-`local.hab.nats`) and plist built from the template below, with `ProgramArguments`
-set to the absolute `nats-server` path, `-c` and the absolute private broker config.
-Start order is broker, then host; stop order is host, then broker. A host started
-while the broker is down keeps already admitted bodies in its bounded outbox and
-reconnects with the same IDs; it never falls back to another store. Keep the broker
-store with the host state for backups ([operating guide](../../packages/relay-nats/OPERATIONS.md),
-written for Linux; the broker settings are the same on macOS).
+The host delivers through its own `delivery.sqlite` in the state directory and needs
+no broker job. Keep the state directory on the persistent volume named by
+`delivery.volume`, and back it up as one generation with the recipients' state
+([delivery store](../delivery-store.md#back-up-and-restore)). When replacing a JetStream
+build, unload its broker job only after draining and removing the old journal
+([upgrade procedure](../delivery-store.md#upgrade-from-the-jetstream-build)).
 
 ## Install a new user job explicitly
 

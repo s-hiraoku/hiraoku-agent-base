@@ -17,7 +17,7 @@ The existing [verify-hab feature map](../../.claude/skills/verify-hab/features/R
 
 ## Run
 
-Use the pinned Node/npm in this checkout, `npm ci`, `npm ci --prefix packages/relay-nats --ignore-scripts`, and the pinned broker (`mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`). JetStream is the only delivery backend, so delivery tests and the real helper start a private `nats-server` and fail when it is missing. Point `HIRASTACK_ROOT` at a separately reviewed hirastack checkout. Run these commands from HAB:
+Use the pinned Node/npm in this checkout and `npm ci`. Delivery runs through the host's SQLite delivery store (ADR-018), so no broker is installed or started. Point `HIRASTACK_ROOT` at a separately reviewed hirastack checkout. Run these commands from HAB:
 
 ```sh
 PYTHONPATH="$HIRASTACK_ROOT" python3 -B -m hirastack audit --target "$PWD" --spec verification/design/contract.json
@@ -345,3 +345,20 @@ The simplification review's documentation step groups `docs/` by purpose. The to
 - Every document path, citation path, source-review path and external-reference attribution follows its file. Moved files changed only in relative link targets, so citations whose lines changed only that way were rehashed at the same lines.
 - New context documents: `docs/architecture.md`, `docs/README.md` and `docs/history/README.md`. They add no requirement.
 - `docs/hab-relay-spec.md` section 16 replaces the pre-implementation change map, which linked deleted Task Hub files, with the current code map; one migration sentence now names the Registry migration. HAB-F24 was re-cited after rereading that sentence, and HAB-C-F04 and HAB-C-F05 citations only moved.
+
+## SQLite delivery store replaces JetStream (ADR-018, 2026-11-13)
+
+The owner chose a single-VM cloud deployment, so ADR-018 replaces the JetStream delivery part of ADR-016 with one private SQLite file per host (`src/delivery/sqlite-delivery.ts`, described in [the delivery store](../../docs/delivery-store.md)). `packages/relay-nats`, the pinned nats-server and its installers, the pump, the broker config, the P7 runner, the rollback reconciliation script and the CI broker stage were deleted. The audit drift was handled by rereading, not rehashing:
+
+- Rewritten: HAB-D15, HAB-D16, HAB-D19, HAB-F24 and HAB-F26 now state the SQLite store rules, the whole-generation restore with an expiry hold and the drained upgrade from the JetStream build. HAB-D14, HAB-D17 and HAB-D18 wording drops the broker. HAB-V13 is retired as historical, because no broker executable is accepted as input any more.
+- Re-cited: HAB-D04, HAB-D07 and HAB-D14 now cite `docs/delivery-store.md`; HAB-F26 also cites ADR-018. Citations into deleted paths were retargeted to the delivery store and ADR-018, and each affected conflict resolution ends with a "Superseded by ADR-018" sentence. New HAB-C-D08 records the decision.
+- Checks: `ts-nats` and `js-cli-guards` were removed with their sources, `js-root` no longer lists `test/ci-nats`, and `current-hosted-p7` became `current-hosted-ci` for the single CI workflow. `test/sqlite-delivery.test.js` covers the store rules and `test/local-relay-service.test.js` the retired config and the leftover-journal refusal.
+- `communication-boundary.mjs` adds `src/delivery/sqlite-delivery.ts` to the protected core modules. The P7, verified-nats and publication guides carry a historical banner.
+- In source-review.json the deleted sources were removed, the new store and its tests were added, and the changed sources were rehashed after reading their diffs.
+
+## A2A Task store on node:sqlite (2026-11-13)
+
+The owner approved dropping the native `better-sqlite3` addon after the technology-stack review. `src/a2a/store.ts` now opens the dedicated Task database with `node:sqlite` and hands Kysely's `SqliteDialect` a small adapter, so the SDK's `DatabaseTaskStore`, the table, the schema file and the host maintenance queries are unchanged and an existing `a2a-tasks.sqlite` opens as before. `better-sqlite3` and `@types/better-sqlite3` leave `package.json`; `kysely` stays because the SDK store requires it. No requirement, citation or adopted statement changes.
+
+- In source-review.json `src/a2a/store.ts` and `test/a2a-sdk-store.test.js` were re-read and rehashed with appended summaries. `test/a2a-host.test.js` only swaps its offline fixture driver to `node:sqlite`; its entry, like `package.json`'s, was already behind the P2 deletion diff and is left for that maintenance.
+- `test/a2a-sdk-store.test.js` adds an upsert and two-page list case through the SDK on `node:sqlite`.

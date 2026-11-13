@@ -1,5 +1,7 @@
 # Current composite tests and publication scope
 
+**Historical record (removed path)**: `packages/relay-nats`, the nats-server installer, the `--nats-server` input and the P7 runner were deleted by [ADR-018](../../hab-decisions.md) on 2026-11-13; delivery now runs only through the host's SQLite [delivery store](../../delivery-store.md). The current CI is `.github/workflows/ci.yml`. What follows records that time and does not describe current code or procedure.
+
 The active CI workflow runs the mandatory P7 composite profile on the Node version in `.node-version` (26.13.0) with npm 11.20.0. It also requires ten negative CLI tests for the bounded NATS stage wrapper; these nested cases are separate from the historical flat root inventory. It retains diagram validation, lint, both package type checks, the complete root JavaScript inventory, Python tests, and pinned Ruff checks. An independent non-author execution verdict is recorded in each task PR as a Conversation comment, not a GitHub Approve review. Check the current commit's Actions status for hosted success.
 
 ## Reproduce the required profile

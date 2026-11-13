@@ -36,7 +36,7 @@
 
 ## ADR-016 / 採用：単一host、JetStream配送、エージェントSDKで標準接続を構成する
 
-2026-11-06 UTC。ADR-015の受信側の判断・承認の分担は維持し、標準経路の構成と配送storeをこの判断で改訂する。基準は[JetStream配送設計](../packages/relay-nats/DESIGN.md)、[エージェントSDK](../src/agent-sdk/README.md)、[HAB登録・認可境界](../src/hab/README.md)、[ローカルRelayサービス](local-relay-service.md)とする。
+2026-11-06 UTC。ADR-015の受信側の判断・承認の分担は維持し、標準経路の構成と配送storeをこの判断で改訂する。配送storeの部分（JetStream）は2026-11-13のADR-018でSQLite単独に置き換えた。以下のJetStream・journal schema 4・rollback照合の記述は当時の判断の記録である。基準は当時の`packages/relay-nats/DESIGN.md`（削除済み）、[エージェントSDK](../src/agent-sdk/README.md)、[HAB登録・認可境界](../src/hab/README.md)、[ローカルRelayサービス](local-relay-service.md)とする。
 
 - 配送はNATS JetStreamだけで行う。SQLite配送storeは廃止し、保存済みの旧messageは移行しない。host設定の配送sectionは`delivery`で、旧`store` sectionを含む設定は`config_invalid`で拒否する。
 - `src/messaging`がmessage契約と`DeliveryService` interfaceを持つ。`src/hab`のRegistryが名義・認証group・権限・容量を判定する。配送backendは名義や権限を判断しない。
@@ -45,7 +45,7 @@
 - A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。返信は依頼の期限から1日の返信期間だけ保存する。2026-11-07のowner判断により、期間内に結果が反映されなかったTaskは標準の`FAILED`へ移し、理由`result_window_expired`と「受信者が実行したかは不明」の旨をstatusに示す。WORKINGのまま残さず、独自のA2A状態も追加しない。期間後の返信は記録せずACKし、Taskは変えない。新しいmessage IDの返信は、Taskを変える場合だけ保存する。保存の前に受信loopが保存済みTaskの写しへ適用し、ACK確認済みの保持返信だけを根拠にする。状態を変えない返信やTaskが拒否する返信は、期間後の返信と同じく記録せずACKする。未確認の保持返信が確定した場合だけ重複または競合する新IDの返信は、容量を守るため保存もACKもせず保留する。有限のlease再試行やTTLにより保留返信がquarantined／expiredになる場合があるため、送信者はstatusを確認する。未確認返信を適用したり、回復を必ず保証したりするものではない。確認済みの状態から重複と判断できる返信はACK履歴の枠を使わない。保留された返信の到達やTaskの完了は保証しない。inboxが保持しているIDは必ずinboxへ渡すので、重複排除と未確定ACKの確定は保たれる。返信期間が閉じる時刻はTask storeの次の期限から求め、最も早い期間が閉じた受信cycleから、tenant・owner・idの安定キーで1回100件まで処理する。個別保存の失敗を越えて次のページへ進み、一巡後の次回処理で再試行する。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
 - 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
 
-配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元する。新releaseが受け付けたmessageと、backup時点で未完了だったmessageを元IDで照合する。backup時に未完了のIDだけでなく、backup後の新規IDも、新journalの行が回収されても受信inboxや実行記録に残る証拠から照合対象へ加える。どの写しにも残らないIDはこの一覧だけでは列挙できない。journalの`expired`・`quarantined`は未配達の証明にならず、受信者のinbox・Task結果・実行記録で判断する。復元した状態のIDがすべて期限切れになるまで旧buildを起動しないので、新releaseで実行済みのIDはRelayから再配達されない。ACKは保存の証明で実行の証明ではないため、backup時に受信inboxへ保存済み・未処理だった本文も照合する。復元inboxは期限に関係なく保存済み本文を渡すので、受信者を再開する前に写しの実行記録と照合し、実行済みの本文は再処理させない。backup後に保存され、新inboxの写しだけに未解放で残る本文も別に照合する。drainと期限待ちはその本文を復元先へ移さない。実行記録やTask状態から未引渡しと確認できた場合だけ、元のsender/message IDと重複排除を保つアプリ固有のローカル復旧手順で写しから引き継ぐ。未確認の副作用、欠けた写し、矛盾があれば停止を保ち、自動再送、別ID化、期限延長を行わない（[手順](../packages/relay-nats/OPERATIONS.md#roll-back)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
+配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元する。新releaseが受け付けたmessageと、backup時点で未完了だったmessageを元IDで照合する。backup時に未完了のIDだけでなく、backup後の新規IDも、新journalの行が回収されても受信inboxや実行記録に残る証拠から照合対象へ加える。どの写しにも残らないIDはこの一覧だけでは列挙できない。journalの`expired`・`quarantined`は未配達の証明にならず、受信者のinbox・Task結果・実行記録で判断する。復元した状態のIDがすべて期限切れになるまで旧buildを起動しないので、新releaseで実行済みのIDはRelayから再配達されない。ACKは保存の証明で実行の証明ではないため、backup時に受信inboxへ保存済み・未処理だった本文も照合する。復元inboxは期限に関係なく保存済み本文を渡すので、受信者を再開する前に写しの実行記録と照合し、実行済みの本文は再処理させない。backup後に保存され、新inboxの写しだけに未解放で残る本文も別に照合する。drainと期限待ちはその本文を復元先へ移さない。実行記録やTask状態から未引渡しと確認できた場合だけ、元のsender/message IDと重複排除を保つアプリ固有のローカル復旧手順で写しから引き継ぐ。未確認の副作用、欠けた写し、矛盾があれば停止を保ち、自動再送、別ID化、期限延長を行わない（当時の手順は削除済みの`packages/relay-nats/OPERATIONS.md`。現在の移行と復旧は[配送store](delivery-store.md#back-up-and-restore)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
 
 2026-11-12 JSTのowner確認：旧Relayは廃止し、**配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えた**ものとする。A2Aはhost所有名義の入口として採用し、既定は無効、本番配備は別に判断する。エージェント向けのMCP 5ツール（`relay_*`）はA2Aと並ぶ標準入口として残す。tool名と`relay:local`／`relay:admin`の名前は互換のためだけに残し、文書ではhostと呼ぶ。
 
@@ -56,6 +56,16 @@
 2026-11-12 JST、owner判断。標準受信の基準とした受信supervisor（`ReceiveSupervisor`）は`src/adapter-host`にあり、その`AdapterHostCycle`はADR-016で保留としたtask-bridge・answer-intentsと返信budget（`src/adapter-policy`）を構成時に必要とする。host本体も二重起動防止に`src/adapter-host`の`SQLiteHostOwner`を使う。標準経路が保留部品に依存しないよう、受信supervisor、受信だけを行う最小cycle、process ownerを`src/agent-sdk`へ移す。Task引受け・質問返信intent・返信budgetは`src/adapter-host`に残し、明示構成する任意連携とする。新しいエージェントは`src/agent-sdk`だけで送信と保存後ACKの受信を組み込めることを完了条件とする。
 
 実装：`src/agent-sdk/receive-host.ts`の`HostCore`がstop/epoch control（`sqlite-host-control.ts`）・process owner（`sqlite-host-owner.ts`）・transport管理・認可確認を持ち、`ReceiveHost`はその上で`receive`だけを受け付ける。outbox・返信budget・Task bridgeは不要である。`ReceiveSupervisor`は`receive-supervisor.ts`へ移り、`receive`を実行できる任意のhostを受け取る。`src/adapter-host`の`AdapterHostCycle`は同じ`HostCore`を継承し、送信・回答・Task操作を足した任意連携として残る。公開APIとエラーコードは変えていない。
+
+## ADR-018 / 採用：配送storeをSQLite単独にし、JetStreamとnats-serverを外す
+
+2026-11-13 JST、owner判断。クラウド展開は1台のVMで動かす前提とする。ADR-016の配送構成のうち「配送はNATS JetStreamだけで行う」をこの判断で置き換える。基準は[配送store](delivery-store.md)とする。
+
+- 配送はhostの状態ディレクトリにある1つのSQLiteファイル（`delivery.sqlite`、`src/delivery/sqlite-delivery.ts`）だけで行う。受付・本文・lease・再試行・保存済みACK・秘匿した配送監査を同じtransactionで記録する。受付をcommitした時点で本文も保存され、すぐpollできる。
+- `packages/relay-nats`、nats-serverの固定版と導入script、pump、broker設定、CIのJetStream段を削除した。host設定の`delivery`は`volume`・`queue`・任意の`maintenance`だけを持ち、`broker`・`pump`を含む設定は`config_invalid`で拒否する。
+- 理由：brokerはloopback専用・1 replica・consumerなしで本文置き場としか使っておらず、受付・lease・再試行・ACK履歴はすでにSQLite journalが持っていた。別processの運用、pumpによる最大1周期の可視化遅延、journalとbroker storeの2つを揃えて戻す復旧手順は、1台構成では利点がない。
+- `DeliveryService`契約、MCP 5ツール（`relay_*`）、Registryの認可、agent SDKのoutbox/inbox、A2A入口は変えない。旧JetStream journalのmessageは移行しない。`jetstream-journal.sqlite`が状態ディレクトリに残っている間は`legacy_jetstream_journal_present`で起動を拒否する。移行は送信を止め、最後の受付から1時間と`max_clock_skew_ms`を待ってから旧journalを外す（[手順](delivery-store.md#upgrade-from-the-jetstream-build)）。この待ち時間により旧IDは期限切れになり、新storeで再受付されない。
+- 複数host・HA・外部consumerが必要になった場合は、この判断を見直す。そのときはJetStreamをbrokerとして本来の形（consumer、複数replica）で使う案を含めて比較する。本判断は本番接続・公開・credential発行の承認を兼ねない。
 
 ## 次に決める内容
 

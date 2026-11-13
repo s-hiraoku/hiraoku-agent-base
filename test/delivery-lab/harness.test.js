@@ -6,6 +6,7 @@ import {
   gateVerdict,
   executeNode,
   assertLoopbackPortFree,
+  parseLabOptions,
 } from "../../scripts/lib/delivery-lab.mjs";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -181,4 +182,24 @@ test("H06 occupied loopback ports are refused without probing or stopping their 
     await new Promise((resolve) => server.close(resolve));
   }
   await assertLoopbackPortFree(port);
+});
+
+test("lab options accept --full and --release once each and nothing else", () => {
+  assert.deepEqual(parseLabOptions([]), { full: false, release: false });
+  assert.deepEqual(parseLabOptions(["--release"]), {
+    full: true,
+    release: true,
+  });
+  assert.deepEqual(parseLabOptions(["--full"]), { full: true, release: false });
+  for (const args of [
+    ["--full", "--full"],
+    ["--"],
+    ["/positional"],
+    ["--nats-server", "/private/input"],
+    ["--cwd", "/production"],
+  ])
+    assert.throws(
+      () => parseLabOptions(args),
+      (error) => error.code === "invalid_lab_arguments",
+    );
 });

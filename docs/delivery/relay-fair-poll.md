@@ -1,6 +1,6 @@
 # 公平なpollと永続scan位置
 
-JetStream journal（`packages/relay-nats`）のhost設定 `delivery.queue.fair_poll:true` で有効にする任意の配送順です。旧SQLite配送storeは廃止しました。既定は従来の時刻順で、runtimeやMCP catalogを有効化しません。wire引数でmode・宛先・巡回位置を指定できません。
+SQLite配送store（`src/delivery`、[ADR-018](../hab-decisions.md)）のhost設定 `delivery.queue.fair_poll:true` で有効にする任意の配送順です。既定は従来の時刻順で、runtimeやMCP catalogを有効化しません。wire引数でmode・宛先・巡回位置を指定できません。
 
 ## 1回の境界
 

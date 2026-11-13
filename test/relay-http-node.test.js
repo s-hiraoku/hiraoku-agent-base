@@ -140,9 +140,7 @@ test(
       "acked",
     );
     assert.equal(
-      f.raw
-        .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-        .get().body,
+      f.raw.prepare("SELECT body FROM delivery_messages").get().body,
       null,
     );
     assert.equal(a.response.headers.get("connection"), "close");

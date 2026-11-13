@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { cpSync, rmSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fixture } from "./local-relay-service-fixtures.js";
-import { pollUntilDelivered } from "./jetstream-delivery.js";
+import { pollUntilDelivered } from "./delivery-fixture.js";
 import {
   oauthFixture,
   persistentOAuthFixture,

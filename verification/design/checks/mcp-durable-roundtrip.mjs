@@ -372,7 +372,7 @@ async function roundtrip(target, out) {
       });
     });
     const receiver = new DurableReceiver(inbox, receiverClient);
-    // JetStream publishes accepted messages on the pump's next cycle, so a poll right after submit can be empty.
+    // An accepted message is pollable at once; the bounded retry only guards a slow first receive.
     const receiveDeadline = Date.now() + 5000;
     await receiver.receiveOnce();
     while (

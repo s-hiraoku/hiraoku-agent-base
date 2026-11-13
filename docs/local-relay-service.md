@@ -10,24 +10,21 @@ After explicit approval and operator preparation, run:
 
 ```sh
 npm ci
-npm ci --prefix packages/relay-nats --ignore-scripts
 npm run relay:local -- --config /ABSOLUTE/PRIVATE/service.local.json
 ```
 
-Delivery runs only through NATS JetStream: start a private loopback broker first
-([package guide](../packages/relay-nats/README.md)). The config has one `delivery`
-section with `broker`, `pump`, `volume` and `queue` parts. The retired SQLite
-`store` section, and `delivery.routing`, are refused with `config_invalid` and the
-field paths; messages held by the retired SQLite store are not migrated.
-The delivery journal is schema 4, which earlier builds refuse, so rolling back to
-one means restoring a pre-upgrade backup. Reconcile by original ID the messages this
-release accepted and those still incomplete in the backup, including IDs retained only in inbox or execution evidence after journal collection. An `expired` or
-`quarantined` row may still have been saved by its recipient, so the recipient's
-records decide it. Keep the earlier build stopped until every restored ID has
-expired, so the relay delivers nothing executed after the backup again. A body
-already saved in a restored inbox is handed out regardless of expiry, so settle
-each one against the copied execution records before restarting its recipient. Also reconcile unreleased bodies retained only in the upgraded inbox copy: draining and waiting do not transfer them. Use an application-specific local handoff under the original key only after ruling out prior or uncertain effects; otherwise keep the recipient stopped. Never replay, replace IDs or extend expiry
-([procedure](../packages/relay-nats/OPERATIONS.md#roll-back)).
+Delivery runs through one private SQLite file, `delivery.sqlite`, in the state
+directory ([delivery store](delivery-store.md), ADR-018); no broker is started.
+The config has one `delivery` section with `volume`, `queue` and an optional
+`maintenance` part. The retired SQLite `store` section, `delivery.routing`, and the
+JetStream `delivery.broker` and `delivery.pump` parts are refused with
+`config_invalid` and the field paths. Messages held by the JetStream build are not
+migrated, and the host refuses to start while `jetstream-journal.sqlite` is still in
+the state directory (`legacy_jetstream_journal_present`). Drain and remove it first
+([upgrade procedure](delivery-store.md#upgrade-from-the-jetstream-build)). Back up and
+restore every state file of one generation together; an `expired` or `quarantined`
+row may still have been saved by its recipient, so the recipient's records decide it
+([backup and restore](delivery-store.md#back-up-and-restore)).
 
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all

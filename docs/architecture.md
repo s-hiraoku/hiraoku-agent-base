@@ -11,11 +11,11 @@ HAB は、エージェント同士がメッセージをやり取りするため�
 | メッセージ契約 | `src/messaging` | message の形、`DeliveryService` interface、ツールの error code |
 | Registry | `src/hab` | アドレス → 不変の `agent_id`、認証グループ、操作権限、停止・失効、改名（v3） |
 | host | `src/host` | 唯一のサーバー。設定・HTTP 入口・監査・管理 CLI・MCP server（`src/host/mcp`）・任意の A2A 入口 |
-| 配送 | `packages/relay-nats` | NATS JetStream による受付・lease・ACK・状態照会 |
+| 配送 | `src/delivery` | host の状態ディレクトリにある 1 つの SQLite ファイルで受付・lease・ACK・状態照会（[配送 store](delivery-store.md)） |
 | エージェント SDK | `src/agent-sdk` | 送信側の永続 outbox、保存後に ACK する受信 inbox、MCP client、受信 supervisor |
 | 受信側の任意部品 | `src/adapter-host` ほか | 返信 budget、質問返信 intent、単一 owner、ACP 起動など。標準接続には不要（[receiver](receiver/)） |
 
-host は `npm run relay:local` で起動し、アドレスの登録と接続は `npm run relay:admin` で行います。名前に残る `relay` は既存の接続設定との互換のためで、旧 HAB Relay（独自の SQLite 配送 store）は 2026-11-07 に廃止しました（ADR-016）。
+host は `npm run relay:local` で起動し、アドレスの登録と接続は `npm run relay:admin` で行います。名前に残る `relay` は既存の接続設定との互換のためです。旧 HAB Relay は 2026-11-07 に廃止し（ADR-016）、配送は一時 NATS JetStream を経て、2026-11-13 から host の SQLite ファイル 1 つで行っています（ADR-018）。
 
 ## アドレスと認証
 
@@ -44,4 +44,4 @@ host は `npm run relay:local` で起動し、アドレスの登録と接続は 
 
 ## 運用
 
-起動・設定・管理 CLI は [ローカルサービス](local-relay-service.md)、常駐は [LaunchAgent](operations/local-relay-launchagent.md) にまとめています。動作は [ローカル MVP](local-mvp.md) の 1 コマンドで、一時 DB と loopback の nats-server を使って確かめられます。
+起動・設定・管理 CLI は [ローカルサービス](local-relay-service.md)、常駐は [LaunchAgent](operations/local-relay-launchagent.md) にまとめています。動作は [ローカル MVP](local-mvp.md) の 1 コマンドで、一時 DB と loopback 通信だけを使って確かめられます。

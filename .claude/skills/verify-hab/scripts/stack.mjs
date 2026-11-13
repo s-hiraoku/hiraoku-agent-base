@@ -1,18 +1,16 @@
 #!/usr/bin/env node
 /**
  * VERIFICATION SCAFFOLDING ONLY. Composes the repo's own HAB Relay classes
- * (SQLiteHabRegistry, runHabEnrollment, the JetStream delivery the host wires
- * via createJetStreamDelivery, HabHttpGateway, createRelayNodeHandler) on a
+ * (SQLiteHabRegistry, runHabEnrollment, the SQLite delivery the host wires
+ * via createSqliteDelivery, HabHttpGateway, createRelayNodeHandler) on a
  * loopback port, and keeps it listening for an agent to drive over real MCP
- * HTTP. It starts its own private nats-server (HAB_NATS_SERVER or
- * .runtime/nats-install.json) with its store under the run dir. Synthetic
- * authority and static bearer tokens; never reads config/*.local.json, .env
+ * HTTP. Synthetic authority and static bearer tokens; never reads config/*.local.json, .env
  * or any credential.
  *
  * Usage: node stack.mjs <run-dir> [port]
  *   First start enrolls three agents (a: grok-bot, b: dot, c: hermes).
  *   Re-running on the same <run-dir> reopens the same DBs (restart test).
- * Writes <run-dir>/instance/{state.json,*.sqlite,broker/,stack.pid} and appends
+ * Writes <run-dir>/instance/{state.json,*.sqlite,stack.pid} and appends
  * audit categories to <run-dir>/evidence/audit.jsonl. Prints
  * "HAB_VERIFY_READY <url>" once every agent is active and the port listens.
  */
@@ -43,11 +41,8 @@ const { SQLiteEnrollmentJournal } = await import(
 const { runHabEnrollment } = await import(src("hab/enrollment.ts"));
 const { HabHttpGateway } = await import(src("hab/http.ts"));
 const { createRelayNodeHandler } = await import(src("host/mcp/http-node.ts"));
-const { createJetStreamDelivery } = await import(
+const { createSqliteDelivery } = await import(
   join(repo, "src/host/delivery.ts")
-);
-const { startLocalBroker } = await import(
-  join(repo, "scripts/lib/nats-broker.ts")
 );
 
 const [runArg, portArg] = process.argv.slice(2);
@@ -120,12 +115,7 @@ const registry = new SQLiteHabRegistry(
   authority,
 );
 registry.migrate();
-// JetStream is the only delivery backend. The broker store lives under the run dir, so a
-// reopen (restart test) recovers the same stream; each start gets a fresh port and password.
-const broker = await startLocalBroker(join(instance, "broker"), {
-  maxFileStore: "256MB",
-  keepAlive: true,
-});
+// SQLite is the only delivery store; delivery.sqlite under the run dir survives a reopen.
 const marker = join(instance, "volume.local.json");
 if (!existsSync(marker))
   writeFileSync(
@@ -133,20 +123,8 @@ if (!existsSync(marker))
     JSON.stringify({ version: 1, volume_id: "verify-hab-volume" }),
     { mode: 0o600 },
   );
-const delivery = await createJetStreamDelivery(
+const delivery = await createSqliteDelivery(
   {
-    broker: {
-      server: broker.server,
-      user: broker.user,
-      password: broker.password,
-      stream: "HAB_VERIFY",
-      subject_prefix: "habVerify",
-      max_consumers: 20,
-      max_bytes: 67108864,
-      max_message_bytes: 65536,
-      request_timeout_ms: 2000,
-    },
-    pump: { interval_ms: 20, max_records_per_cycle: 100 },
     volume: {
       identity_file: marker,
       expected_id: "verify-hab-volume",
@@ -302,7 +280,6 @@ const shutdown = () => {
   server.closeAllConnections();
   server.close(async () => {
     await delivery.close();
-    await broker.stop();
     for (const s of [journal, registry]) s.close();
     rmSync(join(instance, "stack.pid"), { force: true });
     process.stdout.write("HAB_VERIFY_STOPPED\n");

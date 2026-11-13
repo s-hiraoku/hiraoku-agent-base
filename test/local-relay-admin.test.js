@@ -19,7 +19,7 @@ import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { envelope, message, limits, decode } from "./relay-http-fixtures.js";
 import { fixture, list } from "./local-relay-service-fixtures.js";
-import { eventually, pollUntilDelivered } from "./jetstream-delivery.js";
+import { eventually, pollUntilDelivered } from "./delivery-fixture.js";
 import { oauthFixture } from "./relay-oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
 import { main as runRelayAdmin } from "../scripts/hab-relay-admin.ts";

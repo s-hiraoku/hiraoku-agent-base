@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
-import { queue } from "./jetstream-delivery.js";
+import { HabDeliveryService } from "../src/host/hab-delivery-service.ts";
 import {
   fixture,
   options,
@@ -215,9 +214,7 @@ test("stopped destination rejects duplicate submit while sender can inspect its 
   assert.deepEqual(f.hab.status(f.contexts.a, m.message_id), receipt);
   assert.equal(f.count(), 1);
   assert.notEqual(
-    f.raw
-      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-      .get().body,
+    f.raw.prepare("SELECT body FROM delivery_messages").get().body,
     null,
   );
 });
@@ -326,28 +323,23 @@ test("registry write guard spans Relay commit so another connection cannot revok
   };
   let checked = false;
   const backend = f.delivery.backend;
-  const composed = new HabJetStreamService(
-    f.registry,
-    {
-      prefetchWindow: backend.prefetchWindow,
-      admitWithAuthorization(context, input, authorization) {
-        return backend.admitWithAuthorization(context, input, {
-          authorize(...args) {
-            const result = authorization.authorize(...args);
-            if (args[1] === "submit" && args[2] !== undefined) {
-              assert.throws(
-                () => second.setAccess(f.admin, stop),
-                code("registry_unavailable"),
-              );
-              checked = true;
-            }
-            return result;
-          },
-        });
-      },
+  const composed = new HabDeliveryService(f.registry, {
+    admitWithAuthorization(context, input, authorization) {
+      return backend.admitWithAuthorization(context, input, {
+        authorize(...args) {
+          const result = authorization.authorize(...args);
+          if (args[1] === "submit" && args[2] !== undefined) {
+            assert.throws(
+              () => second.setAccess(f.admin, stop),
+              code("registry_unavailable"),
+            );
+            checked = true;
+          }
+          return result;
+        },
+      });
     },
-    queue,
-  );
+  });
   const m = submission(b);
   composed.submit(f.contexts.a, m);
   assert.equal(checked, true);

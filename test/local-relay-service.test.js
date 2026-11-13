@@ -3,7 +3,14 @@ import { request as httpRequest } from "node:http";
 import { oauthFixture, resource, issuer } from "./relay-oauth-fixtures.js";
 import process from "node:process";
 import assert from "node:assert/strict";
-import { chmodSync, readFileSync, readdirSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -180,6 +187,30 @@ test("a config with the retired SQLite store section is refused before any state
     fields: ["delivery.routing"],
   });
   assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
+});
+test("retired JetStream config and an undrained JetStream journal are refused before delivery opens", async (t) => {
+  const f = await fixture(t);
+  for (const section of ["broker", "pump"]) {
+    f.write("service.local.json", {
+      ...f.config,
+      delivery: { ...f.config.delivery, [section]: {} },
+    });
+    await assert.rejects(startHost(f.configPath), {
+      reason: "config_invalid",
+      fields: [`delivery.${section}`],
+    });
+  }
+  f.write("service.local.json", f.config);
+  const legacy = join(f.dir, "state", "jetstream-journal.sqlite");
+  writeFileSync(legacy, "", { mode: 0o600 });
+  await assert.rejects(startHost(f.configPath), {
+    reason: "legacy_jetstream_journal_present",
+  });
+  assert.equal(existsSync(join(f.dir, "state", "delivery.sqlite")), false);
+  rmSync(legacy);
+  const host = await startHost(f.configPath);
+  await host.close();
+  assert.equal(existsSync(join(f.dir, "state", "delivery.sqlite")), true);
 });
 test("registry limits outside the registry's bounds are refused as config fields", async (t) => {
   const f = await fixture(t);

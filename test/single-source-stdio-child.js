@@ -5,7 +5,6 @@ import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout, clearTimeout, setInterval, clearInterval } from "node:timers";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { useParentTestBroker } from "./jetstream-delivery.js";
 import { hostFixture, limits } from "./adapter-host-fixtures.js";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
@@ -29,7 +28,6 @@ process.once("SIGTERM", () => {
 });
 // Do not stop on EOF here: the production composition must observe it itself.
 process.stdin.once("end", () => process.stderr.write("SINGLE_SOURCE_EOF\n"));
-useParentTestBroker(JSON.parse(readFileSync(join(directory, "broker.json"), "utf8")));
 const f = await hostFixture({ after: (action) => cleanup.push(action) }, {}, { outboxLeaseMs: 5000 });
 // This test is about stdio/lifecycle, so leave generous leases under CI contention.
 f.state.timeout_ms = 5000;

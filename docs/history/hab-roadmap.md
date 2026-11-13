@@ -2,7 +2,7 @@
 
 [READMEへ](../../README.md) · [ADR](../hab-decisions.md) · [役割と機能](hab-roles.md)
 
-現在の製品要件は[HAB製品仕様](../hab-product-spec.md)を参照してください。旧Relayは廃止し、配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えました（[ADR-016](../hab-decisions.md)）。標準通信は[共通MCP接続](../common-mcp-connection.md)と[受信supervisor](../receiver/receive-supervisor.md)を基準にし、モデル実行・承認は受信側の既存機構へ残します。以下の比較と初期版の限定Taskの判断は記録時点のものです。inventoryや製品専用runnerを通常通信の開始条件にはしません。
+現在の製品要件は[HAB製品仕様](../hab-product-spec.md)を参照してください。旧Relayは廃止し、エージェント間の相互運用はA2Aへ置き換えました（[ADR-016](../hab-decisions.md)）。配送はhostのSQLite配送storeで行います（[ADR-018](../hab-decisions.md)）。標準通信は[共通MCP接続](../common-mcp-connection.md)と[受信supervisor](../receiver/receive-supervisor.md)を基準にし、モデル実行・承認は受信側の既存機構へ残します。以下の比較と初期版の限定Taskの判断は記録時点のものです。inventoryや製品専用runnerを通常通信の開始条件にはしません。
 
 ## 比較の扱い
 
@@ -19,7 +19,7 @@ Agent Tincanのbrowser接続は[web-agents資料](https://github.com/mvanhorn/ag
 
 ## 段階と完了条件
 
-以下の段階表は2026-10-10時点のTask Hub計画です。メッセージ配送（アドレス登録・MCP 5ツール・JetStream・A2A入口）の到達点と残りは[READMEの残りタスク](../../README.md#残りタスク)で管理します。
+以下の段階表は2026-10-10時点のTask Hub計画です。メッセージ配送（アドレス登録・MCP 5ツール・SQLite配送store・A2A入口）の到達点と残りは[READMEの残りタスク](../../README.md#残りタスク)で管理します。
 
 | 段階                          | 状態                                                                           | 完了条件                                                                                                                               |
 | ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |

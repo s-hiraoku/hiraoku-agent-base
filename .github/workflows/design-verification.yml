@@ -24,18 +24,6 @@ jobs:
         run: |
           test "$(npm --version)" = 11.20.0
           npm ci
-          npm ci --prefix packages/relay-nats --ignore-scripts
-      - name: Cache the pinned official NATS archive
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .runtime/nats-server-*.tar.gz
-          key: nats-archive-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/relay-nats/scripts/install-server.mjs') }}
-      - name: Install the pinned nats-server for JetStream delivery tests
-        run: |
-          mkdir -m 700 -p .runtime
-          node node_modules/eslint/bin/eslint.js scripts/install-ci-nats.ts test/ci-nats/install.test.ts
-          node --test test/ci-nats/install.test.ts
-          node scripts/install-ci-nats.ts > .runtime/nats-install.json
       - name: Read pinned generic coordinator only
         uses: actions/checkout@v4
         with:

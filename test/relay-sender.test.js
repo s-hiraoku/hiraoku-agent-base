@@ -16,7 +16,7 @@ import { MessagingError } from "../src/messaging/index.ts";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
-import { authorizedDelivery } from "./jetstream-delivery.js";
+import { authorizedDelivery } from "./delivery-fixture.js";
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
@@ -74,7 +74,7 @@ function message(key = "m-1") {
 async function fixture(t, patch = {}) {
   const dir = mkdtempSync(join(tmpdir(), "relay-sender-")),
     path = join(dir, "outbox.sqlite"),
-    serverPath = join(dir, "jetstream-journal.sqlite"),
+    serverPath = join(dir, "delivery.sqlite"),
     stores = [];
   t.after(() => {
     for (const s of stores) {
@@ -195,7 +195,7 @@ test("lost acceptance response survives restart and resends the same ID, recipie
   assert.deepEqual(seen, [m, m]);
   assert.equal(sender.get(m.message_id).receipt.receipt_id, receipt.receipt_id);
   assert.equal(
-    f.relayRaw.prepare("SELECT count(*) n FROM nats_messages").get().n,
+    f.relayRaw.prepare("SELECT count(*) n FROM delivery_messages").get().n,
     1,
   );
 });
@@ -288,7 +288,7 @@ test("expired delivery attempts only status, clears payload and eventually recor
   assert.equal(sends, 0);
   assert.equal(lookups, 1);
   assert.equal(
-    f.relayRaw.prepare("SELECT count(*) n FROM nats_messages").get().n,
+    f.relayRaw.prepare("SELECT count(*) n FROM delivery_messages").get().n,
     0,
   );
 });
@@ -394,7 +394,7 @@ test("wrong receipt cannot clear body; successful local confirmation is transact
   await sender.sendOnce();
   assert.equal(sender.get(m.message_id).state, "accepted");
   assert.equal(
-    f.relayRaw.prepare("SELECT count(*) n FROM nats_messages").get().n,
+    f.relayRaw.prepare("SELECT count(*) n FROM delivery_messages").get().n,
     1,
   );
 });
@@ -565,7 +565,7 @@ test("model-free durable sender to relay to durable receiver survives both respo
   assert.equal(f.raw.prepare("SELECT body FROM relay_outbox").get().body, null);
   assert.equal(
     f.relayRaw
-      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
+      .prepare("SELECT body FROM delivery_messages")
       .get().body,
     null,
   );

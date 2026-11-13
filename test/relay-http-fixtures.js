@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
 import { RelayHttpGateway } from "../src/host/mcp/http.ts";
-import { authorizedDelivery } from "./jetstream-delivery.js";
+import { authorizedDelivery } from "./delivery-fixture.js";
 export const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
@@ -145,7 +145,7 @@ export function identities(t, { cleanup = true } = {}) {
     verifier,
   };
 }
-/** The identities above in front of a JetStream delivery backend and the four-tool gateway. */
+/** The identities above in front of the SQLite delivery store and the four-tool gateway. */
 export async function fixture(t, queue = {}) {
   const f = identities(t, { cleanup: false });
   const delivery = await authorizedDelivery(t, {
@@ -160,7 +160,7 @@ export async function fixture(t, queue = {}) {
       ...queue,
     },
   });
-  const raw = new DatabaseSync(join(f.dir, "jetstream-journal.sqlite"));
+  const raw = new DatabaseSync(join(f.dir, "delivery.sqlite"));
   t.after(() => {
     raw.close();
     rmSync(f.dir, { recursive: true, force: true });
@@ -179,6 +179,7 @@ export async function fixture(t, queue = {}) {
     service: delivery.service,
     pump: delivery.pump,
     gateway,
-    count: () => raw.prepare("SELECT count(*) n FROM nats_messages").get().n,
+    count: () =>
+      raw.prepare("SELECT count(*) n FROM delivery_messages").get().n,
   };
 }

@@ -56,7 +56,7 @@ key の runtime ID は永続的な同一性であり、再起動で新 ID を作
 
 ## 現行アーキテクチャとの関係
 
-#137 と #140 を含む main `d0506828f8568cecc68b12893adefe6b341117d7` に統合する。通信契約は `src/messaging`、durable client・inbox・outbox は `src/agent-sdk`、配送は NATS JetStream に従う。SQLite は受信側の inbox / outbox / reply budget と合成 native store に使用し、廃止済みの SQLite 配送backendを復活させない。
+#137 と #140 を含む main `d0506828f8568cecc68b12893adefe6b341117d7` に統合する。通信契約は `src/messaging`、durable client・inbox・outbox は `src/agent-sdk`、配送は host の SQLite 配送store（ADR-018）に従う。受信側の inbox / outbox / reply budget と合成 native store も SQLite を使う。
 
 この接点と adapter-host / answer-intents は、既定runtimeに配線しない明示構成のローカル部品である。`RecipientReplyAdmission` は受信側が供給する同期契約であり、テストでは現行 `SQLiteReplyBudget` と `AdapterHostCycle` を明示的に構成する。実製品の native port を実装した、または既定の受信で自動実行・返信するという意味ではない。統合後のテストは Node 26 と固定バージョンの実 NATS broker を要する。最新の実行結果は当該 head の検証記録を参照し、過去の SQLite 配送試験や旧 root 件数を現在の成功証拠とみなさない。
 
@@ -94,4 +94,4 @@ poll / ACK の一時的な transport 障害でも、すでに ACK 済みの sour
 
 native port がなければ構築時に `recipient_input_unsupported`。MCP 接続・常駐受信・表示専用 feed だけで自動対話可能とは判定しない。別 process の API を呼ぶ前後だけの認可確認は、native admission / outbox commit 内の同期 check を満たさない。正式 API と同じ保護範囲で現権限と exact reply を保証できない製品は、未接続のまま扱う。
 
-`test/recipient-supervisor.test.js` は実 SQLite / JetStream / loopback MCP と合成 native port により、一連の自動巡回、restart の同一 key 照合、独立権限、pause 世代、停止・drain、ACK / submit 応答消失、poll 障害中の返信、状態の区別と例外情報の除去を検証する。既存 root question / notice の範囲、返信上限・容量上限を拡張しない。Hermes / Dots の正式 native port、継続会話の dispatch、native 承認、実製品での自動起動・自動返送・常駐を立証する試験ではない。
+`test/recipient-supervisor.test.js` は実 SQLite（配送storeを含む）/ loopback MCP と合成 native port により、一連の自動巡回、restart の同一 key 照合、独立権限、pause 世代、停止・drain、ACK / submit 応答消失、poll 障害中の返信、状態の区別と例外情報の除去を検証する。既存 root question / notice の範囲、返信上限・容量上限を拡張しない。Hermes / Dots の正式 native port、継続会話の dispatch、native 承認、実製品での自動起動・自動返送・常駐を立証する試験ではない。

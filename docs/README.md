@@ -12,6 +12,7 @@
 | [設計思想](hab-principles.md) | 分業、疎結合、費用の制約 |
 | [製品仕様](hab-product-spec.md) | 登録・宛先選択・状態表示などの製品要件 |
 | [メッセージ配送の正式仕様](hab-relay-spec.md) | store-and-forward、個体認証、ACK、期限 |
+| [配送 store](delivery-store.md) | host の SQLite ファイル 1 つによる配送の保存と運用 |
 | [設計判断（ADR）](hab-decisions.md) | 採用・不採用・保留の判断と理由 |
 | [セキュリティ](hab-security.md) | 認証、権限、秘密、公開境界 |
 

@@ -1,5 +1,7 @@
 # NATS入力検証とローカルCI準備の結果
 
+**履歴文書（ADR-018で削除した経路）**：本書が使う`packages/relay-nats`、nats-serverの導入script、`--nats-server`入力、P7 runnerは削除済みです。2026-11-13の[ADR-018](../../hab-decisions.md)で配送はhostのSQLite配送storeだけになりました（[配送store](../../delivery-store.md)）。現在のCIは`.github/workflows/ci.yml`を参照してください。以下は当時の記録で、現在のコードや手順を表しません。
+
 検証した実装commitは `caef55bf68915a624225304d0c28c3cf1fb6d88a`。clean working treeで公開CLIを実行し、実行前後のsource inventory一致を確認した。この結果文書はその後の文書だけの変更である。
 
 ```sh
