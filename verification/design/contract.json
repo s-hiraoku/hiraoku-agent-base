@@ -266,7 +266,7 @@
     },
     {
       "path": "docs/a2a-sdk-preview.md",
-      "sha256": "c06f5e314fece59a9b96b279a16e60b50c5f03b3e4fa1d1027c99d42db341a82",
+      "sha256": "c7066806960e10e0bd51c8ece56399b7552200c1e527b0f6eb4a3c3c1d32c98b",
       "hash": "beb656183872afe3c5697637daccc0de5ea96b784d4cdb4573d0c23d91a6f157",
       "role": "normative",
       "review": "reviewed",
@@ -788,7 +788,7 @@
     },
     {
       "path": "docs/testing/a2a-bounded-performance.md",
-      "sha256": "491c953e9e638999ece2f14c56ccd75acfd7ed44f75d8eeb17e0f9832edafbf3",
+      "sha256": "a3bd6fb7e058afbbfa47ab7639c18a1e0a66302dd47d0fb70b01193322053bba",
       "role": "normative",
       "review": "reviewed",
       "summary": "Fixed P1-P3 local 5x5 serial characterization and one expected lost-submit-response fault/run, actual SDK/Relay/stores with synthetic immediate execution. Defines invariant counts and timing/sample/provenance/cleanup boundaries; expressly no production SLO, capacity or speed comparison.",
@@ -953,7 +953,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "acfefcb0dd1526360c302324aae5ac19acda0072bf4856eb9ad0acddf404387f",
+      "sha256": "c62c3b6b6815f6705b88104564a7f6112a6000f3780806d69368ef77156fb6d5",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -980,7 +980,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "3da08a624deb3868c3ac8a7e7e293034bf037ee3d7707a06e2005264a66838f9",
+      "sha256": "b6f85af72cdee40d94a1b3109bb974971de03786d911226264fa74d3f7d812e9",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -4095,7 +4095,8 @@
           "path": "docs/testing/a2a-bounded-performance.md",
           "start": 13,
           "end": 21,
-          "excerpt_sha256": "5b052862a694ba8535cb213abf3b90ff47d93156629a6959646e2eabcd97e1b4"
+          "excerpt_sha256": "adc139d3724ba041910304888ccc66e33994f35d266f960d448f54a4e062586a",
+          "maintenance": "Driver maintenance (2026-11-13): re-read lines 13-21 after line 17 kept the recorded runs' driver and added that a new run would also wrap SDK all/run calls on node:sqlite; the requirement is unchanged."
         },
         {
           "path": "docs/testing/publication.md",
