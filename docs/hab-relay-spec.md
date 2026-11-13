@@ -1,6 +1,6 @@
 # HABメッセージ配送の正式仕様（旧称 HAB Relay）— draft v2 + store-and-forward
 
-[README](../README.md) · [設計判断](hab-decisions.md) · [現行Hub内部設計](architecture.md) · [受入れ状況](history/mvp-acceptance.md)
+[README](../README.md) · [設計判断](hab-decisions.md) · [現行Hub内部設計](history/task-engine.md) · [受入れ状況](history/mvp-acceptance.md)
 
 | 項目           | 内容                                                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -442,25 +442,19 @@ MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservi
 
 HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCPより広い認可にしない。registry管理や隔離解除は通常agentのtoolに混ぜない。message ID、thread ID、agent IDが分かるだけでは操作できない。既存Taskのsubmit/claim等、診断ping、discovery-only入口は互換性を維持し、Relayを配線するまでは従来どおり拒否する。
 
-## 16. 実コードとの対応・変更マップ
+## 16. 実コードとの対応
 
-以下のファイル名は論理的な責務の候補であり、既存srcへ一括配置する指示ではない。第3.1節の独立境界に沿ってpackage／moduleを分ける。
+2026-11-12時点のmainで、この仕様の責務を持つコードは次のとおりです。旧Task Hub（`store.ts`・Worker/D1・inventory・ping）と、Relay導入前に書いた変更計画の表は削除しました。当時の計画は[過去の文書](history/README.md)に残っています。
 
-以下の「既存」は照合基準commitでのコード確認を意味し、本番E2Eを意味しない。「追加候補」はファイル配置案で、まだ存在しない。
-
-| 領域                 | 既存コード・活かすもの                                                                                                                             | 追加／変更計画                                                                                                     |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Task契約・状態       | [types.ts](../src/types.ts)、[task-contract.ts](../src/task-contract.ts)、[store.ts](../src/store.ts)                                              | 現行2 task_type・hermes固定とclaim/lease/fenceを維持。会話配送の型をTaskへ押し込まない                             |
-| 実行Adapter・journal | [adapter.ts](../src/adapter.ts)、[journal.ts](../src/journal.ts)、[worker-loop.ts](../src/worker-loop.ts)、[hermes-runs.ts](../src/hermes-runs.ts) | 既存receipt/run照合を維持。`sender-outbox.ts`・`receiver-inbox.ts`等を新設し、配送journalを実行receiptと分離       |
-| 認証・停止・認可     | [auth.ts](../src/auth.ts)、[oauth.ts](../src/oauth.ts)、[authorization.ts](../src/authorization.ts)                                                | `relay-registry.ts`／個体binding・ACL層を追加。検証済み接続をグループへbindingし所属アドレスを選択。グループ外拒否、epoch・停止を維持      |
-| Relay契約・store     | 汎用Relayは未実装。[ping.ts](../src/ping.ts)は固定ping/pong専用                                                                                    | `relay-contract.ts`・`relay-store.ts`を追加。ping制約を外して汎用会話へ転用しない                                  |
-| client・task bridge  | [client.ts](../src/client.ts)、[mcp-worker-client.ts](../src/mcp-worker-client.ts)はTask用                                                         | `relay-client.ts`・Adapter共通契約・`relay-task-bridge.ts`を追加。Task受付とmessage受領を別操作にする              |
-| SQLite / schema      | [sqlite.ts](../src/sqlite.ts)、[db/schema.ts](../db/schema.ts)、[drizzle](../drizzle/)                                                             | 追加型schemaとversioned migrationを設計。既存migrationを編集・実行しない。Relay SQLは初期SQLite専用                |
-| HTTP MCP / runtime   | [mcp-core.ts](../src/mcp-core.ts)、[mcp.ts](../src/mcp.ts)、[protocol.ts](../src/protocol.ts)、[runtime.ts](../src/runtime.ts)                     | Relay専用schema・operationを明示配線。Host/Origin、body、rate、default denyを維持。既存catalogとの共存を回帰確認   |
-| 通知outbox           | [events.ts](../src/events.ts)、[subscriptions.ts](../src/subscriptions.ts)、[callback-transport.ts](../src/callback-transport.ts)                  | 既存Task terminal eventと配送messageを混同しない。wakeは任意の専用通知として別outbox／型を設計                     |
-| 設定・CLI・診断      | [runtime-config.ts](../src/runtime-config.ts)、[server.ts](../src/server.ts)、[ping-discovery.ts](../src/ping-discovery.ts)                        | registry・quota・retention等のprivate設定案、無害な検証CLI、照合・停止・診断を追加。discovery-onlyを自動昇格しない |
-| D1互換               | [d1.ts](../src/d1.ts)、[worker.ts](../src/worker.ts)、[D1試験](../test/d1.test.js)                                                                 | **初期RelayのD1対応は対象外**。既存Task/D1・Worker経路を壊さない回帰試験は必要。未対応Relayは明示拒否              |
-| 文書・導入           | [architecture.md](architecture.md)、[mvp-acceptance.md](history/mvp-acceptance.md)、この仕様                                                               | 実装段階でsetup、migration/rollback、G0能力表、障害試験と運用runbookを追加                                         |
+| 領域 | コード |
+| --- | --- |
+| message契約・`DeliveryService` | [src/messaging](../src/messaging/index.ts) |
+| Registry（アドレス・認証グループ・権限・容量・改名） | [src/hab](../src/hab/README.md) |
+| host（設定・HTTP入口・監査・管理CLI・MCP server・A2A入口） | [src/host](../src/host/start.ts)、[src/host/mcp](../src/host/mcp) |
+| 配送（NATS JetStream） | [packages/relay-nats](../packages/relay-nats/README.md) |
+| 送信outbox・保存後ACKのinbox・MCP client・受信supervisor | [src/agent-sdk](../src/agent-sdk/README.md) |
+| 受信側の任意部品（返信budget・質問返信intent・単一owner・ACP起動） | `src/adapter-host`、`src/adapter-policy`、`src/answer-intents`、`src/owner-integrations`（[receiver](receiver/)） |
+| 文書・導入 | [HABの構成](architecture.md)、[ローカルサービス](local-relay-service.md)、[ローカルMVP](local-mvp.md)、この仕様 |
 
 ### 追加schemaの論理案
 
@@ -496,7 +490,7 @@ backupはSQLiteの整合したsnapshot手段を使い、WALの稼働DBファイ�
 
 復元はまず配送・実行を止め、期限とepoch、ACK、受信inbox、既知Task/runを照合してから再開する。古いsnapshot復元で送信済み印やfenceを巻き戻し、外部副作用を再実行しない。tokenの世代を更新しても、backup取得後に消失したACKや業務実行の事実までは回復できないため、自動再配送／再実行より先に要照合へ隔離する。
 
-migrationは既存API・tableと共存する追加型を基本とする。旧versionの起動が未知のRelay schemaを破壊・自動削除しないこと、Relay無効化で既存Task経路に戻れることを試験する。code rollbackとDB restoreを同じ意味にしない。既存[SQLite migration](../src/sqlite.ts)は起動時に実行されるため、文書確認のためにサーバーを起動してmigrationを試すこともしない。
+migrationは既存API・tableと共存する追加型を基本とする。旧versionの起動が未知のRelay schemaを破壊・自動削除しないこと、Relay無効化で既存Task経路に戻れることを試験する。code rollbackとDB restoreを同じ意味にしない。Registryの[SQLite migration](../src/hab/sqlite-registry.ts)はhost起動時に実行されるため、文書確認のためにサーバーを起動してmigrationを試すこともしない。
 
 ## 19. 運用観測とセキュリティ
 

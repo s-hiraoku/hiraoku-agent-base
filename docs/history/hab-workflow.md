@@ -1,6 +1,6 @@
 # 共通メッセージと任意Taskの処理
 
-[READMEへ](../../README.md) · [内部設計](../architecture.md) · [セキュリティ](../hab-security.md)
+[READMEへ](../../README.md) · [内部設計](task-engine.md) · [セキュリティ](../hab-security.md)
 
 標準通信は[共通MCP接続](../common-mcp-connection.md)を使います。送信側がoutboxへ保存してsubmitし、受信側hostが定期poll・重複排除・永続保存後ACKを行います。受信後の判断・実行・必要な承認は受信エージェントの既存機構に残ります。返信は受信側が決め、元messageへの参照を付けて自分のoutboxから送ります。通常の質問・回答にTaskは不要です。
 

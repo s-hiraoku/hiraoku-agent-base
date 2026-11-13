@@ -250,7 +250,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "1698483cadfc3f5695d24a50f39b35be0691a09da68665c81e57a7578fed1c82",
+      "sha256": "fb9851ee374896fa639759020e29a9079e0e4e3a25aec81a37d78edcc1b30523",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition: the single host (src/host, MCP server in src/host/mcp), JetStream-only delivery and the agent SDK; SQLite delivery and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs the pinned nats-server and states the install command. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance."
@@ -316,11 +316,35 @@
       "summary": "Optional AnswerIntents accepts an already decided answer from recipient authority, saves one stable reply envelope before budget/outbox, and reconciles cross-DB uncertain handoff with original identity/deadline. Does not run model/Task or send at startup. Separate operation authorization, bounded maintain,30-day dedup and opaque-ID retention prevent recreation."
     },
     {
-      "path": "docs/architecture.md",
-      "sha256": "596f3a31c83cb16bd52551dfffbf04b1a6d51ed7e454d2121b77b5b5356849fd",
+      "path": "docs/history/task-engine.md",
+      "sha256": "9ad927725f8a97ca0f8f030efa83b371fcdf0a8a786ec5584c0d49f7695ba973",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete."
+      "summary": "Former docs/architecture.md, moved unchanged except link targets when the Task Hub code was deleted (2026-11-12). Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete."
+    },
+    {
+      "path": "docs/architecture.md",
+      "sha256": "0346df4ec3256d75357abc5b53da168df5df048826b1db562c8cf627297cd480",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, JetStream delivery, agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "9af48f89ddc5e202eb34aae282e382c47f83cedf533e4898c8d4ff9caffa2ac2",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Documentation index by purpose: design, connection/operations, topic folders and history. No requirement.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/history/README.md",
+      "sha256": "5909bee29d3154fd74eac854fd8061220369b805ea89cd091ee4ba8e10c8dad5",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "States that docs/history holds removed-code descriptions, test records and earlier plans kept unchanged except link targets; current structure is docs/architecture.md. No requirement.",
+      "read_scope": "full"
     },
     {
       "path": "docs/operations/auth0-account-step.md",
@@ -420,7 +444,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "d44c8b31b955cbe1a9ae93c74ed7fa3e9546b3bbe8855e0e248a73417fc8599a",
+      "sha256": "0e61951dcb464e884ce74bd77db3447234de70553e7a9da27b94b85252c35cf3",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions."
@@ -448,10 +472,10 @@
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "31aac951bdd948bdf9fd784c73f2708c2ff5efac9b34734a981cbfff6cb32c4c",
+      "sha256": "a6b4091a8c99965fec77068f6fcb1f5667edeb63ffe315025e45c1406ba34929",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) makes NATS JetStream the only delivery store and names the current modules; earlier single-Node+SQLite wording is the initial plan. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped."
+      "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) makes NATS JetStream the only delivery store and names the current modules; earlier single-Node+SQLite wording is the initial plan. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Section 16 now maps the spec to the current code (messaging, Registry, host, JetStream, agent SDK, optional receiver parts) instead of the pre-implementation change plan."
     },
     {
       "path": "docs/history/hab-roadmap.md",
@@ -483,7 +507,7 @@
     },
     {
       "path": "docs/history/hab-workflow.md",
-      "sha256": "c59d27e5e40fb311998ce210dc1b2e6ba9f43ad9cd45d8c2a534a54a01846f81",
+      "sha256": "c87b982e522a148cefc16703fc48640120d4fcc7717092efb616b3714254627b",
       "role": "normative",
       "review": "reviewed",
       "summary": "Starts with standard durable common messaging then explicitly scopes numbered flow/diagram to optional fixed Tasks. Task policy/owner keys, lease/fence/run journal, per-operation approvals and transactional result/audit/outbox; no automatic conversation classifier/execution. waiting_approval is safe hold rather than proof of deployed approval UI. Pause/cancel/local abort do not establish remote termination; unknown fixed execution retains slot until trusted exact reconciliation."
@@ -953,7 +977,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "815bfa957223e5cb09fd6e08c2e172e85271da84d2d2ce6b20838d966b538587",
+      "sha256": "4835f699635ff348e226ae39299cd10848381ae1430744582718e52789037eb2",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -962,7 +986,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "aa13741a8f01007725b08fbe87255611f10a742403ab3f7da8dedf917ee46e32",
+      "sha256": "d54d95e5135e3d80b2288d7e897e7610305a338389c2f0bd9d1944ba36c95b1b",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -971,7 +995,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "ed527c577b638d2583c551de9a6b8a142cc5224be5998d40e72dc3fed985d202",
+      "sha256": "adf931f8c3c3e3dfb81528e57dab5f416176eefe78f221fa8025630a6fb614c5",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -980,7 +1004,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "3aa44b472d9d5b573cfa9b76ffedad6c7a87e42919f0b351553cdd173d477c1e",
+      "sha256": "7cd692f9ab1ad6fcdb2649e4d9e968dc3a6a5f0982379ee8e7917fc50824dea1",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1606,10 +1630,10 @@
       ],
       "citations": [
         {
-          "path": "docs/architecture.md",
+          "path": "docs/history/task-engine.md",
           "start": 15,
           "end": 29,
-          "excerpt_sha256": "525419513e68c5a2e434c9f36b8b39ebdf96690ea3a22b91f66e271d17217d38"
+          "excerpt_sha256": "1c6054efba7d77663d4ce4ffc2541164a6e17b05b1231a87cc31c6190c17c234"
         },
         {
           "path": "docs/history/hab-workflow.md",
@@ -1812,9 +1836,9 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 497,
-          "end": 503,
-          "excerpt_sha256": "ae634ca31940762ed56ee03bedbe82a682be1afc5f80df703353970051281de5"
+          "start": 491,
+          "end": 497,
+          "excerpt_sha256": "91e3ae18a287b1761b910f3817a6762e8772b6969bbf9905061d066c063a0621"
         },
         {
           "path": "docs/hab-product-spec.md",
@@ -3205,8 +3229,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 554,
-          "end": 554,
+          "start": 548,
+          "end": 548,
           "excerpt_sha256": "e3ebd5e5f0569550960ffdd5f3c2f69cffbb089d6d01245994b55ebc02a4ae34"
         },
         {
@@ -4592,10 +4616,10 @@
       "classification": "scope/history/explicit-authority",
       "citations": [
         {
-          "path": "docs/architecture.md",
+          "path": "docs/history/task-engine.md",
           "start": 1,
           "end": 7,
-          "excerpt_sha256": "bc9770cc5b13e97a4b957780e32c83264d348456e0b52a10638026866fcdc9ef"
+          "excerpt_sha256": "7f2c2b444c5a9f51be14b02f9a7ce153519131cb912f01c1795a7bd0724984d1"
         },
         {
           "path": "docs/history/hab-workflow.md",
@@ -4734,8 +4758,8 @@
         },
         {
           "path": "README.md",
-          "start": 167,
-          "end": 167,
+          "start": 169,
+          "end": 169,
           "excerpt_sha256": "0f3277ba44863cc31e4a9e930c20bedfa4fbdab62aa33e022d8958885ddeea3c"
         },
         {
@@ -4771,8 +4795,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 519,
-          "end": 527,
+          "start": 513,
+          "end": 521,
           "excerpt_sha256": "b2b9d12db178026be9050c4f02398db07d9d229c39045a53193b90281a45e2de"
         },
         {

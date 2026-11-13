@@ -65,7 +65,7 @@
 4. Dots/Grokの実MCP呼出し・結果取得と、wakeまたはEventsを追加する必要性。
 5. ~~A2A gatewayをhostへ配線するか~~ 決定済み：host所有のA2A名義で配線する（ADR-016、owner判断 2026-11-06）。既定は無効。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）で、受信者engineの独立検証ではない。
 
-個別のtechnical contractは[Hub内部設計](architecture.md)、[Auth0](history/auth0-boundary.md)、[import境界](history/hermes-import-boundary.md)を参照してください。重複する設定表を増やさず、そちらを更新します。
+個別のtechnical contractは[Hub内部設計](history/task-engine.md)、[Auth0](history/auth0-boundary.md)、[import境界](history/hermes-import-boundary.md)を参照してください。重複する設定表を増やさず、そちらを更新します。
 
 ## ShiftLog機能の接続境界
 

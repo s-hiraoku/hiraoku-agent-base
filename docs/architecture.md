@@ -1,55 +1,47 @@
-# Scope and boundaries
+# HAB の構成
 
-For the overall HAB roles, current evidence and hosting decisions, start at [README](../README.md) and [ADR](hab-decisions.md). This page owns the existing optional Task Engine and execution-adapter contract. Standard agent communication follows [common MCP](common-mcp-connection.md) and the [receive-only supervisor](receiver/receive-supervisor.md). Agents retain content decisions, execution, and their existing approval policy. Hermes Runs and the prerequisites below apply to the limited Task integration, not to ordinary message delivery.
+[README](../README.md) · [文書一覧](README.md) · [設計判断（ADR）](hab-decisions.md) · [メッセージ配送の正式仕様](hab-relay-spec.md)
 
-Dots retains personal context, consultation, important-mail decisions, mark-read after notification, and schedule summaries. Grok retains its existing connpass job and future Calendar/browser/long-task work. Hermes handles development experiments, MCP and Skills. These are design roles. Current limited task contracts are connectivity_check and the opt-in fixed shift_log_inventory; the diagnostic ping/pong service is separate. Verified server policy chooses the route and allowed task types. Results and notifications never submit tasks.
+HAB は、エージェント同士がメッセージをやり取りするための基盤です。メールのように各エージェントへ `<bot_name>@<agent_name>.hab` 形式のアドレスを結びつけ、そのアドレスで宛先のセッションを特定します。この文書は main にある現在の構成をまとめたものです。本番配備の状況は README の「現在可能なこと」で区別します。旧 Task Hub（固定 Task・inventory・ping・Worker/D1）は 2026-11-12 に削除しました。その説明は [history](history/README.md) に残しています。
 
-Agent-to-agent messaging is separate from this Task Engine. Its requirements are in the [message delivery specification](hab-relay-spec.md) (formerly the HAB Relay specification). The former Relay implementation was retired in [ADR-016](hab-decisions.md): delivery runs only on NATS JetStream through the single host in `src/host`, agents use the five MCP tools or the optional A2A entry, and this Task server (`src/server.ts`) is not wired to that host.
+## 部品
 
-## Authentication and tool contracts
+| 部品 | 場所 | 役割 |
+| --- | --- | --- |
+| メッセージ契約 | `src/messaging` | message の形、`DeliveryService` interface、ツールの error code |
+| Registry | `src/hab` | アドレス → 不変の `agent_id`、認証グループ、操作権限、停止・失効、改名（v3） |
+| host | `src/host` | 唯一のサーバー。設定・HTTP 入口・監査・管理 CLI・MCP server（`src/host/mcp`）・任意の A2A 入口 |
+| 配送 | `packages/relay-nats` | NATS JetStream による受付・lease・ACK・状態照会 |
+| エージェント SDK | `src/agent-sdk` | 送信側の永続 outbox、保存後に ACK する受信 inbox、MCP client、受信 supervisor |
+| 受信側の任意部品 | `src/adapter-host` ほか | 返信 budget、質問返信 intent、単一 owner、ACP 起動など。標準接続には不要（[receiver](receiver/)） |
 
-Both Node and Worker `POST /mcp` entry points use the pinned official MCP SDK. Strict schemas expose submit, claim, heartbeat, complete, get and cancel. No caller supplies a destination or trusted identity. Submit takes `{task_type:"connectivity_check",request_key}`; claim `{}`; get/cancel `{id}`; heartbeat `{id,fence,run_id?}`; complete `{id,fence,state,result}` with fixed success/failure results.
+host は `npm run relay:local` で起動し、アドレスの登録と接続は `npm run relay:admin` で行います。名前に残る `relay` は既存の接続設定との互換のためで、旧 HAB Relay（独自の SQLite 配送 store）は 2026-11-07 に廃止しました（ADR-016）。
 
-A trusted verifier supplies `{subject,operations,destination?,worker?}`. Default verification returns no identity and HTTP 401. Header names, including Sites identity headers, are never automatically trusted. A future Sites integration must verify the hosting boundary and map authenticated users/services to distinct policy. No service credential may manufacture user identity or connected-app consent. Cancellation requires both a verifier-granted `cancel` operation and task ownership. `destination` chooses the route for new submissions; it does not grant cancellation authority. A principal granted only cancellation may stop its own task without also being granted new-submission routing. Worker-only or foreign-owner principals cannot cancel.
+## アドレスと認証
 
-## One state database, two storage drivers
+- 接続は必ず認証グループを通して結びつけます。単独のエージェントは「自分だけが所属するグループ」になります（[認証グループ](relay-auth-groups.md)）。
+- 送信者の名義と受信箱は、引数のエージェント名ではなく、認証済みの接続から決まります。1 つの接続が複数のアドレスを使うときは `as_address` で名義を選び、所属しないアドレスは拒否します。
+- 実際に使える操作は、グループの権限とアドレスの権限の共通部分です。グループかアドレスを止めると、その接続からの操作は止まります。
+- アドレスは再利用しません。改名は同じ `agent_id` を保ったまま行い、旧名は永久に予約します（[改名](agent-address-rename.md)）。
 
-The async `TaskService` constructs the same prepared SQL operations for SQLite or D1; select one authoritative storage driver per deployment. There is no replication or dual-write between them. SQLite executes an operation's statements in BEGIN IMMEDIATE. D1 uses a primary-constrained session and transactional ordered batch. Conditional UPDATE predicates and a unique partial index enforce one unresolved execution per destination. There is no JavaScript SELECT-then-write claim race.
+## 送信と受信
 
-`db/schema.ts` and generated Drizzle migrations own schema. Triggers persist state/run/lease audit and terminal outbox within the same transaction as the actual mutation. Terminal retries do not produce another mutation or event. Submission keys are scoped to owner. Heartbeats bind the run ID once and reject conflicts. Every completion requires the current lease/fence/worker; cancellation increments the fence. Lease expiry quarantines work in waiting_approval and retains its slot. Cancelled claimed work also retains the slot; queued cancellation does not reserve one.
+エージェントは標準の MCP client から 5 つのツールを使います（[共通 MCP 接続](common-mcp-connection.md)）。
 
-The Mac's separate journal is a recovery receipt, not a second task-state database. It stores task ID, fence, stable admission key, run ID and admission time. It is committed before admission. Known runs are looked up by ID; unknown admissions replay the identical key only within the verified idempotency retention horizon. Existing prototype databases lacking migration metadata are refused with `legacy_schema_requires_reviewed_migration`, preserving their records for reviewed migration rather than silently replacing them.
+1. `relay_resolve` でアドレスを解決します。
+2. `relay_submit` で送ります。同じ `message_id` の再送は同じ受付結果になります。
+3. 受信側は `relay_poll` で lease 付きの配送を受け取り、自分の store に保存してから `relay_ack` します。保存に失敗したら ACK せず、lease が切れると再配送されます。
+4. `relay_status` で配送状態を確かめます。
 
-## Outbound worker lifecycle
+常駐受信はエージェント SDK の `ReceiveHost` と `ReceiveSupervisor` で組み立てます。モデルを使わずに poll・保存・ACK を繰り返し、認証が切れたら待機して、検証後に再開します（[受信 supervisor](receiver/receive-supervisor.md)）。届いた内容を判断して実行するのは受信エージェント自身で、HAB は配送を受け取っただけで Task を実行しません。
 
-`Adapter.once()` handles one admission/status step; `run()` polls until terminal while the receipt exists. A watchdog renews leases during blocked create/get calls, with a finite renewal deadline. Initial, periodic and final heartbeat payloads contain only protocol fields. Renewal failure or explicit local stop aborts local waiting and retains the receipt and execution slot for reconciliation. This does not imply stopping a remote run. The adapter rejects unsafe timing budgets and unverified tool-isolation/durable-idempotency contracts.
+## 任意の入口と調整
 
-Cancelled known work is read until the run driver confirms a terminal state. Unknown cancellation remains unresolved. Neither case silently clears the gate; general terminal reconciliation/release is not implemented. The internal operator reconciliation API can close a gate only after trusted proof of the exact fixed successful run on the original boundary; see [local integration](history/local-integration.md). No guessed stop endpoint is called. The real driver and authentication bootstrap remain gated: mock booleans are test seams, not proof of actual tool or memory isolation.
+- **A2A**: 設定に `a2a` section があるときだけ loopback listener を開きます。A2A Task は host 所有のアドレスから設定済みの受信者へ送られ、結果は受信者の永続返信で報告します（[A2A](a2a/a2a-relay-preview.md)）。
+- **OAuth 入口**: HTTPS reverse proxy から同じ 5 ツールを受けます（[OAuth 入口](operations/relay-oauth-ingress.md)、[常用 OAuth](operations/persistent-mcp-auth.md)）。
+- **アドレス照会**: 任意の `hab_discover` ツール（[エージェント照会](connections/mcp-agent-discovery.md)）。
+- **配送の調整**: 個体別の容量、公平な poll、公平な writer 受付（[delivery](delivery/)）。
 
-## Notification foundation
+## 運用
 
-The transactional outbox is at least once; receivers must deduplicate stable event IDs. Offline-tested `EventSender` adds signed callback challenge verification, fixed terminal payloads, owner/access/expiry checks, bounded retry/backoff and 410/413/redirect policy rejection. `PinnedCallbackTransport` is a Node preparation adapter: exact approved URLs, HTTPS, fresh public-address validation at each connection, pinned DNS address and original TLS host, response bounds and no redirect following. The Worker egress adapter remains unimplemented.
-
-Opt-in EventAPI, durable encrypted subscriptions, authenticated list/subscribe/unsubscribe and fenced delivery are implemented and tested with fixtures. Default entrypoints supply no EventAPI. Real callbacks, hosted egress and resident delivery are unconnected; cursor-based replay is unsupported. See [local integration](history/local-integration.md).
-
-## Hermes prerequisites
-
-The verified source commit was `f97608f178d1ffeca59860195ab7da295f7c8e5f`. Its document is `website/docs/user-guide/features/api-server.md`. It describes scoped Runs, capabilities/toolsets, API-key authentication and finite idempotency retention. Server agent creation uses platform toolsets; passing `tools: []` is not proof of real tool exclusion.
-
-Desktop UI backend and standard gateway API are distinct interfaces. Do not assume an old desktop port exposes Runs. An approved isolated API profile must verify effective runtime tool definitions are empty, independent sessions/memory/history, durable idempotency, actual loopback binding and minimal authentication. Never extract desktop internal authentication for reuse.
-
-## Remaining approval and verification gates
-
-1. Isolated Hermes profile, key creation/storage and its exact endpoint/tool/memory policy; independent fixed-payload Runs. Keys must stay outside model context/chat/source/logs.
-2. Mac/SQLite ingress, Auth0 production wiring and approved Hub-specific Tailscale routing. Sites/D1 are deferred portability options; local tests do not establish hosted auth interoperability.
-3. Approved fixed outbound Mac-to-Hub traffic and any background worker. Current worker tests are manual and local.
-4. Authorized cancellation terminal reconciliation/gate release and real endpoint/status normalization; cloud revocation/lease/stop failure checks.
-5. Plugin registration and formally verified notification destinations after subscription/egress/replay security is complete.
-
-No current production Hub deployment, Site/cloud D1 resource, live subscription/plugin registration or resident Hub worker is installed. An earlier fixed-connectivity local trial is recorded separately in [fixed pilot history](history/fixed-pilot.md); it does not validate the current inventory bridge or cloud clients.
-
-## Execution planning beyond the fixed pilot
-
-Keep the responsible agent, execution tool and execution environment separate. Dots, Grok Bot and Hermes retain their own judgement. A future task contract should identify its owner/responsible agent, requested execution environment, allowed tools, workspace and completion criterion; authorization must derive these permissions from verified identity and policy rather than task-supplied agent names. Claude Code, Codex and Cursor can be selected execution tools only after their real connection and scopes are verified. Mac and cloud are distinct environments.
-
-Before supporting development work, add execution idempotency across tools, exclusive workspace reservations or isolated worktrees, bounded grants, result provenance and explicit reconciliation of unknown runs. Existing cron jobs must remain owned by their current system and must not be recreated by the Hub. Terminal events do not automatically submit another task. Cursor Cloud Agents and a Grok Bot external control interface are distinct capabilities; one does not establish access to the other. Current task contracts remain fixed connectivity and opt-in inventory; general development work is not admitted.
+起動・設定・管理 CLI は [ローカルサービス](local-relay-service.md)、常駐は [LaunchAgent](operations/local-relay-launchagent.md) にまとめています。動作は [ローカル MVP](local-mvp.md) の 1 コマンドで、一時 DB と loopback の nats-server を使って確かめられます。

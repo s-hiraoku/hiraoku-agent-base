@@ -6,7 +6,7 @@
       "assigned": [
         "README.md",
         "docs/receiver/adapter-host.md",
-        "docs/architecture.md",
+        "docs/history/task-engine.md",
         "docs/common-mcp-connection.md",
         "docs/history/generic-agent-async-design.md",
         "docs/hab-decisions.md",

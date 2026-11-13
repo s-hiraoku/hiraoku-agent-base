@@ -135,15 +135,17 @@ CIはlint・typecheck・固定版nats-serverでのJetStream検査（`scripts/ci-
 
 ## ドキュメント一覧
 
-| 文書                                          | 内容                                                           |
-| --------------------------------------------- | -------------------------------------------------------------- |
-| このREADME                                    | HABの目的、全体図、現在可能なこと、入口                        |
-| [設計思想](docs/hab-principles.md)            | 個人文脈・Cloud Worker・Local Agentの分業、疎結合、費用制約    |
-| [役割と機能](docs/history/hab-roles.md)               | Dots／Grok／Hermes／Claude Code／Codex／Cursorの担当と接続状況 |
-| [処理の流れ](docs/history/hab-workflow.md)            | 依頼 → 振分け → 承認 → 実行 → 結果、失敗・停止・照合           |
-| [セキュリティ](docs/hab-security.md)          | Auth0、Tailscale、権限、秘密、停止と公開境界                   |
-| [設計判断記録（ADR）](docs/hab-decisions.md)  | 採用理由、不採用・保留・未決定案                               |
-| [競合比較とロードマップ](docs/history/hab-roadmap.md) | 一次資料に基づく参考実装と段階的な接続計画                     |
+[文書一覧](docs/README.md)に、用途ごとの入口をまとめています。まず[HABの構成](docs/architecture.md)を読んでください。
+
+| 文書                                          | 内容                                                  |
+| --------------------------------------------- | ----------------------------------------------------- |
+| このREADME                                    | HABの目的、全体図、現在可能なこと、入口               |
+| [HABの構成](docs/architecture.md)             | 部品、アドレスと認証、送受信の流れ                    |
+| [設計思想](docs/hab-principles.md)            | 個人文脈・Cloud Worker・Local Agentの分業、疎結合、費用制約 |
+| [共通MCP接続](docs/common-mcp-connection.md)  | 新しいエージェントをつなぐ手順                        |
+| [セキュリティ](docs/hab-security.md)          | Auth0、Tailscale、権限、秘密、停止と公開境界          |
+| [設計判断記録（ADR）](docs/hab-decisions.md)  | 採用理由、不採用・保留・未決定案                      |
+| [過去の文書](docs/history/README.md)          | 削除した旧Task Hubの説明、試験記録、過去の計画        |
 
 ## ローカル再現
 

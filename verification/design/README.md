@@ -337,3 +337,11 @@ The owner approved the simplification review, whose P3a step makes authenticatio
 - `test/hab-auth-groups.test.js` covers the conversion from a v1 registry and of a revoked direct binding; `test/local-relay-admin.test.js` covers the CLI refusal. verify-hab's configured feature no longer turns groups on.
 - Conflict citations: HAB-C-A01 and HAB-C-A04 were re-cited after rereading the changed Registry README and rename text, and HAB-C-E05 now cites the reworded local-MVP paragraph with its resolution updated. The P2 deletions had left three conflict citations stale: HAB-C-F04 now cites the README's JetStream check line, HAB-C-V05 drops the deleted `test/p7/README.md`, and four `docs/operations/relay-oauth-ingress.md` citations only moved.
 - In source-review.json the changed Registry, enrollment, admin and A2A host sources were rehashed with appended summaries.
+
+## Documentation grouped by purpose (2026-11-12)
+
+The simplification review's documentation step groups `docs/` by purpose. The top level keeps the current design and connection documents; other documents moved to `docs/connections`, `docs/operations`, `docs/delivery`, `docs/receiver`, `docs/a2a` and `docs/history`. The former Task Engine page `docs/architecture.md` is now `docs/history/task-engine.md`, and a new `docs/architecture.md` describes the current components.
+
+- Every document path, citation path, source-review path and external-reference attribution follows its file. Moved files changed only in relative link targets, so citations whose lines changed only that way were rehashed at the same lines.
+- New context documents: `docs/architecture.md`, `docs/README.md` and `docs/history/README.md`. They add no requirement.
+- `docs/hab-relay-spec.md` section 16 replaces the pre-implementation change map, which linked deleted Task Hub files, with the current code map; one migration sentence now names the Registry migration. HAB-F24 was re-cited after rereading that sentence, and HAB-C-F04 and HAB-C-F05 citations only moved.

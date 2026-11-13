@@ -10,7 +10,7 @@ Classification: scope/history/explicit-authority. Requirements: HAB-F01, HAB-F02
 
 No. Architecture/workflow explicitly own optional limited Task path, and ADR015/common-MCP explicitly retain Tasks optional and recipient existing authority; ADR-016 revises the standard composition and keeps that division. Diagram remains dated historical Task integration rather than standard communication target.
 
-Sources: [docs/architecture.md:1](../../docs/architecture.md#L1-L7), [docs/history/hab-workflow.md:5](../../docs/history/hab-workflow.md#L5-L7), [docs/history/hab-topology.md:5](../../docs/history/hab-topology.md#L5-L9), [docs/hab-decisions.md:24](../../docs/hab-decisions.md#L24-L36), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48).
+Sources: [docs/history/task-engine.md:1](../../docs/history/task-engine.md#L1-L7), [docs/history/hab-workflow.md:5](../../docs/history/hab-workflow.md#L5-L7), [docs/history/hab-topology.md:5](../../docs/history/hab-topology.md#L5-L9), [docs/hab-decisions.md:24](../../docs/hab-decisions.md#L24-L36), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48).
 
 ## HAB-C-F02 — resolved
 
