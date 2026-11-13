@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -37,7 +37,7 @@ jobs:
           node --test test/ci-nats/install.test.ts
           node scripts/install-ci-nats.ts > .runtime/nats-install.json
       - name: Read pinned generic coordinator only
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: s-hiraoku/hirastack
           ref: 0ead9d3899e813916e0180cb4ffbff6c08d45ad6
