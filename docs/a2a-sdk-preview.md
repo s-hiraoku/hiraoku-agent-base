@@ -45,13 +45,11 @@ The separate [HAB Relay preview](a2a-relay-preview.md) implements P2/P3 with Reg
 
 ## Fixed dependencies
 
-| Package                 | Version  | Purpose                                                                    |
-| ----------------------- | -------- | -------------------------------------------------------------------------- |
-| `@a2a-js/sdk`           | `1.3.0`  | Official A2A 1.0 wire protocol, client, handler, and persistent Task store |
-| `kysely`                | `0.29.7` | SDK database connection                                                    |
-| `better-sqlite3`        | `13.0.3` | SDK-supported SQLite driver                                                |
-| `@types/better-sqlite3` | `9.6.0`  | Driver TypeScript declarations                                             |
+| Package       | Version  | Purpose                                                                    |
+| ------------- | -------- | -------------------------------------------------------------------------- |
+| `@a2a-js/sdk` | `1.3.0`  | Official A2A 1.0 wire protocol, client, handler, and persistent Task store |
+| `kysely`      | `0.29.7` | SDK database connection                                                    |
 
-The existing Task engine continues to use `node:sqlite`. The SDK driver is isolated to the new database. Its native addon must be installed for the Node major version used to run the preview.
+The SDK's `DatabaseTaskStore` runs on Kysely's SQLite dialect over the built-in `node:sqlite`, through a small adapter in `src/a2a/store.ts`. No native SQLite addon is installed, so a Node major upgrade needs no rebuild. The Task database stays separate from the other HAB databases.
 
 The SDK's [official repository](https://github.com/a2aproject/a2a-js) documents A2A 1.0, the JSON-RPC transport, and its persistent stores. The pinned package types and CLI output are the implementation references for this preview.

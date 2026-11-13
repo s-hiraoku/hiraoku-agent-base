@@ -98,7 +98,10 @@ test("closing an unused A2A store closes its eager SQLite connection before a re
   assert.equal(unused.findBySource("absent"), undefined);
   assert.deepEqual(unused.overdue("9999-01-01T00:00:00.000Z", 100), []);
   await unused.close();
-  assert.throws(() => unused.findBySource("absent"), /not open|closed/);
+  assert.throws(
+    () => unused.findBySource("absent"),
+    /not open|closed|finalized/,
+  );
   await unused.close();
 
   const reopened = openA2aTaskStore(path);
@@ -107,7 +110,10 @@ test("closing an unused A2A store closes its eager SQLite connection before a re
     undefined,
   );
   await reopened.close();
-  assert.throws(() => reopened.findBySource("absent"), /not open|closed/);
+  assert.throws(
+    () => reopened.findBySource("absent"),
+    /not open|closed|finalized/,
+  );
   await reopened.close();
 });
 
@@ -138,6 +144,50 @@ test("overdue Task pages advance past retrying rows using the complete stable Ta
       first,
       "a new pass retries the failed rows",
     );
+  } finally {
+    await opened.close();
+  }
+});
+
+test("the node:sqlite Task store overwrites a saved Task and lists caller pages through the SDK", async () => {
+  const opened = openA2aTaskStore(":memory:");
+  const caller = context("caller", "tenant");
+  const save = (id, state, timestamp) =>
+    opened.store.save(
+      Task.fromJSON({
+        id,
+        contextId: "context",
+        status: { state, timestamp },
+      }),
+      caller,
+    );
+  try {
+    await save("task-a", "TASK_STATE_WORKING", "2026-11-01T00:00:00.000Z");
+    await save("task-a", "TASK_STATE_COMPLETED", "2026-11-01T00:00:03.000Z");
+    await save("task-b", "TASK_STATE_WORKING", "2026-11-01T00:00:02.000Z");
+    await save("task-c", "TASK_STATE_WORKING", "2026-11-01T00:00:01.000Z");
+    await opened.store.save(
+      Task.fromJSON({ id: "task-x", contextId: "context" }),
+      context("other", "tenant"),
+    );
+    const loaded = await opened.store.load("task-a", caller);
+    assert.equal(loaded.status.timestamp, "2026-11-01T00:00:03.000Z");
+    const first = await opened.store.list({ pageSize: 2 }, caller);
+    assert.equal(first.totalSize, 3);
+    assert.deepEqual(
+      first.tasks.map((task) => task.id),
+      ["task-a", "task-b"],
+    );
+    assert.ok(first.nextPageToken);
+    const second = await opened.store.list(
+      { pageSize: 2, pageToken: first.nextPageToken },
+      caller,
+    );
+    assert.deepEqual(
+      second.tasks.map((task) => task.id),
+      ["task-c"],
+    );
+    assert.equal(second.nextPageToken, "");
   } finally {
     await opened.close();
   }
