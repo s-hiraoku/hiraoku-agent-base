@@ -50,7 +50,7 @@ Scope: Durable receive and standard/native MCP handoff Decision: **accepted**.
 
 Checks: js-common-mcp, mcp-durable-roundtrip, ack-observer-controls, js-process-crash.
 
-Sources: [docs/common-mcp-connection.md:45](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L45-L61), [docs/hab-relay-spec.md:257](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L257-L261), [docs/hab-product-spec.md:165](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L165-L165).
+Sources: [docs/common-mcp-connection.md:45](../../docs/common-mcp-connection.md#L45-L61), [docs/hab-relay-spec.md:259](../../docs/hab-relay-spec.md#L259-L263), [docs/hab-product-spec.md:163](../../docs/hab-product-spec.md#L163-L163).
 
 ### HAB-F05 — Durable sender identity and uncertainty
 
@@ -122,7 +122,7 @@ Scope: ReceiveSupervisor timing, failures and cleanup Decision: **accepted**.
 
 Checks: js-common-mcp, js-root.
 
-Sources: [docs/receive-supervisor.md:30](../../docs/receive-supervisor.md#L30-L51), [docs/receive-supervisor.md:75](../../docs/receive-supervisor.md#L75-L81), [docs/receive-supervisor.md:129](../../docs/receive-supervisor.md#L129-L136).
+Sources: [docs/receive-supervisor.md:32](../../docs/receive-supervisor.md#L32-L53), [docs/receive-supervisor.md:77](../../docs/receive-supervisor.md#L77-L83), [docs/receive-supervisor.md:131](../../docs/receive-supervisor.md#L131-L138).
 
 ### HAB-F11 — Current authorization and untrusted input
 
@@ -254,9 +254,9 @@ Reason: Prevents a successful local harness from concealing missing product capa
 
 Scope: Readiness, public capability advertisement and verification reports Decision: **accepted**.
 
-Checks: mcp-durable-roundtrip, native-recipient.
+Checks: mcp-durable-roundtrip, native-recipient, js-recipient-messages.
 
-Sources: [docs/recipient-readiness.md:17](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/recipient-readiness.md#L17-L38), [docs/common-mcp-connection.md:106](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L106-L124), [docs/hab-product-spec.md:200](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L200-L206).
+Sources: [docs/recipient-readiness.md:17](../../docs/recipient-readiness.md#L17-L38), [docs/common-mcp-connection.md:106](../../docs/common-mcp-connection.md#L106-L124), [docs/hab-product-spec.md:198](../../docs/hab-product-spec.md#L198-L204).
 
 ### HAB-F22 — Private UI and product simplicity
 
@@ -268,7 +268,7 @@ Scope: Confirmed product goals; manual/live acceptance remains required Decision
 
 Checks: gui-parity.
 
-Sources: [docs/hab-product-spec.md:11](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L11-L17), [docs/hab-product-spec.md:35](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L35-L47), [docs/hab-product-spec.md:90](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-product-spec.md#L90-L94).
+Sources: [docs/hab-product-spec.md:11](../../docs/hab-product-spec.md#L11-L17), [docs/hab-product-spec.md:35](../../docs/hab-product-spec.md#L35-L47), [docs/hab-product-spec.md:90](../../docs/hab-product-spec.md#L90-L94).
 
 ### HAB-F23 — Public source versus private runtime
 
@@ -284,15 +284,15 @@ Sources: [README.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c677
 
 ### HAB-F24 — Restore conservatively
 
-Quiesce delivery and execution before restoring; reconcile original IDs, epochs, ACK/inbox, known Task/run and external outcomes before resuming. A code rollback that keeps the same delivery journal is allowed only to a build that opens that journal's schema; never rewrite a schema version or rewind the journal or broker store alone. Rolling back past a schema change (the JetStream-only release writes journal schema 4, which earlier builds refuse) restores every part of one consistent pre-upgrade backup generation together and reconciles by original sender and message ID, before routing traffic, each message the newer release accepted and each message still `staging`, `pending`, `leased` or `quarantined` in the backup, because the newer release may have delivered it after the backup; the list takes the union of both journals' IDs and retained recipient evidence, so an ID incomplete in the backup whose row the upgraded journal already purged stays listed with no final state. It also reconciles every body a restored recipient inbox holds unreleased, because an ACK proves only the save: the upgraded recipient may have executed a body acked before the backup, and the restored inbox would hand it to the application again. No journal state proves that a recipient did not save or execute a message: a recipient can save a body while its ACK never commits, leaving the row `expired` or `quarantined`, so those states mean outcome unknown; only `acked` is conclusive, and only of the save, and the recipient's own inbox, Task results and execution records decide the rest. Before the restore, copy the schema 4 journal and every post-upgrade recipient inbox, Task Store, execution record and host `a2a-*.sqlite` file, export from each recipient's copied execution records the sender and message IDs its application handled, and build the list from the copies with the read-only scripts/relay-rollback-reconcile.mjs (`--inbox` per inbox copy, `--backup-inbox` per inbox the restore puts back, `--execution-record` per export). It marks each ID `delivered` (`acked` or a record in its recipient's inbox copy), `not_saved` (`expired` or `quarantined` with no record in an inbox copy that cannot yet have collected it) or `unknown` (no inbox copy, a record that may have been collected, or a purged row with no inbox record); under `restored_bodies` it marks each unreleased backup-inbox body `do_not_process` (listed as handled in its recipient's execution record), `process` (not handled and still unreleased in the upgraded inbox copy) or `unknown` (released in the copy with no execution record, or a copy missing); and it prints `restored_incomplete_expire_by`. Keep the earlier build stopped with no listener until the backup time plus one hour plus the largest `max_clock_skew_ms`, and at least until `restored_incomplete_expire_by`, so every restored ID has expired and the relay does not deliver again anything a recipient saved or executed after the backup. That hold does not cover a body already saved in a restored inbox, which the inbox hands out whatever its expiry, so before restarting each restored recipient settle its `restored_bodies`: record a `do_not_process` body's result in the restored application store under the same sender and message ID and release it with `releaseBody` without handing it to the application, let a `process` body be processed as usual, and keep a recipient with an `unknown` body stopped until its operator decides from its own records, never processing it to find out. Then settle every listed ID: never resend a `delivered` one, tell the sender a `not_saved` one was not delivered (a new attempt is a new request under a new ID), and report an `unknown` one as unknown, without retry, until its recipient's operator checks. Keep the journal and state copies until reconciliation is complete. Do not assume a rollback means unexecuted, dual-dispatch to old/new backends, or promise powerloss/all-copy durability from normal reopen/sync settings. The evidence union also includes IDs absent from the backup that survive only in upgraded inbox or application execution records after journal collection; execution-only evidence has unknown expiry and does not invent a relay save. IDs absent from every supplied source cannot be enumerated and require independent sender/application records. Separately, `retained_bodies` lists unreleased upgraded-copy bodies not restored unreleased: handled ones are `do_not_process`, a body absent from a supplied backup inbox and absent from a supplied execution export is `review_application_handoff`, and missing or conflicting evidence is `unknown`. Draining and waiting do not transfer these bodies. Before recipient restart, review full Task/execution and external-effect state; only a proven unhanded-off body may continue through an application-specific local recovery using a working copy and the original sender/message and Task/run identities with durable deduplication. Never resubmit it to the relay, inject an expired delivery through inbox.save, replace its ID or extend expiry. Preserve evidence; if prior effects are uncertain or no safe recovery exists, keep the recipient stopped. No generic automatic replay or recovery executor is introduced.
+Quiesce delivery and execution before restoring; reconcile original IDs, epochs, ACK/inbox, known Task/run and external outcomes before resuming. Back up and restore every state file of one generation together (Registry, delivery store, host owner, A2A files and each recipient's inbox and application state), never the delivery store alone, because an older delivery file rewinds receipts and ACKs. Keep a restored host stopped until the backup time plus one hour plus the largest max_clock_skew_ms has passed, so every message first sent before the backup has expired and cannot be delivered again. Compare copies of the replaced delivery store and recipient inboxes with the restored state by original sender and message ID: only acked proves a save, while expired and quarantined mean outcome unknown and the recipient's own inbox, Task results and execution records decide. Upgrading from the retired JetStream build migrates no messages: stop senders, wait one hour plus max_clock_skew_ms after the last acceptance so every old ID has expired, report unknown outcomes, then remove the old journal; the host refuses to start while jetstream-journal.sqlite remains. Rolling back drains the new store the same way before restoring the drained journal. Never resend a saved message under a new ID, replay uncertain work, extend expiry, dual-dispatch to old/new backends, or promise powerloss/all-copy durability from normal reopen/sync settings. No generic automatic replay or recovery executor is introduced.
 
 Reason: Restoring old local proof can erase knowledge without undoing remote effects.
 
-Scope: Backup/restore/migration and evidence claims. The reconciliation listing is covered in js-root by test/relay-rollback-reconcile.test.js on a real JetStream journal and agent SDK inboxes, including restored inbox bodies executed or still unprocessed after the backup and an incomplete-at-backup ID whose upgraded row was purged; a third drill on its own broker backs up and restores the journal with the JetStream store dir, the recipient inbox and its application store, runs the listing on the copies, settles the do_not_process body, waits out the hold to restored_incomplete_expire_by, and restarts the relay and the recipient on the restored state, then checks that the broker runs on the backup's stream, the relay delivers nothing again and nothing is executed twice. It restarts the current build on the restored state; starting the earlier build remains production-operations. The extended real-broker drill also leaves a post-backup ACKed body unprocessed, then recovers that saved body locally under its original key after its TTL from a private working copy with the relay stopped. Minimal SQLite projection tests in test/relay-rollback-reconcile-unit.test.js cover journal-GCed new IDs, application-only evidence and missing/conflicting copies; these fixtures do not wait out actual journal retention or prove arbitrary application recovery. The 150,000-incomplete-row SQLite projection regression exercises the CLI entry function, verifies latest expiry without spread-argument overflow, preserves unknown outcomes and checks unchanged journal hashes. The implementation still materializes the read-only listing in memory; this is not an unbounded scalability or production-sizing guarantee. Decision: **accepted**.
+Scope: Backup/restore/migration and evidence claims. test/sqlite-delivery.test.js and test/local-relay-service.test.js cover reopen, the legacy journal refusal and the retired config; the restore and upgrade procedures are operations gates. Decision: **accepted**.
 
 Checks: js-root, production-operations.
 
-Sources: [docs/hab-relay-spec.md:495](../../docs/hab-relay-spec.md#L495-L501), [docs/hab-product-spec.md:169](../../docs/hab-product-spec.md#L169-L171), [packages/relay-nats/OPERATIONS.md:39](../../packages/relay-nats/OPERATIONS.md#L39-L70), [docs/local-relay-service.md:22](../../docs/local-relay-service.md#L22-L30), [docs/hab-decisions.md:48](../../docs/hab-decisions.md#L48-L48).
+Sources: [docs/hab-relay-spec.md:497](../../docs/hab-relay-spec.md#L497-L503), [docs/hab-product-spec.md:167](../../docs/hab-product-spec.md#L167-L169), [docs/local-relay-service.md:16](../../docs/local-relay-service.md#L16-L27), [docs/hab-decisions.md:48](../../docs/hab-decisions.md#L48-L48), [docs/delivery-store.md:40](../../docs/delivery-store.md#L40-L58).
 
 ### HAB-F25 — Optional approval profile proposal
 
@@ -308,15 +308,15 @@ Sources: [docs/generic-agent-async-design.md:100](https://github.com/s-hiraoku/h
 
 ### HAB-F26 — Transport adoption is separate
 
-JetStream delivery is adopted as the only delivery backend (ADR-016), with no dual-send to a second store and no migration of messages held by the retired SQLite store. A2A is adopted (owner, 2026-11-12) as the agent-interoperability entry next to the five MCP tools: the host-owned identity entry, off by default. Its production deployment is a separate decision; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.
+The host's SQLite delivery store is the only delivery backend (ADR-018, superseding the JetStream choice of ADR-016), with no dual-send to a second store and no migration of messages held by a retired store. A2A is adopted (owner, 2026-11-12) as the agent-interoperability entry next to the five MCP tools: the host-owned identity entry, off by default. Its production deployment is a separate decision; do not dual-send the same request or infer closed-product wake/input capabilities from a standard.
 
 Reason: Existing optional code and a successful lab do not decide production adoption.
 
-Scope: Product0.1 transport adoption and rollout: JetStream delivery and the A2A entry are adopted; production deployment of either remains a separate gate. Decision: **proposed**.
+Scope: Product0.1 transport adoption and rollout: the SQLite delivery store and the A2A entry are adopted; production deployment of either remains a separate gate. Decision: **proposed**.
 
 Checks: proposal-review, production-operations.
 
-Sources: [docs/hab-product-spec.md:136](../../docs/hab-product-spec.md#L136-L159), [docs/hab-product-spec.md:200](../../docs/hab-product-spec.md#L200-L206), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48).
+Sources: [docs/hab-product-spec.md:136](../../docs/hab-product-spec.md#L136-L157), [docs/hab-product-spec.md:198](../../docs/hab-product-spec.md#L198-L204), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48), [docs/hab-decisions.md:60](../../docs/hab-decisions.md#L60-L68).
 
 ### HAB-A01 — Common transport and recipient authority
 
@@ -326,9 +326,9 @@ Reason: Transport consent and sender assertions cannot impersonate recipient-own
 
 Scope: Standard common MCP Relay; legacy Task integration remains optional. Decision: **accepted**.
 
-Checks: js-common-mcp, native-recipient.
+Checks: js-common-mcp, native-recipient, js-recipient-messages.
 
-Sources: [docs/hab-security.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/hab-security.md#L5-L5), [docs/local-relay-service.md:150](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/local-relay-service.md#L150-L164), [docs/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/persistent-mcp-auth.md#L3-L6).
+Sources: [docs/hab-security.md:5](../../docs/hab-security.md#L5-L5), [docs/local-relay-service.md:147](../../docs/local-relay-service.md#L147-L161), [docs/persistent-mcp-auth.md:3](../../docs/persistent-mcp-auth.md#L3-L6).
 
 ### HAB-A02 — Approved authentication groups
 
@@ -372,11 +372,11 @@ Recheck current credential, group membership, address/peer state and operation/b
 
 Reason: Closes revocation-versus-delivery races and prevents stale authorization reuse.
 
-Scope: HAB Registry-composed JetStream delivery (HabJetStreamService); separate IO already sent cannot be retracted. Decision: **accepted**.
+Scope: HAB Registry-composed SQLite delivery (HabDeliveryService); separate IO already sent cannot be retracted. Decision: **accepted**.
 
-Checks: js-root.
+Checks: js-root, js-recipient-messages.
 
-Sources: [src/hab/README.md:71](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/src/hab/README.md#L71-L107), [docs/relay-auth-groups.md:54](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-auth-groups.md#L54-L60), [docs/relay-oauth-ingress.md:103](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/docs/relay-oauth-ingress.md#L103-L105).
+Sources: [src/hab/README.md:71](../../src/hab/README.md#L71-L107), [docs/relay-auth-groups.md:54](../../docs/relay-auth-groups.md#L54-L60), [docs/relay-oauth-ingress.md:102](../../docs/relay-oauth-ingress.md#L102-L104).
 
 ### HAB-A06 — Separate management authority
 
@@ -400,7 +400,7 @@ Scope: Registry groupv1→v2 migration and deployment/recovery; proposed renamev
 
 Checks: js-root, production-operations.
 
-Sources: [docs/relay-auth-groups.md:94](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/relay-auth-groups.md#L94-L94), [docs/local-relay-service.md:209](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/local-relay-service.md#L209-L221), [docs/persistent-mcp-auth.md:93](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/persistent-mcp-auth.md#L93-L108).
+Sources: [docs/relay-auth-groups.md:94](../../docs/relay-auth-groups.md#L94-L94), [docs/local-relay-service.md:206](../../docs/local-relay-service.md#L206-L218), [docs/persistent-mcp-auth.md:93](../../docs/persistent-mcp-auth.md#L93-L108).
 
 ### HAB-A08 — Participation is separate from token lifetime
 
@@ -460,7 +460,7 @@ Scope: Configured local Relay with its single `delivery` section, and optional i
 
 Checks: js-root.
 
-Sources: [docs/local-relay-host.md:3](../../docs/local-relay-host.md#L3-L18), [docs/local-relay-service.md:3](../../docs/local-relay-service.md#L3-L7), [docs/local-relay-service.md:17](../../docs/local-relay-service.md#L17-L49), [docs/local-relay-service.md:82](../../docs/local-relay-service.md#L82-L87), [docs/relay-oauth-ingress.md:40](../../docs/relay-oauth-ingress.md#L40-L49).
+Sources: [docs/local-relay-host.md:3](../../docs/local-relay-host.md#L3-L18), [docs/local-relay-service.md:3](../../docs/local-relay-service.md#L3-L7), [docs/local-relay-service.md:16](../../docs/local-relay-service.md#L16-L46), [docs/local-relay-service.md:79](../../docs/local-relay-service.md#L79-L84), [docs/relay-oauth-ingress.md:39](../../docs/relay-oauth-ingress.md#L39-L48).
 
 ### HAB-A13 — Owned release and service lifecycle
 
@@ -472,7 +472,7 @@ Scope: Local Relay host and optional user LaunchAgent runbook. Decision: **accep
 
 Checks: js-root, production-operations.
 
-Sources: [docs/local-relay-host.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-host.md#L15-L33), [docs/local-relay-launchagent.md:11](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-launchagent.md#L11-L24), [docs/local-relay-launchagent.md:54](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/local-relay-launchagent.md#L54-L83), [docs/dots-hermes-connection-plan.md:32](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/dots-hermes-connection-plan.md#L32-L35).
+Sources: [docs/local-relay-host.md:15](../../docs/local-relay-host.md#L15-L33), [docs/local-relay-launchagent.md:11](../../docs/local-relay-launchagent.md#L11-L24), [docs/local-relay-launchagent.md:63](../../docs/local-relay-launchagent.md#L63-L92), [docs/dots-hermes-connection-plan.md:32](../../docs/dots-hermes-connection-plan.md#L32-L35).
 
 ### HAB-A14 — Discovery separates name and host identity
 
@@ -544,7 +544,7 @@ Scope: Registry authentication-group mode and the relay:admin group disconnect a
 
 Checks: js-root.
 
-Sources: [docs/relay-auth-groups.md:56](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/relay-auth-groups.md#L56-L56), [src/hab/README.md:355](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/src/hab/README.md#L355-L362), [docs/local-relay-service.md:127](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/local-relay-service.md#L127-L132), [.claude/skills/verify-hab/features/configured-relay.md:12](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/.claude/skills/verify-hab/features/configured-relay.md#L12-L12).
+Sources: [docs/relay-auth-groups.md:56](../../docs/relay-auth-groups.md#L56-L56), [src/hab/README.md:365](../../src/hab/README.md#L365-L372), [docs/local-relay-service.md:124](../../docs/local-relay-service.md#L124-L129), [.claude/skills/verify-hab/features/configured-relay.md:12](../../.claude/skills/verify-hab/features/configured-relay.md#L12-L12).
 
 ### HAB-A20 — Management connect is atomic and explicit
 
@@ -556,7 +556,7 @@ Scope: Operator management CLI (`relay:admin connect`) and the Registry `createB
 
 Checks: js-root.
 
-Sources: [src/hab/README.md:363](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/src/hab/README.md#L363-L364), [docs/local-relay-service.md:132](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/docs/local-relay-service.md#L132-L135), [.claude/skills/verify-hab/features/configured-relay.md:13](https://github.com/s-hiraoku/hiraoku-agent-base/blob/4715b4ef2690b2d9ed4863d4fa023eeb4d06c553/.claude/skills/verify-hab/features/configured-relay.md#L13-L13).
+Sources: [src/hab/README.md:373](../../src/hab/README.md#L373-L374), [docs/local-relay-service.md:129](../../docs/local-relay-service.md#L129-L132), [.claude/skills/verify-hab/features/configured-relay.md:13](../../.claude/skills/verify-hab/features/configured-relay.md#L13-L13).
 
 ### HAB-A21 — Host A2A identity cannot act as a confused deputy
 
@@ -568,7 +568,7 @@ Scope: Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier on
 
 Checks: js-root.
 
-Sources: [docs/a2a-relay-preview.md:67](../../docs/a2a-relay-preview.md#L67-L67), [docs/a2a-relay-preview.md:84](../../docs/a2a-relay-preview.md#L84-L93), [docs/a2a-relay-preview.md:97](../../docs/a2a-relay-preview.md#L97-L99), [docs/a2a-relay-preview.md:103](../../docs/a2a-relay-preview.md#L103-L105), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/local-relay-service.md:196](../../docs/local-relay-service.md#L196-L206), [src/hab/README.md:81](../../src/hab/README.md#L81-L88).
+Sources: [docs/a2a-relay-preview.md:67](../../docs/a2a-relay-preview.md#L67-L67), [docs/a2a-relay-preview.md:84](../../docs/a2a-relay-preview.md#L84-L94), [docs/a2a-relay-preview.md:98](../../docs/a2a-relay-preview.md#L98-L100), [docs/a2a-relay-preview.md:104](../../docs/a2a-relay-preview.md#L104-L106), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/local-relay-service.md:193](../../docs/local-relay-service.md#L193-L203), [src/hab/README.md:81](../../src/hab/README.md#L81-L88).
 
 ## Delivery
 
@@ -582,7 +582,7 @@ Scope: Relay/HAB common delivery and recipient orchestration Decision: **accepte
 
 Checks: ast-boundary, js-common-mcp.
 
-Sources: [src/agent-sdk/README.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L3-L5), [src/agent-sdk/README.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/src/agent-sdk/README.md#L9-L9), [docs/hab-relay-spec.md:80](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L80-L89), [docs/hab-relay-spec.md:439](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L439-L439).
+Sources: [src/agent-sdk/README.md:3](../../src/agent-sdk/README.md#L3-L5), [src/agent-sdk/README.md:9](../../src/agent-sdk/README.md#L9-L9), [docs/hab-relay-spec.md:82](../../docs/hab-relay-spec.md#L82-L91), [docs/hab-relay-spec.md:441](../../docs/hab-relay-spec.md#L441-L441).
 
 ### HAB-D02 — Durable recipient save before ACK
 
@@ -614,11 +614,11 @@ Use current verified operation and sender/kind policy, at most one live recipien
 
 Reason: Stale credentials/leases and caller-selected identities must not cross an immutable individual boundary.
 
-Scope: Server poll/ACK in the JetStream journal, HAB's only delivery backend. The spec's lease and ACK order states the rules; DESIGN.md places them in the journal transaction. Decision: **accepted**.
+Scope: Server poll/ACK in the SQLite delivery store, HAB's only delivery backend. The spec's lease and ACK order states the rules; docs/delivery-store.md places them in the store transaction. Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:285](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L285-L287), [docs/hab-relay-spec.md:291](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L291-L298), [packages/relay-nats/DESIGN.md:9](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/DESIGN.md#L9-L15), [packages/relay-nats/DESIGN.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/DESIGN.md#L19-L19), [packages/relay-nats/DESIGN.md:37](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/DESIGN.md#L37-L37).
+Sources: [docs/hab-relay-spec.md:287](../../docs/hab-relay-spec.md#L287-L289), [docs/hab-relay-spec.md:293](../../docs/hab-relay-spec.md#L293-L300), [docs/delivery-store.md:7](../../docs/delivery-store.md#L7-L7), [docs/delivery-store.md:17](../../docs/delivery-store.md#L17-L19).
 
 ### HAB-D05 — Bounded recovery keeps unknown outcomes
 
@@ -650,11 +650,11 @@ Explicit finite maintenance erases expired server body and only collects termina
 
 Reason: Finite storage cannot erase dedup evidence while stale requests remain admissible.
 
-Scope: JetStream journal (server, DESIGN.md), and the agent SDK's sender outbox and receiver inbox tombstone maintenance. Replay-bound retention cycles are covered for the inbox in js-root by "replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again" (five cycles under a one-slot cap: nothing collected before retention ends, every row collected after it, a replay of a collected ID refused as expired_delivery), and for the journal by the P7 nats-producer case "replay-bound IDs cycle through the record cap every retention period, and a collected ID is never delivered again" (three cycles under a two-record cap with a mocked clock: capacity_exceeded until collection, a replay inside retention answered with the acked receipt and not delivered, a collected ID refused as expired_before_acceptance and not delivered). Decision: **accepted**.
+Scope: SQLite delivery store (server, docs/delivery-store.md), and the agent SDK's sender outbox and receiver inbox tombstone maintenance. Replay-bound retention cycles are covered for the inbox in js-root by "replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again" (five cycles under a one-slot cap: nothing collected before retention ends, every row collected after it, a replay of a collected ID refused as expired_delivery), and for the journal by the P7 nats-producer case "replay-bound IDs cycle through the record cap every retention period, and a collected ID is never delivered again" (three cycles under a two-record cap with a mocked clock: capacity_exceeded until collection, a replay inside retention answered with the acked receipt and not delivered, a collected ID refused as expired_before_acceptance and not delivered). Decision: **accepted**.
 
-Checks: js-root, current-hosted-p7, production-operations.
+Checks: js-root, current-hosted-ci, production-operations.
 
-Sources: [src/agent-sdk/README.md:10](../../src/agent-sdk/README.md#L10-L12), [src/agent-sdk/README.md:19](../../src/agent-sdk/README.md#L19-L19), [docs/hab-relay-spec.md:386](../../docs/hab-relay-spec.md#L386-L388), [docs/hab-relay-spec.md:396](../../docs/hab-relay-spec.md#L396-L398), [packages/relay-nats/DESIGN.md:53](../../packages/relay-nats/DESIGN.md#L53-L53).
+Sources: [src/agent-sdk/README.md:10](../../src/agent-sdk/README.md#L10-L12), [src/agent-sdk/README.md:23](../../src/agent-sdk/README.md#L23-L23), [docs/hab-relay-spec.md:388](../../docs/hab-relay-spec.md#L388-L390), [docs/hab-relay-spec.md:398](../../docs/hab-relay-spec.md#L398-L400), [docs/delivery-store.md:28](../../docs/delivery-store.md#L28-L28).
 
 ### HAB-D08 — Attachments are explicit bounded optional composition
 
@@ -666,7 +666,7 @@ Scope: Removed attachment upload/read/admission/delivery/client; no current scop
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223), [README.md:87](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/README.md#L87-L87).
+Sources: [docs/hab-relay-spec.md:225](../../docs/hab-relay-spec.md#L225-L225), [README.md:122](../../README.md#L122-L122).
 
 ### HAB-D09 — Verified local attachment bytes gate body save and ACK
 
@@ -710,11 +710,11 @@ Host-selected positive finite count/byte/record caps and minimum reservations ar
 
 Reason: Backpressure protects other individuals and bounded storage without corrupting recovery evidence.
 
-Scope: Required delivery.queue.agent_capacity policy in the JetStream journal. The attachment owner_capacity policy was removed with attachments. Decision: **accepted**.
+Scope: Required delivery.queue.agent_capacity policy in the SQLite delivery store. The attachment owner_capacity policy was removed with attachments. Decision: **accepted**.
 
 Checks: js-root, production-operations.
 
-Sources: [docs/relay-agent-capacity.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-agent-capacity.md#L3-L25).
+Sources: [docs/relay-agent-capacity.md:3](../../docs/relay-agent-capacity.md#L3-L25).
 
 ### HAB-D13 — Scope fair selection separately from rate and execution
 
@@ -722,15 +722,15 @@ Fair polling durably advances bounded sender/message cursors with lease/audit wh
 
 Reason: Choice-count fairness and finite process admission must not be advertised as end-to-end execution scheduling guarantees.
 
-Scope: Opt-in delivery.queue.fair_poll in the JetStream journal and WriterAdmission Decision: **accepted**.
+Scope: Opt-in delivery.queue.fair_poll in the SQLite delivery store and WriterAdmission Decision: **accepted**.
 
 Checks: js-root, production-operations.
 
-Sources: [docs/relay-fair-poll.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-fair-poll.md#L3-L25), [docs/writer-admission.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/writer-admission.md#L5-L27), [docs/writer-admission.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/writer-admission.md#L40-L46).
+Sources: [docs/relay-fair-poll.md:3](../../docs/relay-fair-poll.md#L3-L25), [docs/writer-admission.md:5](../../docs/writer-admission.md#L5-L27), [docs/writer-admission.md:40](../../docs/writer-admission.md#L40-L46).
 
 ### HAB-D14 — Snapshot restore requires offline original-ID reconciliation
 
-Retired (historical): SQLiteSnapshotBundle was deleted with the attachment modules and its document was removed. Whole-state JetStream backup and restore stays an operations gate (OPERATIONS.md) under HAB-F24 and the open HAB-C-D04. Original accepted statement, kept for provenance: Capture every DB in one fixed profile under all writer locks, validate private canonical owner/schema/bytes, preserve signed fixed-file manifests and never overwrite existing state. Exclude authority/config/secrets/Task and do not roll back current stop/revocation. Restore only new offline directory; marker is not an enforcement boundary. Host must quiesce IO and reconcile original receipts/IDs/leases/current authority and unknown remote effects before promotion.
+Retired (historical): SQLiteSnapshotBundle was deleted with the attachment modules and its document was removed. Whole-state backup and restore of the SQLite delivery store stays an operations gate (docs/delivery-store.md) under HAB-F24 and the open HAB-C-D04. Original accepted statement, kept for provenance: Capture every DB in one fixed profile under all writer locks, validate private canonical owner/schema/bytes, preserve signed fixed-file manifests and never overwrite existing state. Exclude authority/config/secrets/Task and do not roll back current stop/revocation. Restore only new offline directory; marker is not an enforcement boundary. Host must quiesce IO and reconcile original receipts/IDs/leases/current authority and unknown remote effects before promotion.
 
 Reason: The snapshot profiles named the retired SQLite Relay store and attachment DBs, none of which exist now.
 
@@ -738,35 +738,35 @@ Scope: Removed SQLiteSnapshotBundle profiles; no current scope. Decision: **hist
 
 Checks: js-root, production-operations.
 
-Sources: [packages/relay-nats/OPERATIONS.md:31](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/OPERATIONS.md#L31-L37).
+Sources: [docs/delivery-store.md:42](../../docs/delivery-store.md#L42-L44).
 
-### HAB-D15 — JetStream admission, journal rules and recipient receipt remain distinct
+### HAB-D15 — SQLite delivery commits store rules, admission and recipient receipt distinctly
 
-Keep synchronous fresh Registry guard around durable admission/poll/ACK; supervised broker I/O cannot carry scoped authorization over await or create recipient lease during prefetch. JetStream is the only delivery backend: each former store rule (reciprocal pair-scoped replies, global/recipient/per-sender capacity and reservations, exact retry without new capacity, one application lease, fair poll) commits in the journal transaction that changes state. Broker unavailability keeps admitted bodies in the bounded outbox under the same IDs, with no SQLite fallback. Recipient saves first; saved HAB ACK then tracks later broker erasure, never Task completion.
+Keep a synchronous fresh Registry guard around each durable admission, status, poll and ACK; no Promise crosses it. The host's SQLite delivery store is the only delivery backend (ADR-018): each store rule (reciprocal pair-scoped replies, global/recipient/per-sender capacity and reservations, exact retry without new capacity, one application lease, fair poll, body fingerprint check) commits in the transaction that changes the state, and admission commits the body with the record. No broker, pump, outbox or second store exists, and a config naming broker or pump is refused. Recipient saves first; the saved HAB ACK then releases the body and never means Task completion.
 
-Reason: Replacing the storage backend must preserve the common message and receiver-owned execution contract.
+Reason: Removing the broker must preserve the common message and receiver-owned execution contract without a second store to reconcile.
 
-Scope: HAB JetStream delivery, the only delivery backend. The SQLite store, router and routing epochs were retired. Decision: **accepted**.
+Scope: HAB SQLite delivery store, the only delivery backend. The broker, pump, outbox, router and routing epochs were retired. Decision: **accepted**.
 
-Checks: ts-nats, current-hosted-p7.
+Checks: js-root, current-hosted-ci.
 
-Sources: [packages/relay-nats/DESIGN.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/packages/relay-nats/DESIGN.md#L3-L3), [packages/relay-nats/DESIGN.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/packages/relay-nats/DESIGN.md#L5-L15), [packages/relay-nats/DESIGN.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/packages/relay-nats/DESIGN.md#L19-L19), [packages/relay-nats/DESIGN.md:43](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/packages/relay-nats/DESIGN.md#L43-L59), [packages/relay-nats/OPERATIONS.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/packages/relay-nats/OPERATIONS.md#L27-L27), [packages/relay-nats/OPERATIONS.md:41](https://github.com/s-hiraoku/hiraoku-agent-base/blob/74c02b7e8e4b59d3c41eefe9c8949ddd554bd472/packages/relay-nats/OPERATIONS.md#L41-L41).
+Sources: [docs/delivery-store.md:3](../../docs/delivery-store.md#L3-L3), [docs/delivery-store.md:7](../../docs/delivery-store.md#L7-L9), [docs/delivery-store.md:13](../../docs/delivery-store.md#L13-L20), [docs/delivery-store.md:24](../../docs/delivery-store.md#L24-L24).
 
-### HAB-D16 — Pinned private broker and bounded durability claims
+### HAB-D16 — Private persistent volume and bounded durability claims
 
-Use fixed finite File/one-replica/Limits/DiscardNew broker configuration and verified pinned runtime, current original HAB deadline and exact subject/content reconciliation. Persistent volume marker/device checks fail closed without fallback state; inspect actual fsync policy instead of inferring it from client INFO. Whole deployment recovery and power/corruption/partition safety remain separate from local functional tests and single-host/container proof.
+Keep the delivery store in one private regular file (no symlink, owner-only mode, known schema and key) with synchronous=FULL on the configured persistent volume. Volume marker/device checks fail closed before each operation without fallback state. Whole deployment recovery and power/corruption/partition safety remain separate from local functional tests and single-host proof; one VM and one volume form one failure domain.
 
-Reason: PubAck/server version/config example is not evidence that recipient saved or a chosen host survives physical faults.
+Reason: A passing reopen test or a pragma setting is not evidence that a chosen host survives physical faults.
 
-Scope: JetStream host operations and verification evidence Decision: **accepted**.
+Scope: SQLite delivery store host operations and verification evidence Decision: **accepted**.
 
-Checks: current-hosted-p7, production-operations.
+Checks: js-root, production-operations.
 
-Sources: [packages/relay-nats/DESIGN.md:29](../../packages/relay-nats/DESIGN.md#L29-L41), [packages/relay-nats/DESIGN.md:49](../../packages/relay-nats/DESIGN.md#L49-L63), [packages/relay-nats/OPERATIONS.md:7](../../packages/relay-nats/OPERATIONS.md#L7-L37), [packages/relay-nats/OPERATIONS.md:72](../../packages/relay-nats/OPERATIONS.md#L72-L76).
+Sources: [docs/delivery-store.md:36](../../docs/delivery-store.md#L36-L38), [docs/delivery-store.md:62](../../docs/delivery-store.md#L62-L62).
 
 ### HAB-D17 — Verification must name real path and substitutions
 
-Distinguish native loopback protocol+real SQLite/JetStream proof from in-process/synthetic lease fixtures, mock authorization from real product binding, orderly same-process close/reopen from kill9/power faults, and local clock aging from real retention passage. Local success cannot complete real products, operational restore, OAuth, deployment or approval/execution acceptance.
+Distinguish native loopback protocol+real SQLite proof from in-process/synthetic lease fixtures, mock authorization from real product binding, orderly same-process close/reopen from kill9/power faults, and local clock aging from real retention passage. Local success cannot complete real products, operational restore, OAuth, deployment or approval/execution acceptance.
 
 Reason: The verification harness must prevent overclaiming the exact integration failures it is intended to detect.
 
@@ -774,31 +774,31 @@ Scope: All local integration claims and generated harness reporting Decision: **
 
 Checks: source-publication, native-recipient.
 
-Sources: [docs/hab-relay-integration.md:5](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-relay-integration.md#L5-L5), [docs/hab-relay-integration.md:57](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/hab-relay-integration.md#L57-L71).
+Sources: [docs/hab-relay-integration.md:5](../../docs/hab-relay-integration.md#L5-L5), [docs/hab-relay-integration.md:57](../../docs/hab-relay-integration.md#L57-L71).
 
 ### HAB-D18 — Attachment parts are refused on every delivery path
 
-The version-1 contract has no attachment part type or attachment limits. A submission that carries an attachment part, in any position, or a policy that carries a former attachment limit key fails validation before storage on the contract, MCP submit and JetStream paths. No attachment store, upload or download tool exists.
+The version-1 contract has no attachment part type or attachment limits. A submission that carries an attachment part, in any position, or a policy that carries a former attachment limit key fails validation before storage on the contract, MCP submit and delivery store paths. No attachment store, upload or download tool exists.
 
 Reason: Removing managed attachments must not leave a partial path that accepts bytes the system can no longer store, deliver or delete.
 
-Scope: Version-1 messaging contract, MCP submit and JetStream delivery Decision: **accepted**.
+Scope: Version-1 messaging contract, MCP submit and the SQLite delivery store Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [docs/hab-relay-spec.md:223](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L223-L223), [docs/hab-relay-spec.md:552](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L552-L552), [.claude/skills/verify-hab/features/send-message.md:12](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/.claude/skills/verify-hab/features/send-message.md#L12-L12).
+Sources: [docs/hab-relay-spec.md:225](../../docs/hab-relay-spec.md#L225-L225), [docs/hab-relay-spec.md:554](../../docs/hab-relay-spec.md#L554-L554), [.claude/skills/verify-hab/features/send-message.md:12](../../.claude/skills/verify-hab/features/send-message.md#L12-L12).
 
-### HAB-D19 — Journal delivery audit is atomic and redacted
+### HAB-D19 — Delivery audit is atomic and redacted
 
-The JetStream journal records accepted, leased, requeued, quarantined, expired and acked events with sender, message ID and time only, never body or token, in the same transaction as the state change. An audit failure rolls back that admission, lease or ACK including its capacity use. Missing maintenance totals fail closed instead of losing counts.
+The SQLite delivery store records accepted, leased, requeued, quarantined, expired and acked events with sender, message ID and time only, never body or token, in the same transaction as the state change. An audit failure rolls back that admission, lease or ACK including its capacity use. Missing maintenance totals fail closed instead of losing counts.
 
-Reason: The retired SQLite store committed audit with state; moving delivery to the journal must keep evidence that cannot diverge from delivery state or leak content.
+Reason: Audit evidence must not diverge from delivery state or leak content.
 
-Scope: JetStream journal schema 4 delivery audit and maintenance totals Decision: **accepted**.
+Scope: SQLite delivery store audit and maintenance totals Decision: **accepted**.
 
-Checks: js-root, current-hosted-p7.
+Checks: js-root, current-hosted-ci.
 
-Sources: [packages/relay-nats/DESIGN.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/DESIGN.md#L21-L21), [packages/relay-nats/DESIGN.md:41](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/packages/relay-nats/DESIGN.md#L41-L41), [.claude/skills/verify-hab/features/README.md:22](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/.claude/skills/verify-hab/features/README.md#L22-L22).
+Sources: [docs/delivery-store.md:32](../../docs/delivery-store.md#L32-L32), [.claude/skills/verify-hab/features/README.md:22](../../.claude/skills/verify-hab/features/README.md#L22-L22).
 
 ### HAB-D20 — Host A2A sends only inside the owner's request
 
@@ -1018,7 +1018,7 @@ Scope: All verification claims involving optional execution and local MVP. Decis
 
 Checks: source-publication, native-recipient.
 
-Sources: [docs/local-mvp.md:76](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/local-mvp.md#L76-L80), [docs/finite-mcp-trial.md:24](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/finite-mcp-trial.md#L24-L28), [docs/inventory-end-to-end.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/inventory-end-to-end.md#L53-L64).
+Sources: [docs/local-mvp.md:68](../../docs/local-mvp.md#L68-L72), [docs/finite-mcp-trial.md:24](../../docs/finite-mcp-trial.md#L24-L28), [docs/inventory-end-to-end.md:53](../../docs/inventory-end-to-end.md#L53-L64).
 
 ### HAB-E18 — Fixed metadata cannot prove product identity
 
@@ -1054,7 +1054,7 @@ Scope: Opt-in host A2A entry only. The preview composition with HabExecutionEvid
 
 Checks: js-root, native-recipient.
 
-Sources: [docs/a2a-relay-preview.md:105](../../docs/a2a-relay-preview.md#L105-L105), [docs/a2a-relay-preview.md:115](../../docs/a2a-relay-preview.md#L115-L128), [docs/hab-decisions.md:56](../../docs/hab-decisions.md#L56-L56), [.claude/skills/verify-hab/features/a2a-host.md:3](../../.claude/skills/verify-hab/features/a2a-host.md#L3-L3), [.claude/skills/verify-hab/features/a2a-host.md:43](../../.claude/skills/verify-hab/features/a2a-host.md#L43-L43), [docs/a2a-relay-preview.md:80](../../docs/a2a-relay-preview.md#L80-L80), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [.claude/skills/verify-hab/features/a2a-host.md:15](../../.claude/skills/verify-hab/features/a2a-host.md#L15-L15), [.claude/skills/verify-hab/features/a2a-host.md:44](../../.claude/skills/verify-hab/features/a2a-host.md#L44-L44).
+Sources: [docs/a2a-relay-preview.md:106](../../docs/a2a-relay-preview.md#L106-L106), [docs/a2a-relay-preview.md:116](../../docs/a2a-relay-preview.md#L116-L129), [docs/hab-decisions.md:76](../../docs/hab-decisions.md#L76-L76), [.claude/skills/verify-hab/features/a2a-host.md:3](../../.claude/skills/verify-hab/features/a2a-host.md#L3-L3), [.claude/skills/verify-hab/features/a2a-host.md:43](../../.claude/skills/verify-hab/features/a2a-host.md#L43-L43), [docs/a2a-relay-preview.md:80](../../docs/a2a-relay-preview.md#L80-L80), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [.claude/skills/verify-hab/features/a2a-host.md:15](../../.claude/skills/verify-hab/features/a2a-host.md#L15-L15), [.claude/skills/verify-hab/features/a2a-host.md:44](../../.claude/skills/verify-hab/features/a2a-host.md#L44-L44).
 
 ## Verification
 
@@ -1068,7 +1068,7 @@ Scope: HAB local verify-hab recipes; terminal requires transcript plus exit. Dec
 
 Checks: mcp-durable-roundtrip, source-publication.
 
-Sources: [.claude/skills/verify-hab/SKILL.md:85](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/.claude/skills/verify-hab/SKILL.md#L85-L90), [.claude/skills/verify-hab/features/README.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/.claude/skills/verify-hab/features/README.md#L21-L25).
+Sources: [.claude/skills/verify-hab/SKILL.md:83](../../.claude/skills/verify-hab/SKILL.md#L83-L88), [.claude/skills/verify-hab/features/README.md:21](../../.claude/skills/verify-hab/features/README.md#L21-L25).
 
 ### HAB-V02 — Durable receiver evidence precedes network ACK
 
@@ -1138,9 +1138,9 @@ Reason: A harness must not convert absent work or incomplete backends into green
 
 Scope: Current required local P7/native profile; historical permitted skips remain historical evidence only. Decision: **accepted**.
 
-Checks: js-cli-guards, current-hosted-p7, report-gate-controls.
+Checks: current-hosted-ci, report-gate-controls.
 
-Sources: [docs/testing/p7-lab.md:10](../../docs/testing/p7-lab.md#L10-L12), [docs/testing/a2a-native-acceptance.md:37](../../docs/testing/a2a-native-acceptance.md#L37-L37), [docs/testing/publication.md:28](../../docs/testing/publication.md#L28-L28).
+Sources: [docs/testing/p7-lab.md:12](../../docs/testing/p7-lab.md#L12-L14), [docs/testing/a2a-native-acceptance.md:37](../../docs/testing/a2a-native-acceptance.md#L37-L37), [docs/testing/publication.md:30](../../docs/testing/publication.md#L30-L30).
 
 ### HAB-V08 — Owned isolation and retained evidence
 
@@ -1152,7 +1152,7 @@ Scope: Local verification lifecycle; process/readiness ownership must be establi
 
 Checks: mcp-durable-roundtrip.
 
-Sources: [.claude/skills/verify-hab/features/README.md:7](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/.claude/skills/verify-hab/features/README.md#L7-L10), [.claude/skills/verify-hab/SKILL.md:92](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/.claude/skills/verify-hab/SKILL.md#L92-L99), [.claude/skills/verify-hab/features/communication-boundary.md:34](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/.claude/skills/verify-hab/features/communication-boundary.md#L34-L34).
+Sources: [.claude/skills/verify-hab/features/README.md:7](../../.claude/skills/verify-hab/features/README.md#L7-L10), [.claude/skills/verify-hab/SKILL.md:90](../../.claude/skills/verify-hab/SKILL.md#L90-L97), [.claude/skills/verify-hab/features/communication-boundary.md:36](../../.claude/skills/verify-hab/features/communication-boundary.md#L36-L36).
 
 ### HAB-V09 — Local substitutions remain explicit
 
@@ -1164,7 +1164,7 @@ Scope: Common-MCP boundary and synthetic local Relay recipes. Decision: **accept
 
 Checks: source-publication, native-recipient.
 
-Sources: [.claude/skills/verify-hab/SKILL.md:89](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/.claude/skills/verify-hab/SKILL.md#L89-L90), [.claude/skills/verify-hab/features/communication-boundary.md:28](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/.claude/skills/verify-hab/features/communication-boundary.md#L28-L37).
+Sources: [.claude/skills/verify-hab/SKILL.md:87](../../.claude/skills/verify-hab/SKILL.md#L87-L88), [.claude/skills/verify-hab/features/communication-boundary.md:28](../../.claude/skills/verify-hab/features/communication-boundary.md#L28-L39).
 
 ### HAB-V10 — Restart evidence keeps fault scope
 
@@ -1184,11 +1184,11 @@ Keep the serial local characterization workload, substitutions, recovery faults,
 
 Reason: Small shared-host samples and synthetic immediate execution cannot select operator acceptance budgets.
 
-Scope: Optional fixed-connectivity 5x5 measurement, not generic MCP cadence or JetStream capacity. Decision: **accepted**.
+Scope: Optional fixed-connectivity 5x5 measurement, not generic MCP cadence or delivery store capacity. Decision: **accepted**.
 
 Checks: production-operations.
 
-Sources: [docs/testing/a2a-bounded-performance.md:3](../../docs/testing/a2a-bounded-performance.md#L3-L7), [docs/testing/a2a-bounded-performance.md:13](../../docs/testing/a2a-bounded-performance.md#L13-L21), [docs/testing/publication.md:32](../../docs/testing/publication.md#L32-L34).
+Sources: [docs/testing/a2a-bounded-performance.md:3](../../docs/testing/a2a-bounded-performance.md#L3-L7), [docs/testing/a2a-bounded-performance.md:13](../../docs/testing/a2a-bounded-performance.md#L13-L21), [docs/testing/publication.md:34](../../docs/testing/publication.md#L34-L36).
 
 ### HAB-V12 — Optional A2A delivery and completion are separate
 
@@ -1198,21 +1198,21 @@ Reason: Delivery/coordination progress must not masquerade as executed user work
 
 Scope: Optional fixed connectivity route composed with HabExecutionEvidence (P7 producer and native A2A groups) only; the host-routed entry is reply-attested under HAB-E20 and never satisfies this requirement. It is not an ordinary-message Task requirement. Decision: **accepted**.
 
-Checks: current-hosted-p7, js-root.
+Checks: current-hosted-ci, js-root.
 
-Sources: [docs/testing/a2a-bounded-performance.md:11](https://github.com/s-hiraoku/hiraoku-agent-base/blob/e772a7c6959a3bf9ef367870278f1aa363470a7e/docs/testing/a2a-bounded-performance.md#L11-L11), [docs/testing/a2a-native-acceptance.md:26](https://github.com/s-hiraoku/hiraoku-agent-base/blob/e772a7c6959a3bf9ef367870278f1aa363470a7e/docs/testing/a2a-native-acceptance.md#L26-L35).
+Sources: [docs/testing/a2a-bounded-performance.md:11](../../docs/testing/a2a-bounded-performance.md#L11-L11), [docs/testing/a2a-native-acceptance.md:26](../../docs/testing/a2a-native-acceptance.md#L26-L35).
 
 ### HAB-V13 — Official broker identity before execution
 
-For P7 broker checks verify official version-pinned executable size/SHA256 and use an exclusive private copy; public input must not accept an endpoint/credential/arbitrary forwarded executable.
+Retired (historical): ADR-018 deleted the pinned nats-server, its installer, the P7 runner and the CI broker stage, so no broker executable is accepted as input any more. Original accepted statement, kept for provenance: For P7 broker checks verify official version-pinned executable size/SHA256 and use an exclusive private copy; public input must not accept an endpoint/credential/arbitrary forwarded executable.
 
 Reason: Version strings and attacker-specified checksums do not identify reviewed bytes or owned test infrastructure.
 
-Scope: P7 NATS verification infrastructure. JetStream is now the only delivery backend, so ordinary delivery tests also need the pinned broker; this requirement cites only the P7 identity check. Decision: **accepted**.
+Scope: Retired P7 NATS verification infrastructure; kept for provenance only. Decision: **historical**.
 
-Checks: js-cli-guards, current-hosted-p7.
+Checks: current-hosted-ci.
 
-Sources: [docs/testing/p7-lab.md:3](../../docs/testing/p7-lab.md#L3-L3), [docs/testing/publication.md:14](../../docs/testing/publication.md#L14-L14).
+Sources: [docs/testing/p7-lab.md:5](../../docs/testing/p7-lab.md#L5-L5), [docs/testing/publication.md:16](../../docs/testing/publication.md#L16-L16).
 
 ### HAB-V14 — Current CI is separate from historical results
 
@@ -1222,6 +1222,6 @@ Reason: Recorded run identities and scope prevent stale evidence from approving 
 
 Scope: Reports/PR verification claims, all languages and protocol suites. Decision: **accepted**.
 
-Checks: current-hosted-p7.
+Checks: current-hosted-ci.
 
-Sources: [docs/testing/publication.md:3](../../docs/testing/publication.md#L3-L3), [docs/testing/publication.md:16](../../docs/testing/publication.md#L16-L18), [docs/testing/publication.md:24](../../docs/testing/publication.md#L24-L28).
+Sources: [docs/testing/publication.md:26](../../docs/testing/publication.md#L26-L30).

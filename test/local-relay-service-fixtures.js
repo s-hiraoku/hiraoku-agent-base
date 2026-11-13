@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { limits, policy, envelope } from "./relay-http-fixtures.js";
 import { options } from "./hab-registry-fixtures.js";
-import { deliverySection } from "./jetstream-delivery.js";
+import { deliverySection } from "./delivery-fixture.js";
 export async function fixture(t, queue = {}) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "local-relay-service-")));
   chmodSync(dir, 0o700);

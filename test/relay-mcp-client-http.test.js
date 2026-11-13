@@ -198,9 +198,7 @@ for (const loss of ["before_send", "after_commit"]) {
       assert.equal(receiver.inbox()[0].receipt_confirmed, false);
       assert.equal(f.service.status(f.contexts.a, m.message_id).state, "acked");
       assert.equal(
-        f.raw
-          .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-          .get().body,
+        f.raw.prepare("SELECT body FROM delivery_messages").get().body,
         null,
       );
       j.close(j.inbox);
@@ -249,10 +247,12 @@ test(
     await assert.rejects(b.poll(), code("relay_transport_failed"));
     const recovered = connect("b");
     assert.equal(await recovered.poll(), null);
-    f.raw.exec("UPDATE nats_messages SET lease_until=0 WHERE state='leased'");
+    f.raw.exec(
+      "UPDATE delivery_messages SET lease_until=0 WHERE state='leased'",
+    );
     assert.equal(await recovered.poll(), null);
     f.raw.exec(
-      "UPDATE nats_messages SET next_visible_at=0 WHERE state='pending'",
+      "UPDATE delivery_messages SET next_visible_at=0 WHERE state='pending'",
     );
     const next = await recovered.poll();
     assert.equal(next.generation, lost.generation + 1);
@@ -357,7 +357,7 @@ test(
     await sender.sendOnce();
     assert.equal(f.count(), 1);
     assert.equal(
-      f.raw.prepare("SELECT sender_id FROM nats_messages").get().sender_id,
+      f.raw.prepare("SELECT sender_id FROM delivery_messages").get().sender_id,
       "c",
     );
     assert.equal(sender.get(m.message_id).state, "quarantined");

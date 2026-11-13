@@ -1,5 +1,7 @@
 # JavaScript to TypeScript migration
 
+ADR-018 (2026-11-13) later deleted `packages/relay-nats`, the NATS installer and broker tooling, `test/ci-nats/` and `test/jetstream-pump-worker.ts`; their entries below are historical.
+
 This is a staged source migration. `src/` and `db/` were already TypeScript at
 `4dfcd14`; the remaining JavaScript was mainly tests and tooling (about 64,000
 lines). The product's wire contracts, storage schemas and authorization do not

@@ -13,7 +13,7 @@
 | Codex              | 開発・検証・GitHub管理、将来の限定実行手段                                | このrepoの実装・文書作業に使用。これはHub-controlled executorの接続証拠ではない。Hub adapterは**計画**                                                                                        |
 | Cursor             | 将来の対話的IDE作業・Cloud Agent候補                                      | **本人の利用可能性見込み**。実client/API・scope・Hub adapterは未検証                                                                                                                          |
 | Cua（後続候補）    | 将来の限定computer/browser操作                                            | 起動未完。上記開発toolの接続やGrokの操作能力とは別の**後続検証**                                                                                                                              |
-| HAB host           | エージェントごとのアドレス登録・認証・名義確認、メッセージ配送（NATS JetStream）、A2A入口 | MCP 5ツール・A2A入口（既定は無効）・Registry・JetStream配送は**実装済み**。Codex⇄Hermesの有限往復は実接続確認済み。本番配備・常時接続は未完 |
+| HAB host           | エージェントごとのアドレス登録・認証・名義確認、メッセージ配送（SQLite配送store）、A2A入口 | MCP 5ツール・A2A入口（既定は無効）・Registry・SQLite配送storeは**実装済み**。Codex⇄Hermesの有限往復は実接続確認済み。本番配備・常時接続は未完 |
 | 任意のTask Hub     | 固定Taskの依頼・policy routing・進捗・結果・監査 | 限定タスク、ping/pong、Auth0検証部品、Events、停止・照合は**実装済み**。本番Auth0設定・entrypoint配線・公開経路は未完。通常のメッセージ交換には不要 |
 
 標準通信では全製品が[共通MCP](common-mcp-connection.md)のクライアントとして接続し、受信側hostが定期poll・保存後ACKを行います。表のRuns・inventory・Hub-controlled executorは既存の限定Task連携の状況です。通常通信の必須機能や、HABによるエージェントの判断・承認の代行を意味しません。

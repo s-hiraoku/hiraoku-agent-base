@@ -22,12 +22,6 @@ const refusals = [
     diagnostic: /invalid_or_unreadable_trial_plan/,
   },
   { name: "hab-enrollment-demo", args: [], status: 1, diagnostic: /Usage:/ },
-  {
-    name: "install-ci-nats",
-    args: ["--unexpected"],
-    status: 1,
-    diagnostic: /no arguments accepted/,
-  },
 ];
 
 for (const { name, args, status, diagnostic } of refusals) {
@@ -93,8 +87,7 @@ test("importing the legacy operator modules preserves exports without starting a
     import assert from "node:assert/strict";
     import { main as relay } from "./scripts/hab-relay.mjs";
     import { main as admin } from "./scripts/hab-relay-admin.mjs";
-    import { installCiNats } from "./scripts/install-ci-nats.mjs";
-    for (const entry of [relay, admin, installCiNats]) assert.equal(typeof entry, "function");
+    for (const entry of [relay, admin]) assert.equal(typeof entry, "function");
   `,
     ],
     {

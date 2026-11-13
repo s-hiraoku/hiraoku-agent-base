@@ -23,7 +23,7 @@ DotsとHermesは検証例であり、設計を製品名へ固定しない。Grok
 | 項目 | 確認できる範囲 | 任意連携で検討するもの |
 | --- | --- | --- |
 | メッセージ配送 | 認証・group認可、宛先、永続inbox、保存後ACK、相関と再送の契約 | 製品に依存しない依頼・進捗・結果の共通表示 |
-| NATS配送 | [JetStream配送設計](../packages/relay-nats/DESIGN.md)に永続受付と本文配送・回復の境界がある | 実行journalとの連携。brokerを作業実行の正本にはしない |
+| 配送store | [配送store](delivery-store.md)に永続受付と本文配送・回復の境界がある（ADR-018でJetStreamを外した） | 実行journalとの連携。配送storeを作業実行の正本にはしない |
 | A2A | [SDK preview](a2a-sdk-preview.md)と[Relay preview](a2a-relay-preview.md)は固定 `connectivity_check`。任意prompt、継続、streaming、push、取消は未対応 | 汎用テキストとTask lifecycle、能力別のadapter契約 |
 | Task bridge | 明示引受け、安定key、受付照合、固定結果の返信。保存ACKだけではTaskを作らない | 汎用の判断・承認・処理・結果の境界 |
 | Hermes受信 | 現在の受信経路は保存・ACK・表示まで。自動モデル処理と自動返信は未接続 | 受信側が所有する既存の判断・承認・返信経路への引渡し。HAB固有runnerは必須にしない |
@@ -185,16 +185,16 @@ backup復元で承認の消費記録や実行結果が巻き戻った場合は�
 
 受信側の永続Task/結果を、認可された送信側が後から照会できる経路を設ける。通知や返信が失われても照会で回復する。streaming・webhookは対応能力がある場合の追加経路であり、重要な状態の唯一の正本にしない。保持期限を過ぎた結果は「保持終了」と示し、結果なしを再実行の指示に変換しない。
 
-## 9. A2A・MCP・NATSの分担
+## 9. A2A・MCP・配送storeの分担
 
 | 部分 | 標準または既存契約 | 本設計でHABが担うこと |
 | --- | --- | --- |
 | A2A 1.0 | AgentCard、Message、Task、Artifact、状態照会、対応時の更新経路 | 通信相手の認可、owner/binding、受信者承認profile、相関と保持方針 |
 | MCP | 対応製品からのtool呼出し | 標準は共通Relayの5操作。任意のtext_*入口のみA2Aと同じTask application serviceを使う。MCP登録だけで背景受信を保証しない |
-| NATS JetStream | 永続保存と少なくとも一度の配送 | 受付journal、元期限、receipt、受信側保存後ACK、Task/実行状態の照合 |
+| SQLite配送store | 永続保存と少なくとも一度の配送 | 元期限、receipt、受信側保存後ACK、Task/実行状態の照合 |
 | 受信エージェント | 既存の判断・実行・権限・承認機構 | HABは内容判断や製品固有のモデル・承認処理を代行しない。任意Taskは受信側が明示的に引き受ける |
 
-JetStreamの配送保証を、任意tool操作のexactly-once実行へ拡張しない。PubAck、consumer ACK、HAB保存ACKはそれぞれ異なる証拠である。現行の同期HAB配送では受付journalのcommitが受付点であり、その後pumpがpublishする。Limits retention上の本文清掃は保存receipt後の明示削除と不在確認であり、通常のconsumer ACKと同じ手順ではない。[HAB実装の境界](../packages/relay-nats/DESIGN.md)、[JetStream公式](https://docs.nats.io/concepts/jetstream)
+配送storeの配送保証を、任意tool操作のexactly-once実行へ拡張しない。受付のcommitが受付点で、HAB保存ACKは受信者の保存の証拠であり実行の証拠ではない。[配送store](delivery-store.md)
 
 任意A2A接続は相手が標準endpointを提供する場合に使う。そのTask用adapterは通常Relay MCPの置換や接続条件にはしない。製品固有の実行APIへの接続は受信側の別責務として扱う。adapterを置いても、閉じた製品に自動起動・常駐受信・バックグラウンド通知APIが生まれるわけではない。AgentCardには試験済み能力だけを載せる。[非同期更新](https://a2a-protocol.org/v1.0.0/topics/streaming-and-async/)
 
@@ -242,7 +242,6 @@ JetStreamの配送保証を、任意tool操作のexactly-once実行へ拡張し�
 ## 13. 関連仕様と一次資料
 
 - [HAB製品仕様](hab-product-spec.md)、[配送契約](hab-relay-spec.md)、[認証group](relay-auth-groups.md)、[受信supervisor](receive-supervisor.md)、[Task bridge](task-bridge.md)
-- [A2A SDK preview](a2a-sdk-preview.md)、[A2A Relay preview](a2a-relay-preview.md)、[NATS配送設計](../packages/relay-nats/DESIGN.md)
+- [A2A SDK preview](a2a-sdk-preview.md)、[A2A Relay preview](a2a-relay-preview.md)、[配送store](delivery-store.md)
 - [A2A 1.0公式仕様](https://a2a-protocol.org/v1.0.0/specification/)：TaskState、冪等性、非同期処理、認可、拡張を2026-11-04 UTCに確認。
 - [A2A Taskの扱い](https://a2a-protocol.org/v1.0.0/topics/life-of-a-task/)、[非同期更新](https://a2a-protocol.org/v1.0.0/topics/streaming-and-async/)、[拡張](https://a2a-protocol.org/v1.0.0/topics/extensions/)：標準とHAB profileの区分に使用。
-- [NATS JetStream公式](https://docs.nats.io/concepts/jetstream)：永続配送の説明を2026-11-04 UTCに確認。任意の外部操作の実行保証には使用しない。

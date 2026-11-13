@@ -56,11 +56,11 @@ Reply observation supplies the original `(sender_id, message_id)` source key as 
 
 The bounded `test/relay-inbox-source.test.js` regression uses 200 synthetic unreleased replies with 256-character results and 64 source observations. It asserts 64 body parses rather than the previous 12,800 and verifies an indexed source search without a full scan or temporary ordering tree. Timing is diagnostic only. This proves less synchronous reply-read work under a backlog, not a production MCP latency bound or starvation measurement.
 
-The preview supports one handler instance per Task database. It does not add multi-host writer coordination, production retention, capacity management, remote evidence authentication, product wake, or a GUI. Delivery runs through the JetStream backend behind the HAB Registry; the SQLite delivery route was deleted. Production replacement acceptance remains a separate gate.
+The preview supports one handler instance per Task database. It does not add multi-host writer coordination, production retention, capacity management, remote evidence authentication, product wake, or a GUI. Delivery runs through the host's SQLite delivery store behind the HAB Registry ([ADR-018](hab-decisions.md)). Production replacement acceptance remains a separate gate.
 
 ## Host wiring with a host-owned identity
 
-The owner decided on 2026-11-06 (ADR-016, decision item 5) to wire the gateway into the single host with its own A2A identity. The host cannot read the calling agent's mailbox for the replies. That agent's own save-then-ACK receiver already holds the single lease on it. The host therefore has its own Registry address and durable mailbox. A2A Tasks are sent from that address, and recipients reply to it. The `DeliveryService` contract, the lease rules and the `relay_*` MCP tools are unchanged. The code is `src/host/a2a.ts`, and `test/a2a-host.test.js` covers it through the real host and real JetStream.
+The owner decided on 2026-11-06 (ADR-016, decision item 5) to wire the gateway into the single host with its own A2A identity. The host cannot read the calling agent's mailbox for the replies. That agent's own save-then-ACK receiver already holds the single lease on it. The host therefore has its own Registry address and durable mailbox. A2A Tasks are sent from that address, and recipients reply to it. The `DeliveryService` contract, the lease rules and the `relay_*` MCP tools are unchanged. The code is `src/host/a2a.ts`, and `test/a2a-host.test.js` covers it through the real host and its SQLite delivery store.
 
 ### Configuration
 
@@ -95,7 +95,7 @@ Changing `identity` is not a general recovery path. Once the fixed host principa
 
 ### Credentials
 
-The host identity has no bearer token, OAuth client or file credential. It is an in-process context object that only the host holds. The host's Registry authority attests it as the reserved principal `{issuer: "urn:hab:host", audience: "urn:hab:host:a2a", subject: "a2a-identity", client_id: "hab-host", connection_id: "host-a2a"}`, with a context lifetime of at most one second. It calls `HabJetStreamService` directly. Every operation still runs the Registry's `withRelay` check, and nothing reaches it over HTTP. The host drops any operator or OAuth principal whose issuer is `urn:hab:host`, so a credentials file entry cannot impersonate the identity even if someone binds it.
+The host identity has no bearer token, OAuth client or file credential. It is an in-process context object that only the host holds. The host's Registry authority attests it as the reserved principal `{issuer: "urn:hab:host", audience: "urn:hab:host:a2a", subject: "a2a-identity", client_id: "hab-host", connection_id: "host-a2a"}`, with a context lifetime of at most one second. It calls `HabDeliveryService` directly. Every operation still runs the Registry's `withRelay` check, and nothing reaches it over HTTP. The host drops any operator or OAuth principal whose issuer is `urn:hab:host`, so a credentials file entry cannot impersonate the identity even if someone binds it.
 
 A2A callers authenticate with the existing local bearer file. Their credential's audience must be the A2A endpoint `http://127.0.0.1:<a2a port>/a2a`, so an MCP credential is refused there with 401. `relay:admin connect` lists the A2A endpoint among its resources and binds such a credential to the caller's address as usual.
 

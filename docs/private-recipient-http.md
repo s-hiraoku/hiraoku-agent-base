@@ -88,7 +88,7 @@ an OS sandbox or environment-isolation guarantee supplied by this module.
 ## Verification scope
 
 `test/private-recipient-http.test.js` uses explicitly synthetic bearer/context
-fixtures, owned loopback HTTP, real MCP SDK, SQLite and private JetStream fixtures.
+fixtures, owned loopback HTTP, real MCP SDK and SQLite stores, including the SQLite delivery store.
 It checks metadata denial, stable manifests, current receipts, delayed requests,
 explicit grant/resume, authorization/Host/Origin/path rejection, owner loss,
 terminal DELETE, expiry and failed-drain retention/retry. It does not prove native

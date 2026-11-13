@@ -16,8 +16,8 @@ import {
   gateVerdict,
   executeNode,
   observedCases,
+  parseLabOptions,
 } from "./lib/delivery-lab.mjs";
-import { parseLabOptions, prepareNatsServer } from "./lib/nats-input.mjs";
 import {
   pendingBackends,
   pendingMigrationRequirements,
@@ -65,7 +65,6 @@ const definitions = [
     files: [
       "test/delivery-lab/sqlite-failures.test.js",
       "test/delivery-lab/harness.test.js",
-      "test/delivery-lab/nats-input.test.js",
     ],
   },
   { id: "relay-regressions", files: regressionFiles },
@@ -96,7 +95,6 @@ const report = {
   release_requested: release,
   pending,
   groups,
-  nats_input: { state: "not-requested", backend_executed: false },
 };
 const snapshot = () => {
   const files = execFileSync(
@@ -141,26 +139,6 @@ try {
     env,
     encoding: "utf8",
   }).trim();
-  if (options.natsServer) {
-    let prepared;
-    try {
-      prepared = prepareNatsServer(options.natsServer, scratch);
-    } catch (error) {
-      report.nats_input = {
-        state: "rejected",
-        code: error.code,
-        backend_executed: false,
-      };
-      throw error;
-    }
-    report.nats_input = { ...prepared.evidence, handoff: "pending" };
-    definitions.unshift({
-      id: "nats-input-handoff",
-      files: [join(repo, "test/delivery-lab/nats-input.probe.js")],
-      cwd: prepared.fixtureCwd,
-      env: labEnvironment(process.env, scratch, prepared),
-    });
-  }
   report.expected_groups = definitions.map(({ id }) => id);
   for (const definition of definitions) {
     if (interrupted) throw Error("delivery lab interrupted");
@@ -168,8 +146,8 @@ try {
     const started = Date.now();
     const log = join(run, `${definition.id}.tap`);
     const execution = await executeNode({
-      cwd: definition.cwd ?? repo,
-      env: definition.env ?? env,
+      cwd: repo,
+      env,
       log,
       args: [
         "--test",
@@ -187,11 +165,6 @@ try {
     } catch (error) {
       parse_error = error.message;
     }
-    if (definition.id === "nats-input-handoff")
-      report.nats_input.handoff =
-        execution.exit_code === 0 && totals?.pass === 1 && totals?.fail === 0
-          ? "observed"
-          : "failed";
     groups.push({
       id: definition.id,
       ...execution,

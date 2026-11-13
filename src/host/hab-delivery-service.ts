@@ -5,28 +5,21 @@ import type {
 } from "../messaging/delivery-service.ts";
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { HabDirectory } from "../hab/directory.ts";
-import type { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
+import type { SqliteDelivery } from "../delivery/sqlite-delivery.ts";
 
-/** HAB composition: the Registry authorizes each operation and JetStream delivers. Public operations stay synchronous. */
-export class HabJetStreamService implements DeliveryService, HabDirectory {
+/** HAB composition: the Registry authorizes each operation and the SQLite store delivers. Public operations stay synchronous. */
+export class HabDeliveryService implements DeliveryService, HabDirectory {
   readonly #registry: SQLiteHabRegistry;
-  readonly #backend: JetStreamRelay;
+  readonly #backend: SqliteDelivery;
   readonly #assertCurrent: () => void;
   constructor(
     registry: SQLiteHabRegistry,
-    backend: JetStreamRelay,
-    queue: { max_pending: number; max_pending_per_recipient: number },
+    backend: SqliteDelivery,
     assertCurrent: () => void = () => {},
   ) {
     this.#registry = registry;
     this.#backend = backend;
     this.#assertCurrent = assertCurrent;
-    // A smaller cache window could hide an authorized sender behind forbidden candidates indefinitely.
-    if (
-      backend.prefetchWindow <
-      Math.min(queue.max_pending, queue.max_pending_per_recipient)
-    )
-      throw new MessagingError("insufficient_prefetch_window");
     this.#assertCurrent();
   }
   #run<T>(

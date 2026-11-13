@@ -12,9 +12,9 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
 import { DurableReceiver } from "../../src/agent-sdk/index.ts";
-import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
+import { SqliteDelivery } from "../../src/delivery/sqlite-delivery.ts";
 import { limits, message } from "../relay-http-fixtures.js";
-import { authorizedDelivery } from "../jetstream-delivery.js";
+import { authorizedDelivery } from "../delivery-fixture.js";
 import { ackRequest } from "./backends.js";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { labEnvironment } from "../../scripts/lib/delivery-lab.mjs";
 
-// SQLite failure seams of the delivery path: the JetStream journal on the Relay side and the
+// SQLite failure seams of the delivery path: the delivery store on the host side and the
 // durable inbox on the receiver side.
 async function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "delivery-failure-"));
@@ -52,7 +52,7 @@ async function fixture(t) {
       poll_scan_limit: 10,
     },
   });
-  const path = delivery.options.journal_path;
+  const path = delivery.options.path;
   const raw = track(new DatabaseSync(path));
   const inboxPath = join(dir, "inbox.sqlite");
   const inboxOptions = {
@@ -138,7 +138,7 @@ test("F01 real SQLITE_FULL under a per-database page cap never returns acceptanc
   input.body.parts[0].text = "x".repeat(15000);
   assert.throws(() => f.service.submit("a", input));
   assert.equal(fault.fullErrors(), 1);
-  for (const table of ["nats_messages", "nats_delivery_audit"])
+  for (const table of ["delivery_messages", "delivery_audit"])
     assert.equal(f.raw.prepare(`SELECT count(*) n FROM ${table}`).get().n, 0);
   fault.recover();
   const receipt = f.service.submit("a", input);
@@ -165,12 +165,12 @@ test("F02 full durable inbox sends zero ACKs, retains server body and recovers w
   assert.equal(acks, 0);
   assert.deepEqual(receiver.inbox(), []);
   const body = () =>
-    f.raw.prepare("SELECT candidate,body_bytes FROM nats_messages").get();
-  assert.ok(body().candidate);
+    f.raw.prepare("SELECT body,body_bytes FROM delivery_messages").get();
+  assert.ok(body().body);
   assert.ok(body().body_bytes > 0);
   assert.equal(f.service.status("a", input.message_id).state, "leased");
   fault.recover();
-  f.raw.exec("UPDATE nats_messages SET lease_until=0,next_visible_at=0");
+  f.raw.exec("UPDATE delivery_messages SET lease_until=0,next_visible_at=0");
   await receiver.receiveOnce();
   assert.equal(acks, 1);
   assert.deepEqual(
@@ -178,14 +178,13 @@ test("F02 full durable inbox sends zero ACKs, retains server body and recovers w
     [input],
   );
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
-  assert.equal(body().candidate, null);
+  assert.equal(body().body, null);
   assert.equal(body().body_bytes, 0);
 });
 
 test("F03 exact journal-clock TTL and skew boundaries fail closed without host clock changes", async (t) => {
   const f = await fixture(t);
   const at = Math.floor(Date.now() / 1000) * 1000;
-  // Only this process's clock moves; the pump worker keeps real time and sees nothing expire.
   t.mock.timers.enable({ apis: ["Date"], now: at });
   const input = message();
   input.first_sent_at = new Date(at).toISOString();
@@ -220,14 +219,9 @@ test("F03 exact journal-clock TTL and skew boundaries fail closed without host c
   });
   assert.equal(f.service.status("a", input.message_id).state, "expired");
   const row = f.raw
-    .prepare(
-      "SELECT outbox,candidate,body_bytes FROM nats_messages WHERE message_id=?",
-    )
+    .prepare("SELECT body,body_bytes FROM delivery_messages WHERE message_id=?")
     .get(input.message_id);
-  assert.deepEqual(
-    { ...row },
-    { outbox: null, candidate: null, body_bytes: 0 },
-  );
+  assert.deepEqual({ ...row }, { body: null, body_bytes: 0 });
   assert.throws(
     () => f.service.submit("a", { ...input, message_id: "expired-new" }),
     { code: "expired_before_acceptance" },
@@ -239,9 +233,7 @@ test("F04 malformed SQLite file is rejected without overwriting the evidence", a
   const path = join(f.dir, "corrupt.sqlite");
   const bytes = Buffer.alloc(4096, 0x78);
   writeFileSync(path, bytes, { mode: 0o600 });
-  await assert.rejects(
-    JetStreamRelay.open({ ...f.options, journal_path: path }),
-  );
+  assert.throws(() => SqliteDelivery.open({ ...f.options, path }));
   assert.deepEqual(readFileSync(path), bytes);
 });
 

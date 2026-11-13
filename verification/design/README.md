@@ -17,7 +17,7 @@ The existing [verify-hab feature map](../../.claude/skills/verify-hab/features/R
 
 ## Run
 
-Use the pinned Node/npm in this checkout, `npm ci`, `npm ci --prefix packages/relay-nats --ignore-scripts`, and the pinned broker (`mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`). JetStream is the only delivery backend, so delivery tests and the real helper start a private `nats-server` and fail when it is missing. Point `HIRASTACK_ROOT` at a separately reviewed hirastack checkout. Run these commands from HAB:
+Use the pinned Node/npm in this checkout and `npm ci`. Delivery runs through the host's SQLite delivery store (ADR-018), so no broker is installed or started. Point `HIRASTACK_ROOT` at a separately reviewed hirastack checkout. Run these commands from HAB:
 
 ```sh
 PYTHONPATH="$HIRASTACK_ROOT" python3 -B -m hirastack audit --target "$PWD" --spec verification/design/contract.json
@@ -337,3 +337,13 @@ The owner approved the simplification review, whose P3a step makes authenticatio
 - `test/hab-auth-groups.test.js` covers the conversion from a v1 registry and of a revoked direct binding; `test/local-relay-admin.test.js` covers the CLI refusal. verify-hab's configured feature no longer turns groups on.
 - Conflict citations: HAB-C-A01 and HAB-C-A04 were re-cited after rereading the changed Registry README and rename text, and HAB-C-E05 now cites the reworded local-MVP paragraph with its resolution updated. The P2 deletions had left three conflict citations stale: HAB-C-F04 now cites the README's JetStream check line, HAB-C-V05 drops the deleted `test/p7/README.md`, and four `docs/relay-oauth-ingress.md` citations only moved.
 - In source-review.json the changed Registry, enrollment, admin and A2A host sources were rehashed with appended summaries.
+
+## SQLite delivery store replaces JetStream (ADR-018, 2026-11-13)
+
+The owner chose a single-VM cloud deployment, so ADR-018 replaces the JetStream delivery part of ADR-016 with one private SQLite file per host (`src/delivery/sqlite-delivery.ts`, described in [the delivery store](../../docs/delivery-store.md)). `packages/relay-nats`, the pinned nats-server and its installers, the pump, the broker config, the P7 runner, the rollback reconciliation script and the CI broker stage were deleted. The audit drift was handled by rereading, not rehashing:
+
+- Rewritten: HAB-D15, HAB-D16, HAB-D19, HAB-F24 and HAB-F26 now state the SQLite store rules, the whole-generation restore with an expiry hold and the drained upgrade from the JetStream build. HAB-D14, HAB-D17 and HAB-D18 wording drops the broker. HAB-V13 is retired as historical, because no broker executable is accepted as input any more.
+- Re-cited: HAB-D04, HAB-D07 and HAB-D14 now cite `docs/delivery-store.md`; HAB-F26 also cites ADR-018. Citations into deleted paths were retargeted to the delivery store and ADR-018, and each affected conflict resolution ends with a "Superseded by ADR-018" sentence. New HAB-C-D08 records the decision.
+- Checks: `ts-nats` and `js-cli-guards` were removed with their sources, `js-root` no longer lists `test/ci-nats`, and `current-hosted-p7` became `current-hosted-ci` for the single CI workflow. `test/sqlite-delivery.test.js` covers the store rules and `test/local-relay-service.test.js` the retired config and the leftover-journal refusal.
+- `communication-boundary.mjs` adds `src/delivery/sqlite-delivery.ts` to the protected core modules. The P7, verified-nats and publication guides carry a historical banner.
+- In source-review.json the deleted sources were removed, the new store and its tests were added, and the changed sources were rehashed after reading their diffs.

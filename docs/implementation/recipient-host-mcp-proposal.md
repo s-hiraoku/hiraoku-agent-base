@@ -156,7 +156,7 @@ performed for this preparation. ACK remains storage receipt, not execution.
 `test/recipient-host-mcp.test.js` and `test/recipient-host-mcp-size.test.js` use the
 official MCP SDK client/server over in-memory transport and owned separate stdio
 processes. The real-host cases use
-existing SQLite inbox/outbox/answer journals and private NATS brokers. They cover
+existing SQLite inbox/outbox/answer journals and the SQLite delivery store. They cover
 receive/ACK, saved source reads, revocation, fixed reply enqueue and separate
 send. The real-host stdio test parent owns its broker and temporary directory;
 the fixture child only borrows a private synthetic broker descriptor. Closing

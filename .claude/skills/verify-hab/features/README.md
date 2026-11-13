@@ -19,7 +19,7 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 ## Proof and skip reporting
 
 - Capture the action's request/response (`mcp.sh` does this) and a second view of the result: another agent's tool call and/or `node $S/inspect.mjs "$RUN" <label>`.
-- Mutation proof includes the delivery state and the journal's `nats_delivery_audit` events from `inspect.mjs`.
+- Mutation proof includes the delivery state and the delivery store's `delivery_audit` events from `inspect.mjs`.
 - Terminal proof is a `tmux capture-pane -p` transcript saved in `$RUN/evidence/` plus the exit code.
 - Record the sub-feature ID with each evidence file name.
 - If a precondition is missing, report the attempted command and the unmet precondition. Do not report an entry point as verified through a different one.
