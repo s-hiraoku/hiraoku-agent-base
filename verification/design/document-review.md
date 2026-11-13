@@ -1,5 +1,9 @@
 # Document review
 
+## Rename grace period implemented (2026-11-13)
+
+`SQLiteHabRegistry` now resolves a previous name to its own agent ID during `rename_grace_days` (default 30, 0 refuses at once) in `relay_resolve`, the agent's own frozen `as_address`, `whoami` and the A2A host identity. Name schema version 2 adds `hab_previous_name_uses`, a bounded per-caller use count. `relay:admin status` lists `previous_names` and reports `config_previous_address` or `config_previous_address_expired`. agent-address-rename, hab-relay-spec section 4.2, README and a2a-relay-preview were reread. HAB-A18 statement/scope and the HAB-C-A07 resolution now describe the implemented grace period. The changed excerpts of HAB-A06, HAB-A18, HAB-C-A04 and HAB-C-A07 were re-cited to the moved sections and still hold.
+
 ## Receive loop moved into the agent SDK (ADR-017, 2026-11-12)
 
 `ReceiveSupervisor`, the host stop/epoch control (`sqlite-host-control.ts`) and the process owner (`sqlite-host-owner.ts`) moved from `src/adapter-host` to `src/agent-sdk`. The new `receive-host.ts` holds `HostCore`, a direct port of the former `AdapterHostCycle.stepOnce` guard, epoch, atomic, rpc, managed-transport and error-mapping logic, and `ReceiveHost`, which accepts only `receive` and needs no outbox, reply budget, Task bridge or answer journal. `AdapterHostCycle` now extends `HostCore` with unchanged public API and error codes. `id` and `checkGuard` moved to `src/agent-sdk/guard.ts` and are re-exported from `src/adapter-policy/contract.ts` so the agent SDK no longer depends on the reply policy. The communication-boundary check classifies the new SDK modules as core, except the timer-driven supervisor as outer. ADR-017, receive-supervisor, the agent SDK README and the test counts (1473 = 1468 + 5 receive-host cases) were reread; the changed excerpts of HAB-F09, HAB-V07, HAB-C-V01 and HAB-C-V05 still hold.
