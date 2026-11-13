@@ -18,9 +18,12 @@ const renamed = (f, agent, bot_name = "renamed", request_id = "rename") =>
     bot_name,
   });
 
+// These cases set rename_grace_days: 0, so a previous name is refused at once; the
+// grace period itself is covered in hab-agent-rename-grace.test.js.
 test("opt-in rename preserves the birth identity and reserves the old name without forwarding", async (t) => {
   const f = await fixture(t, {
     agent_rename: true,
+    rename_grace_days: 0,
   });
   const a = f.enroll("a"),
     b = f.enroll("b");
@@ -183,6 +186,7 @@ test("admin permission, CAS, retired state, immutable birth row and request conf
 test("permanent reservations prevent cross-agent reuse and permit an explicit same-ID rollback", async (t) => {
   const f = await fixture(t, {
     agent_rename: true,
+    rename_grace_days: 0,
   });
   const a = f.enroll("a"),
     b = f.enroll("b");
@@ -229,7 +233,7 @@ test("permanent reservations prevent cross-agent reuse and permit an explicit sa
 });
 
 test("leased delivery ACK, saved sender status, duplicate submit and reply IDs survive rename", async (t) => {
-  const f = await groupFixture(t, { agent_rename: true });
+  const f = await groupFixture(t, { agent_rename: true, rename_grace_days: 0 });
   const before = f.select(f.first);
   const inbound = { ...message(), recipient_id: f.first.agent_id };
   f.hab.submit(f.contexts.b, inbound);

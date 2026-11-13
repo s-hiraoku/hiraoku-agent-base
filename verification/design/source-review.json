@@ -82,7 +82,7 @@
       {
         "path": "docs/agent-address-rename.md",
         "scope": "full",
-        "sha256": "9a81c57f84960e432297953559a16456b3aa133f6fcc5416572d2ce188c9213e",
+        "sha256": "230c500a91e1effd53ffef8d2afb8257a5ba16ada00a2df4daf343efbf21369e",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
@@ -208,7 +208,7 @@
     "supplemental_sources": [
       {
         "path": "src/hab/sqlite-registry.ts",
-        "sha256": "93f580ed3899e9cdaab86752dde4c786c007fcf8e4c964c7d85df332282d6f39",
+        "sha256": "213640606e25d8d91e309a6bd2c64d09f95d602a60b6e1b4154320a25e892907",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (registryOptionsSchema, createBoundGroup, #addMember, #stopMembers, setGroupAccess, revokeGroupBinding, omitted-selection query); diff from efa2435 (createBoundGroup rights, #relayTx)",
@@ -218,7 +218,7 @@
       },
       {
         "path": "src/host/admin.ts",
-        "sha256": "ed34fdf90edee5767e43ac5656b4a16d70e3d6de2365243656462b8db127fe86",
+        "sha256": "345200225cca279357b5b54b1ff05f3ce1c4c8f23d2f04ecfc3ab13f1244b2b3",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (open(), hostAdminConnect group branch, operations parsing)",
@@ -238,7 +238,7 @@
       },
       {
         "path": "src/host/a2a.ts",
-        "sha256": "776b55d01c9cfef667459a655ebf451098d523e66047050e5052ec572b319963",
+        "sha256": "ebd3d6366d2f585bbffc80aeefb042ff82f0b92cc1f546b7b3743242069a0b3f",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
@@ -576,7 +576,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "2d23237c7cf4faeefb864145c9980d2283259ec3e0b06cf9844176dbdb291381",
+        "sha256": "4634e8fb48b593af7a8b3b12a3816bd89efaecc0e37153951b80127434dae77f",
         "read_ranges": [
           [
             1,
@@ -901,7 +901,7 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "71bb2a79263d7c2b7c9dbe0b2449b744dc47b20e43f4f8e7174ddfe0a8c3e9e0",
+        "sha256": "7ef6c131a0108c99b4b8d6544f633b9e6d1ca972487da5e5939ec12903c8929a",
         "mode": "full",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed."
       },
@@ -936,7 +936,7 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
-        "sha256": "bb6d901063fc415d5652c7d062778cfbbf78edde9aa6290429fc5d9bf72d116d",
+        "sha256": "c652af8fea87a1c0d390d874fc69819ab46e6e7de5c3ff0beddcb68c6fe9a93e",
         "mode": "full"
       },
       {
@@ -1866,7 +1866,7 @@
       },
       {
         "path": "test/local-relay-admin.test.js",
-        "sha256": "af85caae09f98abc2fb6a7cb13337d20c710c03216ba6d125a5ca6464e79e628",
+        "sha256": "5a9cacdc03b61047184379038c25beb945017593f6507349c152e34fad7d2a83",
         "review": "reviewed"
       }
     ]
@@ -1900,7 +1900,7 @@
     "supplemental": [
       {
         "path": "test/local-relay-admin.test.js",
-        "sha256": "af85caae09f98abc2fb6a7cb13337d20c710c03216ba6d125a5ca6464e79e628",
+        "sha256": "5a9cacdc03b61047184379038c25beb945017593f6507349c152e34fad7d2a83",
         "review": "reviewed"
       },
       {
@@ -1982,7 +1982,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "2d23237c7cf4faeefb864145c9980d2283259ec3e0b06cf9844176dbdb291381",
+        "sha256": "4634e8fb48b593af7a8b3b12a3816bd89efaecc0e37153951b80127434dae77f",
         "review": "reviewed"
       },
       {

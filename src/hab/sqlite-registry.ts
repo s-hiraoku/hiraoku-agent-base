@@ -16,7 +16,13 @@ import {
 } from "./discovery.ts";
 import type { HabDiscoveryPolicy, HabHostIdentity } from "./discovery.ts";
 import { AUTH_GROUP_SCHEMA } from "./auth-groups.ts";
-import { AGENT_NAME_SCHEMA } from "./agent-names.ts";
+import {
+  AGENT_NAME_SCHEMA,
+  DEFAULT_RENAME_GRACE_DAYS,
+  NAME_SCHEMA_VERSION,
+  PREVIOUS_NAME_USE_SCHEMA,
+} from "./agent-names.ts";
+import type { PreviousName } from "./agent-names.ts";
 import type { AuthenticationGroup, GroupBinding } from "./auth-groups.ts";
 import { ContractError } from "../messaging/contract.ts";
 import type { Authorization } from "../messaging/delivery-service.ts";
@@ -45,6 +51,11 @@ export interface RegistryOptions {
   authentication_groups?: boolean;
   /** Explicit v2→v3 opt-in. Old names stay reserved; no forwarding aliases. */
   agent_rename?: boolean;
+  /**
+   * Days after a rename during which the previous name still resolves to the same ID.
+   * Default 30; 0 refuses a previous name at once. The reservation is never released.
+   */
+  rename_grace_days?: number;
   /** Explicit read-only catalog and candidate occupancy policy. Omitted preserves five MCP tools. */
   discovery?: HabDiscoveryPolicy;
   fingerprint_key: Uint8Array;
@@ -67,6 +78,7 @@ const bounded = z.number().int().min(1).max(1000000);
 export const registryOptionsSchema = z.strictObject({
   authentication_groups: z.boolean().optional(),
   agent_rename: z.boolean().optional(),
+  rename_grace_days: z.number().int().min(0).max(365).optional(),
   discovery: habDiscoveryPolicySchema.optional(),
   max_products: bounded,
   max_agents: bounded,
@@ -468,12 +480,24 @@ export class SQLiteHabRegistry {
         const meta = this.#db
           .prepare("SELECT * FROM hab_agent_name_meta")
           .all();
-        if (meta.length !== 1 || meta[0].id !== 1 || meta[0].version !== 1)
+        if (
+          meta.length !== 1 ||
+          meta[0].id !== 1 ||
+          ![1, NAME_SCHEMA_VERSION].includes(Number(meta[0].version))
+        )
           throw new RegistryError("unsupported_registry_name_schema");
+        if (meta[0].version === 1) {
+          // Additive: previous-name use counts for the rename grace period.
+          this.#db.exec(PREVIOUS_NAME_USE_SCHEMA);
+          this.#db
+            .prepare("UPDATE hab_agent_name_meta SET version=? WHERE id=1")
+            .run(NAME_SCHEMA_VERSION);
+        }
         for (const name of [
           "hab_address_reservations",
           "hab_agent_name_events",
           "hab_agents_current",
+          "hab_previous_name_uses",
         ])
           if (
             !this.#db
@@ -624,6 +648,61 @@ export class SQLiteHabRegistry {
   }
   #agentTable(): "hab_agents" | "hab_agents_current" {
     return this.#namesPresent ? "hab_agents_current" : "hab_agents";
+  }
+  /**
+   * A reserved name the agent no longer uses, with its grace period measured in the
+   * registry clock from the latest rename away from it. Never another agent's name.
+   */
+  #previousName(address: string): PreviousName | undefined {
+    if (!this.#namesPresent) return undefined;
+    const row = this.#db
+      .prepare(
+        "SELECT r.agent_id,c.address current_address,(SELECT MAX(at) FROM hab_agent_name_events e WHERE e.agent_id=r.agent_id AND e.previous_address=r.address) retired_at FROM hab_address_reservations r JOIN hab_agents_current c USING(agent_id) WHERE r.address=?",
+      )
+      .get(address);
+    if (!row || row.current_address === address || !row.retired_at)
+      return undefined;
+    const retiredAt = String(row.retired_at),
+      until =
+        Date.parse(retiredAt) +
+        (this.#options.rename_grace_days ?? DEFAULT_RENAME_GRACE_DAYS) *
+          86400000;
+    if (!Number.isFinite(until))
+      throw new RegistryError("registry_unavailable");
+    return {
+      address,
+      agent_id: String(row.agent_id),
+      current_address: String(row.current_address),
+      renamed_at: retiredAt,
+      grace_until: new Date(until).toISOString(),
+      resolves: this.#now() < until,
+    };
+  }
+  /** The agent a previous name still selects during its grace period, if any. */
+  #graceAgentId(address: string): string | undefined {
+    const previous = this.#previousName(address);
+    return previous?.resolves ? previous.agent_id : undefined;
+  }
+  /** Bounded count of who still uses a previous name. Holds IDs only, never content. */
+  #recordPreviousUse(address: string, agentId: string, callerId: string) {
+    const at = this.#iso();
+    const updated = this.#db
+      .prepare(
+        "UPDATE hab_previous_name_uses SET uses=uses+1,last_at=? WHERE address=? AND caller_id=? AND uses<?",
+      )
+      .run(at, address, callerId, Number.MAX_SAFE_INTEGER);
+    if (Number(updated.changes) > 0) return;
+    const count = Number(
+      this.#db.prepare("SELECT count(*) n FROM hab_previous_name_uses").get()!
+        .n,
+    );
+    // A full table keeps existing counts; new callers are simply not listed.
+    if (count >= this.#options.max_audit_records) return;
+    this.#db
+      .prepare(
+        "INSERT OR IGNORE INTO hab_previous_name_uses(address,agent_id,caller_id,uses,first_at,last_at) VALUES(?,?,?,1,?,?)",
+      )
+      .run(address, agentId, callerId, at, at);
   }
   #reservedAddress(address: string) {
     return this.#db
@@ -814,6 +893,41 @@ export class SQLiteHabRegistry {
         result: this.#agent(current.agent_id),
         object_id: current.agent_id,
       };
+    });
+  }
+  /**
+   * Operator view of every renamed agent's earlier names: grace end, whether it still
+   * resolves, and which callers used it. Read-only; it releases nothing.
+   */
+  previousNames(context: unknown): (PreviousName & {
+    callers: { caller_id: string; uses: number; last_at: string }[];
+  })[] {
+    this.#assertReady();
+    return this.#tx(() => {
+      this.#admin(context, "inspect");
+      if (!this.#namesPresent) return [];
+      const rows = this.#db
+        .prepare(
+          "SELECT DISTINCT e.previous_address address FROM hab_agent_name_events e ORDER BY e.previous_address",
+        )
+        .all();
+      const callers = this.#db.prepare(
+        "SELECT caller_id,uses,last_at FROM hab_previous_name_uses WHERE address=? ORDER BY caller_id",
+      );
+      return rows.flatMap((row) => {
+        const previous = this.#previousName(String(row.address));
+        if (!previous) return [];
+        return [
+          {
+            ...previous,
+            callers: callers.all(previous.address).map((use) => ({
+              caller_id: String(use.caller_id),
+              uses: Number(use.uses),
+              last_at: String(use.last_at),
+            })),
+          },
+        ];
+      });
     });
   }
   inspect(context: unknown, agentId: string): AgentRecord {
@@ -1394,7 +1508,8 @@ export class SQLiteHabRegistry {
         (operation === "resolve" && !group.operations.includes("submit"))
       )
         throw new MessagingError("forbidden");
-      const members = selected
+      let previousSelected = false;
+      let members = selected
         ? this.#db
             .prepare(
               `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.address=?`,
@@ -1405,6 +1520,19 @@ export class SQLiteHabRegistry {
               `SELECT m.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id) WHERE m.group_id=? AND a.state='active' LIMIT 2`,
             )
             .all(group.group_id);
+      if (selected && members.length === 0) {
+        // A frozen as_address may still name this caller during the grace period,
+        // only when the authenticated group already holds that same agent.
+        const graceId = this.#graceAgentId(selected.address);
+        if (graceId) {
+          members = this.#db
+            .prepare(
+              "SELECT agent_id FROM hab_auth_group_members WHERE group_id=? AND agent_id=?",
+            )
+            .all(group.group_id, graceId);
+          previousSelected = members.length === 1;
+        }
+      }
       if (members.length !== 1) throw new MessagingError("forbidden");
       const local = this.#peer(String(members[0].agent_id));
       if (
@@ -1432,6 +1560,12 @@ export class SQLiteHabRegistry {
           )
           .run(this.#iso(), group.group_id, local.agent_id, operation);
       }
+      if (previousSelected)
+        this.#recordPreviousUse(
+          selected!.address,
+          local.agent_id,
+          local.agent_id,
+        );
       let alive = true;
       const authorization: Authorization = {
         authorize: (incoming, op, peerId, kind) => {
@@ -1474,14 +1608,27 @@ export class SQLiteHabRegistry {
   ): { recipient_id: string; address: string; normalization_version: 1 } {
     const canonicalAddress = parseHabAddress(address).address;
     return this.withRelay(context, "resolve", (_authorization, senderId) => {
-      const row = this.#db
-        .prepare(
-          `SELECT agent_id FROM ${this.#agentTable()} WHERE address=? AND state='active'`,
-        )
-        .get(canonicalAddress);
+      const active = `SELECT agent_id FROM ${this.#agentTable()} WHERE state='active' AND `;
+      let row = this.#db.prepare(active + "address=?").get(canonicalAddress);
+      let previous = false;
+      if (!row) {
+        // A renamed agent's previous name selects only that same ID, and only for its grace period.
+        const graceId = this.#graceAgentId(canonicalAddress);
+        if (graceId) {
+          row = this.#db.prepare(active + "agent_id=?").get(graceId);
+          previous = row !== undefined;
+        }
+      }
       if (!row || this.#blocked(senderId, String(row.agent_id)))
         throw new MessagingError("forbidden");
       this.#peer(String(row.agent_id));
+      if (previous)
+        this.#recordPreviousUse(
+          canonicalAddress,
+          String(row.agent_id),
+          senderId,
+        );
+      // v1 output echoes the requested address; hab_discover shows the current name.
       return {
         recipient_id: String(row.agent_id),
         address: canonicalAddress,
@@ -1679,11 +1826,16 @@ export class SQLiteHabRegistry {
           .all(scope.scope_id);
         let selected: AgentRecord | undefined;
         if (requestedAddress !== undefined) {
-          const row = this.#db
-            .prepare(
-              `SELECT agent_id FROM ${this.#agentTable()} WHERE address=?`,
-            )
-            .get(requestedAddress);
+          const row =
+            this.#db
+              .prepare(
+                `SELECT agent_id FROM ${this.#agentTable()} WHERE address=?`,
+              )
+              .get(requestedAddress) ??
+            (() => {
+              const graceId = this.#graceAgentId(requestedAddress);
+              return graceId ? { agent_id: graceId } : undefined;
+            })();
           if (!row || !owns(String(row.agent_id)))
             throw new MessagingError("forbidden");
           selected = this.#agent(String(row.agent_id));

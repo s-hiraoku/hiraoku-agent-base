@@ -398,6 +398,6 @@ The registry spec says addresses cannot change and the rename prototype refuses 
 
 Classification: explicit-authority. Requirements: HAB-A18.
 
-The owner adopted rename on 2026-11-12 and chose a grace period: an old name stays permanently reserved to the same ID and, for a default 30 days, resolves only to that ID (and is accepted as that ID's own as_address), then is refused. Delivery already uses immutable IDs, so accepted, leased and replied messages are unaffected. The grace-period behaviour is pending implementation; until then old names are refused immediately.
+The owner adopted rename on 2026-11-12 and chose a grace period: an old name stays permanently reserved to the same ID and, for a default 30 days, resolves only to that ID (and is accepted as that ID's own as_address), then is refused. Delivery already uses immutable IDs, so accepted, leased and replied messages are unaffected. The grace period is implemented (rename_grace_days, default 30; 0 refuses at once).
 
 Sources: [docs/agent-address-rename.md:3](../../docs/agent-address-rename.md#L3-L48), [docs/hab-relay-spec.md:135](../../docs/hab-relay-spec.md#L135-L135).

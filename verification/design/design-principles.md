@@ -524,11 +524,11 @@ Sources: [docs/history/local-integration.md:25](https://github.com/s-hiraoku/hir
 
 ### HAB-A18 — Address rename keeps identity and reserves old names
 
-Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace-period resolution is specified but not yet implemented.
+Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace period is the registry option rename_grace_days; each use of a previous name is counted per caller ID, and relay:admin status lists previous names and warns when the host config still names one.
 
 Reason: Changing names must not reassign authority or silently resolve deployment policy.
 
-Scope: Opt-in registry v3 rename; grace-period resolution pending implementation. Decision: **proposed**.
+Scope: Opt-in registry v3 rename with the grace-period resolution; deployment migration needs separate approval. Decision: **proposed**.
 
 Checks: proposal-review.
 

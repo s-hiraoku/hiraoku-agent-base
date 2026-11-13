@@ -2,7 +2,11 @@
 
 ## Documentation grouped by purpose (2026-11-12)
 
-The top of `docs/` keeps only the current design and connection documents. Agent-specific guides moved to `docs/connections`, operator runbooks to `docs/operations`, delivery tuning to `docs/delivery`, the receive supervisor and optional receiver parts to `docs/receiver`, A2A to `docs/a2a`, and descriptions of deleted code, test records and earlier plans to `docs/history`. The former `docs/architecture.md` (the Task Engine) is now `docs/history/task-engine.md`. Moved files changed only in link targets; their rows keep their earlier review. The new `docs/architecture.md`, `docs/README.md` and `docs/history/README.md` were read in full. `docs/hab-relay-spec.md` section 16 was reread after replacing the obsolete change map.
+The top of `docs/` keeps only the current design and connection documents. Agent-specific guides moved to `docs/connections`, operator runbooks to `docs/operations`, delivery tuning to `docs/delivery`, the receive supervisor and optional receiver parts to `docs/receiver`, A2A to `docs/a2a`, and descriptions of deleted code, test records and earlier plans to `docs/history`. The former `docs/architecture.md` (the Task Engine) is now `docs/history/task-engine.md`. Moved files changed only in link targets; their rows keep their earlier review. The new `docs/architecture.md`, `docs/README.md` and `docs/history/README.md` were read in full. `docs/hab-relay-spec.md` section 16 was reread after replacing the obsolete change map. The rename grace period changes merged from main were carried to the moved `docs/a2a/a2a-relay-preview.md`.
+
+## Rename grace period implemented (2026-11-13)
+
+`SQLiteHabRegistry` now resolves a previous name to its own agent ID during `rename_grace_days` (default 30, 0 refuses at once) in `relay_resolve`, the agent's own frozen `as_address`, `whoami` and the A2A host identity. Name schema version 2 adds `hab_previous_name_uses`, a bounded per-caller use count. `relay:admin status` lists `previous_names` and reports `config_previous_address` or `config_previous_address_expired`. agent-address-rename, hab-relay-spec section 4.2, README and a2a-relay-preview were reread. HAB-A18 statement/scope and the HAB-C-A07 resolution now describe the implemented grace period. The changed excerpts of HAB-A06, HAB-A18, HAB-C-A04 and HAB-C-A07 were re-cited to the moved sections and still hold.
 
 ## Receive loop moved into the agent SDK (ADR-017, 2026-11-12)
 
