@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Drive the shipped Relay CLI (npm run relay:local) and the operator CLI (relay:admin)
+# Drive the shipped Relay CLI (npm run hab:host) and the operator CLI (hab:admin)
 # instead of the stack.mjs scaffolding. Synthetic 15-minute tokens only, all under the run dir.
 # Delivery is the host's own SQLite store (instance/state/delivery.sqlite); no broker process.
 # Usage: configured.sh <run-dir> start [port]   -> instance/state.json usable by mcp.sh/new-message.sh
@@ -8,7 +8,7 @@
 #        HAB_VERIFY_A2A=1 configured.sh <run-dir> start -> adds the config `a2a` section (identity
 #          a2a@hab-host.hab, recipient hermes@hermes.hab) and caller "x": a second connection of
 #          codex@codex.hab whose audience is the A2A endpoint (state.a2a_url, state.agents.x)
-#        configured.sh <run-dir> admin <args...> -> runs relay:admin with this run's config
+#        configured.sh <run-dir> admin <args...> -> runs hab:admin with this run's config
 #        configured.sh <run-dir> restart         -> SIGTERM the relay only, start it again on the same config and state
 #        configured.sh <run-dir> stop            -> SIGTERM the relay this run started (by pid + cmdline)
 set -euo pipefail

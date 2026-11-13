@@ -81,7 +81,7 @@ No registry/Relay SQL JOIN or shared schema is needed.
 All hosts must use this composition and the lock order **registry → Relay**.
 Do not take a Relay write lock and then try to acquire the registry lock. Only
 synchronous callbacks are supported; promises and admin reentrancy are refused.
-A `withRelay` called inside another's callback joins its transaction instead, so
+A `withAuthorization` called inside another's callback joins its transaction instead, so
 a guard can check one context and admit an operation for another under one lock
 (the A2A host checks its caller this way before the host identity submits). The scoped
 `Authorization` expires on callback exit, checks the current registry epoch and
@@ -360,7 +360,7 @@ CLI refuses a registry whose direct bindings are not moved yet
 
 A separately authorized administrator creates a group, binds a freshly verified
 connection, attaches registered addresses, and grants group/address operations.
-`selectAddress(context, address)` creates an opaque selection; `withRelay` checks
+`selectAddress(context, address)` creates an opaque selection; `withAuthorization` checks
 its verified group's membership under the same write guard used for Relay commit.
 Group members may use one another's names. Foreign-group names, inactive members,
 ambiguous omitted selection and stale/revoked credentials are denied. A group with one

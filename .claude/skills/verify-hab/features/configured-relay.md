@@ -1,6 +1,6 @@
 # Configured Relay and operator CLI
 
-The shipped Relay (`npm run relay:local -- --config …`) refuses a bad start with a fixed reason line, and the operator CLI (`npm run relay:admin -- --config … status|connect|disconnect`) registers an address, binds a mapped connection, grants operations and revokes it again — all against the same private config while the Relay runs. This is the path a real Codex ⇄ Hermes trial uses, unlike the `stack.mjs` scaffolding.
+The shipped Relay (`npm run hab:host -- --config …`) refuses a bad start with a fixed reason line, and the operator CLI (`npm run hab:admin -- --config … status|connect|disconnect`) registers an address, binds a mapped connection, grants operations and revokes it again — all against the same private config while the Relay runs. This is the path a real Codex ⇄ Hermes trial uses, unlike the `stack.mjs` scaffolding.
 
 ## Sub-features
 
@@ -17,7 +17,7 @@ The shipped Relay (`npm run relay:local -- --config …`) refuses a bad start wi
 
 ## How to get to it (user POV)
 
-- Operator shell: `npm run relay:local -- --config <service.local.json>` and `npm run relay:admin -- --config <service.local.json> <command>`.
+- Operator shell: `npm run hab:host -- --config <service.local.json>` and `npm run hab:admin -- --config <service.local.json> <command>`.
 - Agents: each agent's MCP client at `http://127.0.0.1:<port>/mcp` with its own bearer.
 
 ## Driving it with verify-hab
@@ -26,7 +26,7 @@ Preconditions:
 
 - `npm ci` with Node ≥ 26. A fresh `RUN=/tmp/hab-verify/<id>` (do not reuse a stack.mjs run dir).
 
-- **Start.** `$S/configured.sh "$RUN" start` writes example-based config, random keys and two synthetic 15-minute credentials under `$RUN/instance/`, fills `delivery.volume` for `instance/state`, starts `scripts/hab-relay.ts`, runs `relay:admin connect` for `a` = `codex@codex.hab` and `b` = `hermes@hermes.hab`, and prints `CONFIGURED_READY <url>`. `instance/state.json` has the same shape as the stack's, so `mcp.sh` and `new-message.sh` work unchanged. Connect output is saved as `evidence/admin-connect-{a,b}.json` (`steps` lists what was created).
+- **Start.** `$S/configured.sh "$RUN" start` writes example-based config, random keys and two synthetic 15-minute credentials under `$RUN/instance/`, fills `delivery.volume` for `instance/state`, starts `scripts/hab-relay.ts`, runs `hab:admin connect` for `a` = `codex@codex.hab` and `b` = `hermes@hermes.hab`, and prints `CONFIGURED_READY <url>`. `instance/state.json` has the same shape as the stack's, so `mcp.sh` and `new-message.sh` work unchanged. Connect output is saved as `evidence/admin-connect-{a,b}.json` (`steps` lists what was created).
 - **Roundtrip.** Use the minimal round trip from `SKILL.md` with agents `a` and `b` (target `hermes@hermes.hab`). Sender `relay_status` ends `"acked"`. `instance/state/` holds `delivery.sqlite` and no `relay.sqlite` or `jetstream-journal.sqlite`.
 - **Status.** `$S/configured.sh "$RUN" admin status` → `problems: []` while both are connected.
 - **Disconnect.** `$S/configured.sh "$RUN" admin disconnect --address hermes@hermes.hab` → `revoked_bindings: 1`; again → `already_disconnected: true`; `$S/mcp.sh "$RUN" b relay_poll '{}'` → `{"error":"forbidden"}`; `status` shows `credential_revoked` and `address_stopped`.

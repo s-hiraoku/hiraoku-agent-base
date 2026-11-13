@@ -107,7 +107,7 @@ test("membership and group binding survive reopen; refreshed credential retains 
   const reopened = f.open();
   reopened.migrate();
   assert.equal(
-    reopened.withRelay(
+    reopened.withAuthorization(
       reopened.selectAddress(f.contexts.a, f.second.address),
       "poll",
       (_auth, id) => id,
@@ -116,7 +116,7 @@ test("membership and group binding survive reopen; refreshed credential retains 
   );
   f.mutable.expires_at = new Date(Date.now() + 15000).toISOString();
   assert.equal(
-    reopened.withRelay(
+    reopened.withAuthorization(
       reopened.selectAddress(f.contexts.a, f.first.address),
       "poll",
       (_auth, id) => id,
@@ -126,7 +126,7 @@ test("membership and group binding survive reopen; refreshed credential retains 
   f.mutable.individual = false;
   assert.throws(
     () =>
-      reopened.withRelay(
+      reopened.withAuthorization(
         reopened.selectAddress(f.contexts.a, f.first.address),
         "poll",
         () => true,
@@ -318,7 +318,7 @@ test("migrate moves an earlier build's direct bindings into single-member groups
     ["revoked"],
   );
   assert.equal(
-    upgraded.withRelay(f.contexts.a, "poll", (_auth, id) => id),
+    upgraded.withAuthorization(f.contexts.a, "poll", (_auth, id) => id),
     a.agent_id,
   );
   const hab = f.habFor(upgraded);
@@ -339,7 +339,7 @@ test("migrate moves an earlier build's direct bindings into single-member groups
     code("unsupported_registry_group_schema"),
   );
   assert.throws(
-    () => upgraded.withRelay(f.contexts.a, "poll", () => true),
+    () => upgraded.withAuthorization(f.contexts.a, "poll", () => true),
     code("registry_not_migrated"),
   );
 });
@@ -420,7 +420,7 @@ test("a config that still turns authentication groups off is ignored", async (t)
     off = f.open({ authentication_groups: false });
   off.migrate();
   assert.equal(
-    off.withRelay(
+    off.withAuthorization(
       off.selectAddress(f.contexts.a, f.first.address),
       "poll",
       (_auth, id) => id,
@@ -694,7 +694,7 @@ test("scoped group authorization cannot escape, change address or permit a concu
   concurrent.migrate();
   const currentEpoch = f.registry.inspectGroup(f.admin, f.group.group_id).epoch;
   let saved;
-  f.registry.withRelay(selected, "poll", (authorization) => {
+  f.registry.withAuthorization(selected, "poll", (authorization) => {
     saved = authorization;
     assert.equal(
       authorization.authorize(selected, "poll").agent_id,

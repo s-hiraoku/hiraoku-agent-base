@@ -229,7 +229,7 @@ function hostRoute(options: {
   const { registry, context, identity, outbox, inbox } = options;
   const recipientId = registry.resolve(context, options.recipient).recipient_id;
   const caller = () =>
-    registry.withRelay(context, "submit", (authorization, agentId) => {
+    registry.withAuthorization(context, "submit", (authorization, agentId) => {
       if (
         agentId === identity.agent_id ||
         authorization.authorize(
@@ -254,7 +254,7 @@ function hostRoute(options: {
   // The host identity's admission joins this Registry transaction, so a revocation
   // commits either before the caller check here or after the message is admitted.
   const sender = options.sender((admit) =>
-    registry.withRelay(context, "submit", () => {
+    registry.withAuthorization(context, "submit", () => {
       assertCurrent();
       return admit();
     }),
@@ -271,19 +271,22 @@ function hostRoute(options: {
         message.kind !== "execution_request"
       )
         throw new MessagingError("forbidden");
-      return registry.withRelay(context, "submit", (authorization, agentId) =>
-        outbox.enqueueGuarded(message, () => {
-          if (
-            agentId !== ownerId ||
-            authorization.authorize(
-              context,
-              "submit",
-              recipientId,
-              "execution_request",
-            )?.agent_id !== ownerId
-          )
-            throw new MessagingError("forbidden");
-        }),
+      return registry.withAuthorization(
+        context,
+        "submit",
+        (authorization, agentId) =>
+          outbox.enqueueGuarded(message, () => {
+            if (
+              agentId !== ownerId ||
+              authorization.authorize(
+                context,
+                "submit",
+                recipientId,
+                "execution_request",
+              )?.agent_id !== ownerId
+            )
+              throw new MessagingError("forbidden");
+          }),
       );
     },
     delivery(messageId) {

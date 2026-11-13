@@ -23,9 +23,9 @@ Preconditions:
 - **Unknown address.** Run `$S/mcp.sh "$RUN" a relay_resolve '{"address":"nobody@dot.hab"}'`. `isError: true`, `{"error":"forbidden"}` (no existence oracle: unknown and unauthorized look the same).
 - **Malformed address.** Run `$S/mcp.sh "$RUN" a relay_resolve '{"address":"Not An Address"}'`. `isError: true` with an `Input validation error` naming the address pattern.
 - **Previous name (needs `registry.agent_rename: true` in the run's config before the first start).**
-  1. Rename `b` with `npm run relay:admin -- --config <run config> rename`, passing the `agent_id`, the `--expected-address verify-b@dot.hab`, the current epoch from `relay:admin status`, `--bot-name verify-b2` and a fixed `--request-id`.
+  1. Rename `b` with `npm run hab:admin -- --config <run config> rename`, passing the `agent_id`, the `--expected-address verify-b@dot.hab`, the current epoch from `hab:admin status`, `--bot-name verify-b2` and a fixed `--request-id`.
   2. Run `$S/mcp.sh "$RUN" a relay_resolve '{"address":"verify-b@dot.hab"}'`. It returns the same `recipient_id` and echoes `verify-b@dot.hab`.
-  3. `relay:admin status` lists the old name under `previous_names` with `resolves: true`, a `grace_until` 30 days after `renamed_at`, and `a`'s agent ID under `callers`.
+  3. `hab:admin status` lists the old name under `previous_names` with `resolves: true`, a `grace_until` 30 days after `renamed_at`, and `a`'s agent ID under `callers`.
   4. With `registry.rename_grace_days: 0` the same resolve returns `{"error":"forbidden"}`.
 - **Proof.** Keep the three `NNN-a-relay_resolve.res` files; compare the first against `state.json`.
 

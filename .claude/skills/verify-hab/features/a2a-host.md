@@ -5,7 +5,7 @@ With an `a2a` config section, the shipped Relay opens a separate loopback A2A li
 ## Sub-features
 
 - `a2a-off` a config without `a2a` prints no `a2a_url` in the ready line and creates no `a2a-*.sqlite` file and no `a2a@hab-host.hab` address.
-- `a2a-identity` start provisions `a2a@hab-host.hab` with one binding and `ack, poll, status, submit`. A restart leaves its agent ID and epoch unchanged. `relay:admin connect --address a2a@hab-host.hab …` is refused with `a2a_identity_reserved`.
+- `a2a-identity` start provisions `a2a@hab-host.hab` with one binding and `ack, poll, status, submit`. A restart leaves its agent ID and epoch unchanged. `hab:admin connect --address a2a@hab-host.hab …` is refused with `a2a_identity_reserved`.
 - `a2a-card` `GET /.well-known/agent-card.json` with an A2A credential returns `HAB host connectivity check`.
 - `a2a-auth` no bearer, an unknown bearer, or an MCP-audience bearer each get HTTP 401. An `Origin` header or `Host: localhost:<port>` gets 403.
 - `a2a-send` SendMessage returns `TASK_STATE_SUBMITTED`. The recipient's poll shows `kind: execution_request` with `sender_id` equal to the host identity. A storage ACK alone leaves the Task `SUBMITTED`.
@@ -16,7 +16,7 @@ With an `a2a` config section, the shipped Relay opens a separate loopback A2A li
 
 ## How to get to it (user POV)
 
-- Operator: merge `config/relay-a2a.example.json` into the service config, then run `npm run relay:local -- --config …`. The ready line includes `a2a_url`. Bind each A2A caller's credential (audience `http://127.0.0.1:<a2a port>/a2a`) with `relay:admin connect`.
+- Operator: merge `config/relay-a2a.example.json` into the service config, then run `npm run hab:host -- --config …`. The ready line includes `a2a_url`. Bind each A2A caller's credential (audience `http://127.0.0.1:<a2a port>/a2a`) with `hab:admin connect`.
 - A2A client: the official A2A client at `http://127.0.0.1:<a2a port>` with its bearer.
 - Recipient agent: its usual MCP client at `/mcp`. It replies to the host address.
 

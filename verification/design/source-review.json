@@ -24,7 +24,7 @@
       "supplemental": [
         {
           "path": "docs/relay-auth-groups.md",
-          "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
+          "sha256": "50a8e601eea8a11226614261f0ebd75145ebaf82c638d26ac369289f08d871f9",
           "review": "reviewed",
           "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
         },
@@ -57,7 +57,7 @@
         },
         {
           "path": "docs/operations/persistent-mcp-auth.md",
-          "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
+          "sha256": "7fc79eb8ad15c1e237861610e7db6bb1dea0316390647b39e8e044c5d524bc0f",
           "review": "reviewed",
           "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
         }
@@ -82,7 +82,7 @@
       {
         "path": "docs/agent-address-rename.md",
         "scope": "full",
-        "sha256": "230c500a91e1effd53ffef8d2afb8257a5ba16ada00a2df4daf343efbf21369e",
+        "sha256": "f809768248a2281ad403ca4bdbf7dac7ea0b3808eb809cdb7e136b0c6d17f565",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
@@ -126,7 +126,7 @@
       {
         "path": "docs/local-relay-service.md",
         "scope": "full",
-        "sha256": "a9be28c1a04a70281e796aac722747f597f1acb7cdae561fd5e198f99ea5d374",
+        "sha256": "bd1afb177b74d5c35421d41189f9dde586ec0dc2205d436269439b7a264aea95",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a/a2a-relay-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); the rollback sentence now also reconciles IDs incomplete in the backup, lets the recipient's records decide expired or quarantined rows, and keeps the earlier build stopped until every restored ID has expired. The recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the rollback sentence now says the hold stops the relay from delivering again, and that a body already saved in a restored inbox is settled against the copied execution records before its recipient restarts. The recorded observation still holds. Local follow-up on 0fc76a6: Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
       },
       {
@@ -143,19 +143,19 @@
       {
         "path": "docs/operations/persistent-mcp-auth.md",
         "scope": "full",
-        "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
+        "sha256": "7fc79eb8ad15c1e237861610e7db6bb1dea0316390647b39e8e044c5d524bc0f",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/relay-auth-groups.md",
         "scope": "full",
-        "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
+        "sha256": "50a8e601eea8a11226614261f0ebd75145ebaf82c638d26ac369289f08d871f9",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/operations/relay-oauth-ingress.md",
         "scope": "full",
-        "sha256": "c1fe579805c0e209183ea3670ce010666585e8e7034589a178e172798a499493"
+        "sha256": "d362a02bec9323fbca8f349692d6b1ead828877910f739226de51fc2f650caeb"
       },
       {
         "path": "docs/history/security-audit-limits.md",
@@ -165,8 +165,8 @@
       {
         "path": "src/hab/README.md",
         "scope": "full",
-        "sha256": "ef6e2787b3b8cf955c24ee92ef182bae982098c1d7b16c5de36a1ff6a0638e73",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withRelay called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds."
+        "sha256": "b08a41176c24bc6c609571c1112d45374d288d4b6e2700af39de25d0e06b8663",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withAuthorization called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds."
       },
       {
         "path": "src/hab/auth-groups.ts",
@@ -208,13 +208,13 @@
     "supplemental_sources": [
       {
         "path": "src/hab/sqlite-registry.ts",
-        "sha256": "213640606e25d8d91e309a6bd2c64d09f95d602a60b6e1b4154320a25e892907",
+        "sha256": "45a5faef26155821ddb71e447d223efd3664735aa161466871c0cf6ae9d694f3",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
-        "read_coverage": "diff from c892c57 (registryOptionsSchema, createBoundGroup, #addMember, #stopMembers, setGroupAccess, revokeGroupBinding, omitted-selection query); diff from efa2435 (createBoundGroup rights, #relayTx)",
-        "summary": "registryOptionsSchema is the single Registry limit schema used by the constructor and the host config. setGroupAccess to stopped/retired and revocation of the last group binding run #stopMembers, which sets every active member to stopped with operations '[]' and a bumped epoch in the same mutation. createBoundGroup runs in one transaction that checks the group_bind and group_member admin rights and then, through #mutateLocked with group_create, inserts the group, binds the connection and adds the member, so a missing right leaves nothing. withRelay goes through #relayTx: a withRelay called inside another's action runs in the enclosing transaction instead of opening one, so a guard and the operation it admits share one Registry lock. Omitted selection joins members to the agent table and counts only active ones. Rest of the Registry not re-read. P3a group-only binding (2026-11-12): migrate() always creates the group schema and #convertIndividualBindings moves every earlier direct hab_bindings row into a new single-member group (state active with every operation when a binding is live, stopped otherwise, retired for a retired address) under the same binding ID, fingerprint and timestamps, then marks the old rows revoked; bind/bindVerified/revoke/inspectBinding are removed, createBoundGroupVerified and inspectGroupBinding are added, withRelay/discovery/#peer authenticate only through group bindings and membership, and authentication_groups is accepted but ignored.",
+        "read_coverage": "diff from c892c57 (registryOptionsSchema, createBoundGroup, #addMember, #stopMembers, setGroupAccess, revokeGroupBinding, omitted-selection query); diff from efa2435 (createBoundGroup rights, #authorizedTx)",
+        "summary": "registryOptionsSchema is the single Registry limit schema used by the constructor and the host config. setGroupAccess to stopped/retired and revocation of the last group binding run #stopMembers, which sets every active member to stopped with operations '[]' and a bumped epoch in the same mutation. createBoundGroup runs in one transaction that checks the group_bind and group_member admin rights and then, through #mutateLocked with group_create, inserts the group, binds the connection and adds the member, so a missing right leaves nothing. withAuthorization goes through #authorizedTx: a withAuthorization called inside another's action runs in the enclosing transaction instead of opening one, so a guard and the operation it admits share one Registry lock. Omitted selection joins members to the agent table and counts only active ones. Rest of the Registry not re-read. P3a group-only binding (2026-11-12): migrate() always creates the group schema and #convertIndividualBindings moves every earlier direct hab_bindings row into a new single-member group (state active with every operation when a binding is live, stopped otherwise, retired for a retired address) under the same binding ID, fingerprint and timestamps, then marks the old rows revoked; bind/bindVerified/revoke/inspectBinding are removed, createBoundGroupVerified and inspectGroupBinding are added, withAuthorization/discovery/#peer authenticate only through group bindings and membership, and authentication_groups is accepted but ignored.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); createBoundGroup also checks group_bind and group_member, and withRelay joins an enclosing withRelay transaction through #relayTx."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); createBoundGroup also checks group_bind and group_member, and withAuthorization joins an enclosing withAuthorization transaction through #authorizedTx."
       },
       {
         "path": "src/host/admin.ts",
@@ -238,13 +238,13 @@
       },
       {
         "path": "src/host/a2a.ts",
-        "sha256": "ebd3d6366d2f585bbffc80aeefb042ff82f0b92cc1f546b7b3743242069a0b3f",
+        "sha256": "9ca4553a32ae012e1961073f400af888923e04ef8eb97d7c2e27c5404572fe24",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "Integrated host review: identity provisioning, current caller guards and owner-only synchronous claim-to-admission remain unchanged. Receiver classifies save/discard/defer using confirmed held replies, deferring unexpected preview failures and candidates whose redundancy depends on unconfirmed replies without saving or ACKing; held IDs still deduplicate. applyReplies retains unexpected-error bodies. Inbox-first maintenance computes T=retained total, M=configured cap, W=retained sources with expires_at>now-REPLY_WINDOW_MS and binary-searches p<=100 using all inbox capacities for 2(max(0,M-T+p)+W) messages (equivalent to 2(F+W+p) for ordinary T<=M, F=M-T) and maximum envelope bytes. No await separates counts/checks and numeric-cap collection; expiry remains independent. Stable full-key overdue pages advance past failed applies and wrap at pass end, scheduling full pages immediately and later passes at next window or within one minute. Source-scoped inbox reads retain correlation and authorization. Close rejects new requests and drains current work before stores close; no normal-shutdown bug or repair is claimed. A saved reply whose apply raises ContractError, RequestMalformedError or ZodError is released as refused; any other apply failure keeps the body for the next cycle. P3a (2026-11-12): the host identity is the only member of a group whose only live binding is the host principal (createBoundGroup, then setGroupAccess and setAccess to the host operations); provisioning rights are inspect, product, enroll, group_create, group_bind, group_member, group_access and access.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withRelay. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); routes name replyWindowMs, an unconfirmed reply is passed to releaseUnconfirmable instead of being applied, and once-a-minute maintenance runs inbox and outbox maintenance and then closeWindows over store.overdue(), one try per Task (52d7fdf). Re-read the diff to the release-before-poll fix: each cycle now runs applyReplies once before polling, so bodies no ACK can confirm are released before a new reply is saved, and again after polling. Remaining review-fix maintenance: re-read the diff from 843e5d9; the receiver's poll passes a correlated reply on only if changesTask previews it as changing its Task (a2a.ts changesTask), and the window pass runs in each cycle once windowsDueAt passes, refreshed from store.nextExpiry and with maintenance. Local follow-up on 0fc76a6: Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 × max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; applyReplies also treats ContractError as a refusal, releasing the body and leaving the Task unchanged, as classifyReply already discards it before save."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); the receiver classifies each delivery at poll and the host submit runs inside the caller's withAuthorization. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds the reply window, the outbox status horizon, two reply slots per outbox record and the apply-on-receipt release. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); routes name replyWindowMs, an unconfirmed reply is passed to releaseUnconfirmable instead of being applied, and once-a-minute maintenance runs inbox and outbox maintenance and then closeWindows over store.overdue(), one try per Task (52d7fdf). Re-read the diff to the release-before-poll fix: each cycle now runs applyReplies once before polling, so bodies no ACK can confirm are released before a new reply is saved, and again after polling. Remaining review-fix maintenance: re-read the diff from 843e5d9; the receiver's poll passes a correlated reply on only if changesTask previews it as changing its Task (a2a.ts changesTask), and the window pass runs in each cycle once windowsDueAt passes, refreshed from store.nextExpiry and with maintenance. Local follow-up on 0fc76a6: Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance runs the inbox first and collects outbox records only if the read-only hasCapacityFor check finds room for the next whole batch of 2 × max_records replay-bound reply messages and their maximum envelope bytes, counting unreleased bodies/bytes, distinct-message ACK history and all retained rows. Otherwise it defers freeing outbox admission slots, and a full outbox refuses new Tasks with outbox_capacity_exceeded until ordinary retention permits collection. Outbox maintenance still expires payloads when collection is disabled; only deletion of retained rows and release of admission slots are gated. The check reserves no space and is scoped to the one host owner, not multi-writer coordination. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; applyReplies also treats ContractError as a refusal, releasing the body and leaving the Task unchanged, as classifyReply already discards it before save."
       },
       {
         "path": "src/host/server.ts",
@@ -450,11 +450,11 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "59662973bfa81bf3e311da3ca3a9de8b5210099fe3c61ebef87fac7e390e6af3",
+        "sha256": "9921f3a7c179fa9c261a3e0bc91078920b6a4d62ccd7dcc9cbbdb26f5bb9345a",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
-        "summary": "Read in full (84 lines): HabJetStreamService runs every operation inside a fresh Registry withRelay scope, rechecks the authorized agent ID and asserts volume currency; it rejects a prefetch window smaller than the admitted mailbox bound. No dual-backend ownership, router or cross-store state remains.",
+        "summary": "Read in full (84 lines): HabJetStreamService runs every operation inside a fresh Registry withAuthorization scope, rechecks the authorized agent ID and asserts volume currency; it rejects a prefetch window smaller than the admitted mailbox bound. No dual-backend ownership, router or cross-store state remains.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from packages/relay-nats/src/hab-service.ts to src/host/hab-delivery-service.ts in b5168ce; the diff only rewrites relative import paths, so the summary still holds."
       },
@@ -576,7 +576,7 @@
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "c3cba54e4b6cff912015f4777721826ca48ecdf015f165559bc5ed88f57db3f9",
+        "sha256": "f11f4d2ea6edd328c151fc84ded72ead0a31b5b01181701b0f49b3770efa222a",
         "read_ranges": [
           [
             1,
@@ -895,13 +895,13 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "6b7042438d7ad11a7611a4e94c5906e8035968c9a4ee27b70dd00b82c63c8087",
+        "sha256": "17c70fe9c4c92a81fd7d968b67f220910a41534d214b168a9cefd7f75606f655",
         "mode": "full",
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "4fc01ff5f1288ddf207072a924e9c7979a4f0323b679a0a76cdcd60abbb42733",
+        "sha256": "1c99342dbc5489fa70e00c526b97c894b1a767ff877c889eb2bbfeab738a4622",
         "mode": "full",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed."
       },
@@ -918,7 +918,7 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/configured-relay.md",
-        "sha256": "3f1901ea5707938d125e00838c58986a286a5e36c70475f52f3a88cedf87f9f4",
+        "sha256": "307a1206c2117bcbb7399f7956aa25cdb44a6c4efba98916b5e904e4c76624a8",
         "mode": "full",
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
@@ -936,7 +936,7 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
-        "sha256": "c652af8fea87a1c0d390d874fc69819ab46e6e7de5c3ff0beddcb68c6fe9a93e",
+        "sha256": "91edcf77e6030379d8be2e56a7b879249a4f0d5e10ad4b557db1a8d8f5074714",
         "mode": "full"
       },
       {
@@ -1112,7 +1112,7 @@
       },
       {
         "path": "test/hab-auth-groups.test.js",
-        "sha256": "a67bc67a500f482a5f5405aa394bb02042d86940152f2fd4512f7e887fe35a0a",
+        "sha256": "04102b950be5661bfee4c483b268774346942bb74a9f64a8880f2d2fdf2173c1",
         "mode": "test titles and assertions",
         "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-A20. Runs in js-root (test/*.test.js). New case: createBoundGroup is refused with registry_forbidden without group_bind, without group_member or without both, leaving the group, binding, member counts and Registry epoch unchanged, and succeeds once every right is granted. The other group cases were not re-read."
       },
@@ -1834,7 +1834,7 @@
       },
       {
         "path": "test/tools/entrypoints.test.ts",
-        "sha256": "5117a6fb4024ffcaba4208a04e17c007cf4a42d5c2603e3aaec170d60b2cc82e",
+        "sha256": "fb0347a37194810162c88cb647e389efbe7a24d65bb72d1244e087092a0eb4f2",
         "review": "reviewed"
       },
       {
@@ -1856,7 +1856,7 @@
     "supplemental": [
       {
         "path": "test/tools/entrypoints.test.ts",
-        "sha256": "5117a6fb4024ffcaba4208a04e17c007cf4a42d5c2603e3aaec170d60b2cc82e",
+        "sha256": "fb0347a37194810162c88cb647e389efbe7a24d65bb72d1244e087092a0eb4f2",
         "review": "reviewed"
       },
       {
@@ -1982,7 +1982,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "c3cba54e4b6cff912015f4777721826ca48ecdf015f165559bc5ed88f57db3f9",
+        "sha256": "f11f4d2ea6edd328c151fc84ded72ead0a31b5b01181701b0f49b3770efa222a",
         "review": "reviewed"
       },
       {
@@ -2463,7 +2463,7 @@
   {
     "scope": "ADR-018 SQLite delivery store (2026-11-13)",
     "baseline": "0fc9b63",
-    "summary": "The host delivers through one private SQLite file (src/delivery/sqlite-delivery.ts) that holds admission, the body, leases, retries, saved ACKs and the redacted audit. Each operation commits one synchronous transaction inside a fresh SQLiteHabRegistry.withRelay scope, so no Promise crosses the guard. Reply references, capacity and reservations, exact-retry idempotency, one lease per recipient, generation/token HMAC, backoff and quarantine, fair poll with denied-sender skip, body fingerprint, expiry, 30-day retention and replay-bound collection commit in the state-changing transaction; an audit failure rolls the change back. The config keeps only delivery.volume, delivery.queue and delivery.maintenance; broker and pump are refused as config_invalid, and a leftover jetstream-journal.sqlite refuses startup with legacy_jetstream_journal_present before the delivery file is created. Deleted: packages/relay-nats, the nats-server pins and installers, the pump worker, the P7 runner, scripts/relay-rollback-reconcile.mjs and its tests, test/ci-nats and the CI broker stage. Tests are local functional evidence; they do not prove power-loss safety, volume durability or multi-host delivery.",
+    "summary": "The host delivers through one private SQLite file (src/delivery/sqlite-delivery.ts) that holds admission, the body, leases, retries, saved ACKs and the redacted audit. Each operation commits one synchronous transaction inside a fresh SQLiteHabRegistry.withAuthorization scope, so no Promise crosses the guard. Reply references, capacity and reservations, exact-retry idempotency, one lease per recipient, generation/token HMAC, backoff and quarantine, fair poll with denied-sender skip, body fingerprint, expiry, 30-day retention and replay-bound collection commit in the state-changing transaction; an audit failure rolls the change back. The config keeps only delivery.volume, delivery.queue and delivery.maintenance; broker and pump are refused as config_invalid, and a leftover jetstream-journal.sqlite refuses startup with legacy_jetstream_journal_present before the delivery file is created. Deleted: packages/relay-nats, the nats-server pins and installers, the pump worker, the P7 runner, scripts/relay-rollback-reconcile.mjs and its tests, test/ci-nats and the CI broker stage. Tests are local functional evidence; they do not prove power-loss safety, volume durability or multi-host delivery.",
     "supplemental": [
       {
         "path": "src/delivery/sqlite-delivery.ts",
@@ -2487,7 +2487,7 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "59662973bfa81bf3e311da3ca3a9de8b5210099fe3c61ebef87fac7e390e6af3",
+        "sha256": "9921f3a7c179fa9c261a3e0bc91078920b6a4d62ccd7dcc9cbbdb26f5bb9345a",
         "review": "reviewed"
       },
       {
@@ -2507,7 +2507,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "c3cba54e4b6cff912015f4777721826ca48ecdf015f165559bc5ed88f57db3f9",
+        "sha256": "f11f4d2ea6edd328c151fc84ded72ead0a31b5b01181701b0f49b3770efa222a",
         "review": "reviewed"
       },
       {

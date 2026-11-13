@@ -10,8 +10,11 @@ After explicit approval and operator preparation, run:
 
 ```sh
 npm ci
-npm run relay:local -- --config /ABSOLUTE/PRIVATE/service.local.json
+npm run hab:host -- --config /ABSOLUTE/PRIVATE/service.local.json
 ```
+
+`hab:host` and `hab:admin` were named `relay:local` and `relay:admin` before
+2026-11-13; the old names remain as aliases for the same scripts.
 
 Delivery runs through one private SQLite file, `delivery.sqlite`, in the state
 directory ([delivery store](delivery-store.md), ADR-018); no broker is started.
@@ -103,10 +106,10 @@ the Relay is running; it never creates the schema, upgrades v1→v2, issues toke
 prints a bearer/digest.
 
 ```sh
-npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
-npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json connect \
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json connect \
   --address hermes@hermes.hab --connection-id <connection_id in the mapping>
-npm run relay:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect \
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect \
   --address hermes@hermes.hab
 ```
 
@@ -196,8 +199,8 @@ third `127.0.0.1` listener at `http://127.0.0.1:<a2a.port>/a2a`. At start the ho
 creates or rebinds its own Registry address (`a2a.identity`) and a private
 outbox, inbox and Task store in the state directory. A2A Tasks are sent from that
 address to `a2a.recipient`. A2A callers need a credential whose audience is the
-A2A endpoint. Bind it to the caller's address with `relay:admin connect` as usual.
-The ready line printed by `relay:local` then includes `a2a_url`.
+A2A endpoint. Bind it to the caller's address with `hab:admin connect` as usual.
+The ready line printed by `hab:host` then includes `a2a_url`.
 [Host wiring](a2a/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)
 describes identity provisioning, authorization, retry, Task states and the startup
 refusal reasons.

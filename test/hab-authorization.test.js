@@ -269,7 +269,7 @@ test("scoped authorization cannot escape its transaction, change operation/conte
     a = f.enroll("a"),
     b = f.enroll("b");
   let saved;
-  f.registry.withRelay(f.contexts.a, "submit", (authorization) => {
+  f.registry.withAuthorization(f.contexts.a, "submit", (authorization) => {
     saved = authorization;
     assert.deepEqual(
       authorization.authorize(f.contexts.a, "submit", b.agent_id, "question"),
@@ -303,7 +303,10 @@ test("scoped authorization cannot escape its transaction, change operation/conte
     code("forbidden"),
   );
   assert.throws(
-    () => f.registry.withRelay(f.contexts.a, "submit", () => Promise.resolve()),
+    () =>
+      f.registry.withAuthorization(f.contexts.a, "submit", () =>
+        Promise.resolve(),
+      ),
     code("async_registry_boundary"),
   );
 });

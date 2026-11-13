@@ -425,7 +425,7 @@ ACK確定と、稼働中Relay DB上の本文・本文を含む派生データの
 
 ## 15. API／MCPの追加契約案
 
-正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。`npm run relay:local`で起動するhostがloopbackで5 toolを公開し、任意のOAuth入口も同じ5 toolを提供する。既存Task runtime（`src/server.ts`）へは未配線であり、`relay_extend`は未実装。
+正本はtransportに依存しないRelayサービスinterfaceとする。追加候補は以下。`relay_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`relay_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するRelayのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。`npm run hab:host`で起動するhostがloopbackで5 toolを公開し、任意のOAuth入口も同じ5 toolを提供する。既存Task runtime（`src/server.ts`）へは未配線であり、`relay_extend`は未実装。
 
 `relay_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address, as_address?, expected_agent_id?}`とする。相手側の`address`と自分側の名義を分け、期待IDは`as_address`との一致確認だけに使う。sender・group・mailbox・URL等の未知引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
 

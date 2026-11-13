@@ -3,5 +3,5 @@ import type { SQLiteHabRegistry } from "./sqlite-registry.ts";
 import type { WriterIdentity } from "../host/mcp/writer-admission.ts";
 export function habWriterIdentity(registry: SQLiteHabRegistry): WriterIdentity {
   return (context, operation) =>
-    registry.withRelay(context, operation, (_authorization, id) => id);
+    registry.withAuthorization(context, operation, (_authorization, id) => id);
 }

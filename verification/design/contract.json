@@ -160,7 +160,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "6b7042438d7ad11a7611a4e94c5906e8035968c9a4ee27b70dd00b82c63c8087",
+      "sha256": "17c70fe9c4c92a81fd7d968b67f220910a41534d214b168a9cefd7f75606f655",
       "role": "normative",
       "review": "reviewed",
       "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over the SQLite delivery store (delivery.sqlite) with no broker process, synthetic enrolled identities, terminal enrollment, owned run directory, evidence capture and pid-checked cleanup.",
@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "4fc01ff5f1288ddf207072a924e9c7979a4f0323b679a0a76cdcd60abbb42733",
+      "sha256": "1c99342dbc5489fa70e00c526b97c894b1a767ff877c889eb2bbfeab738a4622",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with nine entries (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
@@ -176,7 +176,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/a2a-host.md",
-      "sha256": "06bec27876c6a32f9ffa98a1fff17aad13bb5b1e5c7ec6fc758bdffa6d5bd1e4",
+      "sha256": "825413b05cbe6ba27cfa1011ce6c6e5f851ef7c6604302635acf8bca006f7cc0",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured Relay A2A recipe: no listener, mailbox or identity without an `a2a` section; host identity provisioning with one binding, unchanged agent ID and epoch across restart and the a2a_identity_reserved connect refusal; Card; 401 for missing, unknown and MCP-audience bearers and 403 for Origin or a wrong Host; SendMessage from the host identity staying SUBMITTED after storage ACK and restart; WORKING and COMPLETED from the recipient's replies with the result Artifact; `a2a-fresh-id` a reply under a new ID that would not change the Task is ACKed without a host inbox record and a later valid result still completes it, with a live Fresh ID drive; `a2a-window` FAILED with reason result_window_expired and an outcome-unknown message once a Task has no result one day after its deadline, unchanged by a later reply, which a live drive cannot wait out and test/a2a-host.test.js covers. Gotchas state there is no background resend, that COMPLETED is the recipient's report, not engine verification, that result_window_expired does not mean the recipient did not execute, and that a blocking SendMessage no longer stalls the receive loop. Synthetic identities only.",
@@ -200,7 +200,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-relay.md",
-      "sha256": "3f1901ea5707938d125e00838c58986a286a5e36c70475f52f3a88cedf87f9f4",
+      "sha256": "307a1206c2117bcbb7399f7956aa25cdb44a6c4efba98916b5e904e4c76624a8",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped Relay and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop.",
@@ -226,7 +226,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/resolve-address.md",
-      "sha256": "c652af8fea87a1c0d390d874fc69819ab46e6e7de5c3ff0beddcb68c6fe9a93e",
+      "sha256": "91edcf77e6030379d8be2e56a7b879249a4f0d5e10ad4b557db1a8d8f5074714",
       "role": "normative",
       "review": "reviewed",
       "summary": "Real relay_resolve success/unknown/malformed recipes: immutable recipient ID, canonical lowercase address, no delivery rights and no unknown-vs-unauthorized existence oracle. Requires operation grant.",
@@ -250,14 +250,14 @@
     },
     {
       "path": "README.md",
-      "sha256": "29f1d7eb3eac203197fe9f08e75b512bce2f9a5a579f4d10df71a62a3556bcee",
+      "sha256": "b631328e0074150d957f434c603d8592ee64d85994be91c108def253c352f071",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition as revised by ADR-018: the single host (src/host, MCP server in src/host/mcp), the host's single-file SQLite delivery store and the agent SDK; JetStream and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs no broker. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "docs/a2a/a2a-relay-preview.md",
-      "sha256": "8cc321b56abbb71bd176a702d8a2ff3638386aaba4361e4490cd47eb9bbaa3bc",
+      "sha256": "4911fdd41e1ee397f8308183434c8dad4d04cc749abcc29a6e6c6f67007e4262",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
@@ -301,7 +301,7 @@
     },
     {
       "path": "docs/agent-address-rename.md",
-      "sha256": "230c500a91e1effd53ffef8d2afb8257a5ba16ada00a2df4daf343efbf21369e",
+      "sha256": "f809768248a2281ad403ca4bdbf7dac7ea0b3808eb809cdb7e136b0c6d17f565",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposed opt-in Registry v3 rename extends immutable names while retaining agent ID, authentication, grants and mailbox identities. Historical names stay reserved without forwarding; exact journaled CAS retries and separate rename authority are required. Operator migration, same-owner rename-back and coordinated backups are described, with production adoption explicitly pending."
@@ -324,7 +324,7 @@
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "e735b7c21b4ca19cb9b69bd60438c8cf0a1efa07abf2d9da571d02139c6fbe5f",
+      "sha256": "65bb5996d845ef83be784393cc00009e342bd1daaacb628d03e55f4da7936c8d",
       "role": "context",
       "review": "reviewed",
       "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, the single-file SQLite delivery store (ADR-018), agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement.",
@@ -362,7 +362,7 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "b8d48c8cd94755904844eec96fb9462d8d2fe27b9bfaa1c6595e78a70c542927",
+      "sha256": "b5db4cdda0a271b18c0f02be605aa6a0d1a6b18023e64b2bfc9a25b1a993400d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
@@ -444,7 +444,7 @@
     },
     {
       "path": "docs/delivery-store.md",
-      "sha256": "04455bacfba18fd87bf0bb0b63a1f1ac6ea59863d2897c4b79f8de4d4543d304",
+      "sha256": "e03ed0dc5c70d34cee3242ac767958bf45d229fb1c5a04a3f277543736171b64",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-018 delivery store: one private SQLite file holds admission, body, leases, retries, saved ACKs and the redacted audit; synchronous Registry guard per operation; store rules commit in the state-changing transaction; expiry, 30-day retention and replay-bound collection; file/volume checks; whole-generation backup/restore with an expiry hold; drained upgrade from and rollback to the JetStream build; single-VM failure domain."
@@ -479,7 +479,7 @@
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "545f2ea895ca512d2ee17deec2e492efca8df473f1ee2c43627e38f7348c0aaf",
+      "sha256": "da13cbdc8d82ad2f3c67cc5fd140ef023a97e89db241016cb0dd16aeda4271ac",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
@@ -662,7 +662,7 @@
     },
     {
       "path": "docs/local-relay-service.md",
-      "sha256": "a9be28c1a04a70281e796aac722747f597f1acb7cdae561fd5e198f99ea5d374",
+      "sha256": "bd1afb177b74d5c35421d41189f9dde586ec0dc2205d436269439b7a264aea95",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed."
@@ -711,7 +711,7 @@
     },
     {
       "path": "docs/operations/persistent-mcp-auth.md",
-      "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
+      "sha256": "7fc79eb8ad15c1e237861610e7db6bb1dea0316390647b39e8e044c5d524bc0f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted explicit OAuth v2 separates finite human participation from short-lived access tokens; v1 remains maximum-15-minute trial without auto migration. Host/issuer own refresh and secret storage, Relay only validates pinned keys/current config and immutable connection binding. Participation expiry/revocation bounds contexts, refresh never extends approval. Persistent setup survives acceptance, explicit targeted revocation preserves DB/keys/history, schema migration and rollback preserve accepted/revoked state. Proposed365/30-day production values and real host refresh remain unapproved/unverified."
@@ -773,7 +773,7 @@
     },
     {
       "path": "docs/relay-auth-groups.md",
-      "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
+      "sha256": "50a8e601eea8a11226614261f0ebd75145ebaf82c638d26ac369289f08d871f9",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted group trust boundary separates verified shared authentication from immutable per-address delivery identities/inboxes. Every connection authenticates through a group, and migrate() moves earlier direct 1:1 bindings into single-member groups; all five tools enforce own-side selection, expected ID, current membership/grants/stop under write guard while cross-group destination delivery remains allowed. Within-group credential holders can use sibling names/mailboxes and this is disclosed. Fixed outbox/inbox/ACK identities, bounded redacted provenance, separate admin operations and client-owned refresh are required; live refresh remains limited."
@@ -787,7 +787,7 @@
     },
     {
       "path": "docs/operations/relay-oauth-ingress.md",
-      "sha256": "c1fe579805c0e209183ea3670ce010666585e8e7034589a178e172798a499493",
+      "sha256": "d362a02bec9323fbca8f349692d6b1ead828877910f739226de51fc2f650caeb",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional product-independent same-owner/Registry/queue OAuth ingress exposes common five operations only. Uses explicit private pinned RSA configuration and canonical resource metadata, exact verified subject/client scopes and immutable context rechecks, no token storage/refresh. Recognizes group-sharing and explicit persistent v2; native trial save/reread/ACK sequence is narrow single-consumer evidence. Its routine end-of-trial revocation is v1 trial scope, not persistent cleanup."
@@ -948,14 +948,14 @@
     },
     {
       "path": "src/hab/README.md",
-      "sha256": "ef6e2787b3b8cf955c24ee92ef182bae982098c1d7b16c5de36a1ff6a0638e73",
+      "sha256": "b08a41176c24bc6c609571c1112d45374d288d4b6e2700af39de25d0e06b8663",
       "role": "normative",
       "review": "reviewed",
-      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabDeliveryService composes the only delivery backend, the SQLite delivery store; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withAuthorization joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabDeliveryService composes the only delivery backend, the SQLite delivery store; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "9eef98e9e162fe8f965425890b07989887073ba3d4dbfc86060c55e5c5b1cfa1",
+      "sha256": "210032ecb7f6dc52b79e7b6152501cb005ea3af17b7cf4e032d7e6bce2f223c9",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -973,7 +973,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "c094ee2b686e6607cf9830cc3484762f609f8e53b9e79c912481b5783a2b6976",
+      "sha256": "12224b3b1dceeec1d617135fb8c848c268a553d94b683ba6e3acf66ae522f305",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -982,7 +982,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "791a2f8e73a216a48f0dfabf2dce267f18146b086cc403a6580d2e7f32939733",
+      "sha256": "af22ab92dd7dee4acf7cf728ab16d1be559bf967def27e65d15bd3d8cc3a3fe6",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1826,8 +1826,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 16,
-          "end": 27,
+          "start": 19,
+          "end": 30,
           "excerpt_sha256": "053c23318812dc7ed12817ca6ddf534ad12bbe4a5396131c909bd754dfb0777d"
         },
         {
@@ -1840,7 +1840,7 @@
           "path": "docs/delivery-store.md",
           "start": 40,
           "end": 58,
-          "excerpt_sha256": "24fe8ae7cf898b2c2937d56b6a16c9a3b6d0d06e04623de49fffb4352f515e6b"
+          "excerpt_sha256": "b163b0dbb2cf116bedfb09833824480c9de044efeab9bc07410a87ac21b6ba0b"
         }
       ]
     },
@@ -1934,8 +1934,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 147,
-          "end": 161,
+          "start": 150,
+          "end": 164,
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {
@@ -1973,7 +1973,7 @@
           "path": "src/hab/README.md",
           "start": 345,
           "end": 377,
-          "excerpt_sha256": "10c853ee7d4c0abb098c9be43a564572208d3baa7b82af8dae270dd9f3f23cb8"
+          "excerpt_sha256": "9ece9a66d40961d40b6325fc1faeea1e26864b9eaed5bd65a1b106c287e7a04b"
         }
       ]
     },
@@ -2043,7 +2043,7 @@
           "path": "src/hab/README.md",
           "start": 71,
           "end": 107,
-          "excerpt_sha256": "4fe45774b2f9ab64f228e716c2e34e05814cbbd20e9c809032bb05c27a39c088"
+          "excerpt_sha256": "3c917e057c68062be2975a928df462a07bcde59aaef595e75f5dbb5261499442"
         },
         {
           "path": "docs/relay-auth-groups.md",
@@ -2074,13 +2074,13 @@
           "path": "docs/relay-auth-groups.md",
           "start": 92,
           "end": 94,
-          "excerpt_sha256": "db867058b3967d7b1840e4d3ed098a3477e67f99b0954f4dbbca821ff49bf1ff"
+          "excerpt_sha256": "271dcaaccce4eafb8bd909b10f8c33892ec772df203089fc2735030d818699e6"
         },
         {
           "path": "docs/relay-auth-groups.md",
           "start": 92,
           "end": 94,
-          "excerpt_sha256": "db867058b3967d7b1840e4d3ed098a3477e67f99b0954f4dbbca821ff49bf1ff"
+          "excerpt_sha256": "271dcaaccce4eafb8bd909b10f8c33892ec772df203089fc2735030d818699e6"
         },
         {
           "path": "src/hab/README.md",
@@ -2116,8 +2116,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 206,
-          "end": 218,
+          "start": 209,
+          "end": 221,
           "excerpt_sha256": "7f7d18bd99e8a0e0317dd2d466ba92d384139193e82c30dce43a037b600e672f"
         },
         {
@@ -2220,7 +2220,7 @@
           "path": "docs/operations/persistent-mcp-auth.md",
           "start": 79,
           "end": 91,
-          "excerpt_sha256": "107fa290563d87e501f78c1d6e09897784d5384e6d9a910520b061253554b7be"
+          "excerpt_sha256": "fd8758b3b01921cb6b419df55f7bed8b719c98eec922fe213ae26d6e8d3f1621"
         },
         {
           "path": "docs/history/dots-hermes-connection-plan.md",
@@ -2281,14 +2281,14 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 16,
-          "end": 46,
+          "start": 19,
+          "end": 49,
           "excerpt_sha256": "0e6d8045246092035df7e800135ea03b3b8a76f86b212cce327fa687899a492b"
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 79,
-          "end": 84,
+          "start": 82,
+          "end": 87,
           "excerpt_sha256": "1ccd4b29f822d62ee78a96eb4d41b851cb014d7c1454bdc2402c8d3a2b7daec6"
         },
         {
@@ -2473,7 +2473,7 @@
     {
       "id": "HAB-A18",
       "title": "Address rename keeps identity and reserves old names",
-      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace period is the registry option rename_grace_days; each use of a previous name is counted per caller ID, and relay:admin status lists previous names and warns when the host config still names one.",
+      "statement": "Rename is adopted (owner, 2026-11-12) as an explicit administrator operation within the same agent_name namespace. It retains the immutable agent ID and authority/mailbox identities; every previous name stays permanently reserved to that ID. For a grace period (default 30 days) an old name resolves only to its own ID and is accepted as that ID's own as_address; afterwards it is refused. It is never an alias to another ID. Separate rename permission, CAS and migration approval are required. The grace period is the registry option rename_grace_days; each use of a previous name is counted per caller ID, and hab:admin status lists previous names and warns when the host config still names one.",
       "rationale": "Changing names must not reassign authority or silently resolve deployment policy.",
       "scope": "Opt-in registry v3 rename with the grace-period resolution; deployment migration needs separate approval.",
       "decision": "proposed",
@@ -2485,7 +2485,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 52,
-          "excerpt_sha256": "406d26388f97186d00ce167645eb67401d79d8f0d56ab166dfd0b90e0bbbadb3"
+          "excerpt_sha256": "3d87712db10b0d7fc3be977365686a0f653eb36614d81bab7384110802c5166b"
         },
         {
           "path": "docs/agent-address-rename.md",
@@ -2506,7 +2506,7 @@
       "title": "Group stop is total and re-grants nothing",
       "statement": "Stopping a group, setting its access to stopped or retired, or revoking its last binding stops every active member address and clears its operations in the same transaction. Reactivating or rebinding the group re-grants no address: each member is granted again only by its own explicit access change, so a sibling an operator disconnected stays stopped when another member reconnects. Omitted own-side selection counts only active members.",
       "rationale": "A group stop revokes shared authority. Members that stay active, or that a later reconnect of one address silently revives, would undo an operator's disconnect.",
-      "scope": "Registry authentication-group mode and the relay:admin group disconnect and reconnect.",
+      "scope": "Registry authentication-group mode and the hab:admin group disconnect and reconnect.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -2526,8 +2526,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 124,
-          "end": 129,
+          "start": 127,
+          "end": 132,
           "excerpt_sha256": "0a438b645c0df5a6d82cb127b2ba3e7e4190eb5fb8df290af48c8a046c710be5"
         },
         {
@@ -2543,7 +2543,7 @@
       "title": "Management connect is atomic and explicit",
       "statement": "A group connect creates the group, binds the connection and adds the first address in one Registry transaction, so a refused step (such as binding capacity) leaves no group behind and a retry converges. That transaction requires every right the three separate operations need (group_create, group_bind and group_member), so a context missing any one of them is refused and creates no group, binding or member. An explicitly empty operation list is refused as `invalid_operations`, never read as the default grant of all operations. Every management connect goes through a group; `registry.authentication_groups` in an older config is accepted and ignored.",
       "rationale": "Management requests change authority. A partial or misread request must fail without orphan state and must never grant more than the operator named.",
-      "scope": "Operator management CLI (`relay:admin connect`) and the Registry `createBoundGroup` port. The per-operation rights are implementation evidence (src/hab/sqlite-registry.ts in source-review.json), covered in js-root by test/hab-auth-groups.test.js; no document states them separately.",
+      "scope": "Operator management CLI (`hab:admin connect`) and the Registry `createBoundGroup` port. The per-operation rights are implementation evidence (src/hab/sqlite-registry.ts in source-review.json), covered in js-root by test/hab-auth-groups.test.js; no document states them separately.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -2557,8 +2557,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 129,
-          "end": 132,
+          "start": 132,
+          "end": 135,
           "excerpt_sha256": "90f2d2ed6541ad241e94bc2361deda8b5ab4563960218ce8b42efc031900c9de"
         },
         {
@@ -2572,7 +2572,7 @@
     {
       "id": "HAB-A21",
       "title": "Host A2A identity cannot act as a confused deputy",
-      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and relay:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withRelay called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable. The fixed host principal remains reserved to its original agent after revocation. Disconnect is a permanent A2A off switch for this Registry; changing the identity address cannot undo it. Removing the a2a section permits MCP-only startup without deleting stored history. No identity rotation or revocation reset is provided.",
+      "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and hab:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withAuthorization called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable. The fixed host principal remains reserved to its original agent after revocation. Disconnect is a permanent A2A off switch for this Registry; changing the identity address cannot undo it. Removing the a2a section permits MCP-only startup without deleting stored history. No identity rotation or revocation reset is provided.",
       "rationale": "The host identity submits under its own rights. Without a current per-request check of the caller it could deliver to a recipient the caller cannot reach, or expose another caller's replies.",
       "scope": "Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier only; the OAuth ingress does not serve A2A, and a group-authenticated caller with several addresses is refused. Covered in js-root by test/a2a-host.test.js.",
       "decision": "accepted",
@@ -2590,19 +2590,19 @@
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 84,
           "end": 94,
-          "excerpt_sha256": "40aa6fa5285b7a6ab2bc067f254d33f2c5fbe731508eb8fb2f9e6c83fed3b33b"
+          "excerpt_sha256": "62e6e074cf5bb76751f4dfb8db4da39ff9755983c6be315ae805cedba4cc447f"
         },
         {
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 98,
           "end": 100,
-          "excerpt_sha256": "91a9119495a74a0abb071a2e51bb9c45a5c8d58553076cdb4932f3e9f2f44c2f"
+          "excerpt_sha256": "366cd580a1db1502c41007fcd5b8b3ada5e76e379e3642203e8895e6d48b60b3"
         },
         {
           "path": "docs/a2a/a2a-relay-preview.md",
           "start": 104,
           "end": 106,
-          "excerpt_sha256": "b4ae6ea107f7c317615b9217caa7ab230d300a96a9863e98afd1abcffd4eab48"
+          "excerpt_sha256": "19a76f280cb536d31c5a6a98db517fc63a116fea19d889a6f7b36ee7594c7c47"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -2612,15 +2612,15 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 193,
-          "end": 203,
-          "excerpt_sha256": "ab1bf9e8be5db3cd0d88a447f6de78acc0d80377a23cc6a43e9d6f10985ba86b"
+          "start": 196,
+          "end": 206,
+          "excerpt_sha256": "41d3812bfabf3d4105e59f20657cda20e51678276f3e4691757fee9c86b3061f"
         },
         {
           "path": "src/hab/README.md",
           "start": 81,
           "end": 88,
-          "excerpt_sha256": "a1a9d7e438e3d332a5fafc565d4586ce2e3193a348ee17c7684aa732bdde82b9"
+          "excerpt_sha256": "b6c410416b7ae7028ed94a3114c2e70953bc0fe1d956109c588f5597810790e9"
         }
       ]
     },
@@ -2771,7 +2771,7 @@
           "path": "docs/delivery-store.md",
           "start": 7,
           "end": 7,
-          "excerpt_sha256": "a011f21dd45167aa115c69b2cec984fc09c981b489ca3f1ceecf6a02610f321a"
+          "excerpt_sha256": "70ae27225f42bfd0301b0b9d1cd99000f0ddfda812d5e1d24b909b81fba141b7"
         },
         {
           "path": "docs/delivery-store.md",
@@ -3096,7 +3096,7 @@
           "path": "docs/delivery-store.md",
           "start": 7,
           "end": 9,
-          "excerpt_sha256": "fa330bb38d0c4a8e8ab1b096d547676f58035bb32b0b20c3d9bf40d112d92d0e"
+          "excerpt_sha256": "0c0138a855f8faef528b6789db06f624bfb99003edd845e2d37c776764777cc7"
         },
         {
           "path": "docs/delivery-store.md",
@@ -4812,7 +4812,7 @@
           "path": "src/hab/README.md",
           "start": 345,
           "end": 385,
-          "excerpt_sha256": "898e85a7ea45e3f526ba80400b47792118511382bf7b2d9a5dfd0424dda8d545"
+          "excerpt_sha256": "dff203e262b52f055709d4d9a78412d37bce4a90cba9e77d3ab422a9632beea2"
         }
       ]
     },
@@ -4853,7 +4853,7 @@
           "path": "docs/operations/persistent-mcp-auth.md",
           "start": 79,
           "end": 86,
-          "excerpt_sha256": "476421ca3dcd8daf895527ccb0cff47402440b8fa0030210769c091a9751a833"
+          "excerpt_sha256": "eef1918dc6d694bfa0a19e891c07e0804e8b8801dea41470fe0f81e24326c4f9"
         }
       ]
     },
@@ -4923,7 +4923,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 59,
-          "excerpt_sha256": "fcae3a8c92ccef8abc558b66b8d058dde82c40dda595e24136c30f3b61ceb367"
+          "excerpt_sha256": "bd86c81b0919f46a8b7025c2ea9afc125963df0d2c175d2990684337b97582e1"
         }
       ]
     },
@@ -4979,8 +4979,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 147,
-          "end": 161,
+          "start": 150,
+          "end": 164,
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {
@@ -5687,8 +5687,8 @@
         },
         {
           "path": "docs/local-relay-service.md",
-          "start": 16,
-          "end": 27,
+          "start": 19,
+          "end": 30,
           "excerpt_sha256": "053c23318812dc7ed12817ca6ddf534ad12bbe4a5396131c909bd754dfb0777d"
         },
         {
@@ -5825,7 +5825,7 @@
           "path": "docs/agent-address-rename.md",
           "start": 3,
           "end": 52,
-          "excerpt_sha256": "406d26388f97186d00ce167645eb67401d79d8f0d56ab166dfd0b90e0bbbadb3"
+          "excerpt_sha256": "3d87712db10b0d7fc3be977365686a0f653eb36614d81bab7384110802c5166b"
         },
         {
           "path": "docs/hab-relay-spec.md",
@@ -5863,7 +5863,7 @@
           "path": "docs/delivery-store.md",
           "start": 46,
           "end": 58,
-          "excerpt_sha256": "633938867107eb5cad51221cf7aa771402ab9c4450b9acf7a35483aabd876480"
+          "excerpt_sha256": "c365b1a53c63089f62be37cf65d84365b3a0c003a0155c50c6641e63526158b4"
         }
       ],
       "resolution": "No. ADR-018 (owner, 2026-11-13) replaces the JetStream delivery part of ADR-016 with one SQLite file per host. The broker was loopback-only with one replica and no consumer, and the SQLite journal already held admission, leases, retries and ACK history, so the broker only stored bodies. packages/relay-nats, the pinned nats-server, its installers, the pump, the broker config and the CI broker stage were deleted. Messages of the JetStream build are not migrated; the host refuses to start while jetstream-journal.sqlite remains, and the upgrade waits one hour plus max_clock_skew_ms after the last acceptance so no old ID can be admitted again. Revisit if multi-host, HA or external consumers are needed."

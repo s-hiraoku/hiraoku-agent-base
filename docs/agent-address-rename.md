@@ -45,7 +45,7 @@ Rules:
   is a new audited CAS operation, not deletion or reassignment of history.
 - The `agent_name` (product or execution environment) cannot change. A rename across
   namespaces is refused.
-- `relay:admin status` lists `previous_names`: each previous name with its agent ID,
+- `hab:admin status` lists `previous_names`: each previous name with its agent ID,
   current name, rename time, grace end, whether it still resolves, and the callers
   that used it. It reports `config_previous_address` (still resolving) or
   `config_previous_address_expired` when `a2a.identity` or `a2a.recipient` names a
@@ -84,12 +84,12 @@ same management contract applies to all participating products.
    into commands or logs.
 2. Deploy v3-capable code with the explicit flag and perform initialization.
    Existing v1/v2 handles refuse the changed schema and must reopen.
-3. Inspect `relay:admin status`; save the selected `agent_id`, address and `epoch`,
+3. Inspect `hab:admin status`; save the selected `agent_id`, address and `epoch`,
    chosen new `bot_name`, and a stable `request_id` in the management journal.
 4. Invoke the operator CLI once (all values below are synthetic):
 
    ```sh
-   npm run relay:admin -- --config /private/service.local.json rename \
+   npm run hab:admin -- --config /private/service.local.json rename \
      --agent-id example-agent --expected-address old@example.hab \
      --bot-name renamed --expected-epoch 4 --request-id journaled-rename-1
    ```
@@ -105,7 +105,7 @@ same management contract applies to all participating products.
    renaming is independent and is not performed by this command.
 7. Verify `whoami`, scoped directory, new-address resolution, old-address resolution
    to the same ID during the grace period, pending delivery/ACK/status, and unchanged
-   grants. Before the grace end, check `previous_names[].callers` in `relay:admin
+   grants. Before the grace end, check `previous_names[].callers` in `hab:admin
    status` and tell any caller still listed. Previously accepted envelopes
    and replies continue to use the same immutable sender/recipient IDs.
 

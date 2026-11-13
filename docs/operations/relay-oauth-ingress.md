@@ -76,7 +76,7 @@ MCP操作はすべて拒否します。欠損・不正設定を匿名接続へ�
 
 ### 公式管理CLIとの接続
 
-`relay:admin connect/status`はローカルBearer mappingと、設定済みのOAuthファイルの
+`hab:admin connect/status`はローカルBearer mappingと、設定済みのOAuthファイルの
 有効化されたOAuthファイルの`connections`を同じ管理契約で扱います。JWTをローカルBearerファイルへコピー
 する必要はありません。指定した`connection_id`が両入口で異なる主体に一致する場合は
 `credential_ambiguous`で拒否します。無効なOAuth設定、resource不一致も拒否します。
