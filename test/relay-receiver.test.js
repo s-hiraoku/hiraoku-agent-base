@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { DurableReceiver } from "../src/agent-sdk/index.ts";
-import { authorizedDelivery } from "./jetstream-delivery.js";
+import { authorizedDelivery } from "./delivery-fixture.js";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
@@ -68,7 +68,7 @@ function message(key = "m-1") {
 }
 async function fixture(t, patch = {}) {
   const dir = mkdtempSync(join(tmpdir(), "relay-receiver-")),
-    serverPath = join(dir, "jetstream-journal.sqlite"),
+    serverPath = join(dir, "delivery.sqlite"),
     path = join(dir, "inbox.sqlite"),
     stores = [];
   t.after(() => {
@@ -121,7 +121,7 @@ function due(f) {
 }
 function redeliver(f) {
   f.serverRaw.exec(
-    "UPDATE nats_messages SET lease_until=0,next_visible_at=0 WHERE state='leased'",
+    "UPDATE delivery_messages SET lease_until=0,next_visible_at=0 WHERE state='leased'",
   );
 }
 
@@ -149,9 +149,7 @@ test("normal receive commits durable inbox and stable ACK before contacting serv
   assert.deepEqual(receiver.inbox()[0].message, m);
   assert.equal(receiver.inbox()[0].receipt_confirmed, true);
   assert.equal(
-    f.serverRaw
-      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-      .get().body,
+    f.serverRaw.prepare("SELECT body FROM delivery_messages").get().body,
     null,
   );
   assert.equal(
@@ -323,7 +321,7 @@ test("capacity and retry limits are explicit and finite; exhausted token is remo
   const other = message("m-2");
   f.service.submit("a", other);
   f.serverRaw.exec(
-    "UPDATE nats_messages SET expires_at=0 WHERE message_id='m-1'",
+    "UPDATE delivery_messages SET expires_at=0 WHERE message_id='m-1'",
   );
   const newer = f.service.poll("b");
   assert.equal(newer.message.message_id, "m-2");
@@ -422,7 +420,7 @@ test("three model-free opaque individuals exchange messages independently", asyn
   assert.equal(
     f.serverRaw
       .prepare(
-        "SELECT count(*) n FROM nats_messages WHERE state='acked' AND coalesce(outbox,candidate) IS NULL",
+        "SELECT count(*) n FROM delivery_messages WHERE state='acked' AND body IS NULL",
       )
       .get().n,
     6,

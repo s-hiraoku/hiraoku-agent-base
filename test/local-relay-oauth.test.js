@@ -24,12 +24,12 @@ import {
 } from "./hab-registry-fixtures.js";
 import { limits, policy, envelope, message } from "./relay-http-fixtures.js";
 import { oauthFixture, issuer, resource } from "./relay-oauth-fixtures.js";
-import { createJetStreamDelivery } from "../src/host/delivery.ts";
+import { createSqliteDelivery } from "../src/host/delivery.ts";
 import {
   deliverySection,
   eventually,
   pollUntilDelivered,
-} from "./jetstream-delivery.js";
+} from "./delivery-fixture.js";
 
 async function fixture(t) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "relay-oauth-")));
@@ -102,7 +102,7 @@ async function fixture(t) {
     port: 0,
     limits,
     registry: registryOptions,
-    delivery: createJetStreamDelivery(
+    delivery: createSqliteDelivery(
       await deliverySection(dir),
       new Uint8Array(32).fill(89),
     ),

@@ -104,7 +104,7 @@ Oversized reads are refused without truncation or a replacement source.
 ## Bounded verification
 
 `test/single-source-stdio.test.js` uses the official SDK client, a separate owned
-stdio process, real SQLite stores and a parent-owned private JetStream broker.
+stdio process, and real SQLite stores, including the host's SQLite delivery store.
 Its synthetic recipient/operator contexts and chosen answers do not prove a
 Hermes/Dots session binding, model decision, actual approval, wake, residency or
 production launch. The child fixture is test-only and must not be installed as a

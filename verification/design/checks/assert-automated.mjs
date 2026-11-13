@@ -247,7 +247,7 @@ function roundtripEvidence(out, check, expand) {
   );
   const requests = events("request"),
     responses = events("response");
-  // JetStream publishes on the pump's next cycle, so the helper may repeat an empty first poll (bounded to 5 s at 25 ms).
+  // SQLite delivery makes an accepted message pollable at once; the helper still tolerates a bounded repeat poll (5 s at 25 ms).
   const names = requests.map((row) => row.value.params?.name);
   let polls = 0;
   while (names[3 + polls] === "relay_poll") polls++;

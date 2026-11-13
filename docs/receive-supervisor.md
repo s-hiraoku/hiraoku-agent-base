@@ -132,7 +132,7 @@ ACK中の失効では保存済み本文と元のACK requestを残し、復帰後
 送信側もclaimをdeferしてから理由を伝え、失効だけでquarantineや新規messageを作りません。
 時刻/回数/保持期間の既存上限を延長しないため、長時間の停止でhorizonを超えたものは別途照合が必要です。
 
-`test/authentication-recovery.test.js` は合成providerと隔離JetStream/SQLiteで、理由の境界、
+`test/authentication-recovery.test.js` は合成providerと隔離SQLite（配送storeを含む）で、理由の境界、
 全identity欄の不一致、stale ticket、pause優先、同じACKの復帰、待機中無通信を検証します。
 この追加だけでは実Hermesとの配線や自動通知は有効になりません。実環境の適用では
 [復旧runbookの受入れ条件](auth0-recovery.md)を満たし、自然AT期限越えを別途確認してください。

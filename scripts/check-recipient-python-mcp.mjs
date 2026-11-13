@@ -1,14 +1,13 @@
 /** Optional cross-language check of the recipient entry, not a product/native-agent test. */
 import process from "node:process";
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout, clearTimeout } from "node:timers";
 import { setTimeout as delay } from "node:timers/promises";
 import assert from "node:assert/strict";
-import { startLocalBroker } from "./lib/nats-broker.ts";
 
 const [python, ...extra] = process.argv.slice(2);
 if (!python || !isAbsolute(python) || extra.length)
@@ -29,19 +28,15 @@ async function closeGroup(pid) {
   assert.equal(signalGroup(pid, 0), false, "owned_group_still_running");
 }
 const directory = mkdtempSync(join(tmpdir(), "hab-python-mcp-"));
-let broker, cleanupConfirmed = true;
+let cleanupConfirmed = true;
 try {
-  broker = await startLocalBroker(join(directory, "broker"), { keepAlive: true });
-  const descriptor = join(directory, "broker.json");
-  writeFileSync(descriptor, JSON.stringify({ server: broker.server, user: broker.user,
-    password: broker.password }), { mode: 0o600 });
   for (const mode of ["paused", "roundtrip", "revoked"]) {
     const pidFile = join(directory, `${mode}.pid`);
     const child = spawn(python, ["-I", "-B", fileURLToPath(new URL("../test/compatibility/recipient-python-mcp.py", import.meta.url)),
       process.execPath, fileURLToPath(new URL("../test/recipient-host-stdio-fixture.js", import.meta.url)), mode], {
       // Do not inherit product credentials, Python paths, profiles or the user's home.
       env: { PATH: "/usr/bin:/bin", HOME: directory, TMPDIR: directory,
-        HAB_TEST_BROKER_FILE: descriptor, HAB_TEST_COMPATIBILITY_PID_FILE: pidFile }, detached: true, stdio: ["ignore", "pipe", "pipe"],
+        HAB_TEST_COMPATIBILITY_PID_FILE: pidFile }, detached: true, stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "", stderr = "", timedOut = false, overflow = false, force;
     const terminate = () => {
@@ -91,7 +86,6 @@ try {
     }
   }
 } finally {
-  await broker?.stop();
   if (cleanupConfirmed) rmSync(directory, { recursive: true, force: true });
   else process.stderr.write(`Unconfirmed fixture cleanup; synthetic evidence retained: ${directory}\n`);
 }

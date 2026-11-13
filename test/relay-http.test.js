@@ -175,9 +175,7 @@ test(
       "acked",
     );
     assert.equal(
-      f.raw
-        .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-        .get().body,
+      f.raw.prepare("SELECT body FROM delivery_messages").get().body,
       null,
     );
     assert.equal(a.response.headers.get("cache-control"), "no-store");
@@ -662,7 +660,7 @@ test(
       "a",
     );
     assert.equal(
-      JSON.parse(f.raw.prepare("SELECT outbox FROM nats_messages").get().outbox)
+      JSON.parse(f.raw.prepare("SELECT body FROM delivery_messages").get().body)
         .message.body.parts[0].text,
       m.body.parts[0].text,
     );

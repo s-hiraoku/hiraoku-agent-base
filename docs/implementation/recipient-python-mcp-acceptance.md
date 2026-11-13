@@ -3,7 +3,7 @@
 This finite check exercises the new recipient-host MCP surface through the
 standard Python MCP SDK installed in a caller-selected environment. It reuses
 `recipient-host-stdio-fixture.js`, the existing AdapterHostCycle, real temporary
-SQLite stores and a parent-owned private NATS broker. It is not a new runtime,
+SQLite stores, including the host's SQLite delivery store. It is not a new runtime,
 product adapter, credential provider, polling loop or agent launcher.
 
 The earlier [finite native trial](../finite-mcp-trial.md) used the Relay's basic
@@ -34,29 +34,25 @@ content preservation, product restart recovery, idle wake or live-agent delivery
 Review the scripts first. Provide an absolute interpreter path selected from the
 product's dependency manifest, not by running its launcher. No dependency is
 installed automatically, and a missing SDK fails rather than skipping the check.
-Use the repository's pinned Node and NATS binary:
+Use the repository's pinned Node:
 
 ```sh
-HAB_NATS_SERVER=/absolute/path/to/pinned/nats-server \
-  node scripts/check-recipient-python-mcp.mjs /absolute/path/to/python
+node scripts/check-recipient-python-mcp.mjs /absolute/path/to/python
 ```
 
 The runner uses Python isolated mode, a temporary HOME/TMPDIR and a small explicit
 environment. It does not inherit product credentials or import product modules.
-The broker descriptor contains only a new synthetic broker password, is private,
-and never goes in command arguments or proof output. Python bounds the full SDK
+Python bounds the full SDK
 session to 25 seconds. The POSIX parent separately bounds its Python child with TERM then KILL, limits
 stdout/stderr accumulation, and verifies both its owned process group and the
 SDK's separate fixture group have exited before scratch deletion. The fixture
 writes its own PID to a private parent-selected file; the Python check verifies
-the SDK actually created a separate process group. The parent owns broker
-shutdown and scratch removal. Missing child-cleanup evidence fails the check;
+the SDK actually created a separate process group. The parent owns scratch
+removal. Missing child-cleanup evidence fails the check;
 scratch can still be removed after both owned groups are confirmed stopped.
 Missing fixture-group identity or unconfirmed group exit retains synthetic files
 instead of claiming confirmed cleanup. Normal output is three JSON
 pass records with the actual SDK version and a parent-cleanup marker.
-The reused broker stop waits for its exit without a separate deadline, so the
-child/session bounds are not a hard end-to-end run deadline.
 
 This optional compatibility check is not part of the mandatory Node-only root
 suite and does not silently satisfy any native-product manual gate. Validate the

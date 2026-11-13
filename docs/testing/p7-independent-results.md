@@ -1,5 +1,7 @@
 # Independent P7 results
 
+**Historical record (removed path)**: `packages/relay-nats`, the nats-server installer, the `--nats-server` input and the P7 runner were deleted by [ADR-018](../hab-decisions.md) on 2026-11-13; delivery now runs only through the host's SQLite [delivery store](../delivery-store.md). The current CI is `.github/workflows/ci.yml`. What follows records that time and does not describe current code or procedure.
+
 Historical local-run record. Public task history was reconstructed with portable documentation and an active composite CI pipeline; see [publication scope](publication.md). Statements about the earlier publication hold describe that recorded run. Raw local evidence bundles are not published.
 
 The isolated A2A and JetStream integration passed on the local SSD. The local verdict is `P7_LOGICAL_PASS`. Production adoption remains `BLOCKED`; no public or production operation was attempted.

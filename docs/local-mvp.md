@@ -6,18 +6,14 @@
 
 ## 起動
 
-Node 26以上で、このrepoを新規cloneした作業ディレクトリから実行します。配送はNATS JetStreamだけで行うため、固定版のnats-server 2.15.2が必要です。`HAB_NATS_SERVER`にその実行ファイルを指定するか、最初に一度installします。
+Node 26以上で、このrepoを新規cloneした作業ディレクトリから実行します。配送はhostのSQLite配送store（[ADR-018](hab-decisions.md)）で行うため、別processは不要です。
 
 ```sh
 npm ci
-npm ci --prefix packages/relay-nats --ignore-scripts
-mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
 npm run demo:hab-mvp -- --simulate
 ```
 
-nats-serverが見つからない場合は、作業状態を作る前に`local_mvp_failed reason=nats_server_required: ...`とinstall手順を表示してexit 1を返します。demoはその一時ディレクトリ内で専用のloopback brokerを起動・停止します。
-
-成功時はexit 0でJSONを返します。コマンドは実行のたびに0700の新規一時ディレクトリを作り、明示migrationで専用DBを準備します。127.0.0.1の空きportで専用MCP listenerと専用nats-serverを起動し、終了時に停止・DBとbroker storeを削除します。固定portの既存server、Hermes、cron、認証、既存checkoutのruntime DBは変更しません。
+成功時はexit 0でJSONを返します。コマンドは実行のたびに0700の新規一時ディレクトリを作り、明示migrationで専用DBを準備します。127.0.0.1の空きportで専用MCP listenerを起動し、終了時に停止・DBを削除します。固定portの既存server、Hermes、cron、認証、既存checkoutのruntime DBは変更しません。
 
 引数なし・未知引数・任意URL指定では、作業状態を作る前にUsageとexit 2を返します。30秒の有限deadlineがあり、Ctrl-C／SIGTERMでは開始済み処理を止め、自分のlistenerと一時状態を片付けてexit 1を返します。OSによる強制終了や電源断は一時ファイルの削除まで保証しません。専用ownerのOS lockはprocess終了で解放されます。
 
@@ -77,7 +73,7 @@ reopen時は新しいDB handle・host・clientを作り、登録checkpoint、永
 
 ## 継続検証
 
-`test:hab-mvp`と`npm test`も起動と同じnats-serverを使います（`HAB_NATS_SERVER`または`.runtime/nats-install.json`）。
+`test:hab-mvp`と`npm test`も同じ一時SQLite配送storeを使い、外部processを必要としません。
 
 ```sh
 npm run test:hab-mvp

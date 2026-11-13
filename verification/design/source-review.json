@@ -2459,5 +2459,117 @@
         "maintenance": " Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       }
     ]
+  },
+  {
+    "scope": "ADR-018 SQLite delivery store (2026-11-13)",
+    "baseline": "0fc9b63",
+    "summary": "The host delivers through one private SQLite file (src/delivery/sqlite-delivery.ts) that holds admission, the body, leases, retries, saved ACKs and the redacted audit. Each operation commits one synchronous transaction inside a fresh SQLiteHabRegistry.withRelay scope, so no Promise crosses the guard. Reply references, capacity and reservations, exact-retry idempotency, one lease per recipient, generation/token HMAC, backoff and quarantine, fair poll with denied-sender skip, body fingerprint, expiry, 30-day retention and replay-bound collection commit in the state-changing transaction; an audit failure rolls the change back. The config keeps only delivery.volume, delivery.queue and delivery.maintenance; broker and pump are refused as config_invalid, and a leftover jetstream-journal.sqlite refuses startup with legacy_jetstream_journal_present before the delivery file is created. Deleted: packages/relay-nats, the nats-server pins and installers, the pump worker, the P7 runner, scripts/relay-rollback-reconcile.mjs and its tests, test/ci-nats and the CI broker stage. Tests are local functional evidence; they do not prove power-loss safety, volume durability or multi-host delivery.",
+    "supplemental": [
+      {
+        "path": "src/delivery/sqlite-delivery.ts",
+        "sha256": "770aba4ebd99e891d64a339a82485d8ebffd4759db8f6d06ca5704378213122a",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/sqlite-delivery.test.js",
+        "sha256": "82ee7af59179c7bf60b8285df37921633c0a23674b45d64ffda48fd6ebf5118c",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/delivery-fixture.js",
+        "sha256": "e3283a566db4ab56eacfc63a5a0b3678b2db9f694daa64bcdb644163fda90d63",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/host/delivery.ts",
+        "sha256": "5aee258aa77188ea1c411722808dea69e96fb00c68431773749f63aaeb63c9e0",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/host/hab-delivery-service.ts",
+        "sha256": "59662973bfa81bf3e311da3ca3a9de8b5210099fe3c61ebef87fac7e390e6af3",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/host/start.ts",
+        "sha256": "deb48378a519e5b51160c8725b0006e9af798401ed4bc92290ac492c39f93029",
+        "review": "reviewed"
+      },
+      {
+        "path": "src/messaging/delivery-service.ts",
+        "sha256": "f8428ac3ebdeb846962e45251a3589f7d0effbbab31e79b8f37ce7ddd1f2f215",
+        "review": "reviewed"
+      },
+      {
+        "path": "config/relay-service.example.json",
+        "sha256": "c41c8decc4bc14dd77098710d257c64b048a84fd26fd23fba427275d6bce63cb",
+        "review": "reviewed"
+      },
+      {
+        "path": "package.json",
+        "sha256": "70262362db79f7b99ae72bbd81f4a14c833892a1c1a9adf7418a5f009c496edc",
+        "review": "reviewed"
+      },
+      {
+        "path": "tsconfig.tools.json",
+        "sha256": "82896594773f7ab2b7f2f9478e4f403b1464bc960fe6ff3d942a215737bd4af8",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/local-mvp.mjs",
+        "sha256": "e28a8a9061987f87b970c68357c85a3a8b0bd99f37be30a6ae0c710872eb6d60",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/check-recipient-python-mcp.mjs",
+        "sha256": "b28869faa51524cbcb5ae9cc37a50cf3fed213074c5b1ef45ada17712dbfed8f",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/lib/delivery-lab.mjs",
+        "sha256": "ec62e79763d705e7d1fdba5227f764af62c6cab8e4ae0fbadcfc60831b52d37f",
+        "review": "reviewed"
+      },
+      {
+        "path": "scripts/delivery-lab.mjs",
+        "sha256": "3942134923735a1a87baa06a38dff0b4980c294d0e769338b7767001424f020b",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/local-relay-service.test.js",
+        "sha256": "1a4d7680557ca21f96e434e91a5b6c57d8abb05f7e76a71dc49fb259bb25f3e8",
+        "review": "reviewed"
+      },
+      {
+        "path": "test/delivery-lab/sqlite-failures.test.js",
+        "sha256": "58272a22959821e520d427ab4d926f49bf6393cb6c41080949626c540aa41d5d",
+        "review": "reviewed"
+      },
+      {
+        "path": "verification/design/checks/communication-boundary.mjs",
+        "sha256": "e9c93ec606fd0b5c626d0f49b9c85e196bed560da9c9d68f6601eada56f303b5",
+        "review": "reviewed"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/stack.mjs",
+        "sha256": "b8a7aee1ff49070051e2c89ade66e9545258b653028f24fca5e3d96357e49d65",
+        "review": "reviewed"
+      },
+      {
+        "path": ".claude/skills/verify-hab/scripts/inspect.mjs",
+        "sha256": "8ee7ed2188ec1cb80db735dfdd654fa38f9cc43fa765138e83ba15481e985124",
+        "review": "reviewed"
+      },
+      {
+        "path": ".github/workflows/ci.yml",
+        "sha256": "9d98895ddddcbb570b6e751990b2a429b8c1eee681098fca630ef6f6557b1143",
+        "review": "reviewed"
+      },
+      {
+        "path": ".github/workflows/design-verification.yml",
+        "sha256": "d1401cf564aef7aae8f01a8f92938c8a745d800e7f6253fc32a30660b5efa201",
+        "review": "reviewed"
+      }
+    ]
   }
 ]

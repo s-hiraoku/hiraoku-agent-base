@@ -21,9 +21,8 @@ import { SQLiteAnswerJournal } from "../../src/answer-intents/sqlite-journal.ts"
 import { SQLiteHostControl } from "../../src/agent-sdk/sqlite-host-control.ts";
 import { SQLiteHostOwner } from "../../src/agent-sdk/sqlite-host-owner.ts";
 import { AdapterHostCycle } from "../../src/adapter-host/cycle.ts";
-import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
-import { HabJetStreamService } from "../../src/host/hab-delivery-service.ts";
-import { startLocalBroker } from "./nats-broker.ts";
+import { SqliteDelivery } from "../../src/delivery/sqlite-delivery.ts";
+import { HabDeliveryService } from "../../src/host/hab-delivery-service.ts";
 
 const limits = Object.freeze({
   envelope_bytes: 32768,
@@ -62,7 +61,6 @@ export async function runLocalMvp(signal) {
     agents = {},
     locals = new Map();
   let registry,
-    broker,
     relay,
     delivery,
     enrollment,
@@ -142,24 +140,14 @@ export async function runLocalMvp(signal) {
       poll_scan_limit: 20,
       fair_poll: true,
     };
-    relay = await JetStreamRelay.open({
+    relay = SqliteDelivery.open({
       ...queue,
       fingerprint_key: key(43),
-      journal_path: join(directory, "jetstream-journal.sqlite"),
-      server: broker.server,
-      user: broker.user,
-      password: broker.password,
-      stream: "HAB_MVP",
-      subject_prefix: "habMvp",
-      max_consumers: 10,
-      broker_max_bytes: 4000000,
-      broker_max_message_bytes: 64000,
-      request_timeout_ms: 2000,
+      path: join(directory, "delivery.sqlite"),
       limits,
-      prefetch_per_recipient: queue.max_pending_per_recipient,
       authorization: { authorize: () => undefined },
     });
-    delivery = new HabJetStreamService(registry, relay, queue);
+    delivery = new HabDeliveryService(registry, relay);
     enrollment = new SQLiteEnrollmentJournal(
       join(directory, "enrollment.sqlite"),
       { max_sessions: 3, busy_timeout_ms: 100 },
@@ -403,14 +391,8 @@ export async function runLocalMvp(signal) {
       status = host.status(operator);
     if (status.paused) host.setPaused(operator, false, status.epoch);
   };
-  // The host's pump publishes accepted messages on its next cycle; the simulation runs that
-  // cycle explicitly before each receive so every stage stays deterministic.
-  const pump = async () => {
-    for (let cycle = 0; cycle < 2; cycle++) await relay.pumpOnce();
-  };
   const step = async (n, command) => {
     check();
-    if (command.op === "receive") await pump();
     return locals.get(n).host.stepOnce(operator, command);
   };
   const done = async (n, command) => {
@@ -468,11 +450,6 @@ export async function runLocalMvp(signal) {
   };
   signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    check();
-    broker = await startLocalBroker(join(directory, "broker"), {
-      maxFileStore: "64MB",
-      keepAlive: true,
-    });
     check();
     await openCentral();
     await startServer();
@@ -645,13 +622,14 @@ export async function runLocalMvp(signal) {
       0,
     );
     stage("loop-denial");
-    const db = new DatabaseSync(join(directory, "jetstream-journal.sqlite"), {
+    const db = new DatabaseSync(join(directory, "delivery.sqlite"), {
       readOnly: true,
     });
     const count = (where) =>
       Number(
-        db.prepare("SELECT count(*) n FROM nats_messages WHERE " + where).get()
-          .n,
+        db
+          .prepare("SELECT count(*) n FROM delivery_messages WHERE " + where)
+          .get().n,
       );
     try {
       report.counters = {
@@ -682,7 +660,6 @@ export async function runLocalMvp(signal) {
     report.cleanup.server_closed = !server?.listening;
     for (const n of ["a", "b", "c"]) closeLocal(n);
     await closeCentral();
-    await broker?.stop();
     rmSync(directory, { recursive: true, force: true });
     report.cleanup.temporary_state_removed = !existsSync(directory);
   }

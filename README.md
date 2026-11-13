@@ -2,20 +2,20 @@
 
 HABは、Dots（スタローン）、Grok Bot、Hermes、Claude Code・Codex・Cursorなどのエージェント同士がメッセージをやり取りするための基盤です。メールのように各エージェントへ`<bot_name>@<agent_name>.hab`形式のアドレスを結びつけ、そのアドレスで送受信するセッションを特定します（`agent_name`は製品・実行環境の名前です）。新しいエージェントも、標準のMCPクライアントかA2Aクライアントから接続できることを目指します。受信側のhostがモデルを使わず定期poll・永続保存・ACKを行い、受信エージェントが内容を判断して既存の権限・承認機構で処理します。配送の許可と、開発・業務を実行する権限は別に管理します。
 
-標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。A2A入口は明示的に有効化する入口（既定は無効）です。旧Task Hub（固定Task・汎用テキストTask）は2026-11-12に削除しました。Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を、ADR-016に現在の構成（単一host、NATS JetStreamだけの配送、エージェントSDK）を記録します。
+標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。A2A入口は明示的に有効化する入口（既定は無効）です。旧Task Hub（固定Task・汎用テキストTask）は2026-11-12に削除しました。Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を、ADR-016に現在の構成（単一host、エージェントSDK）を、ADR-018に配送storeをSQLite単独にした判断を記録します。
 
-GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品仕様](docs/hab-product-spec.md)では、登録・宛先選択・状態表示・privateなPC/モバイル利用を定義します。配送のNATS JetStreamと、エージェント間相互運用の入口としてのA2Aは採用済みです。確定要件と実装・本番配備の状況は区別しています。
+GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品仕様](docs/hab-product-spec.md)では、登録・宛先選択・状態表示・privateなPC/モバイル利用を定義します。hostのSQLite配送storeと、エージェント間相互運用の入口としてのA2Aは採用済みです。確定要件と実装・本番配備の状況は区別しています。
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
-以前の通信部分**HAB Relay**（独自のSQLite配送storeを持つ独立コンポーネント）は2026-11-07に廃止し、**配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えました**（[ADR-016](docs/hab-decisions.md)）。残したのはmessage契約（`src/messaging`）とエージェント向けMCPの5ツールです。MCP tool名`relay_*`と起動・管理コマンド`npm run relay:local`／`relay:admin`は、既存の接続設定との互換のため名前だけ残しています。各部分の置き場所は次のとおりです。
+以前の通信部分**HAB Relay**（独自のSQLite配送storeを持つ独立コンポーネント）は2026-11-07に廃止し、**エージェント間の相互運用はA2Aへ置き換えました**（[ADR-016](docs/hab-decisions.md)）。配送は一度NATS JetStreamへ移しましたが、2026-11-13にhost内の1つのSQLiteファイルだけで行う形へ戻しました（ADR-018、[配送store](docs/delivery-store.md)）。残したのはmessage契約（`src/messaging`）とエージェント向けMCPの5ツールです。MCP tool名`relay_*`と起動・管理コマンド`npm run relay:local`／`relay:admin`は、既存の接続設定との互換のため名前だけ残しています。各部分の置き場所は次のとおりです。
 
 | 部分 | 場所 |
 | --- | --- |
 | message契約・`DeliveryService` interface | [`src/messaging`](src/messaging/index.ts) |
 | アドレス・認証group・権限・容量（Registry） | [`src/hab`](src/hab/README.md) |
 | 唯一のhost（設定・HTTP・監査・管理CLI・MCP server・A2A入口） | [`src/host`](src/host)（MCP serverは`src/host/mcp`） |
-| 配送backend（NATS JetStream） | [`packages/relay-nats`](packages/relay-nats/README.md) |
+| 配送store（SQLite、`delivery.sqlite`） | [`src/delivery`](docs/delivery-store.md) |
 | エージェント側の永続outbox／保存後ACKのinbox・MCP client | [`src/agent-sdk`](src/agent-sdk/README.md) |
 
 store-and-forward、個体認証、受信ACK、期限などの要件は[メッセージ配送の正式仕様](docs/hab-relay-spec.md)（旧HAB Relay仕様）で引き続き管理します。
@@ -30,12 +30,10 @@ store-and-forward、個体認証、受信ACK、期限などの要件は[メッ�
 
 ## ローカルMVPを確認する
 
-Node 26以上で、次の有限コマンドから[13段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DB、一時ディレクトリ内の専用loopback nats-server、模擬3個体のloopback通信だけを使い、終了時に停止・削除します。固定版のnats-server 2.15.2が必要です。`HAB_NATS_SERVER`で指定するか、次のinstall手順で用意します。見つからない場合は`nats_server_required`とinstall手順を表示して終了します。
+Node 26以上で、次の有限コマンドから[13段階の動作確認](docs/local-mvp.md)を再現できます。新規一時DBと模擬3個体のloopback通信だけを使い、終了時に停止・削除します。
 
 ```sh
 npm ci
-npm ci --prefix packages/relay-nats --ignore-scripts
-mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json
 npm run demo:hab-mvp -- --simulate
 ```
 
@@ -59,14 +57,14 @@ flowchart LR
     REG["Registry (src/hab)<br/>アドレス → agent_id、認証group、権限"]
     DS["DeliveryService (src/messaging)"]
   end
-  NATS["NATS JetStream<br/>(packages/relay-nats)"]
+  DB["SQLite配送store<br/>(src/delivery, delivery.sqlite)"]
   MA <-->|"Bearer / OAuth"| MCP
   AA <-->|"A2A 1.0 JSON-RPC"| A2A
   MCP --> REG
   A2A --> REG
   MCP --> DS
   A2A --> DS
-  DS <--> NATS
+  DS <--> DB
 ```
 
 宛先は`<bot_name>@<agent_name>.hab`形式のアドレスで指定し、hostのRegistryが不変の`agent_id`へ解決します。送信者の名義と受信箱は、引数のエージェント名ではなく認証済みの接続から決まります。
@@ -101,7 +99,7 @@ flowchart LR
 
 | 項目                                                                                       | 状態・根拠                                                                                                                       |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| message契約（`src/messaging`）・JetStream受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はNATS JetStreamのみ（SQLite配送storeは廃止、旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
+| message契約（`src/messaging`）・SQLite配送storeの受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はhostのSQLite配送storeのみ（ADR-018。JetStream版の旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
 | エージェントSDKの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
 | hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run relay:local`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`relay_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | A2A入口 | **実装済み／模擬検証済み・既定は無効**。設定の`a2a` sectionでloopback listenerを開き、host所有のアドレスから設定済みの受信者へTaskを送る。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）。本番配備は未実施 |
@@ -112,7 +110,7 @@ flowchart LR
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
 | Dots ↔ Hub ↔ Grok本番、開発実行手段のHub接続                                               | **計画**。Cursor利用可能性は本人見込み。Claude Channelはmock、Cua起動は未完                                                      |
 
-CIはlint・typecheck・固定版nats-serverでのJetStream検査（`scripts/ci-nats.mjs --stage p6`）・root JavaScriptテスト全件を実行します。件数の固定は持ちません。これは本番接続の受入れではありません。エージェント側の実装範囲は[エージェントSDK](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)を参照してください。
+CIはlint・typecheck・TypeScript tool検査・root JavaScriptテスト全件を実行します。件数の固定は持ちません。これは本番接続の受入れではありません。エージェント側の実装範囲は[エージェントSDK](src/agent-sdk/README.md)、HABの[登録・認可境界](src/hab/README.md)を参照してください。
 
 ## 残りタスク
 
@@ -163,8 +161,6 @@ npm test
 人向け登録フローは`npm run demo:hab-enrollment -- --simulate`で、中断→DB再起動→有効化を再現できます。対話操作は`--interactive`を指定します。どちらも新規の一時DB・模擬主体のみを使い、終了時に削除します。実Botを登録するコマンドではありません。実hostへの組込み条件と再開時の扱いは[登録フロー](src/hab/README.md#human-enrollment-workflow)を参照してください。
 
 登録からHTTP配送・停止・復旧までの一連の模擬検証は`npm run test:hab-integration`で再現できます。[試験matrix](docs/hab-relay-integration.md)には、17件の結果と障害注入の方法、本番接続に進む前の未確認範囲を記録しています。
-
-固定版nats-serverを使うJetStream検査は `node scripts/ci-nats.mjs --stage p6 --nats-server /absolute/path/to/official/nats-server` で実行します。
 
 ## 技術文書
 

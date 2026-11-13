@@ -40,7 +40,7 @@ export interface AckReceipt {
   acked_at: string;
   state: "acked";
 }
-/** Public delivery surface. NATS JetStream (packages/relay-nats) is its only implementation. */
+/** Public delivery surface. The SQLite store (src/delivery) is its only implementation. */
 export interface DeliveryService {
   submit(context: unknown, input: unknown): Receipt;
   status(context: unknown, messageId: string): Receipt;

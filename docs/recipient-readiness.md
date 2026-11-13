@@ -39,8 +39,8 @@ NODE_NO_WARNINGS=1 npm run test:communication-boundary
 
 ## #143後の実製品接続ゲート
 
-#143のPython MCP SDK 2.3.0による3ケースは、新recipient入口と実SQLite／private
-JetStreamを合成policyで接続した互換証拠である。Hermesのnative session、承認UI、
+#143のPython MCP SDK 2.3.0による3ケースは、新recipient入口と実SQLite（当時はprivate
+JetStreamも併用）を合成policyで接続した互換証拠である。Hermesのnative session、承認UI、
 モデルへの本文到達やwakeの証明ではない。2026-10-25の[有限native往復](finite-mcp-trial.md)
 は別revisionの基本5操作を使った実製品試験であり、新入口の認可bridgeへ転用しない。
 

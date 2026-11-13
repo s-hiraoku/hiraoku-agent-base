@@ -1,24 +1,18 @@
-/** Starts the configured host: local auth, optional OAuth ingress, JetStream delivery and audit. */
+/** Starts the configured host: local auth, optional OAuth ingress, SQLite delivery and audit. */
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedOAuthAuthority } from "./oauth-auth.ts";
 import { startHostServer } from "./server.ts";
-import { createJetStreamDelivery } from "./delivery.ts";
+import { createSqliteDelivery } from "./delivery.ts";
 import { HostStartError, readHostConfig, stage } from "./config.ts";
 // Fixed codes from the composed classes that are safe and useful to surface.
 const hostReasons = new Set([
   "local_relay_private_path_required",
   "local_relay_extension_storage_unavailable",
-  "broker_unavailable",
-  "broker_store_missing",
-  "broker_configuration_mismatch",
-  "unsupported_broker_version",
-  "loopback_broker_required",
-  "journal_migration_required",
+  "legacy_jetstream_journal_present",
   "journal_key_or_version_mismatch",
   "unknown_journal_schema",
   "insecure_journal_file",
-  "insufficient_prefetch_window",
   "invalid_local_relay_options",
   "invalid_local_relay_ingress",
   "invalid_local_relay_a2a",
@@ -69,7 +63,7 @@ export async function startHost(configPath: string) {
     if (remote && remote.resource.resource !== config.ingress!.resource_url)
       throw new HostStartError("oauth_resource_mismatch");
     const delivery = stage("config_invalid", () =>
-      createJetStreamDelivery(config.delivery, secrets.relay_fingerprint_key),
+      createSqliteDelivery(config.delivery, secrets.relay_fingerprint_key),
     );
     let sink: LocalAudit | undefined;
     let host: Awaited<ReturnType<typeof startHostServer>>;

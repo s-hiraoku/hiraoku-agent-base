@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createRelayMcpServer } from "../src/host/mcp/server.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
-import { authorizedDelivery } from "./jetstream-delivery.js";
+import { authorizedDelivery } from "./delivery-fixture.js";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
@@ -73,7 +73,7 @@ async function fixture(t) {
     },
   });
   const service = delivery.service,
-    raw = new DatabaseSync(join(dir, "jetstream-journal.sqlite")),
+    raw = new DatabaseSync(join(dir, "delivery.sqlite")),
     handlers = [];
   t.after(async () => {
     for (const h of handlers) await h.close();
@@ -168,7 +168,7 @@ function request(d) {
   };
 }
 function count(f) {
-  return f.raw.prepare("SELECT count(*) n FROM nats_messages").get().n;
+  return f.raw.prepare("SELECT count(*) n FROM delivery_messages").get().n;
 }
 
 test("standalone SDK catalog exposes exactly four delivery tools and no local admin, Task, shell or registration tools", async (t) => {
@@ -275,9 +275,7 @@ test("SDK request/response path submits multipart data, durably receives before 
     "acked",
   );
   assert.equal(
-    f.raw
-      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-      .get().body,
+    f.raw.prepare("SELECT body FROM delivery_messages").get().body,
     null,
   );
   assert.equal(inbox.releaseBody("a", m.message_id), true);
@@ -352,7 +350,7 @@ test("operation-specific refusal remains enforced independently of a valid subje
     { error: "forbidden" },
   );
   assert.equal(
-    f.raw.prepare("SELECT state FROM nats_messages").get().state,
+    f.raw.prepare("SELECT state FROM delivery_messages").get().state,
     "leased",
   );
 });
@@ -371,7 +369,7 @@ test("concurrent SDK polls for the same individual grant exactly one active leas
   );
   assert.equal(
     f.raw
-      .prepare("SELECT count(*) n FROM nats_messages WHERE state='leased'")
+      .prepare("SELECT count(*) n FROM delivery_messages WHERE state='leased'")
       .get().n,
     1,
   );
@@ -383,7 +381,7 @@ test("stale ACKs cannot consume new leases and exact committed ACK retry survive
   await call(f.a, "relay_submit", m);
   const first = (await call(f.b, "relay_poll")).structuredContent.delivery,
     old = request(first);
-  f.raw.exec("UPDATE nats_messages SET lease_until=0,next_visible_at=0");
+  f.raw.exec("UPDATE delivery_messages SET lease_until=0,next_visible_at=0");
   const second = (await call(f.b, "relay_poll")).structuredContent.delivery;
   assert.ok(second.generation > first.generation);
   assert.deepEqual((await call(f.b, "relay_ack", old)).structuredContent, {
@@ -391,7 +389,7 @@ test("stale ACKs cannot consume new leases and exact committed ACK retry survive
   });
   const req = request(second),
     r = (await call(f.b, "relay_ack", req)).structuredContent;
-  f.raw.exec("UPDATE nats_messages SET expires_at=0");
+  f.raw.exec("UPDATE delivery_messages SET expires_at=0");
   assert.deepEqual((await call(f.b, "relay_ack", req)).structuredContent, r);
   assert.deepEqual(
     (await call(f.b, "relay_ack", { ...req, generation: req.generation + 1 }))
@@ -443,7 +441,7 @@ test("relay_submit refuses an attachment part and stores nothing", async (t) => 
 test("unexpected storage details are normalized and transaction failure cannot return acceptance", async (t) => {
   const f = await fixture(t);
   f.raw.exec(
-    "CREATE TRIGGER fail_accept BEFORE INSERT ON nats_messages BEGIN SELECT RAISE(ABORT,'synthetic private storage detail'); END",
+    "CREATE TRIGGER fail_accept BEFORE INSERT ON delivery_messages BEGIN SELECT RAISE(ABORT,'synthetic private storage detail'); END",
   );
   const r = await call(f.a, "relay_submit", message());
   assert.deepEqual(r.structuredContent, { error: "relay_operation_failed" });
@@ -454,7 +452,7 @@ test("unexpected storage details are normalized and transaction failure cannot r
 test("unknown/local-administration tools never reach Relay maintenance or execute a task", async (t) => {
   const f = await fixture(t);
   const totals = () =>
-    f.raw.prepare("SELECT * FROM nats_maintenance_totals").get();
+    f.raw.prepare("SELECT * FROM delivery_maintenance_totals").get();
   const before = { ...totals() };
   for (const name of [
     "relay_maintain",

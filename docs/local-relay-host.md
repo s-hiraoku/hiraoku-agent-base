@@ -2,9 +2,8 @@
 
 `startHostServer` in `src/host/server.ts` is the explicit, product-independent
 programmatic startup entry point. Importing it performs no IO. Calling it opens
-only its dedicated HAB registry, JetStream delivery journal and process ownership
-database, connects to the configured loopback NATS JetStream broker, then
-listens on IPv4 `127.0.0.1`. All capacity/transport limits, stable integrity keys,
+only its dedicated HAB registry, SQLite delivery store and process ownership
+database, then listens on IPv4 `127.0.0.1`. All capacity/transport limits, stable integrity keys,
 individual authority, bearer verifier and audit sink must be supplied by trusted
 operator code. No credential source, fixture identity, public bind or no-auth
 fallback is selected automatically. HTTP exposes only the existing five Relay

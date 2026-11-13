@@ -1,10 +1,5 @@
-export const pendingBackends = [
-  {
-    id: "nats-jetstream",
-    reason:
-      "JetStream adapter, pinned server and consumer policy are not implemented on main",
-  },
-];
+/** Delivery backends the lab names but cannot run yet. None: SQLite is the only backend (ADR-018). */
+export const pendingBackends = [];
 
 export const pendingMigrationRequirements = [
   "A2A fixed connectivity preview does not prove generic six-direction body/parts or foreign mailbox/ACK scope",

@@ -33,21 +33,6 @@
     ]
   },
   "delivery": {
-    "broker": {
-      "server": "nats://127.0.0.1:4222",
-      "user": "replace-with-dedicated-user",
-      "password": "replace-with-private-password",
-      "stream": "HAB_TEXT",
-      "subject_prefix": "habText",
-      "max_consumers": 100,
-      "max_bytes": 67108864,
-      "max_message_bytes": 65536,
-      "request_timeout_ms": 2000
-    },
-    "pump": {
-      "interval_ms": 100,
-      "max_records_per_cycle": 100
-    },
     "volume": {
       "identity_file": "/ABSOLUTE/PRIVATE/HAB/state/relay/volume.local.json",
       "expected_id": "replace-with-volume-id",
@@ -73,6 +58,10 @@
         "max_records_per_recipient": 50,
         "reservations": []
       }
+    },
+    "maintenance": {
+      "interval_ms": 60000,
+      "max_records_per_cycle": 100
     }
   },
   "http": {

@@ -23,8 +23,8 @@ import {
   operations,
 } from "./hab-registry-fixtures.js";
 import { limits, policy, message, envelope } from "./relay-http-fixtures.js";
-import { createJetStreamDelivery } from "../src/host/delivery.ts";
-import { deliverySection, pollUntilDelivered } from "./jetstream-delivery.js";
+import { createSqliteDelivery } from "../src/host/delivery.ts";
+import { deliverySection, pollUntilDelivered } from "./delivery-fixture.js";
 
 async function fixture(t, enroll = true) {
   const directory = realpathSync(
@@ -93,7 +93,7 @@ async function fixture(t, enroll = true) {
     port: 0,
     limits,
     registry: registryOptions,
-    delivery: createJetStreamDelivery(
+    delivery: createSqliteDelivery(
       await deliverySection(directory),
       new Uint8Array(32).fill(43),
     ),
@@ -181,11 +181,7 @@ test("explicit local host persists a submission across listener/database restart
     (await f.client(host, "a").status(submission.message_id)).state,
     "acked",
   );
-  for (const file of [
-    "owner.sqlite",
-    "registry.sqlite",
-    "jetstream-journal.sqlite",
-  ])
+  for (const file of ["owner.sqlite", "registry.sqlite", "delivery.sqlite"])
     assert.equal(statSync(join(f.directory, file)).mode & 0o077, 0);
 });
 
@@ -250,7 +246,7 @@ test("private state is mandatory; existing permissive or symlinked DB files are 
   await assert.rejects(f.start(), /private_path/);
   assert.equal(statSync(db).mode & 0o777, 0o644);
   chmodSync(db, 0o600);
-  symlinkSync(db, join(f.directory, "jetstream-journal.sqlite"));
+  symlinkSync(db, join(f.directory, "delivery.sqlite"));
   await assert.rejects(f.start(), /private_path/);
 });
 

@@ -18,9 +18,9 @@
 
 **2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](relay-auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可をopt-inで実装し、MCPの名義選択v1と通常サービスのopt-in配線も実装した。15分の試験用OAuth入口から常用方式への移行と実製品の受入れは未検証であり、認証設定・公開・自動更新を有効化したとは扱わない。
 
-**現行構成（2026-11-12時点）：独自実装としてのHAB Relayは廃止し、配送はNATS JetStream、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。** この文書は、メッセージ契約・store-and-forward・ACK・期限・認可の要件の正本として残す。本文の「Relay」は、この要件を満たすhost側の配送機能（`src/host`とJetStream配送）を指す。エージェントはMCP 5ツール（`relay_*`の名前は互換のため維持）か、既定無効のA2A入口から接続する。
+**現行構成（2026-11-13時点）：独自実装としてのHAB Relayは廃止し、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。配送はhostのSQLite配送store（[ADR-018](hab-decisions.md)、[配送store](delivery-store.md)）で行う。** この文書は、メッセージ契約・store-and-forward・ACK・期限・認可の要件の正本として残す。本文の「Relay」は、この要件を満たすhost側の配送機能（`src/host`と`src/delivery`のSQLite配送store）を指す。エージェントはMCP 5ツール（`relay_*`の名前は互換のため維持）か、既定無効のA2A入口から接続する。
 
-**2026-11-06の改訂（[ADR-016](hab-decisions.md)）：配送はNATS JetStreamだけで行う。** SQLite配送storeは廃止し、旧messageは移行しない。message契約と`DeliveryService` interfaceは`src/messaging`、名義・認可・容量はRegistry（`src/hab`）、唯一のhostは`src/host`（MCP serverは`src/host/mcp`）、送信outbox・保存後ACKの受信inboxとMCP clientは`src/agent-sdk`が持つ。第1章・第3章・第3.1節・第16章の「単一Node + SQLite」「SQLiteは最初の正本」「brokerを増やさない」は初期構成の記述であり、配送storeについてはこの改訂が優先する。Registry、登録journal、配送journal、client側outbox／inboxは引き続きSQLiteを使う。
+**2026-11-06の改訂（[ADR-016](hab-decisions.md)）と2026-11-13の改訂（[ADR-018](hab-decisions.md)）：** ADR-016で旧SQLite配送storeを廃止してNATS JetStreamへ移し、ADR-018でJetStreamを外してhostの1つのSQLiteファイル（`delivery.sqlite`）だけで配送する形にした。どちらの移行でも旧messageは移行しない。message契約と`DeliveryService` interfaceは`src/messaging`、名義・認可・容量はRegistry（`src/hab`）、唯一のhostは`src/host`（MCP serverは`src/host/mcp`）、送信outbox・保存後ACKの受信inboxとMCP clientは`src/agent-sdk`が持つ。第1章・第3章・第3.1節・第16章の「単一Node + SQLite」「SQLiteは最初の正本」「brokerを増やさない」は初期構成の記述であり、配送storeについてはこの改訂が優先する。Registry、登録journal、配送store、client側outbox／inboxはSQLiteを使い、brokerは持たない。
 
 ## 1. 目的と非目標
 
@@ -55,7 +55,7 @@ flowchart LR
   A["Agent A"] --> OA["Adapter A: durable outbox"]
   OA --> AUTH["Verified binding and ACL"]
   AUTH --> R["HAB Relay"]
-  R --> DB["NATS JetStream + delivery journal: message + delivery + receipts"]
+  R --> DB["SQLite delivery store: message + delivery + receipts"]
   R -->|"Poll response; durable inbox before ACK"| IB["Adapter B: durable inbox + dedup"]
   IB --> B["Agent B"]
   IB -->|"Explicit allowed execution acceptance"| TB["Task bridge"]
@@ -474,7 +474,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 - client側：送信outbox、受信inbox/dedup、ACK待ちと処理journal。実個体がこの保存点を持つかはG0対象。
 - 運用：redacted delivery audit、任意wake outbox、thread budget／容量の集計。業務本文を監査tableへ複写しない。
 
-SQLiteは最初の正本であり、別broker・D1とのdual-writeを導入しない（初期案。配送の正本はADR-016でNATS JetStreamと配送journalへ移し、SQLiteとのdual-writeやroute切替は持たない）。client側DBは送受信責任のための別保存点であって、Relay正本の無制御replicaではない。
+SQLiteは最初の正本であり、別broker・D1とのdual-writeを導入しない（ADR-016で一度NATS JetStreamへ移したが、ADR-018でhostのSQLite配送store `delivery.sqlite`を正本に戻した。dual-writeやroute切替は持たない）。client側DBは送受信責任のための別保存点であって、Relay正本の無制御replicaではない。
 
 ## 17. Adapter拡張契約
 
