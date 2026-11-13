@@ -5,11 +5,9 @@ Bot's `bot_name` inside the same `agent_name` namespace while it keeps its `agen
 authentication assignment, operation grants, blocks, receipts, inbox and outbox
 identities. It does not rename a host profile, move credentials, start an agent, or
 grant MCP clients management rights. No product-specific dispatch is introduced.
-The registry v3 schema, the `rename` administrator operation and the permanent
-reservations below are implemented. The grace-period behaviour is the adopted
-specification; until the implementation lands, an old name is refused immediately
-(the earlier prototype behaviour). Migration of an existing deployment still needs
-separate operator approval.
+The registry v3 schema, the `rename` administrator operation, the permanent
+reservations and the grace period below are implemented. Migration of an existing
+deployment still needs separate operator approval.
 
 ## What a rename must not break
 
@@ -23,7 +21,7 @@ The places that hold the address as text are handled as follows.
 | --- | --- |
 | Another agent's address book or saved contact | During the grace period `relay_resolve(old)` returns the same `recipient_id`. The v1 output still echoes the requested address, so existing clients keep working; the current name is read with `hab_discover`. After the grace period the old name is refused like any unknown name (`forbidden`). |
 | The renamed agent's own `as_address` (frozen in its MCP client) | During the grace period the old name is accepted as the caller's own name only when the authenticated binding and `expected_agent_id`, if given, select the same `agent_id`. After the grace period it fails closed. Refresh the host's stored address before then. |
-| Host config: `a2a.identity`, `a2a.recipient` | Resolved through the same rule, so the A2A entry keeps working during the grace period. The rename procedure must update the config in the same maintenance window. A start after the grace period with an old name is refused. |
+| Host config: `a2a.identity`, `a2a.recipient` | Resolved through the same rule, so the A2A entry keeps working during the grace period: the identity stays the same agent and the recipient resolves to the same ID. The rename procedure must update the config in the same maintenance window. A start after the grace period with an old identity is refused with `a2a_identity_renamed`; an old recipient is refused like any unknown name. |
 | Host attestations | Become `unknown/stale_address_attestation` until refreshed. They never become ownership proof for the old name. |
 | Directory, discovery and `check_address` | Show the current name only. A previous name is reported as reserved and can never be enrolled or claimed by another ID. |
 | Credential mappings and OAuth connections | Keyed by connection, not address. Unchanged. |
@@ -33,10 +31,13 @@ Rules:
 - Every previous name stays permanently reserved to the same `agent_id`. The grace
   period only decides whether the old name still resolves; it never releases the
   reservation.
-- The grace period is a registry option, `rename_grace_days`, default 30, measured
-  from the rename event in the registry clock. Each previous name has its own
-  period. Resolution through an old name is recorded in the redacted audit as a
-  category, so the operator can see which callers still use it.
+- The grace period is a registry option, `rename_grace_days` (0–365, default 30),
+  measured in the registry clock from the latest rename away from that name. Each
+  previous name has its own period; 0 refuses a previous name at once. Each use of a
+  previous name (a `relay_resolve`, or the agent's own frozen `as_address`) is counted
+  per caller ID in `hab_previous_name_uses`, with no message content, so the operator
+  can see which callers still use it. The table holds at most `max_audit_records`
+  rows; when it is full, existing counts keep growing and new callers are not listed.
 - An old name resolves only to its own `agent_id` and only with the caller's current
   resolve/submit rights to that ID. It is not a forwarding alias to another ID and
   grants nothing new.
@@ -44,8 +45,11 @@ Rules:
   is a new audited CAS operation, not deletion or reassignment of history.
 - The `agent_name` (product or execution environment) cannot change. A rename across
   namespaces is refused.
-- `relay:admin status` lists, for each renamed agent, its previous names with the
-  grace end, and warns when the host config still names an old address.
+- `relay:admin status` lists `previous_names`: each previous name with its agent ID,
+  current name, rename time, grace end, whether it still resolves, and the callers
+  that used it. It reports `config_previous_address` (still resolving) or
+  `config_previous_address_expired` when `a2a.identity` or `a2a.recipient` names a
+  previous address.
 
 ## Schema and permissions
 
@@ -56,9 +60,12 @@ immutable-address behavior are unchanged.
 Admin commands refuse an upgrade-pending registry and never perform this migration.
 
 V3 preserves the original `hab_agents` identity row and its immutable trigger.
-It adds immutable address reservations, append-only rename events and a current-name
-view. All changes occur in one Registry transaction through the separate `rename`
-administrator permission, with a journaled request ID, expected address and epoch.
+It adds immutable address reservations, append-only rename events, a current-name
+view and the previous-name use counts (name schema version 2). A v3 registry from the
+first v3 build (name schema version 1) gains the use table at the next host start;
+admin commands report `registry_upgrade_pending` until then. All changes occur in
+one Registry transaction through the separate `rename` administrator permission,
+with a journaled request ID, expected address and epoch.
 Rename increments the agent epoch and its member-group epoch to invalidate scoped
 discovery cursors, preserving grants and active credential bindings. Event storage
 is capped by `max_requests`; reservations are capped by `max_agents + max_requests`.
@@ -97,15 +104,16 @@ same management contract applies to all participating products.
    old address keeps resolving only until the grace period ends. Profile/path
    renaming is independent and is not performed by this command.
 7. Verify `whoami`, scoped directory, new-address resolution, old-address resolution
-   to the same ID during the grace period (refusal before the grace implementation lands),
-   pending delivery/ACK/status, and unchanged grants. Previously accepted envelopes
+   to the same ID during the grace period, pending delivery/ACK/status, and unchanged
+   grants. Before the grace end, check `previous_names[].callers` in `relay:admin
+   status` and tell any caller still listed. Previously accepted envelopes
    and replies continue to use the same immutable sender/recipient IDs.
 
 ## Rollback boundaries
 
-Disabling new rename operations in v3-capable code preserves current-name reads;
-it never revives old names. An old binary refuses schema v3. Do not roll an active
-Registry back to an older backup or drop its tables: this would erase later name
+Disabling new rename operations in v3-capable code preserves current-name reads and
+the remaining grace periods; it never revives a previous name whose grace has ended.
+An old binary refuses schema v3. Do not roll an active Registry back to an older backup or drop its tables: this would erase later name
 reservations and authority changes. Prefer an explicit same-ID rename-back after
 checking clients and queued work, or keep v3-readable code with mutations disabled.
 Only a quiesced, coordinated restore before any subsequent writes can safely use

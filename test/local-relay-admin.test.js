@@ -817,6 +817,39 @@ test("journaled admin rename CLI keeps the credential and exposes the current na
     ).address,
     "new@hermes.hab",
   );
+  // During the grace period the frozen previous name still selects the same ID.
+  const frozen = await f.call(tokens.h, "hab_discover", {
+    action: "whoami",
+    as_address: "old@hermes.hab",
+    expected_agent_id: before.agent_id,
+  });
+  assert.equal(frozen.selected_identity.agent_id, before.agent_id);
+  assert.equal(frozen.selected_identity.address, "new@hermes.hab");
+  const [previous] = hostAdminStatus(f.configPath).previous_names;
+  assert.equal(previous.address, "old@hermes.hab");
+  assert.equal(previous.agent_id, before.agent_id);
+  assert.equal(previous.current_address, "new@hermes.hab");
+  assert.equal(previous.resolves, true);
+  assert.equal(
+    Date.parse(previous.grace_until) - Date.parse(previous.renamed_at),
+    30 * 86400000,
+  );
+  // A host config that still names the previous address is reported, not rewritten.
+  f.config.a2a = {
+    port: 0,
+    identity: "a2a-host@hermes.hab",
+    recipient: "old@hermes.hab",
+    poll_interval_ms: 1000,
+    max_active_requests: 1,
+    max_records: 10,
+  };
+  f.write("service.local.json", f.config);
+  assert.deepEqual(
+    hostAdminStatus(f.configPath).problems.filter((p) =>
+      p.code.startsWith("config_previous"),
+    ),
+    [{ code: "config_previous_address", subject: "a2a.recipient" }],
+  );
 });
 
 test("connect rejects rename-only flags before opening or changing a registry", () => {

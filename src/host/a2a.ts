@@ -98,11 +98,22 @@ export function provisionHostA2aIdentity(
   admin: unknown,
   identityAddress: string,
 ): AgentRecord {
-  const target = parseHabAddress(identityAddress);
+  let target = parseHabAddress(identityAddress);
   const find = () =>
     registry
       .overview(admin)
       .agents.find((agent) => agent.address === target.address);
+  // A renamed identity keeps working under its previous name only during the grace
+  // period; a fresh enrollment under a reserved name would be refused anyway.
+  const previous = find()
+    ? undefined
+    : registry
+        .previousNames(admin)
+        .find((entry) => entry.address === target.address);
+  if (previous) {
+    if (!previous.resolves) throw new HostA2aError("a2a_identity_renamed");
+    target = parseHabAddress(previous.current_address);
+  }
   if (!find()) {
     let product = registry
       .overview(admin)
