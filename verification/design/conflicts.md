@@ -10,7 +10,7 @@ Classification: scope/history/explicit-authority. Requirements: HAB-F01, HAB-F02
 
 No. Architecture/workflow explicitly own optional limited Task path, and ADR015/common-MCP explicitly retain Tasks optional and recipient existing authority; ADR-016 revises the standard composition and keeps that division. Diagram remains dated historical Task integration rather than standard communication target.
 
-Sources: [docs/architecture.md:1](../../docs/architecture.md#L1-L7), [docs/hab-workflow.md:5](../../docs/hab-workflow.md#L5-L7), [docs/hab-topology.md:7](../../docs/hab-topology.md#L7-L11), [docs/hab-decisions.md:24](../../docs/hab-decisions.md#L24-L36), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48).
+Sources: [docs/architecture.md:1](../../docs/architecture.md#L1-L7), [docs/history/hab-workflow.md:5](../../docs/history/hab-workflow.md#L5-L7), [docs/history/hab-topology.md:7](../../docs/history/hab-topology.md#L7-L11), [docs/hab-decisions.md:24](../../docs/hab-decisions.md#L24-L36), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48).
 
 ## HAB-C-F02 — resolved
 
@@ -20,7 +20,7 @@ Classification: scope/authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F0
 
 No. Reusable Relay permits outer capability integration without reverse dependency; standard messaging cannot require HAB product execution/approval runner. Verify native MCP/formal display/wake binding and leave absent capabilities unverified; independent explicitly configured execution integration remains scoped.
 
-Sources: [docs/hab-relay-spec.md:81](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L81-L89), [docs/common-mcp-connection.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L3-L6), [docs/hab-decisions.md:31](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-decisions.md#L31-L31), [docs/recipient-readiness.md:32](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/recipient-readiness.md#L32-L32).
+Sources: [docs/hab-relay-spec.md:81](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-relay-spec.md#L81-L89), [docs/common-mcp-connection.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/common-mcp-connection.md#L3-L6), [docs/hab-decisions.md:31](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/hab-decisions.md#L31-L31), [docs/receiver/recipient-readiness.md:32](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/recipient-readiness.md#L32-L32).
 
 ## HAB-C-F03 — resolved
 
@@ -30,7 +30,7 @@ Classification: history/implementation-status. Requirements: HAB-F01, HAB-F02, H
 
 None proves live refresh. Older table is historical implementation snapshot; persistent-auth documents explicit v2 implemented contract and synthetic/loopback tests, with real Auth0/host refresh still unverified. Preserve version/mode and evidence scope rather than treating all common auth as 15-minute one-shot.
 
-Sources: [docs/hab-decisions.md:22](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L22-L22), [README.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/README.md#L19-L19), [docs/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L3-L12), [docs/persistent-mcp-auth.md:133](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L133-L143).
+Sources: [docs/hab-decisions.md:22](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-decisions.md#L22-L22), [README.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/README.md#L19-L19), [docs/operations/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L3-L12), [docs/operations/persistent-mcp-auth.md:133](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L133-L143).
 
 ## HAB-C-F04 — resolved
 
@@ -60,7 +60,7 @@ Classification: history/state-meaning. Requirements: HAB-F01, HAB-F02, HAB-F03, 
 
 Current fixed source explicitly resolves working to coordinator claim before runtime acceptance. Preserve this meaning in API/UI/evidence and do not treat working as model start/approval/completion.
 
-Sources: [docs/implementation/design-boundary-alignment.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/implementation/design-boundary-alignment.md#L15-L15), [docs/generic-agent-async-design.md:142](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/generic-agent-async-design.md#L142-L142), [docs/implementation/generic-job-application.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/implementation/generic-job-application.md#L19-L23).
+Sources: [docs/history/design-boundary-alignment.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/implementation/design-boundary-alignment.md#L15-L15), [docs/history/generic-agent-async-design.md:142](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/generic-agent-async-design.md#L142-L142), [docs/history/generic-job-application.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/135d9ca3a6fb93b9c2ce435f5674ede56bb0a338/docs/implementation/generic-job-application.md#L19-L23).
 
 ## HAB-C-F07 — resolved
 
@@ -70,7 +70,7 @@ Classification: scope/authority. Requirements: HAB-F01, HAB-F02, HAB-F03, HAB-F0
 
 No. Pure inbox_read preserves false receipt and does no action/ACK update; existing reply/task acceptance still independently require confirmed ACK and current authorization. Read authority is separate from metadata/receive and actions.
 
-Sources: [docs/adapter-host.md:49](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L49-L53), [docs/recipient-readiness.md:7](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/recipient-readiness.md#L7-L9).
+Sources: [docs/receiver/adapter-host.md:49](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/adapter-host.md#L49-L53), [docs/receiver/recipient-readiness.md:7](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/recipient-readiness.md#L7-L9).
 
 ## HAB-C-A01 — resolved
 
@@ -90,7 +90,7 @@ Classification: scope. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11
 
 Finitev1 trial cleanup is separate from persistentv2 operation. Persistent mode retains intended settings/grants until explicit scoped stop/incident; record mode before invoking cleanup.
 
-Sources: [docs/relay-oauth-ingress.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L19-L22), [docs/relay-oauth-ingress.md:143](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L143-L147), [docs/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L3-L6), [docs/persistent-mcp-auth.md:79](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L79-L86).
+Sources: [docs/operations/relay-oauth-ingress.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L19-L22), [docs/operations/relay-oauth-ingress.md:143](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L143-L147), [docs/operations/persistent-mcp-auth.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L3-L6), [docs/operations/persistent-mcp-auth.md:79](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/persistent-mcp-auth.md#L79-L86).
 
 ## HAB-C-A03 — resolved
 
@@ -100,7 +100,7 @@ Classification: history. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A
 
 Treat overview wording as stale implementation summary, not universal invariant. Detailed Auth0 boundary explicitly supports approved explicit HTTPSport/prefix and exact path-specific metadata, and Relay ingress has its own canonical resource. Preserve exact resource and route isolation; do not enforce standard-port/exact-/mcp-only globally. Actual ingress interoperability remains unverified.
 
-Sources: [docs/hab-security.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-security.md#L19-L19), [docs/auth0-boundary.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/auth0-boundary.md#L27-L35), [docs/auth0-boundary.md:62](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/auth0-boundary.md#L62-L67), [docs/relay-oauth-ingress.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L40-L44).
+Sources: [docs/hab-security.md:19](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hab-security.md#L19-L19), [docs/history/auth0-boundary.md:27](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/auth0-boundary.md#L27-L35), [docs/history/auth0-boundary.md:62](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/auth0-boundary.md#L62-L67), [docs/operations/relay-oauth-ingress.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L40-L44).
 
 ## HAB-C-A04 — resolved
 
@@ -120,7 +120,7 @@ Classification: scope. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11
 
 No. Legacy Auth0 verifier fetches bounded configured JWKS with cache. Relay OAuth ingress instead uses operator-pinned public keys with no runtime fetch; apply the correct subsystem contract.
 
-Sources: [docs/auth0-boundary.md:131](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/auth0-boundary.md#L131-L147), [docs/relay-oauth-ingress.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L53-L57).
+Sources: [docs/history/auth0-boundary.md:131](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/auth0-boundary.md#L131-L147), [docs/operations/relay-oauth-ingress.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/relay-oauth-ingress.md#L53-L57).
 
 ## HAB-C-A06 — resolved
 
@@ -130,7 +130,7 @@ Classification: scope. Requirements: HAB-A02, HAB-A07, HAB-A08, HAB-A10, HAB-A11
 
 No. Those constraints apply when opting into the fixed execution trial, preserving useful execution safety boundaries. Native transport retains recipient execution/approval and does not add a HAB product runner.
 
-Sources: [docs/local-relay-host.md:65](../../docs/local-relay-host.md#L65-L108), [docs/local-relay-service.md:147](../../docs/local-relay-service.md#L147-L161), [docs/hab-security.md:5](../../docs/hab-security.md#L5-L5).
+Sources: [docs/operations/local-relay-host.md:65](../../docs/operations/local-relay-host.md#L65-L108), [docs/local-relay-service.md:147](../../docs/local-relay-service.md#L147-L161), [docs/hab-security.md:5](../../docs/hab-security.md#L5-L5).
 
 ## HAB-C-D01 — resolved
 
@@ -140,7 +140,7 @@ Classification: historical. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HA
 
 No: cumulative README explicitly appends the optional features later, and focused attachment-outbox/receiver/writer docs describe their adopted opt-in implementations. Keep old stage claims as historical evidence; do not make lack of these optional APIs a current invariant. Real product wiring remains unverified. Later the attachment outbox and receiver were deleted with managed attachments; only WriterAdmission remains as an adopted opt-in. The cumulative src/relay/README.md was itself deleted when the durable sender and receiver moved to src/agent-sdk; its successor README describes only the current agent SDK and has no stage claims, so the question is moot.
 
-Sources: [src/agent-sdk/README.md:3](../../src/agent-sdk/README.md#L3-L3), [docs/writer-admission.md:5](../../docs/writer-admission.md#L5-L5).
+Sources: [src/agent-sdk/README.md:3](../../src/agent-sdk/README.md#L3-L3), [docs/delivery/writer-admission.md:5](../../docs/delivery/writer-admission.md#L5-L5).
 
 ## HAB-C-D02 — resolved
 
@@ -150,7 +150,7 @@ Classification: scope. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HAB-D16
 
 No. fair_poll guarantees bounded candidate rotation for a stable eligible set; WriterAdmission is shared single-process volatile rate/queue. The attachment receiver's single checkpoint slot was deleted with attachments. Bytes/time/processing/SLO/fleet fairness remain excluded.
 
-Sources: [docs/relay-fair-poll.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-fair-poll.md#L15-L17), [docs/writer-admission.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/writer-admission.md#L23-L27).
+Sources: [docs/delivery/relay-fair-poll.md:15](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/relay-fair-poll.md#L15-L17), [docs/delivery/writer-admission.md:23](https://github.com/s-hiraoku/hiraoku-agent-base/blob/d307da1ea3fa049fa79b66748f5ed4f16f19dfc0/docs/writer-admission.md#L23-L27).
 
 ## HAB-C-D03 — resolved
 
@@ -170,7 +170,7 @@ Classification: unresolved. Requirements: HAB-D07, HAB-D13, HAB-D14, HAB-D15, HA
 
 Open: actual production host/policy/fault assumptions require an explicit concrete decision; local verification cannot invent them.
 
-Sources: [docs/hab-relay-integration.md:69](../../docs/hab-relay-integration.md#L69-L71), [docs/delivery-store.md:3](../../docs/delivery-store.md#L3-L3), [docs/hab-decisions.md:60](../../docs/hab-decisions.md#L60-L68).
+Sources: [docs/history/hab-relay-integration.md:69](../../docs/history/hab-relay-integration.md#L69-L71), [docs/delivery-store.md:3](../../docs/delivery-store.md#L3-L3), [docs/hab-decisions.md:60](../../docs/hab-decisions.md#L60-L68).
 
 ## HAB-C-D05 — resolved
 
@@ -190,7 +190,7 @@ Classification: resolved-subsystem-scope. Requirements: HAB-E01, HAB-E03, HAB-E0
 
 No. hermes-connection1–5 and generic profile1–3 expressly choose native common MCP for standard messaging. Runs/inventory adapters remain optional explicit integrations; no default dependency can be inferred.
 
-Sources: [docs/hermes-connection.md:1](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hermes-connection.md#L1-L5), [docs/profiles/async-text-v1.md:1](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/profiles/async-text-v1.md#L1-L3).
+Sources: [docs/history/hermes-connection.md:1](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hermes-connection.md#L1-L5), [docs/history/async-text-v1.md:1](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/profiles/async-text-v1.md#L1-L3).
 
 ## HAB-C-E02 — resolved
 
@@ -200,7 +200,7 @@ Classification: resolved-historical-scope. Requirements: HAB-E01, HAB-E03, HAB-E
 
 Distinct request/runtime/import/key contracts. Earlier trial records finite connectivity only; current inventory/no-site and native acceptance gates remain separate. Do not erase earlier evidence or reuse it as current approval.
 
-Sources: [docs/fixed-pilot.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/fixed-pilot.md#L3-L9), [docs/fixed-pilot.md:37](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/fixed-pilot.md#L37-L46), [docs/hermes-import-boundary.md:57](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hermes-import-boundary.md#L57-L67).
+Sources: [docs/history/fixed-pilot.md:3](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/fixed-pilot.md#L3-L9), [docs/history/fixed-pilot.md:37](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/fixed-pilot.md#L37-L46), [docs/history/hermes-import-boundary.md:57](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hermes-import-boundary.md#L57-L67).
 
 ## HAB-C-E03 — resolved
 
@@ -210,7 +210,7 @@ Classification: historical-implementation-status. Requirements: HAB-E01, HAB-E03
 
 Treat earlier table/diagnostic proposal as its earlier fixed baseline and later explicit fixed-text increment45–53 as source-backed implementation scope. Neither proves actual live OAuth/native compatibility. Avoid absolute current /mcp-only requirement.
 
-Sources: [docs/mvp-acceptance.md:12](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mvp-acceptance.md#L12-L16), [docs/mvp-acceptance.md:45](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mvp-acceptance.md#L45-L53), [docs/inventory-end-to-end.md:118](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/inventory-end-to-end.md#L118-L134).
+Sources: [docs/history/mvp-acceptance.md:12](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mvp-acceptance.md#L12-L16), [docs/history/mvp-acceptance.md:45](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/mvp-acceptance.md#L45-L53), [docs/history/inventory-end-to-end.md:118](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/inventory-end-to-end.md#L118-L134).
 
 ## HAB-C-E04 — resolved
 
@@ -220,7 +220,7 @@ Classification: resolved-state-semantics. Requirements: HAB-E01, HAB-E03, HAB-E0
 
 Current assigned generic application/profile/NATS docs consistently define coordinator claim and unknown reconciliation/cancellation; inspected GenericTextJobs projection agrees. Separate proposed recipient-owner approval is not implemented and must not overwrite this state meaning.
 
-Sources: [docs/implementation/generic-job-application.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/implementation/generic-job-application.md#L21-L23), [docs/profiles/async-text-v1.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/profiles/async-text-v1.md#L40-L42), [docs/implementation/generic-text-preview.md:35](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/implementation/generic-text-preview.md#L35-L45).
+Sources: [docs/history/generic-job-application.md:21](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/implementation/generic-job-application.md#L21-L23), [docs/history/async-text-v1.md:40](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/profiles/async-text-v1.md#L40-L42), [docs/history/generic-text-preview.md:35](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/implementation/generic-text-preview.md#L35-L45).
 
 ## HAB-C-E05 — resolved
 
@@ -240,7 +240,7 @@ Classification: proposed-architecture-not-authorized. Requirements: HAB-E01, HAB
 
 No. Proposed OS read-only image/dedicated identity needs separately reviewed TS/Python identity, import/native closure and credential handoff contract. Current EPERM remains inconclusive and blocked.
 
-Sources: [docs/inventory-preparation.md:43](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/inventory-preparation.md#L43-L78), [docs/hermes-import-boundary.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hermes-import-boundary.md#L53-L62).
+Sources: [docs/history/inventory-preparation.md:43](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/inventory-preparation.md#L43-L78), [docs/history/hermes-import-boundary.md:53](https://github.com/s-hiraoku/hiraoku-agent-base/blob/c67711e2bb79670402e3b2cac10452344db7df00/docs/hermes-import-boundary.md#L53-L62).
 
 ## HAB-C-V01 — resolved
 
@@ -250,7 +250,7 @@ Classification: historical-versus-current profile. Requirements: HAB-V07, HAB-V0
 
 Retain old baseline as historical evidence. Current composite P7 and successor catalogs are authoritative for mandatory groups; no old skip becomes a pass. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
-Sources: [docs/testing/delivery-lab.md:1](../../docs/testing/delivery-lab.md#L1-L9), [docs/testing/publication.md:30](../../docs/testing/publication.md#L30-L30).
+Sources: [docs/history/testing/delivery-lab.md:1](../../docs/history/testing/delivery-lab.md#L1-L9), [docs/history/testing/publication.md:30](../../docs/history/testing/publication.md#L30-L30).
 
 ## HAB-C-V02 — resolved
 
@@ -260,7 +260,7 @@ Classification: historical publication and hosted-CI scope. Requirements: HAB-V0
 
 The older statements describe fixed local runs. The active workflow and actual current Actions result establish current CI, not the inert example or historical report.
 
-Sources: [docs/testing/p7-independent-results.md:1](../../docs/testing/p7-independent-results.md#L1-L7), [docs/testing/publication.md:5](../../docs/testing/publication.md#L5-L5).
+Sources: [docs/history/testing/p7-independent-results.md:1](../../docs/history/testing/p7-independent-results.md#L1-L7), [docs/history/testing/publication.md:5](../../docs/history/testing/publication.md#L5-L5).
 
 ## HAB-C-V03 — resolved
 
@@ -270,7 +270,7 @@ Classification: different fault injection boundary. Requirements: HAB-V06, HAB-V
 
 F05 actually spawns/kills an isolated receiver child after save at an injected service-port seam. test:hab-integration only closes/reopens in process; verify-hab marked stop is graceful. These prove different scopes; none proves power-loss/physical failure.
 
-Sources: [docs/testing/delivery-lab.md:58](../../docs/testing/delivery-lab.md#L58-L58), [.claude/skills/verify-hab/features/restart-durability.md:29](../../.claude/skills/verify-hab/features/restart-durability.md#L29-L30).
+Sources: [docs/history/testing/delivery-lab.md:58](../../docs/history/testing/delivery-lab.md#L58-L58), [.claude/skills/verify-hab/features/restart-durability.md:29](../../.claude/skills/verify-hab/features/restart-durability.md#L29-L30).
 
 ## HAB-C-V04 — resolved
 
@@ -290,7 +290,7 @@ Classification: stale operational count within historical reference guide. Requi
 
 The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. PR161 CI correction: eight owner activation regressions raise the current expected full-root inventory from 1338 to 1346. Both initial hosted trigger variants executed 1346 passes but failed the stale 1338 catalog gate; only the expected count changes, not the strict acceptance rule. Corrected-head hosted status remains a separate gate. PR163 stacked follow-up: the 25 unchanged source-launch cases bring this branch to 1371 expected full-root tests. Its original hosted PR report passed all 1371 but failed the inherited 1338 catalog. The corrected owner-activation source and bounded recipient fixture are inherited without changing journal semantics; exact-count and cleanup gates remain strict. The unchanged source-pin is explicitly historical; test/p7/README.md specifies the current successor catalogs and the separate broker-startup group. The generic-nats group was removed with its code, and the NATS producer catalog has 69 cases: 60 after the unused asynchronous relay operations were deleted, eight restored delivery-guarantee cases, and the replay-bound retention cycle case added with the remaining review fixes. Old 1498/7 prose is stale implementation guidance, not a normative fixed count. Current scripts/p7-lab.mjs enforces its full-root count (1190 after the six rollback/capacity cases and the unused Task-store closure case (expected catalog, not an execution-result claim)) and every group in test/p7/manifest.js. Require their exact current report and hosted status; do not edit historical result documents or claim a unique overlapping total. The A2A producer catalog is 49 after the added Task-store closure case; the old 48-case records remain historical. The nine-candidate review follow-up added 17 root cases (root 1207) and four A2A producer cases (53); the contract-limit reply-release case makes the current expected root 1208. These are expected inventories, not evidence of an executed full suite; older totals above describe earlier snapshots. RecipientMessages adds 21 explicit-composition cases, making the integrated expected root inventory 1229; this is not execution evidence. The seven recipient-host MCP cases make the expected root inventory 1236 after main 322a940 integration. Source commit 6085738 and successor pin 8d3104c preserve the commit-before-pin procedure; fresh full P7 and exact-head hosted evidence remain separate. PR141 response-size and interrupted-stdio-cleanup corrections add three cases, so the current expected root is 1239 and focused recipient-host checks are 8+2=10. Their source must be committed before a separate successor-pin update; previous 1236 evidence remains historical and cannot validate the corrected source. The single-source owner composition adds five root cases; the current expected root is 1244. Earlier 1239 results remain historical; unpinned P7 refused before execution and must be rerun against the committed successor. The dedicated stdio composition adds five cases: expected current root 1251. This is an inventory update, not an execution-result claim. The stop-failure fencing and SDK-close ordering regressions raise the current expected root inventory to 1253 (seven dedicated-stdio cases). Earlier 1251 evidence remains historical. Private HTTP composition adds eleven root cases, making current expected inventory1264. Hosted run42699025780 observed1264 passes with owned cleanup; its stale1253 gate failed and is corrected without weakening acceptance. The generic deny-only external owner adds thirteen cases, raising the expected current inventory to 1277. Earlier 1264 execution evidence remains historical; source commit precedes a separate successor pin and new full/hosted checks. Startup-cancellation and reentry regressions add six top-level cases, making the expected current root inventory 1283. Earlier counts remain historical execution or inventory records; current-head execution is separate. Reintegrated ACP-only delta on main 3213cc7a5b97274f17f0a993f6a192c1616550f3 without changing owner startup-cancellation, shared-stop or late-factory behavior. Added actual ACP-driver/current-owner stop and scope-loss composition regressions: one shared stop, confirmed child exit before stores, closed HTTP and no dispatch. Focused ACP37 + owner23 + private HTTP11 = 71 passes. Expected root inventory1324; full/hosted and native/manual acceptance are separate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. Integration of #161/#162/#163 with managed transport (2026-11-11): expected root inventory 1424 (1338 + 33 + 38 + 15), an inventory update, not an execution-result claim. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
-Sources: [docs/testing/p7-lab.md:12](../../docs/testing/p7-lab.md#L12-L12), [docs/testing/publication.md:20](../../docs/testing/publication.md#L20-L20).
+Sources: [docs/history/testing/p7-lab.md:12](../../docs/history/testing/p7-lab.md#L12-L12), [docs/history/testing/publication.md:20](../../docs/history/testing/publication.md#L20-L20).
 
 ## HAB-C-V06 — resolved
 
@@ -300,7 +300,7 @@ Classification: generic compatibility-versus-native protocol scope. Requirements
 
 No for native A2A: it has a fixed SDK route with no generic poll/ACK API, and native relationships do not verify generic requirements. The hybrid D01 is gone: both shared backends now run D01 to D08 through JetStream, so D01 covers six directed synthetic round trips on JetStream only. That is still a synthetic three-agent contract, not arbitrary product traffic. Keep both scopes visible. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
-Sources: [docs/testing/a2a-native-acceptance.md:43](../../docs/testing/a2a-native-acceptance.md#L43-L47), [docs/testing/publication.md:22](../../docs/testing/publication.md#L22-L22).
+Sources: [docs/history/testing/a2a-native-acceptance.md:43](../../docs/history/testing/a2a-native-acceptance.md#L43-L47), [docs/history/testing/publication.md:22](../../docs/history/testing/publication.md#L22-L22).
 
 ## HAB-C-V07 — resolved
 
@@ -324,13 +324,13 @@ Sources: [docs/hab-product-spec.md:28](../../docs/hab-product-spec.md#L28-L28), 
 
 ## HAB-C-E07 — resolved
 
-docs/implementation/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?
+docs/history/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?
 
 Classification: historical. Requirements: HAB-E03, HAB-E11, HAB-E17.
 
 No. The Relay removal deleted src/generic-nats, packages/relay-nats/src/text-port.ts, their tests, scripts/prove-generic-nats.mjs, the proof:generic-nats script and the P7 generic-nats group. The port had no production caller, its transport used the JetStream backend's own authorization callback instead of the Registry, and its production auth and startup were never enabled. The dispatch document now opens with a note that it is a historical record of removed code, and the async-text-v1 profile links it as that record. It stays context. HAB-E03, HAB-E11 and HAB-E17 no longer cite it and keep their TaskBridge, reply-journal and proof-label sources.
 
-Sources: [docs/implementation/generic-nats-dispatch.md:3](../../docs/implementation/generic-nats-dispatch.md#L3-L3), [docs/implementation/generic-nats-dispatch.md:43](../../docs/implementation/generic-nats-dispatch.md#L43-L43), [docs/profiles/async-text-v1.md:50](../../docs/profiles/async-text-v1.md#L50-L50).
+Sources: [docs/history/generic-nats-dispatch.md:3](../../docs/history/generic-nats-dispatch.md#L3-L3), [docs/history/generic-nats-dispatch.md:43](../../docs/history/generic-nats-dispatch.md#L43-L43), [docs/history/async-text-v1.md:50](../../docs/history/async-text-v1.md#L50-L50).
 
 ## HAB-C-E08 — resolved
 
@@ -340,7 +340,7 @@ Classification: explicit-authority. Requirements: HAB-E02, HAB-V12, HAB-E20, HAB
 
 No, the two routes carry different, labelled claims. The owner decided on 2026-11-06 (ADR-016, decision item 5) to wire the gateway into the host with a host-owned A2A identity, off by default, and recorded that its result is the recipient's durable reply report (`attestation: "recipient_reply"`), not an independent verification of the recipient's engine. The not-wired text is replaced. The preview composition with HabExecutionEvidence is unchanged and keeps its rule: HAB-E02 and HAB-V12 keep their statements and their scopes now name that composition. HAB-E20 states the reply-attested semantics and the label; HAB-A21 states the identity, per-caller authorization and Task scoping that keep the host identity from acting as a confused deputy; HAB-D20 states the durability, owner-only send and save-then-ACK receiver properties. test/a2a-host.test.js runs in js-root and covers them, including the attestation label, provisioning idempotence, the refused impostor and reserved address, the 401/403 refusals, the cross-owner GetTask, the quarantined forged reply, the named-intent claim and restart completion. HAB-F26 stays proposed: the entry is opt-in and the product spec still lists formal A2A adoption as undecided.
 
-Sources: [docs/a2a-relay-preview.md:27](../../docs/a2a-relay-preview.md#L27-L27), [docs/a2a-relay-preview.md:59](../../docs/a2a-relay-preview.md#L59-L59), [docs/a2a-relay-preview.md:63](../../docs/a2a-relay-preview.md#L63-L63), [docs/a2a-relay-preview.md:116](../../docs/a2a-relay-preview.md#L116-L116), [docs/a2a-relay-preview.md:129](../../docs/a2a-relay-preview.md#L129-L129), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/hab-decisions.md:76](../../docs/hab-decisions.md#L76-L76).
+Sources: [docs/a2a/a2a-relay-preview.md:27](../../docs/a2a/a2a-relay-preview.md#L27-L27), [docs/a2a/a2a-relay-preview.md:59](../../docs/a2a/a2a-relay-preview.md#L59-L59), [docs/a2a/a2a-relay-preview.md:63](../../docs/a2a/a2a-relay-preview.md#L63-L63), [docs/a2a/a2a-relay-preview.md:116](../../docs/a2a/a2a-relay-preview.md#L116-L116), [docs/a2a/a2a-relay-preview.md:129](../../docs/a2a/a2a-relay-preview.md#L129-L129), [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/hab-decisions.md:76](../../docs/hab-decisions.md#L76-L76).
 
 ## HAB-C-D07 — resolved
 
@@ -360,7 +360,7 @@ Classification: explicit-authority. Requirements: HAB-E20, HAB-D20.
 
 FAILED with result_window_expired. The owner decided on 2026-11-07 (ADR-016) that such a Task moves to the standard FAILED state rather than staying WORKING, with no custom A2A state, and that its status says the recipient may or may not have executed it. The superseded WORKING sentence in HAB-E20 is replaced by the transition, its reason metadata, the outcome-unknown message, the empty Artifacts and the rule that a late reply never changes the Task; HAB-D20 states the bounded host receiver work, scheduled at window closure and subsequent page/retry cycles, that makes the transition through the Task store's overdue() without a caller read. FAILED here does not claim non-execution: the features/a2a-host.md gotcha and the preview say the outcome is unknown. test/a2a-host.test.js covers the transition and the late result in js-root. HAB-E02 and HAB-V12 keep the preview composition's evidence-verified rule unchanged.
 
-Sources: [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/a2a-relay-preview.md:124](../../docs/a2a-relay-preview.md#L124-L126), [.claude/skills/verify-hab/features/a2a-host.md:15](../../.claude/skills/verify-hab/features/a2a-host.md#L15-L15), [.claude/skills/verify-hab/features/a2a-host.md:44](../../.claude/skills/verify-hab/features/a2a-host.md#L44-L44).
+Sources: [docs/hab-decisions.md:45](../../docs/hab-decisions.md#L45-L45), [docs/a2a/a2a-relay-preview.md:124](../../docs/a2a/a2a-relay-preview.md#L124-L126), [.claude/skills/verify-hab/features/a2a-host.md:15](../../.claude/skills/verify-hab/features/a2a-host.md#L15-L15), [.claude/skills/verify-hab/features/a2a-host.md:44](../../.claude/skills/verify-hab/features/a2a-host.md#L44-L44).
 
 ## HAB-C-F08 — resolved
 
@@ -370,7 +370,7 @@ Classification: proposal-versus-adopted-boundary. Requirements: HAB-F01, HAB-F02
 
 No. The wrapper is explicitly uninstalled opt-in preparation over existing AdapterHostCycle operations. It reuses trusted per-session context and current host commit guards, exposes no Task, arbitrary message enqueue, control or owner-release tool, and leaves the normal five-tool Relay unchanged. A pulled saved message is external data, not native owner input or permission. RecipientMessagePort admission and exact-reply native callbacks are not serialized or replaced. Existing accepted requirements keep their original authority; the proposal is reviewed context and synthetic MCP/SQLite/JetStream evidence adds regression coverage only. Native product binding, policy, approval and wake remain manual/unverified.
 
-Sources: [docs/implementation/recipient-host-mcp-proposal.md:8](../../docs/implementation/recipient-host-mcp-proposal.md#L8-L23), [docs/implementation/recipient-host-mcp-proposal.md:116](../../docs/implementation/recipient-host-mcp-proposal.md#L116-L125).
+Sources: [docs/receiver/recipient-host-mcp-proposal.md:8](../../docs/receiver/recipient-host-mcp-proposal.md#L8-L23), [docs/receiver/recipient-host-mcp-proposal.md:116](../../docs/receiver/recipient-host-mcp-proposal.md#L116-L125).
 
 ## HAB-C-F09 — resolved
 

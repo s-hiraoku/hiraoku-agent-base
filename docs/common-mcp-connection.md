@@ -12,11 +12,11 @@ HABはメッセージを預かる通信基盤です。各エージェントが�
 共有できます。別グループの名義使用・受信箱操作を拒否します。基本5操作の名義選択v1と通常サービスの明示opt-inを実装済みです。複数名義の場合、
 各toolに自分側の`as_address`を指定します。任意の`expected_agent_id`を組み合わせると
 不変IDとの一致も配送前に確認します。相手の宛先`address`とは別のfieldです。
-以下のBearer設定例は15分の有限試験向けです。常用は[参加承認と短命tokenの分離](persistent-mcp-auth.md)
+以下のBearer設定例は15分の有限試験向けです。常用は[参加承認と短命tokenの分離](operations/persistent-mcp-auth.md)
 を使い、接続設定とgrantを保存してhostの標準OAuth更新を利用します。確認後に本番設定を
 自動削除しません。実grantや本番適用は別途承認し、MCP登録・認証だけで自動受信が起動したとは扱いません。
 
-任意の[`hab_discover`](mcp-agent-discovery.md)を有効化すると、検証済み接続・group内の名義一覧・
+任意の[`hab_discover`](connections/mcp-agent-discovery.md)を有効化すると、検証済み接続・group内の名義一覧・
 既知の割当・候補アドレスの空き確認を照会できます。選択名義とホスト本人は別に扱います。
 通常catalogは引き続き5操作です。
 
@@ -116,7 +116,7 @@ loopback宛ての実通信がプロキシへ転送されないことも秘密を
 | 実Dotsと実Hermesの往復 | 両者の共通MCP送信・保存後ACK・対応する返信受信 | 常時受信や任意作業の自動実行 |
 
 2026-10-25のCodex / Hermes有限試験は成功し、失効・設定復元・試験Relay停止まで
-確認済みです。[再現手順・host補助・検証限界](finite-mcp-trial.md)を参照してください。
+確認済みです。[再現手順・host補助・検証限界](history/finite-mcp-trial.md)を参照してください。
 
 実往復では両個体・実クライアント経路・無害な固定テスト文・送信/返信message ID・
 `in_reply_to`・双方のACKを秘密なしで確認します。人間による操作とエージェント自身の

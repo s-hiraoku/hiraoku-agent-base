@@ -192,7 +192,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "b5058f9aa8c4e38c0f91c035f429efcea44a783ced3004b8a8ec78a158447eac",
+      "sha256": "6473ab388dc82247c04953f3877c873bcf7d6b5306717b04407266c4c014afd3",
       "role": "normative",
       "review": "reviewed",
       "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, zero automatic Task/reply, explicit source-authorized inbox reads and coordinator-only working state. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity/policy synthetic; no model/approval/UI/deployment proof. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
@@ -250,14 +250,14 @@
     },
     {
       "path": "README.md",
-      "sha256": "5288e3abe2063182de1dc53336c17fa2567a9ea70435a9e49e72533ca37da6e8",
+      "sha256": "29f1d7eb3eac203197fe9f08e75b512bce2f9a5a579f4d10df71a62a3556bcee",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition as revised by ADR-018: the single host (src/host, MCP server in src/host/mcp), the host's single-file SQLite delivery store and the agent SDK; JetStream and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs no broker. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/a2a-relay-preview.md",
-      "sha256": "4a27efa0d15287c19993f3963d77405f745307b4af0aaf9cedfffca9332212c8",
+      "path": "docs/a2a/a2a-relay-preview.md",
+      "sha256": "8cc321b56abbb71bd176a702d8a2ff3638386aaba4361e4490cd47eb9bbaa3bc",
       "hash": "69ac5c4487301389a77fc5b2f3eafad77676e9d3c54d349c2386e08c9213ca7a",
       "role": "normative",
       "review": "reviewed",
@@ -265,8 +265,8 @@
       "summary": "Optional P2/P3 A2A-to-Relay composition: durable save/ACK remains SUBMITTED; explicit recipient acceptance and separately authorized Task submission precede execution. COMPLETED needs correlated durable result and independently verified closed engine evidence. Delivery runs through the Registry-guarded SQLite delivery store (ADR-018). That evidence-verified rule governs the preview composition with HabExecutionEvidence. A separate section records the owner's ADR-016 decision to wire the gateway into the host: off unless the config has an `a2a` section, a separate loopback listener, a host-owned Registry identity attested in-process as `urn:hab:host` with startup refusal codes, per-caller Registry checks of resolve/submit/execution_request with Tasks scoped per caller, private outbox/inbox/Task store, send only inside the owner's SendMessage with no background submit retry, a receiver loop that saves then ACKs only replies to host messages within one day of their request's expiry, ACKs any other or later delivery, and any reply under a new message ID that would not change its Task (previewed with held replies counted as confirmed), without an inbox or ACK record, applies each saved reply to its Task and releases the body once the Task is saved, releases unread a reply whose ACK can no longer be confirmed, fails a Task still without a result when the reply window closes (FAILED, reason result_window_expired, outcome unknown, a later reply changes nothing) in the receive cycle after the earliest open window closes, an ACK history counted per message, a blocking SendMessage that holds the Task serializer only per 25 ms check, an inbox of 2 × max_records reply bodies, outbox collection gated by actual inbox capacity after its minimum horizon, a host submit admitted inside the transaction that rechecks the caller, and reply-attested Task states labelled `attestation: \"recipient_reply\"` that claim no engine verification. Timeouts/cancel errors never claim stopped execution; no production/native-agent claim. The outbox horizon is only a minimum: inbox maintenance and a read-only whole-next-batch capacity gate precede outbox collection, preserving actual-local-terminal ACK retention after a long stop and deferring new admissions rather than accepting results that cannot fit. Window expiry is independent of the maintenance cadence; outbox body expiry still runs when row collection is deferred. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The whole-batch reserve may defer collection and admission longer than the minimum necessary. No live deployment has been checked. Task-store shutdown closes the eagerly opened SQLite connection even without SDK driver initialization, supports repeated close, and leaves saved state for reopening. Nine-candidate follow-up: partial 2(max(0,M-T+p)+W) collection (ordinary T<=M: 2(F+W+p)), tri-state defer with finite-delivery limits, fair bounded overdue pages, source-index hints with unchanged guards, and permanent identity revocation rather than address rotation; unexpected save failures retain bodies. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/a2a-sdk-preview.md",
-      "sha256": "eacc51be467c594148f031dcbf12e2d5d6388ce46c0f548297fa0f9629750fcc",
+      "path": "docs/a2a/a2a-sdk-preview.md",
+      "sha256": "4249ee0fe412736905be4a29da6729079e6c4af2d1abb8895ace8bca8d295c75",
       "hash": "beb656183872afe3c5697637daccc0de5ea96b784d4cdb4573d0c23d91a6f157",
       "role": "normative",
       "review": "reviewed",
@@ -274,15 +274,15 @@
       "summary": "Disabled-by-default P1 A2A SDK foundation with fixed connectivity input, caller-owned authenticated TaskPort and owner-isolated SDK store. Intent is durable before submission, stable replay key prevents duplication, cancellation-open maps INPUT_REQUIRED. Tests are official SDK plus real SQLite with fixed worker, not production execution."
     },
     {
-      "path": "docs/adapter-host.md",
-      "sha256": "5c4847bc5a5aee119c4556aaf684e35587f3db0d76e33d4bcace0745b1922760",
+      "path": "docs/receiver/adapter-host.md",
+      "sha256": "d6e0200e6acc9291767f7a5d40a1a1cbb0893431a248d3a5e15daa79a6e1de52",
       "role": "normative",
       "review": "reviewed",
       "summary": "Finite explicit local host commands; receive/save/ACK, send, metadata listing and source-authorized inbox_read are separate. inbox_read returns authenticated unreleased saved copy even if ACK confirmation is false, preserving ACK/outbox/Task and existing reply/accept guards. New control starts paused; actor/epoch/source/owner checks surround commits/RPC; timeout retains active work. Optional owner and multiple DB commit/restore limitations remain explicit; no default product wiring/model/task worker. Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
       "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
     },
     {
-      "path": "docs/adapter-owner.md",
+      "path": "docs/receiver/adapter-owner.md",
       "sha256": "2d70b4ef18689aadce58754677c43fb88291112da391f4ee214946c420f6a9d4",
       "hash": "2d70b4ef18689aadce58754677c43fb88291112da391f4ee214946c420f6a9d4",
       "role": "normative",
@@ -291,8 +291,8 @@
       "summary": "Optional single-local-owner SQLite exclusive lock, without TTL takeover; active/draining operations prevent release and owner loss fences late writes/ACK. All hosts must share the same owner DB; acquisition does not authorize resume or create new delivery/Task. Native killed-child reacquisition is scoped to owner-lock test."
     },
     {
-      "path": "docs/adapter-reply-budget.md",
-      "sha256": "ab63907e2b35fcaced740630f5682c7589c8070e7043082b9bf695bf5a7bd9e2",
+      "path": "docs/receiver/adapter-reply-budget.md",
+      "sha256": "1a813325e71db48be942bd75a9dfee4bc54ace3bf7a1a1be3906244c047c6ed2",
       "hash": "ab63907e2b35fcaced740630f5682c7589c8070e7043082b9bf695bf5a7bd9e2",
       "role": "normative",
       "review": "reviewed",
@@ -307,8 +307,8 @@
       "summary": "Proposed opt-in Registry v3 rename extends immutable names while retaining agent ID, authentication, grants and mailbox identities. Historical names stay reserved without forwarding; exact journaled CAS retries and separate rename authority are required. Operator migration, same-owner rename-back and coordinated backups are described, with production adoption explicitly pending."
     },
     {
-      "path": "docs/answer-intents.md",
-      "sha256": "340b698ac15d6fd5d33a6b61f4e87f401a682485fab2b18f96c3933d3a45a959",
+      "path": "docs/receiver/answer-intents.md",
+      "sha256": "e4dd009ec9201402e811f09fa9a9e59faa03f69fef0181cadd95ad680edc80ca",
       "hash": "a09c32357da9a2591ddb07a5c4f4360f460159aba64131507f0412122c4e1658",
       "role": "normative",
       "review": "reviewed",
@@ -316,21 +316,45 @@
       "summary": "Optional AnswerIntents accepts an already decided answer from recipient authority, saves one stable reply envelope before budget/outbox, and reconciles cross-DB uncertain handoff with original identity/deadline. Does not run model/Task or send at startup. Separate operation authorization, bounded maintain,30-day dedup and opaque-ID retention prevent recreation."
     },
     {
-      "path": "docs/architecture.md",
-      "sha256": "41eb5604aac8b1e04622641b82bf2e11d49da5caa60d56bc1240cc01f3e46a83",
+      "path": "docs/history/task-engine.md",
+      "sha256": "9ad927725f8a97ca0f8f030efa83b371fcdf0a8a786ec5584c0d49f7695ba973",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete."
+      "summary": "Former docs/architecture.md, moved unchanged except link targets when the Task Hub code was deleted (2026-11-12). Owns optional fixed Task Engine rather than standard communication. Trusted verifier and default deny; one authoritative SQLite or D1 Task store, atomic claim/lease/fence/audit/outbox, durable admission receipt and reconciliation. Hermes isolated Runs requirements are fixed-pilot constraints; unknown cancellation retains gate. Event delivery and future development workspace/execution gates are opt-in and incomplete."
     },
     {
-      "path": "docs/auth0-account-step.md",
+      "path": "docs/architecture.md",
+      "sha256": "e735b7c21b4ca19cb9b69bd60438c8cf0a1efa07abf2d9da571d02139c6fbe5f",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, the single-file SQLite delivery store (ADR-018), agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "051f9cf38e8c76b66a7bc2729d7fe35bf880e390f39f9c06d899fe57df9f8b41",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Documentation index by purpose: design, connection/operations, topic folders and history. No requirement.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/history/README.md",
+      "sha256": "0b2f954d8f1ce5b072d4dd7f3f0a4cce02b1ba13071ecb8476d40def759ae4e7",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "States that docs/history holds removed-code descriptions, test records and earlier plans kept unchanged except link targets; current structure is docs/architecture.md. No requirement.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/operations/auth0-account-step.md",
       "sha256": "cd9f44255d8c28f107159021b91749d346260fff1d4e0248f7fea17a30034353",
       "role": "context",
       "review": "reviewed",
       "summary": "Historical not-executed owner-only Auth0 signup plan distinguishes account creation from OAuth client registration, credentials, deployment and agent connection. Owner handles credentials directly, no paid upgrade or optional marketing is inferred. Pricing/terms statements are dated external claims, not currently verified entitlement."
     },
     {
-      "path": "docs/auth0-boundary.md",
+      "path": "docs/history/auth0-boundary.md",
       "sha256": "fa31c8305a1cf607b0c74804e35f30cda3c16ddb7beef0cdb4d05d143aae7f63",
       "role": "normative",
       "review": "reviewed",
@@ -338,14 +362,14 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "13c3bf5462f892495e86921d36513b07a5328bf43800a95465e6f8db65630f64",
+      "sha256": "b8d48c8cd94755904844eec96fb9462d8d2fe27b9bfaa1c6595e78a70c542927",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
     },
     {
       "path": "docs/diagrams/manifest.json",
-      "sha256": "c965b9773bda99fe98dbb531d3814de8a861043f4531ca7141e9d4ece25b71ab",
+      "sha256": "f89c4f77408e6533b54a00e1be172bb1ac9b7a9114940d7f6a66aed6abccb955",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Generated two-diagram integrity manifest pins source Mermaid and rendered PNG hashes plus renderer versions. Source README/current and topology/target are distinct. No standalone product requirement is inferred from hashes or generated images.",
@@ -361,21 +385,21 @@
     },
     {
       "path": "docs/diagrams/render-mermaid.ts",
-      "sha256": "779638cdcfc487daa446fc1ad4725110d517c7ecdfba9fea3e2f6bf724770dc6",
+      "sha256": "bf533f3c7b60445168d9b90460d2059379979d2d19695c85c82c252686e82dfd",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Strict TypeScript successor of the reviewed diagram verifier/renderer. Preserves Markdown Mermaid authority, unique markers, pinned tool versions, definition/image hashes and optional explicit local browser rendering. Diagram integrity is not runtime topology or native product acceptance.",
       "read_scope": "full"
     },
     {
-      "path": "docs/dots-hermes-connection-plan.md",
-      "sha256": "2ff86201e77bba7216f6d4228d596aff983dc7e54275d9514e02e88b82c42450",
+      "path": "docs/history/dots-hermes-connection-plan.md",
+      "sha256": "2e21dd8a3c371e7abb5c9b04bf7f9c4d69d14f32708bcbb64134050ebd9a5bad",
       "role": "context",
       "review": "reviewed",
       "summary": "Concrete unexecuted native MCP connection preparation reuses existing Relay plugin, route, DB and addresses. Separates cloud tool exposure, release/schema compatibility, OAuth grant/refresh and model budgets; requires receiver durable save and independent reread before ACK. Persistent settings survive acceptance. KeepAlive is Relay supervision, not automatic agent receipt; no Hermes execution API becomes standard."
     },
     {
-      "path": "docs/durable-stop-gate.md",
+      "path": "docs/history/durable-stop-gate.md",
       "sha256": "d51c31394edc4c81a0093251e48cba36f1566affdf42a24532f3458a3349e8b3",
       "hash": "d51c31394edc4c81a0093251e48cba36f1566affdf42a24532f3458a3349e8b3",
       "role": "normative",
@@ -384,8 +408,8 @@
       "summary": "Additional deny gate for verified Task principals: durable epoch and state share the transaction with task/grant/audit/outbox effects. Stop/restore invalidates old requests but restores no identity, subscription or unknown run. External HTTPS/model work is not atomically canceled; operator capability is local only, production authenticator still denies by default."
     },
     {
-      "path": "docs/finite-mcp-trial.md",
-      "sha256": "4b864cb825575b1989f76d2fe72b234c6aae720ca3f3e2db041b1397a45d6b2f",
+      "path": "docs/history/finite-mcp-trial.md",
+      "sha256": "426a2cfb8602bb217593dded2a21e7a4a85e00cfefa4681f2260f920da0d7883",
       "hash": "418b04acba5e7eb5748bfda36e6dea7fec4caca72c421375bd4f19333fbc6121",
       "role": "evidence",
       "review": "reviewed",
@@ -394,7 +418,7 @@
       "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
-      "path": "docs/fixed-pilot.md",
+      "path": "docs/history/fixed-pilot.md",
       "sha256": "36513770de448422a3e49ad2ec09baf5fafafe69626366bcfb7a59177f5bcacf",
       "hash": "36513770de448422a3e49ad2ec09baf5fafafe69626366bcfb7a59177f5bcacf",
       "role": "evidence",
@@ -403,7 +427,7 @@
       "summary": "Historical constrained fixed-connectivity Hermes Runs pilot. Exact input/output/provider and pinned immutable process/import closure, scope, deadline and receipt were required only for that pilot. Prior mutable runtime failed; later authorized five-root snapshot trial succeeded locally. This is not current inventory acceptance or mandatory standard MCP architecture."
     },
     {
-      "path": "docs/fixed-readback-worker-identity.md",
+      "path": "docs/history/fixed-readback-worker-identity.md",
       "sha256": "7101f8f4ce923dd799a021647dd6348becc2f25a209253e1612a879e1286a380",
       "hash": "7101f8f4ce923dd799a021647dd6348becc2f25a209253e1612a879e1286a380",
       "role": "context",
@@ -412,8 +436,8 @@
       "summary": "Manual synthetic result-read fixture is explicitly distinct from actual Hermes execution. Worker candidate JWT inspection provides enrolled:false and requires separate identity enrollment. One inventory trial has exact finite model/tool/iteration/time/cost and cleanup gates; signed fixture success is not real Mac process/model attestation."
     },
     {
-      "path": "docs/generic-agent-async-design.md",
-      "sha256": "187dc3cb24d0017e6c4aa434b5c7ee2532858659fa194f52f5798245b6aee16d",
+      "path": "docs/history/generic-agent-async-design.md",
+      "sha256": "a39a86607afa3f5a4bb1d8a54fccee44e1997e1af88c2eb957a14d54ec6fd587",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional Task integration additional design, explicitly not standard messaging prerequisite. Separates delivery/display/work and preserves conversation correlation, recipient-owner authority, real effective operation boundaries, stable execution keys and unknown-outcome reconciliation. working is coordinator claim and not model start. Proposed A2A approval profile, long approval/job deadlines, cross-owner and T01-T13 requirements remain optional future integration work, not implementation/deployment evidence. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
@@ -427,77 +451,77 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "355fecc23c248a87a961936f89b8528ff1e34f79eed61edca39db40a1275a9b8",
+      "sha256": "172f5b46eadd7ecb486a79320c2134b0a6540066d1c52b22b75676fc919de953",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, relay_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery."
     },
     {
       "path": "docs/hab-principles.md",
-      "sha256": "d4a17fa08c3ec71b292be3a56898e2ce414265a604fff0f2e9c65c933b04eebb",
+      "sha256": "d2c229e3ea37143c569a9c1e06c16bd0c8460d8ab5b877ae13cec300d4e8e738",
       "role": "normative",
       "review": "reviewed",
       "summary": "Root intent: independent agent context/judgment, shared product-independent HTTP MCP, durable outbox/inbox, model-free periodic receive/save-before-ACK. No central agent, ordinary Task requirement or global replacement approval layer. Verified identity/policy governs authority; external body never owner approval. Existing jobs stay owned, notifications do not create work, cost unknown/unknown execution stops for reconciliation."
     },
     {
       "path": "docs/hab-product-spec.md",
-      "sha256": "f297c7df8c2f5ea5cf833ec11b5fe788868557ae3d49c4b6ad975af3bb98d0c9",
+      "sha256": "873c653571673b0c9b60d566a6ebabdb747170d469d7469eb3d24ca35bf37012",
       "role": "normative",
       "review": "reviewed",
       "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. The single-file SQLite delivery store is adopted (ADR-018, superseding the JetStream delivery of ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; restore takes one whole backup generation with an expiry hold and original-ID comparison; the earlier JetStream-era text, now replaced, required for older builds a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/hab-relay-integration.md",
-      "sha256": "d2b70f7654e2c2cc74bd993aac0703a1d6ede04422997badce91786bd4ee2680",
+      "path": "docs/history/hab-relay-integration.md",
+      "sha256": "66e351991d074d28c0c703d90d8c96f4a4307ae043efd82ea3a1ce1af07a2bd8",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Dated 17-case model-free native-loopback registration/delivery evidence: real registry/Relay/private sender/inbox, enrollment path and explicit application DB handoff, mock UI/auth/product individuals. Confirms source fixtures for response-loss, save failure, single lease, stop/block/rotation, body-as-data and stable retries. Restart is orderly close/reopen within same Node process; clock fields are fixture-controlled; no kill9, real OAuth, products, TLS or production gate. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "docs/hab-relay-spec.md",
-      "sha256": "120ade3ed3cf4a94433caa30170856956dcd5a1c6c8e6e25cf14cbc13ceba660",
+      "sha256": "545f2ea895ca512d2ee17deec2e492efca8df473f1ee2c43627e38f7348c0aaf",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/hab-roadmap.md",
-      "sha256": "9679260757cc652f53f93eca528c7a0cdc8c52a51c4e7bef03cebfb6a9b73ae7",
+      "path": "docs/history/hab-roadmap.md",
+      "sha256": "97d1de79423a7f5c1ad00114c205b430ac565a7665f245256afdadd2848f7b11",
       "role": "context",
       "review": "reviewed",
       "summary": "Dated comparison of four external projects and incremental live gates. Author-described README capability is not security/install/cost verification. Retains historical fixed Task sequence, while common MCP/receive supervisor governs standard messaging without inventory prerequisite. Design/test/role/evidence updates are required; published source does not authorize private connection or resident/cost change. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/hab-roles.md",
-      "sha256": "54c444b28b1b488db2957653667279f203fdb48d62bf0ce83d12b747087c65b0",
+      "path": "docs/history/hab-roles.md",
+      "sha256": "1cb75bc38f627be57a1fa3ace97f205ed8cd2b2779f0ae3047a54ea0fdf1bbd5",
       "role": "context",
       "review": "reviewed",
       "summary": "Goal role table distinguishes planned, implementation/mock, owner-reported and actual production evidence. Existing Grok job remains owned; Codex repository work is not a Hub executor connection. Fixed connectivity/inventory/ping/Events are limited opt-in surfaces, not ordinary connection requirements. ShiftLog stays separate/private; new executors need verified auth/workspace/idempotency/tool/cost/stop/provenance boundaries. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "docs/hab-security.md",
-      "sha256": "c18beef4476dc4d283931e2191608b443c88f6603635b707472a721775ddc218",
+      "sha256": "b5e50c51f0d5d64922e5b1750f1f8b86454ff6a71038132a4fcaea86e5f45063",
       "role": "normative",
       "review": "reviewed",
       "summary": "Security overview assigns transport authentication/delivery to HAB and content/execution/approvals to recipient; Task execution is optional. Requires fail-closed auth, minimal separated diagnostic/task permissions, private data and secret exclusion, no copied Desktop credentials, independent execution isolation/budget and honest stop/reconciliation. Its older exact-/mcp standard-port implementation claim conflicts with the detailed updated legacy Auth0 boundary and must not become a universal Relay restriction."
     },
     {
-      "path": "docs/hab-topology.md",
-      "sha256": "4254c313c7ad6990d4957589e78825cdc14aceacabf7e3cbeedfcd2987177396",
+      "path": "docs/history/hab-topology.md",
+      "sha256": "6fde7b4187c1cdbdce6e3b0db15220cf702c6c9cac75c03ca285b9e4579609a9",
       "role": "context",
       "review": "reviewed",
       "summary": "Dated 2026-10-10 target topology describes historical optional fixed Task execution path, dashed unconnected routes and code-only blue components. Auth0 is issuer rather than MCP proxy; identity/cost/listener and live acceptance cannot be inferred. Markdown Mermaid owns diagrams, generated PNG/manifest follow it. Private existing service/credentials/routes stay distinct; no arbitrary shell or Hub executor evidence arises from diagram."
     },
     {
-      "path": "docs/hab-workflow.md",
-      "sha256": "c825e390bd23dfed0d5f50e72f034052956c8b37874ea707a2537a79f8748a5b",
+      "path": "docs/history/hab-workflow.md",
+      "sha256": "c87b982e522a148cefc16703fc48640120d4fcc7717092efb616b3714254627b",
       "role": "normative",
       "review": "reviewed",
       "summary": "Starts with standard durable common messaging then explicitly scopes numbered flow/diagram to optional fixed Tasks. Task policy/owner keys, lease/fence/run journal, per-operation approvals and transactional result/audit/outbox; no automatic conversation classifier/execution. waiting_approval is safe hold rather than proof of deployed approval UI. Pause/cancel/local abort do not establish remote termination; unknown fixed execution retains slot until trusted exact reconciliation."
     },
     {
-      "path": "docs/hermes-connection.md",
-      "sha256": "da2d73c3ca75d6c214d98984c3ef4e0652dedc88d464619c6bc8f62af8f1f16b",
+      "path": "docs/history/hermes-connection.md",
+      "sha256": "6a931f21cedce27e53f7be9fbc0cc97c21a1616508ae708dc012e610be39a5ad",
       "hash": "da2d73c3ca75d6c214d98984c3ef4e0652dedc88d464619c6bc8f62af8f1f16b",
       "role": "normative",
       "review": "reviewed",
@@ -505,7 +529,7 @@
       "summary": "Explicitly optional fixed-task Runs driver; standard Hermes messaging uses native common MCP with recipient poll/store/ACK and no HAB model/approval adapter. Optional driver requires independent fresh evidence, fixed scoped idempotency/deadline and uncertain-run retention; mocks prove neither real client continuation nor live authority."
     },
     {
-      "path": "docs/hermes-import-boundary.md",
+      "path": "docs/history/hermes-import-boundary.md",
       "sha256": "21aed702043c318bd2c310c6c9678de623772cf8006c62a4b2b6f26ace3dea61",
       "hash": "21aed702043c318bd2c310c6c9678de623772cf8006c62a4b2b6f26ace3dea61",
       "role": "normative",
@@ -514,15 +538,15 @@
       "summary": "Offline inventory Python boundary: pinned interpreter -I -S prevents pre-wrapper site/.pth execution. Measured noneditable fixed dependencies, exact import/native closure and TS/Python agreement are required for this opt-in executor. EACCES alone proves write-refusal, EPERM remains inconclusive. Guard is not a general OS sandbox or live execution evidence."
     },
     {
-      "path": "docs/implementation/design-boundary-alignment.md",
-      "sha256": "2933c73c3a71478451f775bed0684cc81f4e4d3c6c28acc8ee28417c0ac596d9",
+      "path": "docs/history/design-boundary-alignment.md",
+      "sha256": "37cae58405e756e1f375a0e0863fb8fce27c11d136ef8c0744fd902b2d689edd",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Historical main c667095 and PR132 comparison record underpinning ADR015. Standard supervisor already receive-only; optional generic code unconnected; PR132 is isolated not merged/operationally broken proof. Records added independent pre-ACK SQLite observation, task/outbox zero, coordinator working semantics and historical CI source-guard refresh. Clean temp/loopback/injected scheduler evidence excludes actual product delivery/model/UI/resident auth; historical 1685/61 totals are scoped."
     },
     {
-      "path": "docs/implementation/generic-job-application.md",
-      "sha256": "efdb11537a862b0bccb07b892c86f0bedcf8f9134adbc520fa8ac649853d5a9e",
+      "path": "docs/history/generic-job-application.md",
+      "sha256": "73fa117946fcc58a0274720b1a5d35a8b230ee9b03c50ddb7c6c04a5b19a9bf3",
       "hash": "efdb11537a862b0bccb07b892c86f0bedcf8f9134adbc520fa8ac649853d5a9e",
       "role": "normative",
       "review": "reviewed",
@@ -530,8 +554,8 @@
       "summary": "Opt-in GenericTextJobs shares existing TaskService across A2A/MCP; verified current host binding supplies authority, never message text. Operations have distinct grants, sanitized data, bounded32KiB valid Unicode and20-row scoped pages. working means coordinator claim, reconciliation/cancel uncertainty is not owner approval or confirmed stop."
     },
     {
-      "path": "docs/implementation/generic-nats-dispatch.md",
-      "sha256": "3c86a8967c2b8a8988ea5d9177267021405706db9e9c39bfcc57bdefa6c86b12",
+      "path": "docs/history/generic-nats-dispatch.md",
+      "sha256": "5d2c40440474bdcd0af1516b5c42ba506bef3d2b11e65d05aca323804a89d12a",
       "hash": "9d606266803086d3a6a7874f2ad66813f5f44430e42e8f67363fe1c58705b771",
       "role": "context",
       "review": "reviewed",
@@ -539,8 +563,8 @@
       "summary": "Historical record of the deleted opt-in generic NATS text port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs). An opening note says the code was removed because it had no production caller and bypassed Registry authorization, and points at the current JetStream design and ADR-016. HAB-C-E07 records the disposition. No requirement cites it. Its execution rules survive only where TaskBridge, reply-journal and proof-label sources state them. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/implementation/generic-text-preview.md",
-      "sha256": "30b218f5651fdb813ea69e1f18ac80284d6eb72043db51b2e34ceaae462b2680",
+      "path": "docs/history/generic-text-preview.md",
+      "sha256": "5d0b249aad8dad03ccf079d4a5b6b75376e27d8a572fe10fc0356cd7f595aae2",
       "hash": "30b218f5651fdb813ea69e1f18ac80284d6eb72043db51b2e34ceaae462b2680",
       "role": "normative",
       "review": "reviewed",
@@ -548,21 +572,21 @@
       "summary": "Optional generic-text engine stores immutable correlation1:1 with existing Task, host-authenticated binding and stable execution key. Separate structured text runtime has no fallback to fixed prompt. Synthetic two-runtime acceptance excludes real tools/owner approval/reply. Retention covers original acceptedAt/deadline; waiting_approval here is legacy reconciliation, not owner permission."
     },
     {
-      "path": "docs/implementation/recipient-host-mcp-proposal.md",
-      "sha256": "cb1249527f3482d4b2fac71977bf599be27319b3e79265592a5b8ec5eaf1cf7f",
+      "path": "docs/receiver/recipient-host-mcp-proposal.md",
+      "sha256": "f0b6fa10cd0c263cf4dd25671b793a6e7b609d083d8d652673d5e6f344b9ad98",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposal context for a separate opt-in recipient-host MCP wrapper over AdapterHostCycle. Fixed operation schemas and one trusted recipient context preserve current source/actor/epoch/commit authority; exposure is not permission. Receive/read, persisted answer and send remain separate. The normal five-tool Relay, receive supervisor and RecipientMessagePort are unchanged. In-memory and owned stdio/SQLite/JetStream fixtures establish synthetic paths only; native policy/session/wake/approval, production transport and deployment remain unverified. PR141 follow-up adds an owner-composed inbox_read result budget with body-free refusal, full-response recovery only under compatible owner-selected transport limits, no truncation and no mutating-result replacement. Parent-owned synthetic broker/scratch cleanup and stderr drainage are tested separately from clean child shutdown; native/manual gates remain unverified. Dedicated owner-side stdio appendix links the explicit initial-deny wiring without claiming a production launcher or native acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/implementation/recipient-python-mcp-acceptance.md",
-      "sha256": "374025daf85cca7b1201f6373128e3ad306db275160fbc49db0259d85090f9c3",
+      "path": "docs/receiver/recipient-python-mcp-acceptance.md",
+      "sha256": "70502a50d31cdbb0eb4d23281083c826d0d2ee4d68ec68ac73c2133b60ea2bb0",
       "role": "context",
       "review": "reviewed",
       "summary": "Optional direct official Python MCP SDK recipe over the existing synthetic recipient-host stdio fixture and real temporary SQLite stores including the SQLite delivery store (no broker). Covers initial pause refusal, receipt-confirmed read and explicit fixed reply, rejected authority arguments and same-session synthetic policy revocation."
     },
     {
-      "path": "docs/inventory-end-to-end.md",
+      "path": "docs/history/inventory-end-to-end.md",
       "sha256": "56f8c640130bcb0ad7e14ae79ed0ac455042ede8efccbd1849e7a6f2360d7762",
       "hash": "56f8c640130bcb0ad7e14ae79ed0ac455042ede8efccbd1849e7a6f2360d7762",
       "role": "normative",
@@ -571,7 +595,7 @@
       "summary": "Dedicated explicit inventory entry composes authenticated one-shot factory, separate fixed requester/worker authority and exclusive fresh artifacts. Declared120-second admission/work window includes idle; cleanup may continue and uncertain stop retains evidence. Real Node child/Runs/SQLite tests use synthetic signing and OS probe. Metadata bootstrap creates no execution authority and cannot self-promote."
     },
     {
-      "path": "docs/inventory-one-shot.md",
+      "path": "docs/history/inventory-one-shot.md",
       "sha256": "07708b63d1e12a436a2c0d50a164c85a69dd28d541f540dde16b58c4d8a55045",
       "hash": "07708b63d1e12a436a2c0d50a164c85a69dd28d541f540dde16b58c4d8a55045",
       "role": "normative",
@@ -580,7 +604,7 @@
       "summary": "Optional trusted runInventoryOnce performs read-only preparation, ephemeral key, exclusive private artifact creation, -I -S owned child and fixed worker receipt. All work follows one Task; cleanup confirms only owned stop/revocation and preserves unsettled evidence. Import does not provision; no OAuth acquisition, general runner, or hostile same-user OS-sandbox guarantee."
     },
     {
-      "path": "docs/inventory-preparation.md",
+      "path": "docs/history/inventory-preparation.md",
       "sha256": "c43c7583a74512255c363cde19b53988e4eec821630cdd44c5b1abdeb1252df4",
       "hash": "c43c7583a74512255c363cde19b53988e4eec821630cdd44c5b1abdeb1252df4",
       "role": "normative",
@@ -589,7 +613,7 @@
       "summary": "Read-only inventory preparation precedes stdin credential, Hub DB/listener, entropy and child/worker side effects, but is not live isolation. Two snapshots and actual later Inspector remain required. EPERM is not permission evidence; future dedicated OS identity/read-only mount is proposed only and cannot be substituted without reviewed TS/Python identity/auth contract."
     },
     {
-      "path": "docs/inventory-token-input.md",
+      "path": "docs/history/inventory-token-input.md",
       "sha256": "28a434fe2bb7dc715cf08ddfe8db0474dd206b573a182f9f73cd08008f2a86e9",
       "hash": "28a434fe2bb7dc715cf08ddfe8db0474dd206b573a182f9f73cd08008f2a86e9",
       "role": "normative",
@@ -598,7 +622,7 @@
       "summary": "Manual Python token handoff reads only an already acquired JWT through real hidden TTY, fixed Node command and minimal environment/stdin, with suppressed child output. Entry exit is not Task success.130-second wait plus bounded TERM/KILL confirms only owned process or reports uncertainty; no automatic resubmit or artifact deletion. Future OS isolation remains a proposal."
     },
     {
-      "path": "docs/local-hermes-key.md",
+      "path": "docs/history/local-hermes-key.md",
       "sha256": "659cf5b66357ceb890cc1d756c64e1ca95978dca065fb51d8b8abd7f2792dd0e",
       "hash": "659cf5b66357ceb890cc1d756c64e1ca95978dca065fb51d8b8abd7f2792dd0e",
       "role": "normative",
@@ -607,7 +631,7 @@
       "summary": "Optional one-task local API key lifecycle persists fingerprint/status, not bearer; at-most120-second provisioner does not cryptographically scope/expire token. Revocation requires confirmed child and adapter stop; unknown stop stays stop_failed. Offline manifest/pins do not prove runtime. Live permission/cost/route remain gates; fixed Codex route is not entitlement or remaining-allowance proof."
     },
     {
-      "path": "docs/local-integration.md",
+      "path": "docs/history/local-integration.md",
       "sha256": "6ce9a02658c54107abfe3257075ce96c918e0e28cecf54b0cd01013a3dd550ac",
       "role": "context",
       "review": "reviewed",
@@ -615,7 +639,7 @@
     },
     {
       "path": "docs/local-mvp.md",
-      "sha256": "a4ae6879b1b17f4bff0fde672e7162a518d454ed019b0960fce8203bb731024e",
+      "sha256": "54c963c202f4712b61d1cbce70bbdf9f805a8772b83401b331294d940767dd99",
       "hash": "316f9286a7a0ea1951063ce4ff6062130a0bfc759531d40bb4a6c3f29966bd04",
       "role": "normative",
       "review": "reviewed",
@@ -623,28 +647,28 @@
       "summary": "Synthetic Node loopback local-MVP15-stage CLI combines durable delivery, ACK ambiguity, stable recovery, explicit fixed Task boundary and reply loop denial. It runs over the SQLite delivery store with no broker and removes its own temporary state. Close/reopen is not kill9/power/disk/independent restore proof. Legacy1:1 auth fixture remains while actual connection may use approved shared groups without exclusive Bot identity. Tests include Node/TS and auxiliary Python; production/G1 stays unaccepted. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/local-relay-host.md",
-      "sha256": "db7b1751611e27a52ee376a00cf5c792867bead2e6847984f07e8a7853af0ca9",
+      "path": "docs/operations/local-relay-host.md",
+      "sha256": "8fd7af00269c4da014245d3ca6002d92c37ed2a6a0823c8e8bf63ef21d20a7f6",
       "role": "normative",
       "review": "reviewed",
       "summary": "Product-independent loopback startup (`startHostServer` in `src/host/server.ts`) performs no import-time IO, requires explicit trusted auth/limits/audit/keys and private canonical files, acquires ownership before stores, refuses competing hosts and preserves accepted state on stop/reopen. Proposed fixed-pilot individual bearers and one-task Hermes Runs plan are distinct from adopted shared-group/native MCP mode and do not authorize actual execution. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/local-relay-launchagent.md",
-      "sha256": "9156688560ea23d1e2cf871dc73adb993de55305d72b2f8c85d8fd1c7502b5fc",
+      "path": "docs/operations/local-relay-launchagent.md",
+      "sha256": "f877fe164cf3b625d60724a1801ed9ebfb29a547958f341fabb4695f5bb87ab5",
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in operator runbook pins tested merged release/artifact, explicit executable/config and private state, refuses existing jobs/listeners, and verifies all-deny readiness. User LaunchAgent semantics and owned-job cleanup are explicit. Relay supervision supplies no Adapter cycle, model/API launch or agent identity/roundtrip evidence. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "docs/local-relay-service.md",
-      "sha256": "83f3166930488f1a47d4f6ea751534367a0d188a7e239bdbf92ef2b001830dac",
+      "sha256": "a9be28c1a04a70281e796aac722747f597f1acb7cdae561fd5e198f99ea5d374",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed."
     },
     {
-      "path": "docs/manual-ping-runner.md",
+      "path": "docs/history/manual-ping-runner.md",
       "sha256": "386b164550d60f4234da61567a61c6b3ff5836a31952567766f7817a72ac11aa",
       "hash": "386b164550d60f4234da61567a61c6b3ff5836a31952567766f7817a72ac11aa",
       "role": "normative",
@@ -653,22 +677,22 @@
       "summary": "Manual fixed ping runner pins separate subject/client policies and four ping-only scopes, bounded fresh private storage/listener lifetime, audited authorization and explicit correlated pong. No native wake/model/recurring poll or public route installed. HTTP200 alone is insufficient; uncertainty must preserve state and never silently retry."
     },
     {
-      "path": "docs/mcp-agent-discovery.md",
+      "path": "docs/connections/mcp-agent-discovery.md",
       "sha256": "ec465854645a666ab6513c3dd43b25ffef7d15040fa8f579c13b9fa45f8db53c",
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in read-only sixth tool distinguishes authenticated group, selected address and host-attested session identity. Directory is confined to own binding/group with filtered MAC live-keyset cursors; availability optionally leaks only occupancy in approved namespaces and never reserves/grants. Unknown/stale host evidence remains unknown, presence is unobserved, callback is trusted read-only host code. No inferred online state, registration or identity from profile paths."
     },
     {
-      "path": "docs/migration-plan.md",
-      "sha256": "bfb99c4cea032bd133b26e0f6227a36c8de0f5ca0691e6aaac518841182b4ccc",
+      "path": "docs/history/migration-plan.md",
+      "sha256": "f52e6de7490b9fa3239cb60fe7e7ab0908e8bd13301ef90bb74ddb645e76bbe7",
       "role": "context",
       "review": "reviewed",
       "summary": "Legacy Task storage/runtime portability status selects Mac+SQLite for pilot while Workers/D1/Sites remain portability work. Async atomic migration and local contention fixtures are distinguished from deployed D1/Sites evidence; applied migrations are not rewritten. Original-run receipts, optional Events and Node-only pinned egress retain explicit platform and activation limits; no implication that common Relay requires Task/Hermes execution."
     },
     {
-      "path": "docs/mvp-acceptance.md",
-      "sha256": "96f7713f64493b514a939ce37c014c6a0e42903237d051f92eabc47f8a4e6f16",
+      "path": "docs/history/mvp-acceptance.md",
+      "sha256": "5ced306c72bac0d446a7feb923990e0e449735235739340e2b3570900db30cc4",
       "hash": "e9aee0958b635495c9267e09042ef1128484a27af7de8f0bb2665ef50b6d9ea1",
       "role": "normative",
       "review": "reviewed",
@@ -677,7 +701,7 @@
       "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
-      "path": "docs/mvp-inventory.md",
+      "path": "docs/history/mvp-inventory.md",
       "sha256": "2f5d815262d36c62eaee3fcb73cdc9aea8368534bbb077c2cb376dddd3948ad2",
       "hash": "2f5d815262d36c62eaee3fcb73cdc9aea8368534bbb077c2cb376dddd3948ad2",
       "role": "normative",
@@ -686,14 +710,14 @@
       "summary": "Narrow optional inventory request/result. Fixed lstat candidates produce unknown, never product identity or whole-machine absence; no general filesystem/shell runner. Verified minimal separate requester/worker identities, actual OAuth/callback/route and included cost gates required. Signed mock completion is not actual inventory/model or Dots acceptance."
     },
     {
-      "path": "docs/persistent-mcp-auth.md",
-      "sha256": "62add971e001e4709ad51272beffdacf6fb9b89106470c756b4b156701dcf1c2",
+      "path": "docs/operations/persistent-mcp-auth.md",
+      "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted explicit OAuth v2 separates finite human participation from short-lived access tokens; v1 remains maximum-15-minute trial without auto migration. Host/issuer own refresh and secret storage, Relay only validates pinned keys/current config and immutable connection binding. Participation expiry/revocation bounds contexts, refresh never extends approval. Persistent setup survives acceptance, explicit targeted revocation preserves DB/keys/history, schema migration and rollback preserve accepted/revoked state. Proposed365/30-day production values and real host refresh remain unapproved/unverified."
     },
     {
-      "path": "docs/ping-discovery.md",
+      "path": "docs/history/ping-discovery.md",
       "sha256": "cbd6e0d3306ddb03bc898bc3b21c1f4face58ef74578fe0df73f01c9c1a84706",
       "hash": "cbd6e0d3306ddb03bc898bc3b21c1f4face58ef74578fe0df73f01c9c1a84706",
       "role": "normative",
@@ -702,8 +726,8 @@
       "summary": "Disabled ping-discovery diagnostic publishes auth metadata only, returns401 to all MCP requests, ignores Bearer without decoding and creates no DB/JWT verifier/worker. Finite listener/config cannot promote itself to active runner; metadata availability never establishes callback/identity/OAuth/live ping acceptance."
     },
     {
-      "path": "docs/ping-pong-mvp.md",
-      "sha256": "b07ad690b2a44ba696b4f6da151b07e94857ea0a93e7522f143a50eac378a6e8",
+      "path": "docs/history/ping-pong-mvp.md",
+      "sha256": "daaeee3ab5b8e41fe746baf4148e57590b6c0330df17aa30d9a8eea30ac3e96b",
       "hash": "032c1c2da80dda58e4aaa39d8acbec91b9d2fe106aa6febdab55656c0cfd548e",
       "role": "normative",
       "review": "reviewed",
@@ -711,8 +735,8 @@
       "summary": "Earlier fixed bidirectional diagnostic is opt-in, literal ping/pong only, exact verified subject/client identity and server-selected peer. Correlated authorized pong proves reply; trusted wake HTTP acceptance does not. Durable pre-attempt marker parks uncertain callbacks without automatic retry. Proposed live route/wiring rows are historical alongside later manual-runner docs."
     },
     {
-      "path": "docs/profiles/async-text-v1.md",
-      "sha256": "a277320db4e089d93b12fdc087b64cece649cf35173ed43cc49b366ca922d5a1",
+      "path": "docs/history/async-text-v1.md",
+      "sha256": "dee01f1317447a3158b6670416fd1253c50113dbc7f1ee1111a1c5c01777884c",
       "hash": "ddecab54237ebd41b62832278b4fb6c757bd3ea7b14bad42d2739f5921603798",
       "role": "normative",
       "review": "reviewed",
@@ -720,29 +744,29 @@
       "summary": "Optional async-text profile shares authorized TaskService and IDs across official A2A/MCP, nonblocking send and later explicit result read. Scope-bound stable message IDs, strict Unicode/size/deadline constraints, current per-operation binding, sanitized pages. working is coordinator claim and unknown cancel/lease cannot imply approval/stop. Factory is not production/native-product integration."
     },
     {
-      "path": "docs/receive-supervisor.md",
-      "sha256": "e21300a3237d415511eda90baaf3de3826f9c54f8e77f0618d2ec5a3233d1ee7",
+      "path": "docs/receiver/receive-supervisor.md",
+      "sha256": "2f779aee28c60e7c63a55133aed5e8177b84fcfb1d81f8cd5d3f4052b5814b3c",
       "role": "normative",
       "review": "reviewed",
       "summary": "Model-free version1 scheduler repeats only existing host receive. Requires configured same-agent durable stores/control/owner and explicit resume; no login/grant/pause release/owner takeover/task/reply/model. Explicit bounded interval/backoff/drain; authorization/storage failure stops, outstanding work blocks next receive, stop is not RPC cancel or token revoke. receive_steps counts returned calls only, no auto body processing; restart reuses original ACK and owner/control authority. Product composition/residency is a separate live gate. Optional owner-local authentication gate starts blocked on each process start; trusted local provider recovery signals stop or wait without polling/ACK or refresh/login IO. Only fresh one-use gate-local verification of the exact approved issuer/resource/subject/client/connection/agent tuple reopens it. Fixed synchronous status metadata contains no identity; current pause/owner/draining authority is rechecked after notifications. Generic wire errors cannot supply local recovery authority. Native credential ownership, verification, notification delivery and real expiry/restart acceptance remain separate product responsibilities. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/recipient-messages.md",
-      "sha256": "2027127c66b45eff2b09a83c3d52b5215c2fc2f0a99a1c11516b63de9c5444e2",
+      "path": "docs/receiver/recipient-messages.md",
+      "sha256": "f934c775159541c67d42bbb36d943bf31a8a1e8e626f1aef5ddd6411b9691453",
       "role": "context",
       "review": "reviewed",
       "summary": "Reviewed explicit recipient-local handoff and exact-reply composition against ADR-015, now over the SQLite delivery store (ADR-018). Uses src/messaging and src/agent-sdk with explicit native ports; no Task links."
     },
     {
-      "path": "docs/recipient-readiness.md",
-      "sha256": "438785a0005b337f9ca754e3483fe8d64a59c2b347518ff2581b31982df3bdf2",
+      "path": "docs/receiver/recipient-readiness.md",
+      "sha256": "4624606e91e6db5867a088918e98fbbeea492c81598ccc9842b43cb6596a5360",
       "role": "normative",
       "review": "reviewed",
       "summary": "Current local handoff specification and live preparation ledger. Metadata inbox differs from scoped authenticated copy via inbox_read; unconfirmed receipt remains false and actions keep original guards. Seven local/HTTP scenarios are claimed with injected scheduler/synthetic recipient explicitly distinguished from actual agency/approval. Lists exact caller/session binding, native transport, durable storage, formal display/input API, existing policy, reply and restore work needed; unsupported product APIs remain unsupported, not replaced by Hermes or Tasks. Appended source-verified ordinary/plugin content-cap distinction and missing session/current-policy proof. Registry hostIdentity is an existing discovery attestation candidate, not HostAuthorization; concrete product-side inputs and commit-time authority responsibilities remain prerequisites. Clarifies conditional authenticated private-process launch binding and recipient-owned current policy without requiring a native wire-proof protocol; current Hermes connection sharing is not per-session isolation. Pull authorization and optional push exact-reply approval stay distinct. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/relay-agent-capacity.md",
-      "sha256": "e4e6f0e7e382aefb5f783e12d5e2ae720b7b62b14ece8aff517c91fd9643f3b3",
+      "path": "docs/delivery/relay-agent-capacity.md",
+      "sha256": "ebef997b0a7dbe917866eb4457b839b38b25baf7cad7ba9ac7dc9d68738a7660",
       "role": "normative",
       "review": "reviewed",
       "summary": "Required verified-sender and recipient pending/body/retained-record quotas in the SQLite delivery store (`delivery.queue.agent_capacity`), with host-selected minimum sender reservations evaluated in the admission transaction."
@@ -755,21 +779,21 @@
       "summary": "Adopted group trust boundary separates verified shared authentication from immutable per-address delivery identities/inboxes. Every connection authenticates through a group, and migrate() moves earlier direct 1:1 bindings into single-member groups; all five tools enforce own-side selection, expected ID, current membership/grants/stop under write guard while cross-group destination delivery remains allowed. Within-group credential holders can use sibling names/mailboxes and this is disclosed. Fixed outbox/inbox/ACK identities, bounded redacted provenance, separate admin operations and client-owned refresh are required; live refresh remains limited."
     },
     {
-      "path": "docs/relay-fair-poll.md",
-      "sha256": "1ae59b73d48dd4c2008b828cb5f9703683fea2ceb2aebcba0b897e7b61ecced9",
+      "path": "docs/delivery/relay-fair-poll.md",
+      "sha256": "75bc7226b9ef1fd9a4aa81ff2075f09351989617ba89e1b7ae4f1759a0c9c2c0",
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in `delivery.queue.fair_poll` in the SQLite delivery store rotates recipient candidates over senders. Each bounded poll visits at most poll_scan_limit candidates; denied candidates consume no attempt."
     },
     {
-      "path": "docs/relay-oauth-ingress.md",
-      "sha256": "d7142ccb85c1a0ab83c83c2f5f0f2928f168a911ee4dd84d955d0343ffda2316",
+      "path": "docs/operations/relay-oauth-ingress.md",
+      "sha256": "c1fe579805c0e209183ea3670ce010666585e8e7034589a178e172798a499493",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional product-independent same-owner/Registry/queue OAuth ingress exposes common five operations only. Uses explicit private pinned RSA configuration and canonical resource metadata, exact verified subject/client scopes and immutable context rechecks, no token storage/refresh. Recognizes group-sharing and explicit persistent v2; native trial save/reread/ACK sequence is narrow single-consumer evidence. Its routine end-of-trial revocation is v1 trial scope, not persistent cleanup."
     },
     {
-      "path": "docs/review-fixes.md",
+      "path": "docs/history/review-fixes.md",
       "sha256": "bf561076e4772a6b4bb8a81a73a33aa3f03b6920825bf987c5e1b128a6061b3f",
       "hash": "bf561076e4772a6b4bb8a81a73a33aa3f03b6920825bf987c5e1b128a6061b3f",
       "role": "normative",
@@ -778,15 +802,15 @@
       "summary": "Review fixes document bounded acknowledged audit writer, fail-closed queue/ACK failures, finite native and portable protocol I/O and fixed-category redacted diagnostics. After-action failure cannot undo committed work; unknown work keeps admission until settled. OS write ACK is not fsync and tests/fixes in another service are separately scoped."
     },
     {
-      "path": "docs/security-audit-limits.md",
+      "path": "docs/history/security-audit-limits.md",
       "sha256": "5d1163c4ce43bd9abe8360791a55987aba951f768b0db1b86a2a1daf5b48d12b",
       "role": "context",
       "review": "reviewed",
       "summary": "Local legacy ingress implementation/evidence note preserves durable stop, fences, idempotency and transactional Task audit. Finite global request/tool/row/body bounds and redacted bounded local audit fail closed; post-action audit failure requires reconciliation. Explicit correction replaces synchronous logging with isolated acknowledged audit worker and response/deadline guard. Proxy/deployed authentication and OS isolation remain unverified; this is not universal Relay logging format authority."
     },
     {
-      "path": "docs/task-bridge.md",
-      "sha256": "a48a0a5a652fc4f10e190046522b578a7045e541c344c58861c38228609dc80b",
+      "path": "docs/history/task-bridge.md",
+      "sha256": "0ad8718518f7436357ecb3a78059282bbfb3699b52b952530b1e2a7ea397f527",
       "hash": "de33807668de97a595cdd4c5bade9259b233e29f6a2a543b0a31547b97a282c6",
       "role": "normative",
       "review": "reviewed",
@@ -794,7 +818,7 @@
       "summary": "Optional TaskBridge separates durable recipient ACK, explicit accept, independent Task authority, stable pre-RPC key and one-task linkage. Fenced/leased uncertain submit keeps original key; observe is get-only and canceled-open cannot complete/release gate. Replies are separately prepared/outboxed with closed evidence and stable IDs/deadlines; cross-DB uncertainty and restore need reconciliation."
     },
     {
-      "path": "docs/testing/a2a-bounded-performance.md",
+      "path": "docs/history/testing/a2a-bounded-performance.md",
       "sha256": "a3bd6fb7e058afbbfa47ab7639c18a1e0a66302dd47d0fb70b01193322053bba",
       "role": "normative",
       "review": "reviewed",
@@ -802,7 +826,7 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/a2a-independent-results.md",
+      "path": "docs/history/testing/a2a-independent-results.md",
       "sha256": "f15db86e069c4b76aee8db7e77a037c9976362a47c70de6c5f910aba1202ee02",
       "role": "evidence",
       "review": "reviewed",
@@ -810,7 +834,7 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/a2a-native-acceptance.md",
+      "path": "docs/history/testing/a2a-native-acceptance.md",
       "sha256": "3c6699c21f7650a5521a219a3084f0770380fe5cc031b426b093b1a7820dda2f",
       "role": "context",
       "review": "reviewed",
@@ -818,7 +842,7 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/a2a-p1-p3-scope.md",
+      "path": "docs/history/testing/a2a-p1-p3-scope.md",
       "sha256": "2b0db770ab1362572d222b6e2bd698291e0a91727b659a81821492f5c5f59a57",
       "role": "context",
       "review": "reviewed",
@@ -826,7 +850,7 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/architecture.md",
+      "path": "docs/history/testing/architecture.md",
       "sha256": "9bfb2943327ed85ba5993a2499f918967068926595d438c959e9b16b6c5d577a",
       "role": "context",
       "review": "reviewed",
@@ -834,16 +858,16 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/decisions.tsv",
-      "sha256": "2be4fe9b9a6f3f852419aa54e880960512eba10ac2d3543892881013776a8784",
+      "path": "docs/history/testing/decisions.tsv",
+      "sha256": "ba0f4f975e362466f15472294404175be2639670abbb3519e05317fc121d00b8",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Append-only historical decision/audit trail with reason/evidence/outcome per change; corrects JST-as-UTC, speculative bind diagnosis and warning-suppression scope while retaining failed attempts. Process narrative and review scores are not product behavior or current adoption requirements.",
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/delivery-lab.md",
-      "sha256": "4bb835e41bb96e196c208592501d744ad73404c5ddea97a0772040861e177553",
+      "path": "docs/history/testing/delivery-lab.md",
+      "sha256": "f283cf250f4157dd30255f7ce59a64d5f1c6757cd0fe67746f02dcb04484476b",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit historical baseline/exact-f19 guide now points current composite to P7 and notes that its current-Relay column means the retired SQLite delivery store. D01-D08 compatibility contracts, SQLite FULL/corruption and owned F05 SIGKILL seam, isolation/logging/gates and deferred backend requirements. Historical skips/absent rename do not constrain current adopted capability. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
@@ -851,16 +875,16 @@
       "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
     },
     {
-      "path": "docs/testing/p7-independent-results.md",
-      "sha256": "5de46e91b40962599d3648b58f00aa89aaa1c946d7ba278286089d6c69cd7f72",
+      "path": "docs/history/testing/p7-independent-results.md",
+      "sha256": "86f3f87134e6fd4aaa88639fae1811da8d7f8078f6aa871e57fe8b871732d033",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Historical clean 2750a7e local P7_LOGICAL_PASS with exact composite input derivation, real broker messages, explicit Task/Artifact, same-SSD closed restore, route rollback and broker outage recovery. Source/cleanup/negative results reported; inactive-CI/publication-hold text is scoped to historical run, not current CI. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/p7-lab.md",
-      "sha256": "6c20307f25ef535dcf548d22d1c2e5956dac53a365ae8dd4d0288ca2eddb88b0",
+      "path": "docs/history/testing/p7-lab.md",
+      "sha256": "3222cebdc1648541da128177271744fdfe4d6b1f59e80047378468d436a6f2e0",
       "role": "normative",
       "review": "reviewed",
       "summary": "Historical (ADR-018 removed the P7 runner and broker) P7 guide that required verified official broker, real SDK/Registry/HTTP/JetStream, independent pre-ACK storage, closed-image semantic restore and owned cleanup. Lists the current groups (NATS 69, broker startup 5, runner guards 8, expected full root 1451) with both shared backends on JetStream; the original 218-input/1498-case reference is historical and the successor delta covers the moved and deleted paths. Current hosted status is separate. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
@@ -868,7 +892,7 @@
       "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
     },
     {
-      "path": "docs/testing/plan.md",
+      "path": "docs/history/testing/plan.md",
       "sha256": "33e6ddeb27ddfd1d23abd275dae62658c6cd07eb20cee61bff92424a849ba767",
       "role": "context",
       "review": "reviewed",
@@ -876,8 +900,8 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/publication.md",
-      "sha256": "b381a59ef339245c94eca74461b6e2953110f17e2d8a2af30eae0057e7d4ccd9",
+      "path": "docs/history/testing/publication.md",
+      "sha256": "267c763329f1a56ae222b45421257bcf836741bcf01594124d9ee0d8f9aa28c6",
       "role": "normative",
       "review": "reviewed",
       "summary": "Historical (ADR-018 removed the broker CI stage) composite publication/CI policy separates current hosted results from old local reports/fixed blocker strings. Requires real pinned broker and zero incomplete required results, lists the current required group counts and both shared backends on JetStream; source provenance, narrow publishable synthetic artifacts, deployment/physical restore/native identity gaps remain. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
@@ -885,7 +909,7 @@
       "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
     },
     {
-      "path": "docs/testing/results.md",
+      "path": "docs/history/testing/results.md",
       "sha256": "461ac64419e9007585ccb836819fce91252c8e6b2abb68bdfba7b974bea59900",
       "role": "evidence",
       "review": "reviewed",
@@ -893,45 +917,45 @@
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/verified-nats-input.md",
-      "sha256": "d9bbb4d7ec3c61ee5d6d565c8727e348635710b792e5af0a25288a6ac8ec4d86",
+      "path": "docs/history/testing/verified-nats-input.md",
+      "sha256": "ea561e24ddf9982c47009988668eb6f8ef77976849c0b4b0f4e58d1e29d7fecf",
       "role": "context",
       "review": "reviewed",
       "summary": "Historical preparatory binary-verification and sanitized Node-child handoff, exact official archive/executable pins, bounded FD read/private copy, public negative controls. backend_executed=false and no broker start distinguish this from later real P7 broker tests. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full"
     },
     {
-      "path": "docs/testing/verified-nats-results.md",
-      "sha256": "ac94f458b5ee80c92382ac28dee145e19a2c172a60c44ab5bf8358dbd180e4eb",
+      "path": "docs/history/testing/verified-nats-results.md",
+      "sha256": "d5d6ee0ab0e711e8e7e2dd5a08c6d7d82759a2570a4c125a9d694602253508a4",
       "role": "evidence",
       "review": "reviewed",
       "summary": "Historical clean caef55b public positive official binary handoff and negative guard results, JS/local YAML checks and cleanup; broker never executed, Python not rerun in this phase, backend skips unchanged. Four-platform pin derivation is not four-platform execution. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full"
     },
     {
-      "path": "docs/writer-admission.md",
-      "sha256": "0fcdfaa414c677d5b5071983cfcf06ff9d5b5fa23f212d7b60fbe38d9c04120a",
+      "path": "docs/delivery/writer-admission.md",
+      "sha256": "27f73a64dfca4b4acf4311c9d77717e4b48b3be96ecb70de04e984c5c7bfe665",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional single-process shared WriterAdmission uses verified immutable identity, finite map/queues and monotonic token buckets with round-robin callbacks. Waiters hold no DB locks; identity/authority is checked again before callback and normal service guards remain mandatory. Active work/audit retains slot after timeout until actual settlement; no auto retry/new Task/message. HTTP gateway shares one bucket across the five tools and gateways; process restart resets rate state, and HTTP failure may follow commit."
     },
     {
       "path": "src/agent-sdk/README.md",
-      "sha256": "8a480bbd3f9a4e0660ee8a9a3d5f601e0817df76a19de39c2adce487bb9eac1f",
+      "sha256": "c18cb854e238ee6bd1c5166bfeb8402bcf935366f9cb19732e8b4c7916d4e126",
       "role": "normative",
       "review": "reviewed",
       "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and src/delivery. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved. Also documents local-only branded authentication recovery reasons and an optional owner-local identity verification gate. They perform no IO, hold no tokens and provide no refresh/login; product-native wiring and acceptance remain explicit separate requirements. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "src/hab/README.md",
-      "sha256": "5966969695afabf3beaf3c51a1f8e3d401d650f9c2f9dbfa2de3672c2c42434a",
+      "sha256": "ef6e2787b3b8cf955c24ee92ef182bae982098c1d7b16c5de36a1ff6a0638e73",
       "role": "normative",
       "review": "reviewed",
       "summary": "HAB registry composition keeps address/product enrollment and authority outside reusable Relay core. Canonical ASCII names, permanent reservations, separate management confirmation/checkpoints, current bounded contexts and registry→journal lock ordering (a nested withRelay joins the outer transaction, so the A2A host checks its caller and admits the host submit under one lock) prevent stale/replayed authority. HabDeliveryService composes the only delivery backend, the SQLite delivery store; the managed attachment facades and catalogs were removed. Legacy exclusive-binding/immutable-address narrative is extended by explicit shared-group schema and proposed rename design, rather than silently universal. A group stop or final binding revocation stops every member and clears its operations in one transaction; reactivation re-grants no address; `createBoundGroup` creates, binds and joins atomically; only a group with one active member may omit selection. Local native HTTP fixture evidence is not product identity or full rollout; discovery remains separately opt-in. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "d32297e16465011a5fe7a7242ca95eac7139ffdb43c1b217da4b1e49370bbd68",
+      "sha256": "9eef98e9e162fe8f965425890b07989887073ba3d4dbfc86060c55e5c5b1cfa1",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -940,7 +964,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "598f037bd6c53c635413a7884ca13a6128697ab5cfc48da3bffd62bfde63e2bb",
+      "sha256": "a2852c4a48e4248c79096ddd5f2c403bf02730c90b2ebb86240c7154527cae8b",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -949,7 +973,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "62a8a6b118eb0b34a1052f897cd6b0eab085034f48a967e6e8b5e463404cc6b0",
+      "sha256": "c094ee2b686e6607cf9830cc3484762f609f8e53b9e79c912481b5783a2b6976",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -958,7 +982,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "9132bb8e7725c9775375274a1afce30aa9d6cce41cf6edc07d976399be25026f",
+      "sha256": "791a2f8e73a216a48f0dfabf2dce267f18146b086cc403a6580d2e7f32939733",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -975,7 +999,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "f59fd7047c4525b1a5a4f6508a164d70c4ef2f4742a2b0d4e6c2587ec3f4fcef",
+      "sha256": "d120b72d2ca2d8430bd140a801ea0c75a112594939277afbaaf4095fafce1dfe",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -983,49 +1007,49 @@
       "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate."
     },
     {
-      "path": "docs/recipient-stdio.md",
-      "sha256": "49a55da2b8cce3f8981dd3f898bed691497646f5bcfdc70c313fd7a410df6b29",
+      "path": "docs/receiver/recipient-stdio.md",
+      "sha256": "7afc8f6f1ed421a41fb90dfbc678a1ad7d5ad8d6324d77aa38e7b7cd908c2700",
       "role": "context",
       "review": "reviewed",
       "summary": "Explicit owner-side stdio composition over existing fixed-source host, acquired owner and answer intents. Default deny/pause, local-only management, finite lifetime and pause/drain/close/release; trusted launch contexts and native policy remain prerequisites. Synthetic SDK/SQLite/broker tests are not live product acceptance. Stop irreversibly fences all recipient guards before control IO, retaining operator cleanup if durable pause fails; recovered active control cannot restore a recipient grant. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/muse-connection.md",
-      "sha256": "5a6a5c3e6b697496d58661d26c108fdd1d21d24ebcca0709d2d7574e776aca58",
+      "path": "docs/history/muse-connection.md",
+      "sha256": "787eff64b8ba61c328c0e3416a3b365a63616afb49269673b17cbe11de7ec772",
       "role": "context",
       "review": "reviewed",
       "summary": "Meta Muse app identification and finite common-MCP onboarding investigation. Local app inventory/version are evidence of product identity only; locked UI blocks connector inspection. Official custom-connector and public-platform routes are distinct. Existing ADR015/group/OAuth/store-before-ACK/recipient-owned approval boundaries are reused; execution location, reachability, credentials, durable handoff, live reply and residency remain unverified. No native launch, configuration, grant or production acceptance is claimed. CI-only HTTP retry follow-up delegates unchanged archive/version integrity checks to the pinned installer and keeps final failure visible; nested synthetic retry tests are not native acceptance. Verified-archive CI caching never skips integrity checks; a real CLI corrupt-cache negative control fails before extraction. Main HTTP/2 refused-stream failure is separately recorded; only the pinned fetch/stream/code7 diagnostic joins the shared retry budget, with adjacent-code/TLS negative controls."
     },
     {
-      "path": "docs/typescript-migration.md",
+      "path": "docs/history/typescript-migration.md",
       "sha256": "b3bf5bea6b8550c052b89e85d99daa0d499062eaf5a8910a0c8be99dcfd7194b",
       "role": "context",
       "review": "reviewed",
       "summary": "Engineering inventory of the staged TypeScript tooling migration: strict compiler coverage, Node native stripping, seven compatibility aliases, explicit remaining owned sources and excluded third-party/generated/historical inputs. Does not adopt product behavior or claim native/production acceptance. The next stage types the three SQLite/JetStream test workers and their existing message contracts, extends root compiler coverage and preserves exact historical fixture bytes; the remaining test/helper inventory is 157 files. Diagram renderer maintenance adds a typed implementation, preserved legacy alias and eleven isolated CLI controls without real-browser/native acceptance; sequencing on the worker PR is explicit. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/claude-code-connection.md",
-      "sha256": "1f3d1888306dee42ceeb1c9f8471fbb158e792b914866e35c5217132531a9687",
+      "path": "docs/connections/claude-code-connection.md",
+      "sha256": "865bd39d544ca695f9dbc7a802487a9bb7710e6d882b0c8f4747da6c6e8e7969",
       "role": "context",
       "review": "reviewed",
       "summary": "Claude Code native MCP onboarding context: observed CLI version/capabilities, reviewed HTTP OAuth template, separate client and group setup, existing approval boundaries, durable save-before-ACK and private launch prerequisites. Configuration parsing is separate from live authentication/model/residency acceptance; no product runtime is added."
     },
     {
-      "path": "docs/grok-bot-connection.md",
-      "sha256": "7ab0a4c9f7648043c6f86038ee84a57912e595f603b802095ec87355b44f492e",
+      "path": "docs/connections/grok-bot-connection.md",
+      "sha256": "a33624e1bdb678d6a69940743bd20fd143d84ef573387647888b9b0ae11bc365",
       "role": "context",
       "review": "reviewed",
       "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB."
     },
     {
-      "path": "docs/private-recipient-http.md",
+      "path": "docs/receiver/private-recipient-http.md",
       "sha256": "3457dffeaf644d272a9efb77488365ddc46cbc9d860db24a5a047d2bbd862363",
       "role": "context",
       "review": "reviewed",
       "summary": "Generic private HTTP owner composition: unbound metadata discovery, externally verified launch binding, stable schemas, current receipt and quiescent-write promotion fence, initial deny/pause and explicit local grant/resume. Per-request bearer authentication is not native identity. Finite terminal revocation/drain/close retains owner on failure; HTTP disconnect alone is not stdio EOF. Synthetic SDK/SQLite/private-broker checks do not prove native authentication, approval, credential delivery or production readiness. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
-      "path": "docs/external-owner-launcher.md",
+      "path": "docs/receiver/external-owner-launcher.md",
       "sha256": "2a0a13c0395b1b361b1329beef779d809e42365ff559a83eb66995bc7556cdf6",
       "role": "context",
       "review": "reviewed",
@@ -1033,14 +1057,14 @@
       "maintenance": "Reviewed current source and affected accepted requirements against main 4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9. HAB-C-F09 resolves local composition versus deny-only default; expected owner31/root1346, current test execution and native acceptance remain separate. Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
     },
     {
-      "path": "docs/auth0-recovery.md",
-      "sha256": "7b857a07ee915b24e73fc5375ea3fff389b6beb812f7997de2b16b7a93daca13",
+      "path": "docs/operations/auth0-recovery.md",
+      "sha256": "faed01531672adef3726e2c200c4458a046fa7b801074322cc6986e2d2f6e104",
       "role": "context",
       "review": "reviewed",
       "summary": "Operator recovery recipe for an existing approved Auth0/Hermes MCP connection. Separates short AT refresh, RT/interactive reauthorization, valid-token authorization rejection and process restart. Preserves original uncertain send/ACK state, exact subject/client and participation boundaries; accounts for CLI cache clearing, callback shutdown, refresh fences, expired lease generations and fresh native whoami. Examples are placeholders, real credentials/config/results are excluded. Source reviewed against current HAB authority/tests and Hermes revision 6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7, with current Auth0 primary docs. Context only: no design/rights/runtime change or live recovery acceptance. Offline trial preparation now samples one clock value, uses the existing replay-bound ID factory and contract parser, refuses repair/overwrite of saved intents, and checks the exact saved submission before any separately authorized submit. The 1ms mismatch regression and expiry boundary remain offline controls, not live recovery proof. Links the optional common-host local recovery gate without claiming installed Hermes wiring, automatic login, notifications or live recovery acceptance. Same-subject and existing participation verification remain prerequisites; native refresh fence and credential storage responsibilities do not move into HAB."
     },
     {
-      "path": "docs/acp-owner-driver.md",
+      "path": "docs/receiver/acp-owner-driver.md",
       "sha256": "ddddf93dc02e31a9ba4cc97e2db8728afd91e2036aa89fbcee214dd6d0d515bb",
       "role": "context",
       "review": "reviewed",
@@ -1063,27 +1087,27 @@
     },
     {
       "path": "experiments/source-handoff/reply-budget/PROPOSAL.md",
-      "sha256": "2d6cad5d9203e7d4ba3022666e4ec6ec7eec2edad1549a864875b7a48c4ff4f7",
+      "sha256": "890f33b38ef6c5e2e5f9f2c661283bdf3f1f2cfd2d7010fcee68c2bef4254c1b",
       "role": "context",
       "review": "reviewed",
-      "summary": "Historical V1 draft, superseded by V2, for a local-owner administrative max_records increase on a populated reply budget plus a source-rotation mapping. Not accepted design, implemented API or live authorization; it restates rather than changes HAB-E06/E07/E09/E11 and docs/adapter-reply-budget.md, which still provide no policy change or reset and stop at capacity. Review context only."
+      "summary": "Historical V1 draft, superseded by V2, for a local-owner administrative max_records increase on a populated reply budget plus a source-rotation mapping. Not accepted design, implemented API or live authorization; it restates rather than changes HAB-E06/E07/E09/E11 and docs/receiver/adapter-reply-budget.md, which still provide no policy change or reset and stop at capacity. Review context only."
     },
     {
       "path": "experiments/source-handoff/reply-budget/PROPOSAL-V2-EMPTY-ONLY.md",
-      "sha256": "95dfeba4e7e6c1e4be43b7169dcbbe8f520d8857c5b5d62d6943357f68d80e61",
+      "sha256": "cde120e1ec3f866e6232b36ffc5ef94f08ad24fd59b196769943b0aecfa6d895",
       "role": "context",
       "review": "reviewed",
       "summary": "Source-only V2 proposal narrowing the capacity exception to one administrative increase on a never-used, fully authenticated budget with a durable maintenance barrier and blanket inbox hold. Its source line references were rechecked against the baseline. Not accepted formal design, operative API or live authorization; six listed gates (formal exception, approval provenance, persistent barrier, receipt semantics, authoritative empty inventory, no startup adoption) still block implementation. Current normative budget policy is unchanged. Review context only."
     },
     {
       "path": "verification/experiments/cross-process-handoff/README.md",
-      "sha256": "ed50dd43d1f5b5c65122fb04aee736b09c47ccbe48afedc5b34327303da2e35e",
+      "sha256": "3dd540328ca096e807298d4a05cf7a7a35f971899b9ab94ba88724acf1461323",
       "role": "context",
       "review": "reviewed",
       "summary": "Unadopted cross-process shared transaction authority proposal and synthetic SQLite model. Retains current native authorization and exact identity requirements; no native integration, product schema or runtime change. Distinguishes active-conversation MCP from background dispatch and model outbox from the existing SQLiteOutbox."
     },
     {
-      "path": "docs/source-launch-journal.md",
+      "path": "docs/receiver/source-launch-journal.md",
       "sha256": "4c69f2a5208dce12927db252de0cb2332037e1086bbbf3d0cc3e3245949628e4",
       "role": "context",
       "review": "reviewed",
@@ -1110,7 +1134,7 @@
           "path": "docs/hab-principles.md",
           "start": 9,
           "end": 9,
-          "excerpt_sha256": "7f75c7ea4d53bab605ced4ecaa71df2860472e835e2aaa8418f6e6e243c6a712"
+          "excerpt_sha256": "e7c36b2847a98e584abd3fd8459486f22d8b7230f4765cd32485d7a0c495c49b"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -1152,7 +1176,7 @@
           "path": "docs/hab-principles.md",
           "start": 13,
           "end": 13,
-          "excerpt_sha256": "8b095c8a19989d71bf2e93ab13034a7c2681085f108273f0b0890d8a6b3e559d"
+          "excerpt_sha256": "d77c343bd4d80f1e89c6c94016046346b361b7a1997a99196348602d4cfef45a"
         }
       ]
     },
@@ -1182,13 +1206,13 @@
           "excerpt_sha256": "2ad2ba4fb2dd330048f0b623d279bcca7c89cc09de9166744a15ec1f580a58d8"
         },
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 32,
           "end": 34,
           "excerpt_sha256": "95e0402894f8641c3ac673be5a387f09f6f851d58555339dbf5a2fa0ba9f0f93"
         },
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 55,
           "end": 56,
           "excerpt_sha256": "a7d85ecd1deb45fa85e25766c5ba45f4508b785cee29f3ad62d46b0c50aea969"
@@ -1253,7 +1277,7 @@
           "excerpt_sha256": "8b1ad508506b9547729542777d766b5855f260badb3c0efd928f85e0c9f4d5b2"
         },
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 27,
           "end": 29,
           "excerpt_sha256": "cdaa35b918e47b55ed839a973e1c42e12bc24a40671ac8dbf00a5368911629c7"
@@ -1282,7 +1306,7 @@
           "excerpt_sha256": "3ff61784d4b5b8e74c054c88509bff0d7af3e3efb5526382160bb5f5458d9774"
         },
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 103,
           "end": 103,
           "excerpt_sha256": "5b9b997b2edfbc021dee52d2c79107f8083be680c9f9c4f73f30040b647ccf7d"
@@ -1313,7 +1337,7 @@
       ],
       "citations": [
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 47,
           "end": 49,
           "excerpt_sha256": "073104c0de694fd13da5c6ff5589abd19ca614481e771ba766b9a2b85046eb60"
@@ -1333,13 +1357,13 @@
       ],
       "citations": [
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 47,
           "end": 53,
           "excerpt_sha256": "ec557a853c4ff94b20765e989f257ecb275d8acbb8c26b5e72dd67d4060eac8e"
         },
         {
-          "path": "docs/recipient-readiness.md",
+          "path": "docs/receiver/recipient-readiness.md",
           "start": 7,
           "end": 9,
           "excerpt_sha256": "0ca09618e811399e00a00d5be2f13d244b35a553b68ebecb95555e82013bca20"
@@ -1359,19 +1383,19 @@
       ],
       "citations": [
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 7,
           "end": 17,
           "excerpt_sha256": "07f5b088f6f2517f04d75774fa696d4a9977d8398f56957a742879374acb81a7"
         },
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 92,
           "end": 101,
           "excerpt_sha256": "b7304656b8adab8a3e06f187f73b9ba7a7c6a42d08a088c5e0ae372e6fc3bc1a"
         },
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 116,
           "end": 129,
           "excerpt_sha256": "67981f67c95e85fefe13edfd367f702f832bbfd899a107674003eadce89a4c63"
@@ -1391,22 +1415,22 @@
       ],
       "citations": [
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 32,
           "end": 53,
           "excerpt_sha256": "7342e9473baf10562a41af925e77607b5360c2adec14e7ceaceebcf0141d292d"
         },
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 77,
           "end": 83,
           "excerpt_sha256": "3601ea9fa012d53b7b3f244b70c2106569aa89a79869abe2e244a60f0b2ad241"
         },
         {
-          "path": "docs/receive-supervisor.md",
+          "path": "docs/receiver/receive-supervisor.md",
           "start": 131,
           "end": 138,
-          "excerpt_sha256": "3077087e801694b3786037536409692b37c9f99581b9d59841915be65682247d"
+          "excerpt_sha256": "86fa415b83d4168e15e1378b86101c69da30ac2b4bf1b1e90881430a7b3eaf50"
         }
       ]
     },
@@ -1440,7 +1464,7 @@
           "excerpt_sha256": "d9e964830759292cf626358c1b15dfcf7e89396b48896289aa73df57c1a1f390"
         },
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 83,
           "end": 87,
           "excerpt_sha256": "1af7c58e4f61854c8f21e375f72ac5b9384f45f20f39dfbdabfa31b968cd477d"
@@ -1462,7 +1486,7 @@
           "path": "docs/common-mcp-connection.md",
           "start": 10,
           "end": 16,
-          "excerpt_sha256": "afbff2970088db44146eafdda85accd871d94e4a32b1c792eef6e06abe37fa49"
+          "excerpt_sha256": "af3f4587b0ff362c9ed085fc35f75bd5c57c6f1bbd1abc8fe7ce01f8730c1330"
         },
         {
           "path": "docs/hab-relay-spec.md",
@@ -1559,13 +1583,13 @@
       ],
       "citations": [
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 114,
           "end": 128,
           "excerpt_sha256": "3129a2dde2c501a4c4c4876f450daef0c7eebc732179b0471c8a676dfd312d7a"
         },
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 63,
           "end": 109,
           "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
@@ -1584,13 +1608,13 @@
       ],
       "citations": [
         {
-          "path": "docs/architecture.md",
+          "path": "docs/history/task-engine.md",
           "start": 15,
           "end": 29,
           "excerpt_sha256": "1c6054efba7d77663d4ce4ffc2541164a6e17b05b1231a87cc31c6190c17c234"
         },
         {
-          "path": "docs/hab-workflow.md",
+          "path": "docs/history/hab-workflow.md",
           "start": 31,
           "end": 48,
           "excerpt_sha256": "dc19c9cb4b88e8b73a79d5819c80863c0b9618a0e300585866bcd8a3fb9138bf"
@@ -1609,16 +1633,16 @@
       ],
       "citations": [
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 110,
           "end": 112,
           "excerpt_sha256": "26454a174f8acf5e57268422a616a26fb68f2dfdd9ce387d1ba4d9cfc07ae4ae"
         },
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 142,
           "end": 142,
-          "excerpt_sha256": "7764fe05c9bdba5931d15d12bc3f94e3e907ca09f9cd10589259ecd60ffd6948"
+          "excerpt_sha256": "1caf159306753ef953febb995bc3c6b964b5ee9877cb370705ac07bbb9e110bc"
         }
       ]
     },
@@ -1639,7 +1663,7 @@
           "path": "docs/hab-principles.md",
           "start": 27,
           "end": 33,
-          "excerpt_sha256": "3bf96ce3b4b0c1702fc7bf4fa7d192dd0df2702a322682a531f2552cce3c514e"
+          "excerpt_sha256": "19e92088619d509d259c636fb4a2a3be8502993d291191335d4a69e633f8e9e8"
         },
         {
           "path": "docs/hab-relay-spec.md",
@@ -1651,7 +1675,7 @@
           "path": "docs/hab-relay-spec.md",
           "start": 330,
           "end": 334,
-          "excerpt_sha256": "d68c403a1e66c1129a4e74b7bf1cf71577ebbd1fefbeb9cef6739c4204bd2808"
+          "excerpt_sha256": "b3e55b150068c586c8f1a1ea1ad09948721543821c2a94a3961ae9625e0d1c94"
         }
       ]
     },
@@ -1695,7 +1719,7 @@
       ],
       "citations": [
         {
-          "path": "docs/recipient-readiness.md",
+          "path": "docs/receiver/recipient-readiness.md",
           "start": 17,
           "end": 38,
           "excerpt_sha256": "32b840e9948eee935494cdb9fbbb74ae3dee01423af8557956c46a128d6c2c5f"
@@ -1704,7 +1728,7 @@
           "path": "docs/common-mcp-connection.md",
           "start": 106,
           "end": 124,
-          "excerpt_sha256": "9d7102dfdba7dc7ceed538b2bf9e74c55ac81904d908c326ffe6b52fd8634968"
+          "excerpt_sha256": "fd2fd3fa8494f151eaa4ef255ee4f66555ef784f57e470140b45c5b26a171366"
         },
         {
           "path": "docs/hab-product-spec.md",
@@ -1790,9 +1814,9 @@
       "citations": [
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 497,
-          "end": 503,
-          "excerpt_sha256": "ae634ca31940762ed56ee03bedbe82a682be1afc5f80df703353970051281de5"
+          "start": 491,
+          "end": 497,
+          "excerpt_sha256": "91e3ae18a287b1761b910f3817a6762e8772b6969bbf9905061d066c063a0621"
         },
         {
           "path": "docs/hab-product-spec.md",
@@ -1832,19 +1856,19 @@
       ],
       "citations": [
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 100,
           "end": 122,
           "excerpt_sha256": "b82d441e58bf1b160db50e0927a820a7dae162c44e6cd6f275491a09237ac982"
         },
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 162,
           "end": 170,
           "excerpt_sha256": "c7fe8167a2471be65ee26ad0e664a67d15eff17c5692ecdba11b6efefa0c5464"
         },
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 233,
           "end": 240,
           "excerpt_sha256": "9b6a124d02356d83849d088d054b5893e20804289f5e05a85c8030a5b7fb0a2e"
@@ -1879,7 +1903,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "8c78949ba632de185668c06c3868d1c3888b10f524d44dea4107d24bd7d203bb"
+          "excerpt_sha256": "89dee995296f53d6925ef1cadb1ca5da8972ff039014b1dcb6269e805d29b7ce"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -1906,7 +1930,7 @@
           "path": "docs/hab-security.md",
           "start": 5,
           "end": 5,
-          "excerpt_sha256": "dee7c7b9f2ae56ee87b55a2c401ab348400b1db04baee1aea5096923e99a9370"
+          "excerpt_sha256": "9216ee3d576654e5f191fa02a5d53dabb397c6bb30ffe1d434a539c84c53d663"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -1915,7 +1939,7 @@
           "excerpt_sha256": "5bb4bf4d16f8914d3af019896bf788ad8586b51090052a84c199a449a57a1365"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 3,
           "end": 6,
           "excerpt_sha256": "64397f2a5c054ae4034faaa7e6365ee9c263bdf068e4dc3ef247a50893193970"
@@ -2028,7 +2052,7 @@
           "excerpt_sha256": "626ab966c90c76f0cc8b51dcb208026ed1a2e997a59eb32faeb44618c80ca417"
         },
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 102,
           "end": 104,
           "excerpt_sha256": "6addf1c4c51b0235dee5cc113d35ab6a4e85924254bd28bde9d7a8d4b880b5fd"
@@ -2097,7 +2121,7 @@
           "excerpt_sha256": "7f7d18bd99e8a0e0317dd2d466ba92d384139193e82c30dce43a037b600e672f"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 93,
           "end": 108,
           "excerpt_sha256": "13d6a45e433b9a31bbff41d43f13100b21cc3006078baf2f636cf3d4989e7719"
@@ -2117,19 +2141,19 @@
       ],
       "citations": [
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 8,
           "end": 12,
-          "excerpt_sha256": "4320917c208f4c8ba3f7cac54dc50f1c6d781b6049c7e3831bdd7a79adaeb898"
+          "excerpt_sha256": "2a954ae2fd5e58c43e602a976f406bd40617512f8d88b234acee1ec9437217da"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 34,
           "end": 46,
           "excerpt_sha256": "da6b9e45bdcb988e706df4714c77d6b169d9fe9102ce43f943eb6fb87cbde91e"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 61,
           "end": 65,
           "excerpt_sha256": "e80fbbe8232e6a0e55b935b93f91ff5ceb30741dffad045db650de8ed8e23d3b"
@@ -2161,13 +2185,13 @@
           "excerpt_sha256": "ca04c1bb966301ae6e2f5e176913ca2e828d5d519dd60b538f1d572a8e1dec59"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 3,
           "end": 6,
           "excerpt_sha256": "64397f2a5c054ae4034faaa7e6365ee9c263bdf068e4dc3ef247a50893193970"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 124,
           "end": 143,
           "excerpt_sha256": "4b0c473ce5f59c167f1d1290ed068000c9bc28178c00dfac5af4164f7abc8539"
@@ -2187,22 +2211,22 @@
       ],
       "citations": [
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 3,
           "end": 6,
           "excerpt_sha256": "64397f2a5c054ae4034faaa7e6365ee9c263bdf068e4dc3ef247a50893193970"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 79,
           "end": 91,
           "excerpt_sha256": "107fa290563d87e501f78c1d6e09897784d5384e6d9a910520b061253554b7be"
         },
         {
-          "path": "docs/dots-hermes-connection-plan.md",
+          "path": "docs/history/dots-hermes-connection-plan.md",
           "start": 53,
           "end": 55,
-          "excerpt_sha256": "2743f139ab31bab6f0f1ba02f9fe29df9a3be94046b85107ffc87da548b2e258"
+          "excerpt_sha256": "bed581a84ebc64ba61f448946adb090d017eba29cca7ce8a5004590daaec15d9"
         }
       ]
     },
@@ -2219,13 +2243,13 @@
       ],
       "citations": [
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 52,
           "end": 75,
           "excerpt_sha256": "c497eb01a49c9744f72a102250d2c0a3bf40ef3b01eaee6f5940232bf60a55cc"
         },
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 95,
           "end": 104,
           "excerpt_sha256": "fc9d657a2ae9b4c0619c7ebc15b947d12becfe7b844613a83b4647f88cfd8fed"
@@ -2244,7 +2268,7 @@
       ],
       "citations": [
         {
-          "path": "docs/local-relay-host.md",
+          "path": "docs/operations/local-relay-host.md",
           "start": 3,
           "end": 18,
           "excerpt_sha256": "60a6bdb6db87d2a78bca5844970038e243240cebabaaec0f03bde5a9a3bc51e8"
@@ -2253,13 +2277,13 @@
           "path": "docs/local-relay-service.md",
           "start": 3,
           "end": 7,
-          "excerpt_sha256": "3f078cdff3d08dceb989bb9cc0bf7248e1ddf0443f208ff8d4262e4ab2a6723d"
+          "excerpt_sha256": "1b73d6fc09e9964ad2c1682e4ceb753c659200345a5e93ababf871c022056100"
         },
         {
           "path": "docs/local-relay-service.md",
           "start": 16,
           "end": 46,
-          "excerpt_sha256": "95397a1451dfd931710d337dbcbb033671b4f76908fb36e382e9705e2e60a8bf"
+          "excerpt_sha256": "0e6d8045246092035df7e800135ea03b3b8a76f86b212cce327fa687899a492b"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -2268,10 +2292,10 @@
           "excerpt_sha256": "1ccd4b29f822d62ee78a96eb4d41b851cb014d7c1454bdc2402c8d3a2b7daec6"
         },
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 39,
           "end": 48,
-          "excerpt_sha256": "c9141e96238d205058529997cf8cf87c18bfd671c6051b43d3b176948175153a"
+          "excerpt_sha256": "d65e3a22b24a885c5bdcb26dc4bb4f7b7558ddd2b6a7fc355f4a35f4f664d7dd"
         }
       ]
     },
@@ -2288,25 +2312,25 @@
       ],
       "citations": [
         {
-          "path": "docs/local-relay-host.md",
+          "path": "docs/operations/local-relay-host.md",
           "start": 15,
           "end": 33,
-          "excerpt_sha256": "a52f92d19c2693049378eb77486d6b080ac20d6ebc55cd4c67baec20cd861145"
+          "excerpt_sha256": "49d4901a44767f7beb1eb606445a78348c1094b67b0b321b8fbe8350445e89e7"
         },
         {
-          "path": "docs/local-relay-launchagent.md",
+          "path": "docs/operations/local-relay-launchagent.md",
           "start": 11,
           "end": 24,
           "excerpt_sha256": "656bf20339a32c2a0ccc10ec53b710dc420eec2b862ee38640af75979d277594"
         },
         {
-          "path": "docs/local-relay-launchagent.md",
+          "path": "docs/operations/local-relay-launchagent.md",
           "start": 63,
           "end": 92,
           "excerpt_sha256": "8e3832cc295e3a953de00c9d76f4313f5daa4d4f134ea6130ec2ed8684f67e41"
         },
         {
-          "path": "docs/dots-hermes-connection-plan.md",
+          "path": "docs/history/dots-hermes-connection-plan.md",
           "start": 32,
           "end": 35,
           "excerpt_sha256": "a20cb01fe59baaa9bb6d79ac58c06dc2a81d747618a0d67aa538d28ded4ee070"
@@ -2326,31 +2350,31 @@
       ],
       "citations": [
         {
-          "path": "docs/mcp-agent-discovery.md",
+          "path": "docs/connections/mcp-agent-discovery.md",
           "start": 20,
           "end": 36,
           "excerpt_sha256": "ed4fbf1be84de10c85e28b9f1e82143408b025516ecb2966947c042b0b2e4b8d"
         },
         {
-          "path": "docs/mcp-agent-discovery.md",
+          "path": "docs/connections/mcp-agent-discovery.md",
           "start": 44,
           "end": 63,
           "excerpt_sha256": "0464520219ea0bfef9ecbf615123fd6d90962b8695e9b5a24d921a5963deec5e"
         },
         {
-          "path": "docs/mcp-agent-discovery.md",
+          "path": "docs/connections/mcp-agent-discovery.md",
           "start": 75,
           "end": 99,
           "excerpt_sha256": "0e5f10e7fc0a6b47b7dafa6b20f2f11ec9db034af76d108f97faf4ab9745a28e"
         },
         {
-          "path": "docs/mcp-agent-discovery.md",
+          "path": "docs/connections/mcp-agent-discovery.md",
           "start": 107,
           "end": 115,
           "excerpt_sha256": "0a7aa3ddbf60fab0cecec76bd6ea2f445335fefe1a4c2e091b28978c256972f2"
         },
         {
-          "path": "docs/mcp-agent-discovery.md",
+          "path": "docs/connections/mcp-agent-discovery.md",
           "start": 136,
           "end": 148,
           "excerpt_sha256": "87277c7e28ad09db976f50c644932f324729abe5bbf7993b94edb0a7bd03207c"
@@ -2370,13 +2394,13 @@
       ],
       "citations": [
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 119,
           "end": 134,
           "excerpt_sha256": "fbc491bf85ce02e5e28dad29e153cdf29d3897352e050a735c7ded4f346e0908"
         },
         {
-          "path": "docs/dots-hermes-connection-plan.md",
+          "path": "docs/history/dots-hermes-connection-plan.md",
           "start": 50,
           "end": 52,
           "excerpt_sha256": "55269e63a144af98da6151052c4a584c6ec55b4dfd1225086942c3fefb133c74"
@@ -2399,7 +2423,7 @@
           "path": "docs/hab-security.md",
           "start": 23,
           "end": 31,
-          "excerpt_sha256": "8357bee9fc842ec5f2b950f6572feddc80b85a1474697144f570fd052ad8418e"
+          "excerpt_sha256": "5bf91c37fd0a4fa9b0547804be157ea223a9ca6034792f05093e967768f7d7c1"
         },
         {
           "path": "docs/relay-auth-groups.md",
@@ -2414,7 +2438,7 @@
           "excerpt_sha256": "511e359577d695f6b482c329daa65c8adcb7d47c8cea8463395add40dc65470d"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 136,
           "end": 143,
           "excerpt_sha256": "9f007b298ed6b8166e09c49cfffc22f3bd8e75561bcc5359aa23394f95f9e9c1"
@@ -2433,13 +2457,13 @@
       ],
       "citations": [
         {
-          "path": "docs/local-integration.md",
+          "path": "docs/history/local-integration.md",
           "start": 25,
           "end": 29,
           "excerpt_sha256": "6ebf7501542f9a2ccae80797b7dedfa844f0f61d005b6a6d0570a4f79b02c049"
         },
         {
-          "path": "docs/migration-plan.md",
+          "path": "docs/history/migration-plan.md",
           "start": 21,
           "end": 25,
           "excerpt_sha256": "040636dd8e7ee01e2fefe1fc9232c6f05717ef70f72d86e15271b34b798c4eb3"
@@ -2557,25 +2581,25 @@
       ],
       "citations": [
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 67,
           "end": 67,
           "excerpt_sha256": "c4994ed768511e1c52d6b2dbcdc1499fe928ffcbd54c4c4d5091e80264b59b82"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 84,
           "end": 94,
           "excerpt_sha256": "40aa6fa5285b7a6ab2bc067f254d33f2c5fbe731508eb8fb2f9e6c83fed3b33b"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 98,
           "end": 100,
           "excerpt_sha256": "91a9119495a74a0abb071a2e51bb9c45a5c8d58553076cdb4932f3e9f2f44c2f"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 104,
           "end": 106,
           "excerpt_sha256": "b4ae6ea107f7c317615b9217caa7ab230d300a96a9863e98afd1abcffd4eab48"
@@ -2584,13 +2608,13 @@
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
+          "excerpt_sha256": "7d81cf1fa88636c921cc88ff917b35084e7c51f92684e576e31d982219a3c72b"
         },
         {
           "path": "docs/local-relay-service.md",
           "start": 193,
           "end": 203,
-          "excerpt_sha256": "69c438c8131dee4d231748702c68872fb7bcd115f1fdb50446ee890b80142fb0"
+          "excerpt_sha256": "ab1bf9e8be5db3cd0d88a447f6de78acc0d80377a23cc6a43e9d6f10985ba86b"
         },
         {
           "path": "src/hab/README.md",
@@ -2676,7 +2700,7 @@
           "excerpt_sha256": "3d06952c98d346a96204ffa3119946005d2291432b6b76be883a4afe6ed95fbe"
         },
         {
-          "path": "docs/hab-relay-integration.md",
+          "path": "docs/history/hab-relay-integration.md",
           "start": 39,
           "end": 44,
           "excerpt_sha256": "266aa49df92905c4abb48d9a1ff997d92fa27cc3a13b3a2886ead5647cfbe55e"
@@ -2799,13 +2823,13 @@
           "excerpt_sha256": "3ac00765f5519440674f9926dbc90c685848ab5b6f5f1d1ed32e2977fc425aad"
         },
         {
-          "path": "docs/security-audit-limits.md",
+          "path": "docs/history/security-audit-limits.md",
           "start": 5,
           "end": 5,
           "excerpt_sha256": "b8d31165c514f8b5f979d9d220c0d21634bfb461d4707ab341919b8fefa6723b"
         },
         {
-          "path": "docs/writer-admission.md",
+          "path": "docs/delivery/writer-admission.md",
           "start": 42,
           "end": 44,
           "excerpt_sha256": "8bc2248074991a80e55fb362355e248513d7a79f76ab60f439e57eaf6224b815"
@@ -2843,7 +2867,7 @@
           "excerpt_sha256": "b8520dfe92aefb31f060f881ee62474fb493bbcbfef3c283916a2cc7ec5f7d67"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 55,
           "end": 55,
           "excerpt_sha256": "a1cf270901a5ed07f454e330a21dd57f87eb845cde1eb5e20cc18507219c3f42"
@@ -2991,10 +3015,10 @@
       ],
       "citations": [
         {
-          "path": "docs/relay-agent-capacity.md",
+          "path": "docs/delivery/relay-agent-capacity.md",
           "start": 3,
           "end": 25,
-          "excerpt_sha256": "5e729a6dac42cd72dd43a4fce2eced95b6f4c97e4f77b2a62ab7e5d57fb39f9d"
+          "excerpt_sha256": "bff2dec0936b05d076434e294b8f2986b3588620336b9acb19b9402d7dda34e0"
         }
       ]
     },
@@ -3011,19 +3035,19 @@
       ],
       "citations": [
         {
-          "path": "docs/relay-fair-poll.md",
+          "path": "docs/delivery/relay-fair-poll.md",
           "start": 3,
           "end": 25,
-          "excerpt_sha256": "5c2e6d828486ee763571f90adac144612998e29e4d9068dc2057791aa5b4ef18"
+          "excerpt_sha256": "586d96d9803fc48a093c68e3ce014d7a2458f25ce39bc72af9b7e5e27506532f"
         },
         {
-          "path": "docs/writer-admission.md",
+          "path": "docs/delivery/writer-admission.md",
           "start": 5,
           "end": 27,
           "excerpt_sha256": "0b1656c89e0f6518ace25c377d39e7ae450e0ecfdbebcbdd256deb70bbd7b001"
         },
         {
-          "path": "docs/writer-admission.md",
+          "path": "docs/delivery/writer-admission.md",
           "start": 40,
           "end": 46,
           "excerpt_sha256": "2cf1427fe47c5689d1e34f17940e30bd7b1b070aeb63dac22ac13f7782f444a3"
@@ -3127,13 +3151,13 @@
       ],
       "citations": [
         {
-          "path": "docs/hab-relay-integration.md",
+          "path": "docs/history/hab-relay-integration.md",
           "start": 5,
           "end": 5,
           "excerpt_sha256": "1320b767295099860e02c807e4649d2bcdfa1ededda86fb32852eddabf8ca393"
         },
         {
-          "path": "docs/hab-relay-integration.md",
+          "path": "docs/history/hab-relay-integration.md",
           "start": 57,
           "end": 71,
           "excerpt_sha256": "77d8fcfa80830c6e0e95ebf4493dbe0a38ec131c46fdf00240995341a36f9593"
@@ -3159,8 +3183,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 554,
-          "end": 554,
+          "start": 548,
+          "end": 548,
           "excerpt_sha256": "e3ebd5e5f0569550960ffdd5f3c2f69cffbb089d6d01245994b55ebc02a4ae34"
         },
         {
@@ -3209,13 +3233,13 @@
       ],
       "citations": [
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 110,
           "end": 112,
           "excerpt_sha256": "0e4cfdd089342cec30a68ea0b8d6b5028714b04cee29c263151a1dd73ff6d83d"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 133,
           "end": 133,
           "excerpt_sha256": "96f4584f351a4b408823481cc060a48357eafa510b13893d34681063aa39a068"
@@ -3227,19 +3251,19 @@
           "excerpt_sha256": "93fefc97b35e7ec9b21195d9955d57a24446d424a04a7902c19986449379c290"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 80,
           "end": 80,
           "excerpt_sha256": "f0e19246eef214371bcc571fe3a40ec4875f7444ac5f2914db1ccdd6002b457f"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 106,
           "end": 106,
           "excerpt_sha256": "86ec598c42479a94fa0241840ea55a196a868fa57a4fec9454c5f4f66d5be40d"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 53,
           "end": 53,
           "excerpt_sha256": "914681150592ca70128edef81c86db45bf3936817bd0de52b7a7a0bc93efd051"
@@ -3263,13 +3287,13 @@
           "excerpt_sha256": "f7a6e430a9da316fe57522a5efda8687dd8b9406442a18772bdf8e981c68b8fc"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 55,
           "end": 55,
           "excerpt_sha256": "a1cf270901a5ed07f454e330a21dd57f87eb845cde1eb5e20cc18507219c3f42"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 139,
           "end": 139,
           "excerpt_sha256": "dfe159f75a5c2e1f5383863c6327e04f221c64bb2b202c84a69e6cd36e4ea261"
@@ -3290,22 +3314,22 @@
       ],
       "citations": [
         {
-          "path": "docs/hermes-connection.md",
+          "path": "docs/history/hermes-connection.md",
           "start": 1,
           "end": 5,
-          "excerpt_sha256": "9dae142fb5566f13df837be56a65a700c530642b0b6be939afae13a1868a7cb2"
+          "excerpt_sha256": "ea6ae67d5fcae684a13a7129a8268a3f12e0cd6c892e9fffa297ae1da7f6c004"
         },
         {
-          "path": "docs/profiles/async-text-v1.md",
+          "path": "docs/history/async-text-v1.md",
           "start": 1,
           "end": 3,
-          "excerpt_sha256": "71b05b381a5f7bfe3cfa00b68da3d55a40690ff889d73c9cf665ecc9ea43e227"
+          "excerpt_sha256": "cbebd1b652db3fdc1b681cb405a7313af410213ebbb3dfe4a6aa8507b7576fb4"
         },
         {
-          "path": "docs/implementation/generic-job-application.md",
+          "path": "docs/history/generic-job-application.md",
           "start": 1,
           "end": 5,
-          "excerpt_sha256": "b96ea04f29f74d646bded26dd67f5f09a634f00b7c4d62532412deddabaa583d"
+          "excerpt_sha256": "1b1eed161e3f6a32d2c58560a40ce3e5a2a263d448ab8ceeac34ac9dd0dc5153"
         }
       ]
     },
@@ -3321,19 +3345,19 @@
       ],
       "citations": [
         {
-          "path": "docs/task-bridge.md",
+          "path": "docs/history/task-bridge.md",
           "start": 15,
           "end": 23,
           "excerpt_sha256": "724c7437ddcf2950e67759a1b794f9e246baafea44cc32f1949a9e644aa92f84"
         },
         {
-          "path": "docs/task-bridge.md",
+          "path": "docs/history/task-bridge.md",
           "start": 53,
           "end": 58,
           "excerpt_sha256": "8abff7ef9c6be7685fb7c3d9b07952b8a56eed8bdac1e7268a5ce00e3fda1c0f"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 23,
           "end": 27,
           "excerpt_sha256": "5fd414c5f135244338af02799a5cb3a686ba079e7d92f2b15333a1da5ec7ac7a"
@@ -3352,13 +3376,13 @@
       ],
       "citations": [
         {
-          "path": "docs/hermes-connection.md",
+          "path": "docs/history/hermes-connection.md",
           "start": 25,
           "end": 27,
           "excerpt_sha256": "9fd0c1ec72bbcfa14968a088e4cdd7f8669dfde885aa52bd959e6ccd8d1887d3"
         },
         {
-          "path": "docs/task-bridge.md",
+          "path": "docs/history/task-bridge.md",
           "start": 37,
           "end": 43,
           "excerpt_sha256": "ca5c3ddb856c27f8d148b5649d7521e51f16aede81578311dfba552efaf1872f"
@@ -3377,13 +3401,13 @@
       ],
       "citations": [
         {
-          "path": "docs/implementation/generic-job-application.md",
+          "path": "docs/history/generic-job-application.md",
           "start": 21,
           "end": 23,
           "excerpt_sha256": "171ab7a442249d905d8b2e4c2b2a0a91c5643b7fab0583f31fee24655c8374b7"
         },
         {
-          "path": "docs/profiles/async-text-v1.md",
+          "path": "docs/history/async-text-v1.md",
           "start": 40,
           "end": 42,
           "excerpt_sha256": "175407fee15fe92953d300ea1da10791514ecfb8f33c584cda018974671338d6"
@@ -3403,19 +3427,19 @@
       ],
       "citations": [
         {
-          "path": "docs/implementation/generic-job-application.md",
+          "path": "docs/history/generic-job-application.md",
           "start": 7,
           "end": 17,
           "excerpt_sha256": "a1fa0125a2daf12e0f15de71d104e708ee18298cc34482f457ce84a52a447331"
         },
         {
-          "path": "docs/implementation/generic-text-preview.md",
+          "path": "docs/history/generic-text-preview.md",
           "start": 15,
           "end": 27,
           "excerpt_sha256": "6d6b8c33eb72da7fe32f5e49777d71e3865706548c3374c271c969faa0d3433c"
         },
         {
-          "path": "docs/task-bridge.md",
+          "path": "docs/history/task-bridge.md",
           "start": 19,
           "end": 25,
           "excerpt_sha256": "5e279257ff45d911bce10aa53286499e76a83df611b241a56d85abc440ccf90a"
@@ -3434,22 +3458,22 @@
       ],
       "citations": [
         {
-          "path": "docs/adapter-reply-budget.md",
+          "path": "docs/receiver/adapter-reply-budget.md",
           "start": 9,
           "end": 36,
           "excerpt_sha256": "4895191956c7066ffd07d4b90b91e94069d3ad76093b667f9b3b60924c8683d1"
         },
         {
-          "path": "docs/adapter-reply-budget.md",
+          "path": "docs/receiver/adapter-reply-budget.md",
           "start": 40,
           "end": 44,
           "excerpt_sha256": "871638080d588df74fe110a62629905e22bec1639bdf892a46b813a9279a1c3c"
         },
         {
-          "path": "docs/task-bridge.md",
+          "path": "docs/history/task-bridge.md",
           "start": 74,
           "end": 74,
-          "excerpt_sha256": "68a625f4e05f58ad51cb91aaa1b0dd099678c13e9290aaf71c3f27b919a80b4f"
+          "excerpt_sha256": "747aeecdf46b2613c3c9fbee34d3f534b47d3cdd078816944bd6117187eabfd5"
         }
       ]
     },
@@ -3466,13 +3490,13 @@
       ],
       "citations": [
         {
-          "path": "docs/answer-intents.md",
+          "path": "docs/receiver/answer-intents.md",
           "start": 5,
           "end": 14,
           "excerpt_sha256": "e08d8c2d55e4426e998ced5d0271ede3910f59e65db6cdaa2ca67d83cfd0e927"
         },
         {
-          "path": "docs/answer-intents.md",
+          "path": "docs/receiver/answer-intents.md",
           "start": 18,
           "end": 38,
           "excerpt_sha256": "8eaaa4a53935d19281e69e58aff177eab5072e58ee48f883f009e2c5e42bace9"
@@ -3491,13 +3515,13 @@
       ],
       "citations": [
         {
-          "path": "docs/durable-stop-gate.md",
+          "path": "docs/history/durable-stop-gate.md",
           "start": 18,
           "end": 35,
           "excerpt_sha256": "4504a3740e3c61f9b69afa052ea5f14f00683044f021aefa1fb560ebbaccdeab"
         },
         {
-          "path": "docs/durable-stop-gate.md",
+          "path": "docs/history/durable-stop-gate.md",
           "start": 39,
           "end": 67,
           "excerpt_sha256": "55b21a5040eba5aca95cc901b6c0d375c534f65d0c24ec6a8ef3bb84ebf6889d"
@@ -3522,19 +3546,19 @@
       ],
       "citations": [
         {
-          "path": "docs/adapter-owner.md",
+          "path": "docs/receiver/adapter-owner.md",
           "start": 9,
           "end": 15,
           "excerpt_sha256": "d5710d112f3c67046822f9d86f6e5d8fd18293e7a78a0ec10b262fedcedc1f0d"
         },
         {
-          "path": "docs/adapter-owner.md",
+          "path": "docs/receiver/adapter-owner.md",
           "start": 21,
           "end": 23,
           "excerpt_sha256": "c708fbc027f1fc151563ead39327bd6cdf0742b884d14d6debc9acafb5717d68"
         },
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 63,
           "end": 109,
           "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
@@ -3553,13 +3577,13 @@
       ],
       "citations": [
         {
-          "path": "docs/profiles/async-text-v1.md",
+          "path": "docs/history/async-text-v1.md",
           "start": 28,
           "end": 32,
           "excerpt_sha256": "1f67f53f774f627a8d63bc87362e28eb4b9ee101336a43ef3e8068e3889f8585"
         },
         {
-          "path": "docs/implementation/generic-job-application.md",
+          "path": "docs/history/generic-job-application.md",
           "start": 25,
           "end": 25,
           "excerpt_sha256": "9f7f16ceb4019661529e5f4e117369fa2d2d8efa25ff412248d48ad483aacf11"
@@ -3578,13 +3602,13 @@
       ],
       "citations": [
         {
-          "path": "docs/task-bridge.md",
+          "path": "docs/history/task-bridge.md",
           "start": 78,
           "end": 82,
           "excerpt_sha256": "19339016a77b597fb424eaff7edd60d00391f15359a38145e2b41e922251f924"
         },
         {
-          "path": "docs/adapter-reply-budget.md",
+          "path": "docs/receiver/adapter-reply-budget.md",
           "start": 50,
           "end": 54,
           "excerpt_sha256": "18a721c9ae2abeff88f7909361c3c70525b86cfba4ffbb5e53e6c2892eecaec8"
@@ -3604,19 +3628,19 @@
       ],
       "citations": [
         {
-          "path": "docs/mvp-acceptance.md",
+          "path": "docs/history/mvp-acceptance.md",
           "start": 19,
           "end": 29,
           "excerpt_sha256": "6b0163464b74c5328840d0abff7b59b5d4b05c648d75d24b9ca67acf06096eb5"
         },
         {
-          "path": "docs/mvp-acceptance.md",
+          "path": "docs/history/mvp-acceptance.md",
           "start": 37,
           "end": 41,
           "excerpt_sha256": "5336c00b6e8c6a5a87f8b0523fddba033b89e00434b3dcd92129188f93a3263a"
         },
         {
-          "path": "docs/local-hermes-key.md",
+          "path": "docs/history/local-hermes-key.md",
           "start": 80,
           "end": 91,
           "excerpt_sha256": "c8657808cb7166491321e1b617a200aabc26913308321131bfdf25b26f7c558e"
@@ -3636,19 +3660,19 @@
       ],
       "citations": [
         {
-          "path": "docs/ping-discovery.md",
+          "path": "docs/history/ping-discovery.md",
           "start": 3,
           "end": 20,
           "excerpt_sha256": "df4ea6aa576f1a158ab0d02c724f288feaded1158ba3a36e6531b71ca9475813"
         },
         {
-          "path": "docs/inventory-end-to-end.md",
+          "path": "docs/history/inventory-end-to-end.md",
           "start": 109,
           "end": 134,
           "excerpt_sha256": "363febf8b2506d32e28aaa0d48510777f2c77a02ec389702501b245cd21ba3ad"
         },
         {
-          "path": "docs/manual-ping-runner.md",
+          "path": "docs/history/manual-ping-runner.md",
           "start": 61,
           "end": 72,
           "excerpt_sha256": "7bdaef601e8d4bdcf0a5a28eea3146768b42f2b739d612d26933abd3dd15f8a9"
@@ -3667,7 +3691,7 @@
       ],
       "citations": [
         {
-          "path": "docs/review-fixes.md",
+          "path": "docs/history/review-fixes.md",
           "start": 15,
           "end": 19,
           "excerpt_sha256": "127273ae29d6e05f1d3b9c665bc634deb75a9b7a8ae1f5ea72345eaa6191536d"
@@ -3693,13 +3717,13 @@
           "excerpt_sha256": "76ec86eead6e7402d4a3e8c69097afd3aebf19c9b6ed05f3d42dbf8a3f41e015"
         },
         {
-          "path": "docs/finite-mcp-trial.md",
+          "path": "docs/history/finite-mcp-trial.md",
           "start": 24,
           "end": 28,
           "excerpt_sha256": "e560d8fe60f24b345c314d582ab6bfd0c365a4de3b9d77ae6156e6b2d90c1952"
         },
         {
-          "path": "docs/inventory-end-to-end.md",
+          "path": "docs/history/inventory-end-to-end.md",
           "start": 53,
           "end": 64,
           "excerpt_sha256": "44f8760498ee74432970c9aa7e37f18f52bee62ea4595f864f29354c075abc64"
@@ -3718,13 +3742,13 @@
       ],
       "citations": [
         {
-          "path": "docs/fixed-pilot.md",
+          "path": "docs/history/fixed-pilot.md",
           "start": 3,
           "end": 9,
           "excerpt_sha256": "42c29357f5af82f3360b440d365ee1f1dbd2952b57978bf5e7b05459ac3cf99b"
         },
         {
-          "path": "docs/fixed-pilot.md",
+          "path": "docs/history/fixed-pilot.md",
           "start": 35,
           "end": 46,
           "excerpt_sha256": "bb930a596baa7556a936525d986c7c0b2ac2a13100063baa02e14fb3ad84a2ef"
@@ -3744,13 +3768,13 @@
       ],
       "citations": [
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 106,
           "end": 106,
           "excerpt_sha256": "86ec598c42479a94fa0241840ea55a196a868fa57a4fec9454c5f4f66d5be40d"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 116,
           "end": 129,
           "excerpt_sha256": "da81423c0e118d87398dabd1e8c51ea4754179f7f85482ef7e795b4e25a61e50"
@@ -3774,7 +3798,7 @@
           "excerpt_sha256": "bcb8d40e75bb5104c7083f56113a1b2c2dbcd259d8bcc23c6a06503e6768b9b7"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 80,
           "end": 80,
           "excerpt_sha256": "f0e19246eef214371bcc571fe3a40ec4875f7444ac5f2914db1ccdd6002b457f"
@@ -3783,7 +3807,7 @@
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
+          "excerpt_sha256": "7d81cf1fa88636c921cc88ff917b35084e7c51f92684e576e31d982219a3c72b"
         },
         {
           "path": ".claude/skills/verify-hab/features/a2a-host.md",
@@ -3922,20 +3946,20 @@
       ],
       "citations": [
         {
-          "path": "docs/testing/p7-lab.md",
+          "path": "docs/history/testing/p7-lab.md",
           "start": 12,
           "end": 14,
           "excerpt_sha256": "36edbfb7847d97f112d0978d0b93702dd1a78e013f29697ac2b998881e562f56",
           "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. PR162 integration with main (2026-11-11): only the full-root count changes to 1409 (1338 + 33 from #161/#163 + 38 from #162); meaning unchanged. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR164 integration with main (2026-11-11): only the full-root count changes to 1424 (1409 + 15 managed-transport cases); meaning unchanged. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): re-read current required-group and failure/hosted-status text; only expected root inventory changes 1424 to 1441. Acceptance meaning and requirement statement unchanged. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
-          "path": "docs/testing/a2a-native-acceptance.md",
+          "path": "docs/history/testing/a2a-native-acceptance.md",
           "start": 37,
           "end": 37,
           "excerpt_sha256": "d5d95ea1088b5f3b4aba70191435826056b82f43061c4f7f87dd31b9e9d4f810"
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 30,
           "end": 30,
           "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa",
@@ -3996,7 +4020,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 28,
           "end": 39,
-          "excerpt_sha256": "0a4faae5897c5e547b7b69e212dab7f983d22e4667192571ea4e87e832e99052"
+          "excerpt_sha256": "291e814a30945e6e48c922cc1385dd942c9c89c711f6bc1a7d1a9853c2042973"
         }
       ]
     },
@@ -4033,20 +4057,20 @@
       ],
       "citations": [
         {
-          "path": "docs/testing/a2a-bounded-performance.md",
+          "path": "docs/history/testing/a2a-bounded-performance.md",
           "start": 3,
           "end": 7,
           "excerpt_sha256": "5305850a87a8d64ae1321b328d9949630b1ba6ed4fd39f599ba25a14456eb2c4"
         },
         {
-          "path": "docs/testing/a2a-bounded-performance.md",
+          "path": "docs/history/testing/a2a-bounded-performance.md",
           "start": 13,
           "end": 21,
           "excerpt_sha256": "adc139d3724ba041910304888ccc66e33994f35d266f960d448f54a4e062586a",
           "maintenance": "Driver maintenance (2026-11-13): re-read lines 13-21 after line 17 kept the recorded runs' driver and added that a new run would also wrap SDK all/run calls on node:sqlite; the requirement is unchanged."
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 34,
           "end": 36,
           "excerpt_sha256": "0b7195c34f62b08ed0697b2229b5a5383b66540d98224011fd73efed14de38db",
@@ -4067,13 +4091,13 @@
       ],
       "citations": [
         {
-          "path": "docs/testing/a2a-bounded-performance.md",
+          "path": "docs/history/testing/a2a-bounded-performance.md",
           "start": 11,
           "end": 11,
           "excerpt_sha256": "2aedf50e7a085c45e2fe1263816d4fc998e596d096635772b9694e1eb37d7b55"
         },
         {
-          "path": "docs/testing/a2a-native-acceptance.md",
+          "path": "docs/history/testing/a2a-native-acceptance.md",
           "start": 26,
           "end": 35,
           "excerpt_sha256": "0d57fd94236f628619c1d9b6094a2532371b92939a48c8fb46cfab44308383ba"
@@ -4092,14 +4116,14 @@
       ],
       "citations": [
         {
-          "path": "docs/testing/p7-lab.md",
+          "path": "docs/history/testing/p7-lab.md",
           "start": 5,
           "end": 5,
           "excerpt_sha256": "becbc5d8e96b11d46a031e27ee3b7d8e1e1c63687bb9eaa07f5e897b4c98b25d",
           "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 16,
           "end": 16,
           "excerpt_sha256": "cc120998d3d7e7f238be3d25cdc0d7ba7aa0e0454918265e63114d976296237e",
@@ -4119,7 +4143,7 @@
       ],
       "citations": [
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 26,
           "end": 30,
           "excerpt_sha256": "c95f1c3cb91abea5e9c88810c3e1163910d81f43408f0010185110242d32f097",
@@ -4264,7 +4288,7 @@
       "tier": "manual",
       "proves": "Actual product caller/session, native MCP exposure, durable integration, display/wake, independent judgment and existing approvals.",
       "limitations": "Not executed or automatically satisfied by this harness. Requires scoped external evidence and review; remains unverified.",
-      "instructions": "Use docs/recipient-readiness.md and the existing common-MCP recipe. Record product/version, formal caller, trusted session/group/address binding, actual MCP transport, poll trigger and durable stores. Obtain concrete operational authority before live settings/grants/services/model execution. Send untrusted content and an execution_request; independently observe recipient interpretation/refusal/approval and unchanged existing approval rules. Unsupported APIs remain unsupported. Never substitute fixture/model-free success. For optional RecipientMessages composition, also review docs/recipient-messages.md and independently verify durable same-key native admission, durable unknown, exact reply approval consumption and current policy at commit. The synthetic recipient port test cannot satisfy this manual check. For the proposed recipient-host MCP pull route, review docs/implementation/recipient-host-mcp-proposal.md and verify the actual product client, process/session binding, independently scoped current HostAuthorization, private stores/owner and native approval on later actions. An SDK stdio fixture is not product acceptance; do not substitute it for RecipientMessagePort or infer idle-agent wake."
+      "instructions": "Use docs/receiver/recipient-readiness.md and the existing common-MCP recipe. Record product/version, formal caller, trusted session/group/address binding, actual MCP transport, poll trigger and durable stores. Obtain concrete operational authority before live settings/grants/services/model execution. Send untrusted content and an execution_request; independently observe recipient interpretation/refusal/approval and unchanged existing approval rules. Unsupported APIs remain unsupported. Never substitute fixture/model-free success. For optional RecipientMessages composition, also review docs/receiver/recipient-messages.md and independently verify durable same-key native admission, durable unknown, exact reply approval consumption and current policy at commit. The synthetic recipient port test cannot satisfy this manual check. For the proposed recipient-host MCP pull route, review docs/receiver/recipient-host-mcp-proposal.md and verify the actual product client, process/session binding, independently scoped current HostAuthorization, private stores/owner and native approval on later actions. An SDK stdio fixture is not product acceptance; do not substitute it for RecipientMessagePort or infer idle-agent wake."
     },
     {
       "id": "production-operations",
@@ -4504,34 +4528,34 @@
       "classification": "scope/history/explicit-authority",
       "citations": [
         {
-          "path": "docs/architecture.md",
+          "path": "docs/history/task-engine.md",
           "start": 1,
           "end": 7,
-          "excerpt_sha256": "8022f21fb92dff880a1691d0f8f2edfc8f4351a530f6abdb7568ee3ac23eaf5d"
+          "excerpt_sha256": "7f2c2b444c5a9f51be14b02f9a7ce153519131cb912f01c1795a7bd0724984d1"
         },
         {
-          "path": "docs/hab-workflow.md",
+          "path": "docs/history/hab-workflow.md",
           "start": 5,
           "end": 7,
-          "excerpt_sha256": "bc55086a6b5a2b6976a37252dd71933705d6d4fa6dbe656e118fe572acbff3f2"
+          "excerpt_sha256": "7ab8940d91a36dfb80bfe9a0bf2829d4b4bae1d96aadc56d8020324a2772ae47"
         },
         {
-          "path": "docs/hab-topology.md",
+          "path": "docs/history/hab-topology.md",
           "start": 7,
           "end": 11,
-          "excerpt_sha256": "dc5c678b4f6272cdc28b1e71ba73833839de42c503cf386e3cfb59d8003bce60"
+          "excerpt_sha256": "d21dbd31fd5bbadbe49db2d008259f6c3298ec7e6414daa5fc4a5a5f41492cab"
         },
         {
           "path": "docs/hab-decisions.md",
           "start": 24,
           "end": 36,
-          "excerpt_sha256": "4d3fcfd4c3c5b9f2343640f8bd583c0c6b5c4856f0683950e853c26759dcf723"
+          "excerpt_sha256": "3e55dbd01b2d07532ae16fa26b064b531b2925431ba9c647d7772cc2216c0479"
         },
         {
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "8c78949ba632de185668c06c3868d1c3888b10f524d44dea4107d24bd7d203bb"
+          "excerpt_sha256": "89dee995296f53d6925ef1cadb1ca5da8972ff039014b1dcb6269e805d29b7ce"
         }
       ]
     },
@@ -4571,7 +4595,7 @@
           "excerpt_sha256": "01c17faf112cc84f174e448b409a226c4d5277ea738071a33c27478cd8adc5d9"
         },
         {
-          "path": "docs/recipient-readiness.md",
+          "path": "docs/receiver/recipient-readiness.md",
           "start": 32,
           "end": 32,
           "excerpt_sha256": "9cd2577239f8f81837f698a01004ef41cac45fe49612ef2c43eab113ce6f3ca7"
@@ -4605,16 +4629,16 @@
           "path": "README.md",
           "start": 29,
           "end": 29,
-          "excerpt_sha256": "cc95f13d58414483dab2812d84aa43bea33e5900e13faef6b44290fdafa3aa3a"
+          "excerpt_sha256": "fb867159ebfccb9d90033a4088390efb96e418ec3fa8942e370be1d99b64a468"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 3,
           "end": 12,
-          "excerpt_sha256": "079e9207072dbef0d5556fd97e8c371ec27fe8d9dad23c410e228d65052b766a"
+          "excerpt_sha256": "fd812237669c809229d5bc03b82b7163c762fc39415e2144a7e3dae9759ae61c"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 133,
           "end": 143,
           "excerpt_sha256": "fb5a779b870f53456fac3fea2b30821c8e389ee6949c94f9626ff3a3c23f103b"
@@ -4646,8 +4670,8 @@
         },
         {
           "path": "README.md",
-          "start": 165,
-          "end": 165,
+          "start": 167,
+          "end": 167,
           "excerpt_sha256": "99164e5c28b40efaa9e261e0aff45e93d5c74d316b013c6ae657a0cf3f2c3d39"
         },
         {
@@ -4683,8 +4707,8 @@
         },
         {
           "path": "docs/hab-relay-spec.md",
-          "start": 519,
-          "end": 527,
+          "start": 513,
+          "end": 521,
           "excerpt_sha256": "b2b9d12db178026be9050c4f02398db07d9d229c39045a53193b90281a45e2de"
         },
         {
@@ -4713,19 +4737,19 @@
       "classification": "history/state-meaning",
       "citations": [
         {
-          "path": "docs/implementation/design-boundary-alignment.md",
+          "path": "docs/history/design-boundary-alignment.md",
           "start": 15,
           "end": 15,
           "excerpt_sha256": "64a9838f62f583fe84b999360714180c2c4288fa5da09fb77aa941e7a47e5d55"
         },
         {
-          "path": "docs/generic-agent-async-design.md",
+          "path": "docs/history/generic-agent-async-design.md",
           "start": 142,
           "end": 142,
-          "excerpt_sha256": "7764fe05c9bdba5931d15d12bc3f94e3e907ca09f9cd10589259ecd60ffd6948"
+          "excerpt_sha256": "1caf159306753ef953febb995bc3c6b964b5ee9877cb370705ac07bbb9e110bc"
         },
         {
-          "path": "docs/implementation/generic-job-application.md",
+          "path": "docs/history/generic-job-application.md",
           "start": 19,
           "end": 23,
           "excerpt_sha256": "7df695bafa8690a5bd6b2a61a0980b6bb75a30d214221d5a18e591404aae7af1"
@@ -4750,13 +4774,13 @@
       "classification": "scope/authority",
       "citations": [
         {
-          "path": "docs/adapter-host.md",
+          "path": "docs/receiver/adapter-host.md",
           "start": 49,
           "end": 53,
           "excerpt_sha256": "06d7296b93c84e473d299841c68adcf49dc37675e3476f63a88613dcb25f1061"
         },
         {
-          "path": "docs/recipient-readiness.md",
+          "path": "docs/receiver/recipient-readiness.md",
           "start": 7,
           "end": 9,
           "excerpt_sha256": "0ca09618e811399e00a00d5be2f13d244b35a553b68ebecb95555e82013bca20"
@@ -4808,25 +4832,25 @@
       "classification": "scope",
       "citations": [
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 18,
           "end": 21,
           "excerpt_sha256": "a809b6c5de13a706e8607d83c2db6b8e7ec447e7412997ba22926716735f4441"
         },
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 142,
           "end": 146,
           "excerpt_sha256": "c9927fa931e7e33e24f860f79b8985067ff52ae6567276d172f63c6438a50ace"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 3,
           "end": 6,
           "excerpt_sha256": "64397f2a5c054ae4034faaa7e6365ee9c263bdf068e4dc3ef247a50893193970"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
+          "path": "docs/operations/persistent-mcp-auth.md",
           "start": 79,
           "end": 86,
           "excerpt_sha256": "476421ca3dcd8daf895527ccb0cff47402440b8fa0030210769c091a9751a833"
@@ -4855,19 +4879,19 @@
           "excerpt_sha256": "767cf949de77f8badfe3a4332531d2d0b288b03793df1804d93a54741441b8ca"
         },
         {
-          "path": "docs/auth0-boundary.md",
+          "path": "docs/history/auth0-boundary.md",
           "start": 27,
           "end": 35,
           "excerpt_sha256": "55ea17f377c53193cc3af21b14dd786a0a6ea500cc3fd3d47fea272230aa8ccd"
         },
         {
-          "path": "docs/auth0-boundary.md",
+          "path": "docs/history/auth0-boundary.md",
           "start": 62,
           "end": 67,
           "excerpt_sha256": "af48a7cabcaaa9075f29cf122ad7179536f3dd3a24753606befb6ffc55de361b"
         },
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 39,
           "end": 43,
           "excerpt_sha256": "1f323b980ed876b53d49e624523446490a952663d01693a27aa48a9adc4c4eca"
@@ -4919,13 +4943,13 @@
       "classification": "scope",
       "citations": [
         {
-          "path": "docs/auth0-boundary.md",
+          "path": "docs/history/auth0-boundary.md",
           "start": 131,
           "end": 147,
           "excerpt_sha256": "06d838cf9dcea821ccedccd7c22cfa33d219efa514ce1f7025b9639992b80c02"
         },
         {
-          "path": "docs/relay-oauth-ingress.md",
+          "path": "docs/operations/relay-oauth-ingress.md",
           "start": 52,
           "end": 56,
           "excerpt_sha256": "7d516aa13c8ed976e78f982c6d763789002cc75fa287f2badb4d76823259f2d1"
@@ -4948,10 +4972,10 @@
       "classification": "scope",
       "citations": [
         {
-          "path": "docs/local-relay-host.md",
+          "path": "docs/operations/local-relay-host.md",
           "start": 65,
           "end": 108,
-          "excerpt_sha256": "e958623adfda7f01f25b920afd4e8e8470367e8e05fbc3b91f81b368f20c8506"
+          "excerpt_sha256": "8e227c35507963f80969322ce6011a8e8e644df07e48b2a3feb5117a6f485498"
         },
         {
           "path": "docs/local-relay-service.md",
@@ -4963,7 +4987,7 @@
           "path": "docs/hab-security.md",
           "start": 5,
           "end": 5,
-          "excerpt_sha256": "dee7c7b9f2ae56ee87b55a2c401ab348400b1db04baee1aea5096923e99a9370"
+          "excerpt_sha256": "9216ee3d576654e5f191fa02a5d53dabb397c6bb30ffe1d434a539c84c53d663"
         }
       ]
     },
@@ -4989,7 +5013,7 @@
           "excerpt_sha256": "b53c1ecae123c4d9c46efbfb58bce0d7cfd5f8542e8281ebd35f8bdf74963f24"
         },
         {
-          "path": "docs/writer-admission.md",
+          "path": "docs/delivery/writer-admission.md",
           "start": 5,
           "end": 5,
           "excerpt_sha256": "f1029ab5dd752c376e8a9445ce2dccb9f7e7ac2ae1dc13097a08390eaf687965"
@@ -5012,13 +5036,13 @@
       "classification": "scope",
       "citations": [
         {
-          "path": "docs/relay-fair-poll.md",
+          "path": "docs/delivery/relay-fair-poll.md",
           "start": 15,
           "end": 17,
           "excerpt_sha256": "922fb3d31d08d7a0e3e96118b153a7b315fa173df6b6c94f93074ff72a4e4437"
         },
         {
-          "path": "docs/writer-admission.md",
+          "path": "docs/delivery/writer-admission.md",
           "start": 23,
           "end": 27,
           "excerpt_sha256": "bf9afd5870938c67e8c70f091d570fe1d11159e696127c1086eb7d7833d9560f"
@@ -5069,7 +5093,7 @@
       "classification": "unresolved",
       "citations": [
         {
-          "path": "docs/hab-relay-integration.md",
+          "path": "docs/history/hab-relay-integration.md",
           "start": 69,
           "end": 71,
           "excerpt_sha256": "d2e65e7c38f94b9736ca9aab6f47c8b5c7298a27b0b570652ff6f1d89002612f"
@@ -5132,16 +5156,16 @@
       "classification": "resolved-subsystem-scope",
       "citations": [
         {
-          "path": "docs/hermes-connection.md",
+          "path": "docs/history/hermes-connection.md",
           "start": 1,
           "end": 5,
-          "excerpt_sha256": "9dae142fb5566f13df837be56a65a700c530642b0b6be939afae13a1868a7cb2"
+          "excerpt_sha256": "ea6ae67d5fcae684a13a7129a8268a3f12e0cd6c892e9fffa297ae1da7f6c004"
         },
         {
-          "path": "docs/profiles/async-text-v1.md",
+          "path": "docs/history/async-text-v1.md",
           "start": 1,
           "end": 3,
-          "excerpt_sha256": "71b05b381a5f7bfe3cfa00b68da3d55a40690ff889d73c9cf665ecc9ea43e227"
+          "excerpt_sha256": "cbebd1b652db3fdc1b681cb405a7313af410213ebbb3dfe4a6aa8507b7576fb4"
         }
       ]
     },
@@ -5160,19 +5184,19 @@
       "classification": "resolved-historical-scope",
       "citations": [
         {
-          "path": "docs/fixed-pilot.md",
+          "path": "docs/history/fixed-pilot.md",
           "start": 3,
           "end": 9,
           "excerpt_sha256": "42c29357f5af82f3360b440d365ee1f1dbd2952b57978bf5e7b05459ac3cf99b"
         },
         {
-          "path": "docs/fixed-pilot.md",
+          "path": "docs/history/fixed-pilot.md",
           "start": 37,
           "end": 46,
           "excerpt_sha256": "6ed617cfa57b5e7995969df43b06f4baeb0202f4ec9e4a1a0a486501e8c92b27"
         },
         {
-          "path": "docs/hermes-import-boundary.md",
+          "path": "docs/history/hermes-import-boundary.md",
           "start": 57,
           "end": 67,
           "excerpt_sha256": "4d8b06fd0f75d8a78a06ca57f1e39ee0741c92a5c839010f6179e8040c850fba"
@@ -5194,19 +5218,19 @@
       "classification": "historical-implementation-status",
       "citations": [
         {
-          "path": "docs/mvp-acceptance.md",
+          "path": "docs/history/mvp-acceptance.md",
           "start": 12,
           "end": 16,
           "excerpt_sha256": "f1167ba7a55adc033f3d1eef6286be8b541a1f7fc694ec8a1a8b7e90b87df9a1"
         },
         {
-          "path": "docs/mvp-acceptance.md",
+          "path": "docs/history/mvp-acceptance.md",
           "start": 45,
           "end": 53,
           "excerpt_sha256": "39fd9cc92a4d47a23471d65c9b5d7d2284211703d9a603d8fa8a7136dd25a9f3"
         },
         {
-          "path": "docs/inventory-end-to-end.md",
+          "path": "docs/history/inventory-end-to-end.md",
           "start": 118,
           "end": 134,
           "excerpt_sha256": "2ac578001ac545654b7e482b1af63a3724f9ee039a4a7d6e1126da954b28bef3"
@@ -5228,22 +5252,22 @@
       "classification": "resolved-state-semantics",
       "citations": [
         {
-          "path": "docs/implementation/generic-job-application.md",
+          "path": "docs/history/generic-job-application.md",
           "start": 21,
           "end": 23,
           "excerpt_sha256": "171ab7a442249d905d8b2e4c2b2a0a91c5643b7fab0583f31fee24655c8374b7"
         },
         {
-          "path": "docs/profiles/async-text-v1.md",
+          "path": "docs/history/async-text-v1.md",
           "start": 40,
           "end": 42,
           "excerpt_sha256": "175407fee15fe92953d300ea1da10791514ecfb8f33c584cda018974671338d6"
         },
         {
-          "path": "docs/implementation/generic-text-preview.md",
+          "path": "docs/history/generic-text-preview.md",
           "start": 35,
           "end": 45,
-          "excerpt_sha256": "fe9449f1c17437222073ce96fdad72b01cd64cc575458bccff4f532581fb4ad0"
+          "excerpt_sha256": "c0aa504d63fac042f24aa024379fce9e5e431bb8cca47d0a7cdac6bd388e498a"
         }
       ]
     },
@@ -5284,13 +5308,13 @@
       "classification": "proposed-architecture-not-authorized",
       "citations": [
         {
-          "path": "docs/inventory-preparation.md",
+          "path": "docs/history/inventory-preparation.md",
           "start": 43,
           "end": 78,
           "excerpt_sha256": "df0a3412401c0b2a60abee4390f8ff8e128ada92760e2f88cef6be799740be12"
         },
         {
-          "path": "docs/hermes-import-boundary.md",
+          "path": "docs/history/hermes-import-boundary.md",
           "start": 53,
           "end": 62,
           "excerpt_sha256": "99b1ed692d5e3bf3d707224358b4194210518b77b8ab4cfca61fbdaf4e7d1a02"
@@ -5313,13 +5337,13 @@
       "classification": "historical-versus-current profile",
       "citations": [
         {
-          "path": "docs/testing/delivery-lab.md",
+          "path": "docs/history/testing/delivery-lab.md",
           "start": 1,
           "end": 9,
-          "excerpt_sha256": "8d4bd250905d4f4a45ca7ef229d1653d0c706e41590329a7a0199a25b566dd55"
+          "excerpt_sha256": "20c70e50039bc26491f3af6d1ce517e40e7ace48bdfc8bc633902c09cd7c1644"
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 30,
           "end": 30,
           "excerpt_sha256": "c534344fe8c7aa62b32dd29d7a010bcedbeb394ea3595d49b00112fac8837caa"
@@ -5342,13 +5366,13 @@
       "classification": "historical publication and hosted-CI scope",
       "citations": [
         {
-          "path": "docs/testing/p7-independent-results.md",
+          "path": "docs/history/testing/p7-independent-results.md",
           "start": 1,
           "end": 7,
-          "excerpt_sha256": "60521e4319395b4b3d529a9563e25e649408941886850705ad80c254bf219dc7"
+          "excerpt_sha256": "378b6f011873088b253566074c387ee6c653cbeb95184b7f482dd191dc62bec5"
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 5,
           "end": 5,
           "excerpt_sha256": "9f03d7725cffa5f97b93de84cc6e63e34d1b886814144ed81784416fc5b00fdd"
@@ -5371,7 +5395,7 @@
       "classification": "different fault injection boundary",
       "citations": [
         {
-          "path": "docs/testing/delivery-lab.md",
+          "path": "docs/history/testing/delivery-lab.md",
           "start": 58,
           "end": 58,
           "excerpt_sha256": "c71679d939ec1d828104da3a42f0a59d2be67e8f1278b41f8cf9d199955e376a",
@@ -5429,13 +5453,13 @@
       "classification": "stale operational count within historical reference guide",
       "citations": [
         {
-          "path": "docs/testing/p7-lab.md",
+          "path": "docs/history/testing/p7-lab.md",
           "start": 12,
           "end": 12,
           "excerpt_sha256": "43301a9424dd08516793a7962d43c432ae9862773456ef902826967035ae4ddc"
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 20,
           "end": 20,
           "excerpt_sha256": "bfd92f1e147398230d37bedc056bb0f5850ea546c9467828a7f72fdb7aa1d7b0"
@@ -5459,13 +5483,13 @@
       "classification": "generic compatibility-versus-native protocol scope",
       "citations": [
         {
-          "path": "docs/testing/a2a-native-acceptance.md",
+          "path": "docs/history/testing/a2a-native-acceptance.md",
           "start": 43,
           "end": 47,
           "excerpt_sha256": "04aa271a0011ec7c2d9516fc43ab420ad33cc3715ebd2a5fe45494a1a70cfafe"
         },
         {
-          "path": "docs/testing/publication.md",
+          "path": "docs/history/testing/publication.md",
           "start": 22,
           "end": 22,
           "excerpt_sha256": "fe45c3df7f3cb68754a4a2eb9ce33b0f53e40aea5cb3fe8181c465021270cadc"
@@ -5528,7 +5552,7 @@
           "path": "docs/hab-decisions.md",
           "start": 37,
           "end": 48,
-          "excerpt_sha256": "8c78949ba632de185668c06c3868d1c3888b10f524d44dea4107d24bd7d203bb"
+          "excerpt_sha256": "89dee995296f53d6925ef1cadb1ca5da8972ff039014b1dcb6269e805d29b7ce"
         },
         {
           "path": "docs/delivery-store.md",
@@ -5547,7 +5571,7 @@
     },
     {
       "status": "resolved",
-      "question": "docs/implementation/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?",
+      "question": "docs/history/generic-nats-dispatch.md and the async-text-v1 profile still describe the opt-in generic NATS dispatch port (src/generic-nats, packages/relay-nats/src/text-port.ts, scripts/prove-generic-nats.mjs) as present, but that code was deleted. Is the port still part of the design?",
       "id": "HAB-C-E07",
       "requirements": [
         "HAB-E03",
@@ -5558,22 +5582,22 @@
       "classification": "historical",
       "citations": [
         {
-          "path": "docs/implementation/generic-nats-dispatch.md",
+          "path": "docs/history/generic-nats-dispatch.md",
           "start": 3,
           "end": 3,
           "excerpt_sha256": "5e9e064eadfdf31348092682a2a2e68713b0f7860fcab6887b8af2b676ca5897"
         },
         {
-          "path": "docs/implementation/generic-nats-dispatch.md",
+          "path": "docs/history/generic-nats-dispatch.md",
           "start": 43,
           "end": 43,
           "excerpt_sha256": "7d8a119b619ac72ad9750833520090bf301553276f0603e1f4dac4646e18c074"
         },
         {
-          "path": "docs/profiles/async-text-v1.md",
+          "path": "docs/history/async-text-v1.md",
           "start": 50,
           "end": 50,
-          "excerpt_sha256": "24ec3bef16cdb5255d1a34e6e69a0f30e34d84e2dedb310d74f985702a66d8bd"
+          "excerpt_sha256": "1751e7db99591f4cfcecb3b134ba5f13b40407d78831c6de160582720836c4f3"
         }
       ]
     },
@@ -5593,31 +5617,31 @@
       "classification": "explicit-authority",
       "citations": [
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 27,
           "end": 27,
           "excerpt_sha256": "664d63f4c445860de323e09b09a76e5d417a588b8227c5deda62bac1d2e2230a"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 59,
           "end": 59,
-          "excerpt_sha256": "ab2fe8fb5383c3988486c1b2d73e92bd87f0ba361b0a8cbf0d0282cf7c1e6b9b"
+          "excerpt_sha256": "ef786a731a65e7d5dd09318c7f0e346a08120c23ded6c6ef721b31f1fd351e68"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 63,
           "end": 63,
           "excerpt_sha256": "fa6c373bd76791be47d78595943eb47907db4648ec102e1824f8e16edbaf573f"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 116,
           "end": 116,
           "excerpt_sha256": "adc663ccbac56e809219537514af6d2f60f61c58008f45f8a95203c7f7d2f82d"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 129,
           "end": 129,
           "excerpt_sha256": "6e1083f4541b49ab4215539e526d0b07132347862f3213da11a4ec82d1b5d101"
@@ -5626,7 +5650,7 @@
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
+          "excerpt_sha256": "7d81cf1fa88636c921cc88ff917b35084e7c51f92684e576e31d982219a3c72b"
         },
         {
           "path": "docs/hab-decisions.md",
@@ -5696,10 +5720,10 @@
           "path": "docs/hab-decisions.md",
           "start": 45,
           "end": 45,
-          "excerpt_sha256": "16bc81baf382878cb5844cbff416e7b96b5087dc1eef3b71d40250af298c7166"
+          "excerpt_sha256": "7d81cf1fa88636c921cc88ff917b35084e7c51f92684e576e31d982219a3c72b"
         },
         {
-          "path": "docs/a2a-relay-preview.md",
+          "path": "docs/a2a/a2a-relay-preview.md",
           "start": 125,
           "end": 127,
           "excerpt_sha256": "86d3e9d9e35cd2b29351888be8ae03f7633a81bee2e89e3d0c95e6521b6e705a"
@@ -5735,13 +5759,13 @@
       "resolution": "No. The wrapper is explicitly uninstalled opt-in preparation over existing AdapterHostCycle operations. It reuses trusted per-session context and current host commit guards, exposes no Task, arbitrary message enqueue, control or owner-release tool, and leaves the normal five-tool Relay unchanged. A pulled saved message is external data, not native owner input or permission. RecipientMessagePort admission and exact-reply native callbacks are not serialized or replaced. Existing accepted requirements keep their original authority; the proposal is reviewed context and synthetic MCP/SQLite/JetStream evidence adds regression coverage only. Native product binding, policy, approval and wake remain manual/unverified.",
       "citations": [
         {
-          "path": "docs/implementation/recipient-host-mcp-proposal.md",
+          "path": "docs/receiver/recipient-host-mcp-proposal.md",
           "start": 8,
           "end": 23,
           "excerpt_sha256": "0c80d6b87708e2cca86a5d5d3583e5304b869257aee691e24ecc17c5524f796a"
         },
         {
-          "path": "docs/implementation/recipient-host-mcp-proposal.md",
+          "path": "docs/receiver/recipient-host-mcp-proposal.md",
           "start": 116,
           "end": 125,
           "excerpt_sha256": "e4778bdc6b6964e501198b5de9313dc0cbf230e2b26eda17d3f66a79ae0b6169"

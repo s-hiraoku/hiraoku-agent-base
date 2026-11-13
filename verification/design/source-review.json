@@ -5,59 +5,59 @@
       "attestation": "All sixteen assigned included documents were read in full as semantic source review at the fixed commit, not merely inventoried/hashed. Where one combined tool output was truncated, the affected README/architecture/principles/ADR and roadmap content was reread in complete smaller batches. Supplemental files below were also read in full. No target/hirastack edits, test/live driving, external fetches or remote writes performed by this reader.",
       "assigned": [
         "README.md",
-        "docs/adapter-host.md",
-        "docs/architecture.md",
+        "docs/receiver/adapter-host.md",
+        "docs/history/task-engine.md",
         "docs/common-mcp-connection.md",
-        "docs/generic-agent-async-design.md",
+        "docs/history/generic-agent-async-design.md",
         "docs/hab-decisions.md",
         "docs/hab-principles.md",
         "docs/hab-product-spec.md",
         "docs/hab-relay-spec.md",
-        "docs/hab-roadmap.md",
-        "docs/hab-roles.md",
-        "docs/hab-topology.md",
-        "docs/hab-workflow.md",
-        "docs/implementation/design-boundary-alignment.md",
-        "docs/receive-supervisor.md",
-        "docs/recipient-readiness.md"
+        "docs/history/hab-roadmap.md",
+        "docs/history/hab-roles.md",
+        "docs/history/hab-topology.md",
+        "docs/history/hab-workflow.md",
+        "docs/history/design-boundary-alignment.md",
+        "docs/receiver/receive-supervisor.md",
+        "docs/receiver/recipient-readiness.md"
       ],
       "supplemental": [
         {
           "path": "docs/relay-auth-groups.md",
-          "sha256": "63f1d64429aaa54031f0d242862a40e5284e92b89fe7dfa067e03985f6595484",
+          "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
           "review": "reviewed",
           "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
         },
         {
-          "path": "docs/implementation/generic-nats-dispatch.md",
-          "sha256": "8ac25f65817af93181f37beb64ab3f6c172036d16ad3243599f3b84a4dadaae9",
+          "path": "docs/history/generic-nats-dispatch.md",
+          "sha256": "5d2c40440474bdcd0af1516b5c42ba506bef3d2b11e65d05aca323804a89d12a",
           "review": "reviewed",
           "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only adds an opening note that the document is a historical record of the deleted port; the body is unchanged."
         },
         {
-          "path": "docs/implementation/generic-job-application.md",
-          "sha256": "efdb11537a862b0bccb07b892c86f0bedcf8f9134adbc520fa8ac649853d5a9e",
+          "path": "docs/history/generic-job-application.md",
+          "sha256": "73fa117946fcc58a0274720b1a5d35a8b230ee9b03c50ddb7c6c04a5b19a9bf3",
           "review": "reviewed"
         },
         {
-          "path": "docs/task-bridge.md",
-          "sha256": "a48a0a5a652fc4f10e190046522b578a7045e541c344c58861c38228609dc80b",
+          "path": "docs/history/task-bridge.md",
+          "sha256": "0ad8718518f7436357ecb3a78059282bbfb3699b52b952530b1e2a7ea397f527",
           "review": "reviewed",
           "maintenance": "Phase 6 maintenance: the diff from 0bf74ef only repoints the deleted src/relay README link to src/agent-sdk/README.md."
         },
         {
           "path": "docs/hab-security.md",
-          "sha256": "c18beef4476dc4d283931e2191608b443c88f6603635b707472a721775ddc218",
+          "sha256": "b5e50c51f0d5d64922e5b1750f1f8b86454ff6a71038132a4fcaea86e5f45063",
           "review": "reviewed"
         },
         {
-          "path": "docs/adapter-owner.md",
+          "path": "docs/receiver/adapter-owner.md",
           "sha256": "2d70b4ef18689aadce58754677c43fb88291112da391f4ee214946c420f6a9d4",
           "review": "reviewed"
         },
         {
-          "path": "docs/persistent-mcp-auth.md",
-          "sha256": "62add971e001e4709ad51272beffdacf6fb9b89106470c756b4b156701dcf1c2",
+          "path": "docs/operations/persistent-mcp-auth.md",
+          "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
           "review": "reviewed",
           "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
         }
@@ -82,90 +82,90 @@
       {
         "path": "docs/agent-address-rename.md",
         "scope": "full",
-        "sha256": "44e9e9fd76b1470939f57e0d42c012a1acabd19fee62ce7c018c066c372a19f5",
+        "sha256": "230c500a91e1effd53ffef8d2afb8257a5ba16ada00a2df4daf343efbf21369e",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
-        "path": "docs/auth0-account-step.md",
+        "path": "docs/operations/auth0-account-step.md",
         "scope": "full",
         "sha256": "cd9f44255d8c28f107159021b91749d346260fff1d4e0248f7fea17a30034353"
       },
       {
-        "path": "docs/auth0-boundary.md",
+        "path": "docs/history/auth0-boundary.md",
         "scope": "full",
         "sha256": "fa31c8305a1cf607b0c74804e35f30cda3c16ddb7beef0cdb4d05d143aae7f63"
       },
       {
-        "path": "docs/dots-hermes-connection-plan.md",
+        "path": "docs/history/dots-hermes-connection-plan.md",
         "scope": "full",
-        "sha256": "2ff86201e77bba7216f6d4228d596aff983dc7e54275d9514e02e88b82c42450",
+        "sha256": "2e21dd8a3c371e7abb5c9b04bf7f9c4d69d14f32708bcbb64134050ebd9a5bad",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/hab-security.md",
         "scope": "full",
-        "sha256": "c18beef4476dc4d283931e2191608b443c88f6603635b707472a721775ddc218"
+        "sha256": "b5e50c51f0d5d64922e5b1750f1f8b86454ff6a71038132a4fcaea86e5f45063"
       },
       {
-        "path": "docs/local-integration.md",
+        "path": "docs/history/local-integration.md",
         "scope": "full",
         "sha256": "6ce9a02658c54107abfe3257075ce96c918e0e28cecf54b0cd01013a3dd550ac",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
-        "path": "docs/local-relay-host.md",
+        "path": "docs/operations/local-relay-host.md",
         "scope": "full",
-        "sha256": "4fbf9a8851c9dbac73c29e19f44d3b9e7f8d413859b725aef8c3caf147584755",
+        "sha256": "8fd7af00269c4da014245d3ca6002d92c37ed2a6a0823c8e8bf63ef21d20a7f6",
         "maintenance": "Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
       },
       {
-        "path": "docs/local-relay-launchagent.md",
+        "path": "docs/operations/local-relay-launchagent.md",
         "scope": "full",
-        "sha256": "16beca8fbfcb2a2f71adbf98b51d63e2247d38f43fa728a3b51ed83e2ef42254"
+        "sha256": "f877fe164cf3b625d60724a1801ed9ebfb29a547958f341fabb4695f5bb87ab5"
       },
       {
         "path": "docs/local-relay-service.md",
         "scope": "full",
-        "sha256": "334cb746487d875af3326af23e6f2844f744cf21cec8fd0c19816125481ed6e4",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a-relay-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); the rollback sentence now also reconciles IDs incomplete in the backup, lets the recipient's records decide expired or quarantined rows, and keeps the earlier build stopped until every restored ID has expired. The recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the rollback sentence now says the hold stops the relay from delivering again, and that a body already saved in a restored inbox is settled against the copied execution records before its recipient restarts. The recorded observation still holds. Local follow-up on 0fc76a6: Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
+        "sha256": "a9be28c1a04a70281e796aac722747f597f1acb7cdae561fd5e198f99ea5d374",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds an \"Optional A2A entry\" section pointing to the host wiring in docs/a2a/a2a-relay-preview.md. The recorded observation still holds. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it adds that the delivery journal is schema 4, which earlier builds refuse, so a rollback to one restores a pre-upgrade backup and reconciles the accepted messages (packages/relay-nats/OPERATIONS.md#roll-back). The recorded observation still holds. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); the rollback sentence now also reconciles IDs incomplete in the backup, lets the recipient's records decide expired or quarantined rows, and keeps the earlier build stopped until every restored ID has expired. The recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the rollback sentence now says the hold stops the relay from delivering again, and that a body already saved in a restored inbox is settled against the copied execution records before its recipient restarts. The recorded observation still holds. Local follow-up on 0fc76a6: Rollback includes recipient-only ID evidence and upgraded-only unreleased body recovery, with application-specific original-key local handoff and no replay/expiry extension."
       },
       {
-        "path": "docs/mcp-agent-discovery.md",
+        "path": "docs/connections/mcp-agent-discovery.md",
         "scope": "full",
         "sha256": "ec465854645a666ab6513c3dd43b25ffef7d15040fa8f579c13b9fa45f8db53c",
         "maintenance": "Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise."
       },
       {
-        "path": "docs/migration-plan.md",
+        "path": "docs/history/migration-plan.md",
         "scope": "full",
-        "sha256": "bfb99c4cea032bd133b26e0f6227a36c8de0f5ca0691e6aaac518841182b4ccc"
+        "sha256": "f52e6de7490b9fa3239cb60fe7e7ab0908e8bd13301ef90bb74ddb645e76bbe7"
       },
       {
-        "path": "docs/persistent-mcp-auth.md",
+        "path": "docs/operations/persistent-mcp-auth.md",
         "scope": "full",
-        "sha256": "62add971e001e4709ad51272beffdacf6fb9b89106470c756b4b156701dcf1c2",
+        "sha256": "055ece81df4c1b31f5225b5bedde1c929dbb7f5302614de4942be220db1f9af8",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": "docs/relay-auth-groups.md",
         "scope": "full",
-        "sha256": "63f1d64429aaa54031f0d242862a40e5284e92b89fe7dfa067e03985f6595484",
+        "sha256": "9f9e502c4a03fb7d527715119a3d1fd56bd780c7cb03fabe24ab399e68f70211",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
-        "path": "docs/relay-oauth-ingress.md",
+        "path": "docs/operations/relay-oauth-ingress.md",
         "scope": "full",
-        "sha256": "5be6eff570a7d5ccf9b7969c40757efb42f65e7540b549cd1c005f31cdd0a248"
+        "sha256": "c1fe579805c0e209183ea3670ce010666585e8e7034589a178e172798a499493"
       },
       {
-        "path": "docs/security-audit-limits.md",
+        "path": "docs/history/security-audit-limits.md",
         "scope": "full",
         "sha256": "5d1163c4ce43bd9abe8360791a55987aba951f768b0db1b86a2a1daf5b48d12b"
       },
       {
         "path": "src/hab/README.md",
         "scope": "full",
-        "sha256": "4b823586b54d995e3d8534083aa43552678e0ba9c0c3f782ac8f9b9a09bc8d82",
+        "sha256": "ef6e2787b3b8cf955c24ee92ef182bae982098c1d7b16c5de36a1ff6a0638e73",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withRelay called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds."
       },
       {
@@ -208,7 +208,7 @@
     "supplemental_sources": [
       {
         "path": "src/hab/sqlite-registry.ts",
-        "sha256": "93f580ed3899e9cdaab86752dde4c786c007fcf8e4c964c7d85df332282d6f39",
+        "sha256": "213640606e25d8d91e309a6bd2c64d09f95d602a60b6e1b4154320a25e892907",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (registryOptionsSchema, createBoundGroup, #addMember, #stopMembers, setGroupAccess, revokeGroupBinding, omitted-selection query); diff from efa2435 (createBoundGroup rights, #relayTx)",
@@ -218,7 +218,7 @@
       },
       {
         "path": "src/host/admin.ts",
-        "sha256": "ed34fdf90edee5767e43ac5656b4a16d70e3d6de2365243656462b8db127fe86",
+        "sha256": "345200225cca279357b5b54b1ff05f3ce1c4c8f23d2f04ecfc3ab13f1244b2b3",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (open(), hostAdminConnect group branch, operations parsing)",
@@ -238,7 +238,7 @@
       },
       {
         "path": "src/host/a2a.ts",
-        "sha256": "776b55d01c9cfef667459a655ebf451098d523e66047050e5052ec572b319963",
+        "sha256": "ebd3d6366d2f585bbffc80aeefb042ff82f0b92cc1f546b7b3743242069a0b3f",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
@@ -248,7 +248,7 @@
       },
       {
         "path": "src/host/server.ts",
-        "sha256": "81da0abf6b6407a10ee126ecd616e3d8353ad37d6c6a6d76a4db3fdf30a24401",
+        "sha256": "407041b07e952fab0dcda6e0fe0d5c677c01079e457db4e34e52c12520537558",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from cddd9f4 (a2a option validation, hostContext and provisioner contexts, Registry administrator and individual callbacks, provisioning, startHostA2a wiring, close order)",
@@ -301,7 +301,7 @@
       },
       {
         "path": "src/messaging/delivery-service.ts",
-        "sha256": "6598b1e1bfaa844dc3d68f2e1c91a9205157966c6a8e2c865e0fd7a27c42d0f0",
+        "sha256": "f8428ac3ebdeb846962e45251a3589f7d0effbbab31e79b8f37ce7ddd1f2f215",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
@@ -421,7 +421,7 @@
       },
       {
         "path": "config/relay-service.example.json",
-        "sha256": "eaad7ef7dd43ce42aa35a3d5198a20e70dcfdfb56f60a3d175e46b32698e99f2",
+        "sha256": "c41c8decc4bc14dd77098710d257c64b048a84fd26fd23fba427275d6bce63cb",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
@@ -450,7 +450,7 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "80dae438fd870e70d64aa827ca0fe6c968fa8f05c5821a11cba5d34684c610dd",
+        "sha256": "59662973bfa81bf3e311da3ca3a9de8b5210099fe3c61ebef87fac7e390e6af3",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
@@ -480,7 +480,7 @@
       },
       {
         "path": "src/host/delivery.ts",
-        "sha256": "0d1461cfcc98fa9910a458bbed32f666d788f2f5dfee8203ae97e4e5a9eb31cf",
+        "sha256": "5aee258aa77188ea1c411722808dea69e96fb00c68431773749f63aaeb63c9e0",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "1-97,177-247",
@@ -510,13 +510,13 @@
         "docs/attachment-outbox.md",
         "docs/attachment-receiver.md",
         "docs/attachment-transport.md",
-        "docs/hab-relay-integration.md",
+        "docs/history/hab-relay-integration.md",
         "docs/managed-attachments.md",
-        "docs/relay-agent-capacity.md",
-        "docs/relay-fair-poll.md",
+        "docs/delivery/relay-agent-capacity.md",
+        "docs/delivery/relay-fair-poll.md",
         "docs/sqlite-snapshot-bundle.md",
         "docs/upload-journal.md",
-        "docs/writer-admission.md",
+        "docs/delivery/writer-admission.md",
         "packages/relay-nats/DESIGN.md",
         "packages/relay-nats/OPERATIONS.md",
         "packages/relay-nats/README.md",
@@ -544,39 +544,39 @@
   {
     "scope": "execution",
     "read_files": [
-      "docs/a2a-relay-preview.md",
-      "docs/a2a-sdk-preview.md",
-      "docs/adapter-owner.md",
-      "docs/adapter-reply-budget.md",
-      "docs/answer-intents.md",
-      "docs/durable-stop-gate.md",
-      "docs/finite-mcp-trial.md",
-      "docs/fixed-pilot.md",
-      "docs/fixed-readback-worker-identity.md",
-      "docs/hermes-connection.md",
-      "docs/hermes-import-boundary.md",
-      "docs/implementation/generic-job-application.md",
-      "docs/implementation/generic-nats-dispatch.md",
-      "docs/implementation/generic-text-preview.md",
-      "docs/inventory-end-to-end.md",
-      "docs/inventory-one-shot.md",
-      "docs/inventory-preparation.md",
-      "docs/inventory-token-input.md",
-      "docs/local-hermes-key.md",
+      "docs/a2a/a2a-relay-preview.md",
+      "docs/a2a/a2a-sdk-preview.md",
+      "docs/receiver/adapter-owner.md",
+      "docs/receiver/adapter-reply-budget.md",
+      "docs/receiver/answer-intents.md",
+      "docs/history/durable-stop-gate.md",
+      "docs/history/finite-mcp-trial.md",
+      "docs/history/fixed-pilot.md",
+      "docs/history/fixed-readback-worker-identity.md",
+      "docs/history/hermes-connection.md",
+      "docs/history/hermes-import-boundary.md",
+      "docs/history/generic-job-application.md",
+      "docs/history/generic-nats-dispatch.md",
+      "docs/history/generic-text-preview.md",
+      "docs/history/inventory-end-to-end.md",
+      "docs/history/inventory-one-shot.md",
+      "docs/history/inventory-preparation.md",
+      "docs/history/inventory-token-input.md",
+      "docs/history/local-hermes-key.md",
       "docs/local-mvp.md",
-      "docs/manual-ping-runner.md",
-      "docs/mvp-acceptance.md",
-      "docs/mvp-inventory.md",
-      "docs/ping-discovery.md",
-      "docs/ping-pong-mvp.md",
-      "docs/profiles/async-text-v1.md",
-      "docs/review-fixes.md",
-      "docs/task-bridge.md"
+      "docs/history/manual-ping-runner.md",
+      "docs/history/mvp-acceptance.md",
+      "docs/history/mvp-inventory.md",
+      "docs/history/ping-discovery.md",
+      "docs/history/ping-pong-mvp.md",
+      "docs/history/async-text-v1.md",
+      "docs/history/review-fixes.md",
+      "docs/history/task-bridge.md"
     ],
     "supplemental_sources": [
       {
         "path": "package.json",
-        "sha256": "cf7abdda3ee74c56c74fce10e8c4b2b6c45ee3a7ebb11726eca509110597bc42",
+        "sha256": "c3cba54e4b6cff912015f4777721826ca48ecdf015f165559bc5ed88f57db3f9",
         "read_ranges": [
           [
             1,
@@ -656,7 +656,7 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "sha256": "ec5627a18232c5de4787e4bca4b548447b08def9db51605ff051cf3a30c44209",
         "read_ranges": [
           [
             76,
@@ -749,8 +749,8 @@
         "full_file_read": false
       },
       {
-        "path": "docs/generic-agent-async-design.md",
-        "sha256": "41313f111ec95f01016db1b139c189d998980003592191777ab74b29b772b5a7",
+        "path": "docs/history/generic-agent-async-design.md",
+        "sha256": "a39a86607afa3f5a4bb1d8a54fccee44e1997e1af88c2eb957a14d54ec6fd587",
         "read_ranges": [
           [
             1,
@@ -895,13 +895,13 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "212a38fec7d2e903d301119fd3ddb35723b5b5ce3dd9457a01ea452273bc2f11",
+        "sha256": "6b7042438d7ad11a7611a4e94c5906e8035968c9a4ee27b70dd00b82c63c8087",
         "mode": "full",
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "71bb2a79263d7c2b7c9dbe0b2449b744dc47b20e43f4f8e7174ddfe0a8c3e9e0",
+        "sha256": "4fc01ff5f1288ddf207072a924e9c7979a4f0323b679a0a76cdcd60abbb42733",
         "mode": "full",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed."
       },
@@ -912,31 +912,31 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-        "sha256": "b24e8e9683ee2038c31c97f5de1e35a35db00e7176cb6d0c7b48773ba34c9a5a",
+        "sha256": "6473ab388dc82247c04953f3877c873bcf7d6b5306717b04407266c4c014afd3",
         "mode": "full",
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/configured-relay.md",
-        "sha256": "26d8512153193bd786ae123d69782c1bf49075db181c97b7826b60a07d65a1b5",
+        "sha256": "3f1901ea5707938d125e00838c58986a286a5e36c70475f52f3a88cedf87f9f4",
         "mode": "full",
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
-        "sha256": "058c2e51545eac709469566bf9702c8e9935fddfc6146d5b44c3de0a9007b508",
+        "sha256": "09a55afcd5d262d5f241f3ddb62c3cfa9a2592072cf3569b3cb30d1df0adb021",
         "mode": "full",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/receive-ack.md",
-        "sha256": "df11d3503f50afc50fc201210bd41a3451f131d3d1a99dddd76aecf2daf2de58",
+        "sha256": "a00229c0cfd7d1dbc51f3c260dae30c7c2f870f8284dddbfcf5a053192499f7a",
         "mode": "full",
         "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise."
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
-        "sha256": "3cc17110598cffdc31707795d909b75ccf3345c32179a749db5ae1e9d4d42218",
+        "sha256": "c652af8fea87a1c0d390d874fc69819ab46e6e7de5c3ff0beddcb68c6fe9a93e",
         "mode": "full"
       },
       {
@@ -952,97 +952,97 @@
       },
       {
         "path": "docs/diagrams/manifest.json",
-        "sha256": "c965b9773bda99fe98dbb531d3814de8a861043f4531ca7141e9d4ece25b71ab",
+        "sha256": "f89c4f77408e6533b54a00e1be172bb1ac9b7a9114940d7f6a66aed6abccb955",
         "mode": "full"
       },
       {
         "path": "docs/diagrams/render-mermaid.mjs",
-        "sha256": "3d04f2ac79a280b8914bf60d5cb513e061b84260bf0abd6c05155ad5e513505f",
+        "sha256": "d59bffbd762f0dce35f3dd0c2a13d89961f2cc0cbdb72078aff7414b33afd011",
         "mode": "full"
       },
       {
-        "path": "docs/testing/a2a-bounded-performance.md",
+        "path": "docs/history/testing/a2a-bounded-performance.md",
         "sha256": "a3bd6fb7e058afbbfa47ab7639c18a1e0a66302dd47d0fb70b01193322053bba",
         "mode": "full"
       },
       {
-        "path": "docs/testing/a2a-independent-results.md",
+        "path": "docs/history/testing/a2a-independent-results.md",
         "sha256": "f15db86e069c4b76aee8db7e77a037c9976362a47c70de6c5f910aba1202ee02",
         "mode": "full"
       },
       {
-        "path": "docs/testing/a2a-native-acceptance.md",
+        "path": "docs/history/testing/a2a-native-acceptance.md",
         "sha256": "3c6699c21f7650a5521a219a3084f0770380fe5cc031b426b093b1a7820dda2f",
         "mode": "full"
       },
       {
-        "path": "docs/testing/a2a-p1-p3-scope.md",
+        "path": "docs/history/testing/a2a-p1-p3-scope.md",
         "sha256": "2b0db770ab1362572d222b6e2bd698291e0a91727b659a81821492f5c5f59a57",
         "mode": "full"
       },
       {
-        "path": "docs/testing/architecture.md",
+        "path": "docs/history/testing/architecture.md",
         "sha256": "9bfb2943327ed85ba5993a2499f918967068926595d438c959e9b16b6c5d577a",
         "mode": "full"
       },
       {
-        "path": "docs/testing/decisions.tsv",
-        "sha256": "2be4fe9b9a6f3f852419aa54e880960512eba10ac2d3543892881013776a8784",
+        "path": "docs/history/testing/decisions.tsv",
+        "sha256": "ba0f4f975e362466f15472294404175be2639670abbb3519e05317fc121d00b8",
         "mode": "full"
       },
       {
-        "path": "docs/testing/delivery-lab.md",
-        "sha256": "11241d8bb64a267b2dc7124a02752aaf9ef56d3e176b0838d876ac4d3c796f4a",
+        "path": "docs/history/testing/delivery-lab.md",
+        "sha256": "f283cf250f4157dd30255f7ce59a64d5f1c6757cd0fe67746f02dcb04484476b",
         "mode": "full",
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
       {
-        "path": "docs/testing/p7-ci.yml.example",
+        "path": "docs/history/testing/p7-ci.yml.example",
         "sha256": "d053a4edd99c92447310591235ddf6fcc1ca51b298a9f8ad8927e1921e4b88e1",
         "mode": "full",
         "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
       },
       {
-        "path": "docs/testing/p7-independent-results.md",
-        "sha256": "25ae76471289cfe63069e1b11412c3ddfaac4ece60fa228d4716bc8f89d93037",
+        "path": "docs/history/testing/p7-independent-results.md",
+        "sha256": "86f3f87134e6fd4aaa88639fae1811da8d7f8078f6aa871e57fe8b871732d033",
         "mode": "full"
       },
       {
-        "path": "docs/testing/p7-lab.md",
-        "sha256": "c09cb85aa5bd29f8c563e2c4cd1dc21fbfc6c02747a66207789c67689943e78e",
+        "path": "docs/history/testing/p7-lab.md",
+        "sha256": "3222cebdc1648541da128177271744fdfe4d6b1f59e80047378468d436a6f2e0",
         "mode": "full",
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
       {
-        "path": "docs/testing/plan.md",
+        "path": "docs/history/testing/plan.md",
         "sha256": "33e6ddeb27ddfd1d23abd275dae62658c6cd07eb20cee61bff92424a849ba767",
         "mode": "full"
       },
       {
-        "path": "docs/testing/publication.md",
-        "sha256": "57365a63e5894ac3aa56135795976129be0c991cd0a6cf9fc02aea205f3c5574",
+        "path": "docs/history/testing/publication.md",
+        "sha256": "267c763329f1a56ae222b45421257bcf836741bcf01594124d9ee0d8f9aa28c6",
         "mode": "full",
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged.",
         "review": "reviewed",
         "summary": " Current follow-up clarifies partial capacity collection, confirmed-only reply decisions/defer limits, bounded fairness, scoped reads and permanent identity policy where applicable; expected catalogs1229/53 supersede earlier counts; counts are not execution evidence."
       },
       {
-        "path": "docs/testing/results.md",
+        "path": "docs/history/testing/results.md",
         "sha256": "461ac64419e9007585ccb836819fce91252c8e6b2abb68bdfba7b974bea59900",
         "mode": "full"
       },
       {
-        "path": "docs/testing/verified-nats-input.md",
-        "sha256": "041e9a53c4bc5579e03ca23f318443605f2337eb76c1e442e14f5059c3cd9275",
+        "path": "docs/history/testing/verified-nats-input.md",
+        "sha256": "ea561e24ddf9982c47009988668eb6f8ef77976849c0b4b0f4e58d1e29d7fecf",
         "mode": "full"
       },
       {
-        "path": "docs/testing/verified-nats-results.md",
-        "sha256": "2697b792b62a72f9fbbc44a5b06b82b04062a3a80010d509dfe77572b08bea7d",
+        "path": "docs/history/testing/verified-nats-results.md",
+        "sha256": "d5d6ee0ab0e711e8e7e2dd5a08c6d7d82759a2570a4c125a9d694602253508a4",
         "mode": "full"
       },
       {
@@ -1103,7 +1103,7 @@
       },
       {
         "path": "test/a2a-host.test.js",
-        "sha256": "1c1a58ebe7538d2f80303a622b38c0849c2c8a4aa7bdadfd0fa4c797199eaf1e",
+        "sha256": "98eacd2fb3bd662ea681fa1f931de5a52cfbb2f7bb2a8d1c363d8d50f3ba1a13",
         "mode": "test titles and assertions",
         "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes\", \"Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge\" and \"a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply\" (evidence for HAB-D20 and HAB-E20). The last ACKs two replies sent two days after their request's expiry but does not read that Task's state. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"saved replies whose ACK can never be confirmed release their slots, so a later reply is still saved and completes its Task\" (HAB-D20), \"a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance\" (HAB-D20) and \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" (HAB-E20, HAB-C-E09). The last ages the request two days while the host is stopped, waits for the stored Task to be TASK_STATE_FAILED without a caller read, asserts reason result_window_expired, an outcome-unknown status message and no Artifacts, and asserts that a late result is ACKed with no record and leaves the status unchanged. Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\", \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" (both evidence for HAB-D20; the second drops the running host's ACKs of one reply at HabJetStreamService.ack while it is live) and \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" (evidence for HAB-E20). The recipient helper's send takes an expiry and an ID entropy. Local follow-up on 0fc76a6: The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. Task-store close follow-up on f1b6eb1: reread the long-stop diff. The offline Task metadata change now uses better-sqlite3 like the host and moves first_sent_at with the rm1 ID and expires_at, then asserts PRAGMA integrity_check is ok before reopening. It checks the old Task reaches FAILED after its expired reply window and retries only outbox_capacity_exceeded; any other exception is surfaced immediately and the timeout is unchanged. These strengthen fixture consistency and diagnostics, not the production capacity gate or retention policy. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; adds \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" (evidence for HAB-D20): offline it saves and ACK-confirms an execution_result with a 5000-character result, over HAB_A2A_LIMITS, then checks the running host releases it within 8 seconds and the Task stays SUBMITTED.",
         "review": "reviewed",
@@ -1112,13 +1112,13 @@
       },
       {
         "path": "test/hab-auth-groups.test.js",
-        "sha256": "1f43c6c4959531a232047f4654746962b65432a6cba2327dfb011222980f0537",
+        "sha256": "a67bc67a500f482a5f5405aa394bb02042d86940152f2fd4512f7e887fe35a0a",
         "mode": "test titles and assertions",
         "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-A20. Runs in js-root (test/*.test.js). New case: createBoundGroup is refused with registry_forbidden without group_bind, without group_member or without both, leaving the group, binding, member counts and Registry epoch unchanged, and succeeds once every right is granted. The other group cases were not re-read."
       },
       {
         "path": "test/relay-inbox-maintenance.test.js",
-        "sha256": "4dce11a676260146104572917b31032295b24905f093a24e4e16d12f38049b4c",
+        "sha256": "1c207ed8d0eb6269bfa293c139b1055a252d51f63714f58c3c7be48517dbde38",
         "mode": "test titles and assertions",
         "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-D06. Runs in js-root (test/*.test.js). New case: with max_records 1 a second message is refused until releaseBody frees the slot, a redelivery of the released message is deduplicated by its tombstone, and with max_ack_records 3 a third distinct message is refused once three ACK records exist, although every body is released. The other inbox cases were not re-read. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"legacy IDs cannot grow the retained rows past the dedup bound across retention cycles\" (evidence for HAB-D06): new legacy IDs past max_ack_records are refused with inbox_legacy_id_capacity_exceeded, held ones stay deduplicated, and total rows stay within max_records + max_ack_records. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"lease redeliveries of one message take one ACK history slot, so its reply still fits\", \"a body whose ACK can never be confirmed is released once it expires, and only then\" and \"one message keeps at most max_attempts ACK generations\" (evidence for HAB-D06). Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again\" (evidence for HAB-D06 and HAB-D07): five cycles under max_records 1 and max_ack_records 1, aging rows by renaming each rm1 ID to its shifted send time, with nothing collected before retention ends, every row and both ACK generations collected after it, and a replay of the collected ID refused as expired_delivery. Local follow-up on 0fc76a6: New capacity case checks batch fit, two pending ACK histories retained after unconfirmable body release, refusal of a two-message batch despite empty bodies, one-message fit, unchanged 30-day terminal retention and invalid-input rejection. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence.",
         "review": "reviewed",
@@ -1127,7 +1127,7 @@
       },
       {
         "path": "test/relay-rollback-reconcile.test.js",
-        "sha256": "31bc2f20c358f12a693a98b5020bb69800d8228ba40596cdbcc8d37d31a43298",
+        "sha256": "721b39b661a93b92afe41015f77c5cb5802486554c78b8e82da67de0f8016bda",
         "mode": "test titles and assertions",
         "maintenance": "Added during Second review-fix maintenance: after reading the diff from 599c1f2 (to 2b764dd) as source evidence for HAB-F24. Runs in js-root (test/*.test.js). Case: on a real JetStream journal and agent SDK inboxes, the drill lists an ID staged before the backup and saved after it with its ACK lost, an ACK lost after a save, an acked ID, an unsaved ID and a recipient without an inbox copy, with delivered, not_saved and unknown actions. It marks unfinished rows expired in place of the one-hour drain and does not start an earlier build, restore a broker snapshot or wait out the hold. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"the rollback drill lists bodies the backup restores unprocessed, and IDs the upgraded journal already collected\" (evidence for HAB-F24): a body acked and saved before the backup and handled after it is do_not_process, one still unprocessed is process, and an ID pending at backup whose upgraded row was deleted stays listed with final_state null. Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"the rollback drill restores the journal with its broker store, settles restored bodies, and the restored recipient executes nothing twice\" (evidence for HAB-F24): on its own nats-server it backs up and restores the journal, the JetStream store dir, the inbox and the application store, runs the listing on the copies, settles the do_not_process body, waits until restored_incomplete_expire_by plus max_clock_skew_ms, and restarts the relay and the recipient on the current build; the broker's last stream sequence equals the backup's, the relay delivers nothing and every ID is executed once. It does not start an earlier build. Local follow-up on 0fc76a6: Extended actual-broker whole-generation restore drill leaves another ACKed post-backup body unprocessed, then uses a private 0600 working inbox copy and fixture application dedup store for local original-key handoff after TTL with the relay stopped; checks both waiting bodies run once. Current build only, not earlier-binary proof."
       },
@@ -1261,7 +1261,7 @@
       },
       {
         "path": "test/recipient-messages.test.js",
-        "sha256": "4729571c018723b52ed8143cae48d8ffbdf02d4621fe94570ca78c048e59f143",
+        "sha256": "98641d576c1b5b685b31538ca003e686339590c000cc65195a6d7e15ba6be3a5",
         "kind": "test",
         "review": "reviewed",
         "read_coverage": "complete implementation and contract; fixture and integration diff plus authority/unknown/reply assertions",
@@ -1269,8 +1269,8 @@
         "maintenance": "PR161 Design CI correction (2026-11-10): the existing first end-to-end case delays only relay_submit response by HOST_LEASE_MS+100, crossing the former 400 ms fixture lease, then still requires done, accepted original outbox row, one row and the exact delivered reply. No retry, skip or weaker assertion; 21 top-level cases remain."
       },
       {
-        "path": "docs/recipient-messages.md",
-        "sha256": "51a1d15ececf3a5065a6cb7e01cc8de731684915e75687fb67d522e91b87ea6f",
+        "path": "docs/receiver/recipient-messages.md",
+        "sha256": "f934c775159541c67d42bbb36d943bf31a8a1e8e626f1aef5ddd6411b9691453",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "complete implementation and contract; fixture and integration diff plus authority/unknown/reply assertions",
@@ -1288,7 +1288,7 @@
     "supplemental_sources": [
       {
         "path": "src/adapter-host/mcp.ts",
-        "sha256": "38734ff11bbbcb08b82d89c9eb7b828e48bd3e691c1d0ef0ee01d9c3bf73ef3b",
+        "sha256": "f8ca86e12afd5cc63a2d8f5a9df834be81f13e3259f7f6b94938a3488fb9a33e",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1296,7 +1296,7 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "sha256": "ec5627a18232c5de4787e4bca4b548447b08def9db51605ff051cf3a30c44209",
         "kind": "implementation",
         "review": "reviewed",
         "read_coverage": "stepOnce schemas, authorization, pause/epoch/owner checks, inbox_read, answer-intent dispatch and incomplete-result handling",
@@ -1328,7 +1328,7 @@
       },
       {
         "path": "test/recipient-host-mcp.test.js",
-        "sha256": "4413def0c63f7f7146b6901ecbc6ee1a9dcfa1000e2a304d44f6497e42b3f329",
+        "sha256": "dd822af9ea23562823af3dfe9d3f15243088c85f525d6d004aba421b252da02e",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1336,23 +1336,23 @@
       },
       {
         "path": "test/recipient-host-stdio-fixture.js",
-        "sha256": "7173dfc55c84cc3e43a8ea675012d05358ca9158b835d28e61c2e5ff8c853046",
+        "sha256": "5def9a08cd8e09b7dde72dee8f9a04e22d722ad6e42b5506b6323d8934cfd631",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Synthetic fixture, explicit test-only resume, bounded owned stdio child, private stores/broker and cleanup marker. Not a production launch/configuration or native session binding."
       },
       {
-        "path": "docs/implementation/recipient-host-mcp-proposal.md",
-        "sha256": "2d64d1ce02f305b2c24819f894acd964903ede52c8517a6137ebd0c817f7b7cb",
+        "path": "docs/receiver/recipient-host-mcp-proposal.md",
+        "sha256": "f0b6fa10cd0c263cf4dd25671b793a6e7b609d083d8d652673d5e6f344b9ad98",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Reviewed proposal contract, usable owner-composition example, explicit RecipientMessagePort distinction and synthetic/native evidence limits."
       },
       {
-        "path": "docs/testing/delivery-lab.md",
-        "sha256": "11241d8bb64a267b2dc7124a02752aaf9ef56d3e176b0838d876ac4d3c796f4a",
+        "path": "docs/history/testing/delivery-lab.md",
+        "sha256": "f283cf250f4157dd30255f7ce59a64d5f1c6757cd0fe67746f02dcb04484476b",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
@@ -1360,8 +1360,8 @@
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/p7-lab.md",
-        "sha256": "c09cb85aa5bd29f8c563e2c4cd1dc21fbfc6c02747a66207789c67689943e78e",
+        "path": "docs/history/testing/p7-lab.md",
+        "sha256": "3222cebdc1648541da128177271744fdfe4d6b1f59e80047378468d436a6f2e0",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
@@ -1369,8 +1369,8 @@
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/publication.md",
-        "sha256": "57365a63e5894ac3aa56135795976129be0c991cd0a6cf9fc02aea205f3c5574",
+        "path": "docs/history/testing/publication.md",
+        "sha256": "267c763329f1a56ae222b45421257bcf836741bcf01594124d9ee0d8f9aa28c6",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff 199202a..6085738; exact changed lines and current acceptance context",
@@ -1405,7 +1405,7 @@
       },
       {
         "path": "test/recipient-host-mcp.test.js",
-        "sha256": "bdd398e7c76d45685b99aa3f09a59f653de13f886cb4a796bd009cda9bd3845d",
+        "sha256": "dd822af9ea23562823af3dfe9d3f15243088c85f525d6d004aba421b252da02e",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1421,7 +1421,7 @@
       },
       {
         "path": "test/recipient-host-stdio-parent.js",
-        "sha256": "68f45e5228e6236d868a17f4407f57bec6b702386bcb7871bd8e1bd629a39567",
+        "sha256": "fcab1863c398977e162c1926034232a587a0a3a64906845fc273073bf5727d4f",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1429,7 +1429,7 @@
       },
       {
         "path": "test/recipient-host-stdio-fixture.js",
-        "sha256": "c23d93e27a0638048765513e96bd7a3a66ef401179c7cb21142ce7010a4896a5",
+        "sha256": "5def9a08cd8e09b7dde72dee8f9a04e22d722ad6e42b5506b6323d8934cfd631",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1437,15 +1437,15 @@
       },
       {
         "path": "test/jetstream-delivery.js",
-        "sha256": "aa5ef02b05d0ac37d7c29cb52febf343379b2288bfaea836b841ca3a535b0f83",
+        "sha256": "33b63b01daaf0cb90c6470bb737c8200fd0b4099ab6cfc198e9fd4cd0ab37e35",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "changed injection and startBroker/openBackend use",
         "summary": "New useParentTestBroker only supplies fixture broker before shared broker initialization; existing broker creation remains default and no production module changes."
       },
       {
-        "path": "docs/implementation/recipient-host-mcp-proposal.md",
-        "sha256": "117a453eb69ea7487046a96ba5851c3baad6a4c4cdc010b99e13717d1693ba8e",
+        "path": "docs/receiver/recipient-host-mcp-proposal.md",
+        "sha256": "f0b6fa10cd0c263cf4dd25671b793a6e7b609d083d8d652673d5e6f344b9ad98",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "full changed proposal and evidence",
@@ -1461,8 +1461,8 @@
         "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate. PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/p7-lab.md",
-        "sha256": "c09cb85aa5bd29f8c563e2c4cd1dc21fbfc6c02747a66207789c67689943e78e",
+        "path": "docs/history/testing/p7-lab.md",
+        "sha256": "3222cebdc1648541da128177271744fdfe4d6b1f59e80047378468d436a6f2e0",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
@@ -1470,8 +1470,8 @@
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/publication.md",
-        "sha256": "57365a63e5894ac3aa56135795976129be0c991cd0a6cf9fc02aea205f3c5574",
+        "path": "docs/history/testing/publication.md",
+        "sha256": "267c763329f1a56ae222b45421257bcf836741bcf01594124d9ee0d8f9aa28c6",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
@@ -1479,8 +1479,8 @@
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/delivery-lab.md",
-        "sha256": "11241d8bb64a267b2dc7124a02752aaf9ef56d3e176b0838d876ac4d3c796f4a",
+        "path": "docs/history/testing/delivery-lab.md",
+        "sha256": "f283cf250f4157dd30255f7ce59a64d5f1c6757cd0fe67746f02dcb04484476b",
         "kind": "verification inventory",
         "review": "reviewed",
         "read_coverage": "complete diff and current acceptance context",
@@ -1500,7 +1500,7 @@
     "supplemental_sources": [
       {
         "path": "scripts/check-recipient-python-mcp.mjs",
-        "sha256": "da7d8033fa48393c1d882d9441afa86c7d1d8386d74146d38fa374275c6b1519",
+        "sha256": "b28869faa51524cbcb5ae9cc37a50cf3fed213074c5b1ef45ada17712dbfed8f",
         "kind": "optional verification helper",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1508,7 +1508,7 @@
       },
       {
         "path": "test/compatibility/recipient-python-mcp.py",
-        "sha256": "66772e13af57326d997cd78ec6ac5eb71776ac42e8eead34e59a2c58d16d4b2c",
+        "sha256": "e01c476590b895a2e797dd952608477c1abac84f67a6b6c03fce016c64997226",
         "kind": "optional verification",
         "review": "reviewed",
         "read_coverage": "full",
@@ -1516,7 +1516,7 @@
       },
       {
         "path": "test/recipient-host-stdio-fixture.js",
-        "sha256": "90aa76762f18a5c3021a53d204a551710ba2204ff4a22cb5a473ae838a29620c",
+        "sha256": "5def9a08cd8e09b7dde72dee8f9a04e22d722ad6e42b5506b6323d8934cfd631",
         "kind": "verification helper",
         "review": "reviewed",
         "read_coverage": "full; complete diff against 9a8948a5b4fee83ec2ad9a5a22cceb9350ad07d0",
@@ -1531,8 +1531,8 @@
         "summary": "Reused owned broker start is bounded; stop sends SIGTERM then awaits exit without a separate timeout. This optional recipe does not prove a hard whole-run deadline."
       },
       {
-        "path": "docs/implementation/recipient-python-mcp-acceptance.md",
-        "sha256": "96b6bd3daec15e933c31f031d3d16ea6731d4fce336feefedb01c131128b8410",
+        "path": "docs/receiver/recipient-python-mcp-acceptance.md",
+        "sha256": "70502a50d31cdbb0eb4d23281083c826d0d2ee4d68ec68ac73c2133b60ea2bb0",
         "kind": "context",
         "review": "reviewed",
         "read_coverage": "full; cleanup/body/deadline wording reconciled with implementation",
@@ -1550,7 +1550,7 @@
     "supplemental_sources": [
       {
         "path": "src/adapter-host/single-source-authority.ts",
-        "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf",
+        "sha256": "4b5cdda6a958f9255b058ee176c8683fec452f3385d13b18ece796c257448f81",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Private single-host callback, fixed source, management context separation, default deny and committed-pause/drain/held-owner fence; send grants the whole dedicated outbox. No authentication or native approval implementation.",
@@ -1558,14 +1558,14 @@
       },
       {
         "path": "test/single-source-authority.test.js",
-        "sha256": "c17dda0016093fc4029330293dd1f1f7d95e5499a240cf0f1b795d5afbfa0e03",
+        "sha256": "a35e88a8e1b0ce6a53d82838af7099b3b17e28eafab716df06bea437a93aefb9",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Five fresh dedicated-store tests with a real SQLiteHostOwner, synthetic policy and private broker; default deny, queued send revocation, pending/timeout drain fencing, context/source immutability and owner failure."
       },
       {
         "path": "test/adapter-host-fixtures.js",
-        "sha256": "a6d890d3ec185a9156092c609097032478f13b29e31a69e742f083e16a6edf43",
+        "sha256": "944f973bd17ec002d279dddb249341b67983a18252e84a3520831e6d1fcbcafc",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Extracts the existing AdapterHostOptions object into hostOptions; makeHost still uses identical options and defaults. Existing host regressions pass. Added JSDoc describing isolated synthetic scope, option controls and owned cleanup; executable behavior unchanged."
@@ -1579,24 +1579,24 @@
         "maintenance": "PR163 stacked CI correction (2026-11-10): inherited corrected owner activation and recipient fixture from PR161, retaining the 25 source-launch tests, so this branch requires exactly 1371 full-root passes. Original hosted execution observed all 1371 with owned cleanup; the old 1338 gate was stale. Strict counts, failure/skip/cancel/TODO and cleanup refusal are unchanged. New exact-head hosted evidence remains separate. PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/p7-lab.md",
-        "sha256": "c09cb85aa5bd29f8c563e2c4cd1dc21fbfc6c02747a66207789c67689943e78e",
+        "path": "docs/history/testing/p7-lab.md",
+        "sha256": "3222cebdc1648541da128177271744fdfe4d6b1f59e80047378468d436a6f2e0",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/publication.md",
-        "sha256": "57365a63e5894ac3aa56135795976129be0c991cd0a6cf9fc02aea205f3c5574",
+        "path": "docs/history/testing/publication.md",
+        "sha256": "267c763329f1a56ae222b45421257bcf836741bcf01594124d9ee0d8f9aa28c6",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
         "maintenance": "PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate. 2026-11-11 local authentication recovery inventory maintenance: reread count-only guide diffs. Expected full root is 1451 = 1424 integrated baseline + 27 local authentication-recovery cases. Required failure/skip/cancel/timeout, source and cleanup gates are unchanged. This inventory is not a fresh full execution or hosted/native acceptance result. Optional recipient owner scheduling (2026-11-11): expected root inventory changes from 1424 to 1441 with 17 new synthetic owner cases; strict acceptance and historical evidence remain unchanged. Inventory is not execution or native-product evidence. PR175/PR176 integration (2026-11-11): reviewed both branches and retained their independent changes; the combined expected root inventory is 1468 (1424 baseline + 17 recipient-supervisor + 27 authentication-recovery cases), not fresh execution evidence. Acceptance, historical pins and native/manual limits are unchanged."
       },
       {
-        "path": "docs/testing/delivery-lab.md",
-        "sha256": "11241d8bb64a267b2dc7124a02752aaf9ef56d3e176b0838d876ac4d3c796f4a",
+        "path": "docs/history/testing/delivery-lab.md",
+        "sha256": "f283cf250f4157dd30255f7ce59a64d5f1c6757cd0fe67746f02dcb04484476b",
         "review": "reviewed",
         "read_coverage": "count-only diff",
         "summary": "Current root inventory 1239 to 1244 for five new tests; no acceptance gate or historical result weakened.",
@@ -1604,7 +1604,7 @@
       },
       {
         "path": "test/adapter-host.test.js",
-        "sha256": "9abe48e4a5de565544b6b0c4c598df7361c323d9d910e37ca7c7441faabfbf0d",
+        "sha256": "aba206464de3970e03b56e95275ccc5c21f29c946648610b7b2cf4ae6ac8b259",
         "review": "reviewed",
         "read_coverage": "full two-case diff and corresponding host/sender/lease code",
         "summary": "Separates intentional short timeout from fresh recovery; awaits bounded drain. Case-local recovery lease exceeds transport budget, with same-ID replay delayed beyond the old lease as a regression control. All state/correlation assertions remain; no production behavior change."
@@ -1624,14 +1624,14 @@
       },
       {
         "path": "scripts/native-trial-preflight.mjs",
-        "sha256": "da0899d05d78f2e6a762157ac5cd107de443158dea16111b957162ee76b98413",
+        "sha256": "cf31e2ba2b57d3f29c7f34e75215678001002c33018e9ca88f5caf2322978e63",
         "review": "reviewed",
         "read_coverage": "full new file",
         "summary": "Optional CLI; reads explicit manifest and prints sanitized result. Exit zero means only offline-valid, never launch permission."
       },
       {
         "path": "test/compatibility/native-trial-preflight.test.js",
-        "sha256": "16a72d61f3f7531f57ee80898d49909cb85cb97dd1617632473a5b157b7f2588",
+        "sha256": "6aed8596b6b7269b5567a04a445c8c185a23b0887f45cb594c73127e27fc80e3",
         "review": "reviewed",
         "read_coverage": "full new file",
         "summary": "Seven optional synthetic-only cases including unsafe/missing fields, symlinks, profile ancestry, bounded manifest reads, blank fields and zero spending cap; no native process or credentials. Eighth regression covers existing and missing-tail profile aliases, current-user 0641 failure when non-root, non-executable inputs, sparse oversized files and full fail-closed result flags."
@@ -1648,7 +1648,7 @@
     "supplemental_sources": [
       {
         "path": "test/adapter-host.test.js",
-        "sha256": "e06428096749e78f5a746e076ac573d19e1427550d5f91e37ee9c5b9cf0d590d",
+        "sha256": "aba206464de3970e03b56e95275ccc5c21f29c946648610b7b2cf4ae6ac8b259",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against 361e9fc00f46b9aaaea4ef72a8c89575c8200ac3",
@@ -1675,7 +1675,7 @@
     "supplemental_sources": [
       {
         "path": "test/adapter-inbox-read.test.js",
-        "sha256": "463333870736ad3f05252d7e64f845dfdc494a431feaa7140db51a10bcc43a0d",
+        "sha256": "f01e7ba8bbcd9ae984f22a409784897155bcb3507348033ad24dd7ac6e746a10",
         "kind": "verification",
         "review": "reviewed",
         "read_coverage": "full diff against f568975c18ebaa6e8ca4ecdca4ee23c523d78098",
@@ -1698,21 +1698,21 @@
     "supplemental_sources": [
       {
         "path": "src/adapter-host/stdio.ts",
-        "sha256": "1dee4d013a35ca78ca26b125565a0f521c268ee0b655449a9ec75bbaee06313c",
+        "sha256": "cf34f1587fa7a1ca124cc0d2c2df2815b6f9d1d54d42a9e35e3e97a3c794ffcb",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Full review of inherited draft and EOF correction. Reuses private single-source host authorization and owner attachment, default deny/pause, local-only permit/resume, finite lifetime and explicit EOF/pipe-error stop. Pause/drain/close precede owner release; timeout preserves owner and stores, explicit retry may finish. Native launch identity/policy/approval remain prerequisites."
       },
       {
         "path": "test/single-source-stdio.test.js",
-        "sha256": "faba3a88a7d85a3719f8d76f92a243902e08cb6fea030d238622ad6f4da286a4",
+        "sha256": "16d78f0bb3edb6d6d6fd269b7b3f1ec8d1813d4a70099abc7edf873e3bf6fc47",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Five official SDK owned-child cases: denied/paused and local management, fixed source/exact persisted reply plus queued-send revocation, finite expiry, EOF graceful cleanup, and held-response drain timeout/late-save fencing/stop retry. Parent owns broker/scratch; synthetic authority and in-process Relay HTTP are stated limitations."
       },
       {
         "path": "test/single-source-stdio-child.js",
-        "sha256": "418706c4881c8e85d9373776900306b164eb74a4c311cd5bff928e6fe7a1521c",
+        "sha256": "b38031082dea1d9a82cba6c4cf765e5380a3cc5f41522604da10dfd894908467",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Test-only private command file controls synthetic owner outside MCP; borrows parent broker descriptor, uses real owned SQLite stores, emits cleanup only after stopped owner and store closure. SIGTERM fallback is a failure marker, not graceful proof."
@@ -1733,7 +1733,7 @@
     "supplemental_sources": [
       {
         "path": "src/adapter-host/single-source-authority.ts",
-        "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf",
+        "sha256": "4b5cdda6a958f9255b058ee176c8683fec452f3385d13b18ece796c257448f81",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Terminal operator-only in-memory revocation blocks current/new recipient guards independently of control IO and permanently refuses regrant; operator cleanup scope is retained. This is local denial, not proof of durable pause.",
@@ -1748,21 +1748,21 @@
       },
       {
         "path": "test/single-source-authority.test.js",
-        "sha256": "4d41af1296ae2dd2057f8266e2d37deafab7f27c11307d98d19a72588b40a22f",
+        "sha256": "a35e88a8e1b0ce6a53d82838af7099b3b17e28eafab716df06bea437a93aefb9",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Existing five-case suite additionally verifies recipient cannot trigger terminal revocation, repeated operator revocation remains denied and regrant is impossible; source read/send are denied after revocation."
       },
       {
         "path": "test/single-source-stdio.test.js",
-        "sha256": "bcd4d76caa1a50acee558e845c4eaa34c49ab841e78401ea7985a9ce804dfbf6",
+        "sha256": "16d78f0bb3edb6d6d6fd269b7b3f1ec8d1813d4a70099abc7edf873e3bf6fc47",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Seven owned SDK cases include initial active-control denial without a grant, a RED-confirmed failed pause snapshot/active-control recovery/late poll guard regression, and held ownership around blocked SDK close."
       },
       {
         "path": "test/single-source-stdio-child.js",
-        "sha256": "76c016875065d4fe298012606786874663b2be3eeb26a39def4883a480c02c26",
+        "sha256": "b38031082dea1d9a82cba6c4cf765e5380a3cc5f41522604da10dfd894908467",
         "review": "reviewed",
         "read_coverage": "full changed code",
         "summary": "Fault injection is isolated to the synthetic child: one snapshot throw restores the original method, held poll response, child-only SDK close gate, independent close-complete owner observation and cleanup after successful stop/retry."
@@ -1804,7 +1804,7 @@
       },
       {
         "path": "scripts/install-ci-nats.ts",
-        "sha256": "c101a370cded735bbc22235b2cd85c6faf5481103d95be72bedb339b44d8899d",
+        "sha256": "c04bd3cb7b776444bd242af6641837e32ed0c4301873b39d32426e75eb806d7f",
         "review": "reviewed"
       },
       {
@@ -1829,17 +1829,17 @@
       },
       {
         "path": "test/ci-nats/install.test.ts",
-        "sha256": "f747bda185e284bd7efab542a76ee46a850d47d2fc168a82c311b7a60cdf374d",
+        "sha256": "dc76ec22c29c40edaa6841fe15d08ace6ee08b0fdb33505f9a3e3f0168323db6",
         "review": "reviewed"
       },
       {
         "path": "test/tools/entrypoints.test.ts",
-        "sha256": "7ef2081dde0376fefe5ab968b665d3a528fd97cc0b5c2408077dd640b33f11ff",
+        "sha256": "5117a6fb4024ffcaba4208a04e17c007cf4a42d5c2603e3aaec170d60b2cc82e",
         "review": "reviewed"
       },
       {
         "path": "tsconfig.tools.json",
-        "sha256": "e3ff028ec49fa2ca2f7e72b7edde34e11f2e8c65ce52e52b4df60014b08b9ab1",
+        "sha256": "82896594773f7ab2b7f2f9478e4f403b1464bc960fe6ff3d942a215737bd4af8",
         "review": "reviewed"
       }
     ],
@@ -1856,17 +1856,17 @@
     "supplemental": [
       {
         "path": "test/tools/entrypoints.test.ts",
-        "sha256": "3f889c9f3a6ef636553a1d3334acc7460217fcd94f12c578fe6d214ecff0c58e",
+        "sha256": "5117a6fb4024ffcaba4208a04e17c007cf4a42d5c2603e3aaec170d60b2cc82e",
         "review": "reviewed"
       },
       {
         "path": "test/local-relay-service.test.js",
-        "sha256": "de4960b5f7e5aad364deac69e6e61ed8c97ec98393dda1aace60a030e12fa5a3",
+        "sha256": "1a4d7680557ca21f96e434e91a5b6c57d8abb05f7e76a71dc49fb259bb25f3e8",
         "review": "reviewed"
       },
       {
         "path": "test/local-relay-admin.test.js",
-        "sha256": "6eabd51a7cbbf8e204b6b89d9f5c9b5e48f694467c9984d8ad36b550673991da",
+        "sha256": "99177020d524f925537a597c82a1b0b6d98e64b1654286331c31033c0d0acf5f",
         "review": "reviewed"
       }
     ]
@@ -1900,12 +1900,12 @@
     "supplemental": [
       {
         "path": "test/local-relay-admin.test.js",
-        "sha256": "51425c5efb312517c9d6b5adfd6eb374feb10e1e742f98587dbf204fbafdf575",
+        "sha256": "99177020d524f925537a597c82a1b0b6d98e64b1654286331c31033c0d0acf5f",
         "review": "reviewed"
       },
       {
         "path": "test/local-relay-service.test.js",
-        "sha256": "8ef21031cb6eea748c19c356b7c6afda2bd84251a0cf5e04155fc422a6d9aee4",
+        "sha256": "1a4d7680557ca21f96e434e91a5b6c57d8abb05f7e76a71dc49fb259bb25f3e8",
         "review": "reviewed"
       }
     ]
@@ -1942,12 +1942,12 @@
       },
       {
         "path": "tsconfig.json",
-        "sha256": "bbee384db99210cf7d2457b504026f98fbe934b0ab84a008e53731bd2732e644",
+        "sha256": "f19aefbf15e249c552340b6e182013053a29909248476cc1e1ddfb1fd576cadc",
         "review": "reviewed"
       },
       {
-        "path": "docs/typescript-migration.md",
-        "sha256": "d4947bbe384c166d8836d23ff369e8b4dfbf388923441077eb6de44042bcf3e3",
+        "path": "docs/history/typescript-migration.md",
+        "sha256": "b3bf5bea6b8550c052b89e85d99daa0d499062eaf5a8910a0c8be99dcfd7194b",
         "review": "reviewed"
       }
     ]
@@ -1967,12 +1967,12 @@
       },
       {
         "path": "docs/diagrams/render-mermaid.ts",
-        "sha256": "779638cdcfc487daa446fc1ad4725110d517c7ecdfba9fea3e2f6bf724770dc6",
+        "sha256": "bf533f3c7b60445168d9b90460d2059379979d2d19695c85c82c252686e82dfd",
         "review": "reviewed"
       },
       {
         "path": "test/tools/diagrams.test.ts",
-        "sha256": "27eb190efb9b2248ace6045eefddc4e06bd27a5a9e0d5820b4ea2d5f0f43ef52",
+        "sha256": "e6edfed5f44c0bcef14a3d3b95387845e35c79121e3571a96c4176ae80b1a391",
         "review": "reviewed"
       },
       {
@@ -1982,12 +1982,12 @@
       },
       {
         "path": "package.json",
-        "sha256": "e294d40e2ef53319ae1014f42425a57af2159cd96a7cd01a246727489ef1479f",
+        "sha256": "c3cba54e4b6cff912015f4777721826ca48ecdf015f165559bc5ed88f57db3f9",
         "review": "reviewed"
       },
       {
-        "path": "docs/typescript-migration.md",
-        "sha256": "b8364811059c1f937e9b55d715f4bae302c014c6ea521ee1016b7e88d8c652d8",
+        "path": "docs/history/typescript-migration.md",
+        "sha256": "b3bf5bea6b8550c052b89e85d99daa0d499062eaf5a8910a0c8be99dcfd7194b",
         "review": "reviewed"
       }
     ]
@@ -1999,7 +1999,7 @@
     "supplemental": [
       {
         "path": "test/adapter-host.test.js",
-        "sha256": "8966a7ffe9c927dc398553130643f574b5f7939df47e0f72381a10671ff30e32",
+        "sha256": "aba206464de3970e03b56e95275ccc5c21f29c946648610b7b2cf4ae6ac8b259",
         "review": "reviewed"
       }
     ]
@@ -2035,7 +2035,7 @@
       },
       {
         "path": "test/external-owner-fixture.js",
-        "sha256": "570b6176400d8827067324afdb2cc360e6e0fe05e46fb6f1d3163f4f06e79f09",
+        "sha256": "ba073ced392842d0efba2cb8e41f54e0d42d16c1f1c4b76534746f805e33008a",
         "review": "reviewed"
       },
       {
@@ -2065,13 +2065,13 @@
     ],
     "supplemental": [
       {
-        "path": "docs/auth0-recovery.md",
-        "sha256": "7b857a07ee915b24e73fc5375ea3fff389b6beb812f7997de2b16b7a93daca13",
+        "path": "docs/operations/auth0-recovery.md",
+        "sha256": "faed01531672adef3726e2c200c4458a046fa7b801074322cc6986e2d2f6e104",
         "review": "reviewed"
       },
       {
         "path": "scripts/native-trial-message.ts",
-        "sha256": "02b79f67ad858f92d0a02c5d7b281aad61c02c9f3bf2ce3ed28da7a61fad8058",
+        "sha256": "6d13ec939bb4a8bd6043dc0a8d8219a0c7d8ece6280ff5b9b636ed855d42a9b8",
         "review": "reviewed"
       },
       {
@@ -2081,7 +2081,7 @@
       },
       {
         "path": "test/tools/native-trial-message.test.ts",
-        "sha256": "e73abc62f815f4e13e05f07132b8869003339414035e7199b015268eda157d2c",
+        "sha256": "853ae1dc83466d854fe68db1aa5d0a8df7c45638f5bc8690ff66296f361dc6de",
         "review": "reviewed"
       }
     ]
@@ -2160,19 +2160,19 @@
     "supplemental": [
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "sha256": "ec5627a18232c5de4787e4bca4b548447b08def9db51605ff051cf3a30c44209",
         "review": "reviewed",
         "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate. 2026-11-11 recovery diff review: Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
       },
       {
         "path": "src/adapter-host/single-source-authority.ts",
-        "sha256": "6caff1beba39de28c6dbc30c7961588855e4ab8c3d4b794b74c95a87a69460cf",
+        "sha256": "4b5cdda6a958f9255b058ee176c8683fec452f3385d13b18ece796c257448f81",
         "review": "reviewed",
         "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
       },
       {
         "path": "test/managed-transport.test.js",
-        "sha256": "29c869a0b9e3e3083e682b1e2156e014f709dfc46dca2c43dfa9a0744017e37e",
+        "sha256": "cef280893524681dd0ea4525dbcf0d7fec605c8579ab20bb9106b0f504f3883b",
         "review": "reviewed",
         "maintenance": "2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate."
       }
@@ -2263,14 +2263,14 @@
     "summary": "Optional trusted owner-local onBound callback after unchanged discovery receipt and native verification. Omission preserves deny-only behavior; presence alone grants/resumes nothing. Frozen local status/updatePermission/pause/resume/signal controls use existing fixed-source policy and current epoch, never MCP or IPC. Readiness bound reports composition, not activation or delivery. Callback startup work is tracked through shutdown; late controls are fenced and unsettled work retains stores. Eight synthetic regressions cover activation with empty receive, no remote grant, epoch/pause/revoke, hook failure/cancellation/timeout, and supervised factory usage. No multi-source policy, native model, product-specific runner, credential issuance or live deployment is accepted. Existing HAB-F02/F03/F07/F11/F16/E09 statements and native/manual gates remain unchanged. Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346.",
     "supplemental": [
       {
-        "path": "docs/external-owner-launcher.md",
+        "path": "docs/receiver/external-owner-launcher.md",
         "sha256": "2a0a13c0395b1b361b1329beef779d809e42365ff559a83eb66995bc7556cdf6",
         "review": "reviewed",
         "maintenance": "Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346."
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "sha256": "ec5627a18232c5de4787e4bca4b548447b08def9db51605ff051cf3a30c44209",
         "review": "reviewed",
         "maintenance": " 2026-11-11 recovery diff review: Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
       },
@@ -2292,7 +2292,7 @@
       },
       {
         "path": "src/adapter-host/single-source-authority.ts",
-        "sha256": "50b95d85d703cc3f11f82d9b3fd523d34146f73e587f571a85bcdcb264ddf12d",
+        "sha256": "4b5cdda6a958f9255b058ee176c8683fec452f3385d13b18ece796c257448f81",
         "review": "reviewed"
       },
       {
@@ -2396,7 +2396,7 @@
       },
       {
         "path": "src/adapter-host/cycle.ts",
-        "sha256": "3f3a4e4c5666e8ca29e980f08a88f247c75ef784be243ed9b80c563ce62a9926",
+        "sha256": "ec5627a18232c5de4787e4bca4b548447b08def9db51605ff051cf3a30c44209",
         "review": "reviewed",
         "read_coverage": "recovery diff and relevant surrounding boundary",
         "observation": "Current host check still runs first; only in its absence is a branded recovery reason returned as a fixed incomplete result."
@@ -2417,14 +2417,14 @@
       },
       {
         "path": "verification/design/checks/communication-boundary.mjs",
-        "sha256": "30a18ca6131254fc2351d82ce0b7991fa536eafae15d041df99c4c6351f01903",
+        "sha256": "e9c93ec606fd0b5c626d0f49b9c85e196bed560da9c9d68f6601eada56f303b5",
         "review": "reviewed",
         "read_coverage": "one-line coreModules addition and surrounding dependency policy",
         "observation": "The new local-only authentication-recovery.ts has no imports or IO and belongs to the stricter protected core closure. Explicit classification preserves failure on unknown modules and does not admit an OAuth/HTTP/MCP package or wrapper. Positive/negative controls are separately executed by the coordinating task, not attested by this source review."
       },
       {
         "path": "test/authentication-recovery.test.js",
-        "sha256": "d898c42f83bdb65f39eaca6ab25ce2e392645ef0a53edada4fe6aa3dbc48894c",
+        "sha256": "6addb76764aa6babbd022ef30f57a682d994eb7df67455d44a1690ffc84700b2",
         "review": "reviewed",
         "read_coverage": "final Object.isFrozen(authenticationRecoveryReasons) assertion within the existing local-brand test",
         "observation": "Final refinement adds a runtime-frozen reason tuple assertion to an existing case; no new test case is counted. The coordinating task owns full suite review and execution evidence."
@@ -2444,12 +2444,12 @@
       },
       {
         "path": "test/recipient-supervisor.test.js",
-        "sha256": "d08576704b45d9f3c03980d05a92f5048fad904663a63b75bff5ea8fd576b3de",
+        "sha256": "092b0c19b190ed15592fec20fbbd4cdd732d1376a236b978d501fafa4bff3414",
         "review": "reviewed"
       },
       {
-        "path": "docs/recipient-messages.md",
-        "sha256": "51a1d15ececf3a5065a6cb7e01cc8de731684915e75687fb67d522e91b87ea6f",
+        "path": "docs/receiver/recipient-messages.md",
+        "sha256": "f934c775159541c67d42bbb36d943bf31a8a1e8e626f1aef5ddd6411b9691453",
         "review": "reviewed"
       },
       {
@@ -2507,7 +2507,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "70262362db79f7b99ae72bbd81f4a14c833892a1c1a9adf7418a5f009c496edc",
+        "sha256": "c3cba54e4b6cff912015f4777721826ca48ecdf015f165559bc5ed88f57db3f9",
         "review": "reviewed"
       },
       {

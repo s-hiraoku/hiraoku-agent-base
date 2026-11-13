@@ -14,7 +14,7 @@ Importing `./index.ts` performs no IO. It exports the pure `DurableSender` and `
 | `receive-host.ts` | `HostCore`, the serialized, epoch-fenced command runner, and `ReceiveHost`, which accepts only `receive`. It needs a control, an inbox and a transport, plus an optional process owner. |
 | `sqlite-host-control.ts` | `SQLiteHostControl`, the durable pause/resume switch and epoch that stops a running command. A new control starts paused. |
 | `sqlite-host-owner.ts` | `SQLiteHostOwner`, the process-lifetime lock that keeps two hosts off the same stores. |
-| `receive-supervisor.ts` | `ReceiveSupervisor`, the model-free loop that repeats one `receive` step with backoff ([docs](../../docs/receive-supervisor.md)). |
+| `receive-supervisor.ts` | `ReceiveSupervisor`, the model-free loop that repeats one `receive` step with backoff ([docs](../../docs/receiver/receive-supervisor.md)). |
 
 ## Receiver: save, then ACK
 
@@ -49,5 +49,5 @@ An optional original-source (sender_id, message_id) hint limits SQLite inbox rea
 
 `authentication-recovery.ts` provides local-only branded recovery reasons and an optional
 owner-local identity verification gate. It performs no IO, stores no tokens and does not
-refresh or log in. See [receive recovery](../../docs/receive-supervisor.md#認証失効時の待機と検証後の再開)
+refresh or log in. See [receive recovery](../../docs/receiver/receive-supervisor.md#認証失効時の待機と検証後の再開)
 for trusted native-provider wiring, fixed status metadata and the explicit operational limits.

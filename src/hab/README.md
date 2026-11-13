@@ -329,7 +329,7 @@ server/database/client reopen, lost submit/ACK responses, inbox save failure,
 lease fencing, stop/block/revocation, explicit rotation, unchanged deadlines,
 passive body handling and durable application handoff. Stop during uncertain
 acceptance or ACK quarantines the journal without dropping the local body or
-creating a replacement message. The [integration matrix](../../docs/hab-relay-integration.md)
+creating a replacement message. The [integration matrix](../../docs/history/hab-relay-integration.md)
 records injection methods and limits: same-process reopen, synthetic identity
 ports and accelerated retry/lease state are not production cold-start, real
 identity proof, reply budgets or backup/restore acceptance.
@@ -392,6 +392,6 @@ node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-auth
 ### Optional MCP agent discovery
 
 `RegistryOptions.discovery` explicitly enables `hab_discover` in addition to the
-existing five tools. See [the discovery contract](../../docs/mcp-agent-discovery.md)
+existing five tools. See [the discovery contract](../../docs/connections/mcp-agent-discovery.md)
 for group-scoped reads, candidate occupancy policy, live paging and the optional
 trusted host-identity port. Registration and presence remain separate.

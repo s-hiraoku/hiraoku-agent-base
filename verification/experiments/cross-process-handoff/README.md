@@ -11,8 +11,8 @@ Keep the existing synchronous in-process contract unchanged. In particular,
 `src/recipient-messages/contract.ts` requires the caller check at native input
 commit and CURRENT native reply permission at guarded outbox commit. The
 `synchronous()` checks in `messages.ts` intentionally reject asynchronous ports.
-References: `docs/recipient-messages.md`, `docs/answer-intents.md`,
-`docs/recipient-stdio.md`, `docs/receive-supervisor.md`, ADR-015 and the adopted
+References: `docs/receiver/recipient-messages.md`, `docs/receiver/answer-intents.md`,
+`docs/receiver/recipient-stdio.md`, `docs/receiver/receive-supervisor.md`, ADR-015 and the adopted
 scope reconciliation in `verification/design/conflicts.md`.
 
 Ordinary messaging remains independent of Tasks and product-specific runners.

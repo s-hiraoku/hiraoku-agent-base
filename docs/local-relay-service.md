@@ -1,6 +1,6 @@
 # Explicit local Relay service
 
-The common CLI now composes the [local host](local-relay-host.md) with a private
+The common CLI now composes the [local host](operations/local-relay-host.md) with a private
 local bearer verifier and bounded redacted audit. It contains no product-name
 branches, model caller, enrollment, credential issuer, refresh, outbound transport,
 wake mechanism, Adapter cycle, scheduler, or launchd installer. Missing/invalid
@@ -29,7 +29,7 @@ row may still have been saved by its recipient, so the recipient's records decid
 The [example](../config/relay-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all
 limits explicitly. `delivery.queue.agent_capacity` is required: each verified sender gets
-its own pending/record budget ([details](relay-agent-capacity.md)), and
+its own pending/record budget ([details](delivery/relay-agent-capacity.md)), and
 `max_records_per_sender` / `max_pending_per_sender` must be smaller than the
 queue-wide `max_records` / `max_pending`, so one sender cannot fill the retained
 record pool that every other agent relies on. The existing canonical state directory must be 0700. Config,
@@ -89,7 +89,7 @@ above 1000). Codes are fixed
 line never contains values, file paths or secrets. SIGTERM/SIGINT
 closes the owned listener and databases; reopening the same state retains receipts.
 A supervisor must pin an independently tested release and use an explicit private
-config path. The opt-in [user LaunchAgent runbook](local-relay-launchagent.md)
+config path. The opt-in [user LaunchAgent runbook](operations/local-relay-launchagent.md)
 records installation, rejection checks, stop and restart. No existing service, keychain, MCP setting, profile or user job is
 modified by the CLI. A future production maintenance schedule is still explicit;
 without one, hard record bounds eventually refuse new acceptance.
@@ -183,7 +183,7 @@ delivery code.
 
 An explicit `ingress` may add a second IPv4 loopback listener behind approved TLS,
 sharing the same Registry, queue and owner. It exposes the same five tools with
-OAuth consent metadata. The [OAuth ingress procedure](relay-oauth-ingress.md)
+OAuth consent metadata. The [OAuth ingress procedure](operations/relay-oauth-ingress.md)
 describes pinned public keys, finite individual connections, private configuration,
 exact metadata routing and the limited save-before-ACK gate. This code does not
 publish a route, register a client, issue a token or start an agent.
@@ -198,7 +198,7 @@ outbox, inbox and Task store in the state directory. A2A Tasks are sent from tha
 address to `a2a.recipient`. A2A callers need a credential whose audience is the
 A2A endpoint. Bind it to the caller's address with `relay:admin connect` as usual.
 The ready line printed by `relay:local` then includes `a2a_url`.
-[Host wiring](a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)
+[Host wiring](a2a/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)
 describes identity provisioning, authorization, retry, Task states and the startup
 refusal reasons.
 

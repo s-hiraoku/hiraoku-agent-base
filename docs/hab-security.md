@@ -1,8 +1,8 @@
 # HABのセキュリティ境界
 
-[READMEへ](../README.md) · [Auth0詳細](auth0-boundary.md) · [受入れゲート](mvp-acceptance.md)
+[READMEへ](../README.md) · [Auth0詳細](history/auth0-boundary.md) · [受入れゲート](history/mvp-acceptance.md)
 
-標準通信では[共通MCP接続](common-mcp-connection.md)の認証・配送権限を適用し、内容判断・実行と既存の承認は受信エージェント側が担当する。[受信側承認・実行境界](generic-agent-async-design.md#4-通信許可と実行承認の責任)の追加設計は任意Task連携の契約であり、HAB独自の製品別承認機構を標準接続に必須化しない。送信者の申告を受信側所有者の承認に代用しない。
+標準通信では[共通MCP接続](common-mcp-connection.md)の認証・配送権限を適用し、内容判断・実行と既存の承認は受信エージェント側が担当する。[受信側承認・実行境界](history/generic-agent-async-design.md#4-通信許可と実行承認の責任)の追加設計は任意Task連携の契約であり、HAB独自の製品別承認機構を標準接続に必須化しない。送信者の申告を受信側所有者の承認に代用しない。
 
 ## 認証と操作権限
 
@@ -24,7 +24,7 @@ Cloudflare Tunnelや独自domainは必須ではありません。既存Tailscale
 
 公開repoに置くのはcode、一般化した設計・手順、ダミー設定、testです。token、OAuth/API key、tenant/client/subjectの実運用値、メール・予定・記憶・会話、実DB、接続hostname、個人のlocal path、運用出力を入れません。`runtime/`、`secrets/`、`logs/`、DB、`.env*`とlocal configはgitignore対象です。ignoreだけに頼らず、commit差分を確認します。
 
-Hub用Auth0 token、モデルaccount認証、Hermes loopback API keyは別の秘密です。既存Desktopのtokenを読んで流用しません。[一時キーhelper](local-hermes-key.md)は最大120秒のlocal lifecycleとfingerprint記録を提供しますが、token自体に暗号学的TTL/scopeはありません。停止失敗は`stop_failed`として残し、失効成功と主張しません。
+Hub用Auth0 token、モデルaccount認証、Hermes loopback API keyは別の秘密です。既存Desktopのtokenを読んで流用しません。[一時キーhelper](history/local-hermes-key.md)は最大120秒のlocal lifecycleとfingerprint記録を提供しますが、token自体に暗号学的TTL/scopeはありません。停止失敗は`stop_failed`として残し、失効成功と主張しません。
 
 ## 実行の隔離と停止
 

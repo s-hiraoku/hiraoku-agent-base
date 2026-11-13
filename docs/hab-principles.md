@@ -1,16 +1,16 @@
 # HABの設計思想
 
-[READMEへ](../README.md) · [役割と機能](hab-roles.md) · [ADR](hab-decisions.md)
+[READMEへ](../README.md) · [役割と機能](history/hab-roles.md) · [ADR](hab-decisions.md)
 
 ## 判断を保つ分業
 
 Personal ContextはDotsに置きます。相談の背景、重要なメールの判断、予定の意味を理解する担当です。Grok BotはCloud Workerとして、既存の情報収集や将来のブラウザ操作・長い仕事を担当します。HermesはLocal Agentとして、Macの開発実験、MCP、Skillsを扱います。ここでのCloud WorkerはGrokの役割であり、Cloudflare WorkersにHubを配置する意味ではありません。
 
-HABは送信名義・宛先・配送権限を検証し、メッセージと配送状態を記録します。内容の判断、仕事の引受け、実行と必要な承認は受信エージェント側の責務です。各agentの記憶や判断を中央へ移したり、一つの巨大な会話へ統合したりしません。役割分担は目標であり、接続済み機能は[役割表](hab-roles.md)で別に示します。
+HABは送信名義・宛先・配送権限を検証し、メッセージと配送状態を記録します。内容の判断、仕事の引受け、実行と必要な承認は受信エージェント側の責務です。各agentの記憶や判断を中央へ移したり、一つの巨大な会話へ統合したりしません。役割分担は目標であり、接続済み機能は[役割表](history/hab-roles.md)で別に示します。
 
 ## 共通Hubと疎結合
 
-標準の通信契約は[共通HTTP MCP](common-mcp-connection.md)と永続outbox/inboxです。各エージェント側のhostが定期pollし、重複排除と本文の永続保存後にACKします。[受信supervisor](receive-supervisor.md)はモデルを呼ばず、受信だけを反復します。製品名による配送分岐や、HABから製品実行APIを起動する専用adapterは標準接続へ追加しません。
+標準の通信契約は[共通HTTP MCP](common-mcp-connection.md)と永続outbox/inboxです。各エージェント側のhostが定期pollし、重複排除と本文の永続保存後にACKします。[受信supervisor](receiver/receive-supervisor.md)はモデルを呼ばず、受信だけを反復します。製品名による配送分岐や、HABから製品実行APIを起動する専用adapterは標準接続へ追加しません。
 
 質問・回答はTaskなしで送受信できます。既存Task Engineや汎用ジョブは任意の実行連携であり、受信・ACKから自動でTaskを作りません。その連携を明示的に使う場合だけ、実行receiptを照合し、一つのTask状態DBを選びます。Mac側journalを第二のタスクDBにしません。
 
@@ -30,4 +30,4 @@ sourceのcommit/pushは、外部公開経路、新credential、OAuth grant、常
 
 Auth0は無料条件の確認を前提にし、有料機能へ自動fallbackしません。既存モデルsubscriptionやログイン成功は「追加料金0」の証明ではありません。利用枠・追加credit・API課金routeが未確認ならmodelを起動しません。
 
-不明な実行、停止失敗、期限切れ、権限変更では止めて照合します。可用性のために認証や隔離を緩めず、未確認を成功に置き換えません。詳細は[処理](hab-workflow.md)と[セキュリティ](hab-security.md)にまとめます。
+不明な実行、停止失敗、期限切れ、権限変更では止めて照合します。可用性のために認証や隔離を緩めず、未確認を成功に置き換えません。詳細は[処理](history/hab-workflow.md)と[セキュリティ](hab-security.md)にまとめます。

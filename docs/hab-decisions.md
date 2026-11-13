@@ -1,6 +1,6 @@
 # HABの設計判断記録（ADR）
 
-[READMEへ](../README.md) · [設計思想](hab-principles.md) · [ロードマップ](hab-roadmap.md)
+[READMEへ](../README.md) · [設計思想](hab-principles.md) · [ロードマップ](history/hab-roadmap.md)
 
 状態は「採用」「当面不採用」「保留」「未決定」を使います。採用は設計判断であり、本番接続・費用・公開の承認を兼ねません。判断を変更するときは、この表と関連文書・testを更新します。
 
@@ -23,7 +23,7 @@
 
 ## ADR-015 / 採用：共通MCP通信と受信側の判断を分離する
 
-2026-11-04 UTC。標準経路の構成（Relay、NATS実行port）はADR-016で改訂した。受信側の判断・承認の分担は引き続き有効である。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receive-supervisor.md)、[Relay責務](hab-relay-spec.md#3-構成と責務)とする。
+2026-11-04 UTC。標準経路の構成（Relay、NATS実行port）はADR-016で改訂した。受信側の判断・承認の分担は引き続き有効である。基準は[共通MCP接続](common-mcp-connection.md)、[受信supervisor](receiver/receive-supervisor.md)、[Relay責務](hab-relay-spec.md#3-構成と責務)とする。
 
 - HABは認証・名義・宛先・配送・相関を担当する。受信側hostが定期poll・重複排除・永続保存後ACKを行う。ACKは表示・引受け・実行・承認・完了を証明しない。
 - 内容の判断、返信、作業の実行、既存の権限・承認の適用は受信エージェント側が担当する。HABは製品専用モデルrunnerや承認実装を標準接続へ組み込まない。
@@ -32,7 +32,7 @@
 
 照合基準のmain `c667095` では、ReceiveSupervisorはreceiveのみを反復し、汎用Task入口は通常Relayへ未配線だった。稼働経路の破損を確認した判断ではない。未マージ[PR #132](https://github.com/s-hiraoku/hiraoku-agent-base/pull/132)はHermes固有実行・承認の隔離候補であり、標準接続として採用しない。既存の受信経路を置換するものとして進めず、mainへの取込み・本番有効化は本判断に含めない。
 
-通常通信を任意Task実行に統合する案と、全エージェントへ新たな共通承認UIを必須にする案は採用しない。受信側既存機構へ権限と判断を残すためである。回帰検証は[設計境界の照合記録](implementation/design-boundary-alignment.md)を参照。
+通常通信を任意Task実行に統合する案と、全エージェントへ新たな共通承認UIを必須にする案は採用しない。受信側既存機構へ権限と判断を残すためである。回帰検証は[設計境界の照合記録](history/design-boundary-alignment.md)を参照。
 
 ## ADR-016 / 採用：単一host、JetStream配送、エージェントSDKで標準接続を構成する
 
@@ -42,7 +42,7 @@
 - `src/messaging`がmessage契約と`DeliveryService` interfaceを持つ。`src/hab`のRegistryが名義・認証group・権限・容量を判定する。配送backendは名義や権限を判断しない。
 - `src/host`が唯一のhostである。設定、HTTP、監査、管理CLI、MCP server（`src/host/mcp`）を組み立て、JetStream配送を`DeliveryService`として注入する。起動は`npm run relay:local`、管理は`npm run relay:admin`を使う。
 - エージェント側は`src/agent-sdk`の永続sender／outbox、保存後ACKのreceiver／inbox、MCP clientを使う。MCP tool名`relay_*`は既存の接続設定との互換のため維持する。
-- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。返信は依頼の期限から1日の返信期間だけ保存する。2026-11-07のowner判断により、期間内に結果が反映されなかったTaskは標準の`FAILED`へ移し、理由`result_window_expired`と「受信者が実行したかは不明」の旨をstatusに示す。WORKINGのまま残さず、独自のA2A状態も追加しない。期間後の返信は記録せずACKし、Taskは変えない。新しいmessage IDの返信は、Taskを変える場合だけ保存する。保存の前に受信loopが保存済みTaskの写しへ適用し、ACK確認済みの保持返信だけを根拠にする。状態を変えない返信やTaskが拒否する返信は、期間後の返信と同じく記録せずACKする。未確認の保持返信が確定した場合だけ重複または競合する新IDの返信は、容量を守るため保存もACKもせず保留する。有限のlease再試行やTTLにより保留返信がquarantined／expiredになる場合があるため、送信者はstatusを確認する。未確認返信を適用したり、回復を必ず保証したりするものではない。確認済みの状態から重複と判断できる返信はACK履歴の枠を使わない。保留された返信の到達やTaskの完了は保証しない。inboxが保持しているIDは必ずinboxへ渡すので、重複排除と未確定ACKの確定は保たれる。返信期間が閉じる時刻はTask storeの次の期限から求め、最も早い期間が閉じた受信cycleから、tenant・owner・idの安定キーで1回100件まで処理する。個別保存の失敗を越えて次のページへ進み、一巡後の次回処理で再試行する。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
+- A2Aはエージェント側のSDKからhostのMCP、`DeliveryService`の順に通す。2026-11-06のowner判断により、A2A gatewayはhost所有のA2A名義でhostへ配線する（下記「次に決める内容」5、[A2A host配線](a2a/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)）。hostは設定の`a2a` sectionがある場合だけ、専用のRegistryアドレスと永続mailbox（agent-sdkのoutbox/inbox）を起動時に冪等に用意し、A2A Taskをその名義から送り、受信者はその名義へ返信する。呼出し元エージェントのmailboxは読まない（受信者1件1leaseと、そのエージェント自身の保存後ACK受信と衝突するため）。返信は依頼の期限から1日の返信期間だけ保存する。2026-11-07のowner判断により、期間内に結果が反映されなかったTaskは標準の`FAILED`へ移し、理由`result_window_expired`と「受信者が実行したかは不明」の旨をstatusに示す。WORKINGのまま残さず、独自のA2A状態も追加しない。期間後の返信は記録せずACKし、Taskは変えない。新しいmessage IDの返信は、Taskを変える場合だけ保存する。保存の前に受信loopが保存済みTaskの写しへ適用し、ACK確認済みの保持返信だけを根拠にする。状態を変えない返信やTaskが拒否する返信は、期間後の返信と同じく記録せずACKする。未確認の保持返信が確定した場合だけ重複または競合する新IDの返信は、容量を守るため保存もACKもせず保留する。有限のlease再試行やTTLにより保留返信がquarantined／expiredになる場合があるため、送信者はstatusを確認する。未確認返信を適用したり、回復を必ず保証したりするものではない。確認済みの状態から重複と判断できる返信はACK履歴の枠を使わない。保留された返信の到達やTaskの完了は保証しない。inboxが保持しているIDは必ずinboxへ渡すので、重複排除と未確定ACKの確定は保たれる。返信期間が閉じる時刻はTask storeの次の期限から求め、最も早い期間が閉じた受信cycleから、tenant・owner・idの安定キーで1回100件まで処理する。個別保存の失敗を越えて次のページへ進み、一巡後の次回処理で再試行する。呼出し元はA2A用credentialで認証し、Registryが呼出し元自身の`resolve`・`submit`と宛先への`execution_request`送信権を毎回判定するため、host名義は呼出し元が直接送れない相手へ届かず、他者の返信も読ませない。`DeliveryService`契約、lease規則、`relay_*` MCP toolは変更しない。
 - 汎用NATS実行port（`src/generic-nats`）、管理添付、SQLite snapshot bundleは削除した。task-bridge、answer-intents、adapter-hostは今回の構成変更の対象外として保留する。
 
 配送storeを二重に持つ案（SQLiteとJetStreamの併用・route切替）は採用しない。旧storeとの照合・rollback経路を保守し続ける費用が、移行しない旧messageの損失より大きいためである。配送journalはschema 4になり、それ以前のbuildは同じjournalで起動できない。旧buildへ戻す場合は、移行直前の整合backupを全部同じ世代で復元する。新releaseが受け付けたmessageと、backup時点で未完了だったmessageを元IDで照合する。backup時に未完了のIDだけでなく、backup後の新規IDも、新journalの行が回収されても受信inboxや実行記録に残る証拠から照合対象へ加える。どの写しにも残らないIDはこの一覧だけでは列挙できない。journalの`expired`・`quarantined`は未配達の証明にならず、受信者のinbox・Task結果・実行記録で判断する。復元した状態のIDがすべて期限切れになるまで旧buildを起動しないので、新releaseで実行済みのIDはRelayから再配達されない。ACKは保存の証明で実行の証明ではないため、backup時に受信inboxへ保存済み・未処理だった本文も照合する。復元inboxは期限に関係なく保存済み本文を渡すので、受信者を再開する前に写しの実行記録と照合し、実行済みの本文は再処理させない。backup後に保存され、新inboxの写しだけに未解放で残る本文も別に照合する。drainと期限待ちはその本文を復元先へ移さない。実行記録やTask状態から未引渡しと確認できた場合だけ、元のsender/message IDと重複排除を保つアプリ固有のローカル復旧手順で写しから引き継ぐ。未確認の副作用、欠けた写し、矛盾があれば停止を保ち、自動再送、別ID化、期限延長を行わない（当時の手順は削除済みの`packages/relay-nats/OPERATIONS.md`。現在の移行と復旧は[配送store](delivery-store.md#back-up-and-restore)）。本判断は本番接続・公開・credential発行の承認を兼ねない。
@@ -75,7 +75,7 @@
 4. Dots/Grokの実MCP呼出し・結果取得と、wakeまたはEventsを追加する必要性。
 5. ~~A2A gatewayをhostへ配線するか~~ 決定済み：host所有のA2A名義で配線する（ADR-016、owner判断 2026-11-06）。既定は無効。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）で、受信者engineの独立検証ではない。
 
-個別のtechnical contractは[Hub内部設計](architecture.md)、[Auth0](auth0-boundary.md)、[import境界](hermes-import-boundary.md)を参照してください。重複する設定表を増やさず、そちらを更新します。
+個別のtechnical contractは[Hub内部設計](history/task-engine.md)、[Auth0](history/auth0-boundary.md)、[import境界](history/hermes-import-boundary.md)を参照してください。重複する設定表を増やさず、そちらを更新します。
 
 ## ShiftLog機能の接続境界
 
