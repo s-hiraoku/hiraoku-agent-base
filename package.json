@@ -27,7 +27,7 @@
     "@modelcontextprotocol/sdk": "1.32.2",
     "@modelcontextprotocol/server": "2.3.1",
     "better-sqlite3": "13.0.3",
-    "kysely": "0.29.7",
+    "kysely": "0.29.9",
     "zod": "^4.6.6"
   },
   "devDependencies": {
