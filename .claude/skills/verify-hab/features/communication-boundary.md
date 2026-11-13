@@ -27,7 +27,7 @@ NODE_NO_WARNINGS=1 npm run test:communication-boundary > "$RUN/evidence/communic
 
 Require exit code zero and no failed, skipped, or canceled tests. The TAP names the three native HTTP message cases and the optional Task state observation. The HTTP tests record the sender action and status, inspect committed receiver storage before ACK, and check Task and outbox tables after two scheduled receives. Identity and Task policy are synthetic. The injected scheduler advances two cycles without a wall-clock delay, so this does not measure real polling cadence.
 
-For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_WARNINGS=1 node --test --test-reporter=tap test/recipient-messages.test.js` in a fresh evidence file. See [recipient messages](../../../../docs/recipient-messages.md). It uses a synthetic durable native input/policy store plus real inbox/outbox/budget and one owned loopback MCP roundtrip. Receive/ACK alone still creates no native input or reply. Native product wake/model/approval remains unverified.
+For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_WARNINGS=1 node --test --test-reporter=tap test/recipient-messages.test.js` in a fresh evidence file. See [recipient messages](../../../../docs/receiver/recipient-messages.md). It uses a synthetic durable native input/policy store plus real inbox/outbox/budget and one owned loopback MCP roundtrip. Receive/ACK alone still creates no native input or reply. Native product wake/model/approval remains unverified.
 
 ## Gotchas
 

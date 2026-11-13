@@ -1,6 +1,6 @@
 # HABメッセージ配送の正式仕様（旧称 HAB Relay）— draft v2 + store-and-forward
 
-[README](../README.md) · [設計判断](hab-decisions.md) · [現行Hub内部設計](architecture.md) · [受入れ状況](mvp-acceptance.md)
+[README](../README.md) · [設計判断](hab-decisions.md) · [現行Hub内部設計](architecture.md) · [受入れ状況](history/mvp-acceptance.md)
 
 | 項目           | 内容                                                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -321,15 +321,15 @@ wake/pushは「保存済みinboxをpollせよ」という補助通知とする�
 
 ## 11. 個体別公平性と返信ループ制御
 
-個体別に送信rate、保有message数・bytes、同時poll・lease、処理待ち数を制限する。全体容量上限と個体別quotaは別にし、1個体が他個体の枠をすべて消費しない予約／公平な受付を設ける。[message個体別容量](relay-agent-capacity.md)は任意のhost設定として実装し、verified senderごとのpending・本文bytes・保持record上限と、保護対象の未使用最低枠を受付transactionで検証する。予約は認証・宛先容量・blob容量を代替しない。
+個体別に送信rate、保有message数・bytes、同時poll・lease、処理待ち数を制限する。全体容量上限と個体別quotaは別にし、1個体が他個体の枠をすべて消費しない予約／公平な受付を設ける。[message個体別容量](delivery/relay-agent-capacity.md)は任意のhost設定として実装し、verified senderごとのpending・本文bytes・保持record上限と、保護対象の未使用最低枠を受付transactionで検証する。予約は認証・宛先容量・blob容量を代替しない。
 
-処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をRelayのwriter内で実行しない。[公平pollと永続scan](relay-fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkindで位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
+処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をRelayのwriter内で実行しない。[公平pollと永続scan](delivery/relay-fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkindで位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
 
-[検証済み個体のrateと公平writer受付](writer-admission.md)は任意の単一process構成として実装した。現在のbindingと操作権限から個体を確定し、単調token bucketと有限queueで全toolを共有する。DB guardを待機中に保持せず、待機後の認可を再確認し、HTTP timeout後も未完了tool監査がsettleするまで1 active枠を保持する。rate・queueは揮発性で、認証前の全体HTTP上限、複数process・保守writerを含む公平性や遅延SLOを代替しない。
+[検証済み個体のrateと公平writer受付](delivery/writer-admission.md)は任意の単一process構成として実装した。現在のbindingと操作権限から個体を確定し、単調token bucketと有限queueで全toolを共有する。DB guardを待機中に保持せず、待機後の認可を再確認し、HTTP timeout後も未完了tool監査がsettleするまで1 active枠を保持する。rate・queueは揮発性で、認証前の全体HTTP上限、複数process・保守writerを含む公平性や遅延SLOを代替しない。
 
 受信したという理由だけで自動返信しない。質問→回答、実行依頼→明示引受け→結果の許可された関係だけを扱う。answer、delivery_failure、状態通知への自動再依頼を既定で禁止する。thread単位の自動返信budgetと全体rate制限を併用し、上限では状態を返して止める。新threadを作れば無限に回せる設計にもせず、個体単位の制限を維持する。
 
-[受信側の永続返信budget](adapter-reply-budget.md)を独立した任意integrationとして実装した。確認済みinboxからのquestion→answerと、Task journalで検証したexecution_request→受付／結果だけを扱う。原要求のkindごとに1返信IDを固定し、個体内thread枠・全thread共通のsliding-window rate・保持recordを原子的に予約してからoutboxへ渡す。応答消失でも枠を返却せず、再送は同じID・内容だけを照合する。上限では通知や新Taskを自動生成しない。数値はhostの明示設定であり、第14節の候補を採用済みの既定値にはしない。実Adapter全入口への適用・運用restore・本番配線は未完了である。
+[受信側の永続返信budget](receiver/adapter-reply-budget.md)を独立した任意integrationとして実装した。確認済みinboxからのquestion→answerと、Task journalで検証したexecution_request→受付／結果だけを扱う。原要求のkindごとに1返信IDを固定し、個体内thread枠・全thread共通のsliding-window rate・保持recordを原子的に予約してからoutboxへ渡す。応答消失でも枠を返却せず、再送は同じID・内容だけを照合する。上限では通知や新Taskを自動生成しない。数値はhostの明示設定であり、第14節の候補を採用済みの既定値にはしない。実Adapter全入口への適用・運用restore・本番配線は未完了である。
 
 message本文は信頼境界を越えたデータであり、system命令や権限証明ではない。相互通信の許可は各agentの全tool実行許可を意味しない。個人文脈や既存仕事を全個体へ自動複製しない。
 
@@ -363,9 +363,9 @@ bridgeは`(sender_id,message_id)`ごとに一意なTask linkと安定submit key�
 
 初期の実行同時数は**最大1件**。lease不明・外部run不明のslotを解放して次の仕事を始めず、既存のwaiting_approval・照合を使う。完了返信はTask terminalの証拠に基づき、受領／引受け返信とは別のmessage_idで通常の送信outboxへ保存する。結果messageの再送でTaskを再実行しない。
 
-[Task bridgeの初期基盤](task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの固定data契約・永続返信journal・通常送信outboxへの引渡しも実装した。返信ID・1時間期限を固定し、不明な引渡しは同じ返信で照合する。resultは実行終了の観測済み証拠だけから作り、返信配送で元Taskを再提出しない。別DBへの二重commitの間の障害を想定し、outbox受付・配送ACK・Task成功を区別する。受信側の永続返信budgetも任意配線できる。実製品の引受け操作・全入口への適用・本番配線は未完了である。
+[Task bridgeの初期基盤](history/task-bridge.md)は任意のローカルintegrationとして実装した。ACK確認済みinboxからの明示引受け、source別の永続linkと短い安定submit key、固定connectivity_checkの同key受付／再照合、Task getのterminal証拠を扱う。HAB名・本文からTask Principalを作らず、現在のbridge権限と別の検証済みTask Principalを使う。未解決1件と試行上限を保持し、古いfenceの応答を拒否する。execution_accepted／execution_resultの固定data契約・永続返信journal・通常送信outboxへの引渡しも実装した。返信ID・1時間期限を固定し、不明な引渡しは同じ返信で照合する。resultは実行終了の観測済み証拠だけから作り、返信配送で元Taskを再提出しない。別DBへの二重commitの間の障害を想定し、outbox受付・配送ACK・Task成功を区別する。受信側の永続返信budgetも任意配線できる。実製品の引受け操作・全入口への適用・本番配線は未完了である。
 
-[有限Adapter host](adapter-host.md)も任意のローカルAPIとして実装した。受信・明示引受け・Task受付／観測・返信・送信を別命令とし、永続paused／epochと現在の操作権限でguardする。停止後の遅いRPCを次の保存へ進めず、元ACK／返信ID／Task keyで照合する。timeout後の未完了client／fetchはsettleまでinstanceの枠を保持する。常駐loop・Task worker・実製品の起動、分散single-flight、質問返信producerの永続intent、運用restore・本番配線は未実施である。
+[有限Adapter host](receiver/adapter-host.md)も任意のローカルAPIとして実装した。受信・明示引受け・Task受付／観測・返信・送信を別命令とし、永続paused／epochと現在の操作権限でguardする。停止後の遅いRPCを次の保存へ進めず、元ACK／返信ID／Task keyで照合する。timeout後の未完了client／fetchはsettleまでinstanceの枠を保持する。常駐loop・Task worker・実製品の起動、分散single-flight、質問返信producerの永続intent、運用restore・本番配線は未実施である。
 
 ## 13. 保存期間と削除
 
@@ -460,7 +460,7 @@ HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCP
 | 通知outbox           | [events.ts](../src/events.ts)、[subscriptions.ts](../src/subscriptions.ts)、[callback-transport.ts](../src/callback-transport.ts)                  | 既存Task terminal eventと配送messageを混同しない。wakeは任意の専用通知として別outbox／型を設計                     |
 | 設定・CLI・診断      | [runtime-config.ts](../src/runtime-config.ts)、[server.ts](../src/server.ts)、[ping-discovery.ts](../src/ping-discovery.ts)                        | registry・quota・retention等のprivate設定案、無害な検証CLI、照合・停止・診断を追加。discovery-onlyを自動昇格しない |
 | D1互換               | [d1.ts](../src/d1.ts)、[worker.ts](../src/worker.ts)、[D1試験](../test/d1.test.js)                                                                 | **初期RelayのD1対応は対象外**。既存Task/D1・Worker経路を壊さない回帰試験は必要。未対応Relayは明示拒否              |
-| 文書・導入           | [architecture.md](architecture.md)、[mvp-acceptance.md](mvp-acceptance.md)、この仕様                                                               | 実装段階でsetup、migration/rollback、G0能力表、障害試験と運用runbookを追加                                         |
+| 文書・導入           | [architecture.md](architecture.md)、[mvp-acceptance.md](history/mvp-acceptance.md)、この仕様                                                               | 実装段階でsetup、migration/rollback、G0能力表、障害試験と運用runbookを追加                                         |
 
 ### 追加schemaの論理案
 
@@ -526,7 +526,7 @@ server commit、first poll、inbox commit/ACK、処理開始、引受け、Task�
 
 G0の実個体能力調査は先行させるが、実際の処理・受入れは**モデルなし → 固定Task → 実個体**の段階とする。G1成功をG3成功へ読み替えない。
 
-G1の部分的な証拠として、[登録からHTTP配送・停止・復旧までの17シナリオ](hab-relay-integration.md)を追加した。人向け登録フロー、模擬3個体のnative HTTP、専用DB／listenerのreopen、受付・ACK応答消失、不在、停止・失効・block、lease競合、本文引渡しを一連で確認する。注入方法と試験の限界を同文書に記録し、公平性、実Adapterの返信budget、cold-start・backup restoreを含むG1全体の合格とは扱わない。
+G1の部分的な証拠として、[登録からHTTP配送・停止・復旧までの17シナリオ](history/hab-relay-integration.md)を追加した。人向け登録フロー、模擬3個体のnative HTTP、専用DB／listenerのreopen、受付・ACK応答消失、不在、停止・失効・block、lease競合、本文引渡しを一連で確認する。注入方法と試験の限界を同文書に記録し、公平性、実Adapterの返信budget、cold-start・backup restoreを含むG1全体の合格とは扱わない。
 
 [ローカルMVPの有限起動手順](local-mvp.md)では、同じ製品の2個体を含む模擬3個体で15段階を再現できる。送信／ACK応答消失、全DB・listenerのclose／reopen、質問返信intentの再開、running固定Taskのgate維持と結果配送を確認する。これはテキストMVPの合格条件であり、実個体のG0／G3や全hostの整合backup／restoreを含むG1全体の昇格条件を置き換えない。
 

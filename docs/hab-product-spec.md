@@ -2,9 +2,9 @@
 
 仕様版：0.1。更新日：2026-11-12 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
 
-[README](../README.md) · [Relay契約](hab-relay-spec.md) · [認証group](relay-auth-groups.md) · [discovery](mcp-agent-discovery.md) · [Task bridge](task-bridge.md)
+[README](../README.md) · [Relay契約](hab-relay-spec.md) · [認証group](relay-auth-groups.md) · [discovery](connections/mcp-agent-discovery.md) · [Task bridge](history/task-bridge.md)
 
-標準接続は[共通MCP接続](common-mcp-connection.md)と[受信supervisor](receive-supervisor.md)を基準にする。受信側が定期poll・永続保存後ACKを行い、内容判断・実行と既存の承認機構は受信エージェント側に残す。製品固有のモデルrunner・承認adapterやTaskを通常通信の必須条件にはしない。非同期Taskと受信者承認の[追加設計](generic-agent-async-design.md)は任意連携の要件である。本文0.1の技術評価・配備状況は当時の基準であり、追加設計の実装完了を示さない。
+標準接続は[共通MCP接続](common-mcp-connection.md)と[受信supervisor](receiver/receive-supervisor.md)を基準にする。受信側が定期poll・永続保存後ACKを行い、内容判断・実行と既存の承認機構は受信エージェント側に残す。製品固有のモデルrunner・承認adapterやTaskを通常通信の必須条件にはしない。非同期Taskと受信者承認の[追加設計](history/generic-agent-async-design.md)は任意連携の要件である。本文0.1の技術評価・配備状況は当時の基準であり、追加設計の実装完了を示さない。
 
 ## 1. 目的と製品の境界
 
@@ -208,7 +208,7 @@ HABが提供する簡単な通信は、全製品の自動起動、無期限保�
 
 ## 13. 参照仕様
 
-- [HAB Relay](hab-relay-spec.md)、[認証group](relay-auth-groups.md)、[discovery](mcp-agent-discovery.md)、[受信supervisor](receive-supervisor.md)、[Task bridge](task-bridge.md)
+- [HAB Relay](hab-relay-spec.md)、[認証group](relay-auth-groups.md)、[discovery](connections/mcp-agent-discovery.md)、[受信supervisor](receiver/receive-supervisor.md)、[Task bridge](history/task-bridge.md)
 - [A2A 1.0仕様](https://a2a-protocol.org/v1.0.0/specification/)、[公式JS SDK](https://github.com/a2aproject/a2a-js)
 - [NATS JetStream](https://docs.nats.io/concepts/jetstream)、[同期設定](https://docs.nats.io/reference/config/jetstream/sync_interval)、[message TTL](https://docs.nats.io/learn/jetstream/message-ttl)、[backup/restore](https://docs.nats.io/learn/backup-recovery/stream-backup-restore)
 - [NATS #7549](https://github.com/nats-io/nats-server/issues/7549)、[#7556](https://github.com/nats-io/nats-server/issues/7556)、[#7564](https://github.com/nats-io/nats-server/issues/7564)、[#7567](https://github.com/nats-io/nats-server/issues/7567)。open状態は2026-10-31の確認であり、将来の状態を断定しない

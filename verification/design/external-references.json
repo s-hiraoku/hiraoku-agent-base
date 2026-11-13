@@ -21,7 +21,7 @@
     "reader_scope": "foundations",
     "url": "https://a2a-protocol.org/v1.0.0/specification/#413-taskstate",
     "referenced_by": [
-      "docs/generic-agent-async-design.md"
+      "docs/history/generic-agent-async-design.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "v1.0.0 URL; content not fetched"
@@ -30,7 +30,7 @@
     "reader_scope": "foundations",
     "url": "https://a2a-protocol.org/v1.0.0/specification/#76-in-task-authorization",
     "referenced_by": [
-      "docs/generic-agent-async-design.md"
+      "docs/history/generic-agent-async-design.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "v1.0.0 URL; content not fetched"
@@ -39,8 +39,8 @@
     "reader_scope": "foundations",
     "url": "https://a2a-protocol.org/v1.0.0/topics/extensions/",
     "referenced_by": [
-      "docs/generic-agent-async-design.md",
-      "docs/generic-agent-async-design.md"
+      "docs/history/generic-agent-async-design.md",
+      "docs/history/generic-agent-async-design.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "v1.0.0 URL; content not fetched"
@@ -49,8 +49,8 @@
     "reader_scope": "foundations",
     "url": "https://a2a-protocol.org/v1.0.0/topics/life-of-a-task/",
     "referenced_by": [
-      "docs/generic-agent-async-design.md",
-      "docs/generic-agent-async-design.md"
+      "docs/history/generic-agent-async-design.md",
+      "docs/history/generic-agent-async-design.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "v1.0.0 URL; content not fetched"
@@ -59,8 +59,8 @@
     "reader_scope": "foundations",
     "url": "https://docs.nats.io/concepts/jetstream",
     "referenced_by": [
-      "docs/generic-agent-async-design.md",
-      "docs/generic-agent-async-design.md",
+      "docs/history/generic-agent-async-design.md",
+      "docs/history/generic-agent-async-design.md",
       "docs/hab-product-spec.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
@@ -70,8 +70,8 @@
     "reader_scope": "foundations",
     "url": "https://a2a-protocol.org/v1.0.0/topics/streaming-and-async/",
     "referenced_by": [
-      "docs/generic-agent-async-design.md",
-      "docs/generic-agent-async-design.md"
+      "docs/history/generic-agent-async-design.md",
+      "docs/history/generic-agent-async-design.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "v1.0.0 URL; content not fetched"
@@ -80,7 +80,7 @@
     "reader_scope": "foundations",
     "url": "https://a2a-protocol.org/v1.0.0/specification/",
     "referenced_by": [
-      "docs/generic-agent-async-design.md",
+      "docs/history/generic-agent-async-design.md",
       "docs/hab-product-spec.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
@@ -91,7 +91,7 @@
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/pull/132",
     "referenced_by": [
       "docs/hab-decisions.md",
-      "docs/implementation/design-boundary-alignment.md"
+      "docs/history/design-boundary-alignment.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -235,7 +235,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/mvanhorn/agent-tincan",
     "referenced_by": [
-      "docs/hab-roadmap.md"
+      "docs/history/hab-roadmap.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "local document records 2026-10-10 read; external source not pinned here"
@@ -244,7 +244,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/TadMSTR/homelab-agent",
     "referenced_by": [
-      "docs/hab-roadmap.md"
+      "docs/history/hab-roadmap.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "local document records 2026-10-10 read; external source not pinned here"
@@ -253,7 +253,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/viniciusbuscacio/pop-agent",
     "referenced_by": [
-      "docs/hab-roadmap.md"
+      "docs/history/hab-roadmap.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "local document records 2026-10-10 read; external source not pinned here"
@@ -262,7 +262,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/faelnor92/Athena",
     "referenced_by": [
-      "docs/hab-roadmap.md"
+      "docs/history/hab-roadmap.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "local document records 2026-10-10 read; external source not pinned here"
@@ -271,7 +271,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/mvanhorn/agent-tincan/blob/main/docs/adapters/web-agents.md",
     "referenced_by": [
-      "docs/hab-roadmap.md"
+      "docs/history/hab-roadmap.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": "local document records 2026-10-10 read; external source not pinned here"
@@ -280,7 +280,7 @@
     "reader_scope": "foundations",
     "url": "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams",
     "referenced_by": [
-      "docs/hab-topology.md"
+      "docs/history/hab-topology.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -289,7 +289,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/mermaid-js/mermaid-cli",
     "referenced_by": [
-      "docs/hab-topology.md"
+      "docs/history/hab-topology.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -298,7 +298,7 @@
     "reader_scope": "foundations",
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/actions/runs/41935743092",
     "referenced_by": [
-      "docs/implementation/design-boundary-alignment.md"
+      "docs/history/design-boundary-alignment.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -307,7 +307,7 @@
     "reader_scope": "foundations",
     "url": "https://docs.nats.io/learn/jetstream/delivery-and-acknowledgment",
     "referenced_by": [
-      "docs/implementation/generic-nats-dispatch.md"
+      "docs/history/generic-nats-dispatch.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -325,7 +325,7 @@
     "reader_scope": "foundations",
     "url": "https://nodejs.org/api/sqlite.html#databaseistransaction",
     "referenced_by": [
-      "docs/adapter-owner.md"
+      "docs/receiver/adapter-owner.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -334,7 +334,7 @@
     "reader_scope": "foundations",
     "url": "https://example-tenant.jp.auth0.com/",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -343,7 +343,7 @@
     "reader_scope": "foundations",
     "url": "https://relay.example/hab/mcp",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -352,7 +352,7 @@
     "reader_scope": "foundations",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/get-refresh-tokens",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -361,7 +361,7 @@
     "reader_scope": "foundations",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -370,7 +370,7 @@
     "reader_scope": "foundations",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -379,7 +379,7 @@
     "reader_scope": "foundations",
     "url": "https://developers.openai.com/plugins/deploy/connect-chatgpt",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access_outcome": "pending: not fetched in this source-reader partition; local attribution only, no independent external standard/security/current-status verification",
     "revision": null
@@ -388,7 +388,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/signup",
     "referenced_by": [
-      "docs/auth0-account-step.md"
+      "docs/operations/auth0-account-step.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -399,7 +399,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/pricing",
     "referenced_by": [
-      "docs/auth0-account-step.md"
+      "docs/operations/auth0-account-step.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -410,7 +410,7 @@
     "reader_scope": "authority",
     "url": "https://www.okta.com/legal/auth0-pss-self-service/",
     "referenced_by": [
-      "docs/auth0-account-step.md"
+      "docs/operations/auth0-account-step.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -421,7 +421,7 @@
     "reader_scope": "authority",
     "url": "https://www.okta.com/content/dam/okta---digital/en_us/legal/okta-auth0-self-service-PSS.pdf",
     "referenced_by": [
-      "docs/auth0-account-step.md"
+      "docs/operations/auth0-account-step.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -432,7 +432,7 @@
     "reader_scope": "authority",
     "url": "https://www.okta.com/legal/",
     "referenced_by": [
-      "docs/auth0-account-step.md"
+      "docs/operations/auth0-account-step.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -443,7 +443,7 @@
     "reader_scope": "authority",
     "url": "https://www.okta.com/legal/privacy-policy/",
     "referenced_by": [
-      "docs/auth0-account-step.md"
+      "docs/operations/auth0-account-step.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -454,9 +454,9 @@
     "reader_scope": "authority",
     "url": "https://developers.openai.com/plugins/build/auth",
     "referenced_by": [
-      "docs/auth0-boundary.md",
-      "docs/local-integration.md",
-      "docs/relay-oauth-ingress.md"
+      "docs/history/auth0-boundary.md",
+      "docs/history/local-integration.md",
+      "docs/operations/relay-oauth-ingress.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -467,7 +467,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/ai/docs/mcp/get-started/authorization-for-your-mcp-server",
     "referenced_by": [
-      "docs/auth0-boundary.md"
+      "docs/history/auth0-boundary.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -478,7 +478,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets",
     "referenced_by": [
-      "docs/auth0-boundary.md"
+      "docs/history/auth0-boundary.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -489,7 +489,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/docs/secure/tokens/token-best-practices",
     "referenced_by": [
-      "docs/auth0-boundary.md"
+      "docs/history/auth0-boundary.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -500,7 +500,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/108",
     "referenced_by": [
-      "docs/dots-hermes-connection-plan.md"
+      "docs/history/dots-hermes-connection-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -511,7 +511,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/98",
     "referenced_by": [
-      "docs/dots-hermes-connection-plan.md"
+      "docs/history/dots-hermes-connection-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -533,8 +533,8 @@
     "reader_scope": "authority",
     "url": "https://developers.openai.com/plugins/build/mcp-events",
     "referenced_by": [
-      "docs/local-integration.md",
-      "docs/migration-plan.md"
+      "docs/history/local-integration.md",
+      "docs/history/migration-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -545,7 +545,7 @@
     "reader_scope": "authority",
     "url": "https://developers.openai.com/api/docs/guides/secure-mcp-tunnels",
     "referenced_by": [
-      "docs/local-integration.md"
+      "docs/history/local-integration.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -556,7 +556,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/model_tools.py",
     "referenced_by": [
-      "docs/local-relay-host.md"
+      "docs/operations/local-relay-host.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -567,7 +567,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/agent/agent_init.py",
     "referenced_by": [
-      "docs/local-relay-host.md"
+      "docs/operations/local-relay-host.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -578,7 +578,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/website/docs/user-guide/features/api-server.md",
     "referenced_by": [
-      "docs/local-relay-host.md"
+      "docs/operations/local-relay-host.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -589,7 +589,7 @@
     "reader_scope": "authority",
     "url": "http://www.apple.com/DTDs/PropertyList-1.0.dtd\"",
     "referenced_by": [
-      "docs/local-relay-launchagent.md"
+      "docs/operations/local-relay-launchagent.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -611,7 +611,7 @@
     "reader_scope": "authority",
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/112",
     "referenced_by": [
-      "docs/mcp-agent-discovery.md"
+      "docs/connections/mcp-agent-discovery.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -622,7 +622,7 @@
     "reader_scope": "authority",
     "url": "https://developers.cloudflare.com/d1/worker-api/d1-database/",
     "referenced_by": [
-      "docs/migration-plan.md"
+      "docs/history/migration-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -633,7 +633,7 @@
     "reader_scope": "authority",
     "url": "https://modelcontextprotocol.io/docs/2026-07-28/sdk",
     "referenced_by": [
-      "docs/migration-plan.md"
+      "docs/history/migration-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -644,7 +644,7 @@
     "reader_scope": "authority",
     "url": "https://developers.cloudflare.com/workers/runtime-apis/nodejs/https/",
     "referenced_by": [
-      "docs/migration-plan.md"
+      "docs/history/migration-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -655,7 +655,7 @@
     "reader_scope": "authority",
     "url": "https://developers.cloudflare.com/workers/runtime-apis/nodejs/dns/",
     "referenced_by": [
-      "docs/migration-plan.md"
+      "docs/history/migration-plan.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -666,7 +666,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/get-refresh-tokens",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -677,7 +677,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -688,7 +688,7 @@
     "reader_scope": "authority",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -699,7 +699,7 @@
     "reader_scope": "authority",
     "url": "https://developers.openai.com/plugins/deploy/connect-chatgpt",
     "referenced_by": [
-      "docs/persistent-mcp-auth.md"
+      "docs/operations/persistent-mcp-auth.md"
     ],
     "access": "not_accessed",
     "status": "pending",
@@ -897,7 +897,7 @@
     "url": "https://a2a-protocol.org/v1.0.0/specification/",
     "occurrences": [
       {
-        "path": "docs/profiles/async-text-v1.md",
+        "path": "docs/history/async-text-v1.md",
         "line": 5
       }
     ],
@@ -910,7 +910,7 @@
     "url": "https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles",
     "occurrences": [
       {
-        "path": "docs/fixed-readback-worker-identity.md",
+        "path": "docs/history/fixed-readback-worker-identity.md",
         "line": 95
       }
     ],
@@ -923,7 +923,7 @@
     "url": "https://chatgpt.com/backend-api/codex",
     "occurrences": [
       {
-        "path": "docs/local-hermes-key.md",
+        "path": "docs/history/local-hermes-key.md",
         "line": 98
       }
     ],
@@ -936,7 +936,7 @@
     "url": "https://developers.openai.com/plugins/build/auth",
     "occurrences": [
       {
-        "path": "docs/mvp-inventory.md",
+        "path": "docs/history/mvp-inventory.md",
         "line": 65
       }
     ],
@@ -949,7 +949,7 @@
     "url": "https://docs.nats.io/learn/jetstream/delivery-and-acknowledgment",
     "occurrences": [
       {
-        "path": "docs/implementation/generic-nats-dispatch.md",
+        "path": "docs/history/generic-nats-dispatch.md",
         "line": 19
       }
     ],
@@ -962,7 +962,7 @@
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/hermes_cli/auth_codex.py",
     "occurrences": [
       {
-        "path": "docs/local-hermes-key.md",
+        "path": "docs/history/local-hermes-key.md",
         "line": 106
       }
     ],
@@ -975,7 +975,7 @@
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/hermes_cli/runtime_provider.py",
     "occurrences": [
       {
-        "path": "docs/local-hermes-key.md",
+        "path": "docs/history/local-hermes-key.md",
         "line": 107
       }
     ],
@@ -988,7 +988,7 @@
     "url": "https://github.com/NousResearch/hermes-agent/blob/f97608f178d1ffeca59860195ab7da295f7c8e5f/website/docs/user-guide/features/api-server.md",
     "occurrences": [
       {
-        "path": "docs/hermes-connection.md",
+        "path": "docs/history/hermes-connection.md",
         "line": 25
       }
     ],
@@ -1001,7 +1001,7 @@
     "url": "https://github.com/a2aproject/a2a-js",
     "occurrences": [
       {
-        "path": "docs/a2a-sdk-preview.md",
+        "path": "docs/a2a/a2a-sdk-preview.md",
         "line": 57
       }
     ],
@@ -1053,7 +1053,7 @@
     "url": "https://github.com/openai/codex/blob/rust-v0.164.0-alpha.11.1/codex-rs/core/src/mcp_tool_call.rs",
     "occurrences": [
       {
-        "path": "docs/finite-mcp-trial.md",
+        "path": "docs/history/finite-mcp-trial.md",
         "line": 106
       }
     ],
@@ -1066,7 +1066,7 @@
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/blob/main/docs/profiles/async-text-v1.md",
     "occurrences": [
       {
-        "path": "docs/profiles/async-text-v1.md",
+        "path": "docs/history/async-text-v1.md",
         "line": 5
       }
     ],
@@ -1079,7 +1079,7 @@
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/102",
     "occurrences": [
       {
-        "path": "docs/finite-mcp-trial.md",
+        "path": "docs/history/finite-mcp-trial.md",
         "line": 150
       }
     ],
@@ -1092,7 +1092,7 @@
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/104",
     "occurrences": [
       {
-        "path": "docs/finite-mcp-trial.md",
+        "path": "docs/history/finite-mcp-trial.md",
         "line": 149
       }
     ],
@@ -1105,7 +1105,7 @@
     "url": "https://github.com/s-hiraoku/hiraoku-agent-base/issues/105",
     "occurrences": [
       {
-        "path": "docs/finite-mcp-trial.md",
+        "path": "docs/history/finite-mcp-trial.md",
         "line": 9
       }
     ],
@@ -1118,7 +1118,7 @@
     "url": "https://learn.chatgpt.com/docs/auth",
     "occurrences": [
       {
-        "path": "docs/local-hermes-key.md",
+        "path": "docs/history/local-hermes-key.md",
         "line": 89
       }
     ],
@@ -1131,7 +1131,7 @@
     "url": "https://learn.chatgpt.com/docs/pricing",
     "occurrences": [
       {
-        "path": "docs/local-hermes-key.md",
+        "path": "docs/history/local-hermes-key.md",
         "line": 88
       }
     ],
@@ -1144,7 +1144,7 @@
     "url": "https://nodejs.org/api/sqlite.html#databaseistransaction",
     "occurrences": [
       {
-        "path": "docs/adapter-owner.md",
+        "path": "docs/receiver/adapter-owner.md",
         "line": 9
       }
     ],
@@ -1168,7 +1168,7 @@
     "url": "https://api.github.com/repos/nats-io/nats-server/releases/tags/v2.15.2",
     "revision": "tag v2.15.2; historical docs report four archive/executable pins",
     "referenced_by": [
-      "docs/testing/verified-nats-input.md"
+      "docs/history/testing/verified-nats-input.md"
     ],
     "role": "external release metadata for optional broker verification",
     "access_outcome": "pending_remote_unread",
@@ -1178,7 +1178,7 @@
     "reader_scope": "recipient-host MCP proposal maintenance",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/website/docs/user-guide/features/mcp.md#L490-L503",
     "referenced_by": [
-      "docs/implementation/recipient-host-mcp-proposal.md"
+      "docs/receiver/recipient-host-mcp-proposal.md"
     ],
     "access_outcome": "Verified through the local source checkout at the exact revision; selected files have no working-tree modifications. Read only the cited configuration/stdio transport excerpt. No native client invocation, profile/configuration, credentials, running session or policy was inspected or changed. This establishes source support only, not installed product acceptance.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
@@ -1188,7 +1188,7 @@
     "reader_scope": "recipient-host MCP proposal maintenance",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L373-L414",
     "referenced_by": [
-      "docs/implementation/recipient-host-mcp-proposal.md"
+      "docs/receiver/recipient-host-mcp-proposal.md"
     ],
     "access_outcome": "Verified through the local source checkout at the exact revision; selected files have no working-tree modifications. Read only the cited configuration/stdio transport excerpt. No native client invocation, profile/configuration, credentials, running session or policy was inspected or changed. This establishes source support only, not installed product acceptance.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
@@ -1198,7 +1198,7 @@
     "reader_scope": "Optional Python recipient-MCP compatibility maintenance",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L307-L414",
     "referenced_by": [
-      "docs/implementation/recipient-python-mcp-acceptance.md"
+      "docs/receiver/recipient-python-mcp-acceptance.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "bc15439a182dd3c8911bcb656f033479cc8c9b02ab24fdb3cb795d41a962b44d",
@@ -1209,7 +1209,7 @@
     "reader_scope": "Optional Python recipient-MCP compatibility maintenance",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_content.py#L17-L25",
     "referenced_by": [
-      "docs/implementation/recipient-python-mcp-acceptance.md"
+      "docs/receiver/recipient-python-mcp-acceptance.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "8e2062ae4cc4c544e6eefe8b8a6224e19291952457768fb053087460024e6d4e",
@@ -1220,7 +1220,7 @@
     "reader_scope": "Optional Python recipient-MCP compatibility maintenance",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_handlers.py#L599-L617",
     "referenced_by": [
-      "docs/implementation/recipient-python-mcp-acceptance.md"
+      "docs/receiver/recipient-python-mcp-acceptance.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "b4bf976aa85520380006b92b0e51550193cbae008d32b9f040f3c94e5f6471b7",
@@ -1231,7 +1231,7 @@
     "reader_scope": "Native acceptance prerequisites after #143",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/hermes_cli/plugins.py#L502-L555",
     "referenced_by": [
-      "docs/recipient-readiness.md"
+      "docs/receiver/recipient-readiness.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "4eb1a417a12096d96080b7207907cbee16d120d3c6f9ded561316eb72872cc97",
@@ -1241,7 +1241,7 @@
     "reader_scope": "Native acceptance prerequisites after #143",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_handlers.py#L505-L522",
     "referenced_by": [
-      "docs/recipient-readiness.md"
+      "docs/receiver/recipient-readiness.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "d2fd0998181c4d6f82ae1fe1fcda9370974cebd68036484bce84ab99b1640564",
@@ -1251,7 +1251,7 @@
     "reader_scope": "Native acceptance prerequisites after #143",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_transport.py#L367-L370",
     "referenced_by": [
-      "docs/recipient-readiness.md"
+      "docs/receiver/recipient-readiness.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "ccaaf5f8301f4de233a246deed8e711c624a7aca98c7092f1ed36c55ff011cf9",
@@ -1261,7 +1261,7 @@
     "reader_scope": "Native acceptance authority clarification",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_tool_scope.py#L1-L65",
     "referenced_by": [
-      "docs/recipient-readiness.md"
+      "docs/receiver/recipient-readiness.md"
     ],
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7",
     "excerpt_sha256": "b19f99ee548291e964899e73966beed7f570113a8ff1b51ffffdce745bfff106",
@@ -1271,7 +1271,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Retrieved and read primary Auth0 documentation on 2026-11-09 for refresh versus reauthentication, rotating-family reuse detection, and maximum/idle expiration. This does not establish any live tenant configuration or token status.",
     "revision": "unversioned web documentation; accessed 2026-11-09"
@@ -1280,7 +1280,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/refresh-token-rotation",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Retrieved and read primary Auth0 documentation on 2026-11-09 for refresh versus reauthentication, rotating-family reuse detection, and maximum/idle expiration. This does not establish any live tenant configuration or token status.",
     "revision": "unversioned web documentation; accessed 2026-11-09"
@@ -1289,7 +1289,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Retrieved and read primary Auth0 documentation on 2026-11-09 for refresh versus reauthentication, rotating-family reuse detection, and maximum/idle expiration. This does not establish any live tenant configuration or token status.",
     "revision": "unversioned web documentation; accessed 2026-11-09"
@@ -1298,7 +1298,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_oauth.py",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
@@ -1307,7 +1307,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_oauth_provider.py",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
@@ -1316,7 +1316,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/tools/mcp_oauth_manager.py",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"
@@ -1325,7 +1325,7 @@
     "reader_scope": "Auth0 recovery",
     "url": "https://github.com/NousResearch/hermes-agent/blob/6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7/hermes_cli/mcp_config.py",
     "referenced_by": [
-      "docs/auth0-recovery.md"
+      "docs/operations/auth0-recovery.md"
     ],
     "access_outcome": "Read exact local checkout source and verified these four files have no diff from this revision. Remote web content was not separately retrieved. No runtime acceptance inferred.",
     "revision": "6705c8c634d83a2f2918aa5ec45e7f8f20c20dc7"

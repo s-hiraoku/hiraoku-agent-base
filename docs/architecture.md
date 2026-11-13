@@ -1,6 +1,6 @@
 # Scope and boundaries
 
-For the overall HAB roles, current evidence and hosting decisions, start at [README](../README.md) and [ADR](hab-decisions.md). This page owns the existing optional Task Engine and execution-adapter contract. Standard agent communication follows [common MCP](common-mcp-connection.md) and the [receive-only supervisor](receive-supervisor.md). Agents retain content decisions, execution, and their existing approval policy. Hermes Runs and the prerequisites below apply to the limited Task integration, not to ordinary message delivery.
+For the overall HAB roles, current evidence and hosting decisions, start at [README](../README.md) and [ADR](hab-decisions.md). This page owns the existing optional Task Engine and execution-adapter contract. Standard agent communication follows [common MCP](common-mcp-connection.md) and the [receive-only supervisor](receiver/receive-supervisor.md). Agents retain content decisions, execution, and their existing approval policy. Hermes Runs and the prerequisites below apply to the limited Task integration, not to ordinary message delivery.
 
 Dots retains personal context, consultation, important-mail decisions, mark-read after notification, and schedule summaries. Grok retains its existing connpass job and future Calendar/browser/long-task work. Hermes handles development experiments, MCP and Skills. These are design roles. Current limited task contracts are connectivity_check and the opt-in fixed shift_log_inventory; the diagnostic ping/pong service is separate. Verified server policy chooses the route and allowed task types. Results and notifications never submit tasks.
 
@@ -24,13 +24,13 @@ The Mac's separate journal is a recovery receipt, not a second task-state databa
 
 `Adapter.once()` handles one admission/status step; `run()` polls until terminal while the receipt exists. A watchdog renews leases during blocked create/get calls, with a finite renewal deadline. Initial, periodic and final heartbeat payloads contain only protocol fields. Renewal failure or explicit local stop aborts local waiting and retains the receipt and execution slot for reconciliation. This does not imply stopping a remote run. The adapter rejects unsafe timing budgets and unverified tool-isolation/durable-idempotency contracts.
 
-Cancelled known work is read until the run driver confirms a terminal state. Unknown cancellation remains unresolved. Neither case silently clears the gate; general terminal reconciliation/release is not implemented. The internal operator reconciliation API can close a gate only after trusted proof of the exact fixed successful run on the original boundary; see [local integration](local-integration.md). No guessed stop endpoint is called. The real driver and authentication bootstrap remain gated: mock booleans are test seams, not proof of actual tool or memory isolation.
+Cancelled known work is read until the run driver confirms a terminal state. Unknown cancellation remains unresolved. Neither case silently clears the gate; general terminal reconciliation/release is not implemented. The internal operator reconciliation API can close a gate only after trusted proof of the exact fixed successful run on the original boundary; see [local integration](history/local-integration.md). No guessed stop endpoint is called. The real driver and authentication bootstrap remain gated: mock booleans are test seams, not proof of actual tool or memory isolation.
 
 ## Notification foundation
 
 The transactional outbox is at least once; receivers must deduplicate stable event IDs. Offline-tested `EventSender` adds signed callback challenge verification, fixed terminal payloads, owner/access/expiry checks, bounded retry/backoff and 410/413/redirect policy rejection. `PinnedCallbackTransport` is a Node preparation adapter: exact approved URLs, HTTPS, fresh public-address validation at each connection, pinned DNS address and original TLS host, response bounds and no redirect following. The Worker egress adapter remains unimplemented.
 
-Opt-in EventAPI, durable encrypted subscriptions, authenticated list/subscribe/unsubscribe and fenced delivery are implemented and tested with fixtures. Default entrypoints supply no EventAPI. Real callbacks, hosted egress and resident delivery are unconnected; cursor-based replay is unsupported. See [local integration](local-integration.md).
+Opt-in EventAPI, durable encrypted subscriptions, authenticated list/subscribe/unsubscribe and fenced delivery are implemented and tested with fixtures. Default entrypoints supply no EventAPI. Real callbacks, hosted egress and resident delivery are unconnected; cursor-based replay is unsupported. See [local integration](history/local-integration.md).
 
 ## Hermes prerequisites
 
@@ -46,7 +46,7 @@ Desktop UI backend and standard gateway API are distinct interfaces. Do not assu
 4. Authorized cancellation terminal reconciliation/gate release and real endpoint/status normalization; cloud revocation/lease/stop failure checks.
 5. Plugin registration and formally verified notification destinations after subscription/egress/replay security is complete.
 
-No current production Hub deployment, Site/cloud D1 resource, live subscription/plugin registration or resident Hub worker is installed. An earlier fixed-connectivity local trial is recorded separately in [fixed pilot history](fixed-pilot.md); it does not validate the current inventory bridge or cloud clients.
+No current production Hub deployment, Site/cloud D1 resource, live subscription/plugin registration or resident Hub worker is installed. An earlier fixed-connectivity local trial is recorded separately in [fixed pilot history](history/fixed-pilot.md); it does not validate the current inventory bridge or cloud clients.
 
 ## Execution planning beyond the fixed pilot
 

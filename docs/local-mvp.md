@@ -1,6 +1,6 @@
 # HAB ローカルMVP：起動・送受信・停止・再起動確認
 
-[README](../README.md) · [正式仕様のゲート](hab-relay-spec.md#20-導入と受入れゲート) · [受入れ表](mvp-acceptance.md)
+[README](../README.md) · [正式仕様のゲート](hab-relay-spec.md#20-導入と受入れゲート) · [受入れ表](history/mvp-acceptance.md)
 
 **このMVPの完了条件は、モデルなしの模擬3個体で登録→MCP配送→返信→停止→永続状態からの再開→実行依頼を保存だけして実行しないことを、一つの有限コマンドで再現できることです。** 実Grok・Dots・Hermesの接続や、全DBの整合backupを含むG1全体の受入れとは分けます。
 
