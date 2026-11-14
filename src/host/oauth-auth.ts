@@ -6,10 +6,7 @@ import type {
   IndividualPrincipal,
 } from "../hab/registry.ts";
 import type { McpHttpVerifier } from "./mcp/http.ts";
-import {
-  McpOAuthResource,
-  HAB_OAUTH_SCOPES,
-} from "./mcp/oauth-resource.ts";
+import { McpOAuthResource, HAB_OAUTH_SCOPES } from "./mcp/oauth-resource.ts";
 const claim = z
   .string()
   .min(1)
@@ -143,6 +140,31 @@ const claims = z.object({
   exp: z.number().int().positive(),
   nbf: z.number().int().nonnegative().optional(),
 });
+/** Fixed reasons the OAuth verifier gives the audit log when it refuses a token. */
+export type OAuthDenyReason =
+  | "oauth_disabled"
+  | "oauth_config_invalid"
+  | "oauth_config_changed"
+  | "resource_mismatch"
+  | "token_malformed"
+  | "token_header_invalid"
+  | "token_claims_invalid"
+  | "audience_not_single"
+  | "client_id_missing"
+  | "client_id_conflict"
+  | "issuer_mismatch"
+  | "audience_mismatch"
+  | "scope_missing"
+  | "client_not_registered"
+  | "subject_not_registered"
+  | "connection_revoked"
+  | "connection_outside_window"
+  | "token_lifetime_invalid"
+  | "token_expired"
+  | "token_not_yet_valid"
+  | "token_before_approval"
+  | "signing_key_unknown"
+  | "signature_invalid";
 export class PinnedOAuthAuthority {
   readonly #load: () => unknown;
   readonly #now: () => number;
@@ -224,38 +246,53 @@ export class PinnedOAuthAuthority {
     authorization,
     resource,
     signal,
+    deny = () => {},
   }) => {
+    // Each refusal names a fixed reason for the audit log; never a claim value or the token.
+    const refuse = (reason: OAuthDenyReason) => {
+      deny(reason);
+      return null;
+    };
+    let stage: OAuthDenyReason = "oauth_config_invalid";
     try {
       const snapshot = this.#current(),
         c = snapshot.config;
-      if (
-        !c.enabled ||
-        signal.aborted ||
-        resource !== c.resource ||
-        authorization.length > 8192
-      )
-        return null;
+      if (!c.enabled) return refuse("oauth_disabled");
+      if (signal.aborted) return null;
+      if (resource !== c.resource) return refuse("resource_mismatch");
+      if (authorization.length > 8192) return refuse("token_malformed");
       const match =
         /^Bearer ([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$(?![\s\S])/.exec(
           authorization,
         );
-      if (!match) return null;
-      const h = header.parse(jsonPart(match[1])),
-        value = claims.parse(jsonPart(match[2]));
+      if (!match) return refuse("token_malformed");
+      stage = "token_malformed";
+      const rawHeader = jsonPart(match[1]),
+        rawClaims = jsonPart(match[2]);
+      stage = "token_header_invalid";
+      const h = header.parse(rawHeader);
+      stage = "token_claims_invalid";
+      if (Array.isArray(rawClaims?.aud)) return refuse("audience_not_single");
+      const value = claims.parse(rawClaims);
+      stage = "oauth_config_invalid";
       const clientId = value.azp ?? value.client_id;
-      if (
-        !clientId ||
-        (value.azp && value.client_id && value.azp !== value.client_id) ||
-        value.iss !== c.issuer ||
-        value.aud !== resource
-      )
-        return null;
+      if (!clientId) return refuse("client_id_missing");
+      if (value.azp && value.client_id && value.azp !== value.client_id)
+        return refuse("client_id_conflict");
+      if (value.iss !== c.issuer) return refuse("issuer_mismatch");
+      if (value.aud !== resource) return refuse("audience_mismatch");
       const scopes = new Set(value.scope.split(" "));
-      if (!HAB_OAUTH_SCOPES.every((s) => scopes.has(s))) return null;
+      if (!HAB_OAUTH_SCOPES.every((s) => scopes.has(s)))
+        return refuse("scope_missing");
       const binding = c.connections.find(
         (x) => x.subject === value.sub && x.client_id === clientId,
       );
-      if (!binding) return null;
+      if (!binding)
+        return refuse(
+          c.connections.some((x) => x.client_id === clientId)
+            ? "subject_not_registered"
+            : "client_not_registered",
+        );
       const window = oauthConnectionWindow(binding),
         approved = Date.parse(window.starts_at),
         approvedUntil = Date.parse(window.ends_at),
@@ -263,27 +300,31 @@ export class PinnedOAuthAuthority {
           c.version === 2 ? c.max_access_token_lifetime_seconds * 1000 : 900000;
       const issued = value.iat * 1000,
         expires = value.exp * 1000;
+      if (window.state !== "active") return refuse("connection_revoked");
+      if (snapshot.now < approved || snapshot.now >= approvedUntil)
+        return refuse("connection_outside_window");
       if (
-        window.state !== "active" ||
-        snapshot.now < approved ||
-        snapshot.now >= approvedUntil ||
         !Number.isSafeInteger(issued) ||
         !Number.isSafeInteger(expires) ||
-        issued > snapshot.now ||
-        expires <= snapshot.now ||
         expires <= issued ||
         expires - issued > maxTokenLifetime ||
-        (value.nbf !== undefined && value.nbf * 1000 > snapshot.now) ||
-        issued < approved ||
         (c.version === 1 && expires > approvedUntil)
       )
-        return null;
+        return refuse("token_lifetime_invalid");
+      if (expires <= snapshot.now) return refuse("token_expired");
+      if (
+        issued > snapshot.now ||
+        (value.nbf !== undefined && value.nbf * 1000 > snapshot.now)
+      )
+        return refuse("token_not_yet_valid");
+      if (issued < approved) return refuse("token_before_approval");
       // A valid final token may outlive participation; its authority never does.
       const contextExpires = Math.min(expires, approvedUntil);
       await this.#importKeys(snapshot);
       const key = this.#keys.get(h.kid);
+      if (!key) return refuse("signing_key_unknown");
+      stage = "signature_invalid";
       if (
-        !key ||
         !(await crypto.subtle.verify(
           "RSASSA-PKCS1-v1_5",
           key,
@@ -291,15 +332,15 @@ export class PinnedOAuthAuthority {
           new TextEncoder().encode(match[1] + "." + match[2]),
         ))
       )
-        return null;
+        return refuse("signature_invalid");
       const current = this.#current();
+      if (signal.aborted) return null;
       if (
-        signal.aborted ||
         current.material !== snapshot.material ||
-        current.revision !== snapshot.revision ||
-        current.now >= contextExpires
+        current.revision !== snapshot.revision
       )
-        return null;
+        return refuse("oauth_config_changed");
+      if (current.now >= contextExpires) return refuse("token_expired");
       const context = Object.freeze({});
       this.#contexts.set(context, {
         material: snapshot.material,
@@ -315,7 +356,7 @@ export class PinnedOAuthAuthority {
       });
       return context;
     } catch {
-      return null;
+      return refuse(stage);
     }
   };
   readonly authority: RegistryAuthority = {

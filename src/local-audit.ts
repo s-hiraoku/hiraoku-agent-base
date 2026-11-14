@@ -71,7 +71,8 @@ export class LocalAudit implements Audit {
       !CATEGORIES.includes(category) ||
       !/^[a-f0-9-]{36}$/.test(correlation) ||
       (reason !== undefined &&
-        (category !== "tool_error" || !REASON.test(reason)))
+        ((category !== "tool_error" && category !== "auth_denied") ||
+          !REASON.test(reason)))
     )
       throw new Error("Invalid audit event");
     const time = this.now();

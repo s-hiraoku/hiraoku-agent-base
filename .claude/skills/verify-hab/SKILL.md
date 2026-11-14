@@ -43,7 +43,7 @@ Isolation: each run dir is its own instance on its own port, so parallel runs ar
 $S/doctor.sh "$RUN"
 ```
 
-Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the five delivery tools at `/mcp/delivery`. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
+Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the five delivery tools at `/mcp/delivery`. Every published input schema is portable (an object root with `properties`, no top-level `oneOf`/`anyOf`/`allOf`, no `$schema`, no lookaround in a `pattern`), since ChatGPT-style connectors refuse anything else. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
 
 ## Drive
 

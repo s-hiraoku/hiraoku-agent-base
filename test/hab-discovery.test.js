@@ -85,8 +85,10 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
   const tool = tools.find((x) => x.name === "hab_discover");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.equal(tool.annotations.idempotentHint, true);
-  for (const branch of tool.inputSchema.oneOf ?? tool.inputSchema.anyOf)
-    assert.equal(branch.additionalProperties, false);
+  // Published flat for clients that only accept a plain object root; zod still validates.
+  assert.equal(tool.inputSchema.type, "object");
+  assert.equal(tool.inputSchema.additionalProperties, false);
+  assert.deepEqual(tool.inputSchema.required, ["action"]);
   const handler = createMcpHandler(() =>
     createHabMcpServer(f.hab, () => f.contexts.a),
   );

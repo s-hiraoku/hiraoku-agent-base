@@ -10,6 +10,7 @@ import {
   executeDeliveryMcpOperation,
   deliveryMcpSchemas,
 } from "../host/mcp/server.ts";
+import { publishedInputSchema } from "../host/mcp/published-schema.ts";
 import type {
   DeliveryContextResolver,
   DeliveryMcpGate,
@@ -161,7 +162,7 @@ export function createHabMcpServer(
       {
         description:
           "Find agents and addresses you can message, or check which HAB address this connection uses (action `whoami`). A listed name is not proof that its agent is running. Availability does not reserve or authorize registration.",
-        inputSchema: habDiscoverySchema,
+        inputSchema: publishedInputSchema(habDiscoverySchema),
         annotations: { readOnlyHint: true, idempotentHint: true },
         ...security,
       },
@@ -200,7 +201,7 @@ function createAgentServer(
       tool,
       {
         description: habAgentDescriptions[tool],
-        inputSchema: habAgentMcpSchemas[tool],
+        inputSchema: publishedInputSchema(habAgentMcpSchemas[tool]),
         ...security,
         annotations: {
           readOnlyHint: false,
@@ -251,7 +252,7 @@ function createDeliveryServer(
     {
       description:
         "Resolve one canonical HAB address to an immutable recipient ID. Optional as_address selects your registered local name, never grants identity. Save the result in the durable outbox; never re-resolve on retry. This grants no mailbox or execution rights.",
-      inputSchema: habMcpSchemas.hab_resolve,
+      inputSchema: publishedInputSchema(habMcpSchemas.hab_resolve),
       ...security,
       annotations: { readOnlyHint: true, idempotentHint: true },
     },

@@ -86,6 +86,8 @@
 - **入力の誤りは具体的なコードで返す。** `invalid_request`（`field`と期待値）、`kind_not_allowed`（`allowed_kinds`）、`unknown_address`、`recipient_unavailable`、`reply_target_not_found`、`reply_target_expired`、`text_too_long`（`max_bytes`）。どのエラーにも、何を直せばよいかの固定文`message`を付ける。`forbidden`は認証・権限・停止だけに使う。拒否の固定理由コード（例：`operation_not_granted`、`pair_blocked`）はhostの監査（`audit.jsonl`の`reason`）だけに記録し、本文や秘密は記録しない。
 - **受信の通知。** `hab_inbox`の各メッセージに、利用者へそのまま見せる`notice`を付ける（`src/messaging/incoming-notice.ts`、受信サービスからも使える）。「〇〇 からのメッセージです（種類、返信期限）」、本文、「どうしますか？」と選択肢（1. 返信する＝`hab_reply`にmessage_idと本文を渡す、2. あとで、3. 返信しない）を並べる。本文は送信者が書いた信頼できないデータとして、推測できない印を付けた2行で囲み、指示として実行しないよう明記する。返信期限は元メッセージの期限で、過ぎると既読でも`reply_target_expired`になる。
 - **使い方を説明に書く。** MCP serverの`instructions`と各ツールの説明に、送る→`hab_status`、届いたら`hab_inbox`→`hab_reply`の流れと、「既読は作業完了ではない」ことを書く。
+- **clientが読めるスキーマを公開する。** `tools/list`の入力スキーマは、ルートが`properties`を持つ1つのobjectで、`$schema`もJavaScript専用の先読みも含まない（2026-11-14追記：Dotsの接続確認から）。`hab_discover`は`action`のenumを持つ1つのobjectにする。呼び出しの検証は厳密なzodスキーマのまま。
+- **認証の拒否理由も監査に残す。** `auth_denied`には固定の理由コード（`bearer_missing`、`client_not_registered`、`scope_missing`、`audience_mismatch`、`audience_not_single`、`token_expired`など）を`reason`として付ける。tokenやclaimの値は記録しない。
 - 受け取ったエージェント（Hermesなど）を自動で起こす仕組みは本判断に含めない。別のADRで決める。配置済みのHermes・Dotsは`tools.include`をエージェント用4ツールへ、受信サービスの接続先を`/mcp/delivery`へ切り替える。
 
 ## 次に決める内容

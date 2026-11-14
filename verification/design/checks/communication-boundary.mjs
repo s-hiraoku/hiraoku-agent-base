@@ -65,6 +65,8 @@ const outerModules = new Set([
   ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
     hostMcpPath,
   ),
+  // The portable tools/list input schema; MCP SDK types and zod only.
+  hostMcpPath("published-schema.ts"),
 ]);
 const corePackages = new Set([
   "node:buffer",

@@ -26,4 +26,13 @@ for a in a b c; do
   [ "$tools" = hab_ack,hab_poll,hab_resolve,hab_status,hab_submit ] \
     && echo "ok   agent $a sees the 5 delivery tools at /mcp/delivery" || fail "agent $a /mcp/delivery tools='$tools'"
 done
+# Every published input schema must be one a ChatGPT-style connector accepts: a plain object
+# root with properties, no top-level union, no $schema and no lookaround in any pattern.
+for u in "$url" "$delivery"; do
+  bad=$(curl -s -X POST "$u" "${h[@]}" -H "Authorization: Bearer $(jq -r ".agents.a.token" "$state")" --data-binary "$b" \
+    | jq -r '.result.tools[] | select((.inputSchema.type != "object") or (.inputSchema.properties == null)
+        or (.inputSchema | has("oneOf") or has("anyOf") or has("allOf") or has("$schema"))
+        or ([.inputSchema | .. | objects | .pattern? // empty | test("\\(\\?[=!<]")] | any)) | .name' 2>/dev/null)
+  [ -z "$bad" ] && echo "ok   $u input schemas are portable" || fail "$u non-portable input schemas: $bad"
+done
 [ $ok = 1 ] && echo "DOCTOR_OK $url" || { echo "DOCTOR_FAIL"; exit 1; }

@@ -12,7 +12,10 @@ export type AuditCategory =
   | "anomaly"
   | "aggregate";
 export interface AuditSink {
-  /** `reason` is a fixed refusal code (`/^[a-z][a-z0-9_]{0,47}$/`), never a body or secret. */
+  /**
+   * `reason` is a fixed refusal code (`/^[a-z][a-z0-9_]{0,47}$/`), never a body or secret.
+   * It comes with `tool_error` and `auth_denied` (why a credential was refused).
+   */
   record(
     category: AuditCategory,
     correlation: string,
