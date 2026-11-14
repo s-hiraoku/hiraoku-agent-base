@@ -468,7 +468,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "1332aa5750fc357870fd4b0ddd9ca943fe84f6fea6ba71316f498014c31df8a7",
+      "sha256": "640e3ae1d38ca840c1ac70d89b3204075298da083b7ab0ecd66b5c0f74020d57",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery."
@@ -828,7 +828,7 @@
     },
     {
       "path": "docs/operations/oauth-ingress.md",
-      "sha256": "04d834a90b5a543a3ef40cdff0c9e4b1cb711c0a0e42442e2895583acaddea5a",
+      "sha256": "271be9227a3c25142d3fb2a4dc44d022ae22eb88b38b4e280080555d96ebddd5",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional product-independent same-owner/Registry/queue OAuth ingress exposes common five operations only. Uses explicit private pinned RSA configuration and canonical resource metadata, exact verified subject/client scopes and immutable context rechecks, no token storage/refresh. Recognizes group-sharing and explicit persistent v2; native trial save/reread/ACK sequence is narrow single-consumer evidence. Its routine end-of-trial revocation is v1 trial scope, not persistent cleanup."
@@ -2026,8 +2026,8 @@
         },
         {
           "path": "docs/operations/oauth-ingress.md",
-          "start": 102,
-          "end": 104,
+          "start": 110,
+          "end": 112,
           "excerpt_sha256": "6addf1c4c51b0235dee5cc113d35ab6a4e85924254bd28bde9d7a8d4b880b5fd"
         }
       ]
@@ -2200,7 +2200,7 @@
     {
       "id": "HAB-A11",
       "title": "Pinned host OAuth verification",
-      "statement": "Optional host OAuth ingress verifies operator-pinned RSA public keys, exact issuer and single canonical resource audience, verified subject/client, required five host scopes and bounded token times. Revalidate current configuration before issuing/using opaque contexts. Caller names, headers and unverified JWT claims cannot choose identity or keys.",
+      "statement": "Optional host OAuth ingress verifies operator-pinned RSA public keys, exact issuer and the canonical resource audience (a string, or a list holding it once plus at most this issuer's userinfo, as Auth0 issues for openid), verified subject/client, required five host scopes and bounded token times. Revalidate current configuration before issuing/using opaque contexts. Caller names, headers and unverified JWT claims cannot choose identity or keys.",
       "rationale": "Avoids unsigned authority, confused audiences, attacker-selected key fetching and stale async authentication.",
       "scope": "Pinned host OAuth ingress; separate legacy Auth0 resource server has its own bounded JWKS cache contract.",
       "decision": "accepted",
@@ -2218,8 +2218,8 @@
         {
           "path": "docs/operations/oauth-ingress.md",
           "start": 95,
-          "end": 104,
-          "excerpt_sha256": "7fa07a8c51885d129a5288e5c61b9349b164296e3d39feed26096b4413ac8bda"
+          "end": 112,
+          "excerpt_sha256": "9b4231dc1f7cd9ca4a9493b9a595269a5f99f092cb32d040f5aed65d8471a34e"
         }
       ]
     },
@@ -2356,8 +2356,8 @@
       "citations": [
         {
           "path": "docs/operations/oauth-ingress.md",
-          "start": 119,
-          "end": 134,
+          "start": 127,
+          "end": 142,
           "excerpt_sha256": "fbc491bf85ce02e5e28dad29e153cdf29d3897352e050a735c7ded4f346e0908"
         }
       ]
@@ -3397,8 +3397,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 99,
-          "end": 99,
+          "start": 100,
+          "end": 100,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -4293,8 +4293,8 @@
         },
         {
           "path": "docs/operations/oauth-ingress.md",
-          "start": 142,
-          "end": 146,
+          "start": 150,
+          "end": 154,
           "excerpt_sha256": "c9927fa931e7e33e24f860f79b8985067ff52ae6567276d172f63c6438a50ace"
         },
         {
@@ -5055,8 +5055,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 99,
-          "end": 99,
+          "start": 100,
+          "end": 100,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]

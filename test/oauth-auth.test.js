@@ -34,7 +34,7 @@ test("reject wrong issuer, audience, client, subject and missing HAB grants", as
   for (const patch of [
     { iss: "https://other.jp.auth0.com/" },
     { aud: "https://hab.example/mcp" },
-    { aud: [resource] },
+    { aud: ["https://other.example/api", resource] },
     { sub: "other" },
     { azp: "other" },
     { client_id: "different" },
@@ -219,7 +219,7 @@ test("each refusal names a fixed audit reason and never a claim value", async ()
   const cases = [
     [{ iss: "https://other.jp.auth0.com/" }, "issuer_mismatch"],
     [{ aud: "https://hab.example/mcp" }, "audience_mismatch"],
-    // Auth0 issues an array audience when openid is requested alongside the API.
+    // A list audience is accepted only as [resource] or [resource, issuer userinfo].
     [{ aud: [resource, "https://x.example/userinfo"] }, "audience_not_single"],
     [{ sub: "other" }, "subject_not_registered"],
     [{ azp: "other", client_id: undefined }, "client_not_registered"],
@@ -253,4 +253,32 @@ test("each refusal names a fixed audit reason and never a claim value", async ()
   );
   f.setNow(f.start + 600000);
   assert.equal(await reasonFor(await f.token()), "token_expired");
+});
+test("Auth0 list audiences: only the resource once, plus at most this issuer's userinfo", async () => {
+  const f = await oauthFixture(),
+    userinfo = issuer + "userinfo";
+  // ChatGPT-style connectors ask for openid, so Auth0 adds its userinfo audience.
+  assert.ok(await f.verify(await f.token({ aud: [resource, userinfo] })));
+  assert.ok(await f.verify(await f.token({ aud: [userinfo, resource] })));
+  assert.ok(await f.verify(await f.token({ aud: [resource] })));
+  for (const aud of [
+    ["https://other.example/api", resource],
+    [userinfo],
+    [resource, resource],
+    [resource, "https://other.jp.auth0.com/userinfo"],
+    [resource, userinfo, "https://other.example/api"],
+    [],
+  ]) {
+    const reasons = [];
+    assert.equal(
+      await f.verify(await f.token({ aud }), {
+        deny: (reason) => reasons.push(reason),
+      }),
+      null,
+      JSON.stringify(aud),
+    );
+    assert.equal(reasons.length, 1);
+  }
+  const ctx = await f.verify(await f.token({ aud: [resource, userinfo] }));
+  assert.equal(f.auth.authority.individual(ctx).principal.audience, resource);
 });

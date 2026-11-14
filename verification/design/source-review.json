@@ -156,8 +156,8 @@
       {
         "path": "docs/operations/oauth-ingress.md",
         "scope": "full",
-        "sha256": "04d834a90b5a543a3ef40cdff0c9e4b1cb711c0a0e42442e2895583acaddea5a",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "sha256": "271be9227a3c25142d3fb2a4dc44d022ae22eb88b38b4e280080555d96ebddd5",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Auth0 list audience (ADR-020 addendum): re-read the diff; aud may be [resource] or the resource once plus this issuer's userinfo, any other list is still refused; the recorded observation still holds."
       },
       {
         "path": "docs/history/security-audit-limits.md",
