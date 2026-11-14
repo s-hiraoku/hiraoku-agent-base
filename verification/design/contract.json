@@ -258,7 +258,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "da113e467da42c30cc8dcf7cd1b329dba52fa4402e91c3bd7dd5509d9bd5f396",
+      "sha256": "89dea8654ac312b6ce88d58cd0b4d20497c1347bf6eedadb464d9daacdca5c4d",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition as revised by ADR-018: the single host (src/host, MCP server in src/host/mcp), the host's single-file SQLite delivery store and the agent SDK; JetStream and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs no broker. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
@@ -4127,8 +4127,8 @@
         },
         {
           "path": "README.md",
-          "start": 167,
-          "end": 167,
+          "start": 168,
+          "end": 168,
           "excerpt_sha256": "99164e5c28b40efaa9e261e0aff45e93d5c74d316b013c6ae657a0cf3f2c3d39"
         },
         {
