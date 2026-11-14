@@ -141,6 +141,15 @@ async function fixture(t, enroll = true) {
     },
   };
 }
+function assertPortableInputSchema(tool) {
+  const schema = tool.inputSchema;
+  assert.equal(schema.type, "object", tool.name);
+  assert.equal(typeof schema.properties, "object", tool.name);
+  for (const key of ["oneOf", "anyOf", "allOf", "$schema"])
+    assert.equal(key in schema, false, `${tool.name} has top-level ${key}`);
+  const text = JSON.stringify(schema);
+  assert.doesNotMatch(text, /\(\?[=!<]/, `${tool.name} has a lookaround`);
+}
 function list(url, authorization) {
   return globalThis.fetch(url, {
     method: "POST",
@@ -370,6 +379,18 @@ test("opt-in discovery identifies a host owner over a real socket and keeps the 
     await list(host.delivery_url, "Bearer synthetic-a")
   ).json();
   assert.equal(delivery.result.tools.length, 6);
+  // ChatGPT-style connectors reject anything but a plain object schema with portable patterns.
+  for (const tool of [...tools.result.tools, ...delivery.result.tools])
+    assertPortableInputSchema(tool);
+  const discover = tools.result.tools.find((x) => x.name === "hab_discover");
+  assert.deepEqual(discover.inputSchema.properties.action.enum, [
+    "whoami",
+    "directory",
+    "check_address",
+  ]);
+  assert.deepEqual(discover.inputSchema.required, ["action"]);
+  const mixed = await call({ action: "whoami", address: "b@synthetic.hab" });
+  assert.equal(mixed.body.result.isError, true);
   // The existing client deliberately verifies and uses only its original five methods.
   assert.equal(
     (await f.client(host, "a").resolve(f.agents.b.address)).recipient_id,

@@ -21,6 +21,14 @@ import { startHost } from "../src/host/start.ts";
 import { envelope } from "./mcp-http-fixtures.js";
 import { fixture, list } from "./host-service-fixtures.js";
 const cli = resolve("scripts/hab-host.ts");
+function authDeniedReasons(f) {
+  return readFileSync(join(f.dir, "audit/audit.jsonl"), "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .filter((event) => event.category === "auth_denied")
+    .map((event) => event.reason);
+}
 test("the host creates registry v2 with authentication groups and stays deny-all across restart", async (t) => {
   const f = await fixture(t);
   const first = await startHost(f.configPath);
@@ -80,6 +88,10 @@ test("private explicit config starts deny-all; digest binding authenticates only
   assert.equal((await list(host.url, token)).status, 401);
   const audit = readFileSync(join(f.dir, "audit/audit.jsonl"), "utf8");
   assert.ok(audit.includes("auth_denied"));
+  // Why each request was refused is recorded as a fixed code.
+  const reasons = authDeniedReasons(f);
+  assert.ok(reasons.includes("bearer_missing"));
+  assert.ok(reasons.includes("credential_rejected"));
   assert.ok(!audit.includes(token));
   assert.ok(!audit.includes("synthetic-owner"));
 });
@@ -316,7 +328,7 @@ test("CLI uses private state across SIGTERM/restart and closes its owned port", 
   }
 });
 
-function ingressList(host) {
+function ingressList(host, authorization) {
   return new Promise((resolve, reject) => {
     const q = httpRequest(
       {
@@ -328,6 +340,7 @@ function ingressList(host) {
           Host: "hab.example",
           "Content-Type": "application/json",
           Accept: "application/json, text/event-stream",
+          ...(authorization ? { Authorization: authorization } : {}),
         },
       },
       (r) => {
@@ -363,6 +376,8 @@ test("explicit disabled OAuth file starts an all-deny second ingress, separate f
   assert.equal(rejected.statusCode, 401);
   assert.match(rejected.headers["www-authenticate"], /resource_metadata=/);
   assert.equal((await list(host.url)).status, 401);
+  assert.equal((await ingressList(host, "Bearer aaa.bbb.ccc")).statusCode, 401);
+  assert.ok(authDeniedReasons(f).includes("oauth_disabled"));
 });
 test("missing, permissive, invalid or mismatched OAuth config never creates a fallback ingress", async (t) => {
   const f = await fixture(t),
@@ -411,10 +426,7 @@ test("configured discovery policy is explicit, bounded, and does not create regi
   ]) {
     f.config.registry.discovery = invalid;
     f.write("service.local.json", f.config);
-    assert.throws(
-      () => readHostConfig(f.configPath),
-      /host_start_rejected/,
-    );
+    assert.throws(() => readHostConfig(f.configPath), /host_start_rejected/);
   }
   assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
 });

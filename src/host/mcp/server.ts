@@ -1,6 +1,7 @@
 /** Optional SDK boundary. Importing/constructing starts no listener or external connection. */
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { publishedInputSchema } from "./published-schema.ts";
 import { ContractError } from "../../messaging/contract.ts";
 import { MessagingError } from "../../messaging/delivery-service.ts";
 import {
@@ -153,7 +154,7 @@ export function createDeliveryMcpServer(
       tool,
       {
         description: descriptions[tool],
-        inputSchema: binding?.schemas[tool] ?? schema,
+        inputSchema: publishedInputSchema(binding?.schemas[tool] ?? schema),
         ...(oauthScopes
           ? {
               _meta: {

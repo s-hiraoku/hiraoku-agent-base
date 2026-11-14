@@ -202,3 +202,55 @@ test("resource metadata owns only its path, declares exact scopes and rejects UR
       /invalid_oauth_resource/,
     );
 });
+test("each refusal names a fixed audit reason and never a claim value", async () => {
+  const f = await oauthFixture(),
+    start = f.start / 1000;
+  const reasonFor = async (jwt, patch = {}) => {
+    const reasons = [];
+    const ctx = await f.verify(jwt, {
+      deny: (reason) => reasons.push(reason),
+      ...patch,
+    });
+    assert.equal(ctx, null);
+    assert.equal(reasons.length, 1);
+    assert.match(reasons[0], /^[a-z][a-z0-9_]{0,47}$/);
+    return reasons[0];
+  };
+  const cases = [
+    [{ iss: "https://other.jp.auth0.com/" }, "issuer_mismatch"],
+    [{ aud: "https://hab.example/mcp" }, "audience_mismatch"],
+    // Auth0 issues an array audience when openid is requested alongside the API.
+    [{ aud: [resource, "https://x.example/userinfo"] }, "audience_not_single"],
+    [{ sub: "other" }, "subject_not_registered"],
+    [{ azp: "other", client_id: undefined }, "client_not_registered"],
+    [{ client_id: "different" }, "client_id_conflict"],
+    [{ azp: undefined, client_id: undefined }, "client_id_missing"],
+    [{ scope: "hub:submit" }, "scope_missing"],
+    [{ exp: start + 901 }, "token_lifetime_invalid"],
+    [{ nbf: start + 1 }, "token_not_yet_valid"],
+    [{ iat: start - 1 }, "token_before_approval"],
+    [{ iat: undefined }, "token_claims_invalid"],
+  ];
+  for (const [patch, reason] of cases)
+    assert.equal(await reasonFor(await f.token(patch)), reason, reason);
+  assert.equal(
+    await reasonFor(await f.token({}, { kid: "other" })),
+    "signing_key_unknown",
+  );
+  assert.equal(
+    await reasonFor(await f.token({}, { alg: "none" })),
+    "token_header_invalid",
+  );
+  const parts = (await f.token()).split(".");
+  parts[2] = Buffer.alloc(256).toString("base64url");
+  assert.equal(await reasonFor(parts.join(".")), "signature_invalid");
+  assert.equal(await reasonFor("not-a-jwt"), "token_malformed");
+  assert.equal(
+    await reasonFor(await f.token(), {
+      resource: "https://other.example/hab/mcp",
+    }),
+    "resource_mismatch",
+  );
+  f.setNow(f.start + 600000);
+  assert.equal(await reasonFor(await f.token()), "token_expired");
+});

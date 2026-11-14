@@ -62,6 +62,18 @@ ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます�
 `error`（コード）と、何を直すかを書いた`message`が返ります。`forbidden`は
 権限・認証・停止のときだけで、引数を変えても直りません。
 
+`tools/list`の入力スキーマは、多くのMCP clientが受け付ける形で公開します。
+ChatGPT系コネクタなどは、ルートが`properties`を持つ1つのobjectでないスキーマを受け付けず、
+JavaScript専用の正規表現や`$schema`も受け付けないことがあります。そのためHABは次のように公開します。
+
+- `hab_discover`は`action`のenumと各actionの引数を並べた1つのobjectで、
+  どのactionで使う引数かを説明に書きます。
+- patternの末尾の先読み`(?![\s\S])`は`$`に置き換えます。
+- `$schema`は出しません。
+
+呼び出しは、これまでどおり厳密なzodスキーマで検証します
+（`src/host/mcp/published-schema.ts`）。
+
 ## 配送catalog（`/mcp/delivery`）と送受信の順序
 
 agent SDKと受信サービスは`/mcp/delivery`の`hab_resolve`・`hab_submit`・`hab_status`・

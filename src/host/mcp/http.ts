@@ -26,14 +26,19 @@ export type McpHttpVerifier = (input: {
   authorization: string;
   resource: string;
   signal: AbortSignal;
+  /** Optional: name a fixed refusal reason (`/^[a-z][a-z0-9_]{0,47}$/`) for the audit log. */
+  deny?: (reason: string) => void;
 }) => unknown | Promise<unknown>;
+const DENY_REASON = /^[a-z][a-z0-9_]{0,47}$/;
 class HttpFailure extends Error {
   readonly status: number;
   readonly category: AuditCategory;
-  constructor(status: number, category: AuditCategory) {
+  readonly reason: string | undefined;
+  constructor(status: number, category: AuditCategory, reason?: string) {
     super("MCP HTTP rejected");
     this.status = status;
     this.category = category;
+    this.reason = reason;
   }
 }
 function origin(value: string): URL {
@@ -302,26 +307,36 @@ export class McpHttpGateway {
         if (u.href !== resource.href || request.method !== "POST")
           throw new HttpFailure(405, "resource_rejected");
         const authorization = request.headers.get("authorization");
+        if (!authorization)
+          throw new HttpFailure(401, "auth_denied", "bearer_missing");
         if (
-          !authorization ||
           authorization.length > 8192 ||
           !/^Bearer [A-Za-z0-9._~+\/-]+=*$/i.test(authorization)
         )
-          throw new HttpFailure(401, "auth_denied");
+          throw new HttpFailure(401, "auth_denied", "bearer_malformed");
         let context: unknown;
+        let denied: string | undefined;
         try {
           context = await this.#verify({
             authorization,
             resource: this.policy.resource_url,
             signal: abort.signal,
+            deny: (reason) => {
+              if (denied === undefined && DENY_REASON.test(reason))
+                denied = reason;
+            },
           });
         } catch {
           check();
-          throw new HttpFailure(401, "auth_denied");
+          throw new HttpFailure(401, "auth_denied", "verifier_failed");
         }
         check();
         if (context === null || context === undefined || context === false)
-          throw new HttpFailure(401, "auth_denied");
+          throw new HttpFailure(
+            401,
+            "auth_denied",
+            denied ?? "credential_rejected",
+          );
         if (
           !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
             request.headers.get("content-type") ?? "",
@@ -489,7 +504,7 @@ export class McpHttpGateway {
                 )
               : new HttpFailure(503, "transport_error");
         try {
-          await record(failure.category);
+          await record(failure.category, failure.reason);
         } catch {
           return empty(503);
         }
