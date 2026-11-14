@@ -15,6 +15,7 @@ import {
   ReceiptNotifier,
   SQLiteNotices,
   hermesDesktopPage,
+  submissionId,
 } from "../src/agent-notify/index.ts";
 import { main } from "../scripts/hab-notify.ts";
 
@@ -267,7 +268,7 @@ test("対応する runs the configured handoff once and maps its answer", async 
   assert.deepEqual(request, {
     session_id: binding.session_id,
     text: "prompt m1",
-    submission_id: "hab-agent-a-m1",
+    submission_id: submissionId({ sender_id: "agent-a", message_id: "m1" }),
   });
   assert.equal(
     await screenWith("refused").handoff(message("m2")),
@@ -305,4 +306,23 @@ test("対応する runs the configured handoff once and maps its answer", async 
     state: "unknown",
   });
   assert.equal(readFileSync(seen, "utf8").trim().split("\n").length, 5);
+});
+
+test("submission IDs never collide across sender/message splits", () => {
+  const a = submissionId({ sender_id: "agent-a", message_id: "b-c" });
+  const b = submissionId({ sender_id: "agent-a-b", message_id: "c" });
+  assert.notEqual(a, b);
+  assert.match(a, /^hab-[0-9a-f]{32}$/);
+});
+
+test("a handoff command that exits without reading a large prompt is a failure, not a crash", async (t) => {
+  const { dir, path } = setup(t);
+  const screen = new HermesDesktopScreen(path, binding, {
+    handoff: { command: [process.execPath, "-e", "process.exit(0)"], cwd: dir },
+  });
+  await assert.rejects(
+    screen.handoff(
+      message("m1", { handoff_prompt: "x".repeat(4 * 1024 * 1024) }),
+    ),
+  );
 });

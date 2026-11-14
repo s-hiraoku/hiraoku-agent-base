@@ -18,6 +18,7 @@
  * returns `unsupported`. It never falls back to another session or a CLI.
  */
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import type {
   AgentScreen,
@@ -74,6 +75,8 @@ function runHandoff(
       if (out.length > HANDOFF_OUTPUT_BYTES) child.kill();
     });
     child.on("error", fail);
+    // A command that exits before reading its input makes the write fail (EPIPE).
+    child.stdin.on("error", fail);
     child.on("close", (code) => {
       try {
         if (code !== 0) throw new Error("handoff_failed");
@@ -85,6 +88,20 @@ function runHandoff(
     child.stdin.end(input);
   });
 }
+
+/**
+ * Names this one decision, so the owner can tell a repeat apart: a hash of the full
+ * (sender_id, message_id) pair, since joining the two with a separator could collide.
+ */
+export const submissionId = (message: {
+  sender_id: string;
+  message_id: string;
+}) =>
+  "hab-" +
+  createHash("sha256")
+    .update(JSON.stringify([message.sender_id, message.message_id]))
+    .digest("hex")
+    .slice(0, 32);
 
 export const hermesDesktopTarget = (binding: HermesDesktopBinding) =>
   `hermes-desktop:${binding.profile}:${binding.session_id}`;
@@ -139,11 +156,7 @@ export class HermesDesktopScreen implements AgentScreen {
       JSON.stringify({
         session_id: this.#sessionId,
         text: message.handoff_prompt,
-        // Names this one decision, so the owner can tell a repeat apart.
-        submission_id: `hab-${message.sender_id}-${message.message_id}`.slice(
-          0,
-          2048,
-        ),
+        submission_id: submissionId(message),
       }),
     )) as { result?: unknown };
     if (answer?.result === "queued") return "queued";
