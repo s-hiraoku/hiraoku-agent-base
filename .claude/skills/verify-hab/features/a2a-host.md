@@ -18,7 +18,7 @@ With an `a2a` config section, the shipped host opens a separate loopback A2A lis
 
 - Operator: merge `config/host-a2a.example.json` into the service config, then run `npm run hab:host -- --config …`. The ready line includes `a2a_url`. Bind each A2A caller's credential (audience `http://127.0.0.1:<a2a port>/a2a`) with `hab:admin connect`.
 - A2A client: the official A2A client at `http://127.0.0.1:<a2a port>` with its bearer.
-- Recipient agent: its usual MCP client at `/mcp`. It replies to the host address.
+- Recipient agent: its usual MCP client. Poll, ACK, and `hab_submit` replies use `POST /mcp/delivery` (as `mcp.sh` already routes them). The agent catalog at `/mcp` does not carry those tools.
 
 ## Driving it with verify-hab
 

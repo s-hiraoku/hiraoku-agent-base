@@ -9,7 +9,8 @@
   "scripts": {
     "demo:hab-enrollment": "node scripts/hab-enrollment-demo.ts",
     "test:hab-integration": "node --test test/hab-enrollment-delivery.test.js",
-    "test": "npm run test:tools && node --test test/*.test.js",
+    "check:toolchain": "node scripts/check-toolchain.mjs",
+    "test": "npm run check:toolchain && npm run test:tools && node --test test/*.test.js",
     "check": "npm run typecheck",
     "lint": "eslint src test scripts/*.ts scripts/lib/*.ts scripts/*.mjs scripts/lib/*.mjs docs/diagrams/*.ts docs/diagrams/*.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.diagrams.json",
@@ -37,5 +38,5 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.0"
   },
-  "packageManager": "npm@11.21.2"
+  "packageManager": "npm@11.20.0"
 }

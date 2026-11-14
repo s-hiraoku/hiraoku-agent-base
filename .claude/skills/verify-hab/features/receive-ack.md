@@ -9,9 +9,9 @@ A recipient polls for at most one message at a time; the host leases it for 30 s
 - `recv-poll` returns `{delivery: {message, generation, lease_token, lease_until}}` for the recipient.
 - `recv-empty` returns `{delivery: null}` when nothing is deliverable (including while the only message is leased).
 - `recv-ack` acknowledges with the exact returned lease; the response and the sender's `hab_status` show `acked`.
-- `recv-ack-replay` repeating the same ack request returns the same receipt; a new `request_id` for the same lease is `invalid_ack`.
+- `recv-ack-replay` repeating the same ack request returns the same receipt. After that ack has consumed the lease, a different `request_id` with the old lease fields is `invalid_ack`. A different `request_id` while the lease is still open would ack successfully; a same `request_id` with other fields changed is `ack_idempotency_conflict`.
 - `recv-ack-refused` a wrong `lease_token` or another agent acking is `invalid_ack`.
-- `recv-redeliver` after `lease_until` passes, the next poll returns the same message with `generation` + 1.
+- `recv-redeliver` after `lease_until` (plus the stack's short `retry_base_ms` backoff) the next poll returns the same message with `generation` + 1. The recipe's ≈31 s wait clears that window on the verify stack.
 
 ## How to get to it (user POV)
 
@@ -43,4 +43,4 @@ Preconditions:
 - `hab_poll` hands out the oldest deliverable message across senders; leftovers from an earlier recipe change what you get. Use a fresh run dir per recipe.
 - The lease is 30 s. An ack built from a poll older than that may be refused; re-poll.
 - A message is pollable as soon as `hab_submit` returns `pending`; admission and the body commit in one SQLite transaction.
-- `inspect.mjs` prints an `ExperimentalWarning` for `node:sqlite` on stderr; it is not a failure.
+- On Node 22, `inspect.mjs` may print an `ExperimentalWarning` for `node:sqlite` on stderr; it is not a failure. Node ≥ 26 (required by this skill) stays silent.
