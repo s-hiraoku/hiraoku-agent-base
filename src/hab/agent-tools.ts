@@ -30,7 +30,7 @@ export interface HabAgentService {
   ): ReceivedMessage & { from: string | null };
   inbox(
     context: unknown,
-    options: { limit: number; include_read: boolean },
+    options: { limit: number; include_read: boolean; message_id?: string },
   ): (InboxMessage & { from: string | null })[];
   statusWithAddress(
     context: unknown,
@@ -78,6 +78,12 @@ export const habAgentSchemas = Object.freeze({
       .boolean()
       .describe(
         "Also return messages you already read in the last 7 days, after the new ones. Default false.",
+      )
+      .optional(),
+    message_id: z
+      .string()
+      .describe(
+        "Optional. Read only this message again (for example one you chose to answer later); it works for 7 days after reading.",
       )
       .optional(),
   }),
@@ -256,13 +262,20 @@ export function runHabAgentTool(
       };
     }
     case "hab_inbox": {
-      const { limit = 10, include_read = false } = input as z.infer<
-        typeof habAgentSchemas.hab_inbox
-      >;
+      const {
+        limit = 10,
+        include_read = false,
+        message_id,
+      } = input as z.infer<typeof habAgentSchemas.hab_inbox>;
       if (!Number.isInteger(limit) || limit < 1 || limit > 50)
         throw invalid("limit", { min: 1, max: 50 });
+      if (message_id !== undefined) checkId(message_id, "message_id");
       const messages = service
-        .inbox(context, { limit, include_read })
+        .inbox(context, {
+          limit,
+          include_read,
+          ...(message_id !== undefined ? { message_id } : {}),
+        })
         .map((message) => ({
           message_id: message.message_id,
           from: message.from,
@@ -289,9 +302,11 @@ export function runHabAgentTool(
         messages,
         explanation: messages.length
           ? "Answer a message with hab_reply and its message_id. These messages are now marked read."
-          : include_read
-            ? "No messages in the last 7 days."
-            : "No new messages. Use include_read to see messages you already read.",
+          : message_id !== undefined
+            ? "No such message within 7 days of reading it."
+            : include_read
+              ? "No messages in the last 7 days."
+              : "No new messages. Use include_read to see messages you already read.",
       };
     }
     case "hab_status": {

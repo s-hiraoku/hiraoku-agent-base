@@ -323,7 +323,7 @@ test("each inbox message carries a notice with sender, kind, deadline, framed bo
   assert.deepEqual(lines.slice(close + 2), [
     "どうしますか？",
     `1. 返信する：hab_reply に message_id "${sent.message_id}" と返信の本文を渡す`,
-    "2. あとで：何もしない（hab_inbox の include_read で 7 日間読み直せます）",
+    `2. あとで：何もしない（hab_inbox に message_id "${sent.message_id}" を渡すと 7 日間読み直せます）`,
     "3. 返信しない",
   ]);
 });

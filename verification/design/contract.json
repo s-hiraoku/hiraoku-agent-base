@@ -184,7 +184,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/agent-tools.md",
-      "sha256": "559b2471ac88ef665f73110343abbbe21a241fa4c1b862e3483b871c9abe34b4",
+      "sha256": "c3ee5470e3e01ad345f5c9c46431363d4a32166f1ea7026839625b2655861e2d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the five delivery tools for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and choices; reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only.",
@@ -373,7 +373,7 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "357e02d7daa27c37c98a0da26ffb1b1c256f9e5b730c24306eca810e2f259935",
+      "sha256": "b27aef91026b02c25fa521f7461dee13cdb991454f3d2b0d81373c014fbeba6f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
@@ -468,7 +468,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "6bc58a478b246d6c03da8f4b3dd9a842063a62dc99d752964f841fab8c8f6938",
+      "sha256": "17463edcde114b522e1600c26665a69b38020aa0d5e897d78a4138faeab5cf7f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery."
@@ -1614,7 +1614,7 @@
           "path": "docs/hab-decisions.md",
           "start": 84,
           "end": 85,
-          "excerpt_sha256": "6fd38ba78ad45791061085f64a239e18a40a4abf9b0f8724049ae8ad5a326ead"
+          "excerpt_sha256": "870054c633e02cbe9a73655caf3fb854ddb7e7bc811e522643333b426a1b08b9"
         }
       ]
     },
@@ -2670,7 +2670,7 @@
           "path": "docs/hab-decisions.md",
           "start": 84,
           "end": 85,
-          "excerpt_sha256": "6fd38ba78ad45791061085f64a239e18a40a4abf9b0f8724049ae8ad5a326ead"
+          "excerpt_sha256": "870054c633e02cbe9a73655caf3fb854ddb7e7bc811e522643333b426a1b08b9"
         }
       ]
     },

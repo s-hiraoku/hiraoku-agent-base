@@ -452,7 +452,7 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "f4e585b4e3d641cc7ba778b0ba1956de8be91ee5e0c3564dbf7c485c915f5a53",
+        "sha256": "0f51fb61c023cfa2431474b7f660240b5907a7913da842dc7764acef86f5ff7e",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
@@ -2509,13 +2509,13 @@
     "supplemental": [
       {
         "path": "src/delivery/sqlite-delivery.ts",
-        "sha256": "ed37fad0beeb5d3a1ec175c63f3e1bbf263dd4b93386cc5114a377949d2e8e18",
+        "sha256": "ae82c77267dc646545f023e167da603e66e2bac4c90550a1b523c80b38da7223",
         "review": "reviewed",
-        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/sqlite-delivery.test.js",
-        "sha256": "9d7607a1f4d7997d85f2103134e658cb11a61b98b26cbbbf4bbf235b99df3eeb",
+        "sha256": "333cf56c0964804a5378dee1c91099a51e624cfa39014338a91ce00adbcf7e74",
         "review": "reviewed",
         "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
@@ -2533,9 +2533,9 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "f4e585b4e3d641cc7ba778b0ba1956de8be91ee5e0c3564dbf7c485c915f5a53",
+        "sha256": "0f51fb61c023cfa2431474b7f660240b5907a7913da842dc7764acef86f5ff7e",
         "review": "reviewed",
-        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/host/start.ts",

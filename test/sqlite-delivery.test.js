@@ -469,7 +469,8 @@ test("inbox read marks messages read once, keeps them re-readable and releases t
       [second.message_id, false],
     ].sort(),
   );
-  assert.equal(f.row(first.message_id).body_bytes, 0);
+  // A kept body stays charged to the byte quotas until it is released.
+  assert.ok(f.row(first.message_id).body_bytes > 0);
   f.raw
     .prepare("UPDATE delivery_messages SET acked_at=? WHERE message_id=?")
     .run(Date.now() - READ_BODY_RETENTION_MS - 1, first.message_id);
@@ -479,7 +480,10 @@ test("inbox read marks messages read once, keeps them re-readable and releases t
       .map((m) => m.message_id),
     [second.message_id],
   );
-  assert.equal(f.row(first.message_id).body, null);
+  assert.deepEqual(
+    [f.row(first.message_id).body, f.row(first.message_id).body_bytes],
+    [null, 0],
+  );
   assert.deepEqual(f.audit(first.message_id), ["accepted", "acked"]);
 });
 
@@ -549,4 +553,74 @@ test("received returns reply metadata only for the caller's own received message
     code: "reply_target_not_found",
     reason: "reply_target_ambiguous",
   });
+});
+
+test("inbox reaches deliverable messages behind more denied ones than the poll scan limit", async (t) => {
+  const f = await fixture(t, {
+    queue: { poll_scan_limit: 1 },
+    deny: (context, operation, peer) => operation === "poll" && peer === "c",
+  });
+  const blocked = [next(), next()];
+  for (const input of blocked)
+    f.service.submit("c", { ...input, thread_id: "thread-cb" });
+  const allowed = next();
+  f.service.submit("a", allowed);
+  assert.deepEqual(
+    f.service.inbox("b").map((m) => m.message_id),
+    [allowed.message_id],
+  );
+});
+
+test("inbox with a message_id reads that one message again, beyond the newest page", async (t) => {
+  const f = await fixture(t);
+  const older = next();
+  const newer = next();
+  f.service.submit("a", older);
+  f.service.submit("a", newer);
+  f.service.inbox("b");
+  f.raw.exec("UPDATE delivery_messages SET acked_at=acked_at-10");
+  f.raw
+    .prepare(
+      "UPDATE delivery_messages SET acked_at=acked_at-5 WHERE message_id=?",
+    )
+    .run(older.message_id);
+  assert.deepEqual(
+    f.service
+      .inbox("b", { limit: 1, include_read: true })
+      .map((m) => m.message_id),
+    [newer.message_id],
+  );
+  assert.deepEqual(
+    f.service
+      .inbox("b", {
+        limit: 1,
+        include_read: false,
+        message_id: older.message_id,
+      })
+      .map((m) => [m.message_id, m.new]),
+    [[older.message_id, false]],
+  );
+  // A still-unread message asked for by ID is read (and marked read) at once.
+  const unread = next();
+  f.service.submit("a", unread);
+  assert.deepEqual(
+    f.service
+      .inbox("b", {
+        limit: 10,
+        include_read: false,
+        message_id: unread.message_id,
+      })
+      .map((m) => [m.message_id, m.new]),
+    [[unread.message_id, true]],
+  );
+  assert.deepEqual(f.service.inbox("b"), []);
+  assert.throws(
+    () =>
+      f.service.inbox("b", {
+        limit: 1,
+        include_read: false,
+        message_id: "bad id",
+      }),
+    { code: "invalid_request", details: { field: "message_id" } },
+  );
 });

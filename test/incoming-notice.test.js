@@ -26,7 +26,7 @@ test("the incoming notice names the sender, kind and deadline and frames the bod
       "",
       "どうしますか？",
       '1. 返信する：hab_reply に message_id "m-1" と返信の本文を渡す',
-      "2. あとで：何もしない（hab_inbox の include_read で 7 日間読み直せます）",
+      '2. あとで：何もしない（hab_inbox に message_id "m-1" を渡すと 7 日間読み直せます）',
       "3. 返信しない",
     ].join("\n"),
   );

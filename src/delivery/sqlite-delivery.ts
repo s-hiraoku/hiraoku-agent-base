@@ -319,7 +319,7 @@ export class SqliteDelivery {
   #refresh(now: number) {
     this.#db
       .prepare(
-        "UPDATE delivery_messages SET body=NULL WHERE state='acked' AND body IS NOT NULL AND acked_at<=?",
+        "UPDATE delivery_messages SET body=NULL,body_bytes=0 WHERE state='acked' AND body IS NOT NULL AND acked_at<=?",
       )
       .run(now - READ_BODY_RETENTION_MS);
     const expired = this.#db
@@ -665,7 +665,7 @@ export class SqliteDelivery {
   readInboxWithAuthorization(
     context: unknown,
     authorization: Authorization,
-    options: { limit: number; include_read: boolean },
+    options: { limit: number; include_read: boolean; message_id?: string },
   ): InboxMessage[] {
     if (
       !Number.isInteger(options.limit) ||
@@ -674,6 +674,10 @@ export class SqliteDelivery {
     )
       throw new MessagingError("invalid_request", {
         details: { field: "limit", min: 1, max: 50 },
+      });
+    if (options.message_id !== undefined && !id(options.message_id))
+      throw new MessagingError("invalid_request", {
+        details: { field: "message_id" },
       });
     const recipient = this.#identity(context, "poll", authorization);
     return this.#tx(() => {
@@ -704,11 +708,14 @@ export class SqliteDelivery {
           throw error;
         }
       };
+      // No scan limit: pending rows per recipient are bounded by
+      // max_pending_per_recipient, so denied senders cannot hide later messages.
+      const only = options.message_id;
       const unread = this.#db
         .prepare(
-          "SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending' ORDER BY accepted_at,sender_id,message_id LIMIT ?",
+          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${only ? " AND message_id=?" : ""} ORDER BY accepted_at,sender_id,message_id`,
         )
-        .all(recipient, this.#options.poll_scan_limit) as unknown as Row[];
+        .all(recipient, ...(only ? [only] : [])) as unknown as Row[];
       for (const row of unread) {
         if (out.length >= options.limit) break;
         if (!allowed(row)) continue;
@@ -716,7 +723,8 @@ export class SqliteDelivery {
         const requestId = `inbox-${randomUUID()}`;
         this.#db
           .prepare(
-            "UPDATE delivery_messages SET state='acked',body_bytes=0,token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=? AND state='pending'",
+            // The kept body stays charged to the byte quotas until #refresh releases it.
+            "UPDATE delivery_messages SET state='acked',token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=? AND state='pending'",
           )
           .run(
             requestId,
@@ -731,18 +739,19 @@ export class SqliteDelivery {
         this.#audit(row.sender_id, row.message_id, now, "acked");
         out.push(this.#inboxMessage(row, message, now, true));
       }
-      if (options.include_read && out.length < options.limit) {
+      if ((options.include_read || only) && out.length < options.limit) {
         const read = this.#db
           .prepare(
-            "SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<? ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id LIMIT ?",
+            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${only ? " AND message_id=?" : ""} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
           )
           .all(
             recipient,
             now - READ_BODY_RETENTION_MS,
             now,
-            options.limit - out.length,
+            ...(only ? [only] : []),
           ) as unknown as Row[];
         for (const row of read) {
+          if (out.length >= options.limit) break;
           if (!allowed(row)) continue;
           out.push(
             this.#inboxMessage(row, this.#stored(row), row.acked_at!, false),

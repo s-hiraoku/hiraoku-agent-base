@@ -26,6 +26,7 @@ Preconditions:
 - **Send.** `SENT=$($S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot.hab","text":"please check the build"}' | sed 1d | jq -c .result.structuredContent)`; `ID=$(jq -r .message_id <<<"$SENT")`. `state: "pending"`, `expires_at` 7 days after `accepted_at`.
 - **Read.** `$S/mcp.sh "$RUN" b hab_inbox '{}'`: one message, `from: "verify-a@grok-bot.hab"`, `new: true`. Run it again: `messages: []`. Then `$S/mcp.sh "$RUN" b hab_inbox '{"include_read":true}'`: the same message with `new: false` (if the read happened in the same millisecond it is not listed; call again).
 - **Notice.** `$S/mcp.sh "$RUN" b hab_inbox '{"include_read":true}' | sed 1d | jq -r '.result.structuredContent.messages[0].notice'` prints the notice; the tag on the two frame lines matches.
+- **Read one again.** `$S/mcp.sh "$RUN" b hab_inbox "{\"message_id\":\"$ID\"}"` returns that message with `new: false`.
 - **Status.** `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`: `state: "acked"`, `to: "verify-b@dot.hab"`.
 - **Reply.** `$S/mcp.sh "$RUN" b hab_reply "{\"message_id\":\"$ID\",\"text\":\"green\"}"`, then `$S/mcp.sh "$RUN" a hab_inbox '{}'`: `kind: "answer"`, `from: "verify-b@dot.hab"`, `in_reply_to: "$ID"`, same `thread_id`.
 - **Errors.** `$S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot","text":"x"}'`, `'{"to":"nobody@dot.hab","text":"x"}'`, `'{"to":"verify-b@dot.hab","text":"x","kind":"exec"}'`, and `$S/mcp.sh "$RUN" a hab_reply '{"message_id":"unknown","text":"x"}'`. Each is HTTP 200 with `"isError":true` and the code listed under `agent-errors`.

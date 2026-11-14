@@ -60,7 +60,10 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     );
   }
   /** Reads the caller's host inbox; unread messages become read (ACKed). Runs under `poll`. */
-  inbox(context: unknown, options: { limit: number; include_read: boolean }) {
+  inbox(
+    context: unknown,
+    options: { limit: number; include_read: boolean; message_id?: string },
+  ) {
     return this.#run(context, "poll", (authorization) => {
       const messages = this.#backend.readInboxWithAuthorization(
         context,

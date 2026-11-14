@@ -50,7 +50,7 @@ ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます�
 | ツール | 引数 | すること | 必要な権限 |
 | --- | --- | --- | --- |
 | `hab_send` | `to`（`bot@agent.hab`）、`text`、任意で`kind`・`thread_id` | 送る。7日以内に読まれなければ期限切れ | `resolve`・`submit` |
-| `hab_inbox` | 任意で`limit`（1〜50）・`include_read` | 未読を返して既読にする。既読は7日読み直せる | `poll` |
+| `hab_inbox` | 任意で`limit`（1〜50）・`include_read`・`message_id` | 未読を返して既読にする。既読は7日読み直せる（`message_id`でその1通） | `poll` |
 | `hab_reply` | `message_id`（`hab_inbox`の値）、`text` | 送信者へ同じthreadで返す | `submit` |
 | `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れと説明を返す | `status` |
 
