@@ -110,6 +110,8 @@ ChatGPT系コネクタは`openid`を要求するので、Auth0は`aud`を
 設定の無効化・接続削除・変更・期限切れは、認証済みopaque contextの操作前再検証でも
 拒否します。config変更中の署名検証も旧contextを発行しません。tokenを発行・保存・
 refreshするコードはありません。元JWT・header・claims・本文を監査ログへ書きません。
+監査ログには、拒否の理由コード（`auth_denied`の`reason`）と、認証に通った接続の
+登録済み接続ID（`authenticated`の`connection`）だけを残します。
 
 ## 親側プラグインの準備
 

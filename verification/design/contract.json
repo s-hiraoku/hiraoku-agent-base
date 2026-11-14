@@ -160,7 +160,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "1b1e02752f74013611773c49ab5c0b31690e8272e668ebee76984c815f4c9e89",
+      "sha256": "d3b6675f3cdc2ab534ed8350d9f1792517d8f027c66fe842dcb6a4fe6e35027e",
       "role": "normative",
       "review": "reviewed",
       "summary": "Existing HAB-specific verification procedure: actual Relay MCP HTTP over the SQLite delivery store (delivery.sqlite) with no broker process, synthetic enrolled identities, terminal enrollment, owned run directory, evidence capture and pid-checked cleanup.",
@@ -192,7 +192,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/access-control.md",
-      "sha256": "38c053b90ca738035fe4d3d34717f21a68d9bbfe02b9f274a12835054d7dd0a3",
+      "sha256": "3a6184a2c412e70d6efd5bf6ff75dc6bd43449b46482b5a4e50726332e21377c",
       "role": "normative",
       "review": "reviewed",
       "summary": "Wire recipe for absent/unknown bearer refusal, exactly the four agent tools at /mcp and the five delivery tools at /mcp/delivery for a known synthetic identity (ADR-020), no mutation after denied calls and sender-scoped receipt status; explicitly not production Auth0 binding.",
@@ -468,7 +468,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "640e3ae1d38ca840c1ac70d89b3204075298da083b7ab0ecd66b5c0f74020d57",
+      "sha256": "cf707f7ae7caa7bbdbf6918f81d994e4cb448816237a01e25aaf0a057204fa70",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery."
@@ -828,7 +828,7 @@
     },
     {
       "path": "docs/operations/oauth-ingress.md",
-      "sha256": "271be9227a3c25142d3fb2a4dc44d022ae22eb88b38b4e280080555d96ebddd5",
+      "sha256": "3917b5451c0bf4db406aea0a276235946d32b6f74155a1da97d3f1380e0fbac8",
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional product-independent same-owner/Registry/queue OAuth ingress exposes common five operations only. Uses explicit private pinned RSA configuration and canonical resource metadata, exact verified subject/client scopes and immutable context rechecks, no token storage/refresh. Recognizes group-sharing and explicit persistent v2; native trial save/reread/ACK sequence is narrow single-consumer evidence. Its routine end-of-trial revocation is v1 trial scope, not persistent cleanup."
@@ -2356,8 +2356,8 @@
       "citations": [
         {
           "path": "docs/operations/oauth-ingress.md",
-          "start": 127,
-          "end": 142,
+          "start": 129,
+          "end": 144,
           "excerpt_sha256": "fbc491bf85ce02e5e28dad29e153cdf29d3897352e050a735c7ded4f346e0908"
         }
       ]
@@ -3397,8 +3397,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 100,
-          "end": 100,
+          "start": 101,
+          "end": 101,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -3455,7 +3455,7 @@
           "path": ".claude/skills/verify-hab/SKILL.md",
           "start": 94,
           "end": 99,
-          "excerpt_sha256": "b369abdc2df99fffb5eb6dd94794ffe4ff48ae25c4be1446207e4addb65a8351"
+          "excerpt_sha256": "6736fb575824da0df6a0db388e5f8674e6b072eac6c1520d1bbb7d1f63555b4e"
         },
         {
           "path": ".claude/skills/verify-hab/features/README.md",
@@ -4293,8 +4293,8 @@
         },
         {
           "path": "docs/operations/oauth-ingress.md",
-          "start": 150,
-          "end": 154,
+          "start": 152,
+          "end": 156,
           "excerpt_sha256": "c9927fa931e7e33e24f860f79b8985067ff52ae6567276d172f63c6438a50ace"
         },
         {
@@ -5055,8 +5055,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 100,
-          "end": 100,
+          "start": 101,
+          "end": 101,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]

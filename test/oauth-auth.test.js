@@ -282,3 +282,21 @@ test("Auth0 list audiences: only the resource once, plus at most this issuer's u
   const ctx = await f.verify(await f.token({ aud: [resource, userinfo] }));
   assert.equal(f.auth.authority.individual(ctx).principal.audience, resource);
 });
+
+test("a verified token names its registered connection for the audit log, nothing else", async () => {
+  const f = await oauthFixture();
+  const accepted = [];
+  const ctx = await f.verify(await f.token(), {
+    accept: (connection) => accepted.push(connection),
+  });
+  assert.ok(ctx);
+  assert.deepEqual(accepted, [f.record.connection_id]);
+  const refused = [];
+  assert.equal(
+    await f.verify(await f.token({ sub: "other" }), {
+      accept: (connection) => refused.push(connection),
+    }),
+    null,
+  );
+  assert.deepEqual(refused, []);
+});

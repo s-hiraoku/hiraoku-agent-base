@@ -94,7 +94,7 @@ Feature-by-feature recipes: [`features/README.md`](features/README.md).
 - Where: `$RUN/evidence/` (numbered `NNN-*` in call order, plus `audit.jsonl`, `stack.log`).
 - Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real agent SDK client and SQLiteInbox (`src/agent-sdk`) with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
 - Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `hab_status` after receiver `hab_ack`) and `inspect.mjs` (read-only snapshot of the Registry and the delivery store: agents, bindings, messages, deliveries with state/generation, delivery audit events, ack receipt count; bodies omitted).
-- Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
+- Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `authenticated` with the connection ID, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
 - Mocks: only identity is synthetic (static bearer → synthetic verified connection), because Auth0/production identity binding is not built yet. Storage, HTTP, MCP framing, registry authorization and enrollment are the real code.
 - Report the feature/sub-feature ID and the evidence file names with every claim.
 

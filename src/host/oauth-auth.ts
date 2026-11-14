@@ -262,6 +262,7 @@ export class PinnedOAuthAuthority {
     resource,
     signal,
     deny = () => {},
+    accept = () => {},
   }) => {
     // Each refusal names a fixed reason for the audit log; never a claim value or the token.
     const refuse = (reason: OAuthDenyReason) => {
@@ -371,6 +372,7 @@ export class PinnedOAuthAuthority {
           connection_id: binding.connection_id,
         },
       });
+      accept(binding.connection_id);
       return context;
     } catch {
       return refuse(stage);
