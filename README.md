@@ -8,7 +8,7 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 
 この公開repoは、Hubのコードに加え、HAB全体の設計・判断・接続状況を管理します。個人のメール・予定・記憶・会話、秘密値、実際の接続設定や運用ログは管理しません。repoは同じ履歴を保持したまま[hiraoku-agent-base](https://github.com/s-hiraoku/hiraoku-agent-base)へ改名しました。
 
-以前の通信部分**HAB Relay**（独自のSQLite配送storeを持つ独立コンポーネント）は2026-11-07に廃止し、**エージェント間の相互運用はA2Aへ置き換えました**（[ADR-016](docs/hab-decisions.md)）。配送は一度NATS JetStreamへ移しましたが、2026-11-13にhost内の1つのSQLiteファイルだけで行う形へ戻しました（ADR-018、[配送store](docs/delivery-store.md)）。残したのはmessage契約（`src/messaging`）とエージェント向けMCPの5ツールです。MCP tool名`relay_*`は既存の接続設定との互換のため名前だけ残しています。起動・管理コマンドは`npm run hab:host`／`hab:admin`で、旧名の`relay:local`／`relay:admin`も同じコマンドの別名として使えます。各部分の置き場所は次のとおりです。
+以前の通信部分**HAB Relay**（独自のSQLite配送storeを持つ独立コンポーネント）は2026-11-07に廃止し、**エージェント間の相互運用はA2Aへ置き換えました**（[ADR-016](docs/hab-decisions.md)）。配送は一度NATS JetStreamへ移しましたが、2026-11-13にhost内の1つのSQLiteファイルだけで行う形へ戻しました（ADR-018、[配送store](docs/delivery-store.md)）。残したのはmessage契約（`src/messaging`）とエージェント向けMCPの5ツールです。MCP tool名`hab_*`は既存の接続設定との互換のため名前だけ残しています。起動・管理コマンドは`npm run hab:host`／`hab:admin`で、旧名の`hab:host`／`hab:admin`も同じコマンドの別名として使えます。各部分の置き場所は次のとおりです。
 
 | 部分 | 場所 |
 | --- | --- |
@@ -18,13 +18,13 @@ GUI・MCPで簡単にエージェント間通信を始めるための[HAB製品�
 | 配送store（SQLite、`delivery.sqlite`） | [`src/delivery`](docs/delivery-store.md) |
 | エージェント側の永続outbox／保存後ACKのinbox・MCP client | [`src/agent-sdk`](src/agent-sdk/README.md) |
 
-store-and-forward、個体認証、受信ACK、期限などの要件は[メッセージ配送の正式仕様](docs/hab-relay-spec.md)（旧HAB Relay仕様）で引き続き管理します。
+store-and-forward、個体認証、受信ACK、期限などの要件は[メッセージ配送の正式仕様](docs/hab-messaging-spec.md)（旧HAB Relay仕様）で引き続き管理します。
 
 **現在はテキスト・構造化データの配送基盤、MCP送受信・アドレス解決、人向けの登録フローを模擬認証と一時DB／loopback通信で検証済みです。本番のDots ↔ Hub ↔ Grok／Hermes接続は未完了です。** 本番の認証binding・管理入口、runtimeへの配線・運用整備などが残っています。
 
 2026-10-25、**実Codexと実Hermes（双方`gpt-6.1-sol`）の共通MCPによる固定文・返信・双方の保存後ACK**をMac内で確認しました。試験認証の失効・秘密と追加設定の除去・試験Relay停止も確認済みです。[有限試験の手順と限界](docs/history/finite-mcp-trial.md)に、hostの時刻・ID生成と保存の補助、使用CLI、操作承認、回帰検証を記録しています。実Dots接続と常駐・自律運用は別の未完了項目です。
 
-2026-10-25に、**認証は参加グループ単位、Botの切り分けはアドレス単位**とする[認証設計](docs/relay-auth-groups.md)を採用しました。1認証主体に複数アドレスを紐付けられる共通契約とし、グループ外の名義使用・受信箱操作を拒否します。Registryのグループ・所属・認可・停止・監査を合成主体で検証済みです。共通MCPの基本5操作で`as_address`による名義選択と、通常サービスの明示opt-inに対応しています。
+2026-10-25に、**認証は参加グループ単位、Botの切り分けはアドレス単位**とする[認証設計](docs/auth-groups.md)を採用しました。1認証主体に複数アドレスを紐付けられる共通契約とし、グループ外の名義使用・受信箱操作を拒否します。Registryのグループ・所属・認可・停止・監査を合成主体で検証済みです。共通MCPの基本5操作で`as_address`による名義選択と、通常サービスの明示opt-inに対応しています。
 
 [常用OAuthモード](docs/operations/persistent-mcp-auth.md)は、明示した参加承認期間と短命access tokenを分離します。更新された短命tokenを同じ接続へ対応させ、参加終了/取消後の認証を拒否します。接続設定は往復確認後も維持します。模擬issuerとloopbackで更新・失効・保存後ACK・再起動保持を検証しており、実Auth0/hostのrefresh、実Dots接続と常駐受信の受入れは未完了です。
 
@@ -52,7 +52,7 @@ flowchart LR
     AA["A2A client"]
   end
   subgraph HOST["HAB host (src/host)"]
-    MCP["MCP 5ツール<br/>relay_resolve / submit / status / poll / ack"]
+    MCP["MCP 5ツール<br/>hab_resolve / submit / status / poll / ack"]
     A2A["A2A入口（既定は無効）<br/>host所有のアドレスで送信"]
     REG["Registry (src/hab)<br/>アドレス → agent_id、認証group、権限"]
     DS["DeliveryService (src/messaging)"]
@@ -101,10 +101,10 @@ flowchart LR
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | message契約（`src/messaging`）・SQLite配送storeの受付／配送、重複防止、lease、ACK、状態照会 | **実装済み／模擬検証済み**。配送はhostのSQLite配送storeのみ（ADR-018。JetStream版の旧messageは移行しない）。本文はテキスト・構造化データ。添付partは廃止し契約検証で拒否。配送受領だけでTaskを実行しない |
 | エージェントSDKの送信outbox・受信inbox、本文引渡し、期限切れ・記録回収 | **実装済み／模擬検証済み**。再起動・応答消失・古いlease・削除途中失敗を試験。実製品内の永続保存は未確認 |
-| hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run hab:host`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`relay_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
+| hostのMCP 5ツール・HTTP入口 | **実装済み／ローカル実往復あり**。`npm run hab:host`で起動するhost（`src/host`、MCP serverは`src/host/mcp`）が`hab_resolve/submit/status/poll/ack`を公開し、任意で`hab_discover`を追加できる。任意のOAuth入口も同じ5ツールを提供。Bearer検証・認可・監査がなければ拒否し、入力／応答・期限・同時数を制限 |
 | A2A入口 | **実装済み／模擬検証済み・既定は無効**。設定の`a2a` sectionでloopback listenerを開き、host所有のアドレスから設定済みの受信者へTaskを送る。結果は受信者の永続返信による報告（`attestation: "recipient_reply"`）。本番配備は未実施 |
 | エージェントSDKのMCPクライアント | **実装済み／模擬検証済み**。`src/agent-sdk`に置く。永続outbox／inboxを固定HTTP接続先につなぎ、応答消失後の再起動・同じ要求での復旧を検証。通信層は自動再送せず、実個体の認証binding・導入は未確認 |
-| HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、再利用禁止、権限分離、有効化・失効・blockを実装（改名は明示opt-inのRegistry v3）。`relay_resolve`でアドレスを解決し、模擬3個体がHTTPで往復 |
+| HAB登録・固定アドレス・binding／認可の核 | **実装済み／模擬検証済み**。原子的予約、再利用禁止、権限分離、有効化・失効・blockを実装（改名は明示opt-inのRegistry v3）。`hab_resolve`でアドレスを解決し、模擬3個体がHTTPで往復 |
 | 人向け登録フロー | **実装済み／模擬検証済み**。承認済み製品の選択→アドレス提案・確定→検証済み個体接続のbinding→操作権限を選んで有効化。専用checkpointで中断／再起動に対応。本番管理認証・接続選択の配線は未実施 |
 | 登録から配送・停止・復旧までの統合 | **模擬17シナリオ検証済み**。登録済み3個体のnative HTTP往復、不在、応答消失、DB／listener再生成、失効・block・本文引渡しを一連で検証。[再現手順と限界](docs/history/hab-relay-integration.md)を参照。G1全体・実製品の受入れは未完了 |
 | 既存の別MCPとTailscale/Grok                                                                | **本人報告による実接続確認済み**。認証なし拒否も報告済み。HAB Hubへの接続やHubのOAuth成功を証明しない                            |
@@ -127,7 +127,7 @@ CIはlint・typecheck・TypeScript tool検査・root JavaScriptテスト全件�
 | 7・先行調査 | 実製品の接続能力確認 | Grok Bot・Dots・Hermes等の各個体について、識別、永続outbox／inbox、再送契機、poll／wake対応を確認 |
 | 8・承認後 | 本番接続・E2E | 接続先、主体・scope、送信データ・費用・停止条件を確定し、承認後に段階接続 |
 
-**ローカルMVPは[一つの有限コマンド](docs/local-mvp.md)で再現可能です。** 13段階で登録・実HTTP MCP・送受信・返信intentとACKの再開・execution_requestの非実行・停止を確認しました。次は実個体のG0能力・接続条件の確定と、全hostの整合backup／restore・本番運用の受入れです。[単一owner管理](docs/receiver/adapter-owner.md)を任意構成として追加し、13件で二重起動、通信中の解放拒否、native process終了後の再取得を検証しました。[質問返信の永続intent](docs/receiver/answer-intents.md)を独立部品として追加し、44シナリオでoutbox前の保存、再起動後の一覧・同ID引渡し、応答消失、本文解放、期限・30日GC、権限・並列producerを検証しました。[有限Adapter host](docs/receiver/adapter-host.md)で受信・明示回答・返信・送信を組み立て、永続停止・世代・遅い応答・timeout後のslot保持・同ID照合・native HTTP MCPを検証しました。[受信側の永続返信budgetとloop制御](docs/receiver/adapter-reply-budget.md)を独立部品として実装し、36シナリオで原要求・thread・個体rate、再起動・不明な送信・通知ループ拒否を検証しました。[公平writer受付とHTTP配線](docs/delivery/writer-admission.md)を任意構成として実装し、core20シナリオ・MCP26シナリオで個体別rate・巡回・失効・timeout後のslot保持を検証しました。[公平pollと永続scan位置](docs/delivery/relay-fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/delivery/relay-agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[登録・復旧17シナリオ](docs/history/hab-relay-integration.md)を模擬検証済みです。整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
+**ローカルMVPは[一つの有限コマンド](docs/local-mvp.md)で再現可能です。** 13段階で登録・実HTTP MCP・送受信・返信intentとACKの再開・execution_requestの非実行・停止を確認しました。次は実個体のG0能力・接続条件の確定と、全hostの整合backup／restore・本番運用の受入れです。[単一owner管理](docs/receiver/adapter-owner.md)を任意構成として追加し、13件で二重起動、通信中の解放拒否、native process終了後の再取得を検証しました。[質問返信の永続intent](docs/receiver/answer-intents.md)を独立部品として追加し、44シナリオでoutbox前の保存、再起動後の一覧・同ID引渡し、応答消失、本文解放、期限・30日GC、権限・並列producerを検証しました。[有限Adapter host](docs/receiver/adapter-host.md)で受信・明示回答・返信・送信を組み立て、永続停止・世代・遅い応答・timeout後のslot保持・同ID照合・native HTTP MCPを検証しました。[受信側の永続返信budgetとloop制御](docs/receiver/adapter-reply-budget.md)を独立部品として実装し、36シナリオで原要求・thread・個体rate、再起動・不明な送信・通知ループ拒否を検証しました。[公平writer受付とHTTP配線](docs/delivery/writer-admission.md)を任意構成として実装し、core20シナリオ・MCP26シナリオで個体別rate・巡回・失効・timeout後のslot保持を検証しました。[公平pollと永続scan位置](docs/delivery/fair-poll.md)を実装し、25シナリオで巡回・再起動・権限・lease・SQL rollbackを検証しました。[message個体別容量・最低予約枠](docs/delivery/agent-capacity.md)を実装し、15シナリオで保持record・bytes・同時受付を検証しました。[登録・復旧17シナリオ](docs/history/hab-relay-integration.md)を模擬検証済みです。整合backup、公平性、実製品での本番往復も残っています。新規credential発行・公開・実エージェント接続・自動常駐はこのREADMEを根拠に開始しません。
 
 汎用の非同期依頼、送信後の会話継続、受信側所有者の承認、結果相関と障害復旧は[追加設計](docs/history/generic-agent-async-design.md)にまとめています。
 
@@ -158,7 +158,7 @@ npm run typecheck
 npm test
 ```
 
-エージェントSDKと配送の模擬試験は`node --test test/relay-*.test.js`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
+エージェントSDKと配送の模擬試験は`npm run test:delivery-lab`で再現できます。fixtureは新規の一時DB・ダミーデータだけを使い、本番DB・既存Hermes設定・認証・cron・公開経路を変更しません。
 
 人向け登録フローは`npm run demo:hab-enrollment -- --simulate`で、中断→DB再起動→有効化を再現できます。対話操作は`--interactive`を指定します。どちらも新規の一時DB・模擬主体のみを使い、終了時に削除します。実Botを登録するコマンドではありません。実hostへの組込み条件と再開時の扱いは[登録フロー](src/hab/README.md#human-enrollment-workflow)を参照してください。
 
@@ -166,13 +166,13 @@ npm test
 
 ## 技術文書
 
-hostの起動関数と接続の承認条件は[ローカルhost](docs/operations/local-relay-host.md)を参照してください。loopback・全拒否設定での常駐起動と401/403拒否を確認済みです。実個体の認証・binding、Hermes/Dotsとの往復は未検証です。停止・再起動は[ユーザーLaunchAgent手順](docs/operations/local-relay-launchagent.md)にまとめています。
+hostの起動関数と接続の承認条件は[ローカルhost](docs/operations/host-composition.md)を参照してください。loopback・全拒否設定での常駐起動と401/403拒否を確認済みです。実個体の認証・binding、Hermes/Dotsとの往復は未検証です。停止・再起動は[ユーザーLaunchAgent手順](docs/operations/host-launchagent.md)にまとめています。
 
-承認後の非公開設定を明示して起動する共通CLIと、アドレス登録・接続・失効を行う管理CLI（`npm run hab:admin`）は[ローカルRelayサービス](docs/local-relay-service.md)を参照してください。コードの検証と実エージェント接続の結果は区別します。各エージェント自身のMCPクライアントによる[共通接続手順](docs/common-mcp-connection.md)では、個体認証、受信の起動、保存後のACK、実エージェント往復の完了条件を分けています。外部実行APIは必須ではありません。
+承認後の非公開設定を明示して起動する共通CLIと、アドレス登録・接続・失効を行う管理CLI（`npm run hab:admin`）は[ローカルhostサービス](docs/host-service.md)を参照してください。コードの検証と実エージェント接続の結果は区別します。各エージェント自身のMCPクライアントによる[共通接続手順](docs/common-mcp-connection.md)では、個体認証、受信の起動、保存後のACK、実エージェント往復の完了条件を分けています。外部実行APIは必須ではありません。
 
-OAuthを使う共通MCP公開入口は[接続手順](docs/operations/relay-oauth-ingress.md)を参照してください。任意の第2loopback入口とローカルMCPは同じRegistry・キューを使い、既定は全拒否です。公開経路・OAuth登録・実Dots往復は別途検証します。
+OAuthを使う共通MCP公開入口は[接続手順](docs/operations/oauth-ingress.md)を参照してください。任意の第2loopback入口とローカルMCPは同じRegistry・キューを使い、既定は全拒否です。公開経路・OAuth登録・実Dots往復は別途検証します。
 
-A2A入口は既定で無効です。サービス設定に[`a2a` section](config/relay-a2a.example.json)を加えると、hostは専用のloopback listenerを開き、host所有のA2A名義と永続mailboxを起動時に用意します。A2A Taskはその名義から設定済みの受信者へ送られ、呼出し元の権限はRegistryが毎回確認します。設定・認可・状態対応は[A2A host配線](docs/a2a/a2a-relay-preview.md#host-wiring-with-a-host-owned-identity)を参照してください。
+A2A入口は既定で無効です。サービス設定に[`a2a` section](config/host-a2a.example.json)を加えると、hostは専用のloopback listenerを開き、host所有のA2A名義と永続mailboxを起動時に用意します。A2A Taskはその名義から設定済みの受信者へ送られ、呼出し元の権限はRegistryが毎回確認します。設定・認可・状態対応は[A2A host配線](docs/a2a/a2a-host-preview.md#host-wiring-with-a-host-owned-identity)を参照してください。
 
 自己名義・認証group内の発行済みアドレス・割当・候補名の占有状況をMCPから照会する場合は、
 任意の[エージェント照会契約](docs/connections/mcp-agent-discovery.md)を明示的に有効化します。

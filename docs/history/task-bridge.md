@@ -1,6 +1,6 @@
 # Task bridge：明示引受け・Task link・永続返信
 
-[README](../../README.md) · [正式仕様](../hab-relay-spec.md) · [エージェントSDK](../../src/agent-sdk/README.md)
+[README](../../README.md) · [正式仕様](../hab-messaging-spec.md) · [エージェントSDK](../../src/agent-sdk/README.md)
 
 `src/task-bridge/` はRelay coreの外に置いた任意のintegrationです。配送受領、受信側の引受け、Task Engine受付、実行、terminal証拠を分離します。既定runtime・MCP catalog・HABの許可kindへ自動登録せず、worker・model・Hermesを起動しません。
 

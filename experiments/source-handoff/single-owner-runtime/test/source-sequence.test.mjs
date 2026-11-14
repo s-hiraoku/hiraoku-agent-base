@@ -24,7 +24,7 @@ test('source view claims exact journal ID despite old due row and preserves real
  const producer=new AnswerIntents(answers,inbox,raw,budget,f.stores.inbox.limits,(ctx,_op,source)=>ctx===context&&keys.some(k=>k.message_id===source.message_id)?{agent_id:f.options.policy.agentId,actor_id:f.options.policy.actorId}:undefined);
  const first=producer.prepare(context,a,{parts:[{type:'text',text:'first'}]});producer.enqueueOnce(context,a);await delay(5);
  const second=producer.prepare(context,b,{parts:[{type:'text',text:'second'}]});producer.enqueueOnce(context,b);
- const db=new DatabaseSync(f.stores.paths.actionOutbox,{readOnly:true});assert.equal(db.prepare("SELECT message_id FROM relay_outbox WHERE state='queued' ORDER BY next_retry_at,message_id").get().message_id,first.reply_id);db.close();
+ const db=new DatabaseSync(f.stores.paths.actionOutbox,{readOnly:true});assert.equal(db.prepare("SELECT message_id FROM outbox WHERE state='queued' ORDER BY next_retry_at,message_id").get().message_id,first.reply_id);db.close();
  let checks=0;const view=sourceBoundOutbox(raw,answers,b,()=>{checks++});assert.ok(view instanceof SQLiteOutbox);assert.equal(view.agentId,raw.agentId);
  assert.throws(()=>view.claim(first.reply_id),/source_outbox_wrong_reply/);
  const job=view.claim();assert.equal(job.message_id,second.reply_id);assert.equal(raw.get(first.reply_id).state,'queued');assert.equal(view.get(second.reply_id).state,'sending');assert.equal(view.retainedCounts(0).total,2);assert.ok(checks>0);
@@ -43,7 +43,7 @@ test('two explicit sources share all store paths, budget and claims; restart req
  const allPaths=JSON.stringify(f.stores.paths),first=await runApprovedSources({roots});assert.equal(first.state,'completed_finite_sequence',JSON.stringify(first));assert.equal(first.results.length,2);
  assert.equal(f.state.creates,2);assert.equal(f.state.submits,2);assert.equal(JSON.stringify(f.stores.paths),allPaths);
  const ownerInode=statSync(f.stores.paths.owner).ino;
- for(const [file,table] of [[f.stores.paths.budget,'reply_budget_reservations'],[f.stores.paths.claims,'source_launch_claims'],[f.stores.paths.answers,'answer_intents'],[f.stores.paths.actionOutbox,'relay_outbox']]){
+ for(const [file,table] of [[f.stores.paths.budget,'reply_budget_reservations'],[f.stores.paths.claims,'source_launch_claims'],[f.stores.paths.answers,'answer_intents'],[f.stores.paths.actionOutbox,'outbox']]){
   const db=new DatabaseSync(file,{readOnly:true});assert.equal(db.prepare('SELECT count(*) n FROM '+table).get().n,2);db.close();}
  const before=secondFactories,blocked=await runApprovedSources({roots});assert.equal(blocked.state,'prior_native_settlement_unverified');assert.equal(secondFactories,before);assert.equal(f.state.creates,2);
  let proofs=0;const recovered=await runApprovedSources({roots,checkPreviousNativeSettled({source,launchId}){

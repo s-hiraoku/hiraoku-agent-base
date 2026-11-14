@@ -99,7 +99,7 @@ export function createSqliteDelivery(
       )
         throw Error("volume_identity_mismatch");
     } catch {
-      throw new MessagingError("local_relay_extension_storage_unavailable");
+      throw new MessagingError("host_extension_storage_unavailable");
     }
     return undefined;
   };

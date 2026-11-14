@@ -16,7 +16,7 @@ and live model testing require their own concrete acceptance evidence.
 
 The trusted owner opens and migrates the existing inbox, dedicated outbox, reply
 budget, answer journal, control and owner stores, acquires the owner, and supplies
-the existing fixed Relay transport factory. These are the same options as
+the existing fixed delivery transport factory. These are the same options as
 `createSingleSourceHost`; an answer journal is required so a retry preserves the
 original answer envelope. The owner supplies two distinct already verified opaque
 contexts and the exact permitted source key. Neither context is a tool argument.

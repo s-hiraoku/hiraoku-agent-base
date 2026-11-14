@@ -1,4 +1,4 @@
-/** Transport-neutral Relay wire contract. No IO, identity lookup or task execution. */
+/** Transport-neutral HAB message wire contract. No IO, identity lookup or task execution. */
 export const CONTRACT_VERSION = 1 as const;
 export const DELIVERY_TTL_MS = 3_600_000;
 export const RECORD_RETENTION_MS = 30 * 86_400_000;

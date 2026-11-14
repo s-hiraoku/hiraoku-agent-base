@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import { RelayHttpGateway } from "../src/host/mcp/http.ts";
+import { McpHttpGateway } from "../src/host/mcp/http.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { executeRelayMcpOperation } from "../src/host/mcp/server.ts";
+import { executeDeliveryMcpOperation } from "../src/host/mcp/server.ts";
 import { createHabMcpServer } from "../src/hab/mcp.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import {
@@ -17,7 +17,7 @@ import {
   request,
   decode,
   tick,
-} from "./relay-http-fixtures.js";
+} from "./mcp-http-fixtures.js";
 
 function gateway(
   f,
@@ -60,7 +60,7 @@ function decorated(f, resolve) {
 async function call(g, args, patch = {}) {
   return decode(
     await g.fetch(
-      request("tools/call", { name: "relay_resolve", arguments: args }, patch),
+      request("tools/call", { name: "hab_resolve", arguments: args }, patch),
     ),
   );
 }
@@ -76,34 +76,34 @@ function rpc(id, value) {
   };
 }
 
-test("HAB opts into exactly five tools; standalone Relay remains four even with a HAB service", async (t) => {
+test("HAB opts into exactly five tools; the standalone delivery catalog remains four even with a HAB service", async (t) => {
   const f = await fixture(t),
     a = f.enroll("a");
   const hab = await decode(await gateway(f).fetch(request()));
   assert.deepEqual(hab.result.tools.map((v) => v.name).sort(), [
-    "relay_ack",
-    "relay_poll",
-    "relay_resolve",
-    "relay_status",
-    "relay_submit",
+    "hab_ack",
+    "hab_poll",
+    "hab_resolve",
+    "hab_status",
+    "hab_submit",
   ]);
-  const tool = hab.result.tools.find((v) => v.name === "relay_resolve");
+  const tool = hab.result.tools.find((v) => v.name === "hab_resolve");
   assert.equal(tool.inputSchema.additionalProperties, false);
   assert.deepEqual(tool.inputSchema.required, ["address"]);
   assert.equal(typeof tool.inputSchema.properties.address.pattern, "string");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.equal(tool.annotations.idempotentHint, true);
-  const relay = new RelayHttpGateway(f.hab, policy, f.audit, f.verifier);
-  const base = await decode(await relay.fetch(request()));
+  const plain = new McpHttpGateway(f.hab, policy, f.audit, f.verifier);
+  const base = await decode(await plain.fetch(request()));
   assert.deepEqual(base.result.tools.map((v) => v.name).sort(), [
-    "relay_ack",
-    "relay_poll",
-    "relay_status",
-    "relay_submit",
+    "hab_ack",
+    "hab_poll",
+    "hab_status",
+    "hab_submit",
   ]);
   await assert.rejects(
-    client(f, a, relay).resolve(a.address),
-    code("relay_transport_failed"),
+    client(f, a, plain).resolve(a.address),
+    code("transport_failed"),
   );
   const deliveryOnly = {
     submit: (context, input) => f.hab.submit(context, input),
@@ -117,7 +117,7 @@ test("HAB opts into exactly five tools; standalone Relay remains four even with 
   );
 });
 
-test("authenticated resolve returns only fixed recipient/address/version and changes no registry or Relay data", async (t) => {
+test("authenticated resolve returns only fixed recipient/address/version and changes no registry or delivery data", async (t) => {
   const f = await fixture(t),
     a = f.enroll("a"),
     b = f.enroll("b");
@@ -189,7 +189,7 @@ test("pure directory contract rejects foreign fields/accessors and preserves can
   ])
     assert.throws(
       () => parseHabResolution({ ...valid, ...patch }, valid.address),
-      code("relay_transport_failed"),
+      code("transport_failed"),
     );
 });
 
@@ -239,7 +239,7 @@ test("missing/throwing resolver, unverifiable context and absent HTTP verificati
       const body = await decode(
         await handler.fetch(
           request("tools/call", {
-            name: "relay_resolve",
+            name: "hab_resolve",
             arguments: { address: b.address },
           }),
         ),
@@ -254,7 +254,7 @@ test("missing/throwing resolver, unverifiable context and absent HTTP verificati
     (
       await missing.fetch(
         request("tools/call", {
-          name: "relay_resolve",
+          name: "hab_resolve",
           arguments: { address: b.address },
         }),
       )
@@ -387,19 +387,19 @@ test("unexpected directory failures and malformed results are redacted, never re
     );
     const body = await call(g, { address: b.address });
     assert.deepEqual(body.result.structuredContent, {
-      error: "relay_operation_failed",
+      error: "operation_failed",
     });
     assert.equal(JSON.stringify(body).includes("synthetic private"), false);
   }
   assert.equal(calls, 3);
   assert.equal(JSON.stringify(f.events).includes(b.address), false);
-  const rejected = await executeRelayMcpOperation(
+  const rejected = await executeDeliveryMcpOperation(
     () => f.contexts.a,
     undefined,
     () => Promise.reject(Error("synthetic private async failure")),
   );
   assert.deepEqual(rejected.structuredContent, {
-    error: "relay_operation_failed",
+    error: "operation_failed",
   });
 });
 
@@ -414,7 +414,7 @@ test("directory client validates before fetch and accepts bounded JSON/SSE on fi
       assert.equal(url, policy.resource_url);
       assert.equal(init.redirect, "error");
       assert.equal(init.credentials, "omit");
-      assert.equal(init.headers["Mcp-Name"], "relay_resolve");
+      assert.equal(init.headers["Mcp-Name"], "hab_resolve");
       const body = JSON.parse(init.body);
       assert.deepEqual(body.params.arguments, { address: b.address });
       const wire = rpc(body.id, {
@@ -472,7 +472,7 @@ test("directory client rejects changed addresses, versions, IDs and unknown fiel
         { headers: { "Content-Type": "application/json" } },
       );
     });
-    await assert.rejects(c.resolve(b.address), code("relay_transport_failed"));
+    await assert.rejects(c.resolve(b.address), code("transport_failed"));
     assert.equal(calls, 1);
   }
 });
@@ -499,7 +499,7 @@ test(
     assert.equal(calls, 0);
     await assert.rejects(
       client(f, a, gateway(f), { max_response_bytes: 10 }).resolve(b.address),
-      code("relay_transport_failed"),
+      code("transport_failed"),
     );
     const c = client(
       f,
@@ -523,8 +523,8 @@ test(
             );
         }),
     );
-    await assert.rejects(c.resolve(b.address), code("relay_transport_failed"));
-    await assert.rejects(c.poll(), code("relay_client_busy"));
+    await assert.rejects(c.resolve(b.address), code("transport_failed"));
+    await assert.rejects(c.poll(), code("client_busy"));
     release();
     await tick();
   },
@@ -565,7 +565,7 @@ test(
     );
     const pending = g.fetch(
       request("tools/call", {
-        name: "relay_resolve",
+        name: "hab_resolve",
         arguments: { address: b.address },
       }),
     );

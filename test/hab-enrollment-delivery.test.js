@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { journey } from "./hab-journey-fixtures.js";
 import { code, operations } from "./hab-registry-fixtures.js";
-import { decode, request } from "./relay-http-fixtures.js";
+import { decode, request } from "./mcp-http-fixtures.js";
 
 const config = { timeout: 15000 };
 function sender(f, name, transport = f.client(name)) {
@@ -43,7 +43,7 @@ test(
     let lost = false;
     const transport = f.client("b", async (url, init) => {
       const response = await globalThis.fetch(url, init);
-      if (init.headers["Mcp-Name"] === "relay_ack" && !lost) {
+      if (init.headers["Mcp-Name"] === "hab_ack" && !lost) {
         lost = true;
         await response.arrayBuffer();
         state(f, "b", "stopped", "stop-after-ack");
@@ -67,7 +67,7 @@ test(
       {
         ...f.raw("inbox-b.sqlite", (db) =>
           db
-            .prepare("SELECT state,reason,request FROM relay_receiver_acks")
+            .prepare("SELECT state,reason,request FROM receiver_acks")
             .get(),
         ),
       },
@@ -75,14 +75,14 @@ test(
     );
     assert.equal((await f.client("a").status(m.message_id)).state, "acked");
     state(f, "b", "active", "explicit-resume-after-ack");
-    const calls = f.net.tools.filter((tool) => tool === "relay_ack").length;
+    const calls = f.net.tools.filter((tool) => tool === "hab_ack").length;
     await restored.receiver.receiveOnce();
     assert.equal(
-      f.net.tools.filter((tool) => tool === "relay_ack").length,
+      f.net.tools.filter((tool) => tool === "hab_ack").length,
       calls,
     );
     assert.equal(restored.receiver.inbox().length, 1);
-    assert.equal(f.count("relay_messages"), 1);
+    assert.equal(f.count("messages"), 1);
   },
 );
 
@@ -95,7 +95,7 @@ test(
     let lost = false;
     const transport = f.client("a", async (url, init) => {
       const response = await globalThis.fetch(url, init);
-      if (init.headers["Mcp-Name"] === "relay_submit" && !lost) {
+      if (init.headers["Mcp-Name"] === "hab_submit" && !lost) {
         lost = true;
         await response.arrayBuffer();
         state(f, "a", "stopped", "stop-after-acceptance");
@@ -120,14 +120,14 @@ test(
       restored.sender.get(m.message_id).recipient_id,
       f.agents.b.agent_id,
     );
-    assert.equal(f.count("relay_messages"), 1);
+    assert.equal(f.count("messages"), 1);
     state(f, "a", "active", "explicit-resume-sender");
     await restored.sender.sendOnce();
     assert.equal(restored.sender.get(m.message_id).state, "quarantined");
     const { receiver: b } = receiver(f, "b");
     await b.receiveOnce();
     assert.deepEqual(b.inbox()[0].message, m);
-    assert.equal(f.count("relay_messages"), 1);
+    assert.equal(f.count("messages"), 1);
     assert.equal((await f.client("a").status(m.message_id)).state, "acked");
   },
 );
@@ -142,12 +142,12 @@ test(
     await f.client("a").submit(m);
     for (const [name, args] of [
       [
-        "relay_submit",
+        "hab_submit",
         { ...f.makeMessage("b"), sender_id: f.agents.c.agent_id },
       ],
-      ["relay_poll", { recipient_id: f.agents.b.agent_id }],
+      ["hab_poll", { recipient_id: f.agents.b.agent_id }],
       [
-        "relay_status",
+        "hab_status",
         { message_id: m.message_id, sender_id: f.agents.a.agent_id },
       ],
     ]) {
@@ -171,14 +171,14 @@ test(
       ),
       code("invalid_reference"),
     );
-    assert.equal(f.count("relay_messages"), 1);
+    assert.equal(f.count("messages"), 1);
     const delivery = await f.client("b").poll();
     await assert.rejects(
       f.client("c").ack(ack(delivery, "foreign-ack")),
       code("invalid_ack"),
     );
     await f.client("b").ack(ack(delivery, "right-ack"));
-    assert.equal(f.count("relay_ack_receipts"), 1);
+    assert.equal(f.count("ack_receipts"), 1);
   },
 );
 
@@ -199,7 +199,7 @@ test(
       code("forbidden"),
     );
     await assert.rejects(f.client("b").poll(), code("forbidden"));
-    assert.equal(f.count("relay_messages"), 0);
+    assert.equal(f.count("messages"), 0);
     await f.run("b");
     assert.deepEqual(
       Object.values(f.agents)
@@ -246,7 +246,7 @@ test(
       assert.equal(local.receipt_confirmed, true);
       assert.equal((await f.client(from).status(m.message_id)).state, "acked");
     }
-    assert.equal(f.count("relay_messages"), 6);
+    assert.equal(f.count("messages"), 6);
     assert.equal(f.count("hab_agents"), 3);
     assert.equal(f.count("hab_auth_group_bindings"), 3);
     assert.equal(
@@ -296,7 +296,7 @@ test(
 );
 
 test(
-  "journey: an offline receiver accumulates originals and receives them after registry, Relay and enrollment journal reopen",
+  "journey: an offline receiver accumulates originals and receives them after registry, delivery store and enrollment journal reopen",
   config,
   async (t) => {
     const f = await journey(t);
@@ -352,7 +352,7 @@ test(
     let lost = false;
     const transport = f.client("a", async (url, init) => {
       const response = await globalThis.fetch(url, init);
-      if (init.headers["Mcp-Name"] === "relay_submit" && !lost) {
+      if (init.headers["Mcp-Name"] === "hab_submit" && !lost) {
         lost = true;
         await response.arrayBuffer();
         await f.net.stop();
@@ -387,11 +387,11 @@ test(
       target.recipient_id,
     );
     assert.equal(
-      f.net.tools.filter((tool) => tool === "relay_resolve").length,
+      f.net.tools.filter((tool) => tool === "hab_resolve").length,
       1,
     );
-    assert.equal(f.count("relay_messages"), 1);
-    assert.equal(f.count("relay_deliveries"), 1);
+    assert.equal(f.count("messages"), 1);
+    assert.equal(f.count("deliveries"), 1);
     assert.equal(
       f.raw(
         "delivery.sqlite",
@@ -422,7 +422,7 @@ test(
     let lost = false;
     const cb = f.client("b", async (url, init) => {
       const response = await globalThis.fetch(url, init);
-      if (init.headers["Mcp-Name"] === "relay_ack" && !lost) {
+      if (init.headers["Mcp-Name"] === "hab_ack" && !lost) {
         lost = true;
         await response.arrayBuffer();
         throw Error("synthetic lost ACK response");
@@ -470,12 +470,12 @@ test(
       ),
       original,
     );
-    assert.equal(f.count("relay_ack_receipts"), 1);
+    assert.equal(f.count("ack_receipts"), 1);
     assert.equal(
       f.raw(
         "inbox-b.sqlite",
         (db) =>
-          db.prepare("SELECT attempts FROM relay_receiver_acks").get().attempts,
+          db.prepare("SELECT attempts FROM receiver_acks").get().attempts,
       ),
       2,
     );
@@ -501,9 +501,9 @@ test(
       f.client("b"),
     );
     await assert.rejects(broken.receiveOnce(), /synthetic local save failure/);
-    assert.equal(f.count("relay_ack_receipts"), 0);
+    assert.equal(f.count("ack_receipts"), 0);
     assert.equal(initial.receiver.inbox().length, 0);
-    assert.equal(f.net.tools.filter((tool) => tool === "relay_ack").length, 0);
+    assert.equal(f.net.tools.filter((tool) => tool === "hab_ack").length, 0);
     f.net.close(initial.store);
     await f.restart();
     f.expireLeases();
@@ -552,7 +552,7 @@ test(
       await f.client("b").ack(ack(fresh, "fresh-ack")),
       confirmed,
     );
-    assert.equal(f.count("relay_ack_receipts"), 1);
+    assert.equal(f.count("ack_receipts"), 1);
   },
 );
 
@@ -740,7 +740,7 @@ test(
     assert.equal(after.receipt_id, original.receipt_id);
     assert.equal(after.expires_at, m.expires_at);
     assert.equal(after.state, "acked");
-    assert.equal(f.count("relay_deliveries"), 1);
+    assert.equal(f.count("deliveries"), 1);
   },
 );
 
@@ -766,17 +766,17 @@ test(
     await b.receiveOnce();
     for (let i = 0; i < 3; i++) await b.receiveOnce();
     assert.deepEqual(b.inbox()[0].message.body, m.body);
-    assert.equal(f.count("relay_messages"), 1);
+    assert.equal(f.count("messages"), 1);
     assert.equal(f.count("hab_admin_requests"), before);
     const listed = await decode(
       await globalThis.fetch(request("tools/list", {}, { url: f.net.url })),
     );
     assert.deepEqual(listed.result.tools.map((tool) => tool.name).sort(), [
-      "relay_ack",
-      "relay_poll",
-      "relay_resolve",
-      "relay_status",
-      "relay_submit",
+      "hab_ack",
+      "hab_poll",
+      "hab_resolve",
+      "hab_status",
+      "hab_submit",
     ]);
     const attempted = await decode(
       await globalThis.fetch(
@@ -789,7 +789,7 @@ test(
     );
     assert.equal(Boolean(attempted.error || attempted.result?.isError), true);
     assert.equal(f.count("hab_agents"), 3);
-    // This checks Relay's passive boundary, not external agents' guardrails or reply budgets.
+    // This checks the host's passive boundary, not external agents' guardrails or reply budgets.
   },
 );
 
@@ -836,7 +836,7 @@ test(
       ),
       m,
     );
-    assert.equal(f.count("relay_messages"), 1);
+    assert.equal(f.count("messages"), 1);
   },
 );
 
@@ -860,7 +860,7 @@ test(
       f.client("a").resolve(f.agents.b.address),
       code("forbidden"),
     );
-    assert.equal(f.count("relay_ack_receipts"), 0);
+    assert.equal(f.count("ack_receipts"), 0);
     assert.notEqual(
       f.raw(
         "delivery.sqlite",

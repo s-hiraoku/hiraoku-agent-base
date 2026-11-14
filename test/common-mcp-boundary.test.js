@@ -4,10 +4,10 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
 import { hostFixture } from "./adapter-host-fixtures.js";
-import { call, message } from "./relay-http-fixtures.js";
+import { call, message } from "./mcp-http-fixtures.js";
 import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
-import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
+import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 
 const bodies = {
   question: {
@@ -55,15 +55,15 @@ for (const [kind, body] of Object.entries(bodies))
     const server = createServer((req, res) => {
       const tool = req.headers["mcp-name"];
       if (tool) tools.push(tool);
-      if (tool === "relay_ack") {
+      if (tool === "hab_ack") {
         const row = f.inboxRaw
-          .prepare("SELECT body, receipt_confirmed FROM relay_inbox")
+          .prepare("SELECT body, receipt_confirmed FROM inbox")
           .get();
         ackSnapshots.push({
           row,
           savedRequests: f.inboxRaw
             .prepare(
-              "SELECT count(*) n FROM relay_receiver_acks WHERE request IS NOT NULL",
+              "SELECT count(*) n FROM receiver_acks WHERE request IS NOT NULL",
             )
             .get().n,
         });
@@ -77,7 +77,7 @@ for (const [kind, body] of Object.entries(bodies))
       await new Promise((resolve) => server.close(resolve));
     });
     const url = `http://127.0.0.1:${server.address().port}/mcp`;
-    handle = createRelayNodeHandler(f.gateway({ resource_url: url }));
+    handle = createMcpNodeHandler(f.gateway({ resource_url: url }));
     f.state.resource_url = url;
     const host = f.makeHost({
       owner,
@@ -90,7 +90,7 @@ for (const [kind, body] of Object.entries(bodies))
     f.resume(host);
     const http = { fetch: globalThis.fetch };
     const input = { ...message(), kind, body };
-    const sent = await call(http, "relay_submit", input, { url });
+    const sent = await call(http, "hab_submit", input, { url });
     assert.equal(sent.response.status, 200);
     assert.equal(sent.body.result.structuredContent.state, "pending");
     const stop = new AbortController();
@@ -130,17 +130,17 @@ for (const [kind, body] of Object.entries(bodies))
     assert.equal(entries[0].receipt_confirmed, true);
     const status = await call(
       http,
-      "relay_status",
+      "hab_status",
       { message_id: input.message_id },
       { url },
     );
     assert.equal(status.body.result.structuredContent.state, "acked");
     assert.deepEqual(tools, [
-      "relay_submit",
-      "relay_poll",
-      "relay_ack",
-      "relay_poll",
-      "relay_status",
+      "hab_submit",
+      "hab_poll",
+      "hab_ack",
+      "hab_poll",
+      "hab_status",
     ]);
     assert.deepEqual([...new Set(operations)].sort(), [
       "control",

@@ -1,6 +1,6 @@
 # Access control
 
-Every Relay call must carry a bearer that maps to a verified, active agent connection. Requests without one, or with an unknown one, are refused at the HTTP layer before any tool runs.
+Every host call must carry a bearer that maps to a verified, active agent connection. Requests without one, or with an unknown one, are refused at the HTTP layer before any tool runs.
 
 ## Sub-features
 
@@ -10,7 +10,7 @@ Every Relay call must carry a bearer that maps to a verified, active agent conne
 
 ## How to get to it (user POV)
 
-- Any `POST /mcp` call: `tools/list` or `tools/call` for any `relay_*` tool.
+- Any `POST /mcp` call: `tools/list` or `tools/call` for any `hab_*` tool.
 
 ## Driving it with verify-hab
 
@@ -18,9 +18,9 @@ Preconditions:
 
 - Baseline run, doctor OK.
 
-- **No token.** Run `$S/mcp.sh "$RUN" none tools/list` and `$S/mcp.sh "$RUN" none relay_poll`. Both print `HTTP 401`; the saved `.headers` file has `www-authenticate: Bearer`.
+- **No token.** Run `$S/mcp.sh "$RUN" none tools/list` and `$S/mcp.sh "$RUN" none hab_poll`. Both print `HTTP 401`; the saved `.headers` file has `www-authenticate: Bearer`.
 - **Unknown token.** Run `$S/mcp.sh "$RUN" BAD tools/list`. `HTTP 401`.
-- **Known token.** Run `$S/mcp.sh "$RUN" a tools/list`. `HTTP 200` with exactly `relay_ack, relay_poll, relay_resolve, relay_status, relay_submit`.
+- **Known token.** Run `$S/mcp.sh "$RUN" a tools/list`. `HTTP 200` with exactly `hab_ack, hab_poll, hab_resolve, hab_status, hab_submit`.
 - **Proof.** Keep the three `.res`/`.headers` pairs. Run `node $S/inspect.mjs "$RUN" after-auth`: no `messages` and no `delivery_audit` rows were created by the refused calls.
 
 ## Gotchas

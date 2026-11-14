@@ -96,7 +96,7 @@ const commands = setInterval(async () => {
         break;
       case "state":
         value = { status: entry.status(), outbox: f.queued(),
-          inboxCount: f.inboxRaw.prepare("SELECT count(*) n FROM relay_inbox").get().n };
+          inboxCount: f.inboxRaw.prepare("SELECT count(*) n FROM inbox").get().n };
         break;
       case "hold": {
         if (!retryTest) throw Error("invalid_synthetic_command");

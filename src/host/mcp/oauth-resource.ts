@@ -1,14 +1,14 @@
 /** Fixed resource discovery only; no registration, login, token issuance or network IO. */
 const validMcpPath = (path: string) =>
   /^\/(?:[A-Za-z0-9_-]+\/)*mcp$/.test(path) && path.length <= 200;
-export const RELAY_OAUTH_SCOPES = Object.freeze([
-  "relay:resolve",
-  "relay:submit",
-  "relay:status",
-  "relay:poll",
-  "relay:ack",
+export const HAB_OAUTH_SCOPES = Object.freeze([
+  "hab:resolve",
+  "hab:submit",
+  "hab:status",
+  "hab:poll",
+  "hab:ack",
 ]);
-export class RelayOAuthResource {
+export class McpOAuthResource {
   readonly issuer: string;
   readonly resource: string;
   readonly metadataPath: string;
@@ -41,12 +41,12 @@ export class RelayOAuthResource {
       this.metadataPath = `/.well-known/oauth-protected-resource${r.pathname}`;
       this.metadataURL = r.origin + this.metadataPath;
     } catch {
-      throw Error("invalid_relay_oauth_resource");
+      throw Error("invalid_oauth_resource");
     }
     Object.freeze(this);
   }
   challenge() {
-    return `Bearer resource_metadata="${this.metadataURL}", scope="${RELAY_OAUTH_SCOPES.join(" ")}"`;
+    return `Bearer resource_metadata="${this.metadataURL}", scope="${HAB_OAUTH_SCOPES.join(" ")}"`;
   }
   response(path: string, method: string): Response | undefined {
     if (path !== this.metadataPath) return;
@@ -55,7 +55,7 @@ export class RelayOAuthResource {
         ? JSON.stringify({
             resource: this.resource,
             authorization_servers: [this.issuer],
-            scopes_supported: RELAY_OAUTH_SCOPES,
+            scopes_supported: HAB_OAUTH_SCOPES,
             bearer_methods_supported: ["header"],
           })
         : null,

@@ -8,7 +8,7 @@ import {
   operations,
   code,
 } from "./hab-registry-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 function submission(to, entropy = "1".repeat(32)) {
   return { ...message(entropy), recipient_id: to.agent_id };
 }
@@ -311,7 +311,7 @@ test("scoped authorization cannot escape its transaction, change operation/conte
   );
 });
 
-test("registry write guard spans Relay commit so another connection cannot revoke in the authorization gap", async (t) => {
+test("registry write guard spans the delivery commit so another connection cannot revoke in the authorization gap", async (t) => {
   const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b"),

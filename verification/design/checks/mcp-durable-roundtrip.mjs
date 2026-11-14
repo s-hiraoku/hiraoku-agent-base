@@ -31,7 +31,7 @@ function assertCommittedBeforeAck(path, request, expectedSender, message) {
     assert.equal(request.message_id, message.message_id);
     const row = raw
       .prepare(
-        "SELECT body,receipt_confirmed FROM relay_inbox WHERE sender_id=? AND message_id=?",
+        "SELECT body,receipt_confirmed FROM inbox WHERE sender_id=? AND message_id=?",
       )
       .get(expectedSender, message.message_id);
     assert(row, "ACK before independently visible committed inbox body");
@@ -47,7 +47,7 @@ function assertCommittedBeforeAck(path, request, expectedSender, message) {
     );
     const ack = raw
       .prepare(
-        "SELECT request,state FROM relay_receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
+        "SELECT request,state FROM receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
       )
       .get(request.request_id, expectedSender, message.message_id);
     assert(ack, "ACK before independently visible original request journal");
@@ -74,7 +74,7 @@ function guardSelfTest() {
   };
   try {
     db.exec(
-      "PRAGMA journal_mode=WAL; CREATE TABLE relay_inbox(sender_id TEXT,message_id TEXT,body TEXT,receipt_confirmed INTEGER); CREATE TABLE relay_receiver_acks(request_id TEXT,sender_id TEXT,message_id TEXT,request TEXT,state TEXT);",
+      "PRAGMA journal_mode=WAL; CREATE TABLE inbox(sender_id TEXT,message_id TEXT,body TEXT,receipt_confirmed INTEGER); CREATE TABLE receiver_acks(request_id TEXT,sender_id TEXT,message_id TEXT,request TEXT,state TEXT);",
     );
     const check = () =>
       assertCommittedBeforeAck(path, request, request.sender_id, message);
@@ -83,7 +83,7 @@ function guardSelfTest() {
       /ACK before independently visible committed inbox body/,
     );
     db.exec("BEGIN IMMEDIATE");
-    db.prepare("INSERT INTO relay_inbox VALUES(?,?,?,0)").run(
+    db.prepare("INSERT INTO inbox VALUES(?,?,?,0)").run(
       request.sender_id,
       message.message_id,
       JSON.stringify(message),
@@ -98,7 +98,7 @@ function guardSelfTest() {
       /ACK before independently visible original request journal/,
     );
     db.exec("BEGIN IMMEDIATE");
-    db.prepare("INSERT INTO relay_receiver_acks VALUES(?,?,?,?,?)").run(
+    db.prepare("INSERT INTO receiver_acks VALUES(?,?,?,?,?)").run(
       request.request_id,
       request.sender_id,
       message.message_id,
@@ -110,7 +110,7 @@ function guardSelfTest() {
       /ACK before independently visible original request journal/,
     );
     db.exec("ROLLBACK");
-    db.prepare("INSERT INTO relay_receiver_acks VALUES(?,?,?,?,?)").run(
+    db.prepare("INSERT INTO receiver_acks VALUES(?,?,?,?,?)").run(
       request.request_id,
       request.sender_id,
       message.message_id,
@@ -118,11 +118,11 @@ function guardSelfTest() {
       "pending",
     );
     assert.throws(check, /outgoing ACK differs/);
-    db.prepare("UPDATE relay_receiver_acks SET request=?").run(
+    db.prepare("UPDATE receiver_acks SET request=?").run(
       JSON.stringify(request),
     );
     check();
-    db.prepare("UPDATE relay_inbox SET body=?").run(
+    db.prepare("UPDATE inbox SET body=?").run(
       JSON.stringify({ ...message, body: "changed" }),
     );
     assert.throws(check, /committed inbox body differs/);
@@ -288,7 +288,7 @@ async function roundtrip(target, out) {
         fetch: async (address, init) => {
           const body = JSON.parse(init.body);
           trace("request", body); // Authorization headers are deliberately absent.
-          if (body.params?.name === "relay_ack" && beforeAck)
+          if (body.params?.name === "hab_ack" && beforeAck)
             beforeAck(body.params.arguments);
           const response = await fetch(address, {
             ...init,

@@ -49,72 +49,72 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
                 value = {"content":[{"type":"text","text":json.dumps(outer.who)}], "structuredContent":outer.who}
                 return SimpleNamespace(model_dump_json=lambda **_:json.dumps(value))
         self.runtime.core.ClientSession = Session
-        return HermesNativeSession(self.profile, "hab_relay", "https://relay.example/mcp", runtime=self.runtime.runtime, outbound_scope=self.scope)
+        return HermesNativeSession(self.profile, "hab", "https://hab.example/mcp", runtime=self.runtime.runtime, outbound_scope=self.scope)
 
     async def guard(self): pass
 
     async def test_only_native_manager_gets_auth_and_each_outbound_is_bound(self):
         session = self.prepare()
-        await session.call_tool("relay_submit", self.message, self.guard)
-        await session.call_tool("relay_status", {k:self.message[k] for k in ("message_id","as_address","expected_agent_id")}, self.guard)
-        self.assertEqual([n for n,_ in self.runtime.attempts], ["hab_discover","relay_submit","hab_discover","relay_status"])
+        await session.call_tool("hab_submit", self.message, self.guard)
+        await session.call_tool("hab_status", {k:self.message[k] for k in ("message_id","as_address","expected_agent_id")}, self.guard)
+        self.assertEqual([n for n,_ in self.runtime.attempts], ["hab_discover","hab_submit","hab_discover","hab_status"])
         self.assertEqual(len(self.runtime.provider_calls), 2)
         self.assertTrue(all(c["auth"] is self.runtime.provider for c in self.runtime.client_options))
         self.assertEqual(self.runtime.attempts[1][1],self.message)
         self.assertIsNone(session._session)
 
     async def test_default_receive_path_does_not_allow_outbound(self):
-        session=HermesNativeSession(self.profile,"hab_relay","https://relay.example/mcp",runtime=self.runtime.runtime)
-        with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",{},self.guard)
+        session=HermesNativeSession(self.profile,"hab","https://hab.example/mcp",runtime=self.runtime.runtime)
+        with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",{},self.guard)
         self.assertEqual(self.runtime.runtime_calls,0)
 
     async def test_claimed_actor_wrong_source_other_message_and_arbitrary_tool_reject_before_connect(self):
         session=self.prepare()
         for key,value in [("expected_agent_id","other"),("recipient_id","other"),("kind","question"),("thread_id","other"),("message_id","other"),("in_reply_to",{"sender_id":"other","message_id":"fake-source"})]:
             args=copy.deepcopy(self.message);args[key]=value
-            with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",args,self.guard)
+            with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",args,self.guard)
         with self.assertRaises(NativeSessionError): await session.call_tool("hab_register",{},self.guard)
         with self.assertRaises(NativeSessionError): await session.call_tool("hab_discover",{},self.guard)
         self.assertEqual(self.runtime.runtime_calls,0)
 
     async def test_missing_discovery_fails_without_submit(self):
         session=self.prepare();self.runtime.catalog.remove("hab_discover")
-        with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",self.message,self.guard)
+        with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual(self.runtime.attempts,[])
 
     async def test_wrong_remote_assignment_refuses_business_call(self):
         session=self.prepare();self.who["selected_identity"]["agent_id"]="other"
-        with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",self.message,self.guard)
+        with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual([n for n,_ in self.runtime.attempts],["hab_discover"])
 
     async def test_insufficient_remote_operation_and_stale_snapshot_refuse(self):
         session=self.prepare();self.who["selected_identity"]["authorized_operations"]=["poll","ack"]
-        with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",self.message,self.guard)
-        session=HermesNativeSession(self.profile,"hab_relay","https://relay.example/mcp",runtime=self.runtime.runtime,outbound_scope=self.scope)
+        with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",self.message,self.guard)
+        session=HermesNativeSession(self.profile,"hab","https://hab.example/mcp",runtime=self.runtime.runtime,outbound_scope=self.scope)
         self.who["selected_identity"]["authorized_operations"]=["submit"]
         self.who["observed_at"]="2000-01-01T00:00:00+00:00"
-        with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",self.message,self.guard)
+        with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual([n for n,_ in self.runtime.attempts],["hab_discover","hab_discover"])
 
     async def test_identity_replacement_is_terminal_for_old_composition(self):
-        session=self.prepare();await session.call_tool("relay_submit",self.message,self.guard)
+        session=self.prepare();await session.call_tool("hab_submit",self.message,self.guard)
         self.who["connection"]["binding_id"]="replacement"
-        with self.assertRaises(NativeSessionError): await session.call_tool("relay_submit",self.message,self.guard)
-        self.assertEqual([n for n,_ in self.runtime.attempts],["hab_discover","relay_submit","hab_discover"])
+        with self.assertRaises(NativeSessionError): await session.call_tool("hab_submit",self.message,self.guard)
+        self.assertEqual([n for n,_ in self.runtime.attempts],["hab_discover","hab_submit","hab_discover"])
         self.who["connection"]["binding_id"]="fake-binding"
         with self.assertRaisesRegex(NativeSessionError,"native_identity_lost"):
-            await session.call_tool("relay_submit",self.message,self.guard)
+            await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual(len(self.runtime.attempts),3)
 
     async def test_revocation_after_oauth_wait_never_dispatches_submit(self):
         import asyncio
-        session=self.prepare();self.runtime.auth_phase="call:relay_submit";live=True
+        session=self.prepare();self.runtime.auth_phase="call:hab_submit";live=True
         async def guard():
             if not live: raise RuntimeError("revoked")
-        task=asyncio.create_task(session.call_tool("relay_submit",self.message,guard))
+        task=asyncio.create_task(session.call_tool("hab_submit",self.message,guard))
         await self.runtime.auth_started.wait();live=False;self.runtime.auth_release.set()
         with self.assertRaises(NativeSessionError): await task
-        self.assertNotIn("call:relay_submit",self.runtime.dispatches)
+        self.assertNotIn("call:hab_submit",self.runtime.dispatches)
 
     async def test_lost_submit_response_is_not_replayed(self):
         session=self.prepare()
@@ -122,12 +122,12 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         class FailSubmit(Base):
             async def call_tool(self,name,*,arguments):
                 result=await super().call_tool(name,arguments=arguments)
-                if name=="relay_submit": raise RuntimeError("PRIVATE_TOKEN_DETAIL")
+                if name=="hab_submit": raise RuntimeError("PRIVATE_TOKEN_DETAIL")
                 return result
         self.runtime.core.ClientSession=FailSubmit
         with self.assertRaisesRegex(NativeSessionError,"^native_call_failed$"):
-            await session.call_tool("relay_submit",self.message,self.guard)
-        self.assertEqual([n for n,_ in self.runtime.attempts],["hab_discover","relay_submit"])
+            await session.call_tool("hab_submit",self.message,self.guard)
+        self.assertEqual([n for n,_ in self.runtime.attempts],["hab_discover","hab_submit"])
 
     async def test_native_home_mismatch_refuses_before_provider_or_mcp(self):
         from unittest.mock import patch
@@ -135,7 +135,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         session=self.prepare()
         with patch.dict(sys.modules,{"hermes_constants":SimpleNamespace(get_hermes_home=lambda:"/other/profile")}):
             with self.assertRaises(NativeSessionError):
-                await session.call_tool("relay_submit",self.message,self.guard)
+                await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual(self.runtime.provider_calls,[])
         self.assertEqual(self.runtime.attempts,[])
 
@@ -149,15 +149,15 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
                 touched.append(name)
                 raise AssertionError("native_import_was_attempted")
             return real_import(name,*args,**kwargs)
-        session=HermesNativeSession(self.profile,"hab_relay","https://relay.example/mcp")
+        session=HermesNativeSession(self.profile,"hab","https://hab.example/mcp")
         with patch.object(builtins,"__import__",guarded_import):
             with self.assertRaises(NativeSessionError):
-                await session.call_tool("relay_poll",{},self.guard)
+                await session.call_tool("hab_poll",{},self.guard)
         self.assertEqual(touched,[])
 
     async def test_prefetch_factory_guards_every_separate_metadata_request(self):
         session=self.prepare();self.runtime.prefetch=True
-        await session.call_tool("relay_submit",self.message,self.guard)
+        await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual(self.runtime.dispatches[:3],["metadata:prm","metadata:asm","initialize"])
         metadata=[item for item in self.runtime.client_options if item["auth"] is None]
         self.assertEqual(len(metadata),1)
@@ -169,7 +169,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         session=self.prepare();self.runtime.prefetch=True;self.runtime.auth_phase="metadata:prm";live=True
         async def guard():
             if not live: raise RuntimeError("revoked")
-        task=asyncio.create_task(session.call_tool("relay_submit",self.message,guard))
+        task=asyncio.create_task(session.call_tool("hab_submit",self.message,guard))
         await self.runtime.auth_started.wait();live=False;self.runtime.auth_release.set()
         with self.assertRaises(NativeSessionError):await task
         self.assertEqual(self.runtime.dispatches,[])
@@ -177,7 +177,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unapproved_metadata_origin_is_denied_before_dispatch(self):
         session=self.prepare();self.runtime.prefetch=True;self.runtime.request_urls["metadata:prm"]="https://unapproved.example/.well-known/oauth"
-        with self.assertRaises(NativeSessionError):await session.call_tool("relay_submit",self.message,self.guard)
+        with self.assertRaises(NativeSessionError):await session.call_tool("hab_submit",self.message,self.guard)
         self.assertEqual(self.runtime.dispatches,[])
 
     async def test_metadata_only_exit_failure_is_terminal_even_when_main_stack_closes(self):
@@ -192,7 +192,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
 
         with patch.object(self.runtime.httpx.AsyncClient, "__aexit__", exit_client):
             with self.assertRaisesRegex(NativeSessionUnsettled, "^native_cleanup_uncertain$"):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(self.runtime.dispatches, ["metadata:prm", "metadata:asm"])
         self.assertEqual(self.runtime.attempts, [])
         self.assertIn("transport.close", [event for event, _ in self.runtime.events])
@@ -200,7 +200,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(NativeSessionUnsettled):
             await session.aclose()
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
+            await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 1)
 
     async def test_cancellation_during_metadata_only_exit_retains_unsettled_ownership(self):
@@ -216,12 +216,12 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
             return await original_exit(client, *exc)
 
         with patch.object(self.runtime.httpx.AsyncClient, "__aexit__", exit_client):
-            pending = asyncio.create_task(session.call_tool("relay_submit", self.message, self.guard))
+            pending = asyncio.create_task(session.call_tool("hab_submit", self.message, self.guard))
             await asyncio.wait_for(exiting.wait(), 1)
             self.assertFalse(pending.done())
             self.assertTrue(session._busy)
             with self.assertRaisesRegex(NativeSessionError, "^native_call_refused$"):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
             pending.cancel()
             with self.assertRaisesRegex(NativeSessionUnsettled, "^native_cleanup_uncertain$"):
                 await pending
@@ -229,7 +229,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(NativeSessionUnsettled):
             await session.aclose()
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
+            await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 1)
         self.assertEqual(self.runtime.dispatches, ["metadata:prm", "metadata:asm"])
         self.assertEqual(self.runtime.attempts, [])
@@ -239,31 +239,31 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         self.runtime.prefetch = True
         self.runtime.request_urls["metadata:prm"] = "https://unapproved.example/metadata"
         with self.assertRaises(NativeSessionError):
-            await session.call_tool("relay_submit", self.message, self.guard)
+            await session.call_tool("hab_submit", self.message, self.guard)
         self.assertFalse(session._unsettled)
         self.assertEqual([event for event, _ in self.runtime.events].count("transport.close"), 2)
         self.runtime.request_urls.clear()
-        await session.call_tool("relay_submit", self.message, self.guard)
+        await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 2)
-        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "relay_submit"])
+        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "hab_submit"])
 
     async def test_status_only_scope_never_accepts_submit_other_identity_or_reply(self):
         self.prepare()
         scope = NativeStatusScope(self.scope.agent_id, self.scope.as_address,
             self.scope.source_sender_id, self.scope.source_message_id, self.scope.message_ids)
         self.assertFalse(hasattr(scope, "thread_id"))
-        session = HermesNativeSession(self.profile, "hab_relay", "https://relay.example/mcp",
+        session = HermesNativeSession(self.profile, "hab", "https://hab.example/mcp",
             runtime=self.runtime.runtime, outbound_scope=scope)
-        for name in ("relay_submit", "relay_poll", "relay_ack", "hab_register", "hab_discover"):
+        for name in ("hab_submit", "hab_poll", "hab_ack", "hab_register", "hab_discover"):
             with self.assertRaises(NativeSessionError):
                 await session.call_tool(name, self.message, self.guard)
         args = {key:self.message[key] for key in ("message_id", "as_address", "expected_agent_id")}
         for key, value in (("message_id", "other"), ("as_address", "other@demo.hab"), ("expected_agent_id", "other")):
             with self.assertRaises(NativeSessionError):
-                await session.call_tool("relay_status", {**args, key:value}, self.guard)
+                await session.call_tool("hab_status", {**args, key:value}, self.guard)
         self.assertEqual(self.runtime.provider_calls, [])
-        await session.call_tool("relay_status", args, self.guard)
-        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "relay_status"])
+        await session.call_tool("hab_status", args, self.guard)
+        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "hab_status"])
         for ids in (frozenset(), frozenset({"one", "two"}), frozenset({"*"})):
             with self.assertRaises(ValueError):
                 NativeStatusScope("fake-agent", "worker@demo.hab", "fake-peer", "fake-source", ids)
@@ -277,12 +277,12 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
             raise ProductCleanupUncertain("PRIVATE_PRODUCT_CLEANUP_DETAIL")
         with patch.object(self.runtime.core.MCPServerTask, "_negotiate_session", negotiate):
             with self.assertRaisesRegex(NativeSessionUnsettled, "^native_cleanup_uncertain$"):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertTrue(session._unsettled)
         self.assertEqual(self.runtime.attempts, [])
         self.assertIn("transport.close", [event for event, _ in self.runtime.events])
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
+            await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 1)
 
     async def test_trusted_product_cleanup_class_after_rpc_never_replays_or_reuses(self):
@@ -293,15 +293,15 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         original = self.runtime.core.ClientSession.call_tool
         async def rpc(client, name, **kwargs):
             value = await original(client, name, **kwargs)
-            if name == "relay_submit": raise ProductCleanupUncertain()
+            if name == "hab_submit": raise ProductCleanupUncertain()
             return value
         with patch.object(self.runtime.core.ClientSession, "call_tool", rpc):
             with self.assertRaises(NativeSessionUnsettled):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         with self.assertRaises(NativeSessionUnsettled): await session.aclose()
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
-        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "relay_submit"])
+            await session.call_tool("hab_submit", self.message, self.guard)
+        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "hab_submit"])
         self.assertEqual(len(self.runtime.provider_calls), 1)
 
     async def test_error_message_or_flag_is_not_a_trusted_cleanup_class(self):
@@ -314,9 +314,9 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         async def negotiate(*_): raise OrdinaryFailure("OAuthOperationCleanupError")
         with patch.object(self.runtime.core.MCPServerTask, "_negotiate_session", negotiate):
             with self.assertRaises(NativeSessionError):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertFalse(session._unsettled)
-        await session.call_tool("relay_submit", self.message, self.guard)
+        await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 2)
 
     @unittest.skipIf(ExceptionGroupType is None, "standard exception groups require Python 3.11+")
@@ -331,13 +331,13 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
                 ExceptionGroupType("nested", [ProductCleanupUncertain()])])
         with patch.object(self.runtime.core.MCPServerTask, "_negotiate_session", negotiate):
             with self.assertRaisesRegex(NativeSessionUnsettled, "^native_cleanup_uncertain$"):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertTrue(session._unsettled)
         self.assertEqual(self.runtime.attempts, [])
         self.assertIn("transport.close", [event for event, _ in self.runtime.events])
         with self.assertRaises(NativeSessionUnsettled): await session.aclose()
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
+            await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 1)
 
     @unittest.skipIf(ExceptionGroupType is None, "standard exception groups require Python 3.11+")
@@ -349,16 +349,16 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
         original = self.runtime.core.ClientSession.call_tool
         async def rpc(client, name, **kwargs):
             value = await original(client, name, **kwargs)
-            if name == "relay_submit":
+            if name == "hab_submit":
                 raise ExceptionGroupType("synthetic rpc group", [ProductCleanupUncertain()])
             return value
         with patch.object(self.runtime.core.ClientSession, "call_tool", rpc):
             with self.assertRaises(NativeSessionUnsettled):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertTrue(session._unsettled)
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
-        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "relay_submit"])
+            await session.call_tool("hab_submit", self.message, self.guard)
+        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_discover", "hab_submit"])
         self.assertEqual(len(self.runtime.provider_calls), 1)
 
     @unittest.skipIf(ExceptionGroupType is None, "standard exception groups require Python 3.11+")
@@ -369,10 +369,10 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
                 ExceptionGroupType("nested", [NativeSessionUnsettled("native_cleanup_uncertain")])])
         with patch.object(self.runtime.core.MCPServerTask, "_negotiate_session", negotiate):
             with self.assertRaises(NativeSessionUnsettled):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertTrue(session._unsettled)
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_submit", self.message, self.guard)
+            await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 1)
 
     @unittest.skipIf(ExceptionGroupType is None, "standard exception groups require Python 3.11+")
@@ -389,7 +389,7 @@ class NativeOutboundTests(unittest.IsolatedAsyncioTestCase):
                 asyncio.CancelledError(), ExceptionGroupType("ordinary nested group", [Lookalike()])])
         with patch.object(self.runtime.core.MCPServerTask, "_negotiate_session", negotiate):
             with self.assertRaisesRegex(NativeSessionError, "^native_call_failed$"):
-                await session.call_tool("relay_submit", self.message, self.guard)
+                await session.call_tool("hab_submit", self.message, self.guard)
         self.assertFalse(session._unsettled)
-        await session.call_tool("relay_submit", self.message, self.guard)
+        await session.call_tool("hab_submit", self.message, self.guard)
         self.assertEqual(len(self.runtime.provider_calls), 2)

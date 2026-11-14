@@ -5,10 +5,10 @@ import type {
   RegistryAuthority,
   IndividualPrincipal,
 } from "../hab/registry.ts";
-import type { RelayHttpVerifier } from "./mcp/http.ts";
+import type { McpHttpVerifier } from "./mcp/http.ts";
 import {
-  RelayOAuthResource,
-  RELAY_OAUTH_SCOPES,
+  McpOAuthResource,
+  HAB_OAUTH_SCOPES,
 } from "./mcp/oauth-resource.ts";
 const claim = z
   .string()
@@ -98,18 +98,18 @@ export function oauthConnectionWindow(entry: Config["connections"][number]) {
 /** Shared structural validation for the verifier and trusted operator management. */
 export function parseOAuthConfig(input: unknown): Config {
   const config = schema.parse(input);
-  new RelayOAuthResource(config.issuer, config.resource);
+  new McpOAuthResource(config.issuer, config.resource);
   const kids = new Set<string>(),
     clients = new Set<string>(),
     connections = new Set<string>();
   for (const key of config.keys) {
-    if (kids.has(key.kid)) throw Error("invalid_relay_oauth_config");
+    if (kids.has(key.kid)) throw Error("invalid_oauth_config");
     kids.add(key.kid);
   }
   for (const connection of config.connections) {
     const client = JSON.stringify([connection.subject, connection.client_id]);
     if (clients.has(client) || connections.has(connection.connection_id))
-      throw Error("invalid_relay_oauth_config");
+      throw Error("invalid_oauth_config");
     clients.add(client);
     connections.add(connection.connection_id);
   }
@@ -166,12 +166,12 @@ export class PinnedOAuthAuthority {
   }
   static async create(load: () => unknown, now: () => number = Date.now) {
     if (typeof load !== "function" || typeof now !== "function")
-      throw Error("invalid_relay_oauth_config");
+      throw Error("invalid_oauth_config");
     const auth = new PinnedOAuthAuthority(load, now);
     try {
       await auth.#importKeys(auth.#current());
     } catch {
-      throw Error("invalid_relay_oauth_config");
+      throw Error("invalid_oauth_config");
     }
     return auth;
   }
@@ -218,9 +218,9 @@ export class PinnedOAuthAuthority {
   }
   get resource() {
     const { config } = this.#current();
-    return new RelayOAuthResource(config.issuer, config.resource);
+    return new McpOAuthResource(config.issuer, config.resource);
   }
-  readonly verify: RelayHttpVerifier = async ({
+  readonly verify: McpHttpVerifier = async ({
     authorization,
     resource,
     signal,
@@ -251,7 +251,7 @@ export class PinnedOAuthAuthority {
       )
         return null;
       const scopes = new Set(value.scope.split(" "));
-      if (!RELAY_OAUTH_SCOPES.every((s) => scopes.has(s))) return null;
+      if (!HAB_OAUTH_SCOPES.every((s) => scopes.has(s))) return null;
       const binding = c.connections.find(
         (x) => x.subject === value.sub && x.client_id === clientId,
       );

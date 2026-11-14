@@ -126,7 +126,7 @@ test("overdue Task pages advance past retrying rows using the complete stable Ta
         id: `task-${String(i % 100).padStart(3, "0")}`,
         contextId: "context",
         status: { state: "TASK_STATE_WORKING", timestamp: cutoff },
-        metadata: { hab_relay: { source: { expires_at: cutoff } } },
+        metadata: { hab: { source: { expires_at: cutoff } } },
       });
       await opened.store.save(task, context(i < 100 ? "a" : "b", "tenant"));
     }

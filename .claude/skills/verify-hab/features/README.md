@@ -11,7 +11,7 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 
 ## Driving conventions
 
-- Start every recipe from the baseline unless its preconditions say otherwise. A recipe that leaves a pending or leased message changes later `relay_poll` results; launch a new run dir instead of reusing it.
+- Start every recipe from the baseline unless its preconditions say otherwise. A recipe that leaves a pending or leased message changes later `hab_poll` results; launch a new run dir instead of reusing it.
 - All agent actions go through `$S/mcp.sh "$RUN" <agent> <tool> '<json>'`; build messages with `$S/new-message.sh`.
 - Read results from `.result.structuredContent`. A tool refusal is HTTP 200 with `"isError":true` and `{"error":"<code>"}`; transport refusal is a non-200 HTTP code.
 - The enrollment terminal is driven with tmux `send-keys`, waiting on the exact prompt text before each key.
@@ -32,11 +32,11 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 - [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, external text and structured execution requests remaining data, and optional Task state semantics. It runs isolated fixtures with its own listeners and cleanup.
 
-- [Resolve an address](./resolve-address.md) covers `relay_resolve` success, unknown address, malformed address and a renamed agent's previous name during the grace period.
-- [Send a message](./send-message.md) covers `relay_submit`, idempotent replay, conflicting replay, disallowed kind, attachment-part refusal, sender-only `relay_status` and per-pair thread names.
-- [Receive and acknowledge](./receive-ack.md) covers `relay_poll` leasing, empty poll, lease expiry redelivery and `relay_ack` including wrong-token and wrong-agent refusal.
+- [Resolve an address](./resolve-address.md) covers `hab_resolve` success, unknown address, malformed address and a renamed agent's previous name during the grace period.
+- [Send a message](./send-message.md) covers `hab_submit`, idempotent replay, conflicting replay, disallowed kind, attachment-part refusal, sender-only `hab_status` and per-pair thread names.
+- [Receive and acknowledge](./receive-ack.md) covers `hab_poll` leasing, empty poll, lease expiry redelivery and `hab_ack` including wrong-token and wrong-agent refusal.
 - [Access control](./access-control.md) covers missing and unknown bearer tokens.
 - [Restart durability](./restart-durability.md) covers a pending message surviving a stack stop and reopen.
 - [Enrollment terminal](./enrollment-terminal.md) covers the human registration flow from product choice to an active address.
-- [Configured Relay and operator CLI](./configured-relay.md) covers the shipped `hab:host` start refusal reasons, `hab:admin` connect/status/disconnect (including group disconnect stopping every member), a roundtrip through the shipped Relay and the exact-Host rule. It has its own launcher (`configured.sh`), not `launch.sh`.
-- [A2A entry on the configured Relay](./a2a-host.md) covers A2A off by default, host identity provisioning and its reservation, Card, A2A auth refusals, a Task sent from the host identity, restart durability, completion from the recipient's replies, and the `result_window_expired` failure of a Task whose reply window closed. It uses `HAB_VERIFY_A2A=1 configured.sh start`, `a2a.sh` and `new-reply.sh`.
+- [Configured host and operator CLI](./configured-host.md) covers the shipped `hab:host` start refusal reasons, `hab:admin` connect/status/disconnect (including group disconnect stopping every member), a roundtrip through the shipped host and the exact-Host rule. It has its own launcher (`configured.sh`), not `launch.sh`.
+- [A2A entry on the configured host](./a2a-host.md) covers A2A off by default, host identity provisioning and its reservation, Card, A2A auth refusals, a Task sent from the host identity, restart durability, completion from the recipient's replies, and the `result_window_expired` failure of a Task whose reply window closed. It uses `HAB_VERIFY_A2A=1 configured.sh start`, `a2a.sh` and `new-reply.sh`.

@@ -24,8 +24,8 @@ import {
   makeReplayBoundMessageId,
   RECORD_RETENTION_MS,
 } from "../src/messaging/contract.ts";
-import { limits } from "./relay-http-fixtures.js";
-import { fixture } from "./local-relay-service-fixtures.js";
+import { limits } from "./mcp-http-fixtures.js";
+import { fixture } from "./host-service-fixtures.js";
 import { eventually, pollUntilDelivered } from "./delivery-fixture.js";
 
 const IDENTITY = "a2a@hab-host.hab";
@@ -298,7 +298,7 @@ async function untilState(read, state) {
   return task;
 }
 
-/** Reads a sent message's relay status slowly enough to stay under the MCP rate limit. */
+/** Reads a sent message's delivery status slowly enough to stay under the MCP rate limit. */
 async function untilAcked(client, messageId) {
   for (let i = 0; i < 40; i++) {
     const state = await client.status(messageId).then(
@@ -376,7 +376,7 @@ test("a shared outbox sends only the named intent", async (t) => {
 test("the example a2a section is a valid host config section", async (t) => {
   const f = await fixture(t);
   const { a2a } = JSON.parse(
-    readFileSync(resolve("config/relay-a2a.example.json"), "utf8"),
+    readFileSync(resolve("config/host-a2a.example.json"), "utf8"),
   );
   f.write("service.local.json", { ...f.config, a2a });
   assert.deepEqual(readHostConfig(f.configPath).config.a2a, a2a);
@@ -412,8 +412,8 @@ test("an A2A Task is sent from the host identity and completes from the recipien
   const client = await a2aClient(f, "caller");
   const task = await client.send("host_roundtrip");
   assert.equal(task.status.state, TaskState.TASK_STATE_SUBMITTED);
-  assert.equal(task.metadata.hab_relay.sender_id, identity.agent_id);
-  assert.equal(task.metadata.hab_relay.attestation, "recipient_reply");
+  assert.equal(task.metadata.hab.sender_id, identity.agent_id);
+  assert.equal(task.metadata.hab.attestation, "recipient_reply");
 
   await recipient.receiver.receiveOnce();
   const [request] = recipient.receiver.inbox();
@@ -422,7 +422,7 @@ test("an A2A Task is sent from the host identity and completes from the recipien
   assert.equal(request.message.kind, "execution_request");
   assert.equal(
     request.message.message_id,
-    task.metadata.hab_relay.source.message_id,
+    task.metadata.hab.source.message_id,
   );
   assert.equal(
     (await client.get(task.id)).status.state,
@@ -446,14 +446,14 @@ test("an A2A Task is sent from the host identity and completes from the recipien
     TaskState.TASK_STATE_COMPLETED,
   );
   assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
-  assert.equal(done.metadata.hab_relay.result_message_id, result.message_id);
+  assert.equal(done.metadata.hab.result_message_id, result.message_id);
   const inbox = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
     readOnly: true,
   });
   try {
     assert.equal(
       inbox
-        .prepare("SELECT count(*) n FROM relay_inbox WHERE released_at IS NULL")
+        .prepare("SELECT count(*) n FROM inbox WHERE released_at IS NULL")
         .get().n,
       0,
       "a terminal Task releases the reply bodies it consumed",
@@ -480,8 +480,8 @@ test("a pending A2A Task survives a host restart and completes afterwards", asyn
   const replay = await client.send("host_restart");
   assert.equal(replay.id, before.id);
   assert.deepEqual(
-    replay.metadata.hab_relay.source,
-    before.metadata.hab_relay.source,
+    replay.metadata.hab.source,
+    before.metadata.hab.source,
   );
   await recipient.receiver.receiveOnce();
   const [request] = recipient.receiver.inbox();
@@ -604,8 +604,8 @@ test("A2A refuses unauthenticated, wrong-audience, unauthorized and cross-owner 
   const hostMessage = {
     sender_id: identity.agent_id,
     message: {
-      thread_id: task.metadata.hab_relay.source.thread_id,
-      message_id: task.metadata.hab_relay.source.message_id,
+      thread_id: task.metadata.hab.source.thread_id,
+      message_id: task.metadata.hab.source.message_id,
     },
   };
   const forged = await spoofer.send(hostMessage, "execution_result", {
@@ -627,7 +627,7 @@ test("A2A refuses unauthenticated, wrong-audience, unauthorized and cross-owner 
   });
   try {
     assert.equal(
-      inbox.prepare("SELECT count(*) n FROM relay_inbox").get().n,
+      inbox.prepare("SELECT count(*) n FROM inbox").get().n,
       0,
       "the unsolicited notice was ACKed without an inbox record",
     );
@@ -689,7 +689,7 @@ test("after unrelated notices reach the cap, a valid reply is still saved and AC
       .find(
         (entry) =>
           entry.message.message_id ===
-          task.metadata.hab_relay.source.message_id,
+          task.metadata.hab.source.message_id,
       );
     const result = await recipient.reply(request, "execution_result", {
       task_type: "connectivity_check",
@@ -773,7 +773,7 @@ async function inFlight(client, recipient, prefix, count) {
         .find(
           (entry) =>
             entry.message.message_id ===
-            task.metadata.hab_relay.source.message_id,
+            task.metadata.hab.source.message_id,
         ),
     );
     return found.every(Boolean) ? found : undefined;
@@ -831,7 +831,7 @@ const inboxRows = (f) => {
     readOnly: true,
   });
   try {
-    return db.prepare("SELECT count(*) n FROM relay_inbox").get().n;
+    return db.prepare("SELECT count(*) n FROM inbox").get().n;
   } finally {
     db.close();
   }
@@ -878,7 +878,7 @@ test("a flood of fresh-ID replies that would not change the Task takes no ACK hi
     TaskState.TASK_STATE_COMPLETED,
   );
   assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
-  assert.equal(done.metadata.hab_relay.result_message_id, result.message_id);
+  assert.equal(done.metadata.hab.result_message_id, result.message_id);
   for (const reply of flood)
     assert.equal(
       await untilAcked(recipient.client, reply.message_id),
@@ -898,7 +898,7 @@ const unreleasedReplies = (f) => {
   });
   try {
     return db
-      .prepare("SELECT count(*) n FROM relay_inbox WHERE released_at IS NULL")
+      .prepare("SELECT count(*) n FROM inbox WHERE released_at IS NULL")
       .get().n;
   } finally {
     db.close();
@@ -933,10 +933,10 @@ test("Tasks that complete but are never read free their inbox slots, so new Task
   const outbox = new DatabaseSync(
     join(f.config.directory, "a2a-outbox.sqlite"),
   );
-  outbox.exec("DELETE FROM relay_outbox");
+  outbox.exec("DELETE FROM outbox");
   outbox.close();
   const inbox = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
-  inbox.exec("DELETE FROM relay_receiver_acks WHERE state='confirmed'");
+  inbox.exec("DELETE FROM receiver_acks WHERE state='confirmed'");
   inbox.close();
 
   const fresh = await inFlight(client, recipient, "fresh", max);
@@ -976,7 +976,7 @@ test("a Task admitted once an outbox record is purged still gets its replies sav
   });
   const client = await a2aClient(f, "caller");
   const [old] = await inFlight(client, recipient, "late_source", 1);
-  const source = old.task.metadata.hab_relay.source.message_id;
+  const source = old.task.metadata.hab.source.message_id;
   const day = 86400000;
   const outbox = new DatabaseSync(
     join(f.config.directory, "a2a-outbox.sqlite"),
@@ -984,7 +984,7 @@ test("a Task admitted once an outbox record is purged still gets its replies sav
   // The request was sent two days ago, so the replies below come long after it expired.
   outbox
     .prepare(
-      "UPDATE relay_outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+      "UPDATE outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
     )
     .run(2 * day, 2 * day, 2 * day, 2 * day, 2 * day, source);
   for (const [kind, value] of [
@@ -998,15 +998,15 @@ test("a Task admitted once an outbox record is purged still gets its replies sav
   // Maintenance at the first moment it may purge that outbox record: it deletes the
   // record and every ACK row whose own retention has also ended by then.
   const record = outbox
-    .prepare("SELECT * FROM relay_outbox WHERE message_id=?")
+    .prepare("SELECT * FROM outbox WHERE message_id=?")
     .get(source);
   const purgeAt = purgeHorizon(record);
-  outbox.prepare("DELETE FROM relay_outbox WHERE message_id=?").run(source);
+  outbox.prepare("DELETE FROM outbox WHERE message_id=?").run(source);
   outbox.close();
   const inbox = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
   inbox
     .prepare(
-      "DELETE FROM relay_receiver_acks WHERE state!='pending' AND retain_until<=? AND retry_until+?<=?",
+      "DELETE FROM receiver_acks WHERE state!='pending' AND retain_until<=? AND retry_until+?<=?",
     )
     .run(purgeAt, RECORD_RETENTION_MS, purgeAt);
   inbox.close();
@@ -1033,15 +1033,15 @@ test("a Task admitted once an outbox record is purged still gets its replies sav
   });
   const horizon = purgeHorizon(
     db
-      .prepare("SELECT * FROM relay_outbox WHERE message_id=?")
-      .get(next.task.metadata.hab_relay.source.message_id),
+      .prepare("SELECT * FROM outbox WHERE message_id=?")
+      .get(next.task.metadata.hab.source.message_id),
   );
   db.close();
   const acks = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"), {
     readOnly: true,
   });
   assert.ok(
-    acks.prepare("SELECT max(retain_until) n FROM relay_receiver_acks").get()
+    acks.prepare("SELECT max(retain_until) n FROM receiver_acks").get()
       .n <= horizon,
     "on-time replies' ACK history is collectable before their outbox record",
   );
@@ -1204,7 +1204,7 @@ test("a saved confirmed reply that breaks the A2A contract limits is released as
 /**
  * Drops the running host's ACKs of the message whose replay-bound ID ends in `entropy`
  * at its delivery-service transport while that message is live, as a lost request
- * would. Once it has expired, its ACKs reach the real relay again. Returns the drops.
+ * would. Once it has expired, its ACKs reach the real delivery store again. Returns the drops.
  */
 function loseHostAcks(t, entropy) {
   const ack = HabDeliveryService.prototype.ack;
@@ -1234,12 +1234,12 @@ const hostAck = (f, messageId) => {
     return {
       inbox: db
         .prepare(
-          "SELECT receipt_confirmed,released_at FROM relay_inbox WHERE message_id=?",
+          "SELECT receipt_confirmed,released_at FROM inbox WHERE message_id=?",
         )
         .get(messageId),
       acks: db
         .prepare(
-          "SELECT state,reason FROM relay_receiver_acks WHERE message_id=? ORDER BY generation",
+          "SELECT state,reason FROM receiver_acks WHERE message_id=? ORDER BY generation",
         )
         .all(messageId),
     };
@@ -1289,13 +1289,13 @@ test("when the running host loses its own ACK of a saved result, the reply expir
     acks.some(
       (row) => row.state === "obsolete" && row.reason === "invalid_ack",
     ),
-    `after the reply expired the relay refused the ACK as invalid_ack: ${JSON.stringify(acks)}`,
+    `after the reply expired the host refused the ACK as invalid_ack: ${JSON.stringify(acks)}`,
   );
   assert.equal(inbox.receipt_confirmed, 0);
   assert.equal(
     (await recipient.client.status(sent.message_id)).state,
     "expired",
-    "the relay never recorded the lost result as acked",
+    "the host never recorded the lost result as acked",
   );
   assert.ok(
     await eventually(async () => unreleasedReplies(f) === 0 || undefined, 8000),
@@ -1321,7 +1321,7 @@ test("when the running host loses its own ACK of a saved result, the reply expir
     () => client.get(task.id),
     TaskState.TASK_STATE_COMPLETED,
   );
-  assert.equal(done.metadata.hab_relay.result_message_id, fresh.message_id);
+  assert.equal(done.metadata.hab.result_message_id, fresh.message_id);
   assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
 });
 
@@ -1417,10 +1417,10 @@ test("an unconfirmed held result does not cause a fresh result to be ACKed and d
   );
   const done = await client.get(task.id);
   assert.deepEqual(
-    done.metadata.hab_relay.source,
-    task.metadata.hab_relay.source,
+    done.metadata.hab.source,
+    task.metadata.hab.source,
   );
-  assert.equal(done.metadata.hab_relay.result_message_id, recovery.message_id);
+  assert.equal(done.metadata.hab.result_message_id, recovery.message_id);
   assert.equal(done.artifacts[0].parts[0].content.value, "connectivity_ok");
   assert.equal(
     inboxRows(f),
@@ -1431,7 +1431,7 @@ test("an unconfirmed held result does not cause a fresh result to be ACKed and d
   assert.notEqual(hostAck(f, first.message_id).inbox?.released_at, null);
 });
 
-test("a deferred fresh result can exhaust its relay leases without being falsely ACKed", async (t) => {
+test("a deferred fresh result can exhaust its delivery leases without being falsely ACKed", async (t) => {
   const { f, recipient } = await connected(t, {
     a2a: a2aSection({ max_records: 1 }),
   });
@@ -1469,7 +1469,7 @@ test("a deferred fresh result can exhaust its relay leases without being falsely
       await new Promise((done) => setTimeout(done, 200));
       return state === "quarantined" || undefined;
     }, 5000),
-    "the deferred reply still obeys the configured finite relay attempts",
+    "the deferred reply still obeys the configured finite delivery attempts",
   );
   assert.equal(hostAck(f, second.message_id).inbox, undefined);
   assert.equal(
@@ -1521,7 +1521,7 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
           ) || undefined,
         8000,
       ),
-      `pending ${kind}: ${JSON.stringify(hostAck(f, reply.message_id))}; relay=${JSON.stringify(await recipient.client.status(reply.message_id))}`,
+      `pending ${kind}: ${JSON.stringify(hostAck(f, reply.message_id))}; delivery=${JSON.stringify(await recipient.client.status(reply.message_id))}`,
     );
   }
   assert.ok(
@@ -1540,10 +1540,10 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
   const agedTime = (at) => new Date(Date.parse(at) - shift).toISOString();
   await f.restart(async () => {
     const out = new DatabaseSync(join(f.config.directory, "a2a-outbox.sqlite"));
-    for (const row of out.prepare("SELECT message_id FROM relay_outbox").all())
+    for (const row of out.prepare("SELECT message_id FROM outbox").all())
       out
         .prepare(
-          "UPDATE relay_outbox SET message_id=?,first_sent_at=first_sent_at-?,expires_at=expires_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+          "UPDATE outbox SET message_id=?,first_sent_at=first_sent_at-?,expires_at=expires_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
         )
         .run(
           agedId(row.message_id),
@@ -1558,7 +1558,7 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
     const mail = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
     mail.exec("PRAGMA foreign_keys=OFF");
     for (const row of mail
-      .prepare("SELECT message_id,body FROM relay_inbox")
+      .prepare("SELECT message_id,body FROM inbox")
       .all()) {
       const m = JSON.parse(row.body);
       m.message_id = agedId(m.message_id);
@@ -1567,7 +1567,7 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
       m.in_reply_to.message_id = agedId(m.in_reply_to.message_id);
       mail
         .prepare(
-          "UPDATE relay_inbox SET message_id=?,body=?,received_at=received_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,retain_until=retain_until-? WHERE message_id=?",
+          "UPDATE inbox SET message_id=?,body=?,received_at=received_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,retain_until=retain_until-? WHERE message_id=?",
         )
         .run(
           m.message_id,
@@ -1580,13 +1580,13 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
         );
     }
     for (const row of mail
-      .prepare("SELECT request_id,message_id,request FROM relay_receiver_acks")
+      .prepare("SELECT request_id,message_id,request FROM receiver_acks")
       .all()) {
       const req = JSON.parse(row.request);
       req.message_id = agedId(req.message_id);
       mail
         .prepare(
-          "UPDATE relay_receiver_acks SET message_id=?,request=?,next_retry_at=next_retry_at-?,retry_until=retry_until-?,retain_until=retain_until-? WHERE request_id=?",
+          "UPDATE receiver_acks SET message_id=?,request=?,next_retry_at=next_retry_at-?,retry_until=retry_until-?,retain_until=retain_until-? WHERE request_id=?",
         )
         .run(
           agedId(row.message_id),
@@ -1607,14 +1607,14 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
       .prepare("SELECT id,metadata FROM hab_a2a_tasks")
       .all()) {
       const meta = JSON.parse(row.metadata);
-      meta.hab_relay.source.message_id = agedId(
-        meta.hab_relay.source.message_id,
+      meta.hab.source.message_id = agedId(
+        meta.hab.source.message_id,
       );
-      meta.hab_relay.source.first_sent_at = agedTime(
-        meta.hab_relay.source.first_sent_at,
+      meta.hab.source.first_sent_at = agedTime(
+        meta.hab.source.first_sent_at,
       );
-      meta.hab_relay.source.expires_at = agedTime(
-        meta.hab_relay.source.expires_at,
+      meta.hab.source.expires_at = agedTime(
+        meta.hab.source.expires_at,
       );
       tasks
         .prepare("UPDATE hab_a2a_tasks SET metadata=? WHERE id=?")
@@ -1632,12 +1632,12 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
   const mail = new DatabaseSync(join(f.config.directory, "a2a-inbox.sqlite"));
   assert.equal(
     mail
-      .prepare("SELECT count(DISTINCT message_id) n FROM relay_receiver_acks")
+      .prepare("SELECT count(DISTINCT message_id) n FROM receiver_acks")
       .get().n,
     2,
   );
   assert.ok(
-    mail.prepare("SELECT min(terminal_at) at FROM relay_receiver_acks").get()
+    mail.prepare("SELECT min(terminal_at) at FROM receiver_acks").get()
       .at >
       Date.now() - 10000,
   );
@@ -1657,12 +1657,12 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
     const elapsed = 31 * 86400000;
     mail
       .prepare(
-        "UPDATE relay_receiver_acks SET terminal_at=terminal_at-?,retain_until=retain_until-?",
+        "UPDATE receiver_acks SET terminal_at=terminal_at-?,retain_until=retain_until-?",
       )
       .run(elapsed, elapsed);
     mail
       .prepare(
-        "UPDATE relay_inbox SET released_at=released_at-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+        "UPDATE inbox SET released_at=released_at-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
       )
       .run(elapsed, elapsed, elapsed);
     mail.close();
@@ -1688,7 +1688,7 @@ test("after a long stop, retained ACK histories keep the outbox full instead of 
       .find(
         (entry) =>
           entry.message.message_id ===
-          next.metadata.hab_relay.source.message_id,
+          next.metadata.hab.source.message_id,
       );
   }, 8000);
   assert.ok(received);
@@ -1761,7 +1761,7 @@ test("a WORKING Task whose reply window closes without a result fails as result_
     );
     tasks
       .prepare(
-        "UPDATE hab_a2a_tasks SET metadata=json_set(metadata,'$.hab_relay.source.message_id',?,'$.hab_relay.source.first_sent_at',?,'$.hab_relay.source.expires_at',?) WHERE id=?",
+        "UPDATE hab_a2a_tasks SET metadata=json_set(metadata,'$.hab.source.message_id',?,'$.hab.source.first_sent_at',?,'$.hab.source.expires_at',?) WHERE id=?",
       )
       .run(
         makeReplayBoundMessageId(
@@ -1778,7 +1778,7 @@ test("a WORKING Task whose reply window closes without a result fails as result_
     );
     outbox
       .prepare(
-        "UPDATE relay_outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+        "UPDATE outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
       )
       .run(
         2 * day,
@@ -1799,7 +1799,7 @@ test("a WORKING Task whose reply window closes without a result fails as result_
   );
   const failed = await client.get(task.id);
   assert.equal(failed.status.state, TaskState.TASK_STATE_FAILED);
-  assert.equal(failed.metadata.hab_relay.reason, "result_window_expired");
+  assert.equal(failed.metadata.hab.reason, "result_window_expired");
   const text = failed.status.message.parts[0].content.value;
   assert.match(text, /result_window_expired/);
   assert.match(text, /outcome is unknown/);
@@ -1846,7 +1846,7 @@ test("a Task whose reply window closes while the host runs fails within seconds,
     );
     tasks
       .prepare(
-        "UPDATE hab_a2a_tasks SET metadata=json_set(metadata,'$.hab_relay.source.message_id',?,'$.hab_relay.source.first_sent_at',?,'$.hab_relay.source.expires_at',?) WHERE id=?",
+        "UPDATE hab_a2a_tasks SET metadata=json_set(metadata,'$.hab.source.message_id',?,'$.hab.source.first_sent_at',?,'$.hab.source.expires_at',?) WHERE id=?",
       )
       .run(
         makeReplayBoundMessageId(
@@ -1863,12 +1863,12 @@ test("a Task whose reply window closes while the host runs fails within seconds,
     );
     const shift =
       outbox
-        .prepare("SELECT expires_at FROM relay_outbox WHERE message_id=?")
+        .prepare("SELECT expires_at FROM outbox WHERE message_id=?")
         .get(request.message.message_id).expires_at -
       (at + 3600000);
     outbox
       .prepare(
-        "UPDATE relay_outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+        "UPDATE outbox SET expires_at=expires_at-?,first_sent_at=first_sent_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
       )
       .run(shift, shift, shift, shift, shift, request.message.message_id);
     outbox.close();
@@ -1885,7 +1885,7 @@ test("a Task whose reply window closes while the host runs fails within seconds,
   const lag = Date.now() - due;
   assert.ok(lag < 20000, `failed ${lag} ms after the window closed`);
   const failed = await client.get(task.id);
-  assert.equal(failed.metadata.hab_relay.reason, "result_window_expired");
+  assert.equal(failed.metadata.hab.reason, "result_window_expired");
 });
 
 test("mixed retention cohorts reclaim only affordable sender slots while one failed Task save keeps its body", async (t) => {
@@ -1909,7 +1909,7 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
   });
   for (const [i, flight] of flights.entries()) {
     const shift = (i === 0 ? 40 : 2) * 86400000;
-    shifts.set(flight.task.metadata.hab_relay.source.message_id, shift);
+    shifts.set(flight.task.metadata.hab.source.message_id, shift);
     for (const [kind, value] of [
       ["execution_accepted", accepted(`cohort${i}`)],
       ["execution_result", succeeded(`cohort${i}`)],
@@ -1947,7 +1947,7 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
     for (const [id, shift] of shifts)
       out
         .prepare(
-          "UPDATE relay_outbox SET message_id=?,first_sent_at=first_sent_at-?,expires_at=expires_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+          "UPDATE outbox SET message_id=?,first_sent_at=first_sent_at-?,expires_at=expires_at-?,status_until=status_until-?,terminal_at=terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
         )
         .run(agedId(id, shift), shift, shift, shift, shift, shift, id);
     out.close();
@@ -1955,7 +1955,7 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
     mail.exec("PRAGMA foreign_keys=OFF");
     for (const [id, shift] of replies) {
       const row = mail
-        .prepare("SELECT body FROM relay_inbox WHERE message_id=?")
+        .prepare("SELECT body FROM inbox WHERE message_id=?")
         .get(id);
       let body = row.body;
       if (body) {
@@ -1971,7 +1971,7 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
       }
       mail
         .prepare(
-          "UPDATE relay_inbox SET message_id=?,body=?,received_at=received_at-?,expires_at=expires_at-?,released_at=released_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
+          "UPDATE inbox SET message_id=?,body=?,received_at=received_at-?,expires_at=expires_at-?,released_at=released_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-? WHERE message_id=?",
         )
         .run(
           agedId(id, shift),
@@ -1986,7 +1986,7 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
         );
       mail
         .prepare(
-          "UPDATE relay_receiver_acks SET message_id=?,terminal_at=terminal_at-?,retry_until=retry_until-?,next_retry_at=next_retry_at-?,retain_until=retain_until-? WHERE message_id=?",
+          "UPDATE receiver_acks SET message_id=?,terminal_at=terminal_at-?,retry_until=retry_until-?,next_retry_at=next_retry_at-?,retain_until=retain_until-? WHERE message_id=?",
         )
         .run(agedId(id, shift), shift, shift, shift, shift, id);
     }
@@ -1999,14 +1999,14 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
       .prepare("SELECT id,metadata FROM hab_a2a_tasks")
       .all()) {
       const meta = JSON.parse(row.metadata);
-      const source = meta.hab_relay.source;
+      const source = meta.hab.source;
       const shift = shifts.get(source.message_id);
       source.message_id = agedId(source.message_id, shift);
       source.first_sent_at = agedTime(source.first_sent_at, shift);
       source.expires_at = agedTime(source.expires_at, shift);
-      if (meta.hab_relay.result_message_id)
-        meta.hab_relay.result_message_id = agedId(
-          meta.hab_relay.result_message_id,
+      if (meta.hab.result_message_id)
+        meta.hab.result_message_id = agedId(
+          meta.hab.result_message_id,
           shift,
         );
       tasks
@@ -2024,7 +2024,7 @@ test("mixed retention cohorts reclaim only affordable sender slots while one fai
       const db = new DatabaseSync(
         join(f.config.directory, "a2a-outbox.sqlite"),
       );
-      const count = db.prepare("SELECT count(*) n FROM relay_outbox").get().n;
+      const count = db.prepare("SELECT count(*) n FROM outbox").get().n;
       db.close();
       return count === 2 || undefined;
     }, 8000),
@@ -2118,7 +2118,7 @@ function hostOutboxRows(f) {
   try {
     return db
       .prepare(
-        "SELECT message_id,state,reason,submit_attempts FROM relay_outbox ORDER BY message_id",
+        "SELECT message_id,state,reason,submit_attempts FROM outbox ORDER BY message_id",
       )
       .all()
       .map((row) => ({ ...row }));
@@ -2139,7 +2139,7 @@ test("closing after a Task save leaves its original unsent intent retryable afte
       await save.call(this, task, context);
       if (
         !saved &&
-        task.metadata?.hab_relay?.message_id === "close_after_save"
+        task.metadata?.hab?.message_id === "close_after_save"
       ) {
         saved = structuredClone(task);
         // This is an actual asynchronous boundary: close can run while save resolves.
@@ -2161,14 +2161,14 @@ test("closing after a Task save leaves its original unsent intent retryable afte
   const replay = await (await a2aClient(f, "caller")).send("close_after_save");
   assert.equal(replay.id, saved.id);
   assert.deepEqual(
-    replay.metadata.hab_relay.source,
-    saved.metadata.hab_relay.source,
+    replay.metadata.hab.source,
+    saved.metadata.hab.source,
   );
   assert.equal(replay.status.state, TaskState.TASK_STATE_SUBMITTED);
   await recipient.receiver.receiveOnce();
   assert.deepEqual(
     recipient.receiver.inbox().map((entry) => entry.message.message_id),
-    [saved.metadata.hab_relay.source.message_id],
+    [saved.metadata.hab.source.message_id],
     "the retry sends the one original intent, without a replacement ID or deadline",
   );
 });
@@ -2214,7 +2214,7 @@ test("close scheduled at claim runs only after synchronous submit admission and 
 
   await f.restart();
   const replay = await (await a2aClient(f, "caller")).send("close_after_claim");
-  assert.deepEqual(replay.metadata.hab_relay.source, claimed);
+  assert.deepEqual(replay.metadata.hab.source, claimed);
   assert.equal(replay.status.state, TaskState.TASK_STATE_SUBMITTED);
   assert.equal(
     hostOutboxRows(f)[0].submit_attempts,
@@ -2287,7 +2287,7 @@ test("a full batch of per-Task store failures does not starve later overdue Task
   });
   await f.restart(() => {
     // Model 101 expired Tasks and one whose window closes shortly, without
-    // waiting a day or sending 102 relay requests. The fault is a selected
+    // waiting a day or sending 102 delivery requests. The fault is a selected
     // TaskStore save failure, not a claim that malformed Task metadata is
     // reachable through the public A2A API.
     const db = new DatabaseSync(join(f.config.directory, "a2a-tasks.sqlite"));
@@ -2309,7 +2309,7 @@ test("a full batch of per-Task store failures does not starve later overdue Task
             ? Date.now() + 3000 - 86400000 - 3600000
             : Date.now() - 2 * 86400000,
         ).toISOString();
-        const source = metadata.hab_relay.source;
+        const source = metadata.hab.source;
         source.first_sent_at = at;
         source.expires_at = new Date(Date.parse(at) + 3600000).toISOString();
         source.message_id = makeReplayBoundMessageId(

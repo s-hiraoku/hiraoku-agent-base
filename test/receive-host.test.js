@@ -35,8 +35,8 @@ test("Receive host: no outbox, budget or Task bridge is needed to save and ACK",
   assert.equal(entry.message.message_id, key.message_id);
   assert.equal(entry.receipt_confirmed, true);
   assert.deepEqual(
-    f.state.tools.filter((tool) => tool !== "relay_poll"),
-    ["relay_ack"],
+    f.state.tools.filter((tool) => tool !== "hab_poll"),
+    ["hab_ack"],
   );
   // A second step finds nothing new and does not reprocess the saved message.
   assert.equal(
@@ -95,7 +95,7 @@ test("Receive host: a stop after remote ACK keeps the saved message and retries 
   f.resume(host);
   const { key } = f.submit();
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_ack") f.pause(host);
+    if (tool === "hab_ack") f.pause(host);
   };
   const stopped = await host.stepOnce(f.context, { op: "receive" });
   assert.equal(stopped.state, "incomplete");
@@ -103,11 +103,11 @@ test("Receive host: a stop after remote ACK keeps the saved message and retries 
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, false);
   const request = f.inboxRaw
-    .prepare("SELECT request_id FROM relay_receiver_acks")
+    .prepare("SELECT request_id FROM receiver_acks")
     .get().request_id;
   f.state.afterNetwork = null;
   f.resume(host);
-  f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
+  f.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
   assert.equal(
     (await host.stepOnce(f.context, { op: "receive" })).state,
     "done",
@@ -115,7 +115,7 @@ test("Receive host: a stop after remote ACK keeps the saved message and retries 
   assert.equal(f.inbox.inbox().length, 1);
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
   assert.equal(
-    f.inboxRaw.prepare("SELECT request_id FROM relay_receiver_acks").get()
+    f.inboxRaw.prepare("SELECT request_id FROM receiver_acks").get()
       .request_id,
     request,
   );

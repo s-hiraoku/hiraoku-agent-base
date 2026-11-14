@@ -9,7 +9,7 @@ import {
   MAX_ACK_RETRY_MS,
   RECORD_RETENTION_MS,
 } from "../src/messaging/contract.ts";
-import { limits, message } from "./relay-http-fixtures.js";
+import { limits, message } from "./mcp-http-fixtures.js";
 import { authorizedDelivery } from "./delivery-fixture.js";
 
 // Delivery semantics of the SQLite store on its own (ADR-018): admission, one lease per

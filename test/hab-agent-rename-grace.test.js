@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { fixture, code } from "./hab-registry-fixtures.js";
 import { groupFixture } from "./hab-group-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 import { provisionHostA2aIdentity } from "../src/host/a2a.ts";
 
 const renamed = (f, agent, bot_name = "renamed", request_id = "rename") =>

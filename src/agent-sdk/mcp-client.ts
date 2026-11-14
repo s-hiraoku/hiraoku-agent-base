@@ -1,4 +1,4 @@
-/** Fixed Relay MCP profile; no discovery, credential issuance, retries or scheduler. */
+/** Fixed delivery MCP profile; no discovery, credential issuance, retries or scheduler. */
 import { z } from "zod";
 import {
   parseSubmission,
@@ -32,7 +32,7 @@ class ProviderAuthenticationFailure extends Error {
   }
 }
 
-export interface RelayMcpClientPolicy {
+export interface DeliveryMcpClientPolicy {
   resource_url: string;
   /** Expected immutable local owner; checked on results, never sent as authority. */
   agent_id: string;
@@ -45,20 +45,20 @@ export interface RelayMcpClientPolicy {
   max_json_depth: number;
   max_json_nodes: number;
 }
-export type RelayCredentialProvider = (input: {
+export type McpCredentialProvider = (input: {
   resource: string;
   signal: AbortSignal;
 }) => string | Promise<string>;
-export interface RelayMcpClientOptions {
-  policy: RelayMcpClientPolicy;
+export interface DeliveryMcpClientOptions {
+  policy: DeliveryMcpClientPolicy;
   limits: ContractLimits;
-  authorization?: RelayCredentialProvider;
+  authorization?: McpCredentialProvider;
   /** Trusted transport port, also used by fixtures. It must honor redirect/error and abort. */
   fetch?: typeof globalThis.fetch;
 }
 class ClientFailure extends Error {
   readonly code: string;
-  constructor(code = "relay_transport_failed") {
+  constructor(code = "transport_failed") {
     super(code);
     this.code = code;
   }
@@ -114,7 +114,7 @@ const resultSchema = z.strictObject({
 /** All parsed trees are bounded before schema validation, equality or body processing. */
 function boundedJson(
   text: string,
-  policy: Readonly<RelayMcpClientPolicy>,
+  policy: Readonly<DeliveryMcpClientPolicy>,
 ): unknown {
   const value: unknown = JSON.parse(text);
   const pending: { value: unknown; depth: number }[] = [{ value, depth: 1 }];
@@ -161,7 +161,7 @@ function sameJson(left: unknown, right: unknown): boolean {
 /** This profile requests no progress/logging/sampling. Only one final response is accepted. */
 function sseResult(
   text: string,
-  policy: Readonly<RelayMcpClientPolicy>,
+  policy: Readonly<DeliveryMcpClientPolicy>,
 ): unknown {
   let start = 0,
     lines = 0,
@@ -248,14 +248,14 @@ async function readResponse(
   }
 }
 
-export class RelayMcpClient implements SenderTransport, ReceiverTransport {
-  readonly #policy: Readonly<RelayMcpClientPolicy>;
+export class DeliveryMcpClient implements SenderTransport, ReceiverTransport {
+  readonly #policy: Readonly<DeliveryMcpClientPolicy>;
   readonly #limits: Readonly<ContractLimits>;
-  readonly #authorization: RelayCredentialProvider;
+  readonly #authorization: McpCredentialProvider;
   readonly #fetch: typeof globalThis.fetch;
   #active = 0;
   #sequence = 0;
-  constructor(options: RelayMcpClientOptions) {
+  constructor(options: DeliveryMcpClientOptions) {
     try {
       const p = options.policy,
         u = new URL(p.resource_url);
@@ -297,7 +297,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
       )
         throw Error();
     } catch {
-      throw new MessagingError("invalid_relay_client_policy");
+      throw new MessagingError("invalid_mcp_client_policy");
     }
     this.#policy = Object.freeze({ ...options.policy });
     this.#limits = Object.freeze({ ...options.limits });
@@ -322,9 +322,9 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
   }
   async #call(tool: string, args: unknown): Promise<unknown> {
     if (this.#active >= this.#policy.max_active_requests)
-      throw new MessagingError("relay_client_busy");
+      throw new MessagingError("client_busy");
     if (this.#sequence === Number.MAX_SAFE_INTEGER)
-      throw new MessagingError("relay_transport_failed");
+      throw new MessagingError("transport_failed");
     const rpcId = ++this.#sequence;
     const body = JSON.stringify({
       jsonrpc: "2.0",
@@ -374,7 +374,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
         throw new AuthenticationRecoveryError(error.reason);
       // Only errors constructed inside this boundary can carry semantic server codes.
       throw new MessagingError(
-        error instanceof ClientFailure ? error.code : "relay_transport_failed",
+        error instanceof ClientFailure ? error.code : "transport_failed",
       );
     } finally {
       clearTimeout(timer);
@@ -482,7 +482,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
           .strictObject({ error: z.string() })
           .parse(content).error;
         throw new ClientFailure(
-          isPublicToolError(error) ? error : "relay_transport_failed",
+          isPublicToolError(error) ? error : "transport_failed",
         );
       }
       return content;
@@ -492,20 +492,20 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
   }
   async submit(message: Submission): Promise<Receipt> {
     const input = parseSubmission(message, this.#limits);
-    const value = await this.requestTool("relay_submit", { ...input });
+    const value = await this.requestTool("hab_submit", { ...input });
     return this.#receipt(value, input.message_id, input);
   }
   async status(messageId: string): Promise<Receipt> {
     if (!id.safeParse(messageId).success)
       throw new MessagingError("invalid_request");
     return this.#receipt(
-      await this.requestTool("relay_status", { message_id: messageId }),
+      await this.requestTool("hab_status", { message_id: messageId }),
       messageId,
     );
   }
   #receipt(value: unknown, messageId: string, input?: Submission): Receipt {
     const parsed = receiptSchema.safeParse(value);
-    if (!parsed.success) throw new MessagingError("relay_transport_failed");
+    if (!parsed.success) throw new MessagingError("transport_failed");
     const r = parsed.data;
     if (r.sender_id !== this.#policy.agent_id)
       throw new MessagingError("forbidden");
@@ -516,11 +516,11 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
         (r.recipient_id !== input.recipient_id ||
           r.expires_at !== input.expires_at))
     )
-      throw new MessagingError("relay_transport_failed");
+      throw new MessagingError("transport_failed");
     return r;
   }
   async poll(): Promise<Delivery | null> {
-    const value = await this.requestTool("relay_poll", {});
+    const value = await this.requestTool("hab_poll", {});
     try {
       const d = pollSchema.parse(value).delivery;
       if (d === null) return null;
@@ -550,13 +550,13 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
       };
     } catch (error) {
       throw new MessagingError(
-        error instanceof ClientFailure ? error.code : "relay_transport_failed",
+        error instanceof ClientFailure ? error.code : "transport_failed",
       );
     }
   }
   async ack(request: AckRequest): Promise<AckReceipt> {
     const input = parseAck(request, this.#limits);
-    const value = await this.requestTool("relay_ack", { ...input });
+    const value = await this.requestTool("hab_ack", { ...input });
     const parsed = ackReceiptSchema.safeParse(value);
     if (parsed.success && parsed.data.recipient_id !== this.#policy.agent_id)
       throw new MessagingError("forbidden");
@@ -566,7 +566,7 @@ export class RelayMcpClient implements SenderTransport, ReceiverTransport {
       parsed.data.message_id !== input.message_id ||
       parsed.data.request_id !== input.request_id
     )
-      throw new MessagingError("relay_transport_failed");
+      throw new MessagingError("transport_failed");
     return parsed.data;
   }
 }

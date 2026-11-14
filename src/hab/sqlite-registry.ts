@@ -31,7 +31,7 @@ import {
   habSlug,
   habAddress,
   parseHabAddress,
-  relayOperations,
+  deliveryOperations,
   HAB_ADDRESS_PATTERN,
 } from "./registry.ts";
 import type {
@@ -115,8 +115,8 @@ const principalSchema = z.strictObject({
   connection_id: claim,
 });
 const rights = z
-  .array(z.enum(relayOperations))
-  .max(relayOperations.length)
+  .array(z.enum(deliveryOperations))
+  .max(deliveryOperations.length)
   .refine((v) => new Set(v).size === v.length)
   .transform((v) => v.sort());
 const epoch = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -527,7 +527,7 @@ export class SQLiteHabRegistry {
       .all();
     if (!rows.length) return;
     const now = this.#iso();
-    const all = JSON.stringify([...relayOperations].sort());
+    const all = JSON.stringify([...deliveryOperations].sort());
     for (const agentId of new Set(rows.map((row) => String(row.agent_id)))) {
       const own = rows.filter((row) => row.agent_id === agentId);
       const agent = this.#db

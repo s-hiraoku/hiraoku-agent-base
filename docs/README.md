@@ -11,7 +11,7 @@
 | [HAB の構成](architecture.md) | 部品、アドレスと認証、送受信の流れ |
 | [設計思想](hab-principles.md) | 分業、疎結合、費用の制約 |
 | [製品仕様](hab-product-spec.md) | 登録・宛先選択・状態表示などの製品要件 |
-| [メッセージ配送の正式仕様](hab-relay-spec.md) | store-and-forward、個体認証、ACK、期限 |
+| [メッセージ配送の正式仕様](hab-messaging-spec.md) | store-and-forward、個体認証、ACK、期限 |
 | [配送 store](delivery-store.md) | host の SQLite ファイル 1 つによる配送の保存と運用 |
 | [設計判断（ADR）](hab-decisions.md) | 採用・不採用・保留の判断と理由 |
 | [セキュリティ](hab-security.md) | 認証、権限、秘密、公開境界 |
@@ -21,9 +21,9 @@
 | 文書 | 内容 |
 | --- | --- |
 | [共通 MCP 接続](common-mcp-connection.md) | 新しいエージェントをつなぐ手順 |
-| [認証グループ](relay-auth-groups.md) | 接続とアドレスの結びつけ方 |
+| [認証グループ](auth-groups.md) | 接続とアドレスの結びつけ方 |
 | [アドレスの改名](agent-address-rename.md) | 同じ ID を保った改名と旧名の扱い |
-| [ローカルサービス](local-relay-service.md) | host の起動・設定・管理 CLI |
+| [ローカルサービス](host-service.md) | host の起動・設定・管理 CLI |
 | [ローカル MVP](local-mvp.md) | 1 コマンドで動作を確かめる手順 |
 
 ## 分野別

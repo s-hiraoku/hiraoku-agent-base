@@ -8,7 +8,7 @@ import {
   principal,
   code,
 } from "./hab-registry-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 import { groupFixture as shared } from "./hab-group-fixtures.js";
 
 test("one verified group uses two addresses; another group cannot select them", async (t) => {

@@ -48,15 +48,15 @@ const pending = [
   ...pendingMigrationRequirements,
 ];
 const regressionFiles = [
-  "relay-contract",
-  "relay-receiver",
-  "relay-sender",
+  "messaging-contract",
+  "receiver",
+  "sender",
   "hab-enrollment-delivery",
   "hab-auth-groups",
   "hab-discovery",
   "receive-supervisor",
-  "relay-inbox-maintenance",
-  "relay-outbox-maintenance",
+  "inbox-maintenance",
+  "outbox-maintenance",
 ].map((name) => `test/${name}.test.js`);
 const definitions = [
   { id: "shared-contracts", files: ["test/delivery-lab/contracts.test.js"] },
@@ -67,7 +67,7 @@ const definitions = [
       "test/delivery-lab/harness.test.js",
     ],
   },
-  { id: "relay-regressions", files: regressionFiles },
+  { id: "delivery-regressions", files: regressionFiles },
 ];
 if (full)
   definitions.push({

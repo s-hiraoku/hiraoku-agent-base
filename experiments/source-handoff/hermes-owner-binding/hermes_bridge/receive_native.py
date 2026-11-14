@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 
 TOOLS = frozenset(
-    ("relay_resolve", "relay_submit", "relay_status", "relay_poll", "relay_ack")
+    ("hab_resolve", "hab_submit", "hab_status", "hab_poll", "hab_ack")
 )
 
 OPTIONAL_TOOLS = frozenset(("hab_discover", "hab_register"))
@@ -20,7 +20,7 @@ TASK_TOOLS = frozenset(("hab_task_send", "hab_task_get", "hab_task_list", "hab_t
 
 
 def compatible_catalog(names):
-    """Allow only the complete Relay contract plus known opt-in extensions."""
+    """Allow only the complete HAB tool contract plus known opt-in extensions."""
     if isinstance(names, (str, bytes)):
         return False
     try:
@@ -97,15 +97,15 @@ class HermesNativeSession:
         self._unsettled = False
         self._terminal_cleanup_errors = ()
         self._outbound_scope = outbound_scope
-        self._tools = ("relay_poll", "relay_ack")
+        self._tools = ("hab_poll", "hab_ack")
         self._assignment = None
         self._identity_lost = False
         if outbound_scope is not None:
             from hermes_bridge.outbound_scope import NativeOutboundScope, NativeStatusScope
             if type(outbound_scope) not in (NativeOutboundScope, NativeStatusScope):
                 raise NativeSessionError("native_outbound_policy_invalid")
-            self._tools = (("relay_status",) if type(outbound_scope) is NativeStatusScope
-                else ("relay_poll", "relay_ack", "relay_submit", "relay_status"))
+            self._tools = (("hab_status",) if type(outbound_scope) is NativeStatusScope
+                else ("hab_poll", "hab_ack", "hab_submit", "hab_status"))
 
     async def _check(self):
         if self._guard is None:
@@ -244,7 +244,7 @@ class HermesNativeSession:
             or self._busy
         ):
             raise NativeSessionError("native_call_refused")
-        if name in ("relay_submit", "relay_status"):
+        if name in ("hab_submit", "hab_status"):
             try:
                 args = self._outbound_scope.arguments(name, args)
             except Exception:
@@ -255,7 +255,7 @@ class HermesNativeSession:
             await self._check()
             if self._session is None:
                 await self._connect()
-            if name in ("relay_submit", "relay_status"):
+            if name in ("hab_submit", "hab_status"):
                 from hermes_bridge.outbound_scope import assignment
                 scope = self._outbound_scope
                 await self._check()

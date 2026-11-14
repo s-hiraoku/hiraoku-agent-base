@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
-import { identities, limits } from "./relay-http-fixtures.js";
+import { identities, limits } from "./mcp-http-fixtures.js";
 import { sqliteDelivery } from "./delivery-fixture.js";
 export const options = {
   fingerprint_key: new Uint8Array(32).fill(61),
@@ -19,7 +19,7 @@ export const operations = ["submit", "status", "poll", "ack", "resolve"];
 export function principal(name, patch = {}) {
   return {
     issuer: "https://issuer.example/",
-    audience: "https://relay.example/mcp",
+    audience: "https://hab.example/mcp",
     subject: "shared-owner",
     client_id: "shared-client",
     connection_id: `verified-${name}`,

@@ -265,7 +265,7 @@ test("recipient owner: lost ACK retries the existing journal before native admis
   let lost = false,
     ticks = 0;
   f.hostState.afterNetwork = async (tool) => {
-    if (tool === "relay_ack" && !lost) {
+    if (tool === "hab_ack" && !lost) {
       lost = true;
       throw Error("private transport detail");
     }
@@ -275,7 +275,7 @@ test("recipient owner: lost ACK retries the existing journal before native admis
       if (++ticks === 1) {
         assert.equal(f.state.admits, 0);
         assert.equal(f.inbox.inbox()[0].receipt_confirmed, false);
-        f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
+        f.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
       } else stop.abort();
     },
   });
@@ -296,7 +296,7 @@ test("recipient owner: lost send response preserves the exact outbox and native 
   f.allowByPolicy(reply);
   let lost = false;
   f.hostState.afterNetwork = async (tool) => {
-    if (tool === "relay_submit" && !lost) {
+    if (tool === "hab_submit" && !lost) {
       lost = true;
       throw Error("private submit detail");
     }
@@ -304,7 +304,7 @@ test("recipient owner: lost send response preserves the exact outbox and native 
   await once(f);
   assert.equal(f.queued().length, 1);
   assert.equal(f.state.admits, 1);
-  f.outboxRaw.exec("UPDATE relay_outbox SET next_retry_at=0");
+  f.outboxRaw.exec("UPDATE outbox SET next_retry_at=0");
   f.reopen();
   await once(f);
   assert.equal(f.queued().length, 1);
@@ -354,7 +354,7 @@ test("recipient owner: inbound polling outage does not starve an already confirm
   f.allowByPolicy(reply);
   f.resume(f.host);
   f.hostState.afterNetwork = async (tool) => {
-    if (tool === "relay_poll") throw Error("poll unavailable");
+    if (tool === "hab_poll") throw Error("poll unavailable");
   };
   const result = await once(f);
   assert.equal(result.reason, "stopped");

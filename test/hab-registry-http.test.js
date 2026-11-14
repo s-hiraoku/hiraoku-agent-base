@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { fixture, code, operations } from "./hab-registry-fixtures.js";
-import { message, decode, request } from "./relay-http-fixtures.js";
+import { message, decode, request } from "./mcp-http-fixtures.js";
 
 test(
   "mock three-individual HTTP round trip resolves over MCP and retries durable send after restart without resolving again",
@@ -37,7 +37,7 @@ test(
       stored,
       net.clients("a", a, async (url, init) => {
         const response = await globalThis.fetch(url, init);
-        if (init.headers["Mcp-Name"] === "relay_submit" && !lost) {
+        if (init.headers["Mcp-Name"] === "hab_submit" && !lost) {
           lost = true;
           await response.arrayBuffer();
           throw Error("synthetic lost acceptance");
@@ -52,20 +52,20 @@ test(
     assert.equal(f.count(), 1);
     const receipt = hab.status(f.contexts.a, m.message_id);
     assert.equal(
-      net.tools.filter((tool) => tool === "relay_resolve").length,
+      net.tools.filter((tool) => tool === "hab_resolve").length,
       1,
     );
     net.close(stored);
     const raw = new DatabaseSync(join(f.dir, "outbox-a.sqlite"));
     try {
-      raw.exec("UPDATE relay_outbox SET next_retry_at=0");
+      raw.exec("UPDATE outbox SET next_retry_at=0");
     } finally {
       raw.close();
     }
     sender = new DurableSender(net.outbox("a", a), net.clients("a", a));
     await sender.sendOnce();
     assert.equal(
-      net.tools.filter((tool) => tool === "relay_resolve").length,
+      net.tools.filter((tool) => tool === "hab_resolve").length,
       1,
     );
     assert.equal(
@@ -109,11 +109,11 @@ test(
       await globalThis.fetch(request("tools/list", {}, { url: net.url })),
     );
     assert.deepEqual(listed.result.tools.map((tool) => tool.name).sort(), [
-      "relay_ack",
-      "relay_poll",
-      "relay_resolve",
-      "relay_status",
-      "relay_submit",
+      "hab_ack",
+      "hab_poll",
+      "hab_resolve",
+      "hab_status",
+      "hab_submit",
     ]);
   },
 );
@@ -208,7 +208,7 @@ test(
       }
       return response;
     });
-    await assert.rejects(ca.resolve(b.address), code("relay_transport_failed"));
+    await assert.rejects(ca.resolve(b.address), code("transport_failed"));
     assert.equal(calls, 1);
     assert.equal(f.count(), 0);
     assert.deepEqual(await ca.resolve(b.address), {

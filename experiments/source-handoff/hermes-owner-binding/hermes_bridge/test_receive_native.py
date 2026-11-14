@@ -88,7 +88,7 @@ class RuntimeFixture:
                     await fixture.auth_release.wait()
                 class Request(str): pass
                 request = Request(phase)
-                request.url = fixture.request_urls.get(phase, "https://relay.example/mcp")
+                request.url = fixture.request_urls.get(phase, "https://hab.example/mcp")
                 return await self.transport.handle_async_request(request)
 
         class Session:
@@ -135,13 +135,13 @@ class RuntimeFixture:
                 self.name = name
 
             async def _negotiate_session(self, session, timeout):
-                if self.name != "hab_relay" or timeout != 20.0:
+                if self.name != "hab" or timeout != 20.0:
                     raise AssertionError("native_negotiation_changed")
                 await session.client.request("initialize")
 
         @asynccontextmanager
         async def streamable(resource, *, http_client):
-            if resource != "https://relay.example/mcp":
+            if resource != "https://hab.example/mcp":
                 raise AssertionError("resource_changed")
             owner = asyncio.current_task()
             fixture.events.append(("streams.enter", owner))
@@ -199,18 +199,18 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         self.profile = Path(self.tmp.name).resolve()
         self.cfg_path = self.profile / "config.yaml"
         self.cfg = {
-            "url": "https://relay.example/mcp",
+            "url": "https://hab.example/mcp",
             "auth": "oauth",
             "enabled": False,
             "tools": {"include": sorted(TOOLS)},
             "oauth": {
                 "client_id": "public-fixture-client",
                 "scopes": [
-                    "relay:resolve",
-                    "relay:submit",
-                    "relay:status",
-                    "relay:poll",
-                    "relay:ack",
+                    "hab:resolve",
+                    "hab:submit",
+                    "hab:status",
+                    "hab:poll",
+                    "hab:ack",
                     "offline_access",
                 ],
             },
@@ -230,14 +230,14 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         self.tmp.cleanup()
 
     def write_config(self, cfg):
-        self.cfg_path.write_text(json.dumps({"mcp_servers": {"hab_relay": cfg}}))
+        self.cfg_path.write_text(json.dumps({"mcp_servers": {"hab": cfg}}))
         self.cfg_path.chmod(0o600)
 
     def session(self):
         return HermesNativeSession(
             self.profile,
-            "hab_relay",
-            "https://relay.example/mcp",
+            "hab",
+            "https://hab.example/mcp",
             runtime=self.runtime.runtime,
         )
 
@@ -247,7 +247,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
 
         def read(path):
             reads.append(path)
-            return {"mcp_servers": {"hab_relay": self.cfg}}
+            return {"mcp_servers": {"hab": self.cfg}}
 
         async def guard():
             pass
@@ -255,7 +255,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         with patch.dict(sys.modules, {"hermes_cli.config_backend": SimpleNamespace(
             read_config_doc_readonly=read
         )}):
-            await self.session().call_tool("relay_poll", {}, guard)
+            await self.session().call_tool("hab_poll", {}, guard)
         self.assertEqual(reads, [self.cfg_path])
         self.assertFalse(self.cfg_path.exists())
 
@@ -278,7 +278,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
 
         with patch.object(Path, "read_bytes", read):
             value = await session.call_tool(
-                "relay_poll", {"as_address": "worker@demo.hab"}, guard
+                "hab_poll", {"as_address": "worker@demo.hab"}, guard
             )
             await session.aclose()
         self.assertIsNone(json.loads(value)["structuredContent"]["delivery"])
@@ -286,7 +286,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.cfg_path.read_bytes(), before)
         self.assertEqual(
             self.runtime.provider_calls,
-            [("hab_relay", self.cfg["url"], self.cfg["oauth"])],
+            [("hab", self.cfg["url"], self.cfg["oauth"])],
         )
         self.assertIs(self.runtime.client_options[0]["auth"], self.runtime.provider)
         self.assertEqual(self.runtime.client_options[0]["follow_redirects"], False)
@@ -296,7 +296,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(self.runtime.body_caps, 1)
         self.assertEqual(
-            self.runtime.dispatches, ["initialize", "tools/list", "call:relay_poll"]
+            self.runtime.dispatches, ["initialize", "tools/list", "call:hab_poll"]
         )
         self.assertGreaterEqual(len(checks), 5)
         self.assertTrue(
@@ -328,12 +328,12 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             self.runtime.httpx.AsyncHTTPTransport, "aclose", broken_close
         ):
             with self.assertRaises(NativeSessionUnsettled):
-                await session.call_tool("relay_poll", {}, guard)
-        self.assertEqual(self.runtime.attempts, [("relay_poll", {})])
+                await session.call_tool("hab_poll", {}, guard)
+        self.assertEqual(self.runtime.attempts, [("hab_poll", {})])
         with self.assertRaises(NativeSessionUnsettled):
             await session.aclose()
         with self.assertRaises(NativeSessionUnsettled):
-            await session.call_tool("relay_poll", {}, guard)
+            await session.call_tool("hab_poll", {}, guard)
         self.assertEqual(len(self.runtime.attempts), 1)
 
     async def test_sdk_context_is_closed_before_the_native_result_is_published(self):
@@ -343,7 +343,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         for index in range(2):
-            value = await session.call_tool("relay_poll", {}, guard)
+            value = await session.call_tool("hab_poll", {}, guard)
             self.assertIsNone(json.loads(value)["structuredContent"]["delivery"])
             self.assertIsNone(session._session)
             self.assertIsNone(session._stack)
@@ -362,14 +362,14 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_guard_after_synthetic_refresh_wait_prevents_rpc_dispatch(self):
         session = self.session()
-        self.runtime.auth_phase = "call:relay_poll"
+        self.runtime.auth_phase = "call:hab_poll"
         allowed = True
 
         async def guard():
             if not allowed:
                 raise PermissionError("PRIVATE_ACTOR_DETAIL")
 
-        pending = asyncio.create_task(session.call_tool("relay_poll", {}, guard))
+        pending = asyncio.create_task(session.call_tool("hab_poll", {}, guard))
         await asyncio.wait_for(self.runtime.auth_started.wait(), 1)
         allowed = False
         self.runtime.auth_release.set()
@@ -386,7 +386,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         async def guard():
             self.fail("forbidden_tool_reached_guard")
 
-        for name in ("relay_submit", "relay_status", "relay_resolve", "hab_discover", "hab_register", "shell", None):
+        for name in ("hab_submit", "hab_status", "hab_resolve", "hab_discover", "hab_register", "shell", None):
             with (
                 self.subTest(name=name),
                 self.assertRaisesRegex(NativeSessionError, "^native_call_refused$"),
@@ -405,22 +405,22 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
                 with self.subTest(configured=configured, remote=remote):
                     self.write_config({**self.cfg, "tools": {"include": sorted(TOOLS | configured)}})
                     self.runtime.catalog = sorted(TOOLS | remote)
-                    await self.session().call_tool("relay_poll", {}, guard)
+                    await self.session().call_tool("hab_poll", {}, guard)
         self.assertEqual(len(self.runtime.attempts), 16)
-        self.assertTrue(all(name == "relay_poll" for name, _ in self.runtime.attempts))
+        self.assertTrue(all(name == "hab_poll" for name, _ in self.runtime.attempts))
 
     async def test_incomplete_unknown_and_duplicate_catalogs_never_dispatch_business_rpc(self):
         async def guard():
             pass
 
-        bad = [sorted(TOOLS - {"relay_ack"}), sorted(TOOLS | {"shell"}), sorted(TOOLS) + ["relay_poll"]]
+        bad = [sorted(TOOLS - {"hab_ack"}), sorted(TOOLS | {"shell"}), sorted(TOOLS) + ["hab_poll"]]
         for catalog in bad:
             for local in (True, False):
                 with self.subTest(catalog=catalog, local=local):
                     self.write_config({**self.cfg, "tools": {"include": catalog if local else sorted(TOOLS)}})
                     self.runtime.catalog = sorted(TOOLS) if local else catalog
                     with self.assertRaisesRegex(NativeSessionError, "^native_call_failed$"):
-                        await self.session().call_tool("relay_poll", {}, guard)
+                        await self.session().call_tool("hab_poll", {}, guard)
         self.assertEqual(self.runtime.attempts, [])
 
     async def test_task_catalog_is_known_but_task_calls_remain_refused(self):
@@ -431,12 +431,12 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         session = self.session()
-        result = await session.call_tool("relay_poll", {}, guard)
+        result = await session.call_tool("hab_poll", {}, guard)
         self.assertIsNone(json.loads(result)["structuredContent"]["delivery"])
         for tool in task_tools:
             with self.assertRaisesRegex(NativeSessionError, "^native_call_refused$"):
                 await session.call_tool(tool, {}, guard)
-        self.assertEqual([name for name, _ in self.runtime.attempts], ["relay_poll"])
+        self.assertEqual([name for name, _ in self.runtime.attempts], ["hab_poll"])
 
     async def test_partial_task_catalog_is_rejected_before_receiving(self):
         self.runtime.catalog = sorted(TOOLS | {"hab_task_send"})
@@ -445,7 +445,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         with self.assertRaisesRegex(NativeSessionError, "^native_call_failed$"):
-            await self.session().call_tool("relay_poll", {}, guard)
+            await self.session().call_tool("hab_poll", {}, guard)
         self.assertEqual(self.runtime.attempts, [])
 
     async def test_config_mismatch_refuses_before_runtime_or_oauth_provider(self):
@@ -455,7 +455,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             {"ssl_verify": False},
             {"headers": {"Authorization": "synthetic-private-header"}},
             {"tools": {"include": sorted(TOOLS | {"shell"})}},
-            {"tools": {"include": ["relay_poll"]}},
+            {"tools": {"include": ["hab_poll"]}},
             {"transport": "sse"},
         ]
 
@@ -466,7 +466,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(change=change):
                 self.write_config({**self.cfg, **change})
                 with self.assertRaisesRegex(NativeSessionError, "^native_call_failed$"):
-                    await self.session().call_tool("relay_poll", {}, guard)
+                    await self.session().call_tool("hab_poll", {}, guard)
         self.assertEqual(self.runtime.runtime_calls, 0)
         self.assertEqual(self.runtime.provider_calls, [])
 
@@ -478,7 +478,7 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         with self.assertRaisesRegex(NativeSessionError, "^native_call_failed$"):
-            await session.call_tool("relay_poll", {}, guard)
+            await session.call_tool("hab_poll", {}, guard)
         self.assertEqual(self.runtime.dispatches, ["initialize", "tools/list"])
         self.assertEqual(self.runtime.attempts, [])
         self.assertIsNone(session._stack)
@@ -498,16 +498,16 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
             "request_id": "same-ack",
         }
         with self.assertRaisesRegex(NativeSessionError, "^native_call_failed$"):
-            await session.call_tool("relay_ack", args, guard)
-        self.assertEqual(self.runtime.attempts, [("relay_ack", args)])
-        self.assertEqual(self.runtime.dispatches.count("call:relay_ack"), 1)
+            await session.call_tool("hab_ack", args, guard)
+        self.assertEqual(self.runtime.attempts, [("hab_ack", args)])
+        self.assertEqual(self.runtime.dispatches.count("call:hab_ack"), 1)
         self.assertIsNone(session._session)
-        await session.call_tool("relay_ack", args, guard)
+        await session.call_tool("hab_ack", args, guard)
         self.assertEqual(len(self.runtime.sessions), 2)
         self.assertEqual(
-            self.runtime.attempts, [("relay_ack", args), ("relay_ack", args)]
+            self.runtime.attempts, [("hab_ack", args), ("hab_ack", args)]
         )
-        self.assertEqual(self.runtime.dispatches.count("call:relay_ack"), 2)
+        self.assertEqual(self.runtime.dispatches.count("call:hab_ack"), 2)
         await session.aclose()
         self.assertTrue(
             all(task is asyncio.current_task() for _, task in self.runtime.events)
@@ -515,24 +515,24 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_overlapping_call_is_refused_without_second_native_request(self):
         session = self.session()
-        self.runtime.auth_phase = "call:relay_poll"
+        self.runtime.auth_phase = "call:hab_poll"
 
         async def guard():
             pass
 
         async def owner():
             try:
-                return await session.call_tool("relay_poll", {}, guard)
+                return await session.call_tool("hab_poll", {}, guard)
             finally:
                 await session.aclose()
 
         pending = asyncio.create_task(owner())
         await asyncio.wait_for(self.runtime.auth_started.wait(), 1)
         with self.assertRaisesRegex(NativeSessionError, "^native_call_refused$"):
-            await session.call_tool("relay_ack", {}, guard)
+            await session.call_tool("hab_ack", {}, guard)
         self.runtime.auth_release.set()
         await pending
-        self.assertEqual(self.runtime.attempts, [("relay_poll", {})])
+        self.assertEqual(self.runtime.attempts, [("hab_poll", {})])
         self.assertTrue(all(task is pending for _, task in self.runtime.events))
 
 

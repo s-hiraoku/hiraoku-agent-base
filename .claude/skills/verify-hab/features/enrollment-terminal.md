@@ -17,7 +17,7 @@ A human operator registers a bot from a terminal: choose a product, propose a bo
 
 Preconditions:
 
-- Node ≥ 26 on PATH (`. $S/_node.sh`), `tmux` installed, repo root as cwd. No Relay stack is needed.
+- Node ≥ 26 on PATH (`. $S/_node.sh`), `tmux` installed, repo root as cwd. No host stack is needed.
 
 - **Start.** Run `T=hab-enroll-$$; tmux new-session -d -s "$T" -x 160 -y 50 "bash -c '. $S/_node.sh; node scripts/hab-enrollment-demo.ts --interactive; echo DEMO_EXIT=\$?; sleep 60'"`. Helper to wait: `w(){ for i in $(seq 1 40); do tmux capture-pane -pt "$T" | grep -qF "$1" && return 0; sleep 0.25; done; echo "TIMEOUT $1"; return 1; }`.
 - **Choose product.** `w '番号 / q'`, then pick grok-bot's number from the screen: `N=$(tmux capture-pane -pt "$T" | sed -n 's/^\([0-9]\)\. grok-bot$/\1/p'); tmux send-keys -t "$T" "$N" Enter`.

@@ -11,12 +11,12 @@ import { ReceiveSupervisor } from "../src/agent-sdk/receive-supervisor.ts";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
 import { DurableSender } from "../src/agent-sdk/sender.ts";
-import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
+import { DeliveryMcpClient } from "../src/agent-sdk/mcp-client.ts";
 import { hostFixture, deferred, limits } from "./adapter-host-fixtures.js";
 
 const identity = Object.freeze({
   issuer: "https://issuer.example/",
-  resource: "https://relay.example/mcp",
+  resource: "https://hab.example/mcp",
   subject: "fixture|b",
   client_id: "fixture-client",
   connection_id: "fixture-connection",
@@ -85,7 +85,7 @@ async function durableFixture(t) {
   const host = f.makeHost({
     owner,
     network: async (input, init) => {
-      if (new Request(input, init).headers.get("Mcp-Name") === "relay_ack")
+      if (new Request(input, init).headers.get("Mcp-Name") === "hab_ack")
         ackRequests.push(JSON.parse(init.body).params.arguments);
       return network(input, init);
     },
@@ -195,7 +195,7 @@ test("recovery reasons are local brands, not wire strings, copied errors or prot
 });
 test("MCP client preserves a trusted provider recovery signal without performing fetch", async () => {
   let calls = 0;
-  const client = new RelayMcpClient({
+  const client = new DeliveryMcpClient({
     limits,
     policy: clientPolicy,
     authorization: () => {
@@ -229,21 +229,21 @@ test("MCP client does not promote remote rejection or fetch/provider lookalikes 
     },
     { fetch: async () => new Response("invalid_grant", { status: 403 }) },
   ]) {
-    const client = new RelayMcpClient({
+    const client = new DeliveryMcpClient({
       limits,
       policy: clientPolicy,
       authorization: () => "Bearer fixture-b",
       ...options,
     });
     await assert.rejects(client.poll(), {
-      code: "relay_transport_failed",
-      message: "relay_transport_failed",
+      code: "transport_failed",
+      message: "transport_failed",
     });
   }
 });
 test("provider timeout keeps underlying work counted and does not promote a late recovery error", async () => {
   const finish = deferred();
-  const client = new RelayMcpClient({
+  const client = new DeliveryMcpClient({
     limits,
     policy: { ...clientPolicy, timeout_ms: 20 },
     authorization: async () => {
@@ -251,9 +251,9 @@ test("provider timeout keeps underlying work counted and does not promote a late
       throw recovery();
     },
   });
-  await assert.rejects(client.poll(), { code: "relay_transport_failed" });
+  await assert.rejects(client.poll(), { code: "transport_failed" });
   assert.equal(client.activeRequests, 1);
-  await assert.rejects(client.poll(), { code: "relay_client_busy" });
+  await assert.rejects(client.poll(), { code: "client_busy" });
   finish.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(client.activeRequests, 0);
@@ -354,9 +354,9 @@ test("durable ACK identity and full body survive recovery and same-identity resu
           assert.equal(f.inbox.inbox()[0].receipt_confirmed, false);
           assert.deepEqual(f.inbox.inbox()[0].message, message);
           savedAck = f.inboxRaw
-            .prepare("SELECT * FROM relay_receiver_acks")
+            .prepare("SELECT * FROM receiver_acks")
             .get();
-          f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
+          f.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
           ready(gate);
         } else stop.abort();
       },
@@ -371,13 +371,13 @@ test("durable ACK identity and full body survive recovery and same-identity resu
   assert.deepEqual(events, [null, "reauthentication_required", null]);
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
   const confirmed = f.inboxRaw
-    .prepare("SELECT * FROM relay_receiver_acks")
+    .prepare("SELECT * FROM receiver_acks")
     .get();
   assert.deepEqual(f.ackRequests, [JSON.parse(savedAck.request)]);
   for (const field of ["request_id", "message_id", "fingerprint"])
     assert.equal(confirmed[field], savedAck[field]);
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
-  assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack", "relay_poll"]);
+  assert.deepEqual(f.state.tools, ["hab_poll", "hab_ack", "hab_poll"]);
   assert.equal(f.queued().length, 0);
 });
 test("supervisor without a gate stops at a typed recovery reason instead of retrying forever", async () => {

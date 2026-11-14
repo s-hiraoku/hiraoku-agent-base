@@ -5,7 +5,7 @@ import {
   hostFixture as baseHostFixture,
   deferred,
 } from "./adapter-host-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 import { code } from "./inbox-fixtures.js";
 import { SQLiteHostOwner } from "../src/agent-sdk/sqlite-host-owner.ts";
 // Healthy send coverage must not expire a deliberately short fault-test lease under suite load.
@@ -71,7 +71,7 @@ test("initial message: explicit send performs the only submit using the host-bou
   f.resume();
   await f.step(enqueue(value));
   assert.equal((await f.step({ op: "send" })).state, "done");
-  assert.deepEqual(f.state.tools, ["relay_submit"]);
+  assert.deepEqual(f.state.tools, ["hab_submit"]);
   const delivery = f.service.poll(f.contexts.a);
   assert.equal(delivery.message.sender_id, "b");
   assert.equal(delivery.message.message_id, value.message_id);

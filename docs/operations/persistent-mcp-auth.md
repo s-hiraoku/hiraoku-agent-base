@@ -2,13 +2,13 @@
 
 常用接続は設定・接続・grantを保存して使い続けます。送受信の確認後に自動で削除しません。
 access tokenの期限をなくすことや、認証失敗を匿名接続へ切り替えることではありません。
-Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクライアントが更新を担います。
+hostは更新資格情報を保管・発行せず、各hostの標準OAuthクライアントが更新を担います。
 配送は引き続き共通MCPの5操作です。外部実行APIや製品名による配送分岐を追加しません。
 
 ## 明示的な常用設定
 
 既存OAuthファイルの`version:1`は、tokenも接続窓も最大15分という有限試験の契約を維持します。
-自動移行や期間の自動延長はしません。[常用設定の例](../../config/relay-oauth-persistent.example.json)は
+自動移行や期間の自動延長はしません。[常用設定の例](../../config/host-oauth-persistent.example.json)は
 `version:2 / mode:persistent`を明記し、未設定時は無効・全拒否です。
 
 ```json
@@ -17,7 +17,7 @@ Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクラ
   "mode": "persistent",
   "enabled": false,
   "issuer": "https://example-tenant.jp.auth0.com/",
-  "resource": "https://relay.example/hab/mcp",
+  "resource": "https://hab.example/hab/mcp",
   "max_access_token_lifetime_seconds": 600,
   "keys": [],
   "connections": [{
@@ -33,13 +33,13 @@ Relayは更新資格情報を保管・発行せず、各hostの標準OAuthクラ
 
 日時・主体は説明用です。本番へコピーせず、人間が承認した実値を設定します。
 公開RSA鍵のpin、正規resource、本人所有・0600・canonical pathなどのファイル境界は
-[OAuth入口](relay-oauth-ingress.md)と同じです。AT/RTやclient secretはこの台帳に置きません。
+[OAuth入口](oauth-ingress.md)と同じです。AT/RTやclient secretはこの台帳に置きません。
 
 | 対象 | コードの契約 | 本番値の選択 |
 | --- | --- | --- |
 | 参加承認 | 明示した`approved_at <= now < approved_until`だけ有効。有限で終了が開始より後 | 常用案は365日。1日・7日・30日なども設定可能で、365日が強制上限ではない。実値は別途承認 |
 | access token | 署名・issuer・単一audience・主体/client・5scope・iat/nbf/expを検証 | 既存600秒を推奨。設定値は1〜900秒で、900秒超や無期限は拒否 |
-| refresh token | Relayは受け取らず、hostとissuerが保管・回転・更新を担当 | 常用案は回転あり・絶対365日・未更新30日。issuer/client/hostの実対応と具体承認が必要 |
+| refresh token | hostは受け取らず、hostとissuerが保管・回転・更新を担当 | 常用案は回転あり・絶対365日・未更新30日。issuer/client/hostの実対応と具体承認が必要 |
 
 表は推奨案と設定能力の区別です。設定例やテストの日数を、ユーザーが本番期間として
 承認したとは扱いません。参加期間終了後も接続設定は残ります。人間が再承認しない限り
@@ -111,12 +111,12 @@ schema番号だけを戻したりしません。新規受付後に古いbackup�
 
 | 対象 | 具体化して承認する差分 | 保管・期間・取り消し |
 | --- | --- | --- |
-| Dots | 既存公開resourceへの正式クラウドMCP接続。provided public client/none、Relay5scope。refreshを使う場合だけ追加`offline_access`を明示 | ChatGPTの正式接続ストア。実callbackを管理画面で確認。接続/grantは維持し、停止時に対象だけ切断/失効 |
+| Dots | 既存公開resourceへの正式クラウドMCP接続。provided public client/none、HAB 5 scope。refreshを使う場合だけ追加`offline_access`を明示 | ChatGPTの正式接続ストア。実callbackを管理画面で確認。接続/grantは維持し、停止時に対象だけ切断/失効 |
 | Hermes | 既存MCP定義を標準OAuthへ変更。loopbackのBearer入口へJWTを送らず、正規OAuth resourceを使用。別グループにするなら別public client | 選択profileの`mcp-tokens/<server>.json`等。親0700/ファイル0600。同じOSユーザーから読める。初回login・RT保存は別承認 |
-| Auth0 | 対象clientのRefresh Token grant、APIのAllow Offline Access、回転と絶対/idle期限。既存の権限を広げず5scopeは維持 | token自体をRelay/公開repoへ保存しない。public clientへsecretを追加しない。RT取消とRelay側の失効を組み合わせる |
-| Relay | OAuth v2の参加実値、承認済み主体/client、既存group binding、採用releaseと起動設定 | 既存private設定0600。AT更新で書き換えない。停止/明示失効の手順を検証 |
+| Auth0 | 対象clientのRefresh Token grant、APIのAllow Offline Access、回転と絶対/idle期限。既存の権限を広げず5scopeは維持 | token自体をhost/公開repoへ保存しない。public clientへsecretを追加しない。RT取消とhost側の失効を組み合わせる |
+| host | OAuth v2の参加実値、承認済み主体/client、既存group binding、採用releaseと起動設定 | 既存private設定0600。AT更新で書き換えない。停止/明示失効の手順を検証 |
 
-`offline_access`はRT取得のための追加認可で、Relayの配送操作を増やすscopeではありません。
+`offline_access`はRT取得のための追加認可で、HABの配送操作を増やすscopeではありません。
 この変更自体はどのgrantも有効化しません。cloud登録フォームは接続用pluginを作成する
 場合があり、既存portable packageの更新と区別します。登録IDやcallbackを推測せず、
 同一hostでbundled MCPと登録済み接続を二重ロードしません。
@@ -129,12 +129,12 @@ MCPの接続/更新だけでは常駐受信になりません。各hostの受信
 ## 模擬検証と未検証
 
 ```sh
-node --test test/relay-oauth-auth.test.js test/relay-oauth-participation.test.js
-node --test test/local-relay-participation.test.js test/local-relay-admin.test.js
+node --test test/oauth-auth.test.js test/oauth-participation.test.js
+node --test test/host-participation.test.js test/host-admin.test.js
 ```
 
 合成署名JWTで20分後の更新、期限境界、取消、署名鍵変更、設定競合と時計逆行を検証します。
-configured Relay/公式管理処理と共通MCP clientを使うloopback試験では、共有グループ、
+configured host/公式管理処理と共通MCP clientを使うloopback試験では、共有グループ、
 期限切れATから新ATへの切替え、往復・双方の保存後ACK、再起動後のreceipt/アドレス保持、
 失効の保持、停止backupからの受付前復元を確認します。既存サービスや認証は使いません。
 

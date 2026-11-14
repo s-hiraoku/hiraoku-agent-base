@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print relay_submit arguments for a fresh message (replay-bound id rm1.<ms>.<32hex>,
+# Print hab_submit arguments for a fresh message (replay-bound id rm1.<ms>.<32hex>,
 # one-hour deadline). Usage: new-message.sh <run-dir> <to:a|b|c> [text] [kind:question|answer|notice]
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); . "$here/_node.sh"

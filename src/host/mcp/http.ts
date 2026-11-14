@@ -4,13 +4,13 @@ import type { WriterOperation } from "./writer-admission.ts";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import type { AuditSink, AuditCategory } from "../../security.ts";
 import { protocolAdmission } from "../../protocol.ts";
-import { createRelayMcpServer, relayMcpSchemas } from "./server.ts";
-import type { RelayMcpGate } from "./server.ts";
-import type { RelayContextResolver } from "./server.ts";
+import { createDeliveryMcpServer, deliveryMcpSchemas } from "./server.ts";
+import type { DeliveryMcpGate } from "./server.ts";
+import type { DeliveryContextResolver } from "./server.ts";
 import type { z } from "zod";
-import { RelayOAuthResource, RELAY_OAUTH_SCOPES } from "./oauth-resource.ts";
+import { McpOAuthResource, HAB_OAUTH_SCOPES } from "./oauth-resource.ts";
 import type { DeliveryService } from "../../messaging/delivery-service.ts";
-export interface RelayHttpPolicy {
+export interface McpHttpPolicy {
   resource_url: string;
   /** Explicit opt-in, fixed issuer discovery and tool consent metadata. */
   oauth_issuer?: string;
@@ -22,7 +22,7 @@ export interface RelayHttpPolicy {
   requests_per_window: number;
   window_ms: number;
 }
-export type RelayHttpVerifier = (input: {
+export type McpHttpVerifier = (input: {
   authorization: string;
   resource: string;
   signal: AbortSignal;
@@ -31,7 +31,7 @@ class HttpFailure extends Error {
   readonly status: number;
   readonly category: AuditCategory;
   constructor(status: number, category: AuditCategory) {
-    super("Relay HTTP rejected");
+    super("MCP HTTP rejected");
     this.status = status;
     this.category = category;
   }
@@ -49,25 +49,25 @@ function origin(value: string): URL {
         ["127.0.0.1", "[::1]", "localhost"].includes(u.hostname)
       ))
   )
-    throw Error("invalid_relay_http_policy");
+    throw Error("invalid_mcp_http_policy");
   return u;
 }
-export class RelayHttpGateway {
-  readonly #policy: Readonly<RelayHttpPolicy>;
-  readonly oauth: RelayOAuthResource | undefined;
-  get policy(): Readonly<RelayHttpPolicy> {
+export class McpHttpGateway {
+  readonly #policy: Readonly<McpHttpPolicy>;
+  readonly oauth: McpOAuthResource | undefined;
+  get policy(): Readonly<McpHttpPolicy> {
     return this.#policy;
   }
   readonly #service: DeliveryService;
   readonly #audit: AuditSink;
-  readonly #verify: RelayHttpVerifier;
+  readonly #verify: McpHttpVerifier;
   readonly #admission: WriterAdmission | undefined;
   protected get writerOperations(): Readonly<Record<string, WriterOperation>> {
     return {
-      relay_submit: "submit",
-      relay_status: "status",
-      relay_poll: "poll",
-      relay_ack: "ack",
+      hab_submit: "submit",
+      hab_status: "status",
+      hab_poll: "poll",
+      hab_ack: "ack",
     };
   }
   /** Host-owned read catalog still uses HTTP authentication, audit and request bounds. */
@@ -76,7 +76,7 @@ export class RelayHttpGateway {
   }
   /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
   protected get toolSchemas(): Record<string, z.ZodType> {
-    return relayMcpSchemas;
+    return deliveryMcpSchemas;
   }
   /** Trusted host may narrow admission to an already authenticated local name. */
   protected writerContext(
@@ -88,12 +88,12 @@ export class RelayHttpGateway {
     void _input;
     return context;
   }
-  protected createServer(resolve: RelayContextResolver, gate: RelayMcpGate) {
-    return createRelayMcpServer(
+  protected createServer(resolve: DeliveryContextResolver, gate: DeliveryMcpGate) {
+    return createDeliveryMcpServer(
       this.#service,
       resolve,
       gate,
-      this.oauth ? RELAY_OAUTH_SCOPES : undefined,
+      this.oauth ? HAB_OAUTH_SCOPES : undefined,
     );
   }
   #window = 0;
@@ -101,9 +101,9 @@ export class RelayHttpGateway {
   #active = 0;
   constructor(
     service: DeliveryService,
-    policy: RelayHttpPolicy,
+    policy: McpHttpPolicy,
     audit: AuditSink,
-    verify: RelayHttpVerifier = () => null,
+    verify: McpHttpVerifier = () => null,
     admission?: WriterAdmission,
   ) {
     try {
@@ -138,12 +138,12 @@ export class RelayHttpGateway {
       )
         throw Error();
     } catch {
-      throw Error("invalid_relay_http_policy");
+      throw Error("invalid_mcp_http_policy");
     }
     this.oauth =
       policy.oauth_issuer === undefined
         ? undefined
-        : new RelayOAuthResource(policy.oauth_issuer, policy.resource_url);
+        : new McpOAuthResource(policy.oauth_issuer, policy.resource_url);
     this.#policy = Object.freeze({
       ...policy,
       allowed_origins: Object.freeze([...policy.allowed_origins]),
@@ -238,7 +238,7 @@ export class RelayHttpGateway {
     const onAbort = () => stop(408);
     request.signal.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => stop(504), this.policy.timeout_ms);
-    const gate: RelayMcpGate = {
+    const gate: DeliveryMcpGate = {
       check,
       begin: async () => {
         pendingTools++;

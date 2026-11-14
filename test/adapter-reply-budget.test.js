@@ -122,7 +122,7 @@ async function setup(t, patch = {}) {
       stores.delete(b);
     },
     records: () => raw.prepare("SELECT * FROM reply_budget_reservations").all(),
-    sent: () => outboxRaw.prepare("SELECT * FROM relay_outbox").all(),
+    sent: () => outboxRaw.prepare("SELECT * FROM outbox").all(),
   };
 }
 function clock(at, action) {
@@ -646,7 +646,7 @@ test("Reply budget: unknown schema and missing immutable triggers are not auto r
   const unknown = f.open({}, path);
   assert.throws(() => unknown.migrate(), code("unknown_reply_budget_schema"));
 });
-test("Reply budget: real Relay question-answer roundtrip ACKs without starting another conversation", async (t) => {
+test("Reply budget: real host question-answer roundtrip ACKs without starting another conversation", async (t) => {
   const f = await setup(t),
     key = f.key(),
     m = f.message(key);
@@ -734,7 +734,7 @@ test("Reply budget: expired exact replay cannot recreate a missing outbox record
     m = f.message(key);
   f.answers.enqueueOnce(context, key, m);
   f.outboxRaw
-    .prepare("DELETE FROM relay_outbox WHERE message_id=?")
+    .prepare("DELETE FROM outbox WHERE message_id=?")
     .run(m.message_id);
   clock(Date.parse(m.expires_at) + 1, () => {
     assert.throws(
