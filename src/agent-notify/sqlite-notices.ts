@@ -5,8 +5,8 @@
  * never be handed to another.
  */
 import { DatabaseSync } from "node:sqlite";
-import { closeSync, constants, fstatSync, openSync } from "node:fs";
 import { MessagingError } from "../messaging/delivery-service.ts";
+import { ensurePrivateFile } from "./private-file.ts";
 import type { NoticeRecord, NoticeState, PeekedMessage } from "./contract.ts";
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS notices_meta(
@@ -51,18 +51,7 @@ export class SQLiteNotices {
     // The rows hold message text: owner-only, like the other SQLite stores. SQLite gives the
     // WAL and shared-memory files the database file's permissions.
     if (path !== ":memory:") {
-      const fd = openSync(
-        path,
-        constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW,
-        0o600,
-      );
-      try {
-        const info = fstatSync(fd);
-        if (!info.isFile() || (info.mode & 0o077) !== 0)
-          throw new MessagingError("insecure_notices_file");
-      } finally {
-        closeSync(fd);
-      }
+      ensurePrivateFile(path, "insecure_notices_file");
     }
     this.#db = new DatabaseSync(path);
     try {

@@ -5,7 +5,6 @@
  * `hab-notify decide`, and, on a `handoff` line, gives `prompt` to that same session.
  * Because the file cannot confirm a start, a handoff is reported as `queued`.
  */
-import { appendFileSync } from "node:fs";
 import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
 import type {
   AgentScreen,
@@ -13,6 +12,7 @@ import type {
   NoticeState,
   PeekedMessage,
 } from "./contract.ts";
+import { appendPrivate } from "./private-file.ts";
 
 export class JsonlScreen implements AgentScreen {
   readonly target: string;
@@ -24,14 +24,14 @@ export class JsonlScreen implements AgentScreen {
     this.#now = now;
   }
   #write(event: Record<string, unknown>) {
-    appendFileSync(
+    appendPrivate(
       this.#path,
       JSON.stringify({
         ...event,
         target: this.target,
         at: new Date(this.#now()).toISOString(),
       }) + "\n",
-      { mode: 0o600 },
+      "insecure_screen_file",
     );
   }
   async show(message: PeekedMessage) {

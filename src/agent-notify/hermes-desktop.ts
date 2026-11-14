@@ -19,13 +19,14 @@
  */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type {
   AgentScreen,
   HandoffResult,
   NoticeState,
   PeekedMessage,
 } from "./contract.ts";
+import { appendPrivate } from "./private-file.ts";
 
 export interface HermesDesktopBinding {
   /** The saved Hermes conversation (session) ID shown in Desktop. */
@@ -146,11 +147,11 @@ export class HermesDesktopScreen implements AgentScreen {
     this.#now = options.now ?? Date.now;
   }
   #write(line: Record<string, unknown>) {
-    appendFileSync(
+    appendPrivate(
       this.#path,
       JSON.stringify({ ...line, at: new Date(this.#now()).toISOString() }) +
         "\n",
-      { mode: 0o600 },
+      "insecure_screen_file",
     );
   }
   async show(message: PeekedMessage) {

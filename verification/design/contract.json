@@ -801,7 +801,7 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "7b31a3453852ff414073666922d0ef84765ef4b8f3b8e826fe1ccc5a0eee9b83",
+      "sha256": "e8f3ed13d821128b824ea69061946a71703d3e603361883c4d5ced9e381de311",
       "role": "normative",
       "review": "reviewed",
       "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done.",
@@ -1931,7 +1931,7 @@
           "path": "docs/receiver/arrival-notifier.md",
           "start": 112,
           "end": 134,
-          "excerpt_sha256": "4985e6a655eb574f86d5428f9622f046a74d5d5e046599fa4d973fff6338f37b"
+          "excerpt_sha256": "c3e9d90a5a943bc306ec603246055cbc05b4e7c32380998a5e50969f0b0427ca"
         },
         {
           "path": "docs/receiver/receipt-confirmation.md",

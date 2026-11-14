@@ -470,3 +470,35 @@ test("the notices store is owner-only and refuses a file others can read", (t) =
     /insecure_notices_file/,
   );
 });
+
+test("screen files are created owner-only and an open existing one is refused before writing", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hab-screen-mode-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const notice = {
+    message_id: "m1",
+    sender_id: "agent-a",
+    from: "a@x.hab",
+    kind: "question",
+    thread_id: "t-1",
+    in_reply_to: null,
+    sent_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+    display: "secret body",
+    handoff_prompt: "secret prompt",
+  };
+  const path = join(dir, "screen.jsonl");
+  const previous = process.umask(0o022);
+  try {
+    await new JsonlScreen(path, "synthetic:session-1").show(notice);
+  } finally {
+    process.umask(previous);
+  }
+  assert.equal(statSync(path).mode & 0o777, 0o600);
+  const open = join(dir, "open.jsonl");
+  writeFileSync(open, "");
+  chmodSync(open, 0o644);
+  const screen = new JsonlScreen(open, "synthetic:session-1");
+  await assert.rejects(screen.show(notice), /insecure_screen_file/);
+  await assert.rejects(screen.handoff(notice), /insecure_screen_file/);
+  assert.equal(readFileSync(open, "utf8"), "");
+});

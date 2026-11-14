@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  chmodSync,
   existsSync,
   mkdtempSync,
   readFileSync,
@@ -351,4 +352,15 @@ test("a screen file reused under another binding never relabels old notices", as
     next_cursor: "2",
     has_more: false,
   });
+});
+
+test("an existing screen file others can read is refused before any notice is written", async (t) => {
+  const { path } = setup(t);
+  writeFileSync(path, "");
+  chmodSync(path, 0o644);
+  await assert.rejects(
+    new HermesDesktopScreen(path, binding).show(message("m1")),
+    /insecure_screen_file/,
+  );
+  assert.equal(readFileSync(path, "utf8"), "");
 });
