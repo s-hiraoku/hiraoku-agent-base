@@ -540,7 +540,7 @@ test("Claude Code: the status line shows the waiting notice only in the bound se
   ];
   const line = claudeCodeStatusLine(records, binding, { session_id: "sess-1" });
   assert.ok(line.startsWith(message("m1").display));
-  assert.match(line, /hab-notify decide m1 accept\|later\|decline/);
+  assert.match(line, /hab-notify decide m1 accept\|later\|decline sender-a$/m);
   assert.match(line, /ほかに 1 件/);
   assert.equal(line.includes("body m0"), false);
   assert.equal(
@@ -554,7 +554,7 @@ test("Claude Code: the status line shows the waiting notice only in the bound se
   });
   const cut = claudeCodeStatusLine([long], binding, { session_id: "sess-1" });
   assert.ok(cut.split("\n").length <= 15);
-  assert.match(cut, /hab-notify show m3/);
+  assert.match(cut, /hab-notify show m3 sender-a /);
 });
 
 /** Speaks MCP over the channel server's stdio. */
@@ -725,6 +725,7 @@ test("hab-notify statusline and the new screen types in the config", async (t) =
   assert.equal(argv[0], process.execPath);
   assert.match(argv[1], /scripts\/hab-notify\.ts$/);
   assert.deepEqual(argv.slice(2, 6), ["--config", claude, "decide", "m1"]);
+  assert.equal(argv.at(-1), "sender-a");
   out.length = 0;
   assert.equal(
     await main(

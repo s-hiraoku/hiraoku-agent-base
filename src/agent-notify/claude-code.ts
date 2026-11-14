@@ -122,7 +122,8 @@ const MAX_LINES = 14;
 /**
  * The status line for one session: the oldest notice waiting for a choice in full, and a
  * count of the rest. Empty for any other session, and for notices put off with あとで.
- * `command` is the runnable hab-notify prefix (with its `--config`) shown in the hints.
+ * `command` is the runnable hab-notify prefix (with its `--config`) shown in the hints; the
+ * hints name the sender too, since two senders may use the same message ID.
  */
 export function claudeCodeStatusLine(
   records: NoticeRecord[],
@@ -139,11 +140,11 @@ export function claudeCodeStatusLine(
     lines.length > MAX_LINES
       ? [
           ...lines.slice(0, MAX_LINES - 1),
-          `…（続きは ${command} show ${first!.message_id} で読めます）`,
+          `…（続きは ${command} show ${first!.message_id} ${first!.sender_id} で読めます）`,
         ]
       : lines;
   shown.push(
-    `選択: ${command} decide ${first!.message_id} accept|later|decline`,
+    `選択: ${command} decide ${first!.message_id} accept|later|decline ${first!.sender_id}`,
   );
   if (rest.length) shown.push(`ほかに ${rest.length} 件の選択待ちがあります。`);
   return shown.join("\n");
