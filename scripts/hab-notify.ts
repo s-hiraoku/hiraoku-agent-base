@@ -11,6 +11,11 @@
  *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
  *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
  *       local screen file, never HAB)
+ *   hab-notify --config <notify.json> statusline
+ *       (screen type claude-code: the Claude Code status line command; reads the session
+ *       JSON on stdin and only the local choice record, never HAB)
+ *
+ * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -21,8 +26,16 @@ import {
   HabNotifierClient,
   HermesDesktopScreen,
   JsonlScreen,
+  ProductScreen,
   ReceiptNotifier,
   SQLiteNotices,
+  chatgptConnectorHandoff,
+  chatgptConnectorTarget,
+  claudeCodeHandoff,
+  claudeCodeStatusLine,
+  claudeCodeTarget,
+  codexHandoff,
+  codexTarget,
   hermesDesktopPage,
 } from "../src/agent-notify/index.ts";
 import type { AgentScreen } from "../src/agent-notify/index.ts";
@@ -32,7 +45,21 @@ const usage = `usage:
   hab-notify --config <notify.json> run|check|list
   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
   hab-notify --config <notify.json> show-again <message_id> [sender_id]
-  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]`;
+  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+  hab-notify --config <notify.json> statusline`;
+
+/** A trusted command from this config: absolute argv[0] and cwd. */
+const commandSchema = z.strictObject({
+  command: z
+    .array(z.string().min(1).max(4096))
+    .min(1)
+    .max(32)
+    .refine((argv) => isAbsolute(argv[0]!), "absolute command"),
+  cwd: z.string().refine((path) => isAbsolute(path), "absolute cwd"),
+  env: z.record(z.string(), z.string()).optional(),
+  timeout_ms: z.number().int().min(1000).max(300_000).optional(),
+});
+const label = z.string().min(1).max(2048);
 
 const configSchema = z.strictObject({
   /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
@@ -65,18 +92,38 @@ const configSchema = z.strictObject({
       backend_namespace: z.string().min(1).max(2048),
       profile_scope: z.string().min(1).max(2048),
       /** Optional: hands the request to the conversation after 対応する (hermes_bridge.desktop_handoff). */
-      handoff: z
+      handoff: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("codex"),
+      path: z.string().min(1),
+      /** The Codex thread the user works in. */
+      thread_id: label,
+      /** Optional: the running app-server that serves the thread; without it, unsupported. */
+      app_server: z
         .strictObject({
-          command: z
-            .array(z.string().min(1).max(4096))
-            .min(1)
-            .max(32)
-            .refine((argv) => isAbsolute(argv[0]!), "absolute command"),
-          cwd: z.string().refine((path) => isAbsolute(path), "absolute cwd"),
-          env: z.record(z.string(), z.string()).optional(),
+          url: z.string().regex(/^wss?:\/\/[^\s]+$/),
+          token_file: z.string().min(1).optional(),
           timeout_ms: z.number().int().min(1000).max(300_000).optional(),
         })
         .optional(),
+      display_command: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("claude-code"),
+      path: z.string().min(1),
+      /** The Claude Code session (the status line's session_id). */
+      session_id: label,
+      /** Optional: the hab-claude-channel socket; without it, unsupported. */
+      channel_socket: z.string().min(1).optional(),
+      display_command: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("chatgpt-connector"),
+      path: z.string().min(1),
+      /** A label for the ChatGPT conversation or project, such as dots. */
+      conversation: label,
+      display_command: commandSchema.optional(),
     }),
   ]),
   interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
@@ -111,15 +158,101 @@ const hermesBinding = (
   receiver_id: config.agent_id,
 });
 
+type ScreenConfig = NotifyConfig["screen"];
+const claudeBinding = (
+  screen: Extract<ScreenConfig, { type: "claude-code" }>,
+) => ({
+  session_id: screen.session_id,
+  ...(screen.channel_socket
+    ? { channel_socket: expand(screen.channel_socket) }
+    : {}),
+});
+
 function configuredScreen(config: NotifyConfig): AgentScreen {
   const screen = config.screen;
-  return screen.type === "jsonl"
-    ? new JsonlScreen(expand(screen.path), screen.target)
-    : new HermesDesktopScreen(
-        expand(screen.path),
+  const path = expand(screen.path);
+  const display =
+    "display_command" in screen && screen.display_command
+      ? { display_command: screen.display_command }
+      : {};
+  switch (screen.type) {
+    case "jsonl":
+      return new JsonlScreen(path, screen.target);
+    case "hermes-desktop":
+      return new HermesDesktopScreen(
+        path,
         hermesBinding(config, screen),
         screen.handoff ? { handoff: screen.handoff } : {},
       );
+    case "codex": {
+      const binding = {
+        thread_id: screen.thread_id,
+        ...(screen.app_server
+          ? {
+              app_server: {
+                ...screen.app_server,
+                ...(screen.app_server.token_file
+                  ? { token_file: expand(screen.app_server.token_file) }
+                  : {}),
+              },
+            }
+          : {}),
+      };
+      return new ProductScreen({
+        path,
+        target: codexTarget(binding),
+        ...display,
+        handoff: (message) => codexHandoff(binding, message),
+      });
+    }
+    case "claude-code": {
+      const binding = claudeBinding(screen);
+      return new ProductScreen({
+        path,
+        target: claudeCodeTarget(binding),
+        ...display,
+        handoff: (message) => claudeCodeHandoff(binding, message),
+      });
+    }
+    case "chatgpt-connector":
+      return new ProductScreen({
+        path,
+        target: chatgptConnectorTarget(screen),
+        ...display,
+        handoff: chatgptConnectorHandoff,
+      });
+  }
+}
+
+/** `statusline`: the Claude Code status line for the bound session; never calls HAB. */
+async function statusline(config: NotifyConfig, input: string) {
+  const screen = config.screen;
+  if (screen.type !== "claude-code") return null;
+  let session: { session_id?: unknown } = {};
+  try {
+    session = JSON.parse(input) as { session_id?: unknown };
+  } catch {
+    // No session JSON: show nothing.
+  }
+  const binding = claudeBinding(screen);
+  const store = new SQLiteNotices(
+    expand(config.store),
+    claudeCodeTarget(binding),
+  );
+  try {
+    return claudeCodeStatusLine(store.open(), binding, session);
+  } finally {
+    store.close();
+  }
+}
+
+async function readStdin(stdin: NodeJS.ReadableStream) {
+  let text = "";
+  for await (const chunk of stdin) {
+    text += String(chunk);
+    if (text.length > 1024 * 1024) break;
+  }
+  return text;
 }
 
 /** `events [--limit N] [--after CURSOR]`: the Hermes Desktop reader page, as one JSON line. */
@@ -183,7 +316,11 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
 const errorCode = (error: unknown) =>
   error instanceof MessagingError ? error.code : "failed";
 
-export async function main(args: string[], out = console.log) {
+export async function main(
+  args: string[],
+  out = console.log,
+  stdin: NodeJS.ReadableStream = process.stdin,
+) {
   if (args[0] !== "--config" || !args[1] || !args[2]) {
     out(usage);
     return 2;
@@ -206,6 +343,20 @@ export async function main(args: string[], out = console.log) {
       out(JSON.stringify({ error: "failed" }));
       return 1;
     }
+  }
+  if (command === "statusline") {
+    // A failed status line prints nothing: it must never break the Claude Code screen.
+    try {
+      const line = await statusline(config, await readStdin(stdin));
+      if (line === null) {
+        out(usage);
+        return 2;
+      }
+      if (line) out(line);
+    } catch {
+      // Nothing to show.
+    }
+    return 0;
   }
   let created: ReturnType<typeof createNotifier>;
   try {

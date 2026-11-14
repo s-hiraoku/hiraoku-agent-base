@@ -17,7 +17,6 @@
  * the notifier records `unknown` and never resends. Without a configured command, `handoff`
  * returns `unsupported`. It never falls back to another session or a CLI.
  */
-import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import type {
@@ -26,6 +25,8 @@ import type {
   NoticeState,
   PeekedMessage,
 } from "./contract.ts";
+import { runCommand } from "./command.ts";
+import type { TrustedCommand } from "./command.ts";
 import { appendPrivate } from "./private-file.ts";
 
 export interface HermesDesktopBinding {
@@ -42,53 +43,7 @@ export interface HermesDesktopBinding {
 }
 
 /** The trusted, operator-configured command that hands one request to the conversation. */
-export interface HermesDesktopHandoff {
-  /** argv; the first entry is an absolute path. Never built from a message. */
-  command: string[];
-  cwd: string;
-  /** Such as HERMES_HOME (the owning profile) and HERMES_SOURCE (the Hermes checkout). */
-  env?: Record<string, string>;
-  timeout_ms?: number;
-}
-
-const HANDOFF_OUTPUT_BYTES = 64 * 1024;
-
-function runHandoff(
-  handoff: HermesDesktopHandoff,
-  input: string,
-): Promise<unknown> {
-  return new Promise((done, fail) => {
-    const child = spawn(handoff.command[0]!, handoff.command.slice(1), {
-      cwd: handoff.cwd,
-      env: {
-        PATH: process.env.PATH ?? "/usr/bin:/bin",
-        LANG: "C.UTF-8",
-        PYTHONDONTWRITEBYTECODE: "1",
-        ...handoff.env,
-      },
-      stdio: ["pipe", "pipe", "ignore"],
-      timeout: handoff.timeout_ms ?? 60_000,
-    });
-    let out = "";
-    child.stdout.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => {
-      out += chunk;
-      if (out.length > HANDOFF_OUTPUT_BYTES) child.kill();
-    });
-    child.on("error", fail);
-    // A command that exits before reading its input makes the write fail (EPIPE).
-    child.stdin.on("error", fail);
-    child.on("close", (code) => {
-      try {
-        if (code !== 0) throw new Error("handoff_failed");
-        done(JSON.parse(out.trim().split("\n").at(-1) ?? ""));
-      } catch (error) {
-        fail(error);
-      }
-    });
-    child.stdin.end(input);
-  });
-}
+export type HermesDesktopHandoff = TrustedCommand;
 
 /**
  * Names this one decision, so the owner can tell a repeat apart: a hash of the full
@@ -166,13 +121,14 @@ export class HermesDesktopScreen implements AgentScreen {
   }
   async handoff(message: PeekedMessage): Promise<HandoffResult> {
     if (!this.#handoff) return "unsupported";
-    const answer = (await runHandoff(
+    const answer = (await runCommand(
       this.#handoff,
       JSON.stringify({
         session_id: this.#sessionId,
         text: message.handoff_prompt,
         submission_id: submissionId(message),
       }),
+      { json: true, failure: "handoff_failed" },
     )) as { result?: unknown };
     if (answer?.result === "queued") return "queued";
     if (answer?.result === "refused") return "unsupported";

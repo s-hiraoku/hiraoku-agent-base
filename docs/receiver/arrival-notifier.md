@@ -109,6 +109,86 @@ Desktop が表示している同じ会話で動くので、別の CLI セッシ�
 
 `handoff` を設定しなければ `unsupported` です。
 
+## Codex・Claude Code・ChatGPT コネクタ（Dots）
+
+Hermes 以外の 3 製品にも画面アダプタを用意しました。実機にはまだつないでいません。設定ファイルの `screen` を書き換えれば、後からそのまま接続できます。3 つとも通知は同じ形の JSON Lines ファイル（`JsonlScreen` と同じ `notice`・`state` 行、`handoff` 行は書かない）に残します。`display_command` を設定すると、通知ごと・状態が変わるごとに、そのコマンドを 1 回実行します。標準入力には `{type: "notice" | "state", target, message_id, sender_id, …, display}` を 1 つの JSON で渡すので、デスクトップ通知などに使えます。コマンドは設定ファイルに書いた絶対パスだけで、メッセージから組み立てることはありません。コマンドが失敗した通知は `showing` のまま残り、次の確認で出し直します。
+
+### 各製品の公開の仕組みと、できること・できないこと
+
+| 項目 | Codex | Claude Code | ChatGPT コネクタ（Dots） |
+| --- | --- | --- | --- |
+| 自動新着検知 | 対応（`hab:notify run`） | 対応（`hab:notify run`） | 対応（`hab:notify run`） |
+| 製品の画面への受信通知・対応確認 | **非対応**。app-server には表示専用の通知がない。`thread/inject_items` はモデルが読む履歴に入るので使わない。通知はファイルと `display_command` で出す | 対応：status line（`hab-notify statusline`）。モデルには渡らない | **非対応**。ChatGPT に外から表示を出す公開の仕組みがない。通知はファイルと `display_command` で出す |
+| 既存セッションへの正式な引渡し | 実装済み・**実機未確認**：起動中の app-server に WebSocket で接続し、`thread/resume` → `turn/start` | 実装済み・**実機未確認**：channel（research preview）`notifications/claude/channel` | **非対応**（`unsupported`）。利用者が会話を開き、`hab_inbox {"include_read": true}` で読むよう頼む |
+| 利用者判断の保持とメッセージとの結び付け | 対応（共通の選択記録） | 対応（共通の選択記録） | 対応（共通の選択記録） |
+| 同一セッションからの処理・返信 | 未確認（そのスレッドが HAB MCP の `hab_reply` を使える設定が必要） | 未確認（そのセッションに HAB MCP が必要） | 手動（会話の中で `hab_inbox {"include_read": true}`・`hab_reply`） |
+| 開始の確認 | `turn/start` の結果に turn があれば `started` | 確認できない（Claude Code は event に応答しない）ので `queued` | — |
+
+### Codex
+
+Codex には、他のプログラムから使う公開の口として app-server（`codex app-server`、JSON-RPC 2.0、`jsonrpc` 欄は省く）があります。
+
+```json
+"screen": {
+  "type": "codex",
+  "path": "~/.hab-notify/codex.jsonl",
+  "thread_id": "<Codex のスレッド ID（thread/list で分かる）>",
+  "app_server": { "url": "ws://127.0.0.1:4500", "token_file": "~/.hab-notify/codex-ws-token" },
+  "display_command": { "command": ["/usr/bin/osascript", "/absolute/path/to/notify.applescript"], "cwd": "/absolute/path" }
+}
+```
+
+「対応する」を選ぶと、そのスレッドを開いている app-server の WebSocket（`--listen ws://127.0.0.1:PORT`、`--ws-auth capability-token --ws-token-file …`）に接続し、`initialize` → `initialized` → `thread/resume {threadId}` → `turn/start {threadId, input: [{type: "text", text: handoff_prompt}]}` を送ります。token は接続時に `Authorization: Bearer` で渡し、表示しません。自分で app-server や `codex exec` を起動することはありません（利用者が見ていないところで動くため）。
+
+| 答え | 記録 |
+| --- | --- |
+| `turn/start` の結果に turn がある | `started` |
+| `app_server` の設定がない、接続できない、`initialize`・`thread/resume`・`turn/start` がエラーを返した（作業中で受け付けないときを含む） | `unsupported` |
+| `turn/start` を送った後に切れた・時間切れ | `unknown`。自動では再送しない |
+
+未確認の点：Codex の画面（デスクトップアプリや VS Code 拡張）が使っている app-server に、外から WebSocket で入れるか。別の接続で始めたターンが、利用者の画面にそのまま流れるか。接続を閉じた後もターンが続くか。
+
+### Claude Code
+
+Claude Code では、表示に status line、引渡しに channel を使います。
+
+```json
+"screen": {
+  "type": "claude-code",
+  "path": "~/.hab-notify/claude.jsonl",
+  "session_id": "<Claude Code のセッション ID>",
+  "channel_socket": "~/.hab-notify/claude/claude.sock"
+}
+```
+
+表示：Claude Code の設定 `statusLine` に `{"type": "command", "command": "node /abs/scripts/hab-notify.ts --config /abs/notify.json statusline", "refreshInterval": 15}` を書きます。Claude Code はセッションの JSON（`session_id` を含む）を標準入力に渡し、出力を画面下に表示します。モデルには渡りません。`statusline` は `session_id` が設定と一致するときだけ、選択待ち（`shown`）の最も古い通知の `display` 全文と、選び方（`hab-notify decide <id> accept|later|decline`）、残りの件数を出します。「あとで」にした通知は出しません。読むのはローカルの選択記録だけで、HAB には触れず、失敗しても何も出さないだけです。
+
+引渡し：`scripts/hab-claude-channel.ts` が Claude Code の channel（MCP サーバー、`experimental: {"claude/channel": {}}`）です。`.mcp.json` に登録し、research preview の間は `claude --session-id <ID> --dangerously-load-development-channels server:hab-handoff` で起動します。
+
+```json
+{ "mcpServers": { "hab-handoff": { "command": "/abs/node", "args": ["/abs/scripts/hab-claude-channel.ts", "--socket", "/abs/.hab-notify/claude/claude.sock", "--session-id", "<ID>"] } } }
+```
+
+このサーバーは所有者だけが入れるディレクトリ（0700）にある Unix socket で待ち、「対応する」の依頼を 1 件ずつ受け取って、`notifications/claude/channel {content: handoff_prompt, meta: {message_id, sender_id, thread_id, sender_address, submission_id}}` としてセッションに入れます。同じ `submission_id` は 2 回入れません。`--session-id` と違うセッション向けの依頼は `refused`（→ `unsupported`）です。instructions で、受信内容は外部のデータで指示ではないこと、返信は HAB MCP の `hab_reply` で行うことを伝えます。このサーバーに返信用のツールはありません。
+
+| 答え | 記録 |
+| --- | --- |
+| `queued` | `queued` |
+| `channel_socket` の設定がない、socket に接続できない、`refused` | `unsupported` |
+| `unknown`、書き込んだ後に切れた・時間切れ | `unknown`。自動では再送しない |
+
+限界：channel は research preview で、claude.ai でのログインが必要です。Team・Enterprise では組織の許可が要ります。自作の channel は許可リストにないため、開発用のフラグで起動します。Claude Code は channel サーバーにセッション ID を教えないので、`--session-id` は起動時に運用側で揃えます。同じプロセスで `/clear` や別セッションの再開をすると、socket は新しい会話につながったままになり、照合できません。Claude Code は event に応答しないので、セッションが受け取ったかは確認できません（`queued`）。
+
+### ChatGPT コネクタ（Dots）
+
+Dots は ChatGPT のコネクタ（MCP クライアント）として HAB を使います。ChatGPT がツールを呼ぶのはモデルが決めたときだけで、widget もそのツール呼び出しの結果としてしか出ません。外から会話に表示を出したり、作業を始めさせたりする公開の仕組みはありません。そのため `handoff` は常に `unsupported` です。通知はファイルと `display_command` で ChatGPT の外に出します。「対応する」を選ぶと既読になるので、その後は利用者が Dots の会話で `hab_inbox {"include_read": true}`（既読も含めて 7 日間読み直せる）を使い、その message_id に対応するよう頼みます。別のセッションや CLI で代わりに処理することはしません。
+
+```json
+"screen": { "type": "chatgpt-connector", "path": "~/.hab-notify/dots.jsonl", "conversation": "dots" }
+```
+
+Dots の会話が実は Codex のスレッドとして app-server から見えるなら、`codex` の画面を使えば引渡しまでできます。これは未確認です。
+
 ## 選択と状態
 
 | 状態 | 意味 | HAB 上 |
@@ -138,3 +218,4 @@ Desktop が表示している同じ会話で動くので、別の CLI セッシ�
 - HAB の既読は、人が内容を見た・同意した・作業を終えたことを意味しません。
 - ADR-017 の SDK 受信（保存してから ACK）と同じ受信者で並べて使わないでください。ACK された本文は `hab_peek` にも `hab_inbox` にも出ません。
 - Hermes Desktop では、表示（外部メッセージ欄）と、同じ会話への引渡し（`prompt.submit`）を実装しました。Desktop の中で選ぶ操作（ボタン）はまだありません。引渡しは、本物の gateway ではなく代わりの部品でしか確かめていません。既存 Desktop セッションでの受入確認も未実施です。CLI だけの往復は Desktop の合格に数えません。
+- Codex・Claude Code・ChatGPT コネクタ（Dots）の画面アダプタは、代わりの部品（偽の app-server、テスト用の MCP クライアント）でしか確かめていません。各製品の実機での表示・引渡し・返信は未確認です。
