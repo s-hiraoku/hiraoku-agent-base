@@ -9,6 +9,8 @@ export {
   hermesDesktopPage,
   hermesDesktopTarget,
   submissionId,
+  fitHermesText,
+  HERMES_TEXT_BYTES,
 } from "./hermes-desktop.ts";
 export type { HermesDesktopBinding } from "./hermes-desktop.ts";
 export { peekedMessageSchema } from "./contract.ts";

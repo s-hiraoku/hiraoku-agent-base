@@ -801,7 +801,7 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "b7ac514fe664aaf9103ab3d3277c999deb2f7a461edd8cf37fbcf2e1e2641f93",
+      "sha256": "1a9d0fa504eab80a2f4a3f89251f91ab51bae647b2b3e30916bc2806478c94ac",
       "role": "normative",
       "review": "reviewed",
       "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done.",
@@ -1929,8 +1929,8 @@
         },
         {
           "path": "docs/receiver/arrival-notifier.md",
-          "start": 122,
-          "end": 145,
+          "start": 124,
+          "end": 147,
           "excerpt_sha256": "57562442c1e452237dd5043342823daf609255bae72d5b07ad0baedb406059da"
         },
         {

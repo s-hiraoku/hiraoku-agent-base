@@ -53,6 +53,29 @@ export interface HermesDesktopHandoff {
 
 const HANDOFF_OUTPUT_BYTES = 64 * 1024;
 
+/** Hermes Desktop refuses an event whose text is over 128 KiB, and then shows no page at all. */
+export const HERMES_TEXT_BYTES = 128 * 1024;
+const CUT_NOTE =
+  "\n\n……（長いメッセージのため途中までを表示しています。「対応する」を選ぶと全文を会話に渡します）";
+
+/**
+ * Fits a display into Hermes's text limit. A longer one keeps its beginning, cut on a
+ * character boundary, and says that it was cut; the handoff still carries the whole message.
+ */
+export function fitHermesText(text: string): string {
+  if (Buffer.byteLength(text) <= HERMES_TEXT_BYTES) return text;
+  const room = HERMES_TEXT_BYTES - Buffer.byteLength(CUT_NOTE);
+  let kept = "";
+  let size = 0;
+  for (const char of text) {
+    const bytes = Buffer.byteLength(char);
+    if (size + bytes > room) break;
+    kept += char;
+    size += bytes;
+  }
+  return kept + CUT_NOTE;
+}
+
 function runHandoff(
   handoff: HermesDesktopHandoff,
   input: string,
@@ -160,7 +183,7 @@ export class HermesDesktopScreen implements AgentScreen {
       message_id: message.message_id,
       sender_id: message.sender_id,
       from: message.from,
-      display: message.display,
+      display: fitHermesText(message.display),
       binding: this.#binding,
     });
   }
@@ -239,7 +262,7 @@ export function hermesDesktopPage(
               profile_scope: binding.profile_scope,
               owner_kind: "session",
               received_at: notice.at,
-              text: notice.display,
+              text: fitHermesText(notice.display),
               binding_id: target,
               binding_generation: 1,
               logical_target: target,

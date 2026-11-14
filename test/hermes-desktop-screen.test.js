@@ -18,6 +18,8 @@ import {
   SQLiteNotices,
   hermesDesktopPage,
   submissionId,
+  fitHermesText,
+  HERMES_TEXT_BYTES,
 } from "../src/agent-notify/index.ts";
 import { main } from "../scripts/hab-notify.ts";
 
@@ -483,4 +485,19 @@ test("a notice that does not fit is not half written, and a broken last line is 
     ),
     ["m1"],
   );
+});
+
+test("a display over Hermes's text limit is shown cut, in a page Hermes accepts", async (t) => {
+  const { path } = setup(t);
+  // 140 KiB of multi-byte text: the cut must land on a character boundary.
+  const long = message("m1", { display: "あ".repeat(48 * 1024) });
+  await new HermesDesktopScreen(path, binding).show(long);
+  const page = hermesDesktopPage(path, binding, { limit: 100 });
+  assertHermesAccepts(page);
+  const [event] = page.events;
+  assert.ok(Buffer.byteLength(event.text) <= HERMES_TEXT_BYTES);
+  assert.ok(event.text.startsWith("あああ"));
+  assert.match(event.text, /途中までを表示/);
+  assert.ok(!event.text.includes("\ufffd"));
+  assert.equal(fitHermesText("short"), "short");
 });

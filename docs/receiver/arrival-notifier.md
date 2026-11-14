@@ -90,6 +90,8 @@ external_messages:
       actions_command: [/absolute/path/to/node, scripts/hab-notify.ts, --config, /absolute/path/to/notify.json, action]
 ```
 
+Hermes の欄は、本文が 128 KiB を超えるカードを受け付けません（1 枚でも超えるとページ全体が出なくなります）。そのため、長い文面は先頭から 128 KiB 以内で切り、「途中までを表示しています」と添えます。「対応する」で会話に渡すのは全文です。
+
 Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードの本文は表示したときのまま残ります。
 
 カードの「1. 対応する」「2. あとで」「3. 対応しない」ボタンは、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
