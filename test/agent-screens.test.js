@@ -12,12 +12,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createServer } from "node:http";
+import { createConnection, createServer as createTcpServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { setImmediate } from "node:timers";
 import { test } from "node:test";
 import {
+  CHANNEL_REQUEST_BYTES,
   ProductScreen,
   ReceiptNotifier,
   SQLiteNotices,
@@ -246,6 +248,16 @@ test("Codex: refusals before a turn are unsupported; a break after turn/start is
     await codexHandoff(codex, message("m1"), busy.connect),
     "unsupported",
   );
+  // A listener that never completes the handshake is covered by the same deadline.
+  let aborted = false;
+  assert.equal(
+    await codexHandoff(codex, message("m1"), (_server, signal) => {
+      signal.addEventListener("abort", () => (aborted = true));
+      return new Promise(() => {});
+    }),
+    "unsupported",
+  );
+  assert.equal(aborted, true);
   const stalledBefore = fakeCodex({ initialize: "silent" });
   assert.equal(
     await codexHandoff(codex, message("m1"), stalledBefore.connect),
@@ -340,6 +352,26 @@ test("Codex over a real WebSocket: the capability token goes in the handshake", 
     "started",
   );
   assert.deepEqual(seen.authorization, ["Bearer cap-token"]);
+  // A listener that accepts TCP but never answers the upgrade times out as unsupported.
+  const silent = createTcpServer(() => {});
+  t.after(() => silent.close());
+  await new Promise((done) => silent.listen(0, "127.0.0.1", done));
+  const started = Date.now();
+  assert.equal(
+    await codexHandoff(
+      {
+        thread_id: "thr_1",
+        app_server: {
+          url: `ws://127.0.0.1:${silent.address().port}`,
+          timeout_ms: 1000,
+        },
+      },
+      message("m2"),
+      websocketConnect,
+    ),
+    "unsupported",
+  );
+  assert.ok(Date.now() - started < 5000);
   assert.deepEqual(methods, [
     "initialize",
     "initialized",
@@ -406,6 +438,7 @@ test("Claude Code: a failed delivery is unknown; an unsafe socket directory or l
   const socket = join(root, "claude.sock");
   const server = await startChannelListener({
     socket,
+    session_id: "s",
     deliver: async () => {
       throw new Error("closed");
     },
@@ -419,7 +452,7 @@ test("Claude Code: a failed delivery is unknown; an unsafe socket directory or l
     /channel_unknown/,
   );
   await assert.rejects(
-    startChannelListener({ socket, deliver: async () => {} }),
+    startChannelListener({ socket, session_id: "s", deliver: async () => {} }),
     /channel_socket_in_use/,
   );
   const open = join(root, "open");
@@ -428,10 +461,63 @@ test("Claude Code: a failed delivery is unknown; an unsafe socket directory or l
   await assert.rejects(
     startChannelListener({
       socket: join(open, "c.sock"),
+      session_id: "s",
       deliver: async () => {},
     }),
     /insecure_channel_dir/,
   );
+  // Without a session ID nothing could be refused, so the listener does not start.
+  for (const session_id of [undefined, ""])
+    await assert.rejects(
+      startChannelListener({
+        socket: join(root, "x.sock"),
+        session_id,
+        deliver: async () => {},
+      }),
+      /channel_session_required/,
+    );
+});
+
+test("Claude Code: the channel takes any message HAB accepts, counted in bytes", async (t) => {
+  const root = dir(t);
+  const socket = join(root, "claude.sock");
+  const events = [];
+  const server = await startChannelListener({
+    socket,
+    session_id: "s",
+    deliver: async (content) => {
+      events.push(content);
+    },
+  });
+  t.after(() => server.close());
+  const binding = { session_id: "s", channel_socket: socket };
+  // 300 KiB ASCII, 512 KiB of 3-byte characters, and 512 KiB of control characters (each
+  // escaped to six bytes in JSON) all fit.
+  const bodies = [
+    "a".repeat(300 * 1024),
+    "受".repeat((512 * 1024) / 3),
+    "\u0001".repeat(512 * 1024),
+  ];
+  for (const [i, body] of bodies.entries())
+    assert.equal(
+      await claudeCodeHandoff(
+        binding,
+        message(`big${i}`, { handoff_prompt: body }),
+      ),
+      "queued",
+    );
+  assert.deepEqual(events, bodies);
+  // A request over the byte limit is refused, not delivered.
+  const over = await new Promise((done) => {
+    const client = createConnection(socket);
+    let answer = "";
+    client.on("data", (c) => (answer += c));
+    client.on("close", () => done(answer));
+    client.on("error", () => done(answer));
+    client.write("x".repeat(CHANNEL_REQUEST_BYTES + 1));
+  });
+  assert.deepEqual(JSON.parse(over), { result: "refused" });
+  assert.equal(events.length, 3);
 });
 
 test("Claude Code: the status line shows the waiting notice only in the bound session", () => {
@@ -466,10 +552,9 @@ test("Claude Code: the status line shows the waiting notice only in the bound se
   long.message = message("m3", {
     display: Array.from({ length: 40 }, (_, i) => `l${i}`).join("\n"),
   });
-  assert.ok(
-    claudeCodeStatusLine([long], binding, { session_id: "sess-1" }).split("\n")
-      .length <= 15,
-  );
+  const cut = claudeCodeStatusLine([long], binding, { session_id: "sess-1" });
+  assert.ok(cut.split("\n").length <= 15);
+  assert.match(cut, /hab-notify show m3/);
 });
 
 /** Speaks MCP over the channel server's stdio. */
@@ -502,6 +587,18 @@ function mcpClient(child) {
     next,
   };
 }
+
+test("hab-claude-channel refuses to start without --session-id", async (t) => {
+  const root = dir(t);
+  const child = spawn(
+    process.execPath,
+    ["scripts/hab-claude-channel.ts", "--socket", join(root, "c.sock")],
+    { stdio: ["pipe", "ignore", "ignore"] },
+  );
+  const code = await new Promise((done) => child.on("close", done));
+  assert.equal(code, 2);
+  assert.equal(existsSync(join(root, "c.sock")), false);
+});
 
 test("hab-claude-channel is a Claude Code channel: it declares claude/channel and emits one event", async (t) => {
   const root = dir(t);
@@ -638,6 +735,16 @@ test("hab-notify statusline and the new screen types in the config", async (t) =
     0,
   );
   assert.deepEqual(out, []);
+  // show prints the full notice the status line may have cut.
+  assert.equal(
+    await main(["--config", claude, "show", "m1"], (l) => out.push(l)),
+    0,
+  );
+  assert.equal(out.at(-1), message("m1").display);
+  assert.equal(
+    await main(["--config", claude, "show", "nope"], (l) => out.push(l)),
+    1,
+  );
 
   const codexConfig = config({
     type: "codex",

@@ -148,12 +148,12 @@ Codex には、他のプログラムから使う公開の口として app-server
 }
 ```
 
-「対応する」を選ぶと、そのスレッドを開いている app-server の WebSocket（`--listen ws://127.0.0.1:PORT`、`--ws-auth capability-token --ws-token-file …`）に接続し、`initialize` → `initialized` → `thread/resume {threadId}` → `turn/start {threadId, input: [{type: "text", text: handoff_prompt}]}` を送ります。token は接続時に `Authorization: Bearer` で渡し、表示しません。自分で app-server や `codex exec` を起動することはありません（利用者が見ていないところで動くため）。
+「対応する」を選ぶと、そのスレッドを開いている app-server の WebSocket（`--listen ws://127.0.0.1:PORT`、`--ws-auth capability-token --ws-token-file …`）に接続し、`initialize` → `initialized` → `thread/resume {threadId}` → `turn/start {threadId, input: [{type: "text", text: handoff_prompt}]}` を送ります。`timeout_ms`（既定 30 秒）は接続の確立から `turn/start` の答えまでの全体にかかります。token は接続時に `Authorization: Bearer` で渡し、表示しません。自分で app-server や `codex exec` を起動することはありません（利用者が見ていないところで動くため）。
 
 | 答え | 記録 |
 | --- | --- |
 | `turn/start` の結果に turn がある | `started` |
-| `app_server` の設定がない、接続できない、`initialize`・`thread/resume`・`turn/start` がエラーを返した（作業中で受け付けないときを含む） | `unsupported` |
+| `app_server` の設定がない、接続できない、`initialize`・`thread/resume`・`turn/start` がエラーを返した（作業中で受け付けないときを含む）、`turn/start` を送る前に時間切れ（接続や WebSocket のハンドシェイクが終わらないときを含む） | `unsupported` |
 | `turn/start` を送った後に切れた・時間切れ | `unknown`。自動では再送しない |
 
 未確認の点：Codex の画面（デスクトップアプリや VS Code 拡張）が使っている app-server に、外から WebSocket で入れるか。別の接続で始めたターンが、利用者の画面にそのまま流れるか。接続を閉じた後もターンが続くか。
@@ -171,7 +171,7 @@ Claude Code では、表示に status line、引渡しに channel を使いま�
 }
 ```
 
-表示：Claude Code の設定 `statusLine` に `{"type": "command", "command": "node /abs/scripts/hab-notify.ts --config /abs/notify.json statusline", "refreshInterval": 15}` を書きます。Claude Code はセッションの JSON（`session_id` を含む）を標準入力に渡し、出力を画面下に表示します。モデルには渡りません。`statusline` は `session_id` が設定と一致するときだけ、選択待ち（`shown`）の最も古い通知の `display` 全文と、選び方（`hab-notify decide <id> accept|later|decline`）、残りの件数を出します。「あとで」にした通知は出しません。読むのはローカルの選択記録だけで、HAB には触れず、失敗しても何も出さないだけです。
+表示：Claude Code の設定 `statusLine` に `{"type": "command", "command": "node /abs/scripts/hab-notify.ts --config /abs/notify.json statusline", "refreshInterval": 15}` を書きます。Claude Code はセッションの JSON（`session_id` を含む）を標準入力に渡し、出力を画面下に表示します。モデルには渡りません。`statusline` は `session_id` が設定と一致するときだけ、選択待ち（`shown`）の最も古い通知の `display` 全文と、選び方（`hab-notify decide <id> accept|later|decline`）、残りの件数を出します。14 行を超える通知は途中で切り、`hab-notify show <id>` で全文を読めることを示します（`show` はローカルの選択記録から `display` 全文を出すだけです）。「あとで」にした通知は出しません。読むのはローカルの選択記録だけで、HAB には触れず、失敗しても何も出さないだけです。
 
 引渡し：`scripts/hab-claude-channel.ts` が Claude Code の channel（MCP サーバー、`experimental: {"claude/channel": {}}`）です。`.mcp.json` に登録し、research preview の間は `claude --session-id <ID> --dangerously-load-development-channels server:hab-handoff` で起動します。
 
@@ -179,7 +179,7 @@ Claude Code では、表示に status line、引渡しに channel を使いま�
 { "mcpServers": { "hab-handoff": { "command": "/abs/node", "args": ["/abs/scripts/hab-claude-channel.ts", "--socket", "/abs/.hab-notify/claude/claude.sock", "--session-id", "<ID>"] } } }
 ```
 
-このサーバーは所有者だけが入れるディレクトリ（0700）にある Unix socket で待ち、「対応する」の依頼を 1 件ずつ受け取って、`notifications/claude/channel {content: handoff_prompt, meta: {message_id, sender_id, thread_id, sender_address, submission_id}}` としてセッションに入れます。同じ `submission_id` は 2 回入れません。`--session-id` と違うセッション向けの依頼は `refused`（→ `unsupported`）です。instructions で、受信内容は外部のデータで指示ではないこと、返信は HAB MCP の `hab_reply` で行うことを伝えます。このサーバーに返信用のツールはありません。
+このサーバーは所有者だけが入れるディレクトリ（0700）にある Unix socket で待ち、「対応する」の依頼を 1 件ずつ受け取って、`notifications/claude/channel {content: handoff_prompt, meta: {message_id, sender_id, thread_id, sender_address, submission_id}}` としてセッションに入れます。同じ `submission_id` は 2 回入れません。`--session-id` は必須で、省くとサーバーは起動しません。`--session-id` と違うセッション向けの依頼、セッション ID のない依頼は `refused`（→ `unsupported`）です。依頼の上限は UTF-8 で 8 MiB です。HAB が受け付ける本文（最大 512 KiB、JSON で制御文字が 6 倍になる場合を含む）はすべて収まるので、既読にした後で大きさを理由に断ることはありません。instructions で、受信内容は外部のデータで指示ではないこと、返信は HAB MCP の `hab_reply` で行うことを伝えます。このサーバーに返信用のツールはありません。
 
 | 答え | 記録 |
 | --- | --- |
@@ -187,7 +187,7 @@ Claude Code では、表示に status line、引渡しに channel を使いま�
 | `channel_socket` の設定がない、socket に接続できない、`refused` | `unsupported` |
 | `unknown`、書き込んだ後に切れた・時間切れ | `unknown`。自動では再送しない |
 
-限界：channel は research preview で、claude.ai でのログインが必要です。Team・Enterprise では組織の許可が要ります。自作の channel は許可リストにないため、開発用のフラグで起動します。Claude Code は channel サーバーにセッション ID を教えないので、`--session-id` は起動時に運用側で揃えます。同じプロセスで `/clear` や別セッションの再開をすると、socket は新しい会話につながったままになり、照合できません。Claude Code は event に応答しないので、セッションが受け取ったかは確認できません（`queued`）。
+限界：channel は research preview で、claude.ai でのログインが必要です。Team・Enterprise では組織の許可が要ります。自作の channel は許可リストにないため、開発用のフラグで起動します。Claude Code は channel サーバーにセッション ID を教えないので、`--session-id` は起動時に運用側で揃えます。同じプロセスで `/clear` や別セッションの再開をすると、socket は新しい会話につながったままになり、照合できません。Claude Code は event に応答しないので、セッションが受け取ったかは確認できません（`queued`）。Claude Code 側が大きな channel event をどこまで受け付けるかも未確認です。
 
 ### ChatGPT コネクタ（Dots）
 

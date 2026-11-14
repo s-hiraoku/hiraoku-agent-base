@@ -4,7 +4,10 @@
  * running session. It only delivers requests the user approved with `hab-notify decide …
  * accept`; arrival alone never reaches it.
  *
- *   hab-claude-channel --socket <owner-only dir>/claude.sock [--session-id <id>]
+ *   hab-claude-channel --socket <owner-only dir>/claude.sock --session-id <id>
+ *
+ * `--session-id` is required: it is the session Claude Code was started with
+ * (`claude --session-id <id>`), and a request for any other session is refused.
  *
  * Register it in `.mcp.json` (for example as `hab-handoff`) and start Claude Code with
  * `--dangerously-load-development-channels server:hab-handoff` while channels are in research
@@ -29,9 +32,9 @@ function option(args: string[], name: string) {
 export async function main(args: string[]) {
   const socket = option(args, "--socket");
   const sessionId = option(args, "--session-id");
-  if (!socket) {
+  if (!socket || !sessionId) {
     process.stderr.write(
-      "usage: hab-claude-channel --socket <path> [--session-id <id>]\n",
+      "usage: hab-claude-channel --socket <path> --session-id <id>\n",
     );
     return 2;
   }
@@ -45,7 +48,7 @@ export async function main(args: string[]) {
   await mcp.connect(new StdioServerTransport());
   const server = await startChannelListener({
     socket,
-    ...(sessionId ? { session_id: sessionId } : {}),
+    session_id: sessionId,
     deliver: (content, meta) =>
       mcp.notification({
         method: "notifications/claude/channel",

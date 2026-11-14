@@ -168,10 +168,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "c4b75850e249db4cf8499477b115a9b0b737c995070e2459077051b9f7ac005f",
+      "sha256": "db13933faca94a081890da6e13ae4d37590424edcf64c19373309a88cb7a0ccc",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative maintained feature map with eleven entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "summary": "Authoritative maintained feature map with eleven entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. The arrival-notifier entry also names the Codex, Claude Code and ChatGPT connector (Dots) screens.",
       "read_scope": "full"
     },
     {
@@ -192,10 +192,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/arrival-notifier.md",
-      "sha256": "533940e826f29317aca9434ad48977fd4907c119e655a65855d61fceda780e0f",
+      "sha256": "9901a9be85ddbb560fc2fb831086d6fd0150743ac7997e1577743228023ef77f",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Arrival notice recipe (ADR-021): hab_peek at /mcp/delivery returns unread mail with read_at null, the owner's display (sender, 受信内容, どうしますか？ 1. 対応する 2. あとで 3. 対応しない) and a tag-framed handoff_prompt, leaving the sender's status pending and hab_inbox still new; hab:notify check shows each message once through the JSONL screen; later keeps it unread and show-again re-shows it; accept marks it read and writes exactly one handoff (queued), a repeat is unchanged; decline marks read and starts nothing even for a body claiming approval; the bound session replies with hab_reply. Gotchas: peek offers only unread mail, do not combine with the SDK receive path for one address, a JSONL screen cannot confirm a start. Synthetic identities only.",
+      "summary": "Arrival notice recipe (ADR-021): hab_peek at /mcp/delivery returns unread mail with read_at null, the owner's display (sender, 受信内容, どうしますか？ 1. 対応する 2. あとで 3. 対応しない) and a tag-framed handoff_prompt, leaving the sender's status pending and hab_inbox still new; hab:notify check shows each message once through the JSONL screen; later keeps it unread and show-again re-shows it; accept marks it read and writes exactly one handoff (queued), a repeat is unchanged; decline marks read and starts nothing even for a body claiming approval; the bound session replies with hab_reply. Gotchas: peek offers only unread mail, do not combine with the SDK receive path for one address, a JSONL screen cannot confirm a start. Synthetic identities only. Also product-screens (codex, claude-code, chatgpt-connector: no handoff line, display_command, Dots always unsupported), claude-statusline (bound session only, cut display pointing to hab:notify show), claude-channel (one notifications/claude/channel per submission, required --session-id, 8 MiB byte limit) driven with a stand-in listener, and codex-turn (unit tests only; the connection is inside the timeout). A pass proves only the HAB side.",
       "read_scope": "full"
     },
     {
@@ -476,7 +476,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "7224b5a721aeec4f2d856a5f8a1f40de6396f99e81bcac0714270f96b6230164",
+      "sha256": "05e457c85220cc86f2069b7ebc066d75e38c9a0c9d19d15f43b85c2c6a3124d0",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once."
@@ -801,10 +801,10 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "40c812dc79ecd11db28cc5cf09aa6f33b13b9790bd7968dd3466bcdd150a60fa",
+      "sha256": "a818d316412814159344a2ecd4bf0d191a91e57f710b8d6d1632c9cad7bbae90",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done.",
+      "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done. Codex, Claude Code and ChatGPT connector (Dots) screens (ProductScreen: the same owner-only notice/state lines, never a handoff line, plus an optional trusted display_command): Codex has no display-only notice (thread/inject_items would enter model history), so it is shown outside Codex and 対応する connects to the running app-server WebSocket (capability token as bearer) for initialize, thread/resume, turn/start (started; refusals or a timeout before turn/start, including the connection, unsupported; a break after it unknown), never spawning an app-server or codex exec. Claude Code shows the notice in the status line (hab-notify statusline, bound session_id only, cut display pointing to hab-notify show) and hands off through a channel server (hab-claude-channel, research preview, owner-only Unix socket, required --session-id, once per submission_id, 8 MiB byte limit that holds any accepted message; queued only, since Claude Code does not acknowledge events). ChatGPT connectors have no public way to show or start work from outside, so handoff is always unsupported and the user asks Dots to read it with hab_inbox include_read. All three are unverified on the real products.",
       "read_scope": "full"
     },
     {
@@ -1915,7 +1915,7 @@
       "title": "Arrival notice before any work",
       "statement": "When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply.",
       "rationale": "The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.",
-      "scope": "src/agent-notify, hab_peek and the hab:notify CLI with the JSONL screen. Covered in js-root by test/agent-notify.test.js, test/hab-peek.test.js and test/hab-notify-cli.test.js. A product AgentScreen (Hermes Desktop) and acceptance in an existing product session are not covered.",
+      "scope": "src/agent-notify, hab_peek and the hab:notify CLI with the JSONL screen. Covered in js-root by test/agent-notify.test.js, test/hab-peek.test.js and test/hab-notify-cli.test.js. A product AgentScreen (Hermes Desktop) and acceptance in an existing product session are not covered. The Codex, Claude Code and ChatGPT connector (Dots) screens are covered in js-root by test/agent-screens.test.js (fake and real-WebSocket app-server, the channel listener and the hab-claude-channel MCP server over stdio); none is checked against the real product.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -1925,12 +1925,12 @@
           "path": "docs/hab-decisions.md",
           "start": 95,
           "end": 105,
-          "excerpt_sha256": "edfbcda07fe74bc1646b344036d6a811ce0ddb7ca0b6b1326b0315dcc7e05909"
+          "excerpt_sha256": "8f544aeeb1ba3e604160058a33d475c1948ad845f70a3407312969f798a9cec5"
         },
         {
           "path": "docs/receiver/arrival-notifier.md",
-          "start": 122,
-          "end": 144,
+          "start": 202,
+          "end": 224,
           "excerpt_sha256": "1ef4f8e1486813ac50f6c38f28384c9bf0195393cd232806fe684904f4113321"
         },
         {

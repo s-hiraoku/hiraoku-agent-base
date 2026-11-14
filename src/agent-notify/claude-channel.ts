@@ -11,18 +11,19 @@ import { dirname } from "node:path";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { ChannelRequest } from "./claude-code.ts";
 
-const REQUEST_BYTES = 256 * 1024;
+import { CHANNEL_REQUEST_BYTES } from "./claude-code.ts";
+
 const id = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 const metaKey = /^[A-Za-z0-9_]{1,64}$/;
 
 export interface ChannelListenerOptions {
   socket: string;
   /**
-   * When set, only requests for this Claude Code session are delivered. Claude Code does not
+   * Required: only requests for this Claude Code session are delivered. Claude Code does not
    * tell a channel server its session ID, so the operator passes the one it started with
-   * (`claude --session-id`).
+   * (`claude --session-id`). Without it nothing could be refused, so the listener does not start.
    */
-  session_id?: string;
+  session_id: string;
   /** Sends one channel event; resolves once written to Claude Code. */
   deliver: (content: string, meta: Record<string, string>) => Promise<void>;
 }
@@ -89,34 +90,35 @@ async function clearStale(socket: string) {
 export async function startChannelListener(
   options: ChannelListenerOptions,
 ): Promise<Server> {
+  if (typeof options.session_id !== "string" || !options.session_id.length)
+    throw new MessagingError("channel_session_required");
   checkDirectory(options.socket);
   await clearStale(options.socket);
   const delivered = new Set<string>();
   const server = createServer((connection) => {
-    let input = "";
+    // Counted in bytes, not string length, so the limit matches the request as written.
+    const chunks: Buffer[] = [];
+    let size = 0;
     let handled = false;
     const answer = (result: string) => {
       connection.end(JSON.stringify({ result }) + "\n");
     };
-    connection.setEncoding("utf8");
     connection.setTimeout(10_000, () => connection.destroy());
     connection.on("error", () => {});
-    connection.on("data", async (chunk: string) => {
+    connection.on("data", async (chunk: Buffer) => {
       if (handled) return;
-      input += chunk;
-      if (input.length > REQUEST_BYTES) {
+      const end = chunk.indexOf(0x0a);
+      const part = end < 0 ? chunk : chunk.subarray(0, end);
+      size += part.length;
+      if (size > CHANNEL_REQUEST_BYTES) {
         handled = true;
         return answer("refused");
       }
-      const end = input.indexOf("\n");
+      chunks.push(part);
       if (end < 0) return;
       handled = true;
-      const request = parse(input.slice(0, end));
-      if (
-        !request ||
-        (options.session_id !== undefined &&
-          request.session_id !== options.session_id)
-      )
+      const request = parse(Buffer.concat(chunks).toString("utf8"));
+      if (!request || request.session_id !== options.session_id)
         return answer("refused");
       // A repeat is never delivered twice; it was queued the first time.
       if (delivered.has(request.submission_id)) return answer("queued");

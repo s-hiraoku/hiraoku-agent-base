@@ -1,13 +1,18 @@
 /**
  * The arrival notifier CLI (ADR-021). Shows new HAB mail in the agent's own screen through
- * a configured adapter and applies the user's choice. Prints no tokens. Only `events`
- * prints message text: it is the Hermes Desktop reader, and Hermes shows that text.
+ * a configured adapter and applies the user's choice. Prints no tokens. Only `events` (the
+ * Hermes Desktop reader), `statusline` (the Claude Code status line) and `show` (one notice
+ * for its recipient) print message text, and only to the recipient's own screen.
  *
  *   hab-notify --config <notify.json> run            keep checking every interval_ms
  *   hab-notify --config <notify.json> check          check once
  *   hab-notify --config <notify.json> list           notices waiting for a choice
  *   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
  *   hab-notify --config <notify.json> show-again <message_id> [sender_id]
+  hab-notify --config <notify.json> show <message_id> [sender_id]
+ *   hab-notify --config <notify.json> show <message_id> [sender_id]
+ *       (prints one notice's full display from the local choice record, for a screen that
+ *       could show only part of it, such as the Claude Code status line)
  *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
  *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
  *       local screen file, never HAB)
@@ -448,6 +453,17 @@ export async function main(
           ),
         );
         return 0;
+      case "show": {
+        if (!id) break;
+        // The optional third argument is the sender_id.
+        const record = notifier.get(id, choice);
+        if (!record) {
+          out(JSON.stringify({ error: "invalid_request" }));
+          return 1;
+        }
+        out(record.message.display);
+        return 0;
+      }
       case "show-again":
         if (!id) break;
         // The optional third argument is the sender_id.

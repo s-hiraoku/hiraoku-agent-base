@@ -44,10 +44,14 @@ export interface RpcConnection {
   close(): void;
 }
 
-export type RpcConnect = (server: CodexAppServer) => Promise<RpcConnection>;
+/** Opens a connection; aborting `signal` gives up on one still opening and closes it. */
+export type RpcConnect = (
+  server: CodexAppServer,
+  signal: AbortSignal,
+) => Promise<RpcConnection>;
 
 /** Connects with Node's WebSocket; the token goes in the handshake as a bearer header. */
-export const websocketConnect: RpcConnect = (server) =>
+export const websocketConnect: RpcConnect = (server, signal) =>
   new Promise((done, fail) => {
     const headers: Record<string, string> = {};
     if (server.token_file)
@@ -60,7 +64,14 @@ export const websocketConnect: RpcConnect = (server) =>
     const socket = new Socket(server.url, { headers });
     let receive: (message: Record<string, unknown> | null) => void = () => {};
     let open = false;
+    signal.addEventListener("abort", () => {
+      if (!open) {
+        socket.close();
+        fail(new Error("codex_timeout"));
+      }
+    });
     socket.addEventListener("open", () => {
+      if (signal.aborted) return socket.close();
       open = true;
       done({
         send: (message) => socket.send(JSON.stringify(message)),
@@ -96,43 +107,53 @@ export async function codexHandoff(
 ): Promise<HandoffResult> {
   const server = binding.app_server;
   if (!server) return "unsupported";
-  let connection: RpcConnection;
-  try {
-    connection = await connect(server);
-  } catch {
-    return "unsupported";
-  }
-  const pending = new Map<
-    number,
-    (message: Record<string, unknown> | null) => void
-  >();
-  connection.listen((incoming) => {
-    if (incoming === null) {
-      for (const answer of pending.values()) answer(null);
-      pending.clear();
-      return;
-    }
-    const answer = pending.get(incoming.id as number);
-    if (answer) {
-      pending.delete(incoming.id as number);
-      answer(incoming);
-    }
-  });
-  let next = 1;
+  // One deadline covers everything, from opening the connection to the turn/start answer.
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), server.timeout_ms ?? 30_000);
+  const expired = new Promise<never>((_, fail) =>
+    deadline.signal.addEventListener("abort", () =>
+      fail(new Error("codex_timeout")),
+    ),
+  );
+  expired.catch(() => {});
+  let connection: RpcConnection | undefined;
   let sentTurn = false;
-  const call = (method: string, params: Record<string, unknown>) =>
-    new Promise<Record<string, unknown>>((done, fail) => {
-      const id = next++;
-      pending.set(id, (answer) => {
-        if (answer === null) fail(new Error("codex_closed"));
-        else if (answer.error !== undefined) fail(new Refused(method));
-        else done((answer.result ?? {}) as Record<string, unknown>);
-      });
-      connection.send({ id, method, params });
+  try {
+    connection = await Promise.race([
+      connect(server, deadline.signal),
+      expired,
+    ]);
+    const open = connection;
+    const pending = new Map<
+      number,
+      (message: Record<string, unknown> | null) => void
+    >();
+    open.listen((incoming) => {
+      if (incoming === null) {
+        for (const answer of pending.values()) answer(null);
+        pending.clear();
+        return;
+      }
+      const answer = pending.get(incoming.id as number);
+      if (answer) {
+        pending.delete(incoming.id as number);
+        answer(incoming);
+      }
     });
-  const timeout = server.timeout_ms ?? 30_000;
-  let timer: NodeJS.Timeout | undefined;
-  const run = async (): Promise<HandoffResult> => {
+    let next = 1;
+    const call = (method: string, params: Record<string, unknown>) =>
+      Promise.race([
+        new Promise<Record<string, unknown>>((done, fail) => {
+          const id = next++;
+          pending.set(id, (answer) => {
+            if (answer === null) fail(new Error("codex_closed"));
+            else if (answer.error !== undefined) fail(new Refused(method));
+            else done((answer.result ?? {}) as Record<string, unknown>);
+          });
+          open.send({ id, method, params });
+        }),
+        expired,
+      ]);
     await call("initialize", {
       clientInfo: {
         name: "hab_notify",
@@ -140,7 +161,7 @@ export async function codexHandoff(
         version: "1",
       },
     });
-    connection.send({ method: "initialized" });
+    open.send({ method: "initialized" });
     await call("thread/resume", { threadId: binding.thread_id });
     sentTurn = true;
     const result = await call("turn/start", {
@@ -150,20 +171,13 @@ export async function codexHandoff(
     const turn = result.turn as { id?: unknown } | undefined;
     if (typeof turn?.id !== "string") throw new Error("codex_turn_unknown");
     return "started";
-  };
-  try {
-    return await Promise.race([
-      run(),
-      new Promise<never>((_, fail) => {
-        timer = setTimeout(() => fail(new Error("codex_timeout")), timeout);
-      }),
-    ]);
   } catch (error) {
-    // Refused before any turn could start, or nothing reached turn/start: nothing was given.
+    // Refused, or turn/start was never sent (no connection, a stalled handshake): nothing
+    // was given to the thread.
     if (error instanceof Refused || !sentTurn) return "unsupported";
     throw error;
   } finally {
     clearTimeout(timer);
-    connection.close();
+    connection?.close();
   }
 }

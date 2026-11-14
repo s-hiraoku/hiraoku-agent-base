@@ -41,6 +41,13 @@ export interface ChannelRequest {
 
 const ANSWER_BYTES = 4096;
 
+/**
+ * The largest request the channel takes, in UTF-8 bytes. A message body is at most 512 KiB
+ * and the whole envelope at most 1 MiB; JSON escaping can grow control characters six-fold,
+ * so 8 MiB holds any request built from a message HAB accepted.
+ */
+export const CHANNEL_REQUEST_BYTES = 8 * 1024 * 1024;
+
 export function claudeCodeHandoff(
   binding: ClaudeCodeBinding,
   message: PeekedMessage,
@@ -128,7 +135,10 @@ export function claudeCodeStatusLine(
   const lines = first!.message.display.split("\n");
   const shown =
     lines.length > MAX_LINES
-      ? [...lines.slice(0, MAX_LINES - 1), "…（続きは hab-notify list で確認）"]
+      ? [
+          ...lines.slice(0, MAX_LINES - 1),
+          `…（続きは hab-notify show ${first!.message_id} で読めます）`,
+        ]
       : lines;
   shown.push(
     `選択: hab-notify decide ${first!.message_id} accept|later|decline`,

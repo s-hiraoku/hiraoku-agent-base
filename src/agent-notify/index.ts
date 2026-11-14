@@ -23,6 +23,7 @@ export type {
   RpcConnection,
 } from "./codex.ts";
 export {
+  CHANNEL_REQUEST_BYTES,
   claudeCodeHandoff,
   claudeCodeStatusLine,
   claudeCodeTarget,
