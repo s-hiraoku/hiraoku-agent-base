@@ -41,7 +41,7 @@ verify-a@grok-bot.hab からのメッセージです。
   "hab_url": "https://<host>/hab/mcp",
   "agent_id": "<受信者の agent_id>",
   "as_address": "hermes-hab@hermes.hab",
-  "token": { "file": "~/.hermes/profiles/<profile>/mcp-tokens/hab.json", "field": "access_token" },
+  "token": { "file": "~/.hermes/profiles/<profile>/mcp-tokens/hab.json", "field": "access_token", "expires_at_field": "expires_at" },
   "store": "~/.hab-notify/hermes-desktop.sqlite",
   "screen": { "type": "jsonl", "path": "~/.hab-notify/hermes-desktop.jsonl", "target": "hermes-desktop:<session id>" },
   "interval_ms": 15000
@@ -56,6 +56,12 @@ npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 ```
 
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
+
+token の更新はエージェント側の仕事です。アダプタは更新しません。Hermes は `expires_at`（期限の UNIX 秒）を書き、期限が切れたあと、自分の次の接続（約 3 分ごと）で更新します。`expires_at_field` を指定すると、期限を過ぎた token は HAB に送らず、`{"error":"token_expired"}` を返します。token の欄が空なら `token_unavailable` です。どちらも `transport_failed`（HAB に届かない、応答がおかしい）とは分けて出ます。`run` は期限切れの間もそのまま待ち、エージェントが更新した次の確認から自然に戻ります。
+
+- `expires_at_field` がなくても、token が JWT なら `exp` を読みます。過ぎているか 5 秒以内に切れる token は、同じく HAB に送らず `token_expired` です。期限は署名を確かめずに読むだけで、判断するのは HAB です。中身の読めない token と `exp` のない JWT は、そのまま HAB に送ります。
+- `run` は、同じ失敗が続くあいだ、始まりに `{"error":"token_expired"}` を 1 回、直ったときに `{"resumed":"token_expired"}` を 1 回だけ書きます。確認のたびには書きません。ほかの失敗（`transport_failed` など）も同じ扱いです。
+- 待っているあいだにボタンを押すと、選択は記録されず同じ理由で失敗します。カードはそのまま残るので、token が更新された後にもう一度押せます。「あとで」は HAB を呼ばないので、待っているあいだも使えます。
 
 ## Hermes Desktop
 

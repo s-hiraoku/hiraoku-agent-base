@@ -60,6 +60,11 @@ const configSchema = z.strictObject({
     z.strictObject({
       file: z.string().min(1),
       field: z.string().min(1).default("access_token"),
+      /**
+       * Optional: the field holding the token's absolute expiry in epoch seconds (Hermes writes
+       * `expires_at`). Past it, a call is not made and the notifier reports token_expired.
+       */
+      expires_at_field: z.string().min(1).optional(),
     }),
     z.strictObject({ env: z.string().min(1) }),
   ]),
@@ -110,10 +115,62 @@ function readToken(config: NotifyConfig): string {
       readFileSync(expand(config.token.file), "utf8"),
     ) as Record<string, unknown>;
     token = file[config.token.field];
+    const expiresAt = config.token.expires_at_field
+      ? file[config.token.expires_at_field]
+      : undefined;
+    // The agent refreshes its own token; until it does, sending the old one is only refused.
+    if (
+      typeof expiresAt === "number" &&
+      Number.isFinite(expiresAt) &&
+      expiresAt * 1000 <= Date.now()
+    )
+      throw new MessagingError("token_expired");
   }
   if (typeof token !== "string" || token.length === 0)
     throw new MessagingError("token_unavailable");
   return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+}
+
+/** A token that expires within this many ms is treated as already expired. */
+const TOKEN_SKEW_MS = 5_000;
+
+/** The `exp` of a JWT access token, in ms. An opaque token gives undefined. Not verified:
+ * it only saves calls HAB would refuse. HAB still checks every token itself. */
+function jwtExpiry(token: string): number | undefined {
+  const parts = token.split(".");
+  if (parts.length !== 3) return undefined;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1]!, "base64url").toString("utf8"),
+    ) as { exp?: unknown };
+    return typeof payload.exp === "number" && Number.isFinite(payload.exp)
+      ? payload.exp * 1000
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Checked before each call to HAB, so a call HAB would refuse is never sent. The agent
+ * refreshes its own token; a missing or expired one is a wait, named as such, and the next
+ * check tries again. Expiry comes from `expires_at_field` when configured, else from a JWT's
+ * own `exp`; an opaque token without either is left to HAB.
+ */
+export function tokenProblem(
+  config: NotifyConfig,
+  now = Date.now(),
+): string | undefined {
+  let token: string;
+  try {
+    token = readToken(config);
+  } catch (error) {
+    return error instanceof MessagingError ? error.code : "token_unavailable";
+  }
+  const expiry = jwtExpiry(token.slice("Bearer ".length));
+  return expiry !== undefined && expiry <= now + TOKEN_SKEW_MS
+    ? "token_expired"
+    : undefined;
 }
 
 const hermesBinding = (
@@ -184,10 +241,10 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     ...(config.as_address ? { as_address: config.as_address } : {}),
   };
   const url = config.hab_url.replace(/\/+$/, "");
-  const hab = new HabNotifierClient({
-    ...common,
-    policy: { ...base, resource_url: `${url}/delivery` },
-  });
+  const hab = new HabNotifierClient(
+    { ...common, policy: { ...base, resource_url: `${url}/delivery` } },
+    () => tokenProblem(config),
+  );
   const target = screen ?? configuredScreen(config);
   const store = new SQLiteNotices(expand(config.store), target.target);
   return {
@@ -196,8 +253,20 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
   };
 }
 
-const errorCode = (error: unknown) =>
-  error instanceof MessagingError ? error.code : "failed";
+/**
+ * The MCP transport reports a credential that could not be read as transport_failed. When
+ * the token itself is the cause (expired or missing), that is named instead.
+ */
+function errorCode(error: unknown, config?: NotifyConfig): string {
+  const code = error instanceof MessagingError ? error.code : "failed";
+  if (code !== "transport_failed" || !config) return code;
+  try {
+    readToken(config);
+  } catch (tokenError) {
+    if (tokenError instanceof MessagingError) return tokenError.code;
+  }
+  return code;
+}
 
 export async function main(
   args: string[],
@@ -261,7 +330,7 @@ export async function main(
   try {
     created = createNotifier(config);
   } catch (error) {
-    out(JSON.stringify({ error: errorCode(error) }));
+    out(JSON.stringify({ error: errorCode(error, config) }));
     return 1;
   }
   const { notifier, store } = created;
@@ -319,12 +388,19 @@ export async function main(
         };
         process.once("SIGTERM", stop);
         process.once("SIGINT", stop);
+        // An error that repeats on every check, such as waiting for the agent to refresh its
+        // token, is logged once when it starts and once when it ends.
+        let failing: string | undefined;
         while (!stopped) {
           try {
             const shown = await notifier.check();
+            if (failing) out(JSON.stringify({ resumed: failing }));
+            failing = undefined;
             if (shown.length) out(JSON.stringify({ shown }));
           } catch (error) {
-            out(JSON.stringify({ error: errorCode(error) }));
+            const code = errorCode(error, config);
+            if (code !== failing) out(JSON.stringify({ error: code }));
+            failing = code;
           }
           await new Promise((done) => setTimeout(done, config.interval_ms));
         }
@@ -334,7 +410,7 @@ export async function main(
     out(usage);
     return 2;
   } catch (error) {
-    out(JSON.stringify({ error: errorCode(error) }));
+    out(JSON.stringify({ error: errorCode(error, config) }));
     return 1;
   } finally {
     store.close();
