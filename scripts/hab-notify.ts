@@ -28,7 +28,7 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
   HabNotifierClient,
@@ -246,7 +246,17 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
 }
 
 /** `statusline`: the Claude Code status line for the bound session; never calls HAB. */
-async function statusline(config: NotifyConfig, input: string) {
+/** Quotes one shell word unless it is plainly safe. */
+const shellWord = (word: string) =>
+  /^[A-Za-z0-9_./:=@+-]+$/.test(word)
+    ? word
+    : `'${word.replaceAll("'", "'\\''")}'`;
+
+async function statusline(
+  config: NotifyConfig,
+  input: string,
+  configPath: string,
+) {
   const screen = config.screen;
   if (screen.type !== "claude-code") return null;
   let session: { session_id?: unknown } = {};
@@ -261,7 +271,16 @@ async function statusline(config: NotifyConfig, input: string) {
     claudeCodeTarget(binding),
   );
   try {
-    return claudeCodeStatusLine(store.open(), binding, session);
+    // The hints must run as shown: this node, this script and this config.
+    const command = [
+      process.execPath,
+      fileURLToPath(import.meta.url),
+      "--config",
+      configPath,
+    ]
+      .map(shellWord)
+      .join(" ");
+    return claudeCodeStatusLine(store.open(), binding, session, command);
   } finally {
     store.close();
   }
@@ -362,7 +381,7 @@ export async function main(
   if (command === "statusline") {
     // A failed status line prints nothing: it must never break the Claude Code screen.
     try {
-      const line = await statusline(config, readInput(input));
+      const line = await statusline(config, readInput(input), expand(args[1]));
       if (line === null) {
         out(usage);
         return 2;
