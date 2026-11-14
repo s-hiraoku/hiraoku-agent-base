@@ -8,6 +8,7 @@ import { SqliteDelivery } from "../src/delivery/sqlite-delivery.ts";
 import {
   MAX_ACK_RETRY_MS,
   RECORD_RETENTION_MS,
+  READ_BODY_RETENTION_MS,
 } from "../src/messaging/contract.ts";
 import { limits, message } from "./mcp-http-fixtures.js";
 import { authorizedDelivery } from "./delivery-fixture.js";
@@ -427,4 +428,218 @@ test("a failed audit write rolls back the state change with it", async (t) => {
   assert.equal(f.row(input.message_id), undefined);
   f.raw.exec("DROP TRIGGER fail_audit");
   assert.equal(f.service.submit("a", input).state, "pending");
+});
+
+// Host inbox (ADR-020 mailbox): reading marks a message read, keeps its body for
+// READ_BODY_RETENTION_MS and releases it after that; SDK ACKs still release at once.
+test("inbox read marks messages read once, keeps them re-readable and releases the body after the retention", async (t) => {
+  const f = await fixture(t);
+  const first = next();
+  const second = next({
+    body: {
+      parts: [
+        { type: "text", text: "line one" },
+        { type: "data", schema_id: "s.v1", schema_version: 1, value: { n: 1 } },
+        { type: "text", text: "line two" },
+      ],
+    },
+  });
+  f.service.submit("a", first);
+  f.service.submit("c", { ...second, thread_id: "thread-cb" });
+  assert.deepEqual(f.service.inbox("a"), []);
+  const read = f.service.inbox("b");
+  assert.deepEqual(
+    read.map((m) => [m.message_id, m.sender_id, m.text, m.data_parts, m.new]),
+    [
+      [first.message_id, "a", "synthetic private payload", 0, true],
+      [second.message_id, "c", "line one\n\nline two", 1, true],
+    ],
+  );
+  assert.equal(read[1].thread_id, "thread-cb");
+  assert.equal(f.service.status("a", first.message_id).state, "acked");
+  assert.deepEqual(f.service.inbox("b"), []);
+  assert.equal(f.service.poll("b"), null);
+  // Reads at the same millisecond are not repeated; move the read time back.
+  f.raw.exec("UPDATE delivery_messages SET acked_at=acked_at-10");
+  const again = f.service.inbox("b", { limit: 10, include_read: true });
+  assert.deepEqual(
+    again.map((m) => [m.message_id, m.new]).sort(),
+    [
+      [first.message_id, false],
+      [second.message_id, false],
+    ].sort(),
+  );
+  // A kept body stays charged to the byte quotas until it is released.
+  assert.ok(f.row(first.message_id).body_bytes > 0);
+  f.raw
+    .prepare("UPDATE delivery_messages SET acked_at=? WHERE message_id=?")
+    .run(Date.now() - READ_BODY_RETENTION_MS - 1, first.message_id);
+  assert.deepEqual(
+    f.service
+      .inbox("b", { limit: 10, include_read: true })
+      .map((m) => m.message_id),
+    [second.message_id],
+  );
+  assert.deepEqual(
+    [f.row(first.message_id).body, f.row(first.message_id).body_bytes],
+    [null, 0],
+  );
+  assert.deepEqual(f.audit(first.message_id), ["accepted", "acked"]);
+});
+
+test("inbox respects the limit, skips leased and disallowed messages and refuses a bad limit", async (t) => {
+  let blockC = false;
+  const f = await fixture(t, {
+    deny: (context, operation, peer) =>
+      blockC && operation === "poll" && peer === "c",
+  });
+  const a1 = next();
+  const a2 = next();
+  const c1 = next();
+  f.service.submit("a", a1);
+  f.service.submit("a", a2);
+  f.service.submit("c", { ...c1, thread_id: "thread-cb" });
+  const leased = f.service.poll("b");
+  assert.equal(leased.message.message_id, a1.message_id);
+  blockC = true;
+  assert.deepEqual(
+    f.service
+      .inbox("b", { limit: 1, include_read: false })
+      .map((m) => m.message_id),
+    [a2.message_id],
+  );
+  assert.deepEqual(f.service.inbox("b"), []);
+  assert.equal(f.row(c1.message_id).state, "pending");
+  for (const limit of [0, 51, 1.5])
+    assert.throws(() => f.service.inbox("b", { limit, include_read: false }), {
+      code: "invalid_request",
+      details: { field: "limit", min: 1, max: 50 },
+    });
+});
+
+test("an SDK ACK still releases the body, so the inbox does not show it again", async (t) => {
+  const f = await fixture(t);
+  const input = next();
+  f.service.submit("a", input);
+  const delivery = f.service.poll("b");
+  f.service.ack("b", ack(delivery));
+  f.raw.exec("UPDATE delivery_messages SET acked_at=acked_at-10");
+  assert.deepEqual(f.service.inbox("b", { limit: 10, include_read: true }), []);
+});
+
+test("received returns reply metadata only for the caller's own received message", async (t) => {
+  const f = await fixture(t);
+  const input = next();
+  f.service.submit("a", input);
+  assert.deepEqual(f.service.received("b", input.message_id), {
+    message_id: input.message_id,
+    sender_id: "a",
+    kind: "question",
+    thread_id: "thread-ab",
+    state: "pending",
+    expires_at: input.expires_at,
+  });
+  assert.equal(f.row(input.message_id).state, "pending");
+  assert.throws(() => f.service.received("a", input.message_id), {
+    code: "reply_target_not_found",
+    reason: "reply_target_unknown",
+  });
+  assert.throws(() => f.service.received("b", "bad id!"), {
+    code: "invalid_request",
+  });
+  // The same message ID from two senders is ambiguous.
+  f.service.submit("c", { ...input, thread_id: "thread-cb" });
+  assert.throws(() => f.service.received("b", input.message_id), {
+    code: "reply_target_not_found",
+    reason: "reply_target_ambiguous",
+  });
+});
+
+test("inbox reaches deliverable messages behind more denied ones than the poll scan limit", async (t) => {
+  const f = await fixture(t, {
+    queue: { poll_scan_limit: 1 },
+    deny: (context, operation, peer) => operation === "poll" && peer === "c",
+  });
+  const blocked = [next(), next()];
+  for (const input of blocked)
+    f.service.submit("c", { ...input, thread_id: "thread-cb" });
+  const allowed = next();
+  f.service.submit("a", allowed);
+  assert.deepEqual(
+    f.service.inbox("b").map((m) => m.message_id),
+    [allowed.message_id],
+  );
+});
+
+test("inbox with a message_id reads that one message again, beyond the newest page", async (t) => {
+  const f = await fixture(t);
+  const older = next();
+  const newer = next();
+  f.service.submit("a", older);
+  f.service.submit("a", newer);
+  f.service.inbox("b");
+  f.raw.exec("UPDATE delivery_messages SET acked_at=acked_at-10");
+  f.raw
+    .prepare(
+      "UPDATE delivery_messages SET acked_at=acked_at-5 WHERE message_id=?",
+    )
+    .run(older.message_id);
+  assert.deepEqual(
+    f.service
+      .inbox("b", { limit: 1, include_read: true })
+      .map((m) => m.message_id),
+    [newer.message_id],
+  );
+  assert.deepEqual(
+    f.service
+      .inbox("b", {
+        limit: 1,
+        include_read: false,
+        message_id: older.message_id,
+      })
+      .map((m) => [m.message_id, m.new]),
+    [[older.message_id, false]],
+  );
+  // A still-unread message asked for by ID is read (and marked read) at once.
+  const unread = next();
+  f.service.submit("a", unread);
+  assert.deepEqual(
+    f.service
+      .inbox("b", {
+        limit: 10,
+        include_read: false,
+        message_id: unread.message_id,
+      })
+      .map((m) => [m.message_id, m.new]),
+    [[unread.message_id, true]],
+  );
+  assert.deepEqual(f.service.inbox("b"), []);
+  assert.throws(
+    () =>
+      f.service.inbox("b", {
+        limit: 1,
+        include_read: false,
+        message_id: "bad id",
+      }),
+    { code: "invalid_request", details: { field: "message_id" } },
+  );
+});
+
+test("inbox stops before a message that would not fit the response budget and leaves it unread", async (t) => {
+  const f = await fixture(t);
+  const big = (n) =>
+    next({ body: { parts: [{ type: "text", text: String(n).repeat(3000) }] } });
+  const inputs = [big(1), big(2), big(3)];
+  for (const input of inputs) f.service.submit("a", input);
+  const budget = { limit: 10, include_read: false, max_bytes: 2 * 16200 };
+  assert.deepEqual(
+    f.service.inbox("b", budget).map((m) => m.message_id),
+    [inputs[0].message_id, inputs[1].message_id],
+  );
+  assert.equal(f.row(inputs[2].message_id).state, "pending");
+  // The first message is always taken, even when it alone exceeds the budget.
+  assert.deepEqual(
+    f.service.inbox("b", { ...budget, max_bytes: 1 }).map((m) => m.message_id),
+    [inputs[2].message_id],
+  );
 });

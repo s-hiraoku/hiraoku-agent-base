@@ -152,6 +152,10 @@ export async function authorizedDelivery(
     poll: (context) => backend.pollWithAuthorization(context, authorization),
     ack: (context, input) =>
       backend.ackWithAuthorization(context, input, authorization),
+    inbox: (context, options = { limit: 10, include_read: false }) =>
+      backend.readInboxWithAuthorization(context, authorization, options),
+    received: (context, id) =>
+      backend.receivedWithAuthorization(context, id, authorization),
   };
   return {
     options,

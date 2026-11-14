@@ -12,8 +12,8 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 ## Driving conventions
 
 - Start every recipe from the baseline unless its preconditions say otherwise. A recipe that leaves a pending or leased message changes later `hab_poll` results; launch a new run dir instead of reusing it.
-- All agent actions go through `$S/mcp.sh "$RUN" <agent> <tool> '<json>'`; build messages with `$S/new-message.sh`.
-- Read results from `.result.structuredContent`. A tool refusal is HTTP 200 with `"isError":true` and `{"error":"<code>"}`; transport refusal is a non-200 HTTP code.
+- All agent actions go through `$S/mcp.sh "$RUN" <agent> <tool> '<json>'`; build messages with `$S/new-message.sh`. `mcp.sh` sends the agent tools to `/mcp` and `hab_submit`/`hab_poll`/`hab_ack`/`hab_resolve` to `/mcp/delivery`; `HAB_CATALOG=delivery` sends `hab_status` and `tools/list` there too.
+- Read results from `.result.structuredContent`. A tool refusal is HTTP 200 with `"isError":true` and `{"error":"<code>","message":"<what to change>",…details}`; transport refusal is a non-200 HTTP code.
 - The enrollment terminal is driven with tmux `send-keys`, waiting on the exact prompt text before each key.
 
 ## Proof and skip reporting
@@ -32,6 +32,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 - [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, external text and structured execution requests remaining data, and optional Task state semantics. It runs isolated fixtures with its own listeners and cleanup.
 
+- [Agent tools: send, read, reply](./agent-tools.md) covers the `/mcp` agent catalog: `hab_send`, `hab_inbox` (read, mark read, re-read), `hab_reply`, the agent `hab_status`, specific error codes and audit reasons.
 - [Resolve an address](./resolve-address.md) covers `hab_resolve` success, unknown address, malformed address and a renamed agent's previous name during the grace period.
 - [Send a message](./send-message.md) covers `hab_submit`, idempotent replay, conflicting replay, disallowed kind, attachment-part refusal, sender-only `hab_status` and per-pair thread names.
 - [Receive and acknowledge](./receive-ack.md) covers `hab_poll` leasing, empty poll, lease expiry redelivery and `hab_ack` including wrong-token and wrong-agent refusal.

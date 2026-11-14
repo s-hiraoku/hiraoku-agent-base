@@ -24,7 +24,7 @@ import { HabHttpGateway } from "../hab/http.ts";
 import { validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";
 import type { McpHttpPolicy, McpHttpVerifier } from "./mcp/http.ts";
-import { createMcpNodeHandler } from "./mcp/http-node.ts";
+import { routeMcpNodeHandlers } from "./mcp/http-node.ts";
 import type { AuditSink } from "../security.ts";
 import {
   HOST_A2A_ISSUER,
@@ -157,8 +157,8 @@ export async function startHostServer(options: HostServerOptions) {
   const registryOptions = options.registry;
   let owner: SQLiteHostOwner | undefined,
     registry: SQLiteHabRegistry | undefined,
-    handler: ReturnType<typeof createMcpNodeHandler> | undefined,
-    ingressHandler: ReturnType<typeof createMcpNodeHandler> | undefined,
+    handler: ReturnType<typeof routeMcpNodeHandlers> | undefined,
+    ingressHandler: ReturnType<typeof routeMcpNodeHandlers> | undefined,
     ingressServer: Server | undefined,
     serviceClose: (() => Promise<void>) | undefined,
     a2a: Awaited<ReturnType<typeof startHostA2a>> | undefined,
@@ -320,35 +320,54 @@ export async function startHostServer(options: HostServerOptions) {
     });
     serviceClose = delivery.close.bind(delivery);
     const service = delivery.service;
+    // Agents use the agent catalog at /mcp; the SDK and the receive service use the
+    // delivery catalog (submit, poll, ACK, resolve) at /mcp/delivery (ADR-020).
+    const catalogs = [
+      ["", "agent"],
+      ["/delivery", "delivery"],
+    ] as const;
     // Validate all HTTP limits before opening a socket; a temporary port is only framing.
-    const policy = (port: number) => ({
+    const policy = (port: number, suffix: string) => ({
       ...options.http,
-      resource_url: `http://127.0.0.1:${port}/mcp`,
+      resource_url: `http://127.0.0.1:${port}/mcp${suffix}`,
       allowed_origins: [],
     });
-    new HabHttpGateway(
-      service,
-      policy(options.port || 1024),
-      options.audit,
-      options.verify,
-    );
-    let ingressGateway: HabHttpGateway | undefined;
-    if (ingress) {
-      ingressGateway = new HabHttpGateway(
+    for (const [suffix, catalog] of catalogs)
+      new HabHttpGateway(
         service,
-        {
-          ...options.http,
-          resource_url: ingress.resource_url,
-          oauth_issuer: ingress.issuer,
-          allowed_origins: ingress.allowed_origins,
-        },
+        policy(options.port || 1024, suffix),
         options.audit,
-        async (input) => {
-          ownership.check();
-          const context = await ingress.verify(input);
-          ownership.check();
-          return stopping ? null : context;
-        },
+        options.verify,
+        undefined,
+        catalog,
+      );
+    // The ingress serves both catalogs too. OAuth discovery metadata describes only the
+    // agent endpoint; a token issued for it also opens the delivery endpoint.
+    let ingressGateways: HabHttpGateway[] | undefined;
+    if (ingress) {
+      ingressGateways = catalogs.map(
+        ([suffix, catalog]) =>
+          new HabHttpGateway(
+            service,
+            {
+              ...options.http,
+              resource_url: ingress.resource_url + suffix,
+              ...(catalog === "agent" ? { oauth_issuer: ingress.issuer } : {}),
+              allowed_origins: ingress.allowed_origins,
+            },
+            options.audit,
+            async (input) => {
+              ownership.check();
+              const context = await ingress.verify({
+                ...input,
+                resource: ingress.resource_url,
+              });
+              ownership.check();
+              return stopping ? null : context;
+            },
+            undefined,
+            catalog,
+          ),
       );
     }
     server.listen(options.port, "127.0.0.1");
@@ -360,21 +379,32 @@ export async function startHostServer(options: HostServerOptions) {
       address.address !== "127.0.0.1"
     )
       throw Error("host_listener_rejected");
-    const gateway = new HabHttpGateway(
-      service,
-      policy(address.port),
-      options.audit,
-      async (input) => {
-        ownership.check();
-        const context = await options.verify(input);
-        ownership.check();
-        return stopping ? null : context;
-      },
+    handler = routeMcpNodeHandlers(
+      catalogs.map(
+        ([suffix, catalog]) =>
+          new HabHttpGateway(
+            service,
+            policy(address.port, suffix),
+            options.audit,
+            async (input) => {
+              ownership.check();
+              // Both catalogs are views of one connection: a credential issued for /mcp
+              // also opens /mcp/delivery.
+              const context = await options.verify({
+                ...input,
+                resource: policy(address.port, "").resource_url,
+              });
+              ownership.check();
+              return stopping ? null : context;
+            },
+            undefined,
+            catalog,
+          ),
+      ),
     );
-    handler = createMcpNodeHandler(gateway);
     let ingressPort: number | undefined;
-    if (ingress && ingressGateway) {
-      ingressHandler = createMcpNodeHandler(ingressGateway);
+    if (ingress && ingressGateways) {
+      ingressHandler = routeMcpNodeHandlers(ingressGateways);
       ingressServer = makeServer(() => ingressHandler);
       ingressServer.maxConnections = options.http.max_active_requests;
       ingressServer.listen(ingress.port, "127.0.0.1");
@@ -404,12 +434,14 @@ export async function startHostServer(options: HostServerOptions) {
         stopping: () => stopping,
       });
     return Object.freeze({
-      url: gateway.policy.resource_url,
+      url: policy(address.port, "").resource_url,
+      delivery_url: policy(address.port, "/delivery").resource_url,
       close,
       ...(a2a ? { a2a_url: a2a.url } : {}),
-      ...(ingressGateway
+      ...(ingressGateways
         ? {
-            ingress_url: ingressGateway.policy.resource_url,
+            ingress_url: ingressGateways[0].policy.resource_url,
+            ingress_delivery_url: ingressGateways[1].policy.resource_url,
             ingress_port: ingressPort,
           }
         : {}),

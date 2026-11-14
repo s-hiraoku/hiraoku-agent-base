@@ -216,8 +216,15 @@ refused by the shared contract before any registry or host transaction.
 
 ## Optional HAB MCP/HTTP and client
 
-`./mcp.ts` provides `createHabMcpServer`: exactly the four HAB tools plus
-`hab_resolve`. Its strict input is `{address}` using the shared version-1 HAB
+`./mcp.ts` provides `createHabMcpServer` with two catalogs (ADR-020). The
+`agent` catalog, served by the host at `/mcp`, has only `hab_send`, `hab_inbox`,
+`hab_reply` and `hab_status` (`./agent-tools.ts`), plus `hab_discover` when
+enabled, and MCP server instructions describing the flow. The host fills in every
+envelope field; argument mistakes get specific codes (`invalid_request` with
+`field`, `kind_not_allowed`, `unknown_address`, `text_too_long`,
+`reply_target_not_found`, `reply_target_expired`). The `delivery` catalog, served
+at `/mcp/delivery` for the agent SDK and the receive service, has the four HAB
+delivery tools plus `hab_resolve`. Its strict input is `{address}` using the shared version-1 HAB
 grammar, including a published JSON Schema pattern. It accepts no sender,
 principal, mailbox, recipient selector or alternative URL. The result contains
 only `{recipient_id,address,normalization_version:1}`. Lookup is read-only and
@@ -226,8 +233,8 @@ binding, activation, maintenance, Task, arbitrary shell and subscriptions are
 absent. Importing the generic delivery factory still exposes exactly four tools,
 even when the supplied service also implements the HAB directory interface.
 
-The explicit `HabHttpGateway` in `./http.ts` selects that catalog using host-code
-composition hooks in the existing gateway. It inherits the same mandatory
+The explicit `HabHttpGateway` in `./http.ts` serves one catalog, chosen by host
+code at construction (callers cannot choose), using host-code composition hooks in the existing gateway. It inherits the same mandatory
 verification-before-protocol, fixed resource/Host/Origin checks, input/response
 byte limits, deadline, active/rate limits and audit. The common MCP executor
 rechecks the gate after async context resolution and before the synchronous

@@ -244,6 +244,8 @@ async function roundtrip(target, out) {
     assert.equal(url.hostname, "127.0.0.1");
     assert.equal(url.pathname, "/mcp");
     assert.equal(Number(url.port), state.port);
+    // The SDK uses the delivery catalog; agents use /mcp (ADR-020).
+    assert.equal(state.delivery_url, `${state.url}/delivery`);
     assert(
       Number.isInteger(state.port) && state.port > 0 && state.port < 65536,
     );
@@ -273,7 +275,7 @@ async function roundtrip(target, out) {
       new HabMcpClient({
         limits,
         policy: {
-          resource_url: state.url,
+          resource_url: state.delivery_url,
           agent_id: state.agents[agent].agent_id,
           max_request_bytes: 65536,
           max_response_bytes: 131072,

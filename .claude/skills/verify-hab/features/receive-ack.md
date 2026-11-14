@@ -34,7 +34,7 @@ Preconditions:
 - **Wrong agent.** Run `$S/mcp.sh "$RUN" c hab_ack "$ACK"`. `{"error":"invalid_ack"}`.
 - **Ack.** Run `$S/mcp.sh "$RUN" b hab_ack "$ACK"`. `state: "acked"`, `request_id: "verify-ack-1"`.
 - **Ack replay.** Run the same command again: identical `receipt_id`. Then `$S/mcp.sh "$RUN" b hab_ack "$(jq -c '.request_id="verify-ack-2"' <<<"$ACK")"`: `{"error":"invalid_ack"}`.
-- **Sender view.** Run `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`. `state: "acked"`.
+- **Sender view.** Run `HAB_CATALOG=delivery $S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`. `state: "acked"`.
 - **Redelivery.** Submit a new message `a` → `c`, poll as `c` (generation `1`), wait until after its `lease_until` (≈31 s), poll as `c` again. Same `message_id`, `generation: 2`, new `lease_token`.
 - **Proof.** Run `node $S/inspect.mjs "$RUN" after-ack`. Acked delivery has `state: "acked"`; audit events read `accepted, leased, acked`; the redelivered one has `state: "leased"`, `generation: 2` and events `accepted, leased, requeued, leased`.
 

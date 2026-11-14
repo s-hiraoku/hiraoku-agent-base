@@ -4,6 +4,10 @@ import {
   parseSubmission,
   comparisonMaterial,
   DELIVERY_TTL_MS,
+  MAX_DELIVERY_TTL_MS,
+  makeReplayBoundMessageId,
+  isReplayBoundMessageId,
+  replayBoundSentAt,
 } from "../src/messaging/index.ts";
 
 // Test policy only: deployment capacity has deliberately not been selected.
@@ -93,10 +97,26 @@ test("caller identity, unknown control fields and unsupported parts or wire vers
   rejects(q);
   rejects({ ...message(), in_reply_to: { message_id: "m-0" } });
 });
-test("one-hour lifetime is exact; invalid dates and optional TTL cannot bypass it", () => {
-  rejects({ ...message(), expires_at: "2030-01-01T01:00:00.001Z" });
+test("a deadline is after the first send and at most seven days later; invalid dates and optional TTL cannot bypass it", () => {
+  rejects({ ...message(), expires_at: "2030-01-08T00:00:00.001Z" });
+  rejects({ ...message(), expires_at: "2030-01-01T00:00:00.000Z" });
+  rejects({ ...message(), expires_at: "2029-12-31T23:59:59.999Z" });
   rejects({ ...message(), expires_at: "2030-02-30T01:00:00.000Z" });
   rejects({ ...message(), ttl_ms: 1000 });
+  assert.equal(
+    parseSubmission(
+      { ...message(), expires_at: "2030-01-08T00:00:00.000Z" },
+      limits,
+    ).expires_at,
+    "2030-01-08T00:00:00.000Z",
+  );
+  assert.equal(
+    parseSubmission(
+      { ...message(), expires_at: "2030-01-01T00:00:01.000Z" },
+      limits,
+    ).expires_at,
+    "2030-01-01T00:00:01.000Z",
+  );
 });
 test("all quota dimensions fail explicitly, measuring UTF-8", () => {
   for (const key of [
@@ -169,4 +189,27 @@ test("capacity configuration is mandatory and invalid policy fails closed", () =
   const p = { ...limits };
   delete p.parts;
   rejects(message(), "invalid_limits", p);
+});
+test("a replay-bound ID carries its first send time and allows any deadline up to seven days", () => {
+  const sent = Date.parse("2030-01-01T00:00:00.000Z");
+  const id = makeReplayBoundMessageId(
+    "2030-01-01T00:00:00.000Z",
+    "a".repeat(32),
+  );
+  assert.equal(replayBoundSentAt(id), sent);
+  assert.equal(isReplayBoundMessageId(id, sent + 3_600_000), true);
+  assert.equal(isReplayBoundMessageId(id, sent + MAX_DELIVERY_TTL_MS), true);
+  assert.equal(
+    isReplayBoundMessageId(id, sent + MAX_DELIVERY_TTL_MS + 1),
+    false,
+  );
+  assert.equal(isReplayBoundMessageId(id, sent), false);
+  const week = {
+    ...message(),
+    message_id: id,
+    expires_at: new Date(sent + MAX_DELIVERY_TTL_MS).toISOString(),
+  };
+  assert.equal(parseSubmission(week, limits).message_id, id);
+  // The ID's time must be the message's own first send time.
+  rejects({ ...week, first_sent_at: "2030-01-01T00:00:00.001Z" });
 });

@@ -60,9 +60,14 @@ export class DurableReceiver {
       if (
         code === "invalid_ack" ||
         code === "forbidden" ||
+        code === "recipient_unavailable" ||
         code === "ack_idempotency_conflict"
       ) {
-        this.#store.rejectAck(request, code);
+        // A pair the host no longer lets exchange is a permission refusal for the inbox.
+        this.#store.rejectAck(
+          request,
+          code === "recipient_unavailable" ? "forbidden" : code,
+        );
         return code === "invalid_ack";
       }
       const recovery = authenticationRecoveryReason(error);

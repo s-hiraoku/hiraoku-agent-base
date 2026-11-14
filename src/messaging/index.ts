@@ -2,6 +2,8 @@
 export {
   CONTRACT_VERSION,
   DELIVERY_TTL_MS,
+  MAX_DELIVERY_TTL_MS,
+  READ_BODY_RETENTION_MS,
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
   ContractError,
@@ -11,6 +13,7 @@ export {
   parseAck,
   makeReplayBoundMessageId,
   isReplayBoundMessageId,
+  replayBoundSentAt,
 } from "./contract.ts";
 export type {
   Json,
@@ -19,7 +22,7 @@ export type {
   ContractLimits,
   AckRequest,
 } from "./contract.ts";
-export { MessagingError } from "./delivery-service.ts";
+export { MessagingError, denied } from "./delivery-service.ts";
 export type {
   Receipt,
   Authorization,
@@ -27,3 +30,5 @@ export type {
   Delivery,
   AckReceipt,
 } from "./delivery-service.ts";
+export { formatIncomingNotice } from "./incoming-notice.ts";
+export type { IncomingNoticeInput } from "./incoming-notice.ts";

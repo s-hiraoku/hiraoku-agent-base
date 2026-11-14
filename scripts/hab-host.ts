@@ -17,6 +17,7 @@ export async function main(args = process.argv.slice(2)) {
         JSON.stringify({
           state: "ready",
           url: host.url,
+          delivery_url: host.delivery_url,
           ...(host.ingress_url
             ? { ingress_url: host.ingress_url, ingress_port: host.ingress_port }
             : {}),

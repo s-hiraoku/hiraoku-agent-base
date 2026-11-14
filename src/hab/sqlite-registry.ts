@@ -8,7 +8,7 @@ import {
 } from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
 import { z } from "zod";
-import { MessagingError } from "../messaging/delivery-service.ts";
+import { MessagingError, denied } from "../messaging/delivery-service.ts";
 import {
   habDiscoverySchema,
   habHostIdentitySchema,
@@ -1475,10 +1475,9 @@ export class SQLiteHabRegistry {
     this.#assertReady();
     return this.#authorizedTx(() => {
       try {
-        if (this.#stopRecord().stopped !== 0)
-          throw new MessagingError("forbidden");
+        if (this.#stopRecord().stopped !== 0) throw denied("registry_stopped");
       } catch {
-        throw new MessagingError("forbidden");
+        throw denied("registry_stopped");
       }
       let individual;
       try {
@@ -1488,7 +1487,7 @@ export class SQLiteHabRegistry {
             : undefined;
         individual = this.#verified(selected ? selected.context : context);
       } catch {
-        throw new MessagingError("forbidden");
+        throw denied("credential_unverified");
       }
       const expiry = Date.parse(individual.expires_at);
       const selected =
@@ -1500,14 +1499,16 @@ export class SQLiteHabRegistry {
           "SELECT group_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
         )
         .get(this.#principalHash(individual.principal));
-      if (!shared) throw new MessagingError("forbidden");
+      if (!shared) throw denied("connection_not_bound");
       const group = this.#group(String(shared.group_id));
       if (
         group.state !== "active" ||
         !group.operations.includes(operation) ||
         (operation === "resolve" && !group.operations.includes("submit"))
       )
-        throw new MessagingError("forbidden");
+        throw denied(
+          group.state !== "active" ? "group_inactive" : "operation_not_granted",
+        );
       let previousSelected = false;
       let members = selected
         ? this.#db
@@ -1533,19 +1534,31 @@ export class SQLiteHabRegistry {
           previousSelected = members.length === 1;
         }
       }
-      if (members.length !== 1) throw new MessagingError("forbidden");
-      const local = this.#peer(String(members[0].agent_id));
+      if (members.length !== 1)
+        throw denied(
+          selected
+            ? "address_not_in_group"
+            : members.length === 0
+              ? "no_active_address"
+              : "address_selection_required",
+        );
+      let local: AgentRecord;
+      try {
+        local = this.#peer(String(members[0].agent_id));
+      } catch {
+        throw denied("caller_inactive");
+      }
       if (
         selected?.expected_agent_id !== undefined &&
         selected.expected_agent_id !== local.agent_id
       )
-        throw new MessagingError("forbidden");
+        throw denied("expected_agent_mismatch");
       const policyEpoch = this.#globalEpoch();
       if (
         !local.operations.includes(operation) ||
         (operation === "resolve" && !local.operations.includes("submit"))
       )
-        throw new MessagingError("forbidden");
+        throw denied("operation_not_granted");
       {
         // Bounded retention, not a lifetime quota: keep the newest records so routine
         // polling cannot exhaust the table and permanently deny every group member.
@@ -1569,30 +1582,39 @@ export class SQLiteHabRegistry {
       let alive = true;
       const authorization: Authorization = {
         authorize: (incoming, op, peerId, kind) => {
-          try {
-            if (
-              !alive ||
-              incoming !== context ||
-              op !== operation ||
-              expiry <= this.#now() ||
-              this.#globalEpoch() !== policyEpoch
-            )
-              return undefined;
-            if (
-              kind !== undefined &&
-              !this.#options.allowed_kinds.includes(kind)
-            )
-              return undefined;
-            if (peerId !== undefined) {
-              this.#peer(peerId);
-              const sender = op === "submit" ? local.agent_id : peerId,
-                recipient = op === "submit" ? peerId : local.agent_id;
-              if (this.#blocked(sender, recipient)) return undefined;
-            }
-            return { agent_id: local.agent_id };
-          } catch {
+          // Out-of-scope or stale use is a plain refusal (no decision), not a policy reason.
+          if (
+            !alive ||
+            incoming !== context ||
+            op !== operation ||
+            expiry <= this.#now() ||
+            this.#globalEpoch() !== policyEpoch
+          )
             return undefined;
+          if (kind !== undefined && !this.#options.allowed_kinds.includes(kind))
+            throw new MessagingError("kind_not_allowed", {
+              reason: "kind_not_allowed",
+              details: { allowed_kinds: [...this.#options.allowed_kinds] },
+            });
+          if (peerId !== undefined) {
+            try {
+              this.#peer(peerId);
+            } catch (error) {
+              throw new MessagingError("recipient_unavailable", {
+                reason:
+                  error instanceof RegistryError
+                    ? "peer_unknown"
+                    : "peer_inactive",
+              });
+            }
+            const sender = op === "submit" ? local.agent_id : peerId,
+              recipient = op === "submit" ? peerId : local.agent_id;
+            if (this.#blocked(sender, recipient))
+              throw new MessagingError("recipient_unavailable", {
+                reason: "pair_blocked",
+              });
           }
+          return { agent_id: local.agent_id };
         },
       };
       try {
@@ -1622,9 +1644,21 @@ export class SQLiteHabRegistry {
             previous = row !== undefined;
           }
         }
-        if (!row || this.#blocked(senderId, String(row.agent_id)))
-          throw new MessagingError("forbidden");
-        this.#peer(String(row.agent_id));
+        if (!row)
+          throw new MessagingError("unknown_address", {
+            reason: "address_unknown",
+          });
+        if (this.#blocked(senderId, String(row.agent_id)))
+          throw new MessagingError("unknown_address", {
+            reason: "pair_blocked",
+          });
+        try {
+          this.#peer(String(row.agent_id));
+        } catch {
+          throw new MessagingError("unknown_address", {
+            reason: "peer_inactive",
+          });
+        }
         if (previous)
           this.#recordPreviousUse(
             canonicalAddress,
@@ -1639,6 +1673,22 @@ export class SQLiteHabRegistry {
         };
       },
     );
+  }
+  /**
+   * Current addresses of these agent IDs, for showing who sent a message the caller already
+   * received. Only HabDeliveryService calls it, inside an authorized operation; IDs that no
+   * longer exist are left out.
+   */
+  addressesOf(agentIds: readonly string[]): Map<string, string> {
+    const out = new Map<string, string>();
+    const query = this.#db.prepare(
+      `SELECT address FROM ${this.#agentTable()} WHERE agent_id=?`,
+    );
+    for (const agentId of new Set(agentIds)) {
+      const row = query.get(agentId);
+      if (row) out.set(agentId, String(row.address));
+    }
+    return out;
   }
   get discoveryEnabled(): boolean {
     return this.#options.discovery !== undefined;

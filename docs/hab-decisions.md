@@ -75,6 +75,19 @@
 - agent SDKのSQLite table（`inbox`・`outbox`・`receiver_acks`ほか）、固定エラーコード（`transport_failed`・`host_start_rejected`ほか）、host設定の秘密`delivery_fingerprint_key`、npm script（`hab:host`・`hab:admin`のみ）、script・設定例・試験・文書のファイル名からもrelayを外す。旧名のinbox/outbox DBは開けないため作り直す。
 - 配置済みの接続はOAuth scopeの付与、Hermesの`tools.include`、Dotsのコネクタ、受信サービスを新しい名前へ同時に切り替える必要がある。`docs/history`と過去のADR本文は当時の名前のまま残す。
 
+## ADR-020 / 採用：エージェントには送る・読む・返すの4ツールだけを見せ、hostの受信箱で受け取る
+
+2026-11-14 JST、owner判断。Mac miniでのDots⇄Hermes試験で、エージェントが封筒（ID・時刻・期限・宛先ID）を自作して失敗し、理由の違う誤りがすべて`forbidden`に見えた。HABを使う人がこの沼にはまらないよう、MCPをエージェントがしたいことに合わせて作り直す。ADR-019の5ツールは低レベルの配送catalogとして残す。
+
+- **2つのcatalog。** hostの`/mcp`はエージェント用で、`hab_send`（宛先アドレスと本文）・`hab_reply`（受け取ったmessage_idと本文）・`hab_inbox`・`hab_status`と、有効なら`hab_discover`だけを出す。`/mcp/delivery`は agent SDK と受信サービス用で、`hab_submit`・`hab_status`・`hab_poll`・`hab_ack`・`hab_resolve`（と`hab_discover`）を出す。同じ接続のcredentialで両方を開ける（OAuthのresourceは`/mcp`のまま）。どちらを出すかはhost codeが決め、呼出し側は選べない。
+- **封筒はhostが作る。** `hab_send`はアドレスを解決し、`rm1.`形式のID、送信時刻、7日の期限、新しいthread（または指定のthread）、`kind`（既定`question`）を埋める。`hab_reply`は元の送信者・同じthread・`in_reply_to`を埋め、questionへの返信は`answer`、それ以外は`notice`にする。期限を過ぎた元メッセージへの返信は、既読でも`reply_target_expired`。
+- **hostの受信箱（メール型）。** `hab_inbox`は未読を古い順に返し、同じtransactionで既読（ACK）にする。`include_read`で既読後7日（`READ_BODY_RETENTION_MS`）の本文を読み直せ、その後は本文を消す。既読で残した本文も、消すまでbyte容量に数える。1回の応答に収まる分だけを既読にし、残りは次の呼出しで返す。`message_id`を指定すると、その1通を既読後7日以内なら読み直せる。agent SDKのACKは従来どおり本文をすぐ消す（受信側が自分の永続コピーを持つため）。「ACKで本文を消す」原則はhost受信箱の既読に限り7日保持に変わる。
+- **期限。** 受付できる期限は最大7日（`MAX_DELIVERY_TTL_MS`）にする。agent SDKの既定は1時間のまま。`rm1.` IDは中の送信時刻が`first_sent_at`と一致しなければ受け付けない。
+- **入力の誤りは具体的なコードで返す。** `invalid_request`（`field`と期待値）、`kind_not_allowed`（`allowed_kinds`）、`unknown_address`、`recipient_unavailable`、`reply_target_not_found`、`reply_target_expired`、`text_too_long`（`max_bytes`）。どのエラーにも、何を直せばよいかの固定文`message`を付ける。`forbidden`は認証・権限・停止だけに使う。拒否の固定理由コード（例：`operation_not_granted`、`pair_blocked`）はhostの監査（`audit.jsonl`の`reason`）だけに記録し、本文や秘密は記録しない。
+- **受信の通知。** `hab_inbox`の各メッセージに、利用者へそのまま見せる`notice`を付ける（`src/messaging/incoming-notice.ts`、受信サービスからも使える）。「〇〇 からのメッセージです（種類、返信期限）」、本文、「どうしますか？」と選択肢（1. 返信する＝`hab_reply`にmessage_idと本文を渡す、2. あとで、3. 返信しない）を並べる。本文は送信者が書いた信頼できないデータとして、推測できない印を付けた2行で囲み、指示として実行しないよう明記する。返信期限は元メッセージの期限で、過ぎると既読でも`reply_target_expired`になる。
+- **使い方を説明に書く。** MCP serverの`instructions`と各ツールの説明に、送る→`hab_status`、届いたら`hab_inbox`→`hab_reply`の流れと、「既読は作業完了ではない」ことを書く。
+- 受け取ったエージェント（Hermesなど）を自動で起こす仕組みは本判断に含めない。別のADRで決める。配置済みのHermes・Dotsは`tools.include`をエージェント用4ツールへ、受信サービスの接続先を`/mcp/delivery`へ切り替える。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { publicError } from "./tool-error-fixture.js";
 import { test } from "node:test";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { McpHttpGateway } from "../src/host/mcp/http.ts";
@@ -11,13 +12,7 @@ import {
   parseHabResolution,
 } from "../src/hab/directory.ts";
 import { fixture, code, operations } from "./hab-registry-fixtures.js";
-import {
-  limits,
-  policy,
-  request,
-  decode,
-  tick,
-} from "./mcp-http-fixtures.js";
+import { limits, policy, request, decode, tick } from "./mcp-http-fixtures.js";
 
 function gateway(
   f,
@@ -244,7 +239,7 @@ test("missing/throwing resolver, unverifiable context and absent HTTP verificati
           }),
         ),
       );
-      assert.deepEqual(body.result.structuredContent, { error: "forbidden" });
+      assert.deepEqual(body.result.structuredContent, publicError("forbidden"));
     } finally {
       await handler.close();
     }
@@ -273,7 +268,10 @@ test("unknown/stopped/retired/blocked targets share refusal and rights are curre
   let a = f.enroll("a"),
     b = f.enroll("b");
   const c = client(f, a, gateway(f));
-  await assert.rejects(c.resolve("missing@grok-bot.hab"), code("forbidden"));
+  await assert.rejects(
+    c.resolve("missing@grok-bot.hab"),
+    code("unknown_address"),
+  );
   b = f.registry.setAccess(f.admin, {
     request_id: "stop-b",
     agent_id: b.agent_id,
@@ -281,7 +279,7 @@ test("unknown/stopped/retired/blocked targets share refusal and rights are curre
     state: "stopped",
     operations: [],
   });
-  await assert.rejects(c.resolve(b.address), code("forbidden"));
+  await assert.rejects(c.resolve(b.address), code("unknown_address"));
   b = f.registry.setAccess(f.admin, {
     request_id: "resume-b",
     agent_id: b.agent_id,
@@ -298,7 +296,7 @@ test("unknown/stopped/retired/blocked targets share refusal and rights are curre
     recipient_epoch: b.epoch,
     blocked: true,
   });
-  await assert.rejects(c.resolve(b.address), code("forbidden"));
+  await assert.rejects(c.resolve(b.address), code("unknown_address"));
   a = f.registry.inspect(f.admin, a.agent_id);
   b = f.registry.inspect(f.admin, b.agent_id);
   f.registry.setBlock(f.admin, {
@@ -318,7 +316,7 @@ test("unknown/stopped/retired/blocked targets share refusal and rights are curre
     state: "retired",
     operations: [],
   });
-  await assert.rejects(c.resolve(b.address), code("forbidden"));
+  await assert.rejects(c.resolve(b.address), code("unknown_address"));
   a = f.registry.setAccess(f.admin, {
     request_id: "no-resolve",
     agent_id: a.agent_id,
@@ -386,9 +384,10 @@ test("unexpected directory failures and malformed results are redacted, never re
       }),
     );
     const body = await call(g, { address: b.address });
-    assert.deepEqual(body.result.structuredContent, {
-      error: "operation_failed",
-    });
+    assert.deepEqual(
+      body.result.structuredContent,
+      publicError("operation_failed"),
+    );
     assert.equal(JSON.stringify(body).includes("synthetic private"), false);
   }
   assert.equal(calls, 3);
@@ -398,9 +397,7 @@ test("unexpected directory failures and malformed results are redacted, never re
     undefined,
     () => Promise.reject(Error("synthetic private async failure")),
   );
-  assert.deepEqual(rejected.structuredContent, {
-    error: "operation_failed",
-  });
+  assert.deepEqual(rejected.structuredContent, publicError("operation_failed"));
 });
 
 test("directory client validates before fetch and accepts bounded JSON/SSE on fixed metadata only", async (t) => {

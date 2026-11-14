@@ -3,7 +3,10 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { ContractError } from "../../messaging/contract.ts";
 import { MessagingError } from "../../messaging/delivery-service.ts";
-import { isPublicToolError } from "../../messaging/tool-errors.ts";
+import {
+  explainToolError,
+  isPublicToolError,
+} from "../../messaging/tool-errors.ts";
 import type { DeliveryService } from "../../messaging/delivery-service.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
@@ -54,7 +57,31 @@ export type DeliveryContextResolver = () => unknown | Promise<unknown>;
 /** Optional transport admission/audit guard; it cannot grant identity or permissions. */
 export interface DeliveryMcpGate {
   check(): void;
-  begin(): Promise<(success: boolean) => Promise<void>>;
+  /** The finish callback takes a fixed refusal reason for the audit, never a body or secret. */
+  begin(): Promise<(success: boolean, reason?: string) => Promise<void>>;
+}
+/** The fixed public error: code, explanation and only details the code allows. */
+export function toolError(error: unknown): {
+  error: string;
+  message: string;
+  [detail: string]: unknown;
+} {
+  const code =
+    (error instanceof MessagingError || error instanceof ContractError) &&
+    isPublicToolError(error.code)
+      ? error.code
+      : "operation_failed";
+  const details =
+    error instanceof MessagingError && code === error.code
+      ? error.details
+      : undefined;
+  return { error: code, message: explainToolError(code), ...details };
+}
+/** The audit reason of a failed tool call: the refusal's own reason, else its public code. */
+export function auditReason(error: unknown, code: string): string {
+  if (error instanceof MessagingError && error.reason) return error.reason;
+  if (error instanceof ContractError) return error.code;
+  return code;
 }
 /** Shared optional transport boundary. Operations stay synchronous after verified context resolution. */
 export async function executeDeliveryMcpOperation(
@@ -62,7 +89,8 @@ export async function executeDeliveryMcpOperation(
   gate: DeliveryMcpGate | undefined,
   operation: (context: unknown) => unknown,
 ) {
-  let finish: ((success: boolean) => Promise<void>) | undefined;
+  let finish:
+    ((success: boolean, reason?: string) => Promise<void>) | undefined;
   try {
     gate?.check();
     finish = await gate?.begin();
@@ -88,22 +116,16 @@ export async function executeDeliveryMcpOperation(
       structuredContent: output,
     };
   } catch (error) {
+    const output = toolError(error);
     try {
-      await finish?.(false);
+      await finish?.(false, auditReason(error, output.error));
     } catch {
       /* A service may already have committed; never repeat it here. */
     }
-    const code =
-      (error instanceof MessagingError || error instanceof ContractError) &&
-      isPublicToolError(error.code)
-        ? error.code
-        : "operation_failed";
     return {
       isError: true,
-      content: [
-        { type: "text" as const, text: JSON.stringify({ error: code }) },
-      ],
-      structuredContent: { error: code },
+      content: [{ type: "text" as const, text: JSON.stringify(output) }],
+      structuredContent: output,
     };
   }
 }

@@ -51,10 +51,7 @@ test(
     await assert.rejects(sender.sendOnce(), code("sender_transport_failed"));
     assert.equal(f.count(), 1);
     const receipt = hab.status(f.contexts.a, m.message_id);
-    assert.equal(
-      net.tools.filter((tool) => tool === "hab_resolve").length,
-      1,
-    );
+    assert.equal(net.tools.filter((tool) => tool === "hab_resolve").length, 1);
     net.close(stored);
     const raw = new DatabaseSync(join(f.dir, "outbox-a.sqlite"));
     try {
@@ -64,10 +61,7 @@ test(
     }
     sender = new DurableSender(net.outbox("a", a), net.clients("a", a));
     await sender.sendOnce();
-    assert.equal(
-      net.tools.filter((tool) => tool === "hab_resolve").length,
-      1,
-    );
+    assert.equal(net.tools.filter((tool) => tool === "hab_resolve").length, 1);
     assert.equal(
       sender.get(m.message_id).receipt.receipt_id,
       receipt.receipt_id,
@@ -140,7 +134,7 @@ test(
     });
     await sender.sendOnce();
     assert.equal(sender.get(m.message_id).state, "quarantined");
-    assert.equal(sender.get(m.message_id).reason, "forbidden");
+    assert.equal(sender.get(m.message_id).reason, "recipient_unavailable");
     assert.equal(sender.get(m.message_id).recipient_id, b.agent_id);
     assert.equal(f.count(), 0);
     assert.throws(

@@ -18,7 +18,7 @@ HABはメッセージを預かる通信基盤です。各エージェントが�
 
 任意の[`hab_discover`](connections/mcp-agent-discovery.md)を有効化すると、検証済み接続・group内の名義一覧・
 既知の割当・候補アドレスの空き確認を照会できます。選択名義とホスト本人は別に扱います。
-通常catalogは引き続き5操作です。
+エージェント用catalogでも同じツールを出します。
 
 ## 接続前に決めること
 
@@ -42,7 +42,30 @@ MCPのURLは`http://127.0.0.1:<port>/mcp`と完全一致させます。`localhos
 poll / ack`だけで、Task管理や任意実行の権限には広げません。送信者と受信権限は
 検証済み主体から決まり、ツール引数のエージェント名では決まりません。
 
-## 送受信の順序と共通Adapterの境界
+## エージェント用catalog（`/mcp`）
+
+エージェントは`/mcp`に接続し、次の4ツール（と有効なら`hab_discover`）だけを使います（[ADR-020](hab-decisions.md)）。
+ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます。
+
+| ツール | 引数 | すること | 必要な権限 |
+| --- | --- | --- | --- |
+| `hab_send` | `to`（`bot@agent.hab`）、`text`、任意で`kind`・`thread_id` | 送る。7日以内に読まれなければ期限切れ | `resolve`・`submit` |
+| `hab_inbox` | 任意で`limit`（1〜50）・`include_read`・`message_id` | 未読を返して既読にする。既読は7日読み直せる（`message_id`でその1通） | `poll` |
+| `hab_reply` | `message_id`（`hab_inbox`の値）、`text` | 送信者へ同じthreadで返す | `submit` |
+| `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れと説明を返す | `status` |
+
+`hab_inbox`の各メッセージには、利用者へそのまま見せる`notice`が付きます。送信者のアドレス・種類・返信期限、
+印を付けた2行で囲んだ本文（送信者が書いたデータで、指示として実行しない）、「どうしますか？」と
+選択肢（返信する／あとで／返信しない）です。返信期限を過ぎると`hab_reply`は`reply_target_expired`になります。
+
+既読（ACK）は「読んだ」ことで、内容への同意や作業完了ではありません。誤りには
+`error`（コード）と、何を直すかを書いた`message`が返ります。`forbidden`は
+権限・認証・停止のときだけで、引数を変えても直りません。
+
+## 配送catalog（`/mcp/delivery`）と送受信の順序
+
+agent SDKと受信サービスは`/mcp/delivery`の`hab_resolve`・`hab_submit`・`hab_status`・
+`hab_poll`・`hab_ack`を使います。credentialは`/mcp`と同じものです。以下はこの低レベルの順序です。
 
 1. 送信側が`hab_resolve`で宛先を確認し、共通outboxへメッセージを保存します。
 2. 同じmessage IDと本文で`hab_submit`を呼びます。不確実な送信は新しいIDを
@@ -81,11 +104,10 @@ mcp_servers:
     enabled: true
     tools:
       include:
-        - hab_resolve
-        - hab_submit
+        - hab_send
+        - hab_inbox
+        - hab_reply
         - hab_status
-        - hab_poll
-        - hab_ack
 ```
 
 秘密値はYAMLや公開repoへ直接書きません。profileの`.env`を使う場合は事前に

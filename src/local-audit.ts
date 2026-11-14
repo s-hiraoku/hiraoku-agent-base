@@ -25,8 +25,13 @@ export const CATEGORIES = [
   "aggregate",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
+const REASON = /^[a-z][a-z0-9_]{0,47}$/;
 export interface Audit {
-  record(category: Category, correlation: string): void | Promise<void>;
+  record(
+    category: Category,
+    correlation: string,
+    reason?: string,
+  ): void | Promise<void>;
   check?(): void;
   note?(category: Category): void;
 }
@@ -61,8 +66,13 @@ export class LocalAudit implements Audit {
       throw new Error("Audit unavailable");
     this.record("request", "00000000-0000-4000-8000-000000000000");
   }
-  record(category: Category, correlation: string): void {
-    if (!CATEGORIES.includes(category) || !/^[a-f0-9-]{36}$/.test(correlation))
+  record(category: Category, correlation: string, reason?: string): void {
+    if (
+      !CATEGORIES.includes(category) ||
+      !/^[a-f0-9-]{36}$/.test(correlation) ||
+      (reason !== undefined &&
+        (category !== "tool_error" || !REASON.test(reason)))
+    )
       throw new Error("Invalid audit event");
     const time = this.now();
     if (time - this.window > 60000) {
@@ -81,7 +91,7 @@ export class LocalAudit implements Audit {
       ].includes(category)
     )
       this.errors = Math.min(this.errors + 1, 65535);
-    this.append(category, correlation, time);
+    this.append(category, correlation, time, undefined, reason);
     if (this.errors === 20) {
       this.errors++;
       this.append("anomaly", correlation, time);
@@ -125,6 +135,7 @@ export class LocalAudit implements Audit {
       saturated: boolean;
       anomaly: boolean;
     },
+    reason?: string,
   ) {
     try {
       const path = join(this.directory, "audit.jsonl");
@@ -162,7 +173,7 @@ export class LocalAudit implements Audit {
           stat.mode & 0o077
         )
           throw new Error("Audit unavailable");
-        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(summary ? { summary } : {}) })}\n`;
+        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(reason ? { reason } : {}), ...(summary ? { summary } : {}) })}\n`;
         if (Buffer.byteLength(line) > this.maxBytes)
           throw new Error("Audit unavailable");
         if (stat.size + Buffer.byteLength(line) > this.maxBytes) rotate = true;
@@ -175,7 +186,7 @@ export class LocalAudit implements Audit {
         if (existsSync(`${path}.2`)) unlinkSync(`${path}.2`);
         if (existsSync(`${path}.1`)) renameSync(`${path}.1`, `${path}.2`);
         renameSync(path, `${path}.1`);
-        this.append(category, correlation, time, summary);
+        this.append(category, correlation, time, summary, reason);
       }
     } catch {
       throw new Error("Audit unavailable");

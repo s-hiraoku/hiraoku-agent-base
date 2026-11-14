@@ -1,17 +1,17 @@
 ---
 name: verify-hab
-description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent does — the HAB MCP over loopback HTTP (hab_resolve/submit/status/poll/ack) with three enrolled synthetic agents — plus the human enrollment terminal and the deny-all Hub server. Use it to prove a host, registry, enrollment or MCP-transport change works end to end in the real app, not just in unit tests, and to capture request/response/DB evidence.
+description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent does — the HAB MCP over loopback HTTP (agent tools hab_send/inbox/reply/status at /mcp, delivery tools hab_resolve/submit/status/poll/ack at /mcp/delivery) with three enrolled synthetic agents — plus the human enrollment terminal and the deny-all Hub server. Use it to prove a host, registry, enrollment or MCP-transport change works end to end in the real app, not just in unit tests, and to capture request/response/DB evidence.
 ---
 
 # Verify HAB
 
 HAB is a personal agent hub. Its user-facing surfaces today are:
 
-1. **HAB MCP over HTTP** (primary). Agents call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp`. This is what Grok Bot / Dots / Hermes will use.
+1. **HAB MCP over HTTP** (primary). Agents call `hab_send`, `hab_inbox`, `hab_reply`, `hab_status` on `POST /mcp` (ADR-020); this is what Grok Bot / Dots / Hermes use. The agent SDK and the receive service call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp/delivery` with the same token.
 2. **Enrollment terminal** (`npm run demo:hab-enrollment -- --interactive`). A human picks a product, reserves `<bot_name>@<agent_name>.hab` (`agent_name` is the product slug), binds and activates it.
 3. **Hub server** (`node src/server.ts`, fixed `127.0.0.1:8787`). Without an operator config it denies everything; only the deny-all boundary is drivable locally.
 
-The repo now ships a configured host CLI (`npm run hab:host`) and an operator CLI (`npm run hab:admin`); drive those with `configured.sh` per [features/configured-host.md](features/configured-host.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the SQLite delivery from `createSqliteDelivery` that the host wires, `HabHttpGateway`, `createMcpNodeHandler`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. Delivery is one SQLite file (`delivery.sqlite`) under `$RUN/instance`; no broker process runs (ADR-018). Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
+The repo now ships a configured host CLI (`npm run hab:host`) and an operator CLI (`npm run hab:admin`); drive those with `configured.sh` per [features/configured-host.md](features/configured-host.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the SQLite delivery from `createSqliteDelivery` that the host wires, `HabHttpGateway` for both catalogs, `routeMcpNodeHandlers`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. Delivery is one SQLite file (`delivery.sqlite`) under `$RUN/instance`; no broker process runs (ADR-018). Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
 
 For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
 
@@ -43,7 +43,7 @@ Isolation: each run dir is its own instance on its own port, so parallel runs ar
 $S/doctor.sh "$RUN"
 ```
 
-Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the five `hab_*` tools. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
+Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the five delivery tools at `/mcp/delivery`. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
 
 ## Drive
 
@@ -53,7 +53,18 @@ Every call is a real MCP `tools/call` (protocol `2026-07-28`, `Mcp-Method`/`Mcp-
 $S/mcp.sh "$RUN" <a|b|c|none|BAD> <tool|tools/list> '<json-arguments>'
 ```
 
-`none` sends no `Authorization`; `BAD` sends an unknown bearer. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>"}` with HTTP 200.
+`none` sends no `Authorization`; `BAD` sends an unknown bearer. Agent tools go to `/mcp`; `hab_submit`, `hab_poll`, `hab_ack` and `hab_resolve` go to `/mcp/delivery`, and `HAB_CATALOG=delivery` sends `hab_status` or `tools/list` there too. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>","message":"<what to change>"}` (plus details such as `field` or `allowed_kinds`) with HTTP 200.
+
+Agent round trip (a → b → a), the path a connected agent uses ([features/agent-tools.md](features/agent-tools.md)):
+
+```sh
+SENT=$($S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot.hab","text":"hello from a"}' | sed 1d | jq -c .result.structuredContent)
+ID=$(jq -r .message_id <<<"$SENT")
+$S/mcp.sh "$RUN" b hab_inbox '{}'                                  # new message, now read
+$S/mcp.sh "$RUN" b hab_reply "{\"message_id\":\"$ID\",\"text\":\"hi\"}"
+$S/mcp.sh "$RUN" a hab_inbox '{}'                                  # kind "answer", in_reply_to $ID
+$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"           # "acked" with an explanation
+```
 
 Build a valid message (replay-bound id `rm1.<ms>.<32hex>`, one-hour deadline):
 
@@ -72,7 +83,7 @@ ID=$(jq -r .message_id <<<"$MSG")
 $S/mcp.sh "$RUN" b hab_poll '{}' | tee /dev/stderr | sed 1d > "$RUN/poll.json"
 ACK=$(jq -c '.result.structuredContent.delivery | {sender_id:.message.sender_id, message_id:.message.message_id, generation, lease_token, request_id:"verify-ack-1"}' "$RUN/poll.json")
 $S/mcp.sh "$RUN" b hab_ack "$ACK"                          # state "acked"
-$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"   # sender sees "acked"
+HAB_CATALOG=delivery $S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"   # sender receipt "acked"
 node $S/inspect.mjs "$RUN" after-ack                          # DB side effects
 ```
 

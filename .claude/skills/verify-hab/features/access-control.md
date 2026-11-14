@@ -20,7 +20,7 @@ Preconditions:
 
 - **No token.** Run `$S/mcp.sh "$RUN" none tools/list` and `$S/mcp.sh "$RUN" none hab_poll`. Both print `HTTP 401`; the saved `.headers` file has `www-authenticate: Bearer`.
 - **Unknown token.** Run `$S/mcp.sh "$RUN" BAD tools/list`. `HTTP 401`.
-- **Known token.** Run `$S/mcp.sh "$RUN" a tools/list`. `HTTP 200` with exactly `hab_ack, hab_poll, hab_resolve, hab_status, hab_submit`.
+- **Known token.** Run `$S/mcp.sh "$RUN" a tools/list`. `HTTP 200` with exactly the agent catalog `hab_inbox, hab_reply, hab_send, hab_status`. Run `HAB_CATALOG=delivery $S/mcp.sh "$RUN" a tools/list`: the same token lists exactly `hab_ack, hab_poll, hab_resolve, hab_status, hab_submit` at `/mcp/delivery`.
 - **Proof.** Keep the three `.res`/`.headers` pairs. Run `node $S/inspect.mjs "$RUN" after-auth`: no `messages` and no `delivery_audit` rows were created by the refused calls.
 
 ## Gotchas

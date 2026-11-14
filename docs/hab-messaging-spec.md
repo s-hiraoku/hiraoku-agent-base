@@ -18,7 +18,7 @@
 
 **2026-10-25の追加決定：認証は参加グループ単位、Botの切り分けはアドレス単位とする。** [認証グループ設計](auth-groups.md)を正本の補足契約とし、以下のG0・第4章・受入れ条件へ反映した。Registryのグループ管理・所属選択・認可をopt-inで実装し、MCPの名義選択v1と通常サービスのopt-in配線も実装した。15分の試験用OAuth入口から常用方式への移行と実製品の受入れは未検証であり、認証設定・公開・自動更新を有効化したとは扱わない。
 
-**現行構成（2026-11-13時点）：独自実装としてのHAB Relayは廃止し、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。配送はhostのSQLite配送store（[ADR-018](hab-decisions.md)、[配送store](delivery-store.md)）で行う。** この文書は、メッセージ契約・store-and-forward・ACK・期限・認可の要件の正本として残す。本文の「host」「HAB配送」は、この要件を満たすhost側の配送機能（`src/host`と`src/delivery`のSQLite配送store）を指す。エージェントはMCP 5ツール（`hab_resolve`／`hab_submit`／`hab_status`／`hab_poll`／`hab_ack`、旧`relay_*`名は互換なしで廃止）か、既定無効のA2A入口から接続する。
+**現行構成（2026-11-13時点）：独自実装としてのHAB Relayは廃止し、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。配送はhostのSQLite配送store（[ADR-018](hab-decisions.md)、[配送store](delivery-store.md)）で行う。** この文書は、メッセージ契約・store-and-forward・ACK・期限・認可の要件の正本として残す。本文の「host」「HAB配送」は、この要件を満たすhost側の配送機能（`src/host`と`src/delivery`のSQLite配送store）を指す。エージェントはhostの`/mcp`のエージェント用4ツール（`hab_send`／`hab_inbox`／`hab_reply`／`hab_status`、[ADR-020](hab-decisions.md)）か、既定無効のA2A入口から接続する。agent SDKと受信サービスは`/mcp/delivery`の5ツール（`hab_resolve`／`hab_submit`／`hab_status`／`hab_poll`／`hab_ack`、旧`relay_*`名は互換なしで廃止）を使う。**ADR-020の改訂：** 受付できる期限は最大7日、host受信箱で既読にした本文は7日保持してから消す。この文書の「期限は1時間」「ACKで本文を消す」は、agent SDKの既定値とSDKのACKについての記述として読む。
 
 **2026-11-06の改訂（[ADR-016](hab-decisions.md)）と2026-11-13の改訂（[ADR-018](hab-decisions.md)）：** ADR-016で旧SQLite配送storeを廃止してNATS JetStreamへ移し、ADR-018でJetStreamを外してhostの1つのSQLiteファイル（`delivery.sqlite`）だけで配送する形にした。どちらの移行でも旧messageは移行しない。message契約と`DeliveryService` interfaceは`src/messaging`、名義・認可・容量はRegistry（`src/hab`）、唯一のhostは`src/host`（MCP serverは`src/host/mcp`）、送信outbox・保存後ACKの受信inboxとMCP clientは`src/agent-sdk`が持つ。第1章・第3章・第3.1節・第16章の「単一Node + SQLite」「SQLiteは最初の正本」「brokerを増やさない」は初期構成の記述であり、配送storeについてはこの改訂が優先する。Registry、登録journal、配送store、client側outbox／inboxはSQLiteを使い、brokerは持たない。
 
@@ -425,7 +425,7 @@ ACK確定と、稼働中配送DB上の本文・本文を含む派生データの
 
 ## 15. API／MCPの追加契約案
 
-正本はtransportに依存しないhostサービスinterfaceとする。追加候補は以下。`hab_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`hab_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するhostのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。`npm run hab:host`で起動するhostがloopbackで5 toolを公開し、任意のOAuth入口も同じ5 toolを提供する。既存Task runtime（`src/server.ts`）へは未配線であり、`hab_extend`は未実装。
+正本はtransportに依存しないhostサービスinterfaceとする。追加候補は以下。`hab_submit/status/poll/ack`は独立した[任意MCP factory](../src/host/mcp/server.ts)として実装済み。`hab_resolve`は[HAB専用factory](../src/hab/mcp.ts)と[HAB HTTP adapter](../src/hab/http.ts)へ追加し、一時loopback通信で検証した。再利用するhostのcatalogは基本4 toolのままで、HABのcatalogだけが5 toolを持つ。`npm run hab:host`で起動するhostはloopbackの`/mcp`でエージェント用catalog（`hab_send`・`hab_inbox`・`hab_reply`・`hab_status`、[src/hab/agent-tools.ts](../src/hab/agent-tools.ts)）を、`/mcp/delivery`でこの5 toolを公開し、任意のOAuth入口も同じ2つを提供する（ADR-020）。既存Task runtime（`src/server.ts`）へは未配線であり、`hab_extend`は未実装。
 
 `hab_resolve`の入力はversion 1の正規アドレスを持つ厳格な`{address, as_address?, expected_agent_id?}`とする。相手側の`address`と自分側の名義を分け、期待IDは`as_address`との一致確認だけに使う。sender・group・mailbox・URL等の未知引数を拒否する。出力は`{recipient_id,address,normalization_version:1}`に限定する。送信者の現在のresolve／submit権限、個体binding、宛先の有効性・blockを毎回確認し、未登録・停止・廃止・blockの宛先は同じ`forbidden`とする。lookupはmessageや予約を作らず、受信箱閲覧・実行・配送受付の権限を追加しない。clientは要求と同じアドレス・既知version・ID形式を検証し、元のmessage ID・期限と宛先IDをoutboxへ永続化してから送信する。lookup応答消失やenqueue前のintent保存は呼出側の責務であり、lookup成功をdurable送信完了とは扱わない。
 

@@ -135,7 +135,7 @@ async function fixture(t) {
   const client = (h) =>
     new HabMcpClient({
       policy: {
-        resource_url: h.url,
+        resource_url: h.delivery_url,
         agent_id: localAgent.agent_id,
         max_request_bytes: 65536,
         max_response_bytes: 131072,
@@ -155,7 +155,8 @@ function wire(
   h,
   {
     method = "POST",
-    path = "/hab/mcp",
+    // The delivery catalog by default; agent-catalog checks pass "/hab/mcp".
+    path = "/hab/mcp/delivery",
     host = "hab.example",
     token,
     origin,
@@ -231,7 +232,7 @@ function value(r) {
   return r.body.result.structuredContent;
 }
 
-test("second loopback ingress exposes only its fixed metadata and five OAuth tools; keeps local auth distinct", async (t) => {
+test("second loopback ingress exposes only its fixed metadata, the agent and delivery catalogs, and keeps local auth distinct", async (t) => {
   const f = await fixture(t),
     h = await f.start();
   const meta = await wire(h, {
@@ -241,7 +242,7 @@ test("second loopback ingress exposes only its fixed metadata and five OAuth too
   assert.equal(meta.status, 200);
   assert.equal(meta.body.resource, resource);
   assert.deepEqual(meta.body.scopes_supported, HAB_OAUTH_SCOPES);
-  const denied = await wire(h);
+  const denied = await wire(h, { path: "/hab/mcp" });
   assert.equal(denied.status, 401);
   assert.match(
     denied.headers["www-authenticate"],
@@ -253,12 +254,28 @@ test("second loopback ingress exposes only its fixed metadata and five OAuth too
     "/.well-known/oauth-protected-resource",
     "/hab/mcp?x=1",
     "/hab/%6dcp",
+    "/hab/mcp/delivery/",
+    "/hab/mcp/sdk",
     "/.well-known/oauth-protected-resource/hab/mcp?x=1",
+    "/.well-known/oauth-protected-resource/hab/mcp/delivery",
   ])
     assert.equal((await wire(h, { path })).status, 405);
   assert.equal((await wire(h, { host: "evil.example" })).status, 403);
   assert.equal((await wire(h, { origin: "https://evil.example" })).status, 403);
   assert.equal((await wire(h, { token: "synthetic-local" })).status, 401);
+  const agent = await wire(h, { token: f.jwt, path: "/hab/mcp" });
+  assert.equal(agent.status, 200);
+  assert.deepEqual(agent.body.result.tools.map((x) => x.name).sort(), [
+    "hab_inbox",
+    "hab_reply",
+    "hab_send",
+    "hab_status",
+  ]);
+  for (const tool of agent.body.result.tools)
+    assert.deepEqual(tool._meta.securitySchemes, [
+      { type: "oauth2", scopes: HAB_OAUTH_SCOPES },
+    ]);
+  // The same token opens the delivery catalog for the SDK and the receive service.
   const listed = await wire(h, { token: f.jwt });
   assert.equal(listed.status, 200);
   assert.deepEqual(listed.body.result.tools.map((x) => x.name).sort(), [
@@ -268,10 +285,6 @@ test("second loopback ingress exposes only its fixed metadata and five OAuth too
     "hab_status",
     "hab_submit",
   ]);
-  for (const tool of listed.body.result.tools)
-    assert.deepEqual(tool._meta.securitySchemes, [
-      { type: "oauth2", scopes: HAB_OAUTH_SCOPES },
-    ]);
   const localReject = await globalThis.fetch(h.url, {
     method: "POST",
     headers: {

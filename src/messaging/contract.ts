@@ -1,6 +1,11 @@
 /** Transport-neutral HAB message wire contract. No IO, identity lookup or task execution. */
 export const CONTRACT_VERSION = 1 as const;
+/** Default deadline that agent SDK clients give the messages they build. */
 export const DELIVERY_TTL_MS = 3_600_000;
+/** Longest deadline a message may carry; hab_send and hab_reply use it (ADR-019). */
+export const MAX_DELIVERY_TTL_MS = 7 * 86_400_000;
+/** How long the host keeps a read message's body so its recipient can read it again. */
+export const READ_BODY_RETENTION_MS = 7 * 86_400_000;
 export const RECORD_RETENTION_MS = 30 * 86_400_000;
 /** Upper bound shared with client ACK retry policy, not an automatic scheduler. */
 export const MAX_ACK_RETRY_MS = 30 * 86_400_000;
@@ -28,12 +33,20 @@ export function isReplayBoundMessageId(
     !Number.isSafeInteger(expiresAt)
   )
     return false;
-  const match = /^rm1\.(0|[1-9][0-9]{0,15})\.([a-f0-9]{32})$/.exec(value);
+  const sent = replayBoundSentAt(value);
   return (
-    !!match &&
-    Number.isSafeInteger(Number(match[1])) &&
-    Number(match[1]) === expiresAt - DELIVERY_TTL_MS
+    sent !== undefined &&
+    sent < expiresAt &&
+    expiresAt - sent <= MAX_DELIVERY_TTL_MS
   );
+}
+/** The first_sent_at milliseconds a replay-bound ID carries, or undefined for another ID. */
+export function replayBoundSentAt(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
+  const match = /^rm1\.(0|[1-9][0-9]{0,15})\.([a-f0-9]{32})$/.exec(value);
+  return match && Number.isSafeInteger(Number(match[1]))
+    ? Number(match[1])
+    : undefined;
 }
 export type Json =
   null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -218,11 +231,12 @@ export function parseSubmission(
   ]);
   const sent = timestamp(v.first_sent_at);
   const expiry = timestamp(v.expires_at);
-  if (expiry - sent !== DELIVERY_TTL_MS) fail();
+  if (expiry <= sent || expiry - sent > MAX_DELIVERY_TTL_MS) fail();
   if (
     typeof v.message_id === "string" &&
     v.message_id.startsWith("rm1.") &&
-    !isReplayBoundMessageId(v.message_id, expiry)
+    (replayBoundSentAt(v.message_id) !== sent ||
+      !isReplayBoundMessageId(v.message_id, expiry))
   )
     fail();
   const body = record(v.body);

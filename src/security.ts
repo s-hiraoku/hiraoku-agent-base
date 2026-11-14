@@ -12,7 +12,12 @@ export type AuditCategory =
   | "anomaly"
   | "aggregate";
 export interface AuditSink {
-  record(category: AuditCategory, correlation: string): void | Promise<void>;
+  /** `reason` is a fixed refusal code (`/^[a-z][a-z0-9_]{0,47}$/`), never a body or secret. */
+  record(
+    category: AuditCategory,
+    correlation: string,
+    reason?: string,
+  ): void | Promise<void>;
   check?(): void;
   note?(category: AuditCategory): void;
 }
