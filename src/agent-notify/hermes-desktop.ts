@@ -210,6 +210,8 @@ export function hermesDesktopPage(
   const notices = existsSync(path)
     ? readFileSync(path, "utf8")
         .split("\n")
+        // Only complete lines: a trailing line without its newline is still being written.
+        .slice(0, -1)
         .filter((line) => line.length > 0)
         .map((line) => JSON.parse(line) as { type?: unknown })
         .filter((line): line is NoticeLine => line.type === "notice")

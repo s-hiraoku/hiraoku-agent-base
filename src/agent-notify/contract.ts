@@ -76,6 +76,8 @@ export interface AgentScreen {
  * Where one message stands:
  * - `shown`: on the user's screen, waiting for a choice (still unread in HAB).
  * - `later`: the user chose あとで; it stays unread and can be shown again.
+ * - `declining`: the user chose 対応しない and it is being marked read. A notifier that
+ *   stopped here retries the (idempotent) mark-read on a later check.
  * - `declined`: the user chose 対応しない; marked read, nothing started.
  * - `accepting`: the user chose 対応する and the handoff is under way.
  * - `started` / `queued` / `unsupported`: the handoff result (marked read).
@@ -87,6 +89,7 @@ export type NoticeState =
   | "showing"
   | "shown"
   | "later"
+  | "declining"
   | "declined"
   | "accepting"
   | "started"

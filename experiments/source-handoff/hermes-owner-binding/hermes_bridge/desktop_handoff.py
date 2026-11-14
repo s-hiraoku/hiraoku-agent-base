@@ -33,7 +33,9 @@ import sys
 from pathlib import Path
 
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,2047}\Z")
-_MAX_TEXT = 256 * 1024
+# Above any prompt hab-notify can build (its envelope limit is 1 MiB), so a message it showed
+# is never refused here for its size after it was already marked read.
+_MAX_TEXT = 2 * 1024 * 1024
 # The owner's refusals raised before its durable write (tui_gateway/owner_forward.py,
 # _REFUSED_BEFORE_COMMIT): only these prove that nothing will run.
 REFUSED_BEFORE_COMMIT = frozenset({

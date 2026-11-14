@@ -56,6 +56,16 @@ export class ReceiptNotifier {
     // A handoff interrupted by a stop or crash: report it as unknown, never resend it.
     for (const abandoned of this.#store.abandon(now))
       await this.#report(abandoned, "unknown");
+    // A decline interrupted before HAB marked it read: marking read again is harmless.
+    for (const stuck of this.#store.stuckDeclines(now)) {
+      try {
+        await this.#hab.markRead(stuck.message_id, stuck.sender_id);
+      } catch {
+        continue;
+      }
+      if (this.#store.transition(stuck, ["declining"], "declined", now))
+        await this.#report(stuck, "declined");
+    }
     const shown: string[] = [];
     let failure: unknown;
     let after: string | undefined;
@@ -131,7 +141,7 @@ export class ReceiptNotifier {
           ? { changed: true, state: "later" }
           : this.#unchanged(record);
       case "decline":
-        return this.#decided(record, "declined", async () => {
+        return this.#decided(record, "declining", async () => {
           await this.#hab.markRead(record.message_id, record.sender_id);
           return "declined";
         });

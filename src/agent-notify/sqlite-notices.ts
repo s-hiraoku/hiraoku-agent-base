@@ -166,6 +166,16 @@ export class SQLiteNotices {
       this.transition(row, ["accepting"], "unknown", now),
     );
   }
+  /** `declining` claims left by a stopped notifier (older than a running decline can be). */
+  stuckDeclines(now: number): NoticeRecord[] {
+    return (
+      this.#db
+        .prepare(
+          "SELECT * FROM notices WHERE state='declining' AND decided_at<=?",
+        )
+        .all(now - ACCEPTING_ABANDONED_MS) as unknown as Row[]
+    ).map((row) => this.#record(row));
+  }
   /** Marks undecided rows past their deadline expired and drops old rows. */
   maintain(now: number): NoticeRecord[] {
     const expired = (
