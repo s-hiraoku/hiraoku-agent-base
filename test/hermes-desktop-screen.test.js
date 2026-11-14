@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  appendFileSync,
   chmodSync,
   existsSync,
   mkdtempSync,
@@ -500,4 +501,19 @@ test("a display over Hermes's text limit is shown cut, in a page Hermes accepts"
   assert.match(event.text, /途中までを表示/);
   assert.ok(!event.text.includes("\ufffd"));
   assert.equal(fitHermesText("short"), "short");
+});
+
+test("a fragment left by a killed writer never hides the notices after it", async (t) => {
+  const { path } = setup(t);
+  const screen = new HermesDesktopScreen(path, binding);
+  await screen.show(message("m1"));
+  // The process died while writing m2's line.
+  appendFileSync(path, '{"type":"notice","message_id":"m2","sen');
+  await screen.show(message("m3"));
+  const page = hermesDesktopPage(path, binding, { limit: 100 });
+  assertHermesAccepts(page);
+  assert.deepEqual(
+    page.events.map((e) => e.message_id),
+    ["m1", "m3"],
+  );
 });

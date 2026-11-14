@@ -236,8 +236,15 @@ export function hermesDesktopPage(
         // Only complete lines: a trailing line without its newline is still being written.
         .slice(0, -1)
         .filter((line) => line.length > 0)
-        .map((line) => JSON.parse(line) as { type?: unknown })
-        .filter((line): line is NoticeLine => line.type === "notice")
+        // A fragment left by a writer that was killed mid-line is not a notice.
+        .map((line) => {
+          try {
+            return JSON.parse(line) as { type?: unknown } | null;
+          } catch {
+            return null;
+          }
+        })
+        .filter((line): line is NoticeLine => line?.type === "notice")
     : [];
   const page = notices.slice(start, start + options.limit);
   const target = hermesDesktopTarget(binding);
