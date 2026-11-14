@@ -48,10 +48,18 @@ async function setup(t) {
   };
   const peek = (who, args) =>
     call(delivery, "https://hab.example/mcp/delivery", who, "hab_peek", args);
-  return { ...f, a, b, agent, delivery, onAgent, peek };
+  const mark = (who, args) =>
+    call(
+      delivery,
+      "https://hab.example/mcp/delivery",
+      who,
+      "hab_mark_read",
+      args,
+    );
+  return { ...f, a, b, agent, delivery, onAgent, peek, mark };
 }
 
-test("the delivery catalog offers hab_peek; the agent catalog does not", async (t) => {
+test("the delivery catalog offers hab_peek and hab_mark_read; the agent catalog does not", async (t) => {
   const f = await setup(t);
   const listed = await decode(
     await f.delivery.fetch(
@@ -61,6 +69,7 @@ test("the delivery catalog offers hab_peek; the agent catalog does not", async (
   const names = listed.result.tools.map((tool) => tool.name).sort();
   assert.deepEqual(names, [
     "hab_ack",
+    "hab_mark_read",
     "hab_peek",
     "hab_poll",
     "hab_resolve",
@@ -180,4 +189,51 @@ test("hab_peek pages with next_cursor and names each message by sender and ID", 
   const bad = await f.peek("b", { after: "not-a-cursor" });
   assert.equal(bad.isError, true);
   assert.equal(bad.structuredContent.error, "invalid_request");
+});
+
+test("hab_mark_read marks only the named sender's message read", async (t) => {
+  const f = await setup(t);
+  const c = f.enroll("c");
+  const fromA = await f.onAgent("a", "hab_send", {
+    to: f.b.address,
+    text: "from a",
+  });
+  await f.onAgent("c", "hab_send", { to: f.b.address, text: "from c" });
+  const mark = (who, args) => f.mark(who, args);
+  const done = await mark("b", {
+    sender_id: c.agent_id,
+    message_id: (await f.peek("b", {})).structuredContent.messages.find(
+      (m) => m.sender_id === c.agent_id,
+    ).message_id,
+  });
+  assert.equal(done.structuredContent.read, true);
+  const left = (await f.peek("b", {})).structuredContent.messages;
+  assert.deepEqual(
+    left.map((m) => [m.sender_id, m.message_id]),
+    [[f.a.agent_id, fromA.message_id]],
+  );
+  // Already read still counts; an unknown sender does not; another recipient cannot.
+  assert.equal(
+    (
+      await mark("b", {
+        sender_id: c.agent_id,
+        message_id: done.structuredContent.message_id,
+      })
+    ).structuredContent.read,
+    true,
+  );
+  assert.equal(
+    (await mark("b", { sender_id: "nobody", message_id: fromA.message_id }))
+      .structuredContent.read,
+    false,
+  );
+  assert.equal(
+    (await mark("c", { sender_id: f.a.agent_id, message_id: fromA.message_id }))
+      .structuredContent.read,
+    false,
+  );
+  assert.equal((await f.peek("b", {})).structuredContent.messages.length, 1);
+  // Both names are required; the tool refuses a bare message_id.
+  const bad = await mark("b", { message_id: fromA.message_id });
+  assert.equal(bad.isError, true);
 });

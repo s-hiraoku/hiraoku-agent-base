@@ -12,7 +12,7 @@ This directory is the maintained source for verifying HAB's user-facing behavior
 ## Driving conventions
 
 - Start every recipe from the baseline unless its preconditions say otherwise. A recipe that leaves a pending or leased message changes later `hab_poll` results; launch a new run dir instead of reusing it.
-- All agent actions go through `$S/mcp.sh "$RUN" <agent> <tool> '<json>'`; build messages with `$S/new-message.sh`. `mcp.sh` sends the agent tools to `/mcp` and `hab_submit`/`hab_poll`/`hab_ack`/`hab_resolve`/`hab_peek` to `/mcp/delivery`; `HAB_CATALOG=delivery` sends `hab_status` and `tools/list` there too.
+- All agent actions go through `$S/mcp.sh "$RUN" <agent> <tool> '<json>'`; build messages with `$S/new-message.sh`. `mcp.sh` sends the agent tools to `/mcp` and `hab_submit`/`hab_poll`/`hab_ack`/`hab_resolve`/`hab_peek`/`hab_mark_read` to `/mcp/delivery`; `HAB_CATALOG=delivery` sends `hab_status` and `tools/list` there too.
 - Read results from `.result.structuredContent`. A tool refusal is HTTP 200 with `"isError":true` and `{"error":"<code>","message":"<what to change>",…details}`; transport refusal is a non-200 HTTP code.
 - The enrollment terminal is driven with tmux `send-keys`, waiting on the exact prompt text before each key.
 

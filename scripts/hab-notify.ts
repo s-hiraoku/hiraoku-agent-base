@@ -94,10 +94,10 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     ...(config.as_address ? { as_address: config.as_address } : {}),
   };
   const url = config.hab_url.replace(/\/+$/, "");
-  const hab = new HabNotifierClient(
-    { ...common, policy: { ...base, resource_url: `${url}/delivery` } },
-    { ...common, policy: { ...base, resource_url: url } },
-  );
+  const hab = new HabNotifierClient({
+    ...common,
+    policy: { ...base, resource_url: `${url}/delivery` },
+  });
   const store = new SQLiteNotices(expand(config.store), config.screen.target);
   const target =
     screen ?? new JsonlScreen(expand(config.screen.path), config.screen.target);

@@ -33,7 +33,14 @@ function message(id, patch = {}) {
 function setup(t, { unread = [], now } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "hab-notify-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const calls = { peek: 0, read: [], shown: [], handoff: [], reports: [] };
+  const calls = {
+    peek: 0,
+    read: [],
+    readKeys: [],
+    shown: [],
+    handoff: [],
+    reports: [],
+  };
   const hab = {
     unread,
     failRead: false,
@@ -47,10 +54,13 @@ function setup(t, { unread = [], now } = {}) {
         next_cursor: messages.length ? String(start + messages.length) : null,
       };
     },
-    async markRead(id) {
+    async markRead(id, sender) {
       if (hab.failRead) throw new Error("offline");
       calls.read.push(id);
-      hab.unread = hab.unread.filter((m) => m.message_id !== id);
+      calls.readKeys.push(`${sender}/${id}`);
+      hab.unread = hab.unread.filter(
+        (m) => m.message_id !== id || m.sender_id !== sender,
+      );
     },
   };
   const screen = {
@@ -257,10 +267,7 @@ test("end to end: hab_peek shows it, 対応する hands the prompt over, the ses
     authorization: () => "Bearer fixture-b",
     fetch,
   });
-  const hab = new HabNotifierClient(
-    options(urls.delivery),
-    options(urls.agent),
-  );
+  const hab = new HabNotifierClient(options(urls.delivery));
   const agentCall = async (who, name, args = {}) =>
     (
       await decode(
@@ -360,6 +367,12 @@ test("the same message ID from two senders is two notices, chosen by sender", as
   });
   assert.equal(n.get("same", "sender-a").state, "shown");
   assert.equal(n.get("same", "sender-b").state, "declined");
+  // Only sender-b's message is marked read; sender-a's stays unread for its own choice.
+  assert.deepEqual(f.calls.readKeys, ["sender-b/same"]);
+  assert.deepEqual(
+    f.hab.unread.map((m) => m.sender_id),
+    ["sender-a"],
+  );
   assert.deepEqual(f.calls.handoff, []);
 });
 

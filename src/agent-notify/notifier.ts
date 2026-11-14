@@ -121,12 +121,12 @@ export class ReceiptNotifier {
           : this.#unchanged(record);
       case "decline":
         return this.#decided(record, "declined", async () => {
-          await this.#hab.markRead(messageId);
+          await this.#hab.markRead(record.message_id, record.sender_id);
           return "declined";
         });
       case "accept":
         return this.#decided(record, "accepting", async () => {
-          await this.#hab.markRead(messageId);
+          await this.#hab.markRead(record.message_id, record.sender_id);
           try {
             return await this.#screen.handoff(record.message);
           } catch {

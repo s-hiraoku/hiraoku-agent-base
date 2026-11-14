@@ -77,6 +77,7 @@ test("HAB opts into exactly six tools; the standalone delivery catalog remains f
   const hab = await decode(await gateway(f).fetch(request()));
   assert.deepEqual(hab.result.tools.map((v) => v.name).sort(), [
     "hab_ack",
+    "hab_mark_read",
     "hab_peek",
     "hab_poll",
     "hab_resolve",

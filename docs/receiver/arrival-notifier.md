@@ -26,7 +26,7 @@ verify-a@grok-bot.hab からのメッセージです。
 | 既読にせずに新着を見つける | host の `hab_peek`（`/mcp/delivery`、操作 `poll`）。`next_cursor` を `after` に渡して続きを読む |
 | 利用者に見せる文面（`display`）と、同じセッションへ渡す文面（`handoff_prompt`） | host（`src/messaging/incoming-notice.ts`） |
 | 定期的な確認、表示済みの記録、選択の記録、二重実行の防止、期限切れ | `src/agent-notify/`（`ReceiptNotifier`、`SQLiteNotices`） |
-| 選択後に既読にする | アダプタが受信者の credential で `hab_inbox`（`message_id` 指定）を呼ぶ |
+| 選択後に既読にする | アダプタが受信者の credential で `hab_mark_read`（`/mcp/delivery`、`sender_id` と `message_id` を指定）を呼ぶ |
 | 読む・返す | 受信側のセッション自身（`/mcp` の 4 ツール） |
 | 画面に出す（`show`）と、同じセッションへ渡す（`handoff`） | 各エージェントの `AgentScreen` |
 

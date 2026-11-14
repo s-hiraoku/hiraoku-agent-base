@@ -399,14 +399,14 @@ class NativeReceiveTests(unittest.IsolatedAsyncioTestCase):
         async def guard():
             pass
 
-        variants = [set(), {"hab_discover"}, {"hab_register"}, {"hab_discover", "hab_register"}, {"hab_peek"}]
+        variants = [set(), {"hab_discover"}, {"hab_register"}, {"hab_discover", "hab_register"}, {"hab_peek"}, {"hab_peek", "hab_mark_read"}]
         for configured in variants:
             for remote in variants:
                 with self.subTest(configured=configured, remote=remote):
                     self.write_config({**self.cfg, "tools": {"include": sorted(TOOLS | configured)}})
                     self.runtime.catalog = sorted(TOOLS | remote)
                     await self.session().call_tool("hab_poll", {}, guard)
-        self.assertEqual(len(self.runtime.attempts), 25)
+        self.assertEqual(len(self.runtime.attempts), 36)
         self.assertTrue(all(name == "hab_poll" for name, _ in self.runtime.attempts))
 
     async def test_incomplete_unknown_and_duplicate_catalogs_never_dispatch_business_rpc(self):

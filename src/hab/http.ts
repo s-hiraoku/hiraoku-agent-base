@@ -45,6 +45,7 @@ export class HabHttpGateway extends McpHttpGateway {
           ...super.writerOperations,
           hab_resolve: "resolve" as const,
           hab_peek: "poll" as const,
+          hab_mark_read: "poll" as const,
         };
   }
   protected override get toolSchemas() {

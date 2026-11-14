@@ -42,8 +42,11 @@ export interface PeekPage {
 export interface NotifierHab {
   /** One page of unread messages, left unread, after the given cursor. */
   peek(limit: number, after?: string): Promise<PeekPage>;
-  /** Marks one message read once the user decided on it (hab_inbox with its message_id). */
-  markRead(messageId: string): Promise<void>;
+  /**
+   * Marks one message read once the user decided on it (hab_mark_read), named by sender
+   * and ID: two senders may use the same message_id.
+   */
+  markRead(messageId: string, senderId: string): Promise<void>;
 }
 
 /**

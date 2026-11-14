@@ -55,6 +55,11 @@ export type HabMcpService = DeliveryService &
         after?: { accepted_at: number; sender_id: string; message_id: string };
       },
     ): (InboxMessage & { from: string | null })[];
+    /** Marks one received message read by (sender_id, message_id) (ADR-021). */
+    markRead?(
+      context: unknown,
+      key: { sender_id: string; message_id: string },
+    ): boolean;
   };
 const asAddress = z
   .string()
@@ -96,6 +101,21 @@ export const habMcpSchemas = Object.freeze({
         "Optional. The next_cursor of the previous page, to continue past messages already returned.",
       )
       .optional(),
+  }),
+  hab_mark_read: z.strictObject({
+    ...selection,
+    sender_id: z
+      .string()
+      .max(128)
+      .describe(
+        "The sender_id of the message, exactly as hab_peek returned it.",
+      ),
+    message_id: z
+      .string()
+      .max(128)
+      .describe(
+        "The message_id of the message, exactly as hab_peek returned it.",
+      ),
   }),
 });
 /** hab_peek page cursor: the last returned message's place in inbox order. */
@@ -394,6 +414,41 @@ function createDeliveryServer(
             explanation: messages.length
               ? "These messages are still unread. Show `display` to the user; nothing was marked read. Call again with after: next_cursor for more."
               : "No more unread messages.",
+          };
+        }),
+    );
+  }
+  if (typeof service.markRead === "function") {
+    const markRead = service.markRead.bind(service);
+    server.registerTool(
+      "hab_mark_read",
+      {
+        description:
+          "For the arrival notifier (ADR-021): mark one message from hab_peek read after the user chose 対応する or 対応しない, named by sender_id and message_id (two senders may use the same message_id). Returns read: false when the message is gone (expired, or read more than 7 days ago). It returns no body.",
+        inputSchema: publishedInputSchema(habMcpSchemas.hab_mark_read),
+        ...security,
+        annotations: { idempotentHint: true },
+      },
+      (input: unknown) =>
+        executeDeliveryMcpOperation(resolveContext, gate, (context) => {
+          const prepared = prepareHabInvocation(
+            service,
+            context,
+            "hab_mark_read",
+            input,
+          );
+          const key = prepared.input as {
+            sender_id: string;
+            message_id: string;
+          };
+          const read = markRead(prepared.context, key);
+          return {
+            sender_id: key.sender_id,
+            message_id: key.message_id,
+            read,
+            explanation: read
+              ? "The message is marked read."
+              : "No such message: it expired or was read more than 7 days ago.",
           };
         }),
     );

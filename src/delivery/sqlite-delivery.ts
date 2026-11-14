@@ -683,6 +683,8 @@ export class SqliteDelivery {
       limit: number;
       include_read: boolean;
       message_id?: string;
+      /** With message_id: only that sender's message (two senders may share an ID). */
+      sender_id?: string;
       /** Response budget: messages are taken (and marked read) only while they fit. */
       max_bytes?: number;
       /** Return unread messages only, leaving them unread. */
@@ -702,6 +704,13 @@ export class SqliteDelivery {
     if (options.message_id !== undefined && !id(options.message_id))
       throw new MessagingError("invalid_request", {
         details: { field: "message_id" },
+      });
+    if (
+      options.sender_id !== undefined &&
+      (options.message_id === undefined || !id(options.sender_id))
+    )
+      throw new MessagingError("invalid_request", {
+        details: { field: "sender_id" },
       });
     const recipient = this.#identity(context, "poll", authorization);
     return this.#tx(() => {
@@ -735,14 +744,18 @@ export class SqliteDelivery {
       // No scan limit: pending rows per recipient are bounded by
       // max_pending_per_recipient, so denied senders cannot hide later messages.
       const only = options.message_id;
+      const from = options.sender_id;
+      const sql =
+        (only ? " AND message_id=?" : "") + (from ? " AND sender_id=?" : "");
+      const args = [...(only ? [only] : []), ...(from ? [from] : [])];
       const after = options.peek ? options.after : undefined;
       const unread = this.#db
         .prepare(
-          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${only ? " AND message_id=?" : ""}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
+          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
         )
         .all(
           recipient,
-          ...(only ? [only] : []),
+          ...args,
           ...(after
             ? [after.accepted_at, after.sender_id, after.message_id]
             : []),
@@ -792,13 +805,13 @@ export class SqliteDelivery {
       ) {
         const read = this.#db
           .prepare(
-            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${only ? " AND message_id=?" : ""} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
+            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${sql} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
           )
           .all(
             recipient,
             now - READ_BODY_RETENTION_MS,
             now,
-            ...(only ? [only] : []),
+            ...args,
           ) as unknown as Row[];
         for (const row of read) {
           if (out.length >= options.limit) break;

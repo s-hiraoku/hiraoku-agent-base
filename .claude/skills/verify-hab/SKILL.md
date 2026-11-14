@@ -7,7 +7,7 @@ description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent
 
 HAB is a personal agent hub. Its user-facing surfaces today are:
 
-1. **HAB MCP over HTTP** (primary). Agents call `hab_send`, `hab_inbox`, `hab_reply`, `hab_status` on `POST /mcp` (ADR-020); this is what Grok Bot / Dots / Hermes use. The agent SDK and the receive service call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp/delivery` with the same token; the arrival notifier (ADR-021) calls `hab_peek` there.
+1. **HAB MCP over HTTP** (primary). Agents call `hab_send`, `hab_inbox`, `hab_reply`, `hab_status` on `POST /mcp` (ADR-020); this is what Grok Bot / Dots / Hermes use. The agent SDK and the receive service call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp/delivery` with the same token; the arrival notifier (ADR-021) calls `hab_peek` and `hab_mark_read` there.
 2. **Enrollment terminal** (`npm run demo:hab-enrollment -- --interactive`). A human picks a product, reserves `<bot_name>@<agent_name>.hab` (`agent_name` is the product slug), binds and activates it.
 3. **Hub server** (`node src/server.ts`, fixed `127.0.0.1:8787`). Without an operator config it denies everything; only the deny-all boundary is drivable locally.
 
@@ -43,7 +43,7 @@ Isolation: each run dir is its own instance on its own port, so parallel runs ar
 $S/doctor.sh "$RUN"
 ```
 
-Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the six delivery tools at `/mcp/delivery`. Every published input schema is portable (an object root with `properties`, no top-level `oneOf`/`anyOf`/`allOf`, no `$schema`, no lookaround in a `pattern`), since ChatGPT-style connectors refuse anything else. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
+Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the seven delivery tools at `/mcp/delivery`. Every published input schema is portable (an object root with `properties`, no top-level `oneOf`/`anyOf`/`allOf`, no `$schema`, no lookaround in a `pattern`), since ChatGPT-style connectors refuse anything else. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
 
 ## Drive
 
@@ -53,7 +53,7 @@ Every call is a real MCP `tools/call` (protocol `2026-07-28`, `Mcp-Method`/`Mcp-
 $S/mcp.sh "$RUN" <a|b|c|none|BAD> <tool|tools/list> '<json-arguments>'
 ```
 
-`none` sends no `Authorization`; `BAD` sends an unknown bearer. Agent tools go to `/mcp`; `hab_submit`, `hab_poll`, `hab_ack`, `hab_resolve` and `hab_peek` go to `/mcp/delivery`, and `HAB_CATALOG=delivery` sends `hab_status` or `tools/list` there too. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>","message":"<what to change>"}` (plus details such as `field` or `allowed_kinds`) with HTTP 200.
+`none` sends no `Authorization`; `BAD` sends an unknown bearer. Agent tools go to `/mcp`; `hab_submit`, `hab_poll`, `hab_ack`, `hab_resolve`, `hab_peek` and `hab_mark_read` go to `/mcp/delivery`, and `HAB_CATALOG=delivery` sends `hab_status` or `tools/list` there too. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>","message":"<what to change>"}` (plus details such as `field` or `allowed_kinds`) with HTTP 200.
 
 Agent round trip (a → b → a), the path a connected agent uses ([features/agent-tools.md](features/agent-tools.md)):
 

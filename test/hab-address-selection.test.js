@@ -41,10 +41,10 @@ async function direct(t, admission = false) {
   };
 }
 
-test("HAB discovers exactly six tools with the optional address selector; core delivery catalog stays independent", async (t) => {
+test("HAB discovers exactly seven tools with the optional address selector; core delivery catalog stays independent", async (t) => {
   const f = await direct(t);
   const listed = await decode(await f.gateway.fetch(request("tools/list")));
-  assert.equal(listed.result.tools.length, 6);
+  assert.equal(listed.result.tools.length, 7);
   for (const tool of listed.result.tools) {
     assert.ok(tool.inputSchema.properties.as_address);
     assert.ok(!(tool.inputSchema.required ?? []).includes("as_address"));

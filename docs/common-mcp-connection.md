@@ -82,7 +82,7 @@ JavaScript専用の正規表現や`$schema`も受け付けないことがあり�
 ## 配送catalog（`/mcp/delivery`）と送受信の順序
 
 agent SDKと受信サービスは`/mcp/delivery`の`hab_resolve`・`hab_submit`・`hab_status`・
-`hab_poll`・`hab_ack`を使います。受信通知アダプタは`hab_peek`（未読を既読にせずに返す）を使います。
+`hab_poll`・`hab_ack`を使います。受信通知アダプタは`hab_peek`（未読を既読にせずに返す）と`hab_mark_read`（選んだ1通を`sender_id`と`message_id`で既読にする）を使います。
 credentialは`/mcp`と同じものです。以下はこの低レベルの順序です。
 
 1. 送信側が`hab_resolve`で宛先を確認し、共通outboxへメッセージを保存します。
