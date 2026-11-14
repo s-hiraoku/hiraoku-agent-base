@@ -57,6 +57,35 @@ npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
 
+## Hermes Desktop
+
+Hermes Desktop には、保存済みの会話に「外部メッセージ」を表示専用で出す欄があります。対象は Mac mini のローカル版 Hermes で、`hermes_cli/web_routers/external_messages.py` と `website/docs/developer-guide/external-message-display.md` にあります。カードは会話とモデル文脈の外に出るので、表示してもモデルは動きません。Desktop は、プロファイル設定 `external_messages.readers` に書いた読み取りコマンドを実行し、`stored_session_id` が一致する会話にだけカードを出します。
+
+`screen.type` を `hermes-desktop` にすると、`HermesDesktopScreen` が通知を JSON Lines のファイルに書きます。`hab-notify events` がその読み取りコマンドです。Hermes が付ける `--limit 100 --after <cursor>` を受け取り、Hermes が求める形のページ（`paging: cursor-v1`）を 1 行の JSON で返します。`events` は画面ファイルを読むだけで、token・選択の記録・HAB には触れません。
+
+```json
+"screen": {
+  "type": "hermes-desktop",
+  "path": "~/.hab-notify/hermes-desktop.jsonl",
+  "session_id": "<Desktop の会話 ID>",
+  "profile": "local-lab",
+  "backend_namespace": "<reader の backend_namespace>",
+  "profile_scope": "<reader の profile_scope>"
+}
+```
+
+```yaml
+external_messages:
+  readers:
+    - paging: cursor-v1
+      backend_namespace: <上と同じ>
+      profile_scope: <上と同じ>
+      cwd: /absolute/path/to/hiraoku-agent-base
+      command: [/absolute/path/to/node, scripts/hab-notify.ts, --config, /absolute/path/to/notify.json, events]
+```
+
+Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードは表示したときのまま残ります。欄にはボタンがないので、今は `hab-notify decide` で選びます。「対応する」の引渡しは未接続で、`unsupported` を返します。別の会話や CLI へは渡しません。正式な入口の候補は、gateway の `prompt.submit`（会話 ID を指定すると、その会話の FIFO に入ります）です。
+
 ## 選択と状態
 
 | 状態 | 意味 | HAB 上 |
@@ -82,4 +111,4 @@ token は呼ぶたびにファイルか環境変数から読みます（エー�
 
 - HAB の既読は、人が内容を見た・同意した・作業を終えたことを意味しません。
 - ADR-017 の SDK 受信（保存してから ACK）と同じ受信者で並べて使わないでください。ACK された本文は `hab_peek` にも `hab_inbox` にも出ません。
-- Hermes Desktop の `AgentScreen`（既存 Desktop セッションの外部メッセージ欄への表示と、`POST /api/sessions/{session_id}/chat` などの正式な入口への引渡し）は未実装です。既存 Desktop セッションでの受入確認も未実施です。CLI だけの往復は Desktop の合格に数えません。
+- Hermes Desktop は表示（外部メッセージ欄への読み取りコマンド）だけを実装しています。Desktop の中で選ぶ操作と、「対応する」の後に同じ会話へ渡す操作（gateway の `prompt.submit`）は未実装です。既存 Desktop セッションでの受入確認も未実施です。CLI だけの往復は Desktop の合格に数えません。

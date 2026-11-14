@@ -1,12 +1,16 @@
 /**
  * The arrival notifier CLI (ADR-021). Shows new HAB mail in the agent's own screen through
- * a configured adapter and applies the user's choice. Prints no tokens or message bodies.
+ * a configured adapter and applies the user's choice. Prints no tokens. Only `events`
+ * prints message text: it is the Hermes Desktop reader, and Hermes shows that text.
  *
  *   hab-notify --config <notify.json> run            keep checking every interval_ms
  *   hab-notify --config <notify.json> check          check once
  *   hab-notify --config <notify.json> list           notices waiting for a choice
  *   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
  *   hab-notify --config <notify.json> show-again <message_id> [sender_id]
+ *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+ *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
+ *       local screen file, never HAB)
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -15,9 +19,11 @@ import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
   HabNotifierClient,
+  HermesDesktopScreen,
   JsonlScreen,
   ReceiptNotifier,
   SQLiteNotices,
+  hermesDesktopPage,
 } from "../src/agent-notify/index.ts";
 import type { AgentScreen } from "../src/agent-notify/index.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
@@ -25,7 +31,8 @@ import { MessagingError } from "../src/messaging/delivery-service.ts";
 const usage = `usage:
   hab-notify --config <notify.json> run|check|list
   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
-  hab-notify --config <notify.json> show-again <message_id> [sender_id]`;
+  hab-notify --config <notify.json> show-again <message_id> [sender_id]
+  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]`;
 
 const configSchema = z.strictObject({
   /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
@@ -41,12 +48,24 @@ const configSchema = z.strictObject({
     z.strictObject({ env: z.string().min(1) }),
   ]),
   store: z.string().min(1),
-  screen: z.strictObject({
-    type: z.literal("jsonl"),
-    path: z.string().min(1),
-    /** The one session this notifier serves, such as hermes-desktop:<session id>. */
-    target: z.string().min(1),
-  }),
+  screen: z.discriminatedUnion("type", [
+    z.strictObject({
+      type: z.literal("jsonl"),
+      path: z.string().min(1),
+      /** The one session this notifier serves, such as hermes-desktop:<session id>. */
+      target: z.string().min(1),
+    }),
+    z.strictObject({
+      type: z.literal("hermes-desktop"),
+      path: z.string().min(1),
+      /** The saved Hermes conversation that shows the notices. */
+      session_id: z.string().min(1).max(2048),
+      profile: z.string().min(1).max(2048),
+      /** Both must equal the reader's values in the Hermes profile config. */
+      backend_namespace: z.string().min(1).max(2048),
+      profile_scope: z.string().min(1).max(2048),
+    }),
+  ]),
   interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
 });
 export type NotifyConfig = z.infer<typeof configSchema>;
@@ -66,6 +85,47 @@ function readToken(config: NotifyConfig): string {
   if (typeof token !== "string" || token.length === 0)
     throw new MessagingError("token_unavailable");
   return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+}
+
+const hermesBinding = (
+  config: NotifyConfig,
+  screen: Extract<NotifyConfig["screen"], { type: "hermes-desktop" }>,
+) => ({
+  session_id: screen.session_id,
+  profile: screen.profile,
+  backend_namespace: screen.backend_namespace,
+  profile_scope: screen.profile_scope,
+  receiver_id: config.agent_id,
+});
+
+function configuredScreen(config: NotifyConfig): AgentScreen {
+  const screen = config.screen;
+  return screen.type === "jsonl"
+    ? new JsonlScreen(expand(screen.path), screen.target)
+    : new HermesDesktopScreen(
+        expand(screen.path),
+        hermesBinding(config, screen),
+      );
+}
+
+/** `events [--limit N] [--after CURSOR]`: the Hermes Desktop reader page, as one JSON line. */
+function events(config: NotifyConfig, args: string[]) {
+  const screen = config.screen;
+  if (screen.type !== "hermes-desktop") return null;
+  let limit = 100;
+  let after: string | undefined;
+  for (let i = 0; i < args.length; i += 2) {
+    const value = args[i + 1];
+    if (value === undefined) return null;
+    if (args[i] === "--limit") limit = Number(value);
+    else if (args[i] === "--after") after = value;
+    else return null;
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) return null;
+  return hermesDesktopPage(expand(screen.path), hermesBinding(config, screen), {
+    limit,
+    ...(after !== undefined ? { after } : {}),
+  });
 }
 
 export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
@@ -98,9 +158,8 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     ...common,
     policy: { ...base, resource_url: `${url}/delivery` },
   });
-  const store = new SQLiteNotices(expand(config.store), config.screen.target);
-  const target =
-    screen ?? new JsonlScreen(expand(config.screen.path), config.screen.target);
+  const target = screen ?? configuredScreen(config);
+  const store = new SQLiteNotices(expand(config.store), target.target);
   return {
     notifier: new ReceiptNotifier({ hab, screen: target, store }),
     store,
@@ -119,6 +178,21 @@ export async function main(args: string[], out = console.log) {
     JSON.parse(readFileSync(expand(args[1]), "utf8")),
   );
   const [command, id, choice, sender] = args.slice(2);
+  if (command === "events") {
+    // Reads only the local screen file: no token, store or HAB call.
+    try {
+      const page = events(config, args.slice(3));
+      if (page === null) {
+        out(usage);
+        return 2;
+      }
+      out(JSON.stringify(page));
+      return 0;
+    } catch {
+      out(JSON.stringify({ error: "failed" }));
+      return 1;
+    }
+  }
   let created: ReturnType<typeof createNotifier>;
   try {
     created = createNotifier(config);
