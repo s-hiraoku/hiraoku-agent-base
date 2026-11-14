@@ -96,8 +96,16 @@ backupと復元手順を用意してから承認済みのreleaseへ切り替え�
 要求します。これは接続権限の単位です。Task権限を含みません。
 `iss / aud / sub / azp（またはclient_id）/ iat / exp / nbf / scope`と署名を検証し、
 JWTの有効期間を最大15分に制限します。v2はさらに明示したAT上限で制限します。
-`aud`は固定resourceの文字列を要求します。
-userinfo等を含む配列audienceを受け入れる対応はこの入口には含めません。
+`aud`は固定resourceの文字列を要求します。配列は次の2つの形だけを受け付けます。
+ChatGPT系コネクタは`openid`を要求するので、Auth0は`aud`を
+`[API Identifier, "<issuer>userinfo"]`の配列にするためです。
+
+- `[resource]`
+- resourceがちょうど1回入り、ほかの要素がこのissuerの`userinfo`
+  （issuerの末尾`/`に合わせて正規化した`<issuer>/userinfo`）だけの配列
+
+ほかのAPIを含む配列、`userinfo`だけの配列、resourceが2回入った配列、
+別のissuerの`userinfo`を含む配列は`audience_not_single`として拒否します。
 
 設定の無効化・接続削除・変更・期限切れは、認証済みopaque contextの操作前再検証でも
 拒否します。config変更中の署名検証も旧contextを発行しません。tokenを発行・保存・

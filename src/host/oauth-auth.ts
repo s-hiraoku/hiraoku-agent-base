@@ -131,7 +131,7 @@ const header = z.object({
 });
 const claims = z.object({
   iss: claim,
-  aud: claim,
+  aud: z.union([claim, z.array(claim).min(1).max(2)]),
   sub: claim,
   azp: claim.optional(),
   client_id: claim.optional(),
@@ -140,6 +140,21 @@ const claims = z.object({
   exp: z.number().int().positive(),
   nbf: z.number().int().nonnegative().optional(),
 });
+/**
+ * Auth0 issues `aud` as a list when a client asks for `openid` along with the API audience,
+ * as ChatGPT-style connectors do: `[API identifier, "<issuer>userinfo"]`. Only that exact
+ * shape (or the resource alone in a list) is accepted; the resource must appear once and the
+ * only other entry may be this issuer's own userinfo endpoint. Any other list stays refused.
+ */
+export function acceptedAudienceList(
+  audiences: readonly string[],
+  resource: string,
+  issuer: string,
+): boolean {
+  const userinfo = issuer.replace(/\/*$/, "/") + "userinfo";
+  if (audiences.filter((a) => a === resource).length !== 1) return false;
+  return audiences.every((a) => a === resource || a === userinfo);
+}
 /** Fixed reasons the OAuth verifier gives the audit log when it refuses a token. */
 export type OAuthDenyReason =
   | "oauth_disabled"
@@ -272,7 +287,6 @@ export class PinnedOAuthAuthority {
       stage = "token_header_invalid";
       const h = header.parse(rawHeader);
       stage = "token_claims_invalid";
-      if (Array.isArray(rawClaims?.aud)) return refuse("audience_not_single");
       const value = claims.parse(rawClaims);
       stage = "oauth_config_invalid";
       const clientId = value.azp ?? value.client_id;
@@ -280,7 +294,10 @@ export class PinnedOAuthAuthority {
       if (value.azp && value.client_id && value.azp !== value.client_id)
         return refuse("client_id_conflict");
       if (value.iss !== c.issuer) return refuse("issuer_mismatch");
-      if (value.aud !== resource) return refuse("audience_mismatch");
+      if (Array.isArray(value.aud)) {
+        if (!acceptedAudienceList(value.aud, resource, c.issuer))
+          return refuse("audience_not_single");
+      } else if (value.aud !== resource) return refuse("audience_mismatch");
       const scopes = new Set(value.scope.split(" "));
       if (!HAB_OAUTH_SCOPES.every((s) => scopes.has(s)))
         return refuse("scope_missing");
