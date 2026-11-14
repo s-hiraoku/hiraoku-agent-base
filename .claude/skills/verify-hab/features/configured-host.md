@@ -45,5 +45,5 @@ Preconditions:
 - Credentials expire 15 minutes after `start`; after that every call is 401 and `status` shows `credential_expired`. Relaunch with a new run dir.
 - A group stop or its last disconnect stops every member; reconnect each member address you still want (one `connect` per address).
 - A revoked connection id can never be bound again (`credential_revoked_use_new_connection_id`); a new credential needs a new `connection_id`.
-- `limits` no longer has `attachment_bytes`, `total_attachment_bytes` or `attachments`. A config that still carries any of them is refused at start with `reason=config_invalid fields=limits`. Delete those keys.
+- `limits` no longer has `attachment_bytes`, `total_attachment_bytes` or `attachments`. A config that still carries any of them is refused at start with `reason=config_invalid` and `fields=` listing each unrecognized key (for example `limits.attachment_bytes`, or all three sorted). Delete those keys.
 - Tokens are synthetic and local; a pass is not evidence of a real Codex/Hermes client or model choosing tools.

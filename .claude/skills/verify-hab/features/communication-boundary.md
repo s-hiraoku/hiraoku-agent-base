@@ -6,10 +6,9 @@ Agents receive through common MCP. Their host polls, saves the message and dedup
 
 - `boundary-receive` uses native loopback HTTP MCP for question, notice, and structured execution_request deliveries.
 - `boundary-save-before-ack` observes committed message and ACK request records of the agent SDK's receiver inbox (`src/agent-sdk/sqlite-inbox.ts`) through an independent SQLite connection before the server handles ACK.
-- `boundary-no-execution` preserves external content verbatim, calls only receive host operations, and leaves Task links, Tasks, and reply outbox empty even with the optional Task port configured.
+- `boundary-no-execution` preserves external content verbatim, calls only receive host operations, and leaves the reply outbox empty. The HTTP fixtures build `AdapterHostCycle` without a Task port.
 - `boundary-inbox-read` exercises explicit source-authorized saved-body reads, ACK-pending inspection, detached copies, missing/released/tampered records, revocation and an explicit recipient reply after native HTTP periodic reception. Reading creates no Task or reply and grants no action permission.
-- `boundary-task-state` observes working after the optional Task coordinator claims a job while its runtime ID is still absent. This does not prove model execution.
-- The existing supervisor tests also cover restart, lost ACK, finite backoff, owner requirements, and stop/drain behavior. The HAB catalog test keeps the standard five operations separate from optional text_* tools.
+- The existing supervisor tests also cover restart, lost ACK, finite backoff, owner requirements, and stop/drain behavior. The HAB catalog test keeps the HAB delivery catalog at five tools (`hab_resolve` plus the four standalone delivery tools).
 
 ## How to get to it (user POV)
 
@@ -25,7 +24,7 @@ mkdir -p "$RUN/evidence"
 NODE_NO_WARNINGS=1 npm run test:communication-boundary > "$RUN/evidence/communication-boundary.tap" 2>&1
 ```
 
-Require exit code zero and no failed, skipped, or canceled tests. The TAP names the three native HTTP message cases and the optional Task state observation. The HTTP tests record the sender action and status, inspect committed receiver storage before ACK, and check Task and outbox tables after two scheduled receives. Identity and Task policy are synthetic. The injected scheduler advances two cycles without a wall-clock delay, so this does not measure real polling cadence.
+Require exit code zero and no failed, skipped, or canceled tests. The TAP names the three native HTTP message cases (`question`, `notice`, `execution_request`), the five-tool HAB catalog case, the native HTTP inbox-read case, and the durable receive-supervisor cases. The HTTP tests record the sender action and status, inspect committed receiver storage before ACK, and check that the reply outbox stays empty after two scheduled receives. Identity is synthetic. The injected scheduler advances two cycles without a wall-clock delay, so this does not measure real polling cadence.
 
 For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_WARNINGS=1 node --test --test-reporter=tap test/recipient-messages.test.js` in a fresh evidence file. See [recipient messages](../../../../docs/receiver/recipient-messages.md). It uses a synthetic durable native input/policy store plus real inbox/outbox/budget and one owned loopback MCP roundtrip. Receive/ACK alone still creates no native input or reply. Native product wake/model/approval remains unverified.
 
@@ -37,3 +36,4 @@ For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_W
 - The durable sender, receiver and MCP client live in `src/agent-sdk`; the host side (`src/host`, MCP server in `src/host/mcp`) only stores and delivers. The generic NATS text port and its proof script were deleted, so no recipe drives them.
 - This proves local communication boundaries. It does not verify a real product's model, tools, approval UI, credential refresh, inbox display, or deployment.
 - A body that mentions owner approval does not test or grant a real native approval. Changes to receiving agents' existing approval mechanisms require their own tests.
+- Optional Task coordinator working state without a runtime ID is not evidence that the model ran.
