@@ -113,13 +113,25 @@ interface NoticeLine {
   from: string | null;
   display: string;
   at: string;
+  /** The binding the notice was shown for; the reader returns it only to that binding. */
+  binding?: string;
 }
+
+const bindingKey = (binding: HermesDesktopBinding) =>
+  JSON.stringify([
+    binding.session_id,
+    binding.profile,
+    binding.backend_namespace,
+    binding.profile_scope,
+    binding.receiver_id,
+  ]);
 
 export class HermesDesktopScreen implements AgentScreen {
   readonly target: string;
   readonly #path: string;
   readonly #now: () => number;
   readonly #sessionId: string;
+  readonly #binding: string;
   readonly #handoff: HermesDesktopHandoff | undefined;
   constructor(
     path: string,
@@ -129,6 +141,7 @@ export class HermesDesktopScreen implements AgentScreen {
     this.#path = path;
     this.target = hermesDesktopTarget(binding);
     this.#sessionId = binding.session_id;
+    this.#binding = bindingKey(binding);
     this.#handoff = options.handoff;
     this.#now = options.now ?? Date.now;
   }
@@ -147,6 +160,7 @@ export class HermesDesktopScreen implements AgentScreen {
       sender_id: message.sender_id,
       from: message.from,
       display: message.display,
+      binding: this.#binding,
     });
   }
   async handoff(message: PeekedMessage): Promise<HandoffResult> {
@@ -201,27 +215,36 @@ export function hermesDesktopPage(
     : [];
   const page = notices.slice(start, start + options.limit);
   const target = hermesDesktopTarget(binding);
+  const key = bindingKey(binding);
   return {
     source: "external_agent",
-    events: page.map((notice, index) => ({
-      event_id: `${notice.sender_id}:${notice.message_id}:${start + index}`,
-      source: "external_agent",
-      format: "plain_text",
-      sender_id: notice.sender_id,
-      receiver_id: binding.receiver_id,
-      message_id: notice.message_id,
-      address: notice.from ?? notice.sender_id,
-      backend_namespace: binding.backend_namespace,
-      profile_scope: binding.profile_scope,
-      owner_kind: "session",
-      received_at: notice.at,
-      text: notice.display,
-      binding_id: target,
-      binding_generation: 1,
-      logical_target: target,
-      stored_session_id: binding.session_id,
-      handoff_state: "pending",
-    })),
+    // A notice written for another session, profile or reader (the same file reused under a
+    // changed config) is skipped, never relabelled; the cursor still moves past it.
+    events: page.flatMap((notice, index) =>
+      notice.binding !== key
+        ? []
+        : [
+            {
+              event_id: `${notice.sender_id}:${notice.message_id}:${start + index}`,
+              source: "external_agent",
+              format: "plain_text",
+              sender_id: notice.sender_id,
+              receiver_id: binding.receiver_id,
+              message_id: notice.message_id,
+              address: notice.from ?? notice.sender_id,
+              backend_namespace: binding.backend_namespace,
+              profile_scope: binding.profile_scope,
+              owner_kind: "session",
+              received_at: notice.at,
+              text: notice.display,
+              binding_id: target,
+              binding_generation: 1,
+              logical_target: target,
+              stored_session_id: binding.session_id,
+              handoff_state: "pending",
+            },
+          ],
+    ),
     next_cursor: String(start + page.length),
     has_more: start + page.length < notices.length,
   };

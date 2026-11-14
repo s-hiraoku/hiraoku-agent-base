@@ -326,3 +326,29 @@ test("a handoff command that exits without reading a large prompt is a failure, 
     ),
   );
 });
+
+test("a screen file reused under another binding never relabels old notices", async (t) => {
+  const { path } = setup(t);
+  await new HermesDesktopScreen(path, binding).show(message("m1"));
+  const other = { ...binding, session_id: "20261114_other" };
+  await new HermesDesktopScreen(path, other).show(message("m2"));
+  const forOther = hermesDesktopPage(path, other, { limit: 100 });
+  assert.deepEqual(
+    forOther.events.map((e) => [e.message_id, e.stored_session_id]),
+    [["m2", "20261114_other"]],
+  );
+  assert.equal(forOther.next_cursor, "2");
+  const forOriginal = hermesDesktopPage(path, binding, { limit: 1 });
+  assert.deepEqual(
+    forOriginal.events.map((e) => e.message_id),
+    ["m1"],
+  );
+  // A page of only foreign notices still moves the cursor, as Hermes requires.
+  const skipped = hermesDesktopPage(path, binding, { limit: 1, after: "1" });
+  assert.deepEqual(skipped, {
+    source: "external_agent",
+    events: [],
+    next_cursor: "2",
+    has_more: false,
+  });
+});
