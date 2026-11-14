@@ -30,7 +30,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 ## Features
 
-- [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, external text and structured execution requests remaining data, and optional Task state semantics. It runs isolated fixtures with its own listeners and cleanup.
+- [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, and external text and structured execution requests remaining data without auto Task acceptance or reply. It runs isolated fixtures with its own listeners and cleanup.
 
 - [Agent tools: send, read, reply](./agent-tools.md) covers the `/mcp` agent catalog: `hab_send`, `hab_inbox` (read, mark read, re-read), `hab_reply`, the agent `hab_status`, specific error codes and audit reasons.
 - [Resolve an address](./resolve-address.md) covers `hab_resolve` success, unknown address, malformed address and a renamed agent's previous name during the grace period.

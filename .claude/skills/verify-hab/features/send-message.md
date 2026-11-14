@@ -34,7 +34,7 @@ Preconditions:
 
 ## Gotchas
 
-- `new-message.sh` sets `first_sent_at` 100 ms in the past and `expires_at` exactly one hour later; hand-built messages with another lifetime or a `message_id` whose `rm1.<ms>` part does not equal `first_sent_at` are refused as `invalid_contract`.
+- `new-message.sh` sets `first_sent_at` 100 ms in the past and `expires_at` exactly one hour later. The contract allows any deadline after `first_sent_at` up to seven days (`MAX_DELIVERY_TTL_MS`). A `message_id` whose `rm1.<ms>` part does not equal `first_sent_at`, or a deadline outside that window, is `invalid_contract`.
 - The attachment refusal comes from the SDK input schema, so it has no fixed `{"error":"<code>"}`. The core contract answers `invalid_contract` when the schema is bypassed. `attachment_store_unavailable` no longer exists.
 - Sending to yourself (`a` → `a`) is currently accepted; do not use it as a negative case.
-- `hab_status` reports delivery state (`pending`/`leased`/`acked`), never work completion.
+- `hab_status` reports delivery state (`pending`/`leased`/`acked`/`expired`/`quarantined`), never work completion.

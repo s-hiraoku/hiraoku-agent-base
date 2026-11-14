@@ -26,4 +26,4 @@ Preconditions:
 ## Gotchas
 
 - The tokens are synthetic (`verify-a|b|c`). A pass proves the gateway refuses unauthenticated calls, not that production Auth0 binding works.
-- The Hub server on 8787 has its own, separate deny-all boundary; see "Other surfaces" in `SKILL.md`.
+- A shipped host started without connected credentials stays deny-all at the tool layer (`forbidden` / empty catalogs depending on the call). That path is covered by [configured-host.md](./configured-host.md), not a separate fixed-port Hub binary.
