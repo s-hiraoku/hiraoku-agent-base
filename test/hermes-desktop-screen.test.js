@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  appendFileSync,
   chmodSync,
   existsSync,
   mkdtempSync,
@@ -8,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import process from "node:process";
 import { test } from "node:test";
@@ -17,6 +19,8 @@ import {
   SQLiteNotices,
   hermesDesktopPage,
   submissionId,
+  fitHermesText,
+  HERMES_TEXT_BYTES,
 } from "../src/agent-notify/index.ts";
 import { main } from "../scripts/hab-notify.ts";
 
@@ -442,4 +446,74 @@ test("hab-notify action records a Desktop button press only for this card's bind
     changed: false,
     state: "later",
   });
+});
+
+test("a notice that does not fit is not half written, and a broken last line is never read", async (t) => {
+  const { dir, path } = setup(t);
+  await new HermesDesktopScreen(path, binding).show(message("m1"));
+  const before = readFileSync(path);
+  // Under a 1 KiB file-size limit the write is cut short without throwing.
+  const script = [
+    `import { HermesDesktopScreen } from ${JSON.stringify(new URL("../src/agent-notify/index.ts", import.meta.url).href)};`,
+    `const binding = ${JSON.stringify(binding)};`,
+    `const m = ${JSON.stringify(message("m2", { display: "x".repeat(10_000) }))};`,
+    `try { await new HermesDesktopScreen(${JSON.stringify(path)}, binding).show(m); console.log("ok"); }`,
+    `catch (e) { console.log("failed"); }`,
+  ].join("\n");
+  const run = spawnSync(
+    "bash",
+    [
+      "-c",
+      'ulimit -f 1 && exec "$0" --input-type=module -e "$1"',
+      process.execPath,
+      script,
+    ],
+    { cwd: dir, encoding: "utf8" },
+  );
+  assert.equal(run.stdout.trim(), "failed");
+  assert.deepEqual(readFileSync(path), before);
+  // A line still being written (no newline yet) is left for the next page.
+  writeFileSync(
+    path,
+    before.toString() + '{"type":"notice","message_id":"m3"',
+    {
+      mode: 0o600,
+    },
+  );
+  assert.deepEqual(
+    hermesDesktopPage(path, binding, { limit: 100 }).events.map(
+      (e) => e.message_id,
+    ),
+    ["m1"],
+  );
+});
+
+test("a display over Hermes's text limit is shown cut, in a page Hermes accepts", async (t) => {
+  const { path } = setup(t);
+  // 140 KiB of multi-byte text: the cut must land on a character boundary.
+  const long = message("m1", { display: "あ".repeat(48 * 1024) });
+  await new HermesDesktopScreen(path, binding).show(long);
+  const page = hermesDesktopPage(path, binding, { limit: 100 });
+  assertHermesAccepts(page);
+  const [event] = page.events;
+  assert.ok(Buffer.byteLength(event.text) <= HERMES_TEXT_BYTES);
+  assert.ok(event.text.startsWith("あああ"));
+  assert.match(event.text, /途中までを表示/);
+  assert.ok(!event.text.includes("\ufffd"));
+  assert.equal(fitHermesText("short"), "short");
+});
+
+test("a fragment left by a killed writer never hides the notices after it", async (t) => {
+  const { path } = setup(t);
+  const screen = new HermesDesktopScreen(path, binding);
+  await screen.show(message("m1"));
+  // The process died while writing m2's line.
+  appendFileSync(path, '{"type":"notice","message_id":"m2","sen');
+  await screen.show(message("m3"));
+  const page = hermesDesktopPage(path, binding, { limit: 100 });
+  assertHermesAccepts(page);
+  assert.deepEqual(
+    page.events.map((e) => e.message_id),
+    ["m1", "m3"],
+  );
 });

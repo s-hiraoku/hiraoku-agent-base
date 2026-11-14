@@ -529,3 +529,25 @@ test("a handoff interrupted by a stop becomes unknown after a while and is never
   });
   assert.deepEqual(f.calls.handoff, []);
 });
+
+test("a decline interrupted before HAB marked it read is finished on a later check", async (t) => {
+  let clock = Date.now();
+  const f = setup(t, { unread: [message("m1")], now: () => clock });
+  const n = f.make();
+  await n.check();
+  // The process stops while HAB is being told.
+  const markRead = f.hab.markRead;
+  f.hab.markRead = () => new Promise(() => {});
+  void n.decide("m1", "decline");
+  for (let i = 0; i < 100 && n.get("m1").state !== "declining"; i++)
+    await Promise.resolve();
+  assert.equal(n.get("m1").state, "declining");
+  f.hab.markRead = markRead;
+  const restarted = f.make();
+  clock += 16 * 60 * 1000;
+  await restarted.check();
+  assert.equal(restarted.get("m1").state, "declined");
+  assert.deepEqual(f.calls.readKeys, ["sender-a/m1"]);
+  assert.deepEqual(f.calls.reports.at(-1), ["m1", "declined"]);
+  assert.deepEqual(f.calls.handoff, []);
+});

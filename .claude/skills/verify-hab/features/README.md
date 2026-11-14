@@ -30,7 +30,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 ## Features
 
-- [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, external text and structured execution requests remaining data, and optional Task state semantics. It runs isolated fixtures with its own listeners and cleanup.
+- [Common MCP responsibility boundary](./communication-boundary.md) covers native HTTP receive scheduling, committed storage before ACK, and external text and structured execution requests remaining data without auto Task acceptance or reply. It runs isolated fixtures with its own listeners and cleanup.
 
 - [Agent tools: send, read, reply](./agent-tools.md) covers the `/mcp` agent catalog: `hab_send`, `hab_inbox` (read, mark read, re-read), `hab_reply`, the agent `hab_status`, specific error codes and audit reasons.
 - [Arrival notice and the user's choice](./arrival-notifier.md) covers `hab_peek` (new mail without marking it read, the owner's `display` format and the framed `handoff_prompt`) and the `hab:notify` CLI showing a notice through the JSONL screen, then 対応する / あとで / 対応しない with the once-only handoff, plus the Codex (app-server turn), Claude Code (status line and channel) and ChatGPT connector (Dots, display only) screens.

@@ -90,6 +90,10 @@ external_messages:
       actions_command: [/absolute/path/to/node, scripts/hab-notify.ts, --config, /absolute/path/to/notify.json, action]
 ```
 
+Hermes の欄は、本文が 128 KiB を超えるカードを受け付けません（1 枚でも超えるとページ全体が出なくなります）。そのため、長い文面は先頭から 128 KiB 以内で切り、「途中までを表示しています」と添えます。「対応する」で会話に渡すのは全文です。
+
+画面ファイルには 1 行を丸ごと書くか、まったく書かないかのどちらかです。書き込みの途中で落ちて切れ端が残った場合は、次の書き込みの前に改行を入れて区切ります。読み取り側は、読めない行と改行で終わっていない最後の行を飛ばします。
+
 Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードの本文は表示したときのまま残ります。
 
 カードの「1. 対応する」「2. あとで」「3. 対応しない」ボタンは、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
@@ -206,6 +210,7 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 | `showing` | 画面に出す途中。終わらなかったら次の確認で出し直す | 未読 |
 | `shown` | 画面に出した。選択待ち | 未読 |
 | `later` | 「あとで」。`show-again` で同じメッセージを出し直せる | 未読 |
+| `declining` | 「対応しない」を受けて既読にしている最中。途中で止まり 15 分たっても残っていれば、次の確認で既読にし直して `declined` にする | 未読または既読 |
 | `declined` | 「対応しない」。何も始めない | 既読 |
 | `accepting` | 「対応する」を受けて渡している最中。通知アダプタが途中で止まり 15 分たっても残っていれば、次の確認で `unknown` にする（再送しない） | 既読 |
 | `started` / `queued` | セッションが受け付けた／入力に入れた | 既読 |

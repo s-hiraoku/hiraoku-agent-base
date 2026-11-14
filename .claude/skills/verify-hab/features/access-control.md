@@ -26,4 +26,4 @@ Preconditions:
 ## Gotchas
 
 - The tokens are synthetic (`verify-a|b|c`). A pass proves the gateway refuses unauthenticated calls, not that production Auth0 binding works.
-- The Hub server on 8787 has its own, separate deny-all boundary; see "Other surfaces" in `SKILL.md`.
+- A shipped host with no valid credential answers `tools/list` with HTTP 401. A valid local credential that is not connected to a Registry address still lists the full static agent or delivery catalog; authorization is checked when a tool is called (typically `forbidden` until connect). That path is covered by [configured-host.md](./configured-host.md), not a separate fixed-port Hub binary.

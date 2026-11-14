@@ -91,5 +91,13 @@ class DesktopHandoffTest(unittest.TestCase):
             self.assertEqual(json.loads(out.getvalue())["result"], "refused")
 
 
+    def test_accepts_any_prompt_the_notifier_can_build(self):
+        # hab-notify allows 512 KiB of text in a 1 MiB envelope; the prompt adds framing.
+        request = handoff.parse_request(json.dumps({**REQUEST, "text": "あ" * (400 * 1024)}))
+        self.assertGreater(len(request["text"].encode()), 1024 * 1024)
+        with self.assertRaises(ValueError):
+            handoff.parse_request(json.dumps({**REQUEST, "text": "x" * (2 * 1024 * 1024 + 1)}))
+
+
 if __name__ == "__main__":
     unittest.main()
