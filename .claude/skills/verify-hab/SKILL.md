@@ -15,6 +15,8 @@ The repo now ships a configured host CLI (`npm run hab:host`) and an operator CL
 
 For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
 
+**Registration.** The living tree is `.claude/skills/verify-hab/` (cited by design verification and existing docs). Cursor registers the same tree at `.cursor/skills/verify-hab/` via a directory symlink; do not fork a second copy of helpers or the feature map.
+
 All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 26 (they source nvm if `node` is older), `jq`, `curl`, `lsof` and `ps`. `tmux` is needed only for the enrollment terminal.
 
 ## Launch
