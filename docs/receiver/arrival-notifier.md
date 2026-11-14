@@ -87,9 +87,19 @@ external_messages:
       profile_scope: <上と同じ>
       cwd: /absolute/path/to/hiraoku-agent-base
       command: [/absolute/path/to/node, scripts/hab-notify.ts, --config, /absolute/path/to/notify.json, events]
+      actions_command: [/absolute/path/to/node, scripts/hab-notify.ts, --config, /absolute/path/to/notify.json, action]
 ```
 
-Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードは表示したときのまま残ります。欄にはボタンがないので、今は `hab-notify decide` で選びます。
+Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードの本文は表示したときのまま残ります。
+
+カードの「1. 対応する」「2. あとで」「3. 対応しない」ボタンは、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
+
+- `stored_session_id`（会話）
+- `backend_namespace`
+- `profile_scope`
+- `receiver_id`（受信者）
+
+設定と合っていれば `decide` と同じ処理をして `{changed, state}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
 
 「対応する」を選ぶと、`handoff.command` を 1 回だけ実行します。標準入力には `{session_id, text, submission_id}` を渡します。このコマンドは `hermes_bridge.desktop_handoff` で、Hermes の実行環境で動きます。動きは次の 3 段です。
 
@@ -197,7 +207,7 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 | `shown` | 画面に出した。選択待ち | 未読 |
 | `later` | 「あとで」。`show-again` で同じメッセージを出し直せる | 未読 |
 | `declined` | 「対応しない」。何も始めない | 既読 |
-| `accepting` | 「対応する」を受けて渡している最中 | 既読 |
+| `accepting` | 「対応する」を受けて渡している最中。通知アダプタが途中で止まり 15 分たっても残っていれば、次の確認で `unknown` にする（再送しない） | 既読 |
 | `started` / `queued` | セッションが受け付けた／入力に入れた | 既読 |
 | `unsupported` | そのセッションへの正式な入口がない | 既読 |
 | `unknown` | 渡せたか分からない。自動では再送しない | 既読 |

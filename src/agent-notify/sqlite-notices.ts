@@ -26,6 +26,13 @@ CREATE TABLE IF NOT EXISTS notices(
 );
 CREATE INDEX IF NOT EXISTS notices_state ON notices(state,expires_at);`;
 
+/**
+ * An `accepting` claim older than this was left by a notifier that stopped mid-handoff (a
+ * handoff command may run at most 5 minutes). It becomes `unknown`: the request may or may
+ * not have reached the session, so it is never resent by itself.
+ */
+export const ACCEPTING_ABANDONED_MS = 15 * 60 * 1000;
+
 /** Rows are kept this long after the reply deadline, then removed. */
 export const NOTICE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -144,6 +151,20 @@ export class SQLiteNotices {
         )
         .all() as unknown as Row[]
     ).map((row) => this.#record(row));
+  }
+  /** Turns `accepting` claims abandoned by a stopped notifier into `unknown`. */
+  abandon(now: number): NoticeRecord[] {
+    const cutoff = now - ACCEPTING_ABANDONED_MS;
+    const rows = (
+      this.#db
+        .prepare(
+          "SELECT * FROM notices WHERE state='accepting' AND decided_at<=?",
+        )
+        .all(cutoff) as unknown as Row[]
+    ).map((row) => this.#record(row));
+    return rows.filter((row) =>
+      this.transition(row, ["accepting"], "unknown", now),
+    );
   }
   /** Marks undecided rows past their deadline expired and drops old rows. */
   maintain(now: number): NoticeRecord[] {

@@ -53,6 +53,9 @@ export class ReceiptNotifier {
     const now = this.#now();
     for (const expired of this.#store.maintain(now))
       await this.#report(expired, "expired");
+    // A handoff interrupted by a stop or crash: report it as unknown, never resend it.
+    for (const abandoned of this.#store.abandon(now))
+      await this.#report(abandoned, "unknown");
     const shown: string[] = [];
     let failure: unknown;
     let after: string | undefined;

@@ -16,7 +16,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { setImmediate } from "node:timers";
-import { Readable } from "node:stream";
 import { test } from "node:test";
 import {
   ProductScreen,
@@ -610,7 +609,7 @@ test("hab-notify statusline and the new screen types in the config", async (t) =
   );
   store.close();
   const out = [];
-  const stdin = (value) => Readable.from([value]);
+  const stdin = (value) => () => value;
   assert.equal(
     await main(
       ["--config", claude, "statusline"],
