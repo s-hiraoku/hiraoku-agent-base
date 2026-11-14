@@ -26,4 +26,4 @@ Preconditions:
 ## Gotchas
 
 - The tokens are synthetic (`verify-a|b|c`). A pass proves the gateway refuses unauthenticated calls, not that production Auth0 binding works.
-- A shipped host started without connected credentials stays deny-all at the tool layer (`forbidden` / empty catalogs depending on the call). That path is covered by [configured-host.md](./configured-host.md), not a separate fixed-port Hub binary.
+- A shipped host with no valid credential answers `tools/list` with HTTP 401. A valid local credential that is not connected to a Registry address still lists the full static agent or delivery catalog; authorization is checked when a tool is called (typically `forbidden` until connect). That path is covered by [configured-host.md](./configured-host.md), not a separate fixed-port Hub binary.

@@ -36,3 +36,4 @@ For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_W
 - The durable sender, receiver and MCP client live in `src/agent-sdk`; the host side (`src/host`, MCP server in `src/host/mcp`) only stores and delivers. The generic NATS text port and its proof script were deleted, so no recipe drives them.
 - This proves local communication boundaries. It does not verify a real product's model, tools, approval UI, credential refresh, inbox display, or deployment.
 - A body that mentions owner approval does not test or grant a real native approval. Changes to receiving agents' existing approval mechanisms require their own tests.
+- Optional Task coordinator working state without a runtime ID is not evidence that the model ran.
