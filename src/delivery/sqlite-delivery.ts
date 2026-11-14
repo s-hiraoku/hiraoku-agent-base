@@ -673,7 +673,8 @@ export class SqliteDelivery {
    * The recipient's host inbox. Unread messages are marked read (ACKed) in the same
    * transaction and returned once with `new: true`; with `include_read`, messages read in
    * the last READ_BODY_RETENTION_MS follow, newest first. A message another client holds
-   * under a poll lease is skipped until that lease ends.
+   * under a poll lease is skipped until that lease ends. With `peek` (ADR-021, the arrival
+   * notifier) unread messages are returned without marking them read and nothing changes.
    */
   readInboxWithAuthorization(
     context: unknown,
@@ -684,6 +685,8 @@ export class SqliteDelivery {
       message_id?: string;
       /** Response budget: messages are taken (and marked read) only while they fit. */
       max_bytes?: number;
+      /** Return unread messages only, leaving them unread. */
+      peek?: boolean;
     },
   ): InboxMessage[] {
     if (
@@ -750,6 +753,10 @@ export class SqliteDelivery {
         if (!allowed(row)) continue;
         const message = this.#stored(row);
         if (!fits(message)) break;
+        if (options.peek) {
+          out.push(this.#inboxMessage(row, message, null, true));
+          continue;
+        }
         const requestId = `inbox-${randomUUID()}`;
         this.#db
           .prepare(
@@ -769,7 +776,11 @@ export class SqliteDelivery {
         this.#audit(row.sender_id, row.message_id, now, "acked");
         out.push(this.#inboxMessage(row, message, now, true));
       }
-      if ((options.include_read || only) && out.length < options.limit) {
+      if (
+        !options.peek &&
+        (options.include_read || only) &&
+        out.length < options.limit
+      ) {
         const read = this.#db
           .prepare(
             `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${only ? " AND message_id=?" : ""} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
@@ -794,7 +805,7 @@ export class SqliteDelivery {
   #inboxMessage(
     row: Row,
     message: Submission,
-    readAt: number,
+    readAt: number | null,
     fresh: boolean,
   ): InboxMessage {
     const thread = JSON.parse(row.thread_key) as [string[], string];
@@ -812,7 +823,7 @@ export class SqliteDelivery {
       in_reply_to: message.in_reply_to,
       sent_at: message.first_sent_at,
       received_at: new Date(row.accepted_at).toISOString(),
-      read_at: new Date(readAt).toISOString(),
+      read_at: readAt === null ? null : new Date(readAt).toISOString(),
       expires_at: new Date(row.expires_at).toISOString(),
       new: fresh,
     };

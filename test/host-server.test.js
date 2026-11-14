@@ -378,7 +378,7 @@ test("opt-in discovery identifies a host owner over a real socket and keeps the 
   const delivery = await (
     await list(host.delivery_url, "Bearer synthetic-a")
   ).json();
-  assert.equal(delivery.result.tools.length, 6);
+  assert.equal(delivery.result.tools.length, 7);
   // ChatGPT-style connectors reject anything but a plain object schema with portable patterns.
   for (const tool of [...tools.result.tools, ...delivery.result.tools])
     assertPortableInputSchema(tool);

@@ -71,7 +71,7 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
   const plain = await fixture(t);
   plain.enroll("a");
   const g = gateway(plain);
-  assert.equal((await decode(await g.fetch(request()))).result.tools.length, 5);
+  assert.equal((await decode(await g.fetch(request()))).result.tools.length, 6);
   const disabled = await call(g, { action: "whoami" });
   assert.ok(disabled.body.error || disabled.body.result?.isError);
   assert.throws(
@@ -81,7 +81,7 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
   const f = await group(t),
     enabled = gateway(f);
   const tools = (await decode(await enabled.fetch(request()))).result.tools;
-  assert.equal(tools.length, 6);
+  assert.equal(tools.length, 7);
   const tool = tools.find((x) => x.name === "hab_discover");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.equal(tool.annotations.idempotentHint, true);

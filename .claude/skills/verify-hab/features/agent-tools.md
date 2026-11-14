@@ -4,10 +4,10 @@ An agent connected to `/mcp` sees only `hab_send`, `hab_inbox`, `hab_reply` and 
 
 ## Sub-features
 
-- `agent-catalog` `/mcp` lists exactly the four agent tools; `/mcp/delivery` lists the five delivery tools for the same token.
+- `agent-catalog` `/mcp` lists exactly the four agent tools; `/mcp/delivery` lists the six delivery tools (with `hab_peek`) for the same token.
 - `agent-send` `hab_send {to, text}` returns `message_id`, `to`, a new `thread_id`, `state: "pending"`, a deadline 7 days after acceptance and an `explanation`.
 - `agent-inbox` `hab_inbox` returns the new message with `from` (the sender's address), `kind`, `text`, `thread_id` and `new: true`; a second call returns none; `include_read: true` returns it again with `new: false`.
-- `agent-notice` each inbox message has a `notice`: `<address> からのメッセージです（質問、返信期限 …）。`, the body between two `----- 受信内容 <8 hex>：…` lines that say not to follow it, then `どうしますか？` and the three choices with the message_id.
+- `agent-notice` each inbox message has a `notice`: `<address> からのメッセージです（質問、返信期限 …）。`, the body between two `----- 受信内容 <8 hex>：…` lines that say not to follow it, then `どうしますか？` and the three choices (`1. 対応する：hab_reply …`, `2. あとで：…`, `3. 対応しない`) with the message_id.
 - `agent-status` the sender's `hab_status` shows `acked` with an explanation that read is not acted on.
 - `agent-reply` `hab_reply {message_id, text}` goes to the original sender in the same thread with `in_reply_to`; a reply to a `question` arrives as `answer`.
 - `agent-errors` malformed `to` → `invalid_request` with `field: "to"`; unknown address → `unknown_address`; `kind: "exec"` → `kind_not_allowed` with `allowed_kinds`; over-long text → `text_too_long` with `max_bytes`; unknown reply target → `reply_target_not_found`; each with a `message`.

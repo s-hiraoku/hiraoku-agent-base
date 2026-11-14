@@ -71,12 +71,13 @@ function rpc(id, value) {
   };
 }
 
-test("HAB opts into exactly five tools; the standalone delivery catalog remains four even with a HAB service", async (t) => {
+test("HAB opts into exactly six tools; the standalone delivery catalog remains four even with a HAB service", async (t) => {
   const f = await fixture(t),
     a = f.enroll("a");
   const hab = await decode(await gateway(f).fetch(request()));
   assert.deepEqual(hab.result.tools.map((v) => v.name).sort(), [
     "hab_ack",
+    "hab_peek",
     "hab_poll",
     "hab_resolve",
     "hab_status",

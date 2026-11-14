@@ -23,8 +23,8 @@ for a in a b c; do
   [ "$tools" = hab_inbox,hab_reply,hab_send,hab_status ] \
     && echo "ok   agent $a $(jq -r ".agents.$a.address" "$state") sees the 4 agent tools at /mcp" || fail "agent $a /mcp tools='$tools'"
   tools=$(list "$delivery" "$a")
-  [ "$tools" = hab_ack,hab_poll,hab_resolve,hab_status,hab_submit ] \
-    && echo "ok   agent $a sees the 5 delivery tools at /mcp/delivery" || fail "agent $a /mcp/delivery tools='$tools'"
+  [ "$tools" = hab_ack,hab_peek,hab_poll,hab_resolve,hab_status,hab_submit ] \
+    && echo "ok   agent $a sees the 6 delivery tools at /mcp/delivery" || fail "agent $a /mcp/delivery tools='$tools'"
 done
 # Every published input schema must be one a ChatGPT-style connector accepts: a plain object
 # root with properties, no top-level union, no $schema and no lookaround in any pattern.
