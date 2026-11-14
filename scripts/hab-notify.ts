@@ -1,31 +1,49 @@
 /**
  * The arrival notifier CLI (ADR-021). Shows new HAB mail in the agent's own screen through
- * a configured adapter and applies the user's choice. Prints no tokens. Only `events`
- * prints message text: it is the Hermes Desktop reader, and Hermes shows that text.
+ * a configured adapter and applies the user's choice. Prints no tokens. Only `events` (the
+ * Hermes Desktop reader), `statusline` (the Claude Code status line) and `show` (one notice
+ * for its recipient) print message text, and only to the recipient's own screen.
  *
  *   hab-notify --config <notify.json> run            keep checking every interval_ms
  *   hab-notify --config <notify.json> check          check once
  *   hab-notify --config <notify.json> list           notices waiting for a choice
  *   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
  *   hab-notify --config <notify.json> show-again <message_id> [sender_id]
+  hab-notify --config <notify.json> show <message_id> [sender_id]
+ *   hab-notify --config <notify.json> show <message_id> [sender_id]
+ *       (prints one notice's full display from the local choice record, for a screen that
+ *       could show only part of it, such as the Claude Code status line)
  *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
  *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
  *       local screen file, never HAB)
  *   hab-notify --config <notify.json> action
  *       (screen type hermes-desktop: Hermes Desktop's actions_command. Reads one decision
  *       {action: "decide", ...} on stdin from the card's buttons and prints {changed, state})
+ *   hab-notify --config <notify.json> statusline
+ *       (screen type claude-code: the Claude Code status line command; reads the session
+ *       JSON on stdin and only the local choice record, never HAB)
+ *
+ * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
   HabNotifierClient,
   HermesDesktopScreen,
   JsonlScreen,
+  ProductScreen,
   ReceiptNotifier,
   SQLiteNotices,
+  chatgptConnectorHandoff,
+  chatgptConnectorTarget,
+  claudeCodeHandoff,
+  claudeCodeStatusLine,
+  claudeCodeTarget,
+  codexHandoff,
+  codexTarget,
   hermesDesktopPage,
 } from "../src/agent-notify/index.ts";
 import type { AgentScreen } from "../src/agent-notify/index.ts";
@@ -36,7 +54,8 @@ const usage = `usage:
   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
   hab-notify --config <notify.json> show-again <message_id> [sender_id]
   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
-  hab-notify --config <notify.json> action   (one decision as JSON on stdin)`;
+  hab-notify --config <notify.json> action   (one decision as JSON on stdin)
+  hab-notify --config <notify.json> statusline`;
 
 /** What Hermes Desktop's decision route sends for a button press on one card. */
 const actionSchema = z.strictObject({
@@ -49,6 +68,19 @@ const actionSchema = z.strictObject({
   stored_session_id: z.string().min(1),
   choice: z.enum(["accept", "later", "decline"]),
 });
+
+/** A trusted command from this config: absolute argv[0] and cwd. */
+const commandSchema = z.strictObject({
+  command: z
+    .array(z.string().min(1).max(4096))
+    .min(1)
+    .max(32)
+    .refine((argv) => isAbsolute(argv[0]!), "absolute command"),
+  cwd: z.string().refine((path) => isAbsolute(path), "absolute cwd"),
+  env: z.record(z.string(), z.string()).optional(),
+  timeout_ms: z.number().int().min(1000).max(300_000).optional(),
+});
+const label = z.string().min(1).max(2048);
 
 const configSchema = z.strictObject({
   /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
@@ -81,18 +113,38 @@ const configSchema = z.strictObject({
       backend_namespace: z.string().min(1).max(2048),
       profile_scope: z.string().min(1).max(2048),
       /** Optional: hands the request to the conversation after 対応する (hermes_bridge.desktop_handoff). */
-      handoff: z
+      handoff: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("codex"),
+      path: z.string().min(1),
+      /** The Codex thread the user works in. */
+      thread_id: label,
+      /** Optional: the running app-server that serves the thread; without it, unsupported. */
+      app_server: z
         .strictObject({
-          command: z
-            .array(z.string().min(1).max(4096))
-            .min(1)
-            .max(32)
-            .refine((argv) => isAbsolute(argv[0]!), "absolute command"),
-          cwd: z.string().refine((path) => isAbsolute(path), "absolute cwd"),
-          env: z.record(z.string(), z.string()).optional(),
+          url: z.string().regex(/^wss?:\/\/[^\s]+$/),
+          token_file: z.string().min(1).optional(),
           timeout_ms: z.number().int().min(1000).max(300_000).optional(),
         })
         .optional(),
+      display_command: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("claude-code"),
+      path: z.string().min(1),
+      /** The Claude Code session (the status line's session_id). */
+      session_id: label,
+      /** Optional: the hab-claude-channel socket; without it, unsupported. */
+      channel_socket: z.string().min(1).optional(),
+      display_command: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("chatgpt-connector"),
+      path: z.string().min(1),
+      /** A label for the ChatGPT conversation or project, such as dots. */
+      conversation: label,
+      display_command: commandSchema.optional(),
     }),
   ]),
   interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
@@ -127,16 +179,115 @@ const hermesBinding = (
   receiver_id: config.agent_id,
 });
 
+type ScreenConfig = NotifyConfig["screen"];
+const claudeBinding = (
+  screen: Extract<ScreenConfig, { type: "claude-code" }>,
+) => ({
+  session_id: screen.session_id,
+  ...(screen.channel_socket
+    ? { channel_socket: expand(screen.channel_socket) }
+    : {}),
+});
+
 function configuredScreen(config: NotifyConfig): AgentScreen {
   const screen = config.screen;
-  return screen.type === "jsonl"
-    ? new JsonlScreen(expand(screen.path), screen.target)
-    : new HermesDesktopScreen(
-        expand(screen.path),
+  const path = expand(screen.path);
+  const display =
+    "display_command" in screen && screen.display_command
+      ? { display_command: screen.display_command }
+      : {};
+  switch (screen.type) {
+    case "jsonl":
+      return new JsonlScreen(path, screen.target);
+    case "hermes-desktop":
+      return new HermesDesktopScreen(
+        path,
         hermesBinding(config, screen),
         screen.handoff ? { handoff: screen.handoff } : {},
       );
+    case "codex": {
+      const binding = {
+        thread_id: screen.thread_id,
+        ...(screen.app_server
+          ? {
+              app_server: {
+                ...screen.app_server,
+                ...(screen.app_server.token_file
+                  ? { token_file: expand(screen.app_server.token_file) }
+                  : {}),
+              },
+            }
+          : {}),
+      };
+      return new ProductScreen({
+        path,
+        target: codexTarget(binding),
+        ...display,
+        handoff: (message) => codexHandoff(binding, message),
+      });
+    }
+    case "claude-code": {
+      const binding = claudeBinding(screen);
+      return new ProductScreen({
+        path,
+        target: claudeCodeTarget(binding),
+        ...display,
+        handoff: (message) => claudeCodeHandoff(binding, message),
+      });
+    }
+    case "chatgpt-connector":
+      return new ProductScreen({
+        path,
+        target: chatgptConnectorTarget(screen),
+        ...display,
+        handoff: chatgptConnectorHandoff,
+      });
+  }
 }
+
+/** `statusline`: the Claude Code status line for the bound session; never calls HAB. */
+/** Quotes one shell word unless it is plainly safe. */
+const shellWord = (word: string) =>
+  /^[A-Za-z0-9_./:=@+-]+$/.test(word)
+    ? word
+    : `'${word.replaceAll("'", "'\\''")}'`;
+
+async function statusline(
+  config: NotifyConfig,
+  input: string,
+  configPath: string,
+) {
+  const screen = config.screen;
+  if (screen.type !== "claude-code") return null;
+  let session: { session_id?: unknown } = {};
+  try {
+    session = JSON.parse(input) as { session_id?: unknown };
+  } catch {
+    // No session JSON: show nothing.
+  }
+  const binding = claudeBinding(screen);
+  const store = new SQLiteNotices(
+    expand(config.store),
+    claudeCodeTarget(binding),
+  );
+  try {
+    // The hints must run as shown: this node, this script and this config.
+    const command = [
+      process.execPath,
+      fileURLToPath(import.meta.url),
+      "--config",
+      configPath,
+    ]
+      .map(shellWord)
+      .join(" ");
+    return claudeCodeStatusLine(store.open(), binding, session, command);
+  } finally {
+    store.close();
+  }
+}
+
+/** Reads stdin through the injected reader, capped at 1 MiB. */
+const readInput = (input: () => string) => input().slice(0, 1024 * 1024);
 
 /** `events [--limit N] [--after CURSOR]`: the Hermes Desktop reader page, as one JSON line. */
 function events(config: NotifyConfig, args: string[]) {
@@ -227,6 +378,20 @@ export async function main(
       return 1;
     }
   }
+  if (command === "statusline") {
+    // A failed status line prints nothing: it must never break the Claude Code screen.
+    try {
+      const line = await statusline(config, readInput(input), expand(args[1]));
+      if (line === null) {
+        out(usage);
+        return 2;
+      }
+      if (line) out(line);
+    } catch {
+      // Nothing to show.
+    }
+    return 0;
+  }
   let action: z.infer<typeof actionSchema> | undefined;
   if (command === "action") {
     // The press must be for a card this notifier showed: the same conversation, reader and
@@ -307,6 +472,17 @@ export async function main(
           ),
         );
         return 0;
+      case "show": {
+        if (!id) break;
+        // The optional third argument is the sender_id.
+        const record = notifier.get(id, choice);
+        if (!record) {
+          out(JSON.stringify({ error: "invalid_request" }));
+          return 1;
+        }
+        out(record.message.display);
+        return 0;
+      }
       case "show-again":
         if (!id) break;
         // The optional third argument is the sender_id.
