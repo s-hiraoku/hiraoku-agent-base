@@ -19,6 +19,10 @@ import {
   parseLabOptions,
 } from "./lib/delivery-lab.mjs";
 import {
+  assertCurrentToolchain,
+  readToolchainPin,
+} from "./lib/toolchain.mjs";
+import {
   pendingBackends,
   pendingMigrationRequirements,
 } from "../test/delivery-lab/manifest.js";
@@ -32,11 +36,7 @@ try {
   process.exit(2);
 }
 const { release, full } = options;
-const pinnedNode = readFileSync(join(repo, ".node-version"), "utf8").trim();
-if (process.versions.node !== pinnedNode)
-  throw Error(
-    `delivery lab requires Node ${pinnedNode}; current ${process.versions.node}`,
-  );
+assertCurrentToolchain(readToolchainPin(repo));
 const root = join(repo, ".lab");
 mkdirSync(root, { recursive: true, mode: 0o700 });
 const run = mkdtempSync(join(root, "run-"));
