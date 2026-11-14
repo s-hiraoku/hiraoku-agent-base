@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -43,4 +44,21 @@ export function assertNpmPin(pin, actualNpm) {
   );
   error.code = "TOOLCHAIN_NPM_MISMATCH";
   throw error;
+}
+
+export function readNpmVersion(run = execFileSync) {
+  return run("npm", ["--version"], { encoding: "utf8" }).trim();
+}
+
+/** Fail closed when the active Node or npm differs from the repo pins. */
+export function assertCurrentToolchain(
+  pin,
+  {
+    node = process.versions.node,
+    execPath = process.execPath,
+    npm = readNpmVersion(),
+  } = {},
+) {
+  assertNodePin(pin, node, execPath);
+  assertNpmPin(pin, npm);
 }

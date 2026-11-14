@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+  assertCurrentToolchain,
   assertNodePin,
   assertNpmPin,
   readToolchainPin,
@@ -68,4 +69,26 @@ test("matching pins pass without throwing", () => {
   const pin = { node: "26.13.1", npm: "11.20.0" };
   assertNodePin(pin, "26.13.1", "/home/ubuntu/.nvm/versions/node/v26.13.1/bin/node");
   assertNpmPin(pin, "11.20.0");
+});
+
+test("assertCurrentToolchain refuses npm drift with a matching Node", () => {
+  const pin = { node: "26.13.1", npm: "11.20.0" };
+  assert.throws(
+    () =>
+      assertCurrentToolchain(pin, {
+        node: "26.13.1",
+        execPath: "/home/ubuntu/.nvm/versions/node/v26.13.1/bin/node",
+        npm: "11.21.2",
+      }),
+    (error) => error.code === "TOOLCHAIN_NPM_MISMATCH",
+  );
+});
+
+test("assertCurrentToolchain accepts matching Node and npm", () => {
+  const pin = { node: "26.13.1", npm: "11.20.0" };
+  assertCurrentToolchain(pin, {
+    node: "26.13.1",
+    execPath: "/home/ubuntu/.nvm/versions/node/v26.13.1/bin/node",
+    npm: "11.20.0",
+  });
 });
