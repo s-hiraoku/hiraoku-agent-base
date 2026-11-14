@@ -88,7 +88,10 @@ export class McpHttpGateway {
     void _input;
     return context;
   }
-  protected createServer(resolve: DeliveryContextResolver, gate: DeliveryMcpGate) {
+  protected createServer(
+    resolve: DeliveryContextResolver,
+    gate: DeliveryMcpGate,
+  ) {
     return createDeliveryMcpServer(
       this.#service,
       resolve,
@@ -214,9 +217,11 @@ export class McpHttpGateway {
       )
         throw new HttpFailure(504, "resource_rejected");
     };
-    const record = async (category: AuditCategory) => {
+    const record = async (category: AuditCategory, reason?: string) => {
       check();
-      await this.#audit.record(category, correlation);
+      await (reason === undefined
+        ? this.#audit.record(category, correlation)
+        : this.#audit.record(category, correlation, reason));
       check();
     };
     let cancelStatus = 504;
@@ -250,11 +255,13 @@ export class McpHttpGateway {
           throw error;
         }
         let finished = false;
-        return async (success) => {
+        return async (success, reason) => {
           if (finished) return;
           finished = true;
           try {
-            await record(success ? "tool_succeeded" : "tool_error");
+            await (success
+              ? record("tool_succeeded")
+              : record("tool_error", reason));
           } finally {
             pendingTools--;
             releaseAdmission();

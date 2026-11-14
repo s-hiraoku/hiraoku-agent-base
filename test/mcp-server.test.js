@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { publicError } from "./tool-error-fixture.js";
 import { test } from "node:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -212,7 +213,7 @@ test("missing, throwing, unverified and policy-less auth fail closed even for an
   ]) {
     const result = await call(e, "hab_submit", message());
     assert.equal(result.isError, true);
-    assert.deepEqual(result.structuredContent, { error: "forbidden" });
+    assert.deepEqual(result.structuredContent, publicError("forbidden"));
     assert.equal(JSON.stringify(result).includes("private"), false);
   }
   assert.equal(count(f), 0);
@@ -228,9 +229,10 @@ test("missing, throwing, unverified and policy-less auth fail closed even for an
       }),
     ],
   ]) {
-    assert.deepEqual((await call(f.endpoint(), name, args)).structuredContent, {
-      error: "forbidden",
-    });
+    assert.deepEqual(
+      (await call(f.endpoint(), name, args)).structuredContent,
+      publicError("forbidden"),
+    );
   }
 });
 
@@ -303,7 +305,7 @@ test("tool arguments cannot impersonate a sender or select a foreign mailbox and
   assert.deepEqual(
     (await call(f.c, "hab_status", { message_id: m.message_id }))
       .structuredContent,
-    { error: "not_found" },
+    publicError("not_found"),
   );
   assert.equal(
     (await call(f.b, "hab_poll")).structuredContent.delivery.message
@@ -327,9 +329,10 @@ test("each tool resolves current connection context and rechecks policy so revoc
     ["hab_status", { message_id: m.message_id }],
     ["hab_poll", {}],
   ])
-    assert.deepEqual((await call(a, name, args)).structuredContent, {
-      error: "forbidden",
-    });
+    assert.deepEqual(
+      (await call(a, name, args)).structuredContent,
+      publicError("forbidden"),
+    );
   assert.equal(resolutions, 4);
   assert.equal(count(f), 1);
 });
@@ -339,15 +342,16 @@ test("operation-specific refusal remains enforced independently of a valid subje
     m = message();
   await call(f.a, "hab_submit", m);
   f.denied.add("poll");
-  assert.deepEqual((await call(f.b, "hab_poll")).structuredContent, {
-    error: "forbidden",
-  });
+  assert.deepEqual(
+    (await call(f.b, "hab_poll")).structuredContent,
+    publicError("forbidden"),
+  );
   f.denied.delete("poll");
   const d = (await call(f.b, "hab_poll")).structuredContent.delivery;
   f.denied.add("ack");
   assert.deepEqual(
     (await call(f.b, "hab_ack", request(d))).structuredContent,
-    { error: "forbidden" },
+    publicError("forbidden"),
   );
   assert.equal(
     f.raw.prepare("SELECT state FROM delivery_messages").get().state,
@@ -384,9 +388,10 @@ test("stale ACKs cannot consume new leases and exact committed ACK retry survive
   f.raw.exec("UPDATE delivery_messages SET lease_until=0,next_visible_at=0");
   const second = (await call(f.b, "hab_poll")).structuredContent.delivery;
   assert.ok(second.generation > first.generation);
-  assert.deepEqual((await call(f.b, "hab_ack", old)).structuredContent, {
-    error: "invalid_ack",
-  });
+  assert.deepEqual(
+    (await call(f.b, "hab_ack", old)).structuredContent,
+    publicError("invalid_ack"),
+  );
   const req = request(second),
     r = (await call(f.b, "hab_ack", req)).structuredContent;
   f.raw.exec("UPDATE delivery_messages SET expires_at=0");
@@ -394,7 +399,7 @@ test("stale ACKs cannot consume new leases and exact committed ACK retry survive
   assert.deepEqual(
     (await call(f.b, "hab_ack", { ...req, generation: req.generation + 1 }))
       .structuredContent,
-    { error: "ack_idempotency_conflict" },
+    publicError("ack_idempotency_conflict"),
   );
 });
 
@@ -403,18 +408,18 @@ test("core body and expiry limits reject invalid payloads with fixed errors and 
     oversized = message();
   oversized.body.parts[0].text = "private".repeat(3000);
   const huge = await call(f.a, "hab_submit", oversized);
-  assert.deepEqual(huge.structuredContent, { error: "capacity_exceeded" });
+  assert.deepEqual(huge.structuredContent, publicError("capacity_exceeded"));
   assert.equal(JSON.stringify(huge).includes("private"), false);
   assert.deepEqual(
     (await call(f.a, "hab_submit", message(Date.now() - 2 * 3600000)))
       .structuredContent,
-    { error: "expired_before_acceptance" },
+    publicError("expired_before_acceptance"),
   );
   const invalid = message();
   invalid.expires_at = invalid.first_sent_at;
   assert.deepEqual(
     (await call(f.a, "hab_submit", invalid)).structuredContent,
-    { error: "invalid_contract" },
+    publicError("invalid_contract"),
   );
   assert.equal(count(f), 0);
 });
@@ -444,7 +449,7 @@ test("unexpected storage details are normalized and transaction failure cannot r
     "CREATE TRIGGER fail_accept BEFORE INSERT ON delivery_messages BEGIN SELECT RAISE(ABORT,'synthetic private storage detail'); END",
   );
   const r = await call(f.a, "hab_submit", message());
-  assert.deepEqual(r.structuredContent, { error: "operation_failed" });
+  assert.deepEqual(r.structuredContent, publicError("operation_failed"));
   assert.equal(JSON.stringify(r).includes("private"), false);
   assert.equal(count(f), 0);
 });
@@ -479,8 +484,7 @@ test("legacy JSON-RPC/SSE clients use the same isolated four-tool contract", asy
     (await call(f.a, "hab_submit", m, false)).structuredContent.sender_id,
     "a",
   );
-  const d = (await call(f.b, "hab_poll", {}, false)).structuredContent
-    .delivery;
+  const d = (await call(f.b, "hab_poll", {}, false)).structuredContent.delivery;
   assert.equal(
     (await call(f.b, "hab_ack", request(d), false)).structuredContent.state,
     "acked",

@@ -26,7 +26,9 @@ host は `npm run hab:host` で起動し、アドレスの登録と接続は `np
 
 ## 送信と受信
 
-エージェントは標準の MCP client から 5 つのツールを使います（[共通 MCP 接続](common-mcp-connection.md)）。
+エージェントは標準の MCP client から host の `/mcp` に接続し、`hab_send`（アドレスと本文で送る）・`hab_inbox`（受信箱を読み、既読にする）・`hab_reply`（受け取ったメッセージに返す）・`hab_status`（送ったものが読まれたか）の 4 つを使います。ID・時刻・期限・thread は host が埋めます。未読は 7 日で期限切れになり、既読の本文は 7 日読み直せます（[ADR-020](hab-decisions.md)、[共通 MCP 接続](common-mcp-connection.md)）。
+
+agent SDK と受信サービスは `/mcp/delivery` の低レベルの 5 ツールを使います。
 
 1. `hab_resolve` でアドレスを解決します。
 2. `hab_submit` で送ります。同じ `message_id` の再送は同じ受付結果になります。
@@ -38,7 +40,7 @@ host は `npm run hab:host` で起動し、アドレスの登録と接続は `np
 ## 任意の入口と調整
 
 - **A2A**: 設定に `a2a` section があるときだけ loopback listener を開きます。A2A Task は host 所有のアドレスから設定済みの受信者へ送られ、結果は受信者の永続返信で報告します（[A2A](a2a/a2a-host-preview.md)）。
-- **OAuth 入口**: HTTPS reverse proxy から同じ 5 ツールを受けます（[OAuth 入口](operations/oauth-ingress.md)、[常用 OAuth](operations/persistent-mcp-auth.md)）。
+- **OAuth 入口**: HTTPS reverse proxy から同じ 2 つの catalog（`/mcp` と `/mcp/delivery`）を受けます（[OAuth 入口](operations/oauth-ingress.md)、[常用 OAuth](operations/persistent-mcp-auth.md)）。
 - **アドレス照会**: 任意の `hab_discover` ツール（[エージェント照会](connections/mcp-agent-discovery.md)）。
 - **配送の調整**: 個体別の容量、公平な poll、公平な writer 受付（[delivery](delivery/)）。
 

@@ -391,3 +391,11 @@ The owner chose to rebuild the names before service start, with no compatibility
 - Requirement statements that used "Relay" for the current host-side delivery now say host, delivery or HAB; no requirement was weakened. Citations whose excerpts changed only by these names were rehashed; the `docs/hab-decisions.md` citations moved eight lines for the new ADR-019 section.
 - `docs/history`, earlier ADR text, conflict records and review records keep the names of their time apart from file paths.
 - In source-review.json every changed source was re-read and rehashed with an appended note.
+
+## Agent catalog and host inbox (ADR-020, 2026-11-14)
+
+The owner chose to show agents only what they need to do: send, read the inbox, reply and check a sent message. The host serves the agent catalog (`hab_send`, `hab_inbox`, `hab_reply`, `hab_status`) at `/mcp` and the delivery catalog (`hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack`) at `/mcp/delivery` for the agent SDK and the receive service, with the same credential.
+
+- HAB-F15 and HAB-D03 now state the owner's changes: a deadline fixed at acceptance of at most seven days (the SDK default stays one hour), and a host-inbox read keeping the body for seven days while an SDK ACK still removes it at once. Both cite the ADR-020 section of `docs/hab-decisions.md`.
+- HAB-F04 and HAB-F05 cite the renamed delivery-catalog section of `docs/common-mcp-connection.md`; other citations moved with their unchanged excerpts.
+- The `mcp-durable-roundtrip` check drives the SDK client at `state.delivery_url`. In source-review.json every changed source was re-read and rehashed with an appended note.

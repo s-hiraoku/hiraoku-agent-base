@@ -66,9 +66,7 @@ test(
     assert.deepEqual(
       {
         ...f.raw("inbox-b.sqlite", (db) =>
-          db
-            .prepare("SELECT state,reason,request FROM receiver_acks")
-            .get(),
+          db.prepare("SELECT state,reason,request FROM receiver_acks").get(),
         ),
       },
       { state: "quarantined", reason: "forbidden", request: null },
@@ -141,10 +139,7 @@ test(
     const m = f.makeMessage("b");
     await f.client("a").submit(m);
     for (const [name, args] of [
-      [
-        "hab_submit",
-        { ...f.makeMessage("b"), sender_id: f.agents.c.agent_id },
-      ],
+      ["hab_submit", { ...f.makeMessage("b"), sender_id: f.agents.c.agent_id }],
       ["hab_poll", { recipient_id: f.agents.b.agent_id }],
       [
         "hab_status",
@@ -196,7 +191,7 @@ test(
     assert.equal(f.agents.b.state, "waiting_connection");
     await assert.rejects(
       f.client("a").resolve(f.agents.b.address),
-      code("forbidden"),
+      code("unknown_address"),
     );
     await assert.rejects(f.client("b").poll(), code("forbidden"));
     assert.equal(f.count("messages"), 0);
@@ -474,8 +469,7 @@ test(
     assert.equal(
       f.raw(
         "inbox-b.sqlite",
-        (db) =>
-          db.prepare("SELECT attempts FROM receiver_acks").get().attempts,
+        (db) => db.prepare("SELECT attempts FROM receiver_acks").get().attempts,
       ),
       2,
     );
@@ -568,7 +562,7 @@ test(
     await assert.rejects(f.client("b").poll(), code("forbidden"));
     await assert.rejects(
       f.client("a").resolve(f.agents.b.address),
-      code("forbidden"),
+      code("unknown_address"),
     );
     assert.equal((await f.client("a").status(m.message_id)).state, "pending");
     await f.restart();
@@ -629,7 +623,7 @@ test(
     );
     await assert.rejects(
       f.client("a").resolve(f.agents.b.address),
-      code("forbidden"),
+      code("unknown_address"),
     );
     block(false, "unblock-a-b");
     await b.receiveOnce();

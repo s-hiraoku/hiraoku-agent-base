@@ -68,7 +68,7 @@ test("a previous name never reaches a stopped agent or another ID", async (t) =>
   });
   assert.throws(
     () => f.hab.resolve(f.contexts.b, a.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   f.registry.setAccess(f.admin, {
     request_id: "restart-a",
@@ -114,7 +114,7 @@ test("zero grace refuses a previous name at once and status reports that it no l
   renamed(f, a);
   assert.throws(
     () => f.hab.resolve(f.contexts.b, a.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   const [previous] = f.registry.previousNames(f.admin);
   assert.equal(previous.resolves, false);

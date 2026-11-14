@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { publicError } from "./tool-error-fixture.js";
 import { test } from "node:test";
 import { ReadableStream } from "node:stream/web";
 import { McpHttpGateway } from "../src/host/mcp/http.ts";
@@ -484,18 +485,20 @@ test(
       "hab_submit",
       m,
     );
-    assert.deepEqual(before.body.result.structuredContent, {
-      error: "operation_failed",
-    });
+    assert.deepEqual(
+      before.body.result.structuredContent,
+      publicError("operation_failed"),
+    );
     assert.equal(f.count(), 0);
     const after = await call(
       f.gateway({}, f.verifier, failing("tool_succeeded")),
       "hab_submit",
       m,
     );
-    assert.deepEqual(after.body.result.structuredContent, {
-      error: "operation_failed",
-    });
+    assert.deepEqual(
+      after.body.result.structuredContent,
+      publicError("operation_failed"),
+    );
     assert.equal(f.count(), 1);
     const recovered = await call(f.gateway(), "hab_submit", m);
     assert.equal(recovered.body.result.structuredContent.sender_id, "a");
@@ -598,7 +601,7 @@ test(
           { headers: { Authorization: "Bearer fixture-c" } },
         )
       ).body.result.structuredContent,
-      { error: "forbidden" },
+      publicError("forbidden"),
     );
     assert.equal(f.count(), 2);
   },
@@ -705,8 +708,7 @@ test(
     await tick();
     assert.equal((await g.fetch(request())).status, 200);
     assert.equal(
-      (await call(g, "hab_submit", m)).body.result.structuredContent
-        .message_id,
+      (await call(g, "hab_submit", m)).body.result.structuredContent.message_id,
       m.message_id,
     );
     assert.equal(f.count(), 1);

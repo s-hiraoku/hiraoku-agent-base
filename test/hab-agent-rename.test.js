@@ -51,7 +51,7 @@ test("opt-in rename preserves the birth identity and reserves the old name witho
   );
   assert.throws(
     () => f.hab.resolve(f.contexts.b, a.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   assert.equal(
     f.registry.preview(f.admin, {
@@ -220,7 +220,7 @@ test("permanent reservations prevent cross-agent reuse and permit an explicit sa
   );
   assert.throws(
     () => f.hab.resolve(f.contexts.b, current.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   assert.throws(
     () => f.registryRaw.exec("DELETE FROM hab_address_reservations"),

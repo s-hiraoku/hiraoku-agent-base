@@ -15,10 +15,15 @@ h=(-H 'Content-Type: application/json' -H 'Accept: application/json, text/event-
 b='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$url" "${h[@]}" --data-binary "$b")
 [ "$code" = 401 ] && echo "ok   unauthenticated tools/list -> 401" || fail "unauthenticated tools/list -> $code (want 401)"
+delivery=$(jq -r .delivery_url "$state")
+list() { curl -s -X POST "$1" "${h[@]}" -H "Authorization: Bearer $(jq -r ".agents.$2.token" "$state")" --data-binary "$b" \
+    | jq -r '[.result.tools[].name]|sort|join(",")' 2>/dev/null; }
 for a in a b c; do
-  tools=$(curl -s -X POST "$url" "${h[@]}" -H "Authorization: Bearer $(jq -r ".agents.$a.token" "$state")" --data-binary "$b" \
-    | jq -r '[.result.tools[].name]|sort|join(",")' 2>/dev/null)
+  tools=$(list "$url" "$a")
+  [ "$tools" = hab_inbox,hab_reply,hab_send,hab_status ] \
+    && echo "ok   agent $a $(jq -r ".agents.$a.address" "$state") sees the 4 agent tools at /mcp" || fail "agent $a /mcp tools='$tools'"
+  tools=$(list "$delivery" "$a")
   [ "$tools" = hab_ack,hab_poll,hab_resolve,hab_status,hab_submit ] \
-    && echo "ok   agent $a $(jq -r ".agents.$a.address" "$state") sees 5 hab tools" || fail "agent $a tools='$tools'"
+    && echo "ok   agent $a sees the 5 delivery tools at /mcp/delivery" || fail "agent $a /mcp/delivery tools='$tools'"
 done
 [ $ok = 1 ] && echo "DOCTOR_OK $url" || { echo "DOCTOR_FAIL"; exit 1; }

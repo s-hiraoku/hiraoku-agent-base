@@ -71,7 +71,7 @@ JS
   a2a_url=$(head -1 "$run/evidence/host.log" | jq -r '.a2a_url // ""')
   pend="$inst/pending.local.json"; now=$(jq -r .now "$pend")
   state=$(jq -n --arg url "$url" --arg port "$port" --arg pid "$(cat "$inst/host.pid")" --arg a2a "$a2a_url" \
-    '{url:$url,port:($port|tonumber),pid:($pid|tonumber),agents:{}} + (if $a2a == "" then {} else {a2a_url:$a2a} end)')
+    '{url:$url,delivery_url:($url + "/delivery"),port:($port|tonumber),pid:($pid|tonumber),agents:{}} + (if $a2a == "" then {} else {a2a_url:$a2a} end)')
   for k in a b; do
     addr=$(jq -r --arg k "$k" '.agents[$k]' "$pend")
     out=$(cd "$repo" && node scripts/hab-admin.ts --config "$cfg" connect --address "$addr" --connection-id "verify-$k-$now")

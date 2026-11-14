@@ -167,8 +167,8 @@
       {
         "path": "src/hab/README.md",
         "scope": "full",
-        "sha256": "edc95d5c2b37cf0831ead6b493a2d54f65a3300ea13745cc930652f49b0e64cf",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withAuthorization called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "sha256": "fab506e6c9abddd14c448672f761fe5d3364802836786105cae5d66c0da4ca46",
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); it narrows the refused reentrancy to admin reentrancy and states that a withAuthorization called inside another's callback joins its transaction, so the A2A host checks its caller and admits the host submit under one lock. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/hab/auth-groups.ts",
@@ -210,13 +210,13 @@
     "supplemental_sources": [
       {
         "path": "src/hab/sqlite-registry.ts",
-        "sha256": "a6055b185f7c82a57569c13e2eb2b3f2d2dac85992b6bf0b678270bef35722d1",
+        "sha256": "c3f018fe02c297d14b9cfb945e2b4614eb0dc1ef961741e59210d903e092ec8d",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from c892c57 (registryOptionsSchema, createBoundGroup, #addMember, #stopMembers, setGroupAccess, revokeGroupBinding, omitted-selection query); diff from efa2435 (createBoundGroup rights, #authorizedTx)",
         "summary": "registryOptionsSchema is the single Registry limit schema used by the constructor and the host config. setGroupAccess to stopped/retired and revocation of the last group binding run #stopMembers, which sets every active member to stopped with operations '[]' and a bumped epoch in the same mutation. createBoundGroup runs in one transaction that checks the group_bind and group_member admin rights and then, through #mutateLocked with group_create, inserts the group, binds the connection and adds the member, so a missing right leaves nothing. withAuthorization goes through #authorizedTx: a withAuthorization called inside another's action runs in the enclosing transaction instead of opening one, so a guard and the operation it admits share one Registry lock. Omitted selection joins members to the agent table and counts only active ones. Rest of the Registry not re-read. P3a group-only binding (2026-11-12): migrate() always creates the group schema and #convertIndividualBindings moves every earlier direct hab_bindings row into a new single-member group (state active with every operation when a binding is live, stopped otherwise, retired for a retired address) under the same binding ID, fingerprint and timestamps, then marks the old rows revoked; bind/bindVerified/revoke/inspectBinding are removed, createBoundGroupVerified and inspectGroupBinding are added, withAuthorization/discovery/#peer authenticate only through group bindings and membership, and authentication_groups is accepted but ignored.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); createBoundGroup also checks group_bind and group_member, and withAuthorization joins an enclosing withAuthorization transaction through #authorizedTx. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Added during Phase 4 maintenance (diff from c892c57) as source evidence for HAB-A12, HAB-A19 and HAB-A20. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); createBoundGroup also checks group_bind and group_member, and withAuthorization joins an enclosing withAuthorization transaction through #authorizedTx. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/host/admin.ts",
@@ -250,13 +250,13 @@
       },
       {
         "path": "src/host/server.ts",
-        "sha256": "e5f77967dca3e85b1833ecb25d8ba9db199b434372bc88c9c6db4a8eb805486f",
+        "sha256": "90f26e616aed1f647988f99da28f8f54bb94a26995b17782e1774c2ad3f9425b",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "diff from cddd9f4 (a2a option validation, hostContext and provisioner contexts, Registry administrator and individual callbacks, provisioning, startHostA2a wiring, close order)",
         "summary": "The a2a port must be 0 or at least 1024 and differ from the MCP and ingress ports. Two frozen in-process objects are the host A2A context and the provisioning administrator; the Registry administrator callback answers only while provisioning is true, for that object and the five provisioning operations. The individual callback returns the host principal only for hostContext and drops any operator or ingress individual whose issuer is urn:hab:host. Provisioning runs after registry.migrate() and before delivery opens; the A2A entry starts after the listeners and closes before delivery and the Registry. Rest of the host not re-read.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       }
     ],
     "attestation": {
@@ -273,23 +273,23 @@
     "supplemental_sources": [
       {
         "path": "src/agent-sdk/receiver.ts",
-        "sha256": "c9552cc20a2d37ee858e137b741028c6f3add36ab10960928252a033495ce173",
+        "sha256": "d5b9b336e078e4d99a2fb956a62d32787204fc1f33be817323fd784b1d55d6a7",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual model-free receiveOnce, injected ReceiverStore/Transport API, save then ACK, stable pending journal flush and overlap guard. InboxLifecycleStore declares releaseBody, releaseUnconfirmable (release a body no ACK can confirm any more, without handing it to the application) and maintain.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/receiver.ts; the recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); InboxLifecycleStore gains releaseUnconfirmable(senderId, messageId). 2026-11-11 recovery diff review: Poll/ACK preserve only the local branded recovery reason; generic errors still become transport failure. Pending ACK data is not rejected or rewritten on this path."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/receiver.ts; the recorded observation still holds. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); InboxLifecycleStore gains releaseUnconfirmable(senderId, messageId). 2026-11-11 recovery diff review: Poll/ACK preserve only the local branded recovery reason; generic errors still become transport failure. Pending ACK data is not rejected or rewritten on this path. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/agent-sdk/sender.ts",
-        "sha256": "2f427dfc6aa512861eea017e6db4a87982710801ecf4328f62936593cca8bed0",
+        "sha256": "6e4b23717a5df4f35316514a8a7287a9333d392e3fcbabefdf545036a31e1c05",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Actual one-step sender API, journal-owned claim/defer/quarantine/status-only behavior and receipt confirmation. sendOnce(messageId) attempts only that record's due job; without an argument it claims the next due job as before.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); sendOnce(messageId) claims only that record's due job. 2026-11-11 recovery diff review: Durably defer the original job before propagating local branded recovery; no new identity, intent or quarantine is introduced by this path."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sender.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); sendOnce(messageId) claims only that record's due job. 2026-11-11 recovery diff review: Durably defer the original job before propagating local branded recovery; no new identity, intent or quarantine is introduced by this path. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/relay/service.ts",
@@ -303,13 +303,13 @@
       },
       {
         "path": "src/messaging/delivery-service.ts",
-        "sha256": "f8428ac3ebdeb846962e45251a3589f7d0effbbab31e79b8f37ce7ddd1f2f215",
+        "sha256": "e392ee809ed7203be70424be2557a3f86c616ae71d427b1f797271a652cdb36f",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Successor of the port half of src/relay/service.ts: MessagingError, Receipt, Authorization (submit/status/poll/ack/maintenance), Delivery, AckReceipt and the four-method DeliveryService whose only implementation is the JetStream package.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/agent-sdk/index.ts",
@@ -333,13 +333,13 @@
       },
       {
         "path": "src/agent-sdk/sqlite-outbox.ts",
-        "sha256": "8eff042cf1d3ba84961202768445a44713f11d17372e7162e451765c9adbc8c8",
+        "sha256": "9028e6633fd21937f132b9378cc35f7d2fbb572c25d5d29799b7229b8fce8cf1",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow",
         "summary": "retainedCounts reads total rows and those whose expiry is strictly after a safe-integer horizon, without reservations. maintain accepts boolean or integer collection budget from0 to limit: expiry runs first and collection is capped by both remaining work budget and requested collection count. Eligible states, replay-bound GC safety, horizons and retention remain required; false/zero never disables body expiry.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); claim(messageId) validates the identifier and selects only that queued record, so a shared outbox never sends another caller's intent. Local follow-up on 0fc76a6: Read maintain(limit, collect=true): the optional boolean only disables the due-row DELETE batch; #expire still runs, removing expired payloads while preserving rows/admission slots. Invalid nonboolean values are refused; default behavior is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 5 maintenance: re-read the diff from 1cae78c (agent SDK move out of src/relay and the generic-nats removal): moved unchanged from src/relay/sqlite-outbox.ts; the recorded observation still holds. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); claim(messageId) validates the identifier and selects only that queued record, so a shared outbox never sends another caller's intent. Local follow-up on 0fc76a6: Read maintain(limit, collect=true): the optional boolean only disables the due-row DELETE batch; #expire still runs, removing expired payloads while preserving rows/admission slots. Invalid nonboolean values are refused; default behavior is unchanged. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/relay/sqlite-store.ts",
@@ -413,13 +413,13 @@
       },
       {
         "path": "src/host/mcp/server.ts",
-        "sha256": "13531a2e8354e2732330c47a632b5553682eace1cec24bf876cd1b56831c6f12",
+        "sha256": "35cb89e55ae256b88cc3428c46b127ae837d31d9c1f4c9c67e74102b6e6f5c52",
         "kind": "implementation/config/inline-sql",
         "review": "partially-reviewed",
         "read_coverage": "125-195; strict schema/catalog locations found by rg",
         "summary": "Actual four-operation tool registration dispatch under resolver/gate; the attachment part schema was removed, so the published submit schema accepts only text and data parts. No general execution tool in factory switch.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from src/relay/mcp.ts to src/host/mcp/server.ts in b5168ce; the diff only rewrites relative import paths line for line, so the summary and read_coverage still hold. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from src/relay/mcp.ts to src/host/mcp/server.ts in b5168ce; the diff only rewrites relative import paths line for line, so the summary and read_coverage still hold. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "config/host-service.example.json",
@@ -452,13 +452,13 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "9921f3a7c179fa9c261a3e0bc91078920b6a4d62ccd7dcc9cbbdb26f5bb9345a",
+        "sha256": "f4e585b4e3d641cc7ba778b0ba1956de8be91ee5e0c3564dbf7c485c915f5a53",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
         "summary": "Read in full (84 lines): HabJetStreamService runs every operation inside a fresh Registry withAuthorization scope, rechecks the authorized agent ID and asserts volume currency; it rejects a prefetch window smaller than the admitted mailbox bound. No dual-backend ownership, router or cross-store state remains.",
         "limit": "Supplementary implementation evidence, not an authoritative design requirement or execution result. Hash covers full file, stated read coverage only.",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from packages/relay-nats/src/hab-service.ts to src/host/hab-delivery-service.ts in b5168ce; the diff only rewrites relative import paths, so the summary still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: moved from packages/relay-nats/src/hab-service.ts to src/host/hab-delivery-service.ts in b5168ce; the diff only rewrites relative import paths, so the summary still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "packages/relay-nats/src/journal.ts",
@@ -897,21 +897,21 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "2104917ce24de9dbd0bbadcf3fb320f5f38675ff46f99fa04dd27293a530c66c",
+        "sha256": "05156c1c2b555115e98139b26756eeb3ae3cd1c001e553cba838a64ac2a5b53d",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
-        "sha256": "fad09138f4ce96f116034919cadaef36dff619379e04731d5c948bdeeaacba29",
+        "sha256": "e3e5b0f9f772c3d60ddeb38d746a87a5ba7b23c911a0778f7146bccddcb8eb9f",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Phase 4 maintenance: re-read the diff from c892c57 (host consolidation into src/host and the Registry/admin fixes); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); it adds the ninth feature entry, the A2A entry on the configured Relay (features/a2a-host.md). Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); the A2A entry now also names the result_window_expired failure of a Task whose reply window closed. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/access-control.md",
-        "sha256": "c47b01dbbb17a3f04c689d0fe45964f728e12a9c43860312f8c0bfd1cfab1c93",
+        "sha256": "98dfd748987ab9bf02324dd99dcf47e312f4fef044189c133e26e31a8bef4adf",
         "mode": "full",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/communication-boundary.md",
@@ -933,9 +933,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/receive-ack.md",
-        "sha256": "df7a26cfe0afa5434adb076958e6e5345e40ba53b58d248a7c66bca44f0f48ba",
+        "sha256": "24d3fcfc52cc1158be6fc9e838402e6c5927363d9e5a0fdecee35e650d79516d",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/resolve-address.md",
@@ -951,9 +951,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/send-message.md",
-        "sha256": "3f2323a67060bf82a602f7d1f509c6bc3956b01e52f7ca620adcd4c5f18b246e",
+        "sha256": "922f18951ab0e37ca9f81b888036f0ed19bcd73d1249a7ab29048b65855ed342",
         "mode": "full",
-        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Re-read the diff from 3e203d7ea210013207a5380a6f08190d8f4e6a9e during design-contract maintenance (Node 26 wording, managed attachment removal, messaging move, JetStream-only delivery); the recorded observation still holds unless a summary below says otherwise. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "docs/diagrams/manifest.json",
@@ -1108,18 +1108,18 @@
       },
       {
         "path": "test/a2a-host.test.js",
-        "sha256": "88b2f3605351eb3b73a4ad04f4b98e7bd22cbc64c17b1666fe74934ec69753e2",
+        "sha256": "2239745a59e0a542e17f3491c0db223f26ab101441962969dcdae6efacfae608",
         "mode": "test titles and assertions",
-        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes\", \"Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge\" and \"a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply\" (evidence for HAB-D20 and HAB-E20). The last ACKs two replies sent two days after their request's expiry but does not read that Task's state. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"saved replies whose ACK can never be confirmed release their slots, so a later reply is still saved and completes its Task\" (HAB-D20), \"a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance\" (HAB-D20) and \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" (HAB-E20, HAB-C-E09). The last ages the request two days while the host is stopped, waits for the stored Task to be TASK_STATE_FAILED without a caller read, asserts reason result_window_expired, an outcome-unknown status message and no Artifacts, and asserts that a late result is ACKed with no record and leaves the status unchanged. Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\", \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" (both evidence for HAB-D20; the second drops the running host's ACKs of one reply at HabJetStreamService.ack while it is live) and \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" (evidence for HAB-E20). The recipient helper's send takes an expiry and an ID entropy. Local follow-up on 0fc76a6: The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. Task-store close follow-up on f1b6eb1: reread the long-stop diff. The offline Task metadata change now uses better-sqlite3 like the host and moves first_sent_at with the rm1 ID and expires_at, then asserts PRAGMA integrity_check is ok before reopening. It checks the old Task reaches FAILED after its expired reply window and retries only outbox_capacity_exceeded; any other exception is surfaced immediately and the timeout is unchanged. These strengthen fixture consistency and diagnostics, not the production capacity gate or retention policy. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; adds \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" (evidence for HAB-D20): offline it saves and ACK-confirms an execution_result with a 5000-character result, over HAB_A2A_LIMITS, then checks the running host releases it within 8 seconds and the Task stays SUBMITTED. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds.",
+        "maintenance": "Added during A2A host maintenance after reading the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c) as source evidence for HAB-A21, HAB-D20, HAB-E20 and HAB-C-E08. Runs in js-root (test/*.test.js) and test:a2a-relay. Cases: named-intent claim on a shared outbox; example a2a section validity; off by default; Task sent from the host identity and completed from the recipient's replies with attestation recipient_reply; restart survival; idempotent host-only provisioning and the refused urn:hab:host impostor; refusal of an operator-connected identity at start; 401 for unauthenticated and wrong-audience requests, refusal of unauthorized and cross-owner requests, quarantined forged replies, and loss of access after a revoked grant or disconnect. Review-fix maintenance: re-read the diff from efa2435 (c004e63..74c02b7); adds \"after unrelated notices reach the cap, a valid reply is still saved and ACKed\" and \"a caller revoked from another connection between its check and the host submit never reaches the recipient\", and asserts that an unrelated notice leaves no inbox record. Second review-fix maintenance: re-read the diff from 599c1f2 (to 2b764dd); adds \"even when accepted replies fill the cap, the matching results are saved and ACKed and every Task completes\", \"Tasks that complete but are never read free their inbox slots, so new Tasks still complete after the outbox purge\" and \"a Task admitted once an outbox record is purged still gets its replies saved, even after a late reply\" (evidence for HAB-D20 and HAB-E20). The last ACKs two replies sent two days after their request's expiry but does not read that Task's state. Third review-fix maintenance: re-read the diff from 530cbfd (to 4715b4e); adds \"saved replies whose ACK can never be confirmed release their slots, so a later reply is still saved and completes its Task\" (HAB-D20), \"a blocking SendMessage completes from a result that arrives in a later receive cycle than its acceptance\" (HAB-D20) and \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" (HAB-E20, HAB-C-E09). The last ages the request two days while the host is stopped, waits for the stored Task to be TASK_STATE_FAILED without a caller read, asserts reason result_window_expired, an outcome-unknown status message and no Artifacts, and asserts that a late result is ACKed with no record and leaves the status unchanged. Remaining review-fix maintenance: re-read the diff from 843e5d9; adds \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\", \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" (both evidence for HAB-D20; the second drops the running host's ACKs of one reply at HabJetStreamService.ack while it is live) and \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" (evidence for HAB-E20). The recipient helper's send takes an expiry and an ID entropy. Local follow-up on 0fc76a6: The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. Task-store close follow-up on f1b6eb1: reread the long-stop diff. The offline Task metadata change now uses better-sqlite3 like the host and moves first_sent_at with the rm1 ID and expires_at, then asserts PRAGMA integrity_check is ok before reopening. It checks the old Task reaches FAILED after its expired reply window and retries only outbox_capacity_exceeded; any other exception is surfaced immediately and the timeout is unchanged. These strengthen fixture consistency and diagnostics, not the production capacity gate or retention policy. Nine-candidate follow-up: reread integrated diff from ab66bd7, matching tests and documentation; inspected source is separate from execution evidence. Final arithmetic review: post-collection free slots max(0,M-T+p) avoid reserving nonexistent slots while removing rows above a lowered cap; added assertion changes no test count. Source inspection is separate from pending affected-test rerun. Contract-refused reply maintenance: re-read the diff from 8ada224; adds \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" (evidence for HAB-D20): offline it saves and ACK-confirms an execution_result with a 5000-character result, over HAB_A2A_LIMITS, then checks the running host releases it within 8 seconds and the Task stays SUBMITTED. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds.",
         "review": "reviewed",
         "summary": "Eight added host cases cover held-unconfirmed reply defer and finite-attempt quarantine, mixed-cohort partial collection with one injected legitimate-Task save failure and held body, general post-collection free-slot arithmetic/bytes bounds, including a lowered cap below retained count, two legal close boundaries retaining original intent/admission, permanent disconnect despite changed address with MCP-only startup, and stable-page traversal beyond100 injected saves plus wrap recovery. Cohort timestamps/IDs are synthetic and fingerprints are not regenerated; no whole-state restore, corruption reachability or universal recovery claim.",
         "read_coverage": "changed implementation and tests plus relevant enclosing control flow"
       },
       {
         "path": "test/hab-auth-groups.test.js",
-        "sha256": "0d8fc8de44ec4d19989a420a304a03d6800c182e172af1bf166eac729919bd6b",
+        "sha256": "85290000688b6fe622ea310174f0e2298d2437b6000e29697b3d30ecf8231172",
         "mode": "test titles and assertions",
-        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-A20. Runs in js-root (test/*.test.js). New case: createBoundGroup is refused with registry_forbidden without group_bind, without group_member or without both, leaving the group, binding, member counts and Registry epoch unchanged, and succeeds once every right is granted. The other group cases were not re-read. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Added during Review-fix maintenance: after reading the diff from efa2435 (c004e63..74c02b7) as source evidence for HAB-A20. Runs in js-root (test/*.test.js). New case: createBoundGroup is refused with registry_forbidden without group_bind, without group_member or without both, leaving the group, binding, member counts and Registry epoch unchanged, and succeeds once every right is granted. The other group cases were not re-read. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/inbox-maintenance.test.js",
@@ -1817,9 +1817,9 @@
       },
       {
         "path": "scripts/hab-host.ts",
-        "sha256": "8d82423a198bee6b8c8ac66a48db0e939b109bd36183ddb34b4f205d1cb6b208",
+        "sha256": "56c955957a70dff99385bc6ef513937b3d4f138c3ea3311e6c49fbd9d9a5143d",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "scripts/install-ci-nats.ts",
@@ -1888,9 +1888,9 @@
       },
       {
         "path": "test/host-admin.test.js",
-        "sha256": "9f43ba6d4ed7cbc668a0f537fa4858539204e55790a381f5cce71f54e5fadc62",
+        "sha256": "bf6adddb2b7a4d3057e1aeb6d6a471d55592af98ec8a07796f1d445c80f3df34",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       }
     ]
   },
@@ -1923,9 +1923,9 @@
     "supplemental": [
       {
         "path": "test/host-admin.test.js",
-        "sha256": "9f43ba6d4ed7cbc668a0f537fa4858539204e55790a381f5cce71f54e5fadc62",
+        "sha256": "bf6adddb2b7a4d3057e1aeb6d6a471d55592af98ec8a07796f1d445c80f3df34",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/host-service.test.js",
@@ -2402,17 +2402,19 @@
     "supplemental": [
       {
         "path": "src/agent-sdk/receiver.ts",
-        "sha256": "c9552cc20a2d37ee858e137b741028c6f3add36ab10960928252a033495ce173",
+        "sha256": "d5b9b336e078e4d99a2fb956a62d32787204fc1f33be817323fd784b1d55d6a7",
         "review": "reviewed",
         "read_coverage": "recovery diff and relevant surrounding boundary",
-        "observation": "Poll/ACK preserve only the local branded recovery reason; generic errors still become transport failure. Pending ACK data is not rejected or rewritten on this path."
+        "observation": "Poll/ACK preserve only the local branded recovery reason; generic errors still become transport failure. Pending ACK data is not rejected or rewritten on this path.",
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/agent-sdk/sender.ts",
-        "sha256": "2f427dfc6aa512861eea017e6db4a87982710801ecf4328f62936593cca8bed0",
+        "sha256": "6e4b23717a5df4f35316514a8a7287a9333d392e3fcbabefdf545036a31e1c05",
         "review": "reviewed",
         "read_coverage": "recovery diff and relevant surrounding boundary",
-        "observation": "Durably defer the original job before propagating local branded recovery; no new identity, intent or quarantine is introduced by this path."
+        "observation": "Durably defer the original job before propagating local branded recovery; no new identity, intent or quarantine is introduced by this path.",
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/agent-sdk/index.ts",
@@ -2423,11 +2425,11 @@
       },
       {
         "path": "src/agent-sdk/mcp-client.ts",
-        "sha256": "3e37a14867b295a1d2feade02767262c4cc28fc7553cdfd85d7980b9d146308c",
+        "sha256": "3e74c41035ae554dffd936a98e194ac4a3556a9ef1abf91b43bcbdfd4b2c1265",
         "review": "reviewed",
         "read_coverage": "recovery diff and relevant surrounding boundary",
         "observation": "Only the trusted authorization provider may supply the local branded signal. A private intermediate error preserves its origin; fetch/wire errors stay generic and timeout/check precedence is retained.",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/adapter-host/cycle.ts",
@@ -2507,19 +2509,21 @@
     "supplemental": [
       {
         "path": "src/delivery/sqlite-delivery.ts",
-        "sha256": "770aba4ebd99e891d64a339a82485d8ebffd4759db8f6d06ca5704378213122a",
-        "review": "reviewed"
+        "sha256": "ed37fad0beeb5d3a1ec175c63f3e1bbf263dd4b93386cc5114a377949d2e8e18",
+        "review": "reviewed",
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/sqlite-delivery.test.js",
-        "sha256": "f9ce3e6174a3a3b4cb38679dca9e3e0c9d231021392a6f1fd5128d80ce160246",
+        "sha256": "9d7607a1f4d7997d85f2103134e658cb11a61b98b26cbbbf4bbf235b99df3eeb",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/delivery-fixture.js",
-        "sha256": "e3283a566db4ab56eacfc63a5a0b3678b2db9f694daa64bcdb644163fda90d63",
-        "review": "reviewed"
+        "sha256": "56970f85e51bae16aeb204e9b01ad59eeda1f2418a0d1b09abdc9c57fa579e45",
+        "review": "reviewed",
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/host/delivery.ts",
@@ -2529,19 +2533,21 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "9921f3a7c179fa9c261a3e0bc91078920b6a4d62ccd7dcc9cbbdb26f5bb9345a",
-        "review": "reviewed"
+        "sha256": "f4e585b4e3d641cc7ba778b0ba1956de8be91ee5e0c3564dbf7c485c915f5a53",
+        "review": "reviewed",
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/host/start.ts",
-        "sha256": "29b669afe5fd161c04036a5467933e93a126db0ac3ace616cf6a7e886f62ea72",
+        "sha256": "867142cac76249f2c2bd152701c1b365e558da9f381cb27ff435bdba52d65e30",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "src/messaging/delivery-service.ts",
-        "sha256": "f8428ac3ebdeb846962e45251a3589f7d0effbbab31e79b8f37ce7ddd1f2f215",
-        "review": "reviewed"
+        "sha256": "e392ee809ed7203be70424be2557a3f86c616ae71d427b1f797271a652cdb36f",
+        "review": "reviewed",
+        "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "config/host-service.example.json",
@@ -2602,9 +2608,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/scripts/stack.mjs",
-        "sha256": "7b75eeeb045a8e9ae88ff9e721fe9522d8c64291d6775c7f7187ed0c429f7822",
+        "sha256": "d5de369e16c8bd4e71971362aa52245664a151d0d61b0f4fe21920fed0cda1fa",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": ".claude/skills/verify-hab/scripts/inspect.mjs",

@@ -27,9 +27,7 @@ import { createSqliteDelivery } from "../src/host/delivery.ts";
 import { deliverySection, pollUntilDelivered } from "./delivery-fixture.js";
 
 async function fixture(t, enroll = true) {
-  const directory = realpathSync(
-    mkdtempSync(join(tmpdir(), "hab-host-")),
-  );
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "hab-host-")));
   chmodSync(directory, 0o700);
   const admin = Symbol("synthetic-admin"),
     contexts = { a: Symbol("a"), b: Symbol("b") },
@@ -118,7 +116,7 @@ async function fixture(t, enroll = true) {
   const client = (host, name) =>
     new HabMcpClient({
       policy: {
-        resource_url: host.url,
+        resource_url: host.delivery_url,
         agent_id: agents[name].agent_id,
         max_request_bytes: 65536,
         max_response_bytes: 131072,
@@ -187,14 +185,8 @@ test("explicit local host persists a submission across listener/database restart
 
 test("no verifier or individual policy cannot silently enable unauthenticated hosting", async (t) => {
   const f = await fixture(t, false);
-  await assert.rejects(
-    f.start({ verify: undefined }),
-    /invalid_host_options/,
-  );
-  await assert.rejects(
-    f.start({ authority: {} }),
-    /invalid_host_options/,
-  );
+  await assert.rejects(f.start({ verify: undefined }), /invalid_host_options/);
+  await assert.rejects(f.start({ authority: {} }), /invalid_host_options/);
   assert.deepEqual(readdirSync(f.directory), ["volume.local.json"]);
   const host = await f.start();
   assert.equal((await list(host.url)).status, 401);
@@ -367,7 +359,17 @@ test("opt-in discovery identifies a host owner over a real socket and keeps the 
     401,
   );
   const tools = await (await list(host.url, "Bearer synthetic-a")).json();
-  assert.equal(tools.result.tools.length, 6);
+  assert.deepEqual(tools.result.tools.map((x) => x.name).sort(), [
+    "hab_discover",
+    "hab_inbox",
+    "hab_reply",
+    "hab_send",
+    "hab_status",
+  ]);
+  const delivery = await (
+    await list(host.delivery_url, "Bearer synthetic-a")
+  ).json();
+  assert.equal(delivery.result.tools.length, 6);
   // The existing client deliberately verifies and uses only its original five methods.
   assert.equal(
     (await f.client(host, "a").resolve(f.agents.b.address)).recipient_id,

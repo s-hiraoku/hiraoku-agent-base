@@ -92,9 +92,9 @@ export async function startHost(configPath: string) {
         authority: auth.authority,
         verify: auth.verify,
         audit: {
-          record: (category, correlation) => {
+          record: (category, correlation, reason) => {
             if (!sink) throw Error("host_audit_unavailable");
-            sink.record(category, correlation);
+            sink.record(category, correlation, reason);
           },
         },
         delivery,

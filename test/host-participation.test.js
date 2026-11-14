@@ -24,11 +24,12 @@ import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
 import { envelope, limits, message } from "./mcp-http-fixtures.js";
 
-// Synthetic reverse proxy transport. It accepts exactly one public resource and
-// reaches only this test's loopback listener; no DNS, Auth0 or real host calls.
+// Synthetic reverse proxy transport. It accepts exactly the public resource and its
+// delivery endpoint and reaches only this test's loopback listener; no DNS, Auth0 or
+// real host calls.
 function proxyFetch(currentHost) {
   return async (url, init) => {
-    assert.equal(String(url), resource);
+    assert.ok([resource, resource + "/delivery"].includes(String(url)));
     return new Promise((resolve, reject) => {
       const headers = Object.fromEntries(new globalThis.Headers(init.headers));
       headers.host = new URL(resource).host;
@@ -36,7 +37,7 @@ function proxyFetch(currentHost) {
         {
           hostname: "127.0.0.1",
           port: currentHost().ingress_port,
-          path: "/hab/mcp",
+          path: new URL(String(url)).pathname,
           method: init.method,
           headers,
         },
@@ -110,7 +111,7 @@ async function setup(t, oauth) {
     new HabMcpClient({
       as_address: address.address,
       policy: {
-        resource_url: remoteSide ? resource : host.url,
+        resource_url: remoteSide ? resource + "/delivery" : host.delivery_url,
         agent_id: address.agent_id,
         max_request_bytes: 65536,
         max_response_bytes: 131072,
@@ -441,12 +442,7 @@ test("shipped admin CLI reports persistent participation and refuses a revoked c
   const run = (...args) =>
     spawnSync(
       process.execPath,
-      [
-        resolve("scripts/hab-admin.ts"),
-        "--config",
-        f.configPath,
-        ...args,
-      ],
+      [resolve("scripts/hab-admin.ts"), "--config", f.configPath, ...args],
       { encoding: "utf8", timeout: 5000 },
     );
   const status = run("status");

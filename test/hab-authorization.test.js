@@ -168,7 +168,7 @@ test("operation grants and unknown kinds are checked independently of a valid bi
   assert.throws(
     () =>
       f.hab.submit(f.contexts.a, { ...submission(b), kind: "unapproved-kind" }),
-    code("forbidden"),
+    code("kind_not_allowed"),
   );
   assert.equal(f.count(), 0);
   assert.equal(a.operations.length, operations.length);
@@ -184,7 +184,7 @@ test("resolve hides unknown, stopped, retired and blocked destinations with the 
   for (const address of ["unknown@grok-bot.hab", b.address, c.address])
     assert.throws(
       () => f.hab.resolve(f.contexts.a, address),
-      code("forbidden"),
+      code("unknown_address"),
     );
   assert.throws(
     () => f.hab.resolve(f.contexts.a, "B@grok-bot.hab"),
@@ -199,7 +199,7 @@ test("resolve hides unknown, stopped, retired and blocked destinations with the 
   block(f, a, activeB, true);
   assert.throws(
     () => f.hab.resolve(f.contexts.a, b.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
 });
 
@@ -210,7 +210,10 @@ test("stopped destination rejects duplicate submit while sender can inspect its 
     m = submission(b);
   const receipt = f.hab.submit(f.contexts.a, m);
   access(f, b, "stopped");
-  assert.throws(() => f.hab.submit(f.contexts.a, m), code("forbidden"));
+  assert.throws(
+    () => f.hab.submit(f.contexts.a, m),
+    code("recipient_unavailable"),
+  );
   assert.deepEqual(f.hab.status(f.contexts.a, m.message_id), receipt);
   assert.equal(f.count(), 1);
   assert.notEqual(
@@ -226,7 +229,10 @@ test("directional blocks affect submit, pending delivery and exact ACK retry wit
   const m = submission(b),
     accepted = f.hab.submit(f.contexts.a, m);
   block(f, a, b, true);
-  assert.throws(() => f.hab.submit(f.contexts.a, m), code("forbidden"));
+  assert.throws(
+    () => f.hab.submit(f.contexts.a, m),
+    code("recipient_unavailable"),
+  );
   assert.equal(f.hab.poll(f.contexts.b), null);
   assert.equal(f.hab.status(f.contexts.a, m.message_id).state, "pending");
   const reverse = submission(a, "2".repeat(32));
@@ -241,7 +247,10 @@ test("directional blocks affect submit, pending delivery and exact ACK retry wit
   a = f.registry.inspect(f.admin, a.agent_id);
   b = f.registry.inspect(f.admin, b.agent_id);
   block(f, a, b, true, "block-again");
-  assert.throws(() => f.hab.ack(f.contexts.b, request), code("forbidden"));
+  assert.throws(
+    () => f.hab.ack(f.contexts.b, request),
+    code("recipient_unavailable"),
+  );
   assert.equal(accepted.recipient_id, b.agent_id);
 });
 
@@ -347,7 +356,10 @@ test("registry write guard spans the delivery commit so another connection canno
   composed.submit(f.contexts.a, m);
   assert.equal(checked, true);
   second.setAccess(f.admin, stop);
-  assert.throws(() => f.hab.submit(f.contexts.a, m), code("forbidden"));
+  assert.throws(
+    () => f.hab.submit(f.contexts.a, m),
+    code("recipient_unavailable"),
+  );
   assert.equal(f.count(), 1);
 });
 

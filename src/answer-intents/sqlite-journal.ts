@@ -10,6 +10,7 @@ import {
   makeReplayBoundMessageId,
   isReplayBoundMessageId,
   DELIVERY_TTL_MS,
+  MAX_DELIVERY_TTL_MS,
   RECORD_RETENTION_MS,
 } from "../messaging/contract.ts";
 import type { ContractLimits, Submission } from "../messaging/contract.ts";
@@ -446,7 +447,8 @@ export class SQLiteAnswerJournal {
           source.sender_id === this.agentId ||
           source.kind !== "question" ||
           !Number.isSafeInteger(expiry) ||
-          expiry - DELIVERY_TTL_MS > now + this.#options.max_clock_skew_ms
+          // The source may carry any deadline up to the maximum, so bound its send time by that.
+          expiry - MAX_DELIVERY_TTL_MS > now + this.#options.max_clock_skew_ms
         )
           throw new ReplyBudgetError("invalid_reply_source");
         if (

@@ -381,11 +381,7 @@ export class SQLiteOutbox implements SenderStore {
           "UPDATE outbox SET state='queued',fence=fence+1,lease_until=NULL,reason='lease_expired' WHERE state='sending' AND lease_until<=?",
         )
         .run(now);
-      if (
-        this.#db
-          .prepare("SELECT 1 FROM outbox WHERE state='sending'")
-          .get()
-      )
+      if (this.#db.prepare("SELECT 1 FROM outbox WHERE state='sending'").get())
         return null;
       const rows = this.#db
         .prepare(
@@ -550,6 +546,8 @@ export class SQLiteOutbox implements SenderStore {
       "invalid_contract",
       "invalid_reference",
       "unsupported_version",
+      "recipient_unavailable",
+      "kind_not_allowed",
     ];
     if (!allowed.includes(reason))
       throw new MessagingError("invalid_failure_reason");

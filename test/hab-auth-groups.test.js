@@ -67,7 +67,7 @@ test("address stop affects one name; group stop affects both and incoming resolu
   assert.throws(() => f.hab.poll(f.select(f.second)), code("forbidden"));
   assert.throws(
     () => f.hab.resolve(f.contexts.b, f.second.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   f.access("active", operations);
   // The group stop stopped its members; reactivating the group re-grants no address.
@@ -570,7 +570,7 @@ test("last group binding revocation stops retained contexts and preserves creden
   assert.throws(() => f.hab.poll(selected), code("forbidden"));
   assert.throws(
     () => f.hab.resolve(f.contexts.b, f.first.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   assert.equal(
     f.registry.inspectGroup(f.admin, f.group.group_id).state,

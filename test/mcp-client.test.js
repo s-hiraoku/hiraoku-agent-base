@@ -287,13 +287,31 @@ test("only equivalent text/structured fixed tool errors retain semantic codes", 
   }
   for (const data of [
     { error: "synthetic sensitive failure" },
-    { error: "forbidden", detail: "synthetic private payload" },
+    { error: 7, message: "synthetic private payload" },
   ]) {
     await assert.rejects(
       client(({ id }) => json(rpc(id, data, true))).poll(),
       expected(),
     );
   }
+  // The explanation and details are for agents; the client surfaces only the fixed code.
+  const detailed = await client(({ id }) =>
+    json(
+      rpc(
+        id,
+        {
+          error: "kind_not_allowed",
+          message: "x",
+          allowed_kinds: ["question"],
+        },
+        true,
+      ),
+    ),
+  )
+    .poll()
+    .catch((error) => error);
+  assert.equal(detailed.code, "kind_not_allowed");
+  assert.equal(JSON.stringify(detailed).includes("allowed_kinds"), false);
   await assert.rejects(
     client(() => {
       const e = Error("synthetic private failure");

@@ -2,7 +2,7 @@
 /**
  * VERIFICATION SCAFFOLDING ONLY. Composes the repo's own HAB host classes
  * (SQLiteHabRegistry, runHabEnrollment, the SQLite delivery the host wires
- * via createSqliteDelivery, HabHttpGateway, createMcpNodeHandler) on a
+ * via createSqliteDelivery, HabHttpGateway, routeMcpNodeHandlers) on a
  * loopback port, and keeps it listening for an agent to drive over real MCP
  * HTTP. Synthetic authority and static bearer tokens; never reads config/*.local.json, .env
  * or any credential.
@@ -40,7 +40,7 @@ const { SQLiteEnrollmentJournal } = await import(
 );
 const { runHabEnrollment } = await import(src("hab/enrollment.ts"));
 const { HabHttpGateway } = await import(src("hab/http.ts"));
-const { createMcpNodeHandler } = await import(src("host/mcp/http-node.ts"));
+const { routeMcpNodeHandlers } = await import(src("host/mcp/http-node.ts"));
 const { createSqliteDelivery } = await import(
   join(repo, "src/host/delivery.ts")
 );
@@ -233,11 +233,26 @@ server.listen(Number(portArg ?? previous.port ?? 0), "127.0.0.1");
 await once(server, "listening");
 const port = server.address().port,
   url = `http://127.0.0.1:${port}/mcp`;
-const handle = createMcpNodeHandler(
+const deliveryUrl = `${url}/delivery`;
+// Like the host: agents use the agent catalog at /mcp; the SDK and receive service use
+// the delivery catalog at /mcp/delivery (ADR-020). Both accept the same bearer.
+const audit = {
+  record: (category, correlation, reason) =>
+    appendFileSync(
+      join(evidence, "audit.jsonl"),
+      JSON.stringify({
+        at: new Date().toISOString(),
+        category,
+        correlation,
+        ...(reason ? { reason } : {}),
+      }) + "\n",
+    ),
+};
+const gatewayFor = (resource_url, catalog) =>
   new HabHttpGateway(
     delivery.service,
     {
-      resource_url: url,
+      resource_url,
       allowed_origins: [],
       max_request_bytes: 65536,
       max_response_bytes: 131072,
@@ -246,24 +261,23 @@ const handle = createMcpNodeHandler(
       requests_per_window: 120,
       window_ms: 60000,
     },
-    {
-      record: (category, correlation) =>
-        appendFileSync(
-          join(evidence, "audit.jsonl"),
-          JSON.stringify({
-            at: new Date().toISOString(),
-            category,
-            correlation,
-          }) + "\n",
-        ),
-    },
+    audit,
     ({ authorization }) => tokens.get(authorization) ?? null,
-  ),
-);
+    undefined,
+    catalog,
+  );
+const handle = routeMcpNodeHandlers([
+  gatewayFor(url, "agent"),
+  gatewayFor(deliveryUrl, "delivery"),
+]);
 
 writeFileSync(
   statePath,
-  JSON.stringify({ pid: process.pid, port, url, agents }, null, 2),
+  JSON.stringify(
+    { pid: process.pid, port, url, delivery_url: deliveryUrl, agents },
+    null,
+    2,
+  ),
   { mode: 0o600 },
 );
 writeFileSync(join(instance, "stack.pid"), `${process.pid}\n`);

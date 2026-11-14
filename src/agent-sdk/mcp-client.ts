@@ -478,8 +478,9 @@ export class DeliveryMcpClient implements SenderTransport, ReceiverTransport {
       if (!sameJson(content, result.structuredContent)) fail();
       check();
       if (result.isError === true) {
+        // The fixed explanation and safe details are for agents; the client keeps the code.
         const error = z
-          .strictObject({ error: z.string() })
+          .looseObject({ error: z.string(), message: z.string().optional() })
           .parse(content).error;
         throw new ClientFailure(
           isPublicToolError(error) ? error : "transport_failed",

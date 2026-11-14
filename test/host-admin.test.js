@@ -1,4 +1,5 @@
 import test from "node:test";
+import { publicError } from "./tool-error-fixture.js";
 import assert from "node:assert/strict";
 import process from "node:process";
 import { join, resolve } from "node:path";
@@ -64,7 +65,7 @@ async function started(t, patch = {}, oauthConfig) {
   };
   credentials();
   const call = async (token, name, args = {}) => {
-    const response = await globalThis.fetch(host.url, {
+    const response = await globalThis.fetch(host.delivery_url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -219,7 +220,7 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
     const client = new HabMcpClient({
       as_address: address,
       policy: {
-        resource_url: f.host.url,
+        resource_url: f.host.delivery_url,
         agent_id: agentId,
         max_request_bytes: 65536,
         max_response_bytes: 131072,
@@ -449,7 +450,7 @@ test("admin binds OAuth mappings to a shared group without a local bearer copy",
         {
           hostname: "127.0.0.1",
           port: f.host.ingress_port,
-          path: "/hab/mcp",
+          path: "/hab/mcp/delivery",
           method: "POST",
           headers: {
             Host: "hab.example",
@@ -915,9 +916,7 @@ test("reconnecting one group address does not revive a sibling the operator disc
   assert.equal(states()["b@app.hab"][0], "stopped");
   assert.deepEqual(
     await f.call(tokens.h, "hab_poll", { as_address: "b@app.hab" }),
-    {
-      error: "forbidden",
-    },
+    publicError("forbidden"),
   );
   assert.deepEqual(
     await f.call(tokens.h, "hab_poll", { as_address: "a@app.hab" }),

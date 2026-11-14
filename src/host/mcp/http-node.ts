@@ -153,3 +153,26 @@ export function createMcpNodeHandler(gateway: McpHttpGateway) {
     // Network admission is held until finish/close, including a blocked response write.
   };
 }
+/**
+ * One Node callback for several gateways on one listener, chosen by the exact raw path
+ * (each gateway's resource path or OAuth metadata path). Anything else goes to the first
+ * gateway, which rejects it.
+ */
+export function routeMcpNodeHandlers(gateways: readonly McpHttpGateway[]) {
+  const routes = new Map<string, ReturnType<typeof createMcpNodeHandler>>();
+  const handlers = gateways.map((gateway) => {
+    const handler = createMcpNodeHandler(gateway);
+    for (const path of [
+      new URL(gateway.policy.resource_url).pathname,
+      gateway.oauth?.metadataPath,
+    ])
+      if (path !== undefined) {
+        if (routes.has(path)) throw Error("invalid_mcp_routes");
+        routes.set(path, handler);
+      }
+    return handler;
+  });
+  if (!handlers.length) throw Error("invalid_mcp_routes");
+  return (req: IncomingMessage, res: ServerResponse): Promise<void> =>
+    (routes.get(req.url ?? "") ?? handlers[0])(req, res);
+}
