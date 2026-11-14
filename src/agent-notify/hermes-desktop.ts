@@ -9,9 +9,15 @@
  * `hermesDesktopPage` is that reader: it turns the file into the event pages Hermes
  * accepts. Nothing here talks to HAB or to Hermes over the network.
  *
- * Handing the request to the conversation after 対応する is not wired yet. `handoff`
- * returns `unsupported` and never falls back to another session.
+ * After 対応する, `handoff` runs the configured handoff command once, with
+ * `{session_id, text, submission_id}` on stdin. It is `hermes_bridge.desktop_handoff`, run in
+ * the Hermes runtime. That command admits the text into the same saved conversation through
+ * Hermes's own gateway client (`session.resume`, then `prompt.submit`). Its answers map like
+ * this: `queued` → `queued`; `refused` (nothing sent) → `unsupported`; anything else throws, and
+ * the notifier records `unknown` and never resends. Without a configured command, `handoff`
+ * returns `unsupported`. It never falls back to another session or a CLI.
  */
+import { spawn } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import type {
   AgentScreen,
@@ -33,6 +39,53 @@ export interface HermesDesktopBinding {
   receiver_id: string;
 }
 
+/** The trusted, operator-configured command that hands one request to the conversation. */
+export interface HermesDesktopHandoff {
+  /** argv; the first entry is an absolute path. Never built from a message. */
+  command: string[];
+  cwd: string;
+  /** Such as HERMES_HOME (the owning profile) and HERMES_SOURCE (the Hermes checkout). */
+  env?: Record<string, string>;
+  timeout_ms?: number;
+}
+
+const HANDOFF_OUTPUT_BYTES = 64 * 1024;
+
+function runHandoff(
+  handoff: HermesDesktopHandoff,
+  input: string,
+): Promise<unknown> {
+  return new Promise((done, fail) => {
+    const child = spawn(handoff.command[0]!, handoff.command.slice(1), {
+      cwd: handoff.cwd,
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        LANG: "C.UTF-8",
+        PYTHONDONTWRITEBYTECODE: "1",
+        ...handoff.env,
+      },
+      stdio: ["pipe", "pipe", "ignore"],
+      timeout: handoff.timeout_ms ?? 60_000,
+    });
+    let out = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      out += chunk;
+      if (out.length > HANDOFF_OUTPUT_BYTES) child.kill();
+    });
+    child.on("error", fail);
+    child.on("close", (code) => {
+      try {
+        if (code !== 0) throw new Error("handoff_failed");
+        done(JSON.parse(out.trim().split("\n").at(-1) ?? ""));
+      } catch (error) {
+        fail(error);
+      }
+    });
+    child.stdin.end(input);
+  });
+}
+
 export const hermesDesktopTarget = (binding: HermesDesktopBinding) =>
   `hermes-desktop:${binding.profile}:${binding.session_id}`;
 
@@ -49,14 +102,18 @@ export class HermesDesktopScreen implements AgentScreen {
   readonly target: string;
   readonly #path: string;
   readonly #now: () => number;
+  readonly #sessionId: string;
+  readonly #handoff: HermesDesktopHandoff | undefined;
   constructor(
     path: string,
     binding: HermesDesktopBinding,
-    now: () => number = Date.now,
+    options: { handoff?: HermesDesktopHandoff; now?: () => number } = {},
   ) {
     this.#path = path;
     this.target = hermesDesktopTarget(binding);
-    this.#now = now;
+    this.#sessionId = binding.session_id;
+    this.#handoff = options.handoff;
+    this.#now = options.now ?? Date.now;
   }
   #write(line: Record<string, unknown>) {
     appendFileSync(
@@ -75,8 +132,24 @@ export class HermesDesktopScreen implements AgentScreen {
       display: message.display,
     });
   }
-  async handoff(): Promise<HandoffResult> {
-    return "unsupported";
+  async handoff(message: PeekedMessage): Promise<HandoffResult> {
+    if (!this.#handoff) return "unsupported";
+    const answer = (await runHandoff(
+      this.#handoff,
+      JSON.stringify({
+        session_id: this.#sessionId,
+        text: message.handoff_prompt,
+        // Names this one decision, so the owner can tell a repeat apart.
+        submission_id: `hab-${message.sender_id}-${message.message_id}`.slice(
+          0,
+          2048,
+        ),
+      }),
+    )) as { result?: unknown };
+    if (answer?.result === "queued") return "queued";
+    if (answer?.result === "refused") return "unsupported";
+    // "unknown" or anything else: the prompt may be queued. Never resend.
+    throw new Error("handoff_unknown");
   }
   async report(message: PeekedMessage, state: NoticeState) {
     this.#write({

@@ -70,7 +70,12 @@ Hermes Desktop には、保存済みの会話に「外部メッセージ」を�
   "session_id": "<Desktop の会話 ID>",
   "profile": "local-lab",
   "backend_namespace": "<reader の backend_namespace>",
-  "profile_scope": "<reader の profile_scope>"
+  "profile_scope": "<reader の profile_scope>",
+  "handoff": {
+    "command": ["/absolute/path/to/hermes-venv/bin/python", "-B", "-m", "hermes_bridge.desktop_handoff"],
+    "cwd": "/absolute/path/to/hiraoku-agent-base/experiments/source-handoff/hermes-owner-binding",
+    "env": { "HERMES_HOME": "~/.hermes/profiles/local-lab の絶対パス", "HERMES_SOURCE": "~/.hermes/hermes-agent の絶対パス" }
+  }
 }
 ```
 
@@ -84,7 +89,25 @@ external_messages:
       command: [/absolute/path/to/node, scripts/hab-notify.ts, --config, /absolute/path/to/notify.json, events]
 ```
 
-Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードは表示したときのまま残ります。欄にはボタンがないので、今は `hab-notify decide` で選びます。「対応する」の引渡しは未接続で、`unsupported` を返します。別の会話や CLI へは渡しません。正式な入口の候補は、gateway の `prompt.submit`（会話 ID を指定すると、その会話の FIFO に入ります）です。
+Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードは表示したときのまま残ります。欄にはボタンがないので、今は `hab-notify decide` で選びます。
+
+「対応する」を選ぶと、`handoff.command` を 1 回だけ実行します。標準入力には `{session_id, text, submission_id}` を渡します。このコマンドは `hermes_bridge.desktop_handoff` で、Hermes の実行環境で動きます。動きは次の 3 段です。
+
+1. Hermes 自身の gateway クライアント（`tui_gateway.owner_forward` の `discover_owner` と `connect_owner`）で、そのプロファイルの gateway を探します。gateway は起動しません。
+2. `session.resume` で保存済みの会話に接続します。
+3. `prompt.submit` で、その会話の FIFO に依頼を入れます。
+
+Desktop が表示している同じ会話で動くので、別の CLI セッションは作りません。HAB は呼ばず、返信もしません。返信はその会話自身が `hab_reply` で行います。
+
+コマンドの答えは次のように扱います。
+
+| 答え | 記録 |
+| --- | --- |
+| `queued` | `queued` |
+| `refused`（gateway がない、会話が開けない、書き込み前に拒否された） | `unsupported` |
+| `unknown`、または失敗 | `unknown`。自動では再送しません |
+
+`handoff` を設定しなければ `unsupported` です。
 
 ## 選択と状態
 
@@ -111,4 +134,4 @@ Hermes の欄は `handoff_state: pending` のカードしか受け付けませ�
 
 - HAB の既読は、人が内容を見た・同意した・作業を終えたことを意味しません。
 - ADR-017 の SDK 受信（保存してから ACK）と同じ受信者で並べて使わないでください。ACK された本文は `hab_peek` にも `hab_inbox` にも出ません。
-- Hermes Desktop は表示（外部メッセージ欄への読み取りコマンド）だけを実装しています。Desktop の中で選ぶ操作と、「対応する」の後に同じ会話へ渡す操作（gateway の `prompt.submit`）は未実装です。既存 Desktop セッションでの受入確認も未実施です。CLI だけの往復は Desktop の合格に数えません。
+- Hermes Desktop では、表示（外部メッセージ欄）と、同じ会話への引渡し（`prompt.submit`）を実装しました。Desktop の中で選ぶ操作（ボタン）はまだありません。引渡しは、本物の gateway ではなく代わりの部品でしか確かめていません。既存 Desktop セッションでの受入確認も未実施です。CLI だけの往復は Desktop の合格に数えません。

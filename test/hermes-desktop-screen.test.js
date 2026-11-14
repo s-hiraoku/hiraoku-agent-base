@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import process from "node:process";
 import { test } from "node:test";
 import {
   HermesDesktopScreen,
@@ -231,4 +238,68 @@ test("hab-notify events is the Hermes reader: one JSON page, no store, no HAB", 
     await main(["--config", config, "events", "--after", "bad;"], out),
     1,
   );
+});
+
+test("対応する runs the configured handoff once and maps its answer", async (t) => {
+  const { dir, path } = setup(t);
+  const seen = join(dir, "seen.jsonl");
+  // A stand-in for hermes_bridge.desktop_handoff: records its stdin, answers ANSWER.
+  const script = [
+    "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{",
+    "require('fs').appendFileSync(process.env.SEEN,s+'\\n');",
+    "if(process.env.ANSWER==='exit')process.exit(3);",
+    "console.log(JSON.stringify({result:process.env.ANSWER}));});",
+  ].join("");
+  const screenWith = (answer) =>
+    new HermesDesktopScreen(path, binding, {
+      handoff: {
+        command: [process.execPath, "-e", script],
+        cwd: dir,
+        env: { SEEN: seen, ANSWER: answer },
+      },
+    });
+  assert.equal(await screenWith("queued").handoff(message("m1")), "queued");
+  const [request] = readFileSync(seen, "utf8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
+  assert.deepEqual(request, {
+    session_id: binding.session_id,
+    text: "prompt m1",
+    submission_id: "hab-agent-a-m1",
+  });
+  assert.equal(
+    await screenWith("refused").handoff(message("m2")),
+    "unsupported",
+  );
+  await assert.rejects(
+    screenWith("unknown").handoff(message("m3")),
+    /handoff_unknown/,
+  );
+  await assert.rejects(
+    screenWith("exit").handoff(message("m4")),
+    /handoff_failed/,
+  );
+
+  // Through the notifier: an unknown answer is recorded and never resent.
+  const screen = screenWith("unknown");
+  const store = new SQLiteNotices(join(dir, "n.sqlite"), screen.target);
+  t.after(() => store.close());
+  const hab = {
+    async peek() {
+      return { messages: [message("m5")], next_cursor: null };
+    },
+    async markRead() {},
+  };
+  const notifier = new ReceiptNotifier({ hab, screen, store });
+  await notifier.check();
+  assert.deepEqual(await notifier.decide("m5", "accept"), {
+    changed: true,
+    state: "unknown",
+  });
+  assert.deepEqual(await notifier.decide("m5", "accept"), {
+    changed: false,
+    state: "unknown",
+  });
+  assert.equal(readFileSync(seen, "utf8").trim().split("\n").length, 5);
 });

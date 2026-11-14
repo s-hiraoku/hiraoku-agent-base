@@ -14,7 +14,7 @@
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
@@ -64,6 +64,19 @@ const configSchema = z.strictObject({
       /** Both must equal the reader's values in the Hermes profile config. */
       backend_namespace: z.string().min(1).max(2048),
       profile_scope: z.string().min(1).max(2048),
+      /** Optional: hands the request to the conversation after 対応する (hermes_bridge.desktop_handoff). */
+      handoff: z
+        .strictObject({
+          command: z
+            .array(z.string().min(1).max(4096))
+            .min(1)
+            .max(32)
+            .refine((argv) => isAbsolute(argv[0]!), "absolute command"),
+          cwd: z.string().refine((path) => isAbsolute(path), "absolute cwd"),
+          env: z.record(z.string(), z.string()).optional(),
+          timeout_ms: z.number().int().min(1000).max(300_000).optional(),
+        })
+        .optional(),
     }),
   ]),
   interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
@@ -105,6 +118,7 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
     : new HermesDesktopScreen(
         expand(screen.path),
         hermesBinding(config, screen),
+        screen.handoff ? { handoff: screen.handoff } : {},
       );
 }
 
