@@ -502,3 +502,30 @@ test("screen files are created owner-only and an open existing one is refused be
   await assert.rejects(screen.handoff(notice), /insecure_screen_file/);
   assert.equal(readFileSync(open, "utf8"), "");
 });
+
+test("a handoff interrupted by a stop becomes unknown after a while and is never resent", async (t) => {
+  let clock = Date.now();
+  const f = setup(t, { unread: [message("m1")], now: () => clock });
+  const n = f.make();
+  await n.check();
+  // The process stops while the session is being handed the request.
+  f.screen.handoff = () => new Promise(() => {});
+  void n.decide("m1", "accept");
+  for (let i = 0; i < 100 && n.get("m1").state !== "accepting"; i++)
+    await Promise.resolve();
+  assert.equal(n.get("m1").state, "accepting");
+  const restarted = f.make();
+  // A claim still within the longest possible handoff stays as it is.
+  clock += 5 * 60 * 1000;
+  await restarted.check();
+  assert.equal(restarted.get("m1").state, "accepting");
+  clock += 11 * 60 * 1000;
+  await restarted.check();
+  assert.equal(restarted.get("m1").state, "unknown");
+  assert.deepEqual(f.calls.reports.at(-1), ["m1", "unknown"]);
+  assert.deepEqual(await restarted.decide("m1", "accept"), {
+    changed: false,
+    state: "unknown",
+  });
+  assert.deepEqual(f.calls.handoff, []);
+});
