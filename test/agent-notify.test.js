@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import process from "node:process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -58,9 +66,12 @@ function setup(t, { unread = [], now } = {}) {
       if (hab.failRead) throw new Error("offline");
       calls.read.push(id);
       calls.readKeys.push(`${sender}/${id}`);
+      const before = hab.unread.length;
       hab.unread = hab.unread.filter(
         (m) => m.message_id !== id || m.sender_id !== sender,
       );
+      // HAB still offers it (unless a test withdrew it); already-read counts too.
+      return !hab.withdrawn && (before !== hab.unread.length || !hab.strict);
     },
   };
   const screen = {
@@ -117,9 +128,55 @@ test("a notice the screen could not show is shown on the next check", async (t) 
   const n = f.make();
   f.screen.failShow = true;
   await assert.rejects(n.check(), /screen down/);
-  assert.equal(n.get("m1"), undefined);
+  // Recorded as `showing`, not yet `shown`: not offered for a choice, shown again next time.
+  assert.equal(n.get("m1").state, "showing");
+  assert.deepEqual(n.open(), []);
+  assert.deepEqual(await n.decide("m1", "accept"), {
+    changed: false,
+    state: "showing",
+  });
   f.screen.failShow = false;
   assert.deepEqual(await n.check(), ["m1"]);
+  assert.equal(n.get("m1").state, "shown");
+  assert.deepEqual(await n.check(), []);
+});
+
+test("a display interrupted before it finished is shown again after a restart", async (t) => {
+  const f = setup(t, { unread: [message("m1")] });
+  const n = f.make();
+  // The process stops while the screen is still showing it.
+  f.screen.show = () => new Promise(() => {});
+  void n.check();
+  for (let i = 0; i < 100 && !n.get("m1"); i++) await Promise.resolve();
+  assert.equal(n.get("m1").state, "showing");
+  const restarted = f.make();
+  f.screen.show = async (m) => {
+    f.calls.shown.push(m.message_id);
+  };
+  assert.deepEqual(await restarted.check(), ["m1"]);
+  assert.equal(restarted.get("m1").state, "shown");
+});
+
+test("対応する hands off nothing when HAB no longer offers the message", async (t) => {
+  const f = setup(t, { unread: [message("m1"), message("m2")] });
+  const n = f.make();
+  await n.check();
+  // For example the sender's permission was withdrawn after the notice was shown.
+  f.hab.withdrawn = true;
+  assert.deepEqual(await n.decide("m1", "accept"), {
+    changed: true,
+    state: "unavailable",
+  });
+  assert.deepEqual(f.calls.handoff, []);
+  assert.deepEqual(await n.decide("m1", "accept"), {
+    changed: false,
+    state: "unavailable",
+  });
+  // Declining still works: nothing is started either way.
+  assert.deepEqual(await n.decide("m2", "decline"), {
+    changed: true,
+    state: "declined",
+  });
 });
 
 test("対応する marks it read and hands it to the session exactly once", async (t) => {
@@ -392,4 +449,24 @@ test("a record made for one session is never used for another", async (t) => {
     /notices_target_mismatch/,
   );
   assert.deepEqual(f.calls.handoff, []);
+});
+
+test("the notices store is owner-only and refuses a file others can read", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hab-notices-mode-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "notices.sqlite");
+  const previous = process.umask(0o022);
+  try {
+    new SQLiteNotices(path, "synthetic:session-1").close();
+  } finally {
+    process.umask(previous);
+  }
+  assert.equal(statSync(path).mode & 0o777, 0o600);
+  const open = join(dir, "open.sqlite");
+  writeFileSync(open, "");
+  chmodSync(open, 0o644);
+  assert.throws(
+    () => new SQLiteNotices(open, "synthetic:session-1"),
+    /insecure_notices_file/,
+  );
 });

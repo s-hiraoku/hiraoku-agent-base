@@ -32,18 +32,19 @@ export class HabNotifierClient implements NotifierHab {
     if (!parsed.success) throw new MessagingError("transport_failed");
     return parsed.data;
   }
-  async markRead(messageId: string, senderId: string): Promise<void> {
+  async markRead(messageId: string, senderId: string): Promise<boolean> {
     const value = (await this.#delivery.call("hab_mark_read", {
       sender_id: senderId,
       message_id: messageId,
     })) as { sender_id?: unknown; message_id?: unknown; read?: unknown };
-    // read: false means it is gone (expired or past the 7-day re-read window), which is as
-    // read as it will get; anything else must name the message asked for.
+    // read: false means HAB no longer offers it to this recipient (expired, past the 7-day
+    // re-read window, or no longer authorized); anything else must name the message asked for.
     if (
       value.sender_id !== senderId ||
       value.message_id !== messageId ||
       typeof value.read !== "boolean"
     )
       throw new MessagingError("transport_failed");
+    return value.read;
   }
 }

@@ -165,6 +165,7 @@ test("対応する on Hermes Desktop is reported unsupported and starts nothing 
     async markRead(id, sender) {
       read.push(`${sender}/${id}`);
       hab.unread = [];
+      return true;
     },
   };
   const notifier = new ReceiptNotifier({ hab, screen, store });
@@ -289,7 +290,9 @@ test("対応する runs the configured handoff once and maps its answer", async 
     async peek() {
       return { messages: [message("m5")], next_cursor: null };
     },
-    async markRead() {},
+    async markRead() {
+      return true;
+    },
   };
   const notifier = new ReceiptNotifier({ hab, screen, store });
   await notifier.check();

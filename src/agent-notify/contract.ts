@@ -44,9 +44,11 @@ export interface NotifierHab {
   peek(limit: number, after?: string): Promise<PeekPage>;
   /**
    * Marks one message read once the user decided on it (hab_mark_read), named by sender
-   * and ID: two senders may use the same message_id.
+   * and ID: two senders may use the same message_id. False when HAB no longer offers it to
+   * this recipient (expired, past the 7-day re-read window, or the sender's permission was
+   * withdrawn): then nothing may be handed off.
    */
-  markRead(messageId: string, senderId: string): Promise<void>;
+  markRead(messageId: string, senderId: string): Promise<boolean>;
 }
 
 /**
@@ -82,6 +84,7 @@ export interface AgentScreen {
  * - `expired`: the reply deadline passed before a decision.
  */
 export type NoticeState =
+  | "showing"
   | "shown"
   | "later"
   | "declined"
@@ -90,6 +93,7 @@ export type NoticeState =
   | "queued"
   | "unsupported"
   | "unknown"
+  | "unavailable"
   | "expired";
 
 export interface NoticeRecord {

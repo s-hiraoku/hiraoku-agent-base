@@ -47,7 +47,7 @@ export class ReceiptNotifier {
   /**
    * One check: expire undecided notices past their deadline, then page through every
    * unread message and show each one not shown before. Returns the IDs shown now. A
-   * notice the screen could not show is forgotten, so the next check shows it again.
+   * notice the screen did not finish showing stays `showing`, so the next check shows it again.
    */
   async check(): Promise<string[]> {
     const now = this.#now();
@@ -60,12 +60,20 @@ export class ReceiptNotifier {
       const { messages, next_cursor } = await this.#hab.peek(PAGE, after);
       for (const message of messages) {
         if (Date.parse(message.expires_at) <= now) continue;
-        if (!this.#store.insertShown(message, now)) continue;
+        // `showing` is written before the screen is asked, and becomes `shown` after. A row
+        // left `showing` (a failed or interrupted display) is shown again on the next check.
+        const known = this.#store.get(message);
+        if (
+          known
+            ? known.state !== "showing"
+            : !this.#store.insertShowing(message, now)
+        )
+          continue;
         try {
           await this.#screen.show(message);
+          this.#store.transition(message, ["showing"], "shown", now);
           shown.push(message.message_id);
         } catch (error) {
-          this.#store.forget(message);
           failure ??= error;
         }
       }
@@ -126,7 +134,9 @@ export class ReceiptNotifier {
         });
       case "accept":
         return this.#decided(record, "accepting", async () => {
-          await this.#hab.markRead(record.message_id, record.sender_id);
+          // HAB no longer offers it to this recipient: hand off nothing.
+          if (!(await this.#hab.markRead(record.message_id, record.sender_id)))
+            return "unavailable";
           try {
             return await this.#screen.handoff(record.message);
           } catch {

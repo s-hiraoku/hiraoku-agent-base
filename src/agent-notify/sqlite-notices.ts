@@ -5,6 +5,7 @@
  * never be handed to another.
  */
 import { DatabaseSync } from "node:sqlite";
+import { closeSync, constants, fstatSync, openSync } from "node:fs";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { NoticeRecord, NoticeState, PeekedMessage } from "./contract.ts";
 
@@ -47,6 +48,22 @@ export class SQLiteNotices {
   readonly #db: DatabaseSync;
   readonly #target: string;
   constructor(path: string, target: string) {
+    // The rows hold message text: owner-only, like the other SQLite stores. SQLite gives the
+    // WAL and shared-memory files the database file's permissions.
+    if (path !== ":memory:") {
+      const fd = openSync(
+        path,
+        constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW,
+        0o600,
+      );
+      try {
+        const info = fstatSync(fd);
+        if (!info.isFile() || (info.mode & 0o077) !== 0)
+          throw new MessagingError("insecure_notices_file");
+      } finally {
+        closeSync(fd);
+      }
+    }
     this.#db = new DatabaseSync(path);
     try {
       this.#db.exec("PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL");
@@ -99,11 +116,11 @@ export class SQLiteNotices {
       .get(key.sender_id, key.message_id) as Row | undefined;
     return row && this.#record(row);
   }
-  /** Records a message as shown. False when it was already recorded. */
-  insertShown(message: PeekedMessage, now: number): boolean {
+  /** Records a message about to be shown. False when it was already recorded. */
+  insertShowing(message: PeekedMessage, now: number): boolean {
     const result = this.#db
       .prepare(
-        "INSERT OR IGNORE INTO notices(sender_id,message_id,state,sender,expires_at,shown_at,decided_at,message) VALUES(?,?,'shown',?,?,?,NULL,?)",
+        "INSERT OR IGNORE INTO notices(sender_id,message_id,state,sender,expires_at,shown_at,decided_at,message) VALUES(?,?,'showing',?,?,?,NULL,?)",
       )
       .run(
         message.sender_id,
@@ -114,14 +131,6 @@ export class SQLiteNotices {
         JSON.stringify(message),
       );
     return result.changes === 1;
-  }
-  /** Removes a row whose notice could not be shown, so the next check shows it again. */
-  forget(key: NoticeKey) {
-    this.#db
-      .prepare(
-        "DELETE FROM notices WHERE sender_id=? AND message_id=? AND state='shown'",
-      )
-      .run(key.sender_id, key.message_id);
   }
   /** Moves one row only from one of `from`; false when another caller got there first. */
   transition(
@@ -156,9 +165,10 @@ export class SQLiteNotices {
         )
         .all(now) as unknown as Row[]
     ).map((row) => this.#record(row));
+    // A notice never shown (`showing`) expires too, without a report.
     this.#db
       .prepare(
-        "UPDATE notices SET state='expired',decided_at=? WHERE state IN ('shown','later') AND expires_at<=?",
+        "UPDATE notices SET state='expired',decided_at=? WHERE state IN ('showing','shown','later') AND expires_at<=?",
       )
       .run(now, now);
     this.#db

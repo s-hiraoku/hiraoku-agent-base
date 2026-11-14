@@ -192,7 +192,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/arrival-notifier.md",
-      "sha256": "a8e9a4833b4b04d6ad714beaba7f5e998ed5a28565e468c9d5377f3ec7bdf22a",
+      "sha256": "9155da8e9d60d5d60294684969cdc40640e9b353abb64990571b979385aa133a",
       "role": "normative",
       "review": "reviewed",
       "summary": "Arrival notice recipe (ADR-021): hab_peek at /mcp/delivery returns unread mail with read_at null, the owner's display (sender, 受信内容, どうしますか？ 1. 対応する 2. あとで 3. 対応しない) and a tag-framed handoff_prompt, leaving the sender's status pending and hab_inbox still new; hab:notify check shows each message once through the JSONL screen; later keeps it unread and show-again re-shows it; accept marks it read and writes exactly one handoff (queued), a repeat is unchanged; decline marks read and starts nothing even for a body claiming approval; the bound session replies with hab_reply. Gotchas: peek offers only unread mail, do not combine with the SDK receive path for one address, a JSONL screen cannot confirm a start. Synthetic identities only.",
@@ -476,7 +476,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "484283b053e3698357e6ad4c6d8b123e8dff63717047f821ac29c3c08e42646d",
+      "sha256": "7224b5a721aeec4f2d856a5f8a1f40de6396f99e81bcac0714270f96b6230164",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once."
@@ -801,10 +801,10 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "887c726d64da060e13f1c97cff5315235e2fe541b15df1bba87b520e258b276d",
+      "sha256": "343bcef0f56b383e246b5ab299742e2792ea0d6d3b1c069e7860b965555834ff",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States shown, later, declined, accepting, started, queued, unsupported, unknown and expired; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done.",
+      "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done.",
       "read_scope": "full"
     },
     {
@@ -1925,13 +1925,13 @@
           "path": "docs/hab-decisions.md",
           "start": 95,
           "end": 105,
-          "excerpt_sha256": "100bb311aa64004bdb522a66881752d6199cc76b4441aa0d9d9c239102977c6d"
+          "excerpt_sha256": "edfbcda07fe74bc1646b344036d6a811ce0ddb7ca0b6b1326b0315dcc7e05909"
         },
         {
           "path": "docs/receiver/arrival-notifier.md",
           "start": 112,
-          "end": 131,
-          "excerpt_sha256": "369101a5985da343b54465281b9cb7394d16f5dbcb35ef8c56a9e851618c685f"
+          "end": 134,
+          "excerpt_sha256": "4985e6a655eb574f86d5428f9622f046a74d5d5e046599fa4d973fff6338f37b"
         },
         {
           "path": "docs/receiver/receipt-confirmation.md",
