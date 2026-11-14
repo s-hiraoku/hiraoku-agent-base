@@ -61,4 +61,4 @@ export HAB_NOTIFY_TOKEN=$(jq -r .agents.b.token $ST); N="node scripts/hab-notify
 - A notices store is bound to the `screen.target` it was created with; a config with another target gets `notices_target_mismatch`. Use a new `store` per session.
 - The channel socket directory must be owner-only (0700) and owned by the user, or the channel refuses to start (`insecure_channel_dir`); a socket another live channel holds is `channel_socket_in_use`.
 - Claude Code channels are a research preview and never acknowledge an event, so the record says `queued`, never `started`. A pass here proves only the HAB side, not that a real Claude Code, Codex or ChatGPT session showed or took the request.
-- `hab:notify` reads the token on every call; with `token.env` the variable must be set in the shell that runs the command.
+- `hab:notify` reads the token on every call; with `token.env` the variable must be set in the shell that runs the command. A file token with `expires_at_field` past its expiry is not sent; the command reports `{"error":"token_expired"}` (`token_unavailable` when the field is empty), kept apart from `transport_failed`.

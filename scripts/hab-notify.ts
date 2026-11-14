@@ -92,6 +92,11 @@ const configSchema = z.strictObject({
     z.strictObject({
       file: z.string().min(1),
       field: z.string().min(1).default("access_token"),
+      /**
+       * Optional: the field holding the token's absolute expiry in epoch seconds (Hermes writes
+       * `expires_at`). Past it, a call is not made and the notifier reports token_expired.
+       */
+      expires_at_field: z.string().min(1).optional(),
     }),
     z.strictObject({ env: z.string().min(1) }),
   ]),
@@ -162,6 +167,16 @@ function readToken(config: NotifyConfig): string {
       readFileSync(expand(config.token.file), "utf8"),
     ) as Record<string, unknown>;
     token = file[config.token.field];
+    const expiresAt = config.token.expires_at_field
+      ? file[config.token.expires_at_field]
+      : undefined;
+    // The agent refreshes its own token; until it does, sending the old one is only refused.
+    if (
+      typeof expiresAt === "number" &&
+      Number.isFinite(expiresAt) &&
+      expiresAt * 1000 <= Date.now()
+    )
+      throw new MessagingError("token_expired");
   }
   if (typeof token !== "string" || token.length === 0)
     throw new MessagingError("token_unavailable");
@@ -347,8 +362,20 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
   };
 }
 
-const errorCode = (error: unknown) =>
-  error instanceof MessagingError ? error.code : "failed";
+/**
+ * The MCP transport reports a credential that could not be read as transport_failed. When
+ * the token itself is the cause (expired or missing), that is named instead.
+ */
+function errorCode(error: unknown, config?: NotifyConfig): string {
+  const code = error instanceof MessagingError ? error.code : "failed";
+  if (code !== "transport_failed" || !config) return code;
+  try {
+    readToken(config);
+  } catch (tokenError) {
+    if (tokenError instanceof MessagingError) return tokenError.code;
+  }
+  return code;
+}
 
 export async function main(
   args: string[],
@@ -426,7 +453,7 @@ export async function main(
   try {
     created = createNotifier(config);
   } catch (error) {
-    out(JSON.stringify({ error: errorCode(error) }));
+    out(JSON.stringify({ error: errorCode(error, config) }));
     return 1;
   }
   const { notifier, store } = created;
@@ -500,7 +527,7 @@ export async function main(
             const shown = await notifier.check();
             if (shown.length) out(JSON.stringify({ shown }));
           } catch (error) {
-            out(JSON.stringify({ error: errorCode(error) }));
+            out(JSON.stringify({ error: errorCode(error, config) }));
           }
           await new Promise((done) => setTimeout(done, config.interval_ms));
         }
@@ -510,7 +537,7 @@ export async function main(
     out(usage);
     return 2;
   } catch (error) {
-    out(JSON.stringify({ error: errorCode(error) }));
+    out(JSON.stringify({ error: errorCode(error, config) }));
     return 1;
   } finally {
     store.close();
