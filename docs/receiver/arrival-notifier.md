@@ -59,6 +59,10 @@ token は呼ぶたびにファイルか環境変数から読みます（エー�
 
 token の更新はエージェント側の仕事です。アダプタは更新しません。Hermes は `expires_at`（期限の UNIX 秒）を書き、期限が切れたあと、自分の次の接続（約 3 分ごと）で更新します。`expires_at_field` を指定すると、期限を過ぎた token は HAB に送らず、`{"error":"token_expired"}` を返します。token の欄が空なら `token_unavailable` です。どちらも `transport_failed`（HAB に届かない、応答がおかしい）とは分けて出ます。`run` は期限切れの間もそのまま待ち、エージェントが更新した次の確認から自然に戻ります。
 
+- `expires_at_field` がなくても、token が JWT なら `exp` を読みます。過ぎているか 5 秒以内に切れる token は、同じく HAB に送らず `token_expired` です。期限は署名を確かめずに読むだけで、判断するのは HAB です。中身の読めない token と `exp` のない JWT は、そのまま HAB に送ります。
+- `run` は、同じ失敗が続くあいだ、始まりに `{"error":"token_expired"}` を 1 回、直ったときに `{"resumed":"token_expired"}` を 1 回だけ書きます。確認のたびには書きません。ほかの失敗（`transport_failed` など）も同じ扱いです。
+- 待っているあいだにボタンを押すと、選択は記録されず同じ理由で失敗します。カードはそのまま残るので、token が更新された後にもう一度押せます。「あとで」は HAB を呼ばないので、待っているあいだも使えます。
+
 ## Hermes Desktop
 
 Hermes Desktop には、保存済みの会話に「外部メッセージ」を表示専用で出す欄があります。対象は Mac mini のローカル版 Hermes で、`hermes_cli/web_routers/external_messages.py` と `website/docs/developer-guide/external-message-display.md` にあります。カードは会話とモデル文脈の外に出るので、表示してもモデルは動きません。Desktop は、プロファイル設定 `external_messages.readers` に書いた読み取りコマンドを実行し、`stored_session_id` が一致する会話にだけカードを出します。
