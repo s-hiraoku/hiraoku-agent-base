@@ -468,7 +468,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "17463edcde114b522e1600c26665a69b38020aa0d5e897d78a4138faeab5cf7f",
+      "sha256": "a2dd72954f0e3620dda6ef7ad025c6002253254a66ca533b54d1a78cfec412f8",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery."
@@ -1614,7 +1614,7 @@
           "path": "docs/hab-decisions.md",
           "start": 84,
           "end": 85,
-          "excerpt_sha256": "870054c633e02cbe9a73655caf3fb854ddb7e7bc811e522643333b426a1b08b9"
+          "excerpt_sha256": "fb64ab205a09fab31ed4c2c69a19bb93db41dce6508f7958b394da44281e853f"
         }
       ]
     },
@@ -2670,7 +2670,7 @@
           "path": "docs/hab-decisions.md",
           "start": 84,
           "end": 85,
-          "excerpt_sha256": "870054c633e02cbe9a73655caf3fb854ddb7e7bc811e522643333b426a1b08b9"
+          "excerpt_sha256": "fb64ab205a09fab31ed4c2c69a19bb93db41dce6508f7958b394da44281e853f"
         }
       ]
     },

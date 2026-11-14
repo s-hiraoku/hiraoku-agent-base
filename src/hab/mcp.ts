@@ -125,6 +125,8 @@ export function createHabMcpServer(
   gate?: DeliveryMcpGate,
   oauthScopes?: readonly string[],
   catalog: HabMcpCatalog = "delivery",
+  /** The transport's response limit; hab_inbox reads no more than fits in it. */
+  maxResponseBytes?: number,
 ) {
   if (typeof service?.resolve !== "function")
     throw new MessagingError("invalid_hab_mcp_service");
@@ -137,7 +139,13 @@ export function createHabMcpServer(
     : {};
   const server =
     catalog === "agent"
-      ? createAgentServer(service, resolveContext, gate, security)
+      ? createAgentServer(
+          service,
+          resolveContext,
+          gate,
+          security,
+          maxResponseBytes,
+        )
       : createDeliveryServer(
           service,
           resolveContext,
@@ -170,6 +178,7 @@ function createAgentServer(
   resolveContext: DeliveryContextResolver,
   gate: DeliveryMcpGate | undefined,
   security: object,
+  maxResponseBytes: number | undefined,
 ) {
   const agent = service as unknown as HabAgentService;
   for (const name of [
@@ -212,6 +221,7 @@ function createAgentServer(
             prepared.context,
             tool,
             prepared.input as Record<string, unknown>,
+            maxResponseBytes,
           );
         }),
     );

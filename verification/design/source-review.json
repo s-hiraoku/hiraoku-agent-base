@@ -452,7 +452,7 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "0f51fb61c023cfa2431474b7f660240b5907a7913da842dc7764acef86f5ff7e",
+        "sha256": "b9b238ff8c58dbb4a4aebdbd5540b075f184fe4f10ca3b8e2bb68ac7bee48b3a",
         "kind": "implementation/config/inline-sql",
         "review": "reviewed",
         "read_coverage": "full",
@@ -2454,11 +2454,11 @@
       },
       {
         "path": "verification/design/checks/communication-boundary.mjs",
-        "sha256": "e2c060e0243aede83f7b929b7845ff6501792db1893d5365ef14c96783ea50d5",
+        "sha256": "d546e921664c4e06ffb86961f9ec040caec0efd0ad3d337f07719d63ca0380be",
         "review": "reviewed",
         "read_coverage": "one-line coreModules addition and surrounding dependency policy",
         "observation": "The new local-only authentication-recovery.ts has no imports or IO and belongs to the stricter protected core closure. Explicit classification preserves failure on unknown modules and does not admit an OAuth/HTTP/MCP package or wrapper. Positive/negative controls are separately executed by the coordinating task, not attested by this source review.",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/authentication-recovery.test.js",
@@ -2509,13 +2509,13 @@
     "supplemental": [
       {
         "path": "src/delivery/sqlite-delivery.ts",
-        "sha256": "ae82c77267dc646545f023e167da603e66e2bac4c90550a1b523c80b38da7223",
+        "sha256": "7c84f401b133f4ae553fd6c95ea10e3932fada4f58d710f34c41f75e473eff5a",
         "review": "reviewed",
         "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": "test/sqlite-delivery.test.js",
-        "sha256": "333cf56c0964804a5378dee1c91099a51e624cfa39014338a91ce00adbcf7e74",
+        "sha256": "30cb4390caa87e0a3f5a3f64b9d81a73737ed8c0680f14f2da4b6e6b2cd9e23c",
         "review": "reviewed",
         "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
@@ -2533,7 +2533,7 @@
       },
       {
         "path": "src/host/hab-delivery-service.ts",
-        "sha256": "0f51fb61c023cfa2431474b7f660240b5907a7913da842dc7764acef86f5ff7e",
+        "sha256": "b9b238ff8c58dbb4a4aebdbd5540b075f184fe4f10ca3b8e2bb68ac7bee48b3a",
         "review": "reviewed",
         "maintenance": "Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
@@ -2602,9 +2602,9 @@
       },
       {
         "path": "verification/design/checks/communication-boundary.mjs",
-        "sha256": "e2c060e0243aede83f7b929b7845ff6501792db1893d5365ef14c96783ea50d5",
+        "sha256": "d546e921664c4e06ffb86961f9ec040caec0efd0ad3d337f07719d63ca0380be",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
       },
       {
         "path": ".claude/skills/verify-hab/scripts/stack.mjs",

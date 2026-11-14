@@ -624,3 +624,22 @@ test("inbox with a message_id reads that one message again, beyond the newest pa
     { code: "invalid_request", details: { field: "message_id" } },
   );
 });
+
+test("inbox stops before a message that would not fit the response budget and leaves it unread", async (t) => {
+  const f = await fixture(t);
+  const big = (n) =>
+    next({ body: { parts: [{ type: "text", text: String(n).repeat(3000) }] } });
+  const inputs = [big(1), big(2), big(3)];
+  for (const input of inputs) f.service.submit("a", input);
+  const budget = { limit: 10, include_read: false, max_bytes: 2 * 16200 };
+  assert.deepEqual(
+    f.service.inbox("b", budget).map((m) => m.message_id),
+    [inputs[0].message_id, inputs[1].message_id],
+  );
+  assert.equal(f.row(inputs[2].message_id).state, "pending");
+  // The first message is always taken, even when it alone exceeds the budget.
+  assert.deepEqual(
+    f.service.inbox("b", { ...budget, max_bytes: 1 }).map((m) => m.message_id),
+    [inputs[2].message_id],
+  );
+});

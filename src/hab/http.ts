@@ -81,6 +81,7 @@ export class HabHttpGateway extends McpHttpGateway {
       gate,
       this.oauth ? HAB_OAUTH_SCOPES : undefined,
       this.catalog,
+      this.policy.max_response_bytes,
     );
   }
 }

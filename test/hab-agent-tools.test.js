@@ -348,3 +348,25 @@ test("a stopped connection still gets forbidden on the agent tools", async (t) =
   ])
     assert.equal((await f.fails("a", name, args)).error, "forbidden");
 });
+
+test("a full inbox is returned in batches that fit the response limit, none read and lost", async (t) => {
+  const f = await setup(t);
+  const ids = [];
+  for (let i = 0; i < 3; i++)
+    ids.push(
+      (
+        await f.ok("a", "hab_send", {
+          to: f.b.address,
+          text: String(i).repeat(15000),
+        })
+      ).message_id,
+    );
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    const { messages } = await f.ok("b", "hab_inbox");
+    assert.equal(messages.length, 1);
+    seen.push(messages[0].message_id);
+  }
+  assert.deepEqual(seen, ids);
+  assert.deepEqual((await f.ok("b", "hab_inbox")).messages, []);
+});

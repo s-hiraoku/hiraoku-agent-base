@@ -30,7 +30,12 @@ export interface HabAgentService {
   ): ReceivedMessage & { from: string | null };
   inbox(
     context: unknown,
-    options: { limit: number; include_read: boolean; message_id?: string },
+    options: {
+      limit: number;
+      include_read: boolean;
+      message_id?: string;
+      max_bytes?: number;
+    },
   ): (InboxMessage & { from: string | null })[];
   statusWithAddress(
     context: unknown,
@@ -194,6 +199,7 @@ export function runHabAgentTool(
   context: unknown,
   tool: HabAgentTool,
   input: Record<string, unknown>,
+  maxResponseBytes?: number,
 ): unknown {
   switch (tool) {
     case "hab_send": {
@@ -275,6 +281,10 @@ export function runHabAgentTool(
           limit,
           include_read,
           ...(message_id !== undefined ? { message_id } : {}),
+          // Keep room for the envelope and the explanation.
+          ...(maxResponseBytes !== undefined
+            ? { max_bytes: Math.max(1, maxResponseBytes - 4096) }
+            : {}),
         })
         .map((message) => ({
           message_id: message.message_id,

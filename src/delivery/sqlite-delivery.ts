@@ -123,6 +123,19 @@ type ResolvedOptions = Required<
   Omit<SqliteDeliveryOptions, "agent_capacity" | "path">
 > & { agent_capacity?: AgentCapacityPolicy };
 
+/**
+ * Upper estimate of one inbox message's share of an MCP tool response: the text appears
+ * twice (as `text` and inside the notice), once in structuredContent and once more as an
+ * escaped JSON string in `content`, plus fixed fields.
+ */
+function inboxResponseCost(message: Submission): number {
+  const text = message.body.parts
+    .flatMap((part) => (part.type === "text" ? [part.text] : []))
+    .join("\n\n");
+  const once = Buffer.byteLength(JSON.stringify(text));
+  const twice = Buffer.byteLength(JSON.stringify(JSON.stringify(text)));
+  return 2 * once + 2 * twice + 4096;
+}
 export class SqliteDelivery {
   readonly #db: DatabaseSync;
   readonly #options: ResolvedOptions;
@@ -665,7 +678,13 @@ export class SqliteDelivery {
   readInboxWithAuthorization(
     context: unknown,
     authorization: Authorization,
-    options: { limit: number; include_read: boolean; message_id?: string },
+    options: {
+      limit: number;
+      include_read: boolean;
+      message_id?: string;
+      /** Response budget: messages are taken (and marked read) only while they fit. */
+      max_bytes?: number;
+    },
   ): InboxMessage[] {
     if (
       !Number.isInteger(options.limit) ||
@@ -716,10 +735,21 @@ export class SqliteDelivery {
           `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${only ? " AND message_id=?" : ""} ORDER BY accepted_at,sender_id,message_id`,
         )
         .all(recipient, ...(only ? [only] : [])) as unknown as Row[];
+      let spent = 0;
+      // Whether one more message still fits the response; the first always does,
+      // since a single message is bounded by the contract's text limit.
+      const fits = (message: Submission) => {
+        if (options.max_bytes === undefined) return true;
+        const cost = inboxResponseCost(message);
+        if (out.length > 0 && spent + cost > options.max_bytes) return false;
+        spent += cost;
+        return true;
+      };
       for (const row of unread) {
         if (out.length >= options.limit) break;
         if (!allowed(row)) continue;
         const message = this.#stored(row);
+        if (!fits(message)) break;
         const requestId = `inbox-${randomUUID()}`;
         this.#db
           .prepare(
@@ -753,9 +783,9 @@ export class SqliteDelivery {
         for (const row of read) {
           if (out.length >= options.limit) break;
           if (!allowed(row)) continue;
-          out.push(
-            this.#inboxMessage(row, this.#stored(row), row.acked_at!, false),
-          );
+          const message = this.#stored(row);
+          if (!fits(message)) break;
+          out.push(this.#inboxMessage(row, message, row.acked_at!, false));
         }
       }
       return out;
