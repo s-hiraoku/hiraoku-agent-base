@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** Pinned Node and npm versions for local and CI test runs. */
 export function readToolchainPin(repoRoot) {
   const node = readFileSync(join(repoRoot, ".node-version"), "utf8").trim();
   if (!node) {
@@ -50,7 +49,6 @@ export function readNpmVersion(run = execFileSync) {
   return run("npm", ["--version"], { encoding: "utf8" }).trim();
 }
 
-/** Fail closed when the active Node or npm differs from the repo pins. */
 export function assertCurrentToolchain(
   pin,
   {
