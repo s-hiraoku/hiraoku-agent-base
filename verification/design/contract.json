@@ -801,10 +801,18 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "6e6701e65f9f78c6dae4e85aa83235fc52fb8b41a4b8533e2f31d28f06bacd88",
+      "sha256": "8154354e400ccbf654076c28f9f720524e55c8480f0b6a1e00c527b05ca953b2",
       "role": "normative",
       "review": "reviewed",
       "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States shown, later, declined, accepting, started, queued, unsupported, unknown and expired; unknown and unsupported are never retried. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; the Hermes Desktop adapter and an existing-Desktop-session acceptance are not done.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/receiver/receipt-confirmation.md",
+      "sha256": "33931fb68a8fdbcaacba7b7abe371ffaa9899f21569e07cc05dfefb7236fbfd6",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "Owner-specified receipt experience and acceptance conditions (2026-11-14): show the verified sender, body and reply deadline in the recipient's agent screen and ask whether to act (対応する / あとで / 対応しない); arrival alone starts no model work; only 対応する hands the message to the verified same session; no fallback to another session or a CLI under the same address; HAB read/ACK is not human consent; each product reports supported/unsupported/unknown per capability; CLI-only roundtrips never count as a Desktop pass. States that adding the document does not mean implementation, deployment or existing-session acceptance.",
       "read_scope": "full"
     },
     {
@@ -1924,6 +1932,12 @@
           "start": 60,
           "end": 79,
           "excerpt_sha256": "369101a5985da343b54465281b9cb7394d16f5dbcb35ef8c56a9e851618c685f"
+        },
+        {
+          "path": "docs/receiver/receipt-confirmation.md",
+          "start": 79,
+          "end": 87,
+          "excerpt_sha256": "82f797949a5100501312cfdc7c9a322a2562d535b5e6f5cd11878af59b7f2ca7"
         }
       ]
     },

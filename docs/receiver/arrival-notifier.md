@@ -1,6 +1,6 @@
 # 受信通知アダプタ：届いたメッセージを受信側の画面に出す
 
-[ADR-021](../hab-decisions.md) · [共通 MCP 接続](../common-mcp-connection.md) · [受信後の引渡し](recipient-messages.md)
+[ADR-021](../hab-decisions.md) · [共通 MCP 接続](../common-mcp-connection.md) · [受信後の引渡し](recipient-messages.md) · [受入条件（利用者指定）](receipt-confirmation.md)
 
 HAB にメッセージが届いたら、受信側の利用者が使っているエージェントの画面に、次の形で知らせます。
 
