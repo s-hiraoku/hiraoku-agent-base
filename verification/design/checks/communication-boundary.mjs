@@ -33,9 +33,14 @@ const deliveryCore = ["src/delivery/sqlite-delivery.ts"];
 // docs/hab-messaging-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
 const coreModules = new Set([
-  ...["index.ts", "contract.ts", "delivery-service.ts", "tool-errors.ts"].map(
-    messagingPath,
-  ),
+  ...[
+    "index.ts",
+    "contract.ts",
+    "delivery-service.ts",
+    "tool-errors.ts",
+    // Pure formatting of the incoming-message notice (ADR-020); node:crypto only.
+    "incoming-notice.ts",
+  ].map(messagingPath),
   ...[
     "index.ts",
     "sender.ts",
