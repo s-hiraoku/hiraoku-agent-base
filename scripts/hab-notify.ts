@@ -1,0 +1,345 @@
+/**
+ * The arrival notifier CLI (ADR-021). Shows new HAB mail in the agent's own screen through
+ * a configured adapter and applies the user's choice. Prints no tokens. Only `events`
+ * prints message text: it is the Hermes Desktop reader, and Hermes shows that text.
+ *
+ *   hab-notify --config <notify.json> run            keep checking every interval_ms
+ *   hab-notify --config <notify.json> check          check once
+ *   hab-notify --config <notify.json> list           notices waiting for a choice
+ *   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
+ *   hab-notify --config <notify.json> show-again <message_id> [sender_id]
+ *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+ *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
+ *       local screen file, never HAB)
+ *   hab-notify --config <notify.json> action
+ *       (screen type hermes-desktop: Hermes Desktop's actions_command. Reads one decision
+ *       {action: "decide", ...} on stdin from the card's buttons and prints {changed, state})
+ */
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { isAbsolute, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { z } from "zod";
+import {
+  HabNotifierClient,
+  HermesDesktopScreen,
+  JsonlScreen,
+  ReceiptNotifier,
+  SQLiteNotices,
+  hermesDesktopPage,
+} from "../src/agent-notify/index.ts";
+import type { AgentScreen } from "../src/agent-notify/index.ts";
+import { MessagingError } from "../src/messaging/delivery-service.ts";
+
+const usage = `usage:
+  hab-notify --config <notify.json> run|check|list
+  hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
+  hab-notify --config <notify.json> show-again <message_id> [sender_id]
+  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+  hab-notify --config <notify.json> action   (one decision as JSON on stdin)`;
+
+/** What Hermes Desktop's decision route sends for a button press on one card. */
+const actionSchema = z.strictObject({
+  action: z.literal("decide"),
+  backend_namespace: z.string().min(1),
+  profile_scope: z.string().min(1),
+  receiver_id: z.string().min(1),
+  sender_id: z.string().min(1),
+  message_id: z.string().min(1),
+  stored_session_id: z.string().min(1),
+  choice: z.enum(["accept", "later", "decline"]),
+});
+
+const configSchema = z.strictObject({
+  /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
+  hab_url: z.url(),
+  agent_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
+  as_address: z.string().optional(),
+  /** Where the recipient's bearer token is read before every call. */
+  token: z.union([
+    z.strictObject({
+      file: z.string().min(1),
+      field: z.string().min(1).default("access_token"),
+    }),
+    z.strictObject({ env: z.string().min(1) }),
+  ]),
+  store: z.string().min(1),
+  screen: z.discriminatedUnion("type", [
+    z.strictObject({
+      type: z.literal("jsonl"),
+      path: z.string().min(1),
+      /** The one session this notifier serves, such as hermes-desktop:<session id>. */
+      target: z.string().min(1),
+    }),
+    z.strictObject({
+      type: z.literal("hermes-desktop"),
+      path: z.string().min(1),
+      /** The saved Hermes conversation that shows the notices. */
+      session_id: z.string().min(1).max(2048),
+      profile: z.string().min(1).max(2048),
+      /** Both must equal the reader's values in the Hermes profile config. */
+      backend_namespace: z.string().min(1).max(2048),
+      profile_scope: z.string().min(1).max(2048),
+      /** Optional: hands the request to the conversation after 対応する (hermes_bridge.desktop_handoff). */
+      handoff: z
+        .strictObject({
+          command: z
+            .array(z.string().min(1).max(4096))
+            .min(1)
+            .max(32)
+            .refine((argv) => isAbsolute(argv[0]!), "absolute command"),
+          cwd: z.string().refine((path) => isAbsolute(path), "absolute cwd"),
+          env: z.record(z.string(), z.string()).optional(),
+          timeout_ms: z.number().int().min(1000).max(300_000).optional(),
+        })
+        .optional(),
+    }),
+  ]),
+  interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
+});
+export type NotifyConfig = z.infer<typeof configSchema>;
+
+const expand = (path: string) =>
+  resolve(path.startsWith("~/") ? homedir() + path.slice(1) : path);
+
+function readToken(config: NotifyConfig): string {
+  let token: unknown;
+  if ("env" in config.token) token = process.env[config.token.env];
+  else {
+    const file = JSON.parse(
+      readFileSync(expand(config.token.file), "utf8"),
+    ) as Record<string, unknown>;
+    token = file[config.token.field];
+  }
+  if (typeof token !== "string" || token.length === 0)
+    throw new MessagingError("token_unavailable");
+  return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+}
+
+const hermesBinding = (
+  config: NotifyConfig,
+  screen: Extract<NotifyConfig["screen"], { type: "hermes-desktop" }>,
+) => ({
+  session_id: screen.session_id,
+  profile: screen.profile,
+  backend_namespace: screen.backend_namespace,
+  profile_scope: screen.profile_scope,
+  receiver_id: config.agent_id,
+});
+
+function configuredScreen(config: NotifyConfig): AgentScreen {
+  const screen = config.screen;
+  return screen.type === "jsonl"
+    ? new JsonlScreen(expand(screen.path), screen.target)
+    : new HermesDesktopScreen(
+        expand(screen.path),
+        hermesBinding(config, screen),
+        screen.handoff ? { handoff: screen.handoff } : {},
+      );
+}
+
+/** `events [--limit N] [--after CURSOR]`: the Hermes Desktop reader page, as one JSON line. */
+function events(config: NotifyConfig, args: string[]) {
+  const screen = config.screen;
+  if (screen.type !== "hermes-desktop") return null;
+  let limit = 100;
+  let after: string | undefined;
+  for (let i = 0; i < args.length; i += 2) {
+    const value = args[i + 1];
+    if (value === undefined) return null;
+    if (args[i] === "--limit") limit = Number(value);
+    else if (args[i] === "--after") after = value;
+    else return null;
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) return null;
+  return hermesDesktopPage(expand(screen.path), hermesBinding(config, screen), {
+    limit,
+    ...(after !== undefined ? { after } : {}),
+  });
+}
+
+export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
+  const base = {
+    agent_id: config.agent_id,
+    max_request_bytes: 65536,
+    max_response_bytes: 4 * 1024 * 1024,
+    timeout_ms: 30_000,
+    max_active_requests: 4,
+    max_sse_events: 16,
+    max_sse_lines: 4096,
+    max_json_depth: 32,
+    max_json_nodes: 100_000,
+  };
+  const limits = {
+    envelope_bytes: 1024 * 1024,
+    text_bytes: 512 * 1024,
+    data_bytes: 512 * 1024,
+    parts: 32,
+    json_depth: 32,
+    json_nodes: 100_000,
+  };
+  const common = {
+    limits,
+    authorization: () => readToken(config),
+    ...(config.as_address ? { as_address: config.as_address } : {}),
+  };
+  const url = config.hab_url.replace(/\/+$/, "");
+  const hab = new HabNotifierClient({
+    ...common,
+    policy: { ...base, resource_url: `${url}/delivery` },
+  });
+  const target = screen ?? configuredScreen(config);
+  const store = new SQLiteNotices(expand(config.store), target.target);
+  return {
+    notifier: new ReceiptNotifier({ hab, screen: target, store }),
+    store,
+  };
+}
+
+const errorCode = (error: unknown) =>
+  error instanceof MessagingError ? error.code : "failed";
+
+export async function main(
+  args: string[],
+  out = console.log,
+  input: () => string = () => readFileSync(0, "utf8"),
+) {
+  if (args[0] !== "--config" || !args[1] || !args[2]) {
+    out(usage);
+    return 2;
+  }
+  const config = configSchema.parse(
+    JSON.parse(readFileSync(expand(args[1]), "utf8")),
+  );
+  const [command, id, choice, sender] = args.slice(2);
+  if (command === "events") {
+    // Reads only the local screen file: no token, store or HAB call.
+    try {
+      const page = events(config, args.slice(3));
+      if (page === null) {
+        out(usage);
+        return 2;
+      }
+      out(JSON.stringify(page));
+      return 0;
+    } catch {
+      out(JSON.stringify({ error: "failed" }));
+      return 1;
+    }
+  }
+  let action: z.infer<typeof actionSchema> | undefined;
+  if (command === "action") {
+    // The press must be for a card this notifier showed: the same conversation, reader and
+    // recipient. Anything else is refused before the store or HAB is touched.
+    const screen = config.screen;
+    const parsed = actionSchema.safeParse(
+      (() => {
+        try {
+          return JSON.parse(input().slice(0, 64 * 1024));
+        } catch {
+          return null;
+        }
+      })(),
+    );
+    if (!parsed.success) {
+      out(JSON.stringify({ error: "invalid_request" }));
+      return 2;
+    }
+    if (
+      screen.type !== "hermes-desktop" ||
+      parsed.data.stored_session_id !== screen.session_id ||
+      parsed.data.backend_namespace !== screen.backend_namespace ||
+      parsed.data.profile_scope !== screen.profile_scope ||
+      parsed.data.receiver_id !== config.agent_id
+    ) {
+      out(JSON.stringify({ error: "binding_mismatch" }));
+      return 1;
+    }
+    action = parsed.data;
+  }
+  let created: ReturnType<typeof createNotifier>;
+  try {
+    created = createNotifier(config);
+  } catch (error) {
+    out(JSON.stringify({ error: errorCode(error) }));
+    return 1;
+  }
+  const { notifier, store } = created;
+  try {
+    switch (command) {
+      case "check":
+        out(JSON.stringify({ shown: await notifier.check() }));
+        return 0;
+      case "list":
+        out(
+          JSON.stringify(
+            notifier.open().map((record) => ({
+              message_id: record.message_id,
+              sender_id: record.sender_id,
+              from: record.from,
+              state: record.state,
+              expires_at: record.expires_at,
+            })),
+          ),
+        );
+        return 0;
+      case "decide":
+        if (!id || !["accept", "later", "decline"].includes(choice ?? ""))
+          break;
+        out(
+          JSON.stringify(
+            await notifier.decide(
+              id,
+              choice as "accept" | "later" | "decline",
+              sender,
+            ),
+          ),
+        );
+        return 0;
+      case "action":
+        out(
+          JSON.stringify(
+            await notifier.decide(
+              action!.message_id,
+              action!.choice,
+              action!.sender_id,
+            ),
+          ),
+        );
+        return 0;
+      case "show-again":
+        if (!id) break;
+        // The optional third argument is the sender_id.
+        out(JSON.stringify(await notifier.showAgain(id, choice)));
+        return 0;
+      case "run": {
+        let stopped = false;
+        const stop = () => {
+          stopped = true;
+        };
+        process.once("SIGTERM", stop);
+        process.once("SIGINT", stop);
+        while (!stopped) {
+          try {
+            const shown = await notifier.check();
+            if (shown.length) out(JSON.stringify({ shown }));
+          } catch (error) {
+            out(JSON.stringify({ error: errorCode(error) }));
+          }
+          await new Promise((done) => setTimeout(done, config.interval_ms));
+        }
+        return 0;
+      }
+    }
+    out(usage);
+    return 2;
+  } catch (error) {
+    out(JSON.stringify({ error: errorCode(error) }));
+    return 1;
+  } finally {
+    store.close();
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
+  process.exitCode = await main(process.argv.slice(2));

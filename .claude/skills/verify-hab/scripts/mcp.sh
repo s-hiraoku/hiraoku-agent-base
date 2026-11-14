@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Drive the running verify-hab stack over real MCP HTTP (JSON-RPC POST).
 # Usage: mcp.sh <run-dir> <a|b|c|none|BAD> <tool|tools/list> ['<json-arguments>']
-#   The agent catalog (POST /mcp) is the default. hab_submit, hab_poll, hab_ack and
-#   hab_resolve go to the delivery catalog (POST /mcp/delivery); set
+#   The agent catalog (POST /mcp) is the default. hab_submit, hab_poll, hab_ack,
+#   hab_resolve, hab_peek and hab_mark_read go to the delivery catalog (POST /mcp/delivery); set
 #   HAB_CATALOG=delivery to send hab_status or tools/list there too.
 #   agent "none" sends no Authorization header; "BAD" sends an unknown bearer.
 # Saves request + response under <run-dir>/evidence/NNN-<agent>-<tool>.{req,res}
@@ -11,7 +11,7 @@ set -euo pipefail
 run=$(cd "$1" && pwd); agent=$2; tool=$3; args=${4:-'{}'}
 state="$run/instance/state.json"
 [ -f "$state" ] || { echo "no_state: run launch first ($state)" >&2; exit 2; }
-case "$tool" in hab_submit|hab_poll|hab_ack|hab_resolve) catalog=delivery ;; *) catalog=${HAB_CATALOG:-agent} ;; esac
+case "$tool" in hab_submit|hab_poll|hab_ack|hab_resolve|hab_peek|hab_mark_read) catalog=delivery ;; *) catalog=${HAB_CATALOG:-agent} ;; esac
 if [ "$catalog" = delivery ]; then url=$(jq -r .delivery_url "$state"); else url=$(jq -r .url "$state"); fi
 meta='{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}'
 if [ "$tool" = tools/list ]; then

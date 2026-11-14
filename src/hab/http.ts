@@ -41,7 +41,12 @@ export class HabHttpGateway extends McpHttpGateway {
   protected override get writerOperations() {
     return this.catalog === "agent"
       ? habAgentOperations
-      : { ...super.writerOperations, hab_resolve: "resolve" as const };
+      : {
+          ...super.writerOperations,
+          hab_resolve: "resolve" as const,
+          hab_peek: "poll" as const,
+          hab_mark_read: "poll" as const,
+        };
   }
   protected override get toolSchemas() {
     const schemas = habCatalogSchemas(this.catalog);

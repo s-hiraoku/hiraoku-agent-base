@@ -193,6 +193,33 @@ const sent = (receipt: Receipt, to: string | null, threadId: string) => ({
   explanation: stateExplanations[receipt.state],
 });
 
+/** One inbox message as hab_inbox and hab_peek return it. */
+export function inboxEntry(message: InboxMessage & { from: string | null }) {
+  const notice = {
+    message_id: message.message_id,
+    from: message.from,
+    kind: message.kind,
+    text: message.text,
+    data_parts: message.data_parts,
+    reply_by: message.expires_at,
+  };
+  return {
+    message_id: message.message_id,
+    from: message.from,
+    kind: message.kind,
+    text: message.text,
+    ...(message.data_parts ? { data_parts: message.data_parts } : {}),
+    thread_id: message.thread_id,
+    in_reply_to: message.in_reply_to?.message_id ?? null,
+    sent_at: message.sent_at,
+    read_at: message.read_at,
+    expires_at: message.expires_at,
+    new: message.new,
+    // What to show the user: sender, kind, reply deadline, framed body, choices.
+    notice: formatIncomingNotice(notice),
+  };
+}
+
 /** Runs one agent tool after the transport has verified the caller's context. */
 export function runHabAgentTool(
   service: HabAgentService,
@@ -286,28 +313,7 @@ export function runHabAgentTool(
             ? { max_bytes: Math.max(1, maxResponseBytes - 4096) }
             : {}),
         })
-        .map((message) => ({
-          message_id: message.message_id,
-          from: message.from,
-          kind: message.kind,
-          text: message.text,
-          ...(message.data_parts ? { data_parts: message.data_parts } : {}),
-          thread_id: message.thread_id,
-          in_reply_to: message.in_reply_to?.message_id ?? null,
-          sent_at: message.sent_at,
-          read_at: message.read_at,
-          expires_at: message.expires_at,
-          new: message.new,
-          // What to show the user: sender, kind, reply deadline, framed body, choices.
-          notice: formatIncomingNotice({
-            message_id: message.message_id,
-            from: message.from,
-            kind: message.kind,
-            text: message.text,
-            data_parts: message.data_parts,
-            reply_by: message.expires_at,
-          }),
-        }));
+        .map((message) => inboxEntry(message));
       return {
         messages,
         explanation: messages.length

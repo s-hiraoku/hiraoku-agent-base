@@ -399,3 +399,13 @@ The owner chose to show agents only what they need to do: send, read the inbox, 
 - HAB-F15 and HAB-D03 now state the owner's changes: a deadline fixed at acceptance of at most seven days (the SDK default stays one hour), and a host-inbox read keeping the body for seven days while an SDK ACK still removes it at once. Both cite the ADR-020 section of `docs/hab-decisions.md`.
 - HAB-F04 and HAB-F05 cite the renamed delivery-catalog section of `docs/common-mcp-connection.md`; other citations moved with their unchanged excerpts.
 - The `mcp-durable-roundtrip` check drives the SDK client at `state.delivery_url`. In source-review.json every changed source was re-read and rehashed with an appended note.
+
+## Arrival notice (ADR-021, 2026-11-14)
+
+The owner asked that new mail appear in the recipient's agent screen as soon as it arrives, in the form「〇〇 からのメッセージです。受信内容……どうしますか？」, and that nothing run until the user chooses. The delivery catalog at `/mcp/delivery` gains `hab_peek` (unread mail, left unread, with `display` and `handoff_prompt`); the agent catalog keeps its four tools. `src/agent-notify` and `npm run hab:notify` show each message once, record the choice and hand off at most once.
+
+- Added HAB-F27 (arrival notice before any work), citing the ADR-021 section of `docs/hab-decisions.md` and the state table of `docs/receiver/arrival-notifier.md`, checked by js-root.
+- Registered `docs/receiver/arrival-notifier.md` and `.claude/skills/verify-hab/features/arrival-notifier.md` as reviewed normative documents.
+- HAB-F04 and HAB-F05 re-cite the delivery-catalog section of `docs/common-mcp-connection.md`, which now also names `hab_peek`; their statements are unchanged. HAB-F21 and HAB-E20 moved with unchanged excerpts.
+- In source-review.json every changed source was re-read and rehashed with an appended note.
+

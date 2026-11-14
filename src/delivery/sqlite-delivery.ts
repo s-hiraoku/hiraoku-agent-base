@@ -673,7 +673,8 @@ export class SqliteDelivery {
    * The recipient's host inbox. Unread messages are marked read (ACKed) in the same
    * transaction and returned once with `new: true`; with `include_read`, messages read in
    * the last READ_BODY_RETENTION_MS follow, newest first. A message another client holds
-   * under a poll lease is skipped until that lease ends.
+   * under a poll lease is skipped until that lease ends. With `peek` (ADR-021, the arrival
+   * notifier) unread messages are returned without marking them read and nothing changes.
    */
   readInboxWithAuthorization(
     context: unknown,
@@ -682,8 +683,14 @@ export class SqliteDelivery {
       limit: number;
       include_read: boolean;
       message_id?: string;
+      /** With message_id: only that sender's message (two senders may share an ID). */
+      sender_id?: string;
       /** Response budget: messages are taken (and marked read) only while they fit. */
       max_bytes?: number;
+      /** Return unread messages only, leaving them unread. */
+      peek?: boolean;
+      /** With peek: only messages after this one in inbox order (accepted_at, sender, ID). */
+      after?: { accepted_at: number; sender_id: string; message_id: string };
     },
   ): InboxMessage[] {
     if (
@@ -697,6 +704,13 @@ export class SqliteDelivery {
     if (options.message_id !== undefined && !id(options.message_id))
       throw new MessagingError("invalid_request", {
         details: { field: "message_id" },
+      });
+    if (
+      options.sender_id !== undefined &&
+      (options.message_id === undefined || !id(options.sender_id))
+    )
+      throw new MessagingError("invalid_request", {
+        details: { field: "sender_id" },
       });
     const recipient = this.#identity(context, "poll", authorization);
     return this.#tx(() => {
@@ -730,11 +744,22 @@ export class SqliteDelivery {
       // No scan limit: pending rows per recipient are bounded by
       // max_pending_per_recipient, so denied senders cannot hide later messages.
       const only = options.message_id;
+      const from = options.sender_id;
+      const sql =
+        (only ? " AND message_id=?" : "") + (from ? " AND sender_id=?" : "");
+      const args = [...(only ? [only] : []), ...(from ? [from] : [])];
+      const after = options.peek ? options.after : undefined;
       const unread = this.#db
         .prepare(
-          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${only ? " AND message_id=?" : ""} ORDER BY accepted_at,sender_id,message_id`,
+          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
         )
-        .all(recipient, ...(only ? [only] : [])) as unknown as Row[];
+        .all(
+          recipient,
+          ...args,
+          ...(after
+            ? [after.accepted_at, after.sender_id, after.message_id]
+            : []),
+        ) as unknown as Row[];
       let spent = 0;
       // Whether one more message still fits the response; the first always does,
       // since a single message is bounded by the contract's text limit.
@@ -750,6 +775,10 @@ export class SqliteDelivery {
         if (!allowed(row)) continue;
         const message = this.#stored(row);
         if (!fits(message)) break;
+        if (options.peek) {
+          out.push(this.#inboxMessage(row, message, null, true));
+          continue;
+        }
         const requestId = `inbox-${randomUUID()}`;
         this.#db
           .prepare(
@@ -769,16 +798,20 @@ export class SqliteDelivery {
         this.#audit(row.sender_id, row.message_id, now, "acked");
         out.push(this.#inboxMessage(row, message, now, true));
       }
-      if ((options.include_read || only) && out.length < options.limit) {
+      if (
+        !options.peek &&
+        (options.include_read || only) &&
+        out.length < options.limit
+      ) {
         const read = this.#db
           .prepare(
-            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${only ? " AND message_id=?" : ""} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
+            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${sql} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
           )
           .all(
             recipient,
             now - READ_BODY_RETENTION_MS,
             now,
-            ...(only ? [only] : []),
+            ...args,
           ) as unknown as Row[];
         for (const row of read) {
           if (out.length >= options.limit) break;
@@ -794,7 +827,7 @@ export class SqliteDelivery {
   #inboxMessage(
     row: Row,
     message: Submission,
-    readAt: number,
+    readAt: number | null,
     fresh: boolean,
   ): InboxMessage {
     const thread = JSON.parse(row.thread_key) as [string[], string];
@@ -812,7 +845,7 @@ export class SqliteDelivery {
       in_reply_to: message.in_reply_to,
       sent_at: message.first_sent_at,
       received_at: new Date(row.accepted_at).toISOString(),
-      read_at: new Date(readAt).toISOString(),
+      read_at: readAt === null ? null : new Date(readAt).toISOString(),
       expires_at: new Date(row.expires_at).toISOString(),
       new: fresh,
     };

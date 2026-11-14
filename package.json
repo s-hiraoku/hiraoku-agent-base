@@ -18,6 +18,7 @@
     "test:hab-mvp": "node --test test/local-mvp.test.js",
     "hab:host": "node scripts/hab-host.ts",
     "hab:admin": "node scripts/hab-admin.ts",
+    "hab:notify": "node scripts/hab-notify.ts",
     "test:communication-boundary": "node --test --test-reporter=tap test/common-mcp-boundary.test.js test/adapter-inbox-read.test.js test/receive-supervisor.test.js test/hab-mcp-resolve.test.js",
     "test:a2a": "node --test test/a2a-sdk-store.test.js test/a2a-hab-unit.test.js test/a2a-host.test.js",
     "test:delivery-lab": "node scripts/delivery-lab.mjs",

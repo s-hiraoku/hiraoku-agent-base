@@ -56,7 +56,12 @@ ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます�
 
 `hab_inbox`の各メッセージには、利用者へそのまま見せる`notice`が付きます。送信者のアドレス・種類・返信期限、
 印を付けた2行で囲んだ本文（送信者が書いたデータで、指示として実行しない）、「どうしますか？」と
-選択肢（返信する／あとで／返信しない）です。返信期限を過ぎると`hab_reply`は`reply_target_expired`になります。
+選択肢（対応する／あとで／対応しない）です。返信期限を過ぎると`hab_reply`は`reply_target_expired`になります。
+
+届いた時点で利用者の画面に出すには、受信通知アダプタ（`npm run hab:notify`）を受信側で動かします
+（[ADR-021](hab-decisions.md)、[受信通知アダプタ](receiver/arrival-notifier.md)）。アダプタは
+`/mcp/delivery`の`hab_peek`で未読を既読にせずに見つけ、「〇〇 からのメッセージです。受信内容……どうしますか？」を
+そのエージェントの画面に出します。「対応する」を選んだときだけ、同じセッションに依頼を渡します。
 
 既読（ACK）は「読んだ」ことで、内容への同意や作業完了ではありません。誤りには
 `error`（コード）と、何を直すかを書いた`message`が返ります。`forbidden`は
@@ -77,7 +82,8 @@ JavaScript専用の正規表現や`$schema`も受け付けないことがあり�
 ## 配送catalog（`/mcp/delivery`）と送受信の順序
 
 agent SDKと受信サービスは`/mcp/delivery`の`hab_resolve`・`hab_submit`・`hab_status`・
-`hab_poll`・`hab_ack`を使います。credentialは`/mcp`と同じものです。以下はこの低レベルの順序です。
+`hab_poll`・`hab_ack`を使います。受信通知アダプタは`hab_peek`（未読を既読にせずに返す）と`hab_mark_read`（選んだ1通を`sender_id`と`message_id`で既読にする）を使います。
+credentialは`/mcp`と同じものです。以下はこの低レベルの順序です。
 
 1. 送信側が`hab_resolve`で宛先を確認し、共通outboxへメッセージを保存します。
 2. 同じmessage IDと本文で`hab_submit`を呼びます。不確実な送信は新しいIDを

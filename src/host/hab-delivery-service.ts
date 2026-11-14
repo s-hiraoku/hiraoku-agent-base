@@ -66,7 +66,10 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
       limit: number;
       include_read: boolean;
       message_id?: string;
+      sender_id?: string;
       max_bytes?: number;
+      peek?: boolean;
+      after?: { accepted_at: number; sender_id: string; message_id: string };
     },
   ) {
     return this.#run(context, "poll", (authorization) => {
@@ -83,6 +86,35 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
         from: addresses.get(message.sender_id) ?? null,
       }));
     });
+  }
+  /**
+   * The caller's unread messages, left unread (ADR-021): the arrival notifier shows them to
+   * the user before anything reads them. Runs under `poll`, like reading the inbox.
+   */
+  peek(
+    context: unknown,
+    options: {
+      limit: number;
+      max_bytes?: number;
+      after?: { accepted_at: number; sender_id: string; message_id: string };
+    },
+  ) {
+    return this.inbox(context, { ...options, include_read: false, peek: true });
+  }
+  /**
+   * Marks one received message read, named by sender and ID (ADR-021): the arrival
+   * notifier calls it after the user chose. Returns whether the message is known within
+   * the 7-day re-read window (already read counts). Runs under `poll`, like the inbox.
+   */
+  markRead(context: unknown, key: { sender_id: string; message_id: string }) {
+    return (
+      this.inbox(context, {
+        limit: 1,
+        include_read: false,
+        message_id: key.message_id,
+        sender_id: key.sender_id,
+      }).length === 1
+    );
   }
   /** A message the caller received, for building a reply. Runs under `submit`. */
   received(context: unknown, messageId: string) {

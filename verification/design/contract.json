@@ -160,7 +160,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/SKILL.md",
-      "sha256": "fb0a1c4b7e706bf44609f680cd5b284482533535b8a2d718113787c8272db58a",
+      "sha256": "0b549a9d1b7ca20666341800aceb28bf555592e92ee1c596761fd943ef9037c5",
       "role": "normative",
       "review": "reviewed",
       "summary": "Existing HAB-specific verification procedure: actual HAB MCP HTTP over the SQLite delivery store (delivery.sqlite) with no broker process, synthetic enrolled identities, terminal enrollment, the shipped configured host (deny-all without credentials), owned run directory, evidence capture and pid-checked cleanup. The retired fixed-port Task Hub entry is gone.",
@@ -168,10 +168,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "085eb8afb4b5b72e9859360313c0813d73cdbb083d2b0b16ca13206b69788f39",
+      "sha256": "b52414f034b3edee688b1805206e0cc66cfecbb50afa1b985af8964096be0614",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative maintained feature map with ten entries (ADR-020 adds the agent-tools entry) (the ninth is the configured host's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation.",
+      "summary": "Authoritative maintained feature map with eleven entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured host's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation.",
       "read_scope": "full"
     },
     {
@@ -184,18 +184,26 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/agent-tools.md",
-      "sha256": "c3ee5470e3e01ad345f5c9c46431363d4a32166f1ea7026839625b2655861e2d",
+      "sha256": "97034136ae8da33e9982d20f444f699bb9f220765bc4410230cb7b37702809d1",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the five delivery tools for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and choices; reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only.",
+      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only.",
+      "read_scope": "full"
+    },
+    {
+      "path": ".claude/skills/verify-hab/features/arrival-notifier.md",
+      "sha256": "533940e826f29317aca9434ad48977fd4907c119e655a65855d61fceda780e0f",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "Arrival notice recipe (ADR-021): hab_peek at /mcp/delivery returns unread mail with read_at null, the owner's display (sender, 受信内容, どうしますか？ 1. 対応する 2. あとで 3. 対応しない) and a tag-framed handoff_prompt, leaving the sender's status pending and hab_inbox still new; hab:notify check shows each message once through the JSONL screen; later keeps it unread and show-again re-shows it; accept marks it read and writes exactly one handoff (queued), a repeat is unchanged; decline marks read and starts nothing even for a body claiming approval; the bound session replies with hab_reply. Gotchas: peek offers only unread mail, do not combine with the SDK receive path for one address, a JSONL screen cannot confirm a start. Synthetic identities only.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/access-control.md",
-      "sha256": "ebfb13d269c6132766ca75ba6ead70dccfd9b932bb4f8ec6c38b0c298a43fcb5",
+      "sha256": "2196eb42d0d5810f91321942fc6dd9a5b778a6f88eac620384a62dfa4c740e63",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Wire recipe for absent/unknown bearer refusal (HTTP 401), exactly the four agent tools at /mcp and the five delivery tools at /mcp/delivery for a known synthetic identity (ADR-020), no mutation after denied calls and sender-scoped receipt status; explicitly not production Auth0 binding. Clarifies that a valid unconnected credential still lists the full static catalog; authorization runs on tool call. Deny-all without credentials is the configured host path.",
+      "summary": "Wire recipe for absent/unknown bearer refusal (HTTP 401), exactly the four agent tools at /mcp and the seven delivery tools (with hab_peek and hab_mark_read, ADR-021) at /mcp/delivery for a known synthetic identity (ADR-020), no mutation after denied calls and sender-scoped receipt status; explicitly not production Auth0 binding. Clarifies that a valid unconnected credential still lists the full static catalog; authorization runs on tool call. Deny-all without credentials is the configured host path.",
       "read_scope": "full"
     },
     {
@@ -373,10 +381,10 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "0ded704ced343183189fdf241da1b5b335a846182ac48e1870b3769376f55c5f",
+      "sha256": "8f69f703d285ea868363268146588b7a7e20375047e42833da603b3903ed9b9e",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence."
+      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it."
     },
     {
       "path": "docs/diagrams/manifest.json",
@@ -468,10 +476,10 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "cf707f7ae7caa7bbdbf6918f81d994e4cb448816237a01e25aaf0a057204fa70",
+      "sha256": "7224b5a721aeec4f2d856a5f8a1f40de6396f99e81bcac0714270f96b6230164",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once."
     },
     {
       "path": "docs/hab-principles.md",
@@ -792,6 +800,22 @@
       "summary": "Model-free version1 scheduler repeats only existing host receive. Requires configured same-agent durable stores/control/owner and explicit resume; no login/grant/pause release/owner takeover/task/reply/model. Explicit bounded interval/backoff/drain; authorization/storage failure stops, outstanding work blocks next receive, stop is not RPC cancel or token revoke. receive_steps counts returned calls only, no auto body processing; restart reuses original ACK and owner/control authority. Product composition/residency is a separate live gate. Optional owner-local authentication gate starts blocked on each process start; trusted local provider recovery signals stop or wait without polling/ACK or refresh/login IO. Only fresh one-use gate-local verification of the exact approved issuer/resource/subject/client/connection/agent tuple reopens it. Fixed synchronous status metadata contains no identity; current pause/owner/draining authority is rechecked after notifications. Generic wire errors cannot supply local recovery authority. Native credential ownership, verification, notification delivery and real expiry/restart acceptance remain separate product responsibilities. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
     },
     {
+      "path": "docs/receiver/arrival-notifier.md",
+      "sha256": "ee6401aa1ec2988df45fa66035899390dc372730b5e3c9554cc7da32ac3f5b47",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done.",
+      "read_scope": "full"
+    },
+    {
+      "path": "docs/receiver/receipt-confirmation.md",
+      "sha256": "33931fb68a8fdbcaacba7b7abe371ffaa9899f21569e07cc05dfefb7236fbfd6",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "Owner-specified receipt experience and acceptance conditions (2026-11-14): show the verified sender, body and reply deadline in the recipient's agent screen and ask whether to act (対応する / あとで / 対応しない); arrival alone starts no model work; only 対応する hands the message to the verified same session; no fallback to another session or a CLI under the same address; HAB read/ACK is not human consent; each product reports supported/unsupported/unknown per capability; CLI-only roundtrips never count as a Desktop pass. States that adding the document does not mean implementation, deployment or existing-session acceptance.",
+      "read_scope": "full"
+    },
+    {
       "path": "docs/receiver/recipient-messages.md",
       "sha256": "1e61f97b4ca6edfc66341cf0db786a078ca54d5a4c14cff8b14967ce95c5ca05",
       "role": "context",
@@ -1013,7 +1037,7 @@
     },
     {
       "path": "verification/design/README.md",
-      "sha256": "6f18ec7e2a0d19103b408ca06920aaaf7134f89b7cea8590b6b7f7d72e77bcb9",
+      "sha256": "d3451a67dda1f19d4012ac39ed08120826e4efa8ca3ac76ca5c016b6a249db3b",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1031,7 +1055,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "2b891965448fa3a14b104adef32dfc7c49c1c80f95928e1d914e2d707ca460ac",
+      "sha256": "bd0dae0ca8ff7549c660b700df0ed8f731c67bbc98fc9ba1f9c4d61c690ff585",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1295,9 +1319,9 @@
       "citations": [
         {
           "path": "docs/common-mcp-connection.md",
-          "start": 77,
-          "end": 96,
-          "excerpt_sha256": "ba072d0baf155718330d129a8479028314e3722b9c61ebbc981bf9b049b9c617"
+          "start": 82,
+          "end": 102,
+          "excerpt_sha256": "b6c860b0a49f4cd64dc1aeaa8e0f879d865fb98c35b60f91f24c7ccde1f0f88a"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -1326,9 +1350,9 @@
       "citations": [
         {
           "path": "docs/common-mcp-connection.md",
-          "start": 77,
-          "end": 83,
-          "excerpt_sha256": "48e6ec00a0beec9f17456194e7d25bd81de143f006adef417d749358237622df"
+          "start": 82,
+          "end": 89,
+          "excerpt_sha256": "a031ed7753e89a69c83735458aecd5314a5f7e57f695e036aa32d6ac35042118"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -1730,8 +1754,8 @@
         },
         {
           "path": "docs/common-mcp-connection.md",
-          "start": 140,
-          "end": 158,
+          "start": 146,
+          "end": 164,
           "excerpt_sha256": "d44bd112fbce49573bd5747fd307885c2dfe6e71099dd7904e8a4b4806fd0bf1"
         },
         {
@@ -1883,6 +1907,37 @@
           "start": 60,
           "end": 68,
           "excerpt_sha256": "8d464a06787ff6cf24870f34a3c2334c928629e9d364b043468d71d0eafacfd9"
+        }
+      ]
+    },
+    {
+      "id": "HAB-F27",
+      "title": "Arrival notice before any work",
+      "statement": "When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply.",
+      "rationale": "The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.",
+      "scope": "src/agent-notify, hab_peek and the hab:notify CLI with the JSONL screen. Covered in js-root by test/agent-notify.test.js, test/hab-peek.test.js and test/hab-notify-cli.test.js. A product AgentScreen (Hermes Desktop) and acceptance in an existing product session are not covered.",
+      "decision": "accepted",
+      "checks": [
+        "js-root"
+      ],
+      "citations": [
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 95,
+          "end": 105,
+          "excerpt_sha256": "edfbcda07fe74bc1646b344036d6a811ce0ddb7ca0b6b1326b0315dcc7e05909"
+        },
+        {
+          "path": "docs/receiver/arrival-notifier.md",
+          "start": 126,
+          "end": 149,
+          "excerpt_sha256": "57562442c1e452237dd5043342823daf609255bae72d5b07ad0baedb406059da"
+        },
+        {
+          "path": "docs/receiver/receipt-confirmation.md",
+          "start": 79,
+          "end": 87,
+          "excerpt_sha256": "82f797949a5100501312cfdc7c9a322a2562d535b5e6f5cd11878af59b7f2ca7"
         }
       ]
     },
@@ -3397,8 +3452,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 101,
-          "end": 101,
+          "start": 113,
+          "end": 113,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
