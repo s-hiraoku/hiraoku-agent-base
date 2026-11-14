@@ -92,6 +92,16 @@ test("private explicit config starts deny-all; digest binding authenticates only
   const reasons = authDeniedReasons(f);
   assert.ok(reasons.includes("bearer_missing"));
   assert.ok(reasons.includes("credential_rejected"));
+  // An accepted request names its registered connection, never the token or subject.
+  const accepted = readFileSync(join(f.dir, "audit/audit.jsonl"), "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .filter((event) => event.category === "authenticated");
+  assert.deepEqual(
+    accepted.map((event) => event.connection),
+    ["synthetic-a"],
+  );
   assert.ok(!audit.includes(token));
   assert.ok(!audit.includes("synthetic-owner"));
 });

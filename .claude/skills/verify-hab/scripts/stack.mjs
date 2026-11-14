@@ -244,7 +244,12 @@ const audit = {
         at: new Date().toISOString(),
         category,
         correlation,
-        ...(reason ? { reason } : {}),
+        // Like the host: `authenticated` carries the registered connection ID instead.
+        ...(reason
+          ? category === "authenticated"
+            ? { connection: reason }
+            : { reason }
+          : {}),
       }) + "\n",
     ),
 };
@@ -262,7 +267,12 @@ const gatewayFor = (resource_url, catalog) =>
       window_ms: 60000,
     },
     audit,
-    ({ authorization }) => tokens.get(authorization) ?? null,
+    ({ authorization, accept }) => {
+      const context = tokens.get(authorization) ?? null;
+      // Name the connection for the audit log, as the host's verifiers do.
+      if (context) accept?.(context.description);
+      return context;
+    },
     undefined,
     catalog,
   );

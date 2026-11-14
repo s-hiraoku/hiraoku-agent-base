@@ -2,6 +2,7 @@
 export type AuditCategory =
   | "request"
   | "auth_denied"
+  | "authenticated"
   | "access_denied"
   | "rate_limited"
   | "resource_rejected"
@@ -14,7 +15,9 @@ export type AuditCategory =
 export interface AuditSink {
   /**
    * `reason` is a fixed refusal code (`/^[a-z][a-z0-9_]{0,47}$/`), never a body or secret.
-   * It comes with `tool_error` and `auth_denied` (why a credential was refused).
+   * It comes with `tool_error` and `auth_denied` (why a credential was refused). With
+   * `authenticated` it is instead the operator-registered connection ID
+   * (`/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/`), never a token, claim, subject or client ID.
    */
   record(
     category: AuditCategory,

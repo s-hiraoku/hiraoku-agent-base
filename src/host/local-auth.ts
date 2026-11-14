@@ -75,6 +75,7 @@ export class LocalBearerAuthority {
     authorization,
     resource,
     signal,
+    accept = () => {},
   }) => {
     try {
       if (signal.aborted) return null;
@@ -96,6 +97,7 @@ export class LocalBearerAuthority {
         material: JSON.stringify(record),
         resource,
       });
+      accept(record.principal.connection_id);
       return context;
     } catch {
       return null;

@@ -156,8 +156,8 @@
       {
         "path": "docs/operations/oauth-ingress.md",
         "scope": "full",
-        "sha256": "271be9227a3c25142d3fb2a4dc44d022ae22eb88b38b4e280080555d96ebddd5",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Auth0 list audience (ADR-020 addendum): re-read the diff; aud may be [resource] or the resource once plus this issuer's userinfo, any other list is still refused; the recorded observation still holds."
+        "sha256": "3917b5451c0bf4db406aea0a276235946d32b6f74155a1da97d3f1380e0fbac8",
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Auth0 list audience (ADR-020 addendum): re-read the diff; aud may be [resource] or the resource once plus this issuer's userinfo, any other list is still refused; the recorded observation still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       },
       {
         "path": "docs/history/security-audit-limits.md",
@@ -897,9 +897,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/SKILL.md",
-        "sha256": "1b1e02752f74013611773c49ab5c0b31690e8272e668ebee76984c815f4c9e89",
+        "sha256": "d3b6675f3cdc2ab534ed8350d9f1792517d8f027c66fe842dcb6a4fe6e35027e",
         "mode": "full",
-        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds."
+        "maintenance": "Phase 6 maintenance: re-read the diff from 0bf74ef (ADR-016 documentation, deletion of the unused asynchronous JetStream relay operations, verify-hab agent SDK paths, the local MVP nats-server refusal); the recorded observation still holds unless the summary says otherwise. A2A host maintenance: re-read the diff from cddd9f4 (4d34aa1, 073c537, 6e4a1e9, e772a7c); the helper table adds configured.sh restart and HAB_VERIFY_A2A, a2a.sh and new-reply.sh. The recorded observation still holds. Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/README.md",
@@ -909,9 +909,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/features/access-control.md",
-        "sha256": "38c053b90ca738035fe4d3d34717f21a68d9bbfe02b9f274a12835054d7dd0a3",
+        "sha256": "3a6184a2c412e70d6efd5bf6ff75dc6bd43449b46482b5a4e50726332e21377c",
         "mode": "full",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/features/communication-boundary.md",
@@ -1882,9 +1882,9 @@
       },
       {
         "path": "test/host-service.test.js",
-        "sha256": "d8c4b6d8908a909a5b50cbc12c5e0c699bf5a939c36b3670732cbd1684aff590",
+        "sha256": "9af001f694906e75392cb79b66ff4644d93379ba9ff1e74ccff4343c3cd47368",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       },
       {
         "path": "test/host-admin.test.js",
@@ -1929,9 +1929,9 @@
       },
       {
         "path": "test/host-service.test.js",
-        "sha256": "d8c4b6d8908a909a5b50cbc12c5e0c699bf5a939c36b3670732cbd1684aff590",
+        "sha256": "9af001f694906e75392cb79b66ff4644d93379ba9ff1e74ccff4343c3cd47368",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       }
     ]
   },
@@ -2590,9 +2590,9 @@
       },
       {
         "path": "test/host-service.test.js",
-        "sha256": "d8c4b6d8908a909a5b50cbc12c5e0c699bf5a939c36b3670732cbd1684aff590",
+        "sha256": "9af001f694906e75392cb79b66ff4644d93379ba9ff1e74ccff4343c3cd47368",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Portable tools/list schemas and OAuth refusal reasons (ADR-020 addendum): re-read the diff; tools/list now publishes a flat object schema without $schema or lookarounds while calls still use the strict zod schema, and auth_denied audit lines carry a fixed reason; the recorded observation still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       },
       {
         "path": "test/delivery-lab/sqlite-failures.test.js",
@@ -2608,9 +2608,9 @@
       },
       {
         "path": ".claude/skills/verify-hab/scripts/stack.mjs",
-        "sha256": "d5de369e16c8bd4e71971362aa52245664a151d0d61b0f4fe21920fed0cda1fa",
+        "sha256": "d7f1d0e15813e8e66920e3289b39b3805d914d2d37f948f6da376887ab646edd",
         "review": "reviewed",
-        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds."
+        "maintenance": "Relay-name removal (ADR-019): re-read the diff; the change renames relay_* tools, scopes, error codes, SQLite tables, types, files and prose to the hab_*/host/delivery names with no behavior change; the recorded observation still holds. Agent catalog and host inbox (ADR-020): re-read the diff; agent tools, the /mcp/delivery catalog, specific error codes with audit reasons, 7-day deadlines and inbox reads keeping the body 7 days; the delivery-catalog observation recorded here still holds. Connection audit (ADR-020 addendum): re-read the diff; accepted requests write an authenticated audit line with the operator-registered connection ID only; the recorded observation still holds."
       },
       {
         "path": ".claude/skills/verify-hab/scripts/inspect.mjs",

@@ -14,6 +14,7 @@ import { join } from "node:path";
 export const CATEGORIES = [
   "request",
   "auth_denied",
+  "authenticated",
   "access_denied",
   "rate_limited",
   "resource_rejected",
@@ -26,6 +27,7 @@ export const CATEGORIES = [
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 const REASON = /^[a-z][a-z0-9_]{0,47}$/;
+const CONNECTION = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 export interface Audit {
   record(
     category: Category,
@@ -71,8 +73,10 @@ export class LocalAudit implements Audit {
       !CATEGORIES.includes(category) ||
       !/^[a-f0-9-]{36}$/.test(correlation) ||
       (reason !== undefined &&
-        ((category !== "tool_error" && category !== "auth_denied") ||
-          !REASON.test(reason)))
+        (category === "authenticated"
+          ? !CONNECTION.test(reason)
+          : (category !== "tool_error" && category !== "auth_denied") ||
+            !REASON.test(reason)))
     )
       throw new Error("Invalid audit event");
     const time = this.now();
@@ -174,7 +178,7 @@ export class LocalAudit implements Audit {
           stat.mode & 0o077
         )
           throw new Error("Audit unavailable");
-        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(reason ? { reason } : {}), ...(summary ? { summary } : {}) })}\n`;
+        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(reason ? (category === "authenticated" ? { connection: reason } : { reason }) : {}), ...(summary ? { summary } : {}) })}\n`;
         if (Buffer.byteLength(line) > this.maxBytes)
           throw new Error("Audit unavailable");
         if (stat.size + Buffer.byteLength(line) > this.maxBytes) rotate = true;

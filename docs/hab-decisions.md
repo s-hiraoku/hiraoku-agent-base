@@ -88,6 +88,7 @@
 - **使い方を説明に書く。** MCP serverの`instructions`と各ツールの説明に、送る→`hab_status`、届いたら`hab_inbox`→`hab_reply`の流れと、「既読は作業完了ではない」ことを書く。
 - **clientが読めるスキーマを公開する。** `tools/list`の入力スキーマは、ルートが`properties`を持つ1つのobjectで、`$schema`もJavaScript専用の先読みも含まない（2026-11-14追記：Dotsの接続確認から）。`hab_discover`は`action`のenumを持つ1つのobjectにする。呼び出しの検証は厳密なzodスキーマのまま。
 - **認証の拒否理由も監査に残す。** `auth_denied`には固定の理由コード（`bearer_missing`、`client_not_registered`、`scope_missing`、`audience_mismatch`、`audience_not_single`、`token_expired`など）を`reason`として付ける。tokenやclaimの値は記録しない。
+- **認証に通った接続も監査に残す。** 認証に通ったリクエストごとに、`authenticated`の行へ、運用者が登録した接続ID（OAuthの`connection_id`、ローカル認証の`principal.connection_id`）を`connection`として記録する（2026-11-14追記：疎通確認でDotsとHermesのリクエストを見分けるため）。tokenやclaimの値、subject、client_idは記録しない。
 - **Auth0の配列audienceを受け付ける。** ChatGPT系コネクタは`openid`を要求するため、Auth0は`aud`を`[resource, "<issuer>userinfo"]`の配列にする（2026-11-14追記：Mac miniでDotsが`audience_not_single`で拒否されていた）。受け付ける配列は、resourceがちょうど1回入り、ほかの要素がこのissuerの`userinfo`だけのもの（`[resource]`を含む）。それ以外の配列は拒否する。
 - 受け取ったエージェント（Hermesなど）を自動で起こす仕組みは本判断に含めない。別のADRで決める。配置済みのHermes・Dotsは`tools.include`をエージェント用4ツールへ、受信サービスの接続先を`/mcp/delivery`へ切り替える。
 

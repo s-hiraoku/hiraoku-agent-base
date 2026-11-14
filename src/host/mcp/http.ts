@@ -28,8 +28,14 @@ export type McpHttpVerifier = (input: {
   signal: AbortSignal;
   /** Optional: name a fixed refusal reason (`/^[a-z][a-z0-9_]{0,47}$/`) for the audit log. */
   deny?: (reason: string) => void;
+  /**
+   * Optional: on success, name the operator-registered connection ID this credential
+   * belongs to, so the audit log can tell connections apart. Never a token or claim value.
+   */
+  accept?: (connection: string) => void;
 }) => unknown | Promise<unknown>;
 const DENY_REASON = /^[a-z][a-z0-9_]{0,47}$/;
+const CONNECTION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 class HttpFailure extends Error {
   readonly status: number;
   readonly category: AuditCategory;
@@ -316,6 +322,7 @@ export class McpHttpGateway {
           throw new HttpFailure(401, "auth_denied", "bearer_malformed");
         let context: unknown;
         let denied: string | undefined;
+        let connection: string | undefined;
         try {
           context = await this.#verify({
             authorization,
@@ -324,6 +331,10 @@ export class McpHttpGateway {
             deny: (reason) => {
               if (denied === undefined && DENY_REASON.test(reason))
                 denied = reason;
+            },
+            accept: (id) => {
+              if (connection === undefined && CONNECTION_ID.test(id))
+                connection = id;
             },
           });
         } catch {
@@ -337,6 +348,8 @@ export class McpHttpGateway {
             "auth_denied",
             denied ?? "credential_rejected",
           );
+        // Which registered connection made this request; the ID only, never the credential.
+        await record("authenticated", connection);
         if (
           !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
             request.headers.get("content-type") ?? "",
