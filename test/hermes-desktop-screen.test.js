@@ -364,3 +364,82 @@ test("an existing screen file others can read is refused before any notice is wr
   );
   assert.equal(readFileSync(path, "utf8"), "");
 });
+
+test("hab-notify action records a Desktop button press only for this card's binding", async (t) => {
+  const { dir, path } = setup(t);
+  const config = join(dir, "notify.json");
+  const storePath = join(dir, "notices.sqlite");
+  writeFileSync(
+    config,
+    JSON.stringify({
+      hab_url: "https://hab.invalid/mcp",
+      agent_id: "agent-b",
+      token: { env: "HAB_NOTIFY_TEST_TOKEN_UNSET" },
+      store: storePath,
+      screen: {
+        type: "hermes-desktop",
+        path,
+        session_id: binding.session_id,
+        profile: binding.profile,
+        backend_namespace: binding.backend_namespace,
+        profile_scope: binding.profile_scope,
+      },
+    }),
+  );
+  // Show m1 through the same store and screen the CLI will open.
+  const screen = new HermesDesktopScreen(path, binding);
+  const store = new SQLiteNotices(storePath, screen.target);
+  const hab = {
+    async peek() {
+      return { messages: [message("m1")], next_cursor: null };
+    },
+    async markRead() {
+      throw new Error("not called");
+    },
+  };
+  await new ReceiptNotifier({ hab, screen, store }).check();
+  store.close();
+
+  const press = {
+    action: "decide",
+    backend_namespace: binding.backend_namespace,
+    profile_scope: binding.profile_scope,
+    receiver_id: "agent-b",
+    sender_id: "agent-a",
+    message_id: "m1",
+    stored_session_id: binding.session_id,
+    choice: "later",
+  };
+  const lines = [];
+  const run = (body) =>
+    main(
+      ["--config", config, "action"],
+      (line) => lines.push(line),
+      () => (typeof body === "string" ? body : JSON.stringify(body)),
+    );
+  for (const wrong of [
+    { stored_session_id: "20261114_other" },
+    { backend_namespace: "other" },
+    { profile_scope: "other" },
+    { receiver_id: "agent-c" },
+  ]) {
+    assert.equal(await run({ ...press, ...wrong }), 1);
+    assert.deepEqual(JSON.parse(lines.at(-1)), { error: "binding_mismatch" });
+  }
+  for (const bad of [
+    "",
+    "{",
+    { ...press, choice: "run" },
+    { ...press, x: 1 },
+  ]) {
+    assert.equal(await run(bad), 2);
+    assert.deepEqual(JSON.parse(lines.at(-1)), { error: "invalid_request" });
+  }
+  assert.equal(await run(press), 0);
+  assert.deepEqual(JSON.parse(lines.at(-1)), { changed: true, state: "later" });
+  assert.equal(await run(press), 0);
+  assert.deepEqual(JSON.parse(lines.at(-1)), {
+    changed: false,
+    state: "later",
+  });
+});

@@ -11,6 +11,9 @@
  *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
  *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
  *       local screen file, never HAB)
+ *   hab-notify --config <notify.json> action
+ *       (screen type hermes-desktop: Hermes Desktop's actions_command. Reads one decision
+ *       {action: "decide", ...} on stdin from the card's buttons and prints {changed, state})
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -32,7 +35,20 @@ const usage = `usage:
   hab-notify --config <notify.json> run|check|list
   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
   hab-notify --config <notify.json> show-again <message_id> [sender_id]
-  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]`;
+  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+  hab-notify --config <notify.json> action   (one decision as JSON on stdin)`;
+
+/** What Hermes Desktop's decision route sends for a button press on one card. */
+const actionSchema = z.strictObject({
+  action: z.literal("decide"),
+  backend_namespace: z.string().min(1),
+  profile_scope: z.string().min(1),
+  receiver_id: z.string().min(1),
+  sender_id: z.string().min(1),
+  message_id: z.string().min(1),
+  stored_session_id: z.string().min(1),
+  choice: z.enum(["accept", "later", "decline"]),
+});
 
 const configSchema = z.strictObject({
   /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
@@ -183,7 +199,11 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
 const errorCode = (error: unknown) =>
   error instanceof MessagingError ? error.code : "failed";
 
-export async function main(args: string[], out = console.log) {
+export async function main(
+  args: string[],
+  out = console.log,
+  input: () => string = () => readFileSync(0, "utf8"),
+) {
   if (args[0] !== "--config" || !args[1] || !args[2]) {
     out(usage);
     return 2;
@@ -206,6 +226,36 @@ export async function main(args: string[], out = console.log) {
       out(JSON.stringify({ error: "failed" }));
       return 1;
     }
+  }
+  let action: z.infer<typeof actionSchema> | undefined;
+  if (command === "action") {
+    // The press must be for a card this notifier showed: the same conversation, reader and
+    // recipient. Anything else is refused before the store or HAB is touched.
+    const screen = config.screen;
+    const parsed = actionSchema.safeParse(
+      (() => {
+        try {
+          return JSON.parse(input().slice(0, 64 * 1024));
+        } catch {
+          return null;
+        }
+      })(),
+    );
+    if (!parsed.success) {
+      out(JSON.stringify({ error: "invalid_request" }));
+      return 2;
+    }
+    if (
+      screen.type !== "hermes-desktop" ||
+      parsed.data.stored_session_id !== screen.session_id ||
+      parsed.data.backend_namespace !== screen.backend_namespace ||
+      parsed.data.profile_scope !== screen.profile_scope ||
+      parsed.data.receiver_id !== config.agent_id
+    ) {
+      out(JSON.stringify({ error: "binding_mismatch" }));
+      return 1;
+    }
+    action = parsed.data;
   }
   let created: ReturnType<typeof createNotifier>;
   try {
@@ -242,6 +292,17 @@ export async function main(args: string[], out = console.log) {
               id,
               choice as "accept" | "later" | "decline",
               sender,
+            ),
+          ),
+        );
+        return 0;
+      case "action":
+        out(
+          JSON.stringify(
+            await notifier.decide(
+              action!.message_id,
+              action!.choice,
+              action!.sender_id,
             ),
           ),
         );
