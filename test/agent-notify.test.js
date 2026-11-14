@@ -18,6 +18,7 @@ import { limits, policy, request, decode } from "./mcp-http-fixtures.js";
 function message(id, patch = {}) {
   return {
     message_id: id,
+    sender_id: "sender-a",
     from: "a@agent.hab",
     kind: "question",
     thread_id: "t-1",
@@ -36,9 +37,15 @@ function setup(t, { unread = [], now } = {}) {
   const hab = {
     unread,
     failRead: false,
-    async peek() {
+    // Pages in inbox order; the cursor is the index after the last returned message.
+    async peek(limit, after) {
       calls.peek++;
-      return hab.unread;
+      const start = after === undefined ? 0 : Number(after);
+      const messages = hab.unread.slice(start, start + limit);
+      return {
+        messages,
+        next_cursor: messages.length ? String(start + messages.length) : null,
+      };
     },
     async markRead(id) {
       if (hab.failRead) throw new Error("offline");
@@ -323,4 +330,53 @@ test("end to end: hab_peek shows it, 対応する hands the prompt over, the ses
   const [answer] = (await agentCall("a", "hab_inbox")).messages;
   assert.equal(answer.text, "確認しました");
   assert.equal(answer.kind, "answer");
+});
+
+test("mail beyond the first page is shown, also behind 50 put-off notices", async (t) => {
+  const old = Array.from({ length: 50 }, (_, i) => message(`old-${i}`));
+  const f = setup(t, { unread: old });
+  const n = f.make();
+  assert.equal((await n.check()).length, 50);
+  for (const m of old) await n.decide(m.message_id, "later");
+  f.hab.unread = [...old, message("new-1"), message("new-2")];
+  assert.deepEqual(await n.check(), ["new-1", "new-2"]);
+  f.hab.unread = Array.from({ length: 120 }, (_, i) => message(`bulk-${i}`));
+  assert.equal((await n.check()).length, 120);
+});
+
+test("the same message ID from two senders is two notices, chosen by sender", async (t) => {
+  const f = setup(t, {
+    unread: [
+      message("same", { sender_id: "sender-a" }),
+      message("same", { sender_id: "sender-b", from: "b@agent.hab" }),
+    ],
+  });
+  const n = f.make();
+  assert.deepEqual(await n.check(), ["same", "same"]);
+  await assert.rejects(n.decide("same", "accept"), /invalid_request/);
+  assert.deepEqual(await n.decide("same", "decline", "sender-b"), {
+    changed: true,
+    state: "declined",
+  });
+  assert.equal(n.get("same", "sender-a").state, "shown");
+  assert.equal(n.get("same", "sender-b").state, "declined");
+  assert.deepEqual(f.calls.handoff, []);
+});
+
+test("a record made for one session is never used for another", async (t) => {
+  const f = setup(t, { unread: [message("m1")] });
+  const n = f.make();
+  await n.check();
+  const path = join(f.dir, "notices.sqlite");
+  assert.throws(
+    () => new SQLiteNotices(path, "synthetic:other-session"),
+    /notices_target_mismatch/,
+  );
+  const store = new SQLiteNotices(join(f.dir, "second.sqlite"), "synthetic:x");
+  t.after(() => store.close());
+  assert.throws(
+    () => new ReceiptNotifier({ hab: f.hab, screen: f.screen, store }),
+    /notices_target_mismatch/,
+  );
+  assert.deepEqual(f.calls.handoff, []);
 });

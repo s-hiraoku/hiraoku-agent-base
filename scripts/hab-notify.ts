@@ -5,8 +5,8 @@
  *   hab-notify --config <notify.json> run            keep checking every interval_ms
  *   hab-notify --config <notify.json> check          check once
  *   hab-notify --config <notify.json> list           notices waiting for a choice
- *   hab-notify --config <notify.json> decide <message_id> accept|later|decline
- *   hab-notify --config <notify.json> show-again <message_id>
+ *   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
+ *   hab-notify --config <notify.json> show-again <message_id> [sender_id]
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -24,8 +24,8 @@ import { MessagingError } from "../src/messaging/delivery-service.ts";
 
 const usage = `usage:
   hab-notify --config <notify.json> run|check|list
-  hab-notify --config <notify.json> decide <message_id> accept|later|decline
-  hab-notify --config <notify.json> show-again <message_id>`;
+  hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
+  hab-notify --config <notify.json> show-again <message_id> [sender_id]`;
 
 const configSchema = z.strictObject({
   /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
@@ -118,8 +118,15 @@ export async function main(args: string[], out = console.log) {
   const config = configSchema.parse(
     JSON.parse(readFileSync(expand(args[1]), "utf8")),
   );
-  const [command, id, choice] = args.slice(2);
-  const { notifier, store } = createNotifier(config);
+  const [command, id, choice, sender] = args.slice(2);
+  let created: ReturnType<typeof createNotifier>;
+  try {
+    created = createNotifier(config);
+  } catch (error) {
+    out(JSON.stringify({ error: errorCode(error) }));
+    return 1;
+  }
+  const { notifier, store } = created;
   try {
     switch (command) {
       case "check":
@@ -130,6 +137,7 @@ export async function main(args: string[], out = console.log) {
           JSON.stringify(
             notifier.open().map((record) => ({
               message_id: record.message_id,
+              sender_id: record.sender_id,
               from: record.from,
               state: record.state,
               expires_at: record.expires_at,
@@ -142,13 +150,18 @@ export async function main(args: string[], out = console.log) {
           break;
         out(
           JSON.stringify(
-            await notifier.decide(id, choice as "accept" | "later" | "decline"),
+            await notifier.decide(
+              id,
+              choice as "accept" | "later" | "decline",
+              sender,
+            ),
           ),
         );
         return 0;
       case "show-again":
         if (!id) break;
-        out(JSON.stringify(await notifier.showAgain(id)));
+        // The optional third argument is the sender_id.
+        out(JSON.stringify(await notifier.showAgain(id, choice)));
         return 0;
       case "run": {
         let stopped = false;

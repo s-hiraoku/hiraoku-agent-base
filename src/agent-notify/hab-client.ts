@@ -8,7 +8,7 @@ import { MessagingError } from "../messaging/delivery-service.ts";
 import { HabMcpClient } from "../hab/mcp-client.ts";
 import type { HabMcpClientOptions } from "../hab/mcp-client.ts";
 import { peekResultSchema } from "./contract.ts";
-import type { NotifierHab, PeekedMessage } from "./contract.ts";
+import type { NotifierHab, PeekPage } from "./contract.ts";
 
 class Endpoint extends HabMcpClient {
   call(tool: "hab_peek" | "hab_inbox", args: Record<string, unknown>) {
@@ -27,12 +27,15 @@ export class HabNotifierClient implements NotifierHab {
     this.#delivery = new Endpoint(delivery);
     this.#agent = new Endpoint(agent);
   }
-  async peek(limit: number): Promise<PeekedMessage[]> {
+  async peek(limit: number, after?: string): Promise<PeekPage> {
     const parsed = peekResultSchema.safeParse(
-      await this.#delivery.call("hab_peek", { limit }),
+      await this.#delivery.call("hab_peek", {
+        limit,
+        ...(after !== undefined ? { after } : {}),
+      }),
     );
     if (!parsed.success) throw new MessagingError("transport_failed");
-    return parsed.data.messages;
+    return parsed.data;
   }
   async markRead(messageId: string): Promise<void> {
     const value = (await this.#agent.call("hab_inbox", {

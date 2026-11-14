@@ -23,7 +23,7 @@ verify-a@grok-bot.hab からのメッセージです。
 
 | 役割 | 置き場所 |
 | --- | --- |
-| 既読にせずに新着を見つける | host の `hab_peek`（`/mcp/delivery`、操作 `poll`） |
+| 既読にせずに新着を見つける | host の `hab_peek`（`/mcp/delivery`、操作 `poll`）。`next_cursor` を `after` に渡して続きを読む |
 | 利用者に見せる文面（`display`）と、同じセッションへ渡す文面（`handoff_prompt`） | host（`src/messaging/incoming-notice.ts`） |
 | 定期的な確認、表示済みの記録、選択の記録、二重実行の防止、期限切れ | `src/agent-notify/`（`ReceiptNotifier`、`SQLiteNotices`） |
 | 選択後に既読にする | アダプタが受信者の credential で `hab_inbox`（`message_id` 指定）を呼ぶ |
@@ -51,8 +51,8 @@ verify-a@grok-bot.hab からのメッセージです。
 ```sh
 npm run hab:notify -- --config notify.json run        # 常駐して確認を続ける
 npm run hab:notify -- --config notify.json list       # 選択待ちの一覧
-npm run hab:notify -- --config notify.json decide <message_id> accept|later|decline
-npm run hab:notify -- --config notify.json show-again <message_id>
+npm run hab:notify -- --config notify.json decide <message_id> accept|later|decline [sender_id]
+npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 ```
 
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
@@ -70,6 +70,9 @@ token は呼ぶたびにファイルか環境変数から読みます（エー�
 | `unknown` | 渡せたか分からない。自動では再送しない | 既読 |
 | `expired` | 選ぶ前に返信期限を過ぎた | 期限切れ |
 
+- メッセージは `sender_id` と `message_id` の組で区別します。2 人の送信者が同じ `message_id` を使ったときだけ、`decide` に `sender_id` を付けます。
+- 1 回の確認で、`hab_peek` のページを最後まで読みます。「あとで」の未読が多くても、新着は表示されます。
+- 選択の記録は 1 つのセッション（`screen.target`）に結び付きます。別の `target` で同じ記録を開くと `notices_target_mismatch` で止まり、そのセッションへは渡しません。
 - 表示できなかった新着は記録を消し、次の確認で出し直します。
 - 選択は行単位の条件付き更新で 1 回だけ通ります。二重クリック、再起動、並行の選択でも `handoff` は 1 回までです。
 - 既読にできなかったときは何も始めず、元の状態に戻します（選び直せます）。

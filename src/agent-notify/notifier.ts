@@ -12,13 +12,17 @@ import type {
   NoticeState,
   NotifierHab,
 } from "./contract.ts";
-import type { SQLiteNotices } from "./sqlite-notices.ts";
+import type { NoticeKey, SQLiteNotices } from "./sqlite-notices.ts";
 
 export interface DecisionResult {
   /** Whether this call changed the record; false for a repeated or late choice. */
   changed: boolean;
   state: NoticeState;
 }
+
+/** Messages per hab_peek page, and the most pages one check reads. */
+const PAGE = 50;
+const MAX_PAGES = 100;
 
 export class ReceiptNotifier {
   readonly #hab: NotifierHab;
@@ -31,15 +35,19 @@ export class ReceiptNotifier {
     store: SQLiteNotices;
     now?: () => number;
   }) {
+    // The record and the screen must name the same session; otherwise a choice made for
+    // one session could be handed to another.
+    if (options.screen.target !== options.store.target)
+      throw new MessagingError("notices_target_mismatch");
     this.#hab = options.hab;
     this.#screen = options.screen;
     this.#store = options.store;
     this.#now = options.now ?? Date.now;
   }
   /**
-   * One check: expire undecided notices past their deadline, then show every unread
-   * message not shown before. Returns the IDs shown now. A notice the screen could not
-   * show is forgotten, so the next check shows it again.
+   * One check: expire undecided notices past their deadline, then page through every
+   * unread message and show each one not shown before. Returns the IDs shown now. A
+   * notice the screen could not show is forgotten, so the next check shows it again.
    */
   async check(): Promise<string[]> {
     const now = this.#now();
@@ -47,16 +55,22 @@ export class ReceiptNotifier {
       await this.#report(expired, "expired");
     const shown: string[] = [];
     let failure: unknown;
-    for (const message of await this.#hab.peek(50)) {
-      if (Date.parse(message.expires_at) <= now) continue;
-      if (!this.#store.insertShown(message, now)) continue;
-      try {
-        await this.#screen.show(message);
-        shown.push(message.message_id);
-      } catch (error) {
-        this.#store.forget(message.message_id);
-        failure ??= error;
+    let after: string | undefined;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const { messages, next_cursor } = await this.#hab.peek(PAGE, after);
+      for (const message of messages) {
+        if (Date.parse(message.expires_at) <= now) continue;
+        if (!this.#store.insertShown(message, now)) continue;
+        try {
+          await this.#screen.show(message);
+          shown.push(message.message_id);
+        } catch (error) {
+          this.#store.forget(message);
+          failure ??= error;
+        }
       }
+      if (!messages.length || next_cursor === null) break;
+      after = next_cursor;
     }
     if (failure !== undefined) throw failure;
     return shown;
@@ -65,38 +79,46 @@ export class ReceiptNotifier {
   open(): NoticeRecord[] {
     return this.#store.open();
   }
-  get(messageId: string): NoticeRecord | undefined {
-    return this.#store.get(messageId);
+  get(messageId: string, senderId?: string): NoticeRecord | undefined {
+    const found = this.#find(messageId, senderId);
+    return found.length === 1 ? found[0] : undefined;
   }
   /** Shows a notice the user put off again. */
-  async showAgain(messageId: string): Promise<DecisionResult> {
-    const record = this.#require(messageId);
+  async showAgain(
+    messageId: string,
+    senderId?: string,
+  ): Promise<DecisionResult> {
+    const record = this.#require(messageId, senderId);
     if (record.state !== "later" && record.state !== "shown")
       return { changed: false, state: record.state };
     await this.#screen.show(record.message);
-    this.#store.transition(messageId, ["later"], "shown", this.#now());
+    this.#store.transition(record, ["later"], "shown", this.#now());
     return { changed: true, state: "shown" };
   }
-  /** Applies the user's choice for one message. */
+  /**
+   * Applies the user's choice for one message. `senderId` is needed only when two senders
+   * used the same message ID.
+   */
   async decide(
     messageId: string,
     choice: IncomingChoice,
+    senderId?: string,
   ): Promise<DecisionResult> {
-    const record = this.#require(messageId);
+    const record = this.#require(messageId, senderId);
     const now = this.#now();
     if (
       (record.state === "shown" || record.state === "later") &&
       Date.parse(record.expires_at) <= now
     ) {
-      this.#store.transition(messageId, ["shown", "later"], "expired", now);
+      this.#store.transition(record, ["shown", "later"], "expired", now);
       await this.#report(record, "expired");
       return { changed: true, state: "expired" };
     }
     switch (choice) {
       case "later":
-        return this.#store.transition(messageId, ["shown"], "later", now)
+        return this.#store.transition(record, ["shown"], "later", now)
           ? { changed: true, state: "later" }
-          : this.#unchanged(messageId);
+          : this.#unchanged(record);
       case "decline":
         return this.#decided(record, "declined", async () => {
           await this.#hab.markRead(messageId);
@@ -119,32 +141,42 @@ export class ReceiptNotifier {
     claim: NoticeState,
     run: () => Promise<NoticeState>,
   ): Promise<DecisionResult> {
-    const id = record.message_id;
-    if (!this.#store.transition(id, ["shown", "later"], claim, this.#now()))
-      return this.#unchanged(id);
+    if (!this.#store.transition(record, ["shown", "later"], claim, this.#now()))
+      return this.#unchanged(record);
     let state: NoticeState;
     try {
       state = await run();
     } catch (error) {
       // Marking read failed before anything started: the choice can be made again.
-      this.#store.transition(id, [claim], record.state, this.#now());
+      this.#store.transition(record, [claim], record.state, this.#now());
       throw error;
     }
     if (state !== claim)
-      this.#store.transition(id, [claim], state, this.#now());
+      this.#store.transition(record, [claim], state, this.#now());
     await this.#report(record, state);
     return { changed: true, state };
   }
-  #unchanged(messageId: string): DecisionResult {
-    return { changed: false, state: this.#require(messageId).state };
+  #unchanged(key: NoticeKey): DecisionResult {
+    return { changed: false, state: this.#store.get(key)!.state };
   }
-  #require(messageId: string): NoticeRecord {
-    const record = this.#store.get(messageId);
-    if (!record)
+  #find(messageId: string, senderId?: string) {
+    return this.#store
+      .find(messageId)
+      .filter(
+        (record) => senderId === undefined || record.sender_id === senderId,
+      );
+  }
+  #require(messageId: string, senderId?: string): NoticeRecord {
+    const found = this.#find(messageId, senderId);
+    if (found.length > 1)
+      throw new MessagingError("invalid_request", {
+        details: { field: "sender_id", expected: "the sender of this message" },
+      });
+    if (!found.length)
       throw new MessagingError("invalid_request", {
         details: { field: "message_id", expected: "a notice that was shown" },
       });
-    return record;
+    return found[0];
   }
   async #report(record: NoticeRecord, state: NoticeState) {
     try {

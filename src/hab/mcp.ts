@@ -49,7 +49,11 @@ export type HabMcpService = DeliveryService &
     /** Unread messages left unread, for the arrival notifier (ADR-021). */
     peek?(
       context: unknown,
-      options: { limit: number; max_bytes?: number },
+      options: {
+        limit: number;
+        max_bytes?: number;
+        after?: { accepted_at: number; sender_id: string; message_id: string };
+      },
     ): (InboxMessage & { from: string | null })[];
   };
 const asAddress = z
@@ -85,8 +89,43 @@ export const habMcpSchemas = Object.freeze({
       .number()
       .describe("How many unread messages to return, 1 to 50. Default 10.")
       .optional(),
+    after: z
+      .string()
+      .max(512)
+      .describe(
+        "Optional. The next_cursor of the previous page, to continue past messages already returned.",
+      )
+      .optional(),
   }),
 });
+/** hab_peek page cursor: the last returned message's place in inbox order. */
+function peekCursor(message: InboxMessage) {
+  return Buffer.from(
+    JSON.stringify([
+      Date.parse(message.received_at),
+      message.sender_id,
+      message.message_id,
+    ]),
+  ).toString("base64url");
+}
+function parsePeekCursor(value: string) {
+  try {
+    const [accepted_at, sender_id, message_id] = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    ) as unknown[];
+    if (
+      Number.isSafeInteger(accepted_at) &&
+      typeof sender_id === "string" &&
+      typeof message_id === "string"
+    )
+      return { accepted_at: accepted_at as number, sender_id, message_id };
+  } catch {
+    // Falls through to the refusal below.
+  }
+  throw new MessagingError("invalid_request", {
+    details: { field: "after", expected: "next_cursor from hab_peek" },
+  });
+}
 export const habAgentMcpSchemas = Object.freeze({
   hab_send: habAgentSchemas.hab_send.extend(selection),
   hab_reply: habAgentSchemas.hab_reply.extend(selection),
@@ -311,18 +350,23 @@ function createDeliveryServer(
             "hab_peek",
             input,
           );
-          const { limit = 10 } = prepared.input as { limit?: number };
+          const { limit = 10, after } = prepared.input as {
+            limit?: number;
+            after?: string;
+          };
           if (!Number.isInteger(limit) || limit < 1 || limit > 50)
             throw new MessagingError("invalid_request", {
               details: { field: "limit", min: 1, max: 50 },
             });
-          const messages = peek(prepared.context, {
+          const found = peek(prepared.context, {
             limit,
+            ...(after !== undefined ? { after: parsePeekCursor(after) } : {}),
             // Like hab_inbox, the body appears twice (display and handoff_prompt).
             ...(maxResponseBytes !== undefined
               ? { max_bytes: Math.max(1, maxResponseBytes - 4096) }
               : {}),
-          }).map((message) => {
+          });
+          const messages = found.map((message) => {
             const fields = {
               message_id: message.message_id,
               from: message.from,
@@ -337,15 +381,19 @@ function createDeliveryServer(
             delete entry.notice;
             return {
               ...entry,
+              // The immutable sender ID: (sender_id, message_id) names one message.
+              sender_id: message.sender_id,
               display: formatIncomingDisplay(fields),
               handoff_prompt: formatHandoffPrompt(fields),
             };
           });
           return {
             messages,
+            // Pass it as `after` for the next page; null once nothing follows.
+            next_cursor: found.length ? peekCursor(found.at(-1)!) : null,
             explanation: messages.length
-              ? "These messages are still unread. Show `display` to the user; nothing was marked read."
-              : "No unread messages.",
+              ? "These messages are still unread. Show `display` to the user; nothing was marked read. Call again with after: next_cursor for more."
+              : "No more unread messages.",
           };
         }),
     );

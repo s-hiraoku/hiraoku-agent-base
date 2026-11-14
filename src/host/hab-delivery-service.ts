@@ -68,6 +68,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
       message_id?: string;
       max_bytes?: number;
       peek?: boolean;
+      after?: { accepted_at: number; sender_id: string; message_id: string };
     },
   ) {
     return this.#run(context, "poll", (authorization) => {
@@ -89,7 +90,14 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
    * The caller's unread messages, left unread (ADR-021): the arrival notifier shows them to
    * the user before anything reads them. Runs under `poll`, like reading the inbox.
    */
-  peek(context: unknown, options: { limit: number; max_bytes?: number }) {
+  peek(
+    context: unknown,
+    options: {
+      limit: number;
+      max_bytes?: number;
+      after?: { accepted_at: number; sender_id: string; message_id: string };
+    },
+  ) {
     return this.inbox(context, { ...options, include_read: false, peek: true });
   }
   /** A message the caller received, for building a reply. Runs under `submit`. */

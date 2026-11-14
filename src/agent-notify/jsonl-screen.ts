@@ -38,6 +38,7 @@ export class JsonlScreen implements AgentScreen {
     this.#write({
       type: "notice",
       message_id: message.message_id,
+      sender_id: message.sender_id,
       from: message.from,
       kind: message.kind,
       expires_at: message.expires_at,
@@ -49,12 +50,18 @@ export class JsonlScreen implements AgentScreen {
     this.#write({
       type: "handoff",
       message_id: message.message_id,
+      sender_id: message.sender_id,
       thread_id: message.thread_id,
       prompt: message.handoff_prompt,
     });
     return "queued";
   }
   async report(message: PeekedMessage, state: NoticeState) {
-    this.#write({ type: "state", message_id: message.message_id, state });
+    this.#write({
+      type: "state",
+      message_id: message.message_id,
+      sender_id: message.sender_id,
+      state,
+    });
   }
 }

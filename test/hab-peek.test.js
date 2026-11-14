@@ -152,3 +152,32 @@ test("hab_peek returns only the caller's mail and checks its limit", async (t) =
     1,
   );
 });
+
+test("hab_peek pages with next_cursor and names each message by sender and ID", async (t) => {
+  const f = await setup(t);
+  const ids = [];
+  for (let i = 0; i < 3; i++)
+    ids.push(
+      (await f.onAgent("a", "hab_send", { to: f.b.address, text: `m${i}` }))
+        .message_id,
+    );
+  const seen = [];
+  let after;
+  for (;;) {
+    const page = (await f.peek("b", { limit: 2, ...(after ? { after } : {}) }))
+      .structuredContent;
+    for (const m of page.messages) {
+      assert.equal(m.sender_id, f.a.agent_id);
+      seen.push(m.message_id);
+    }
+    if (!page.messages.length) {
+      assert.equal(page.next_cursor, null);
+      break;
+    }
+    after = page.next_cursor;
+  }
+  assert.deepEqual(seen, ids);
+  const bad = await f.peek("b", { after: "not-a-cursor" });
+  assert.equal(bad.isError, true);
+  assert.equal(bad.structuredContent.error, "invalid_request");
+});

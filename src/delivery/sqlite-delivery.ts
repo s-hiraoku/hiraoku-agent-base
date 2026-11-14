@@ -687,6 +687,8 @@ export class SqliteDelivery {
       max_bytes?: number;
       /** Return unread messages only, leaving them unread. */
       peek?: boolean;
+      /** With peek: only messages after this one in inbox order (accepted_at, sender, ID). */
+      after?: { accepted_at: number; sender_id: string; message_id: string };
     },
   ): InboxMessage[] {
     if (
@@ -733,11 +735,18 @@ export class SqliteDelivery {
       // No scan limit: pending rows per recipient are bounded by
       // max_pending_per_recipient, so denied senders cannot hide later messages.
       const only = options.message_id;
+      const after = options.peek ? options.after : undefined;
       const unread = this.#db
         .prepare(
-          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${only ? " AND message_id=?" : ""} ORDER BY accepted_at,sender_id,message_id`,
+          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${only ? " AND message_id=?" : ""}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
         )
-        .all(recipient, ...(only ? [only] : [])) as unknown as Row[];
+        .all(
+          recipient,
+          ...(only ? [only] : []),
+          ...(after
+            ? [after.accepted_at, after.sender_id, after.message_id]
+            : []),
+        ) as unknown as Row[];
       let spent = 0;
       // Whether one more message still fits the response; the first always does,
       // since a single message is bounded by the contract's text limit.

@@ -14,6 +14,8 @@ const time = z.string().refine((value) => Number.isFinite(Date.parse(value)));
 /** One unread message as hab_peek returns it. */
 export const peekedMessageSchema = z.object({
   message_id: id,
+  /** The sender's immutable ID; (sender_id, message_id) names one message. */
+  sender_id: id,
   from: z.string().nullable(),
   kind: z.string(),
   thread_id: z.string(),
@@ -28,12 +30,18 @@ export const peekedMessageSchema = z.object({
 export type PeekedMessage = z.infer<typeof peekedMessageSchema>;
 export const peekResultSchema = z.object({
   messages: z.array(peekedMessageSchema),
+  next_cursor: z.string().nullable(),
 });
+export interface PeekPage {
+  messages: PeekedMessage[];
+  /** Pass as `after` for the next page; null when nothing follows. */
+  next_cursor: string | null;
+}
 
 /** What the notifier needs from HAB, with the recipient's own credential. */
 export interface NotifierHab {
-  /** Unread messages, left unread. */
-  peek(limit: number): Promise<PeekedMessage[]>;
+  /** One page of unread messages, left unread, after the given cursor. */
+  peek(limit: number, after?: string): Promise<PeekPage>;
   /** Marks one message read once the user decided on it (hab_inbox with its message_id). */
   markRead(messageId: string): Promise<void>;
 }
@@ -83,6 +91,7 @@ export type NoticeState =
 
 export interface NoticeRecord {
   message_id: string;
+  sender_id: string;
   target: string;
   state: NoticeState;
   from: string | null;
