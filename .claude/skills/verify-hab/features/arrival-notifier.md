@@ -52,4 +52,4 @@ export HAB_NOTIFY_TOKEN=$(jq -r .agents.b.token $ST); N="node scripts/hab-notify
 - `hab_peek` returns only unread mail. A message an agent already read with `hab_inbox`, or one the SDK receive path leased or ACKed, is not offered; do not run the SDK receive service and the notifier for the same address.
 - The JSONL screen cannot confirm that the session started, so `accept` is `queued`, not `started`. A product adapter that can confirm returns `started`; one with no official entrance returns `unsupported`, and nothing is retried elsewhere.
 - A notices store is bound to the `screen.target` it was created with; a config with another target gets `notices_target_mismatch`. Use a new `store` per session.
-- `hab:notify` reads the token on every call; with `token.env` the variable must be set in the shell that runs the command.
+- `hab:notify` reads the token on every call; with `token.env` the variable must be set in the shell that runs the command. A file token with `expires_at_field` past its expiry is not sent; the command reports `{"error":"token_expired"}` (`token_unavailable` when the field is empty), kept apart from `transport_failed`.
