@@ -171,7 +171,7 @@
       "sha256": "e3e5b0f9f772c3d60ddeb38d746a87a5ba7b23c911a0778f7146bccddcb8eb9f",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative maintained feature map with nine entries (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
+      "summary": "Authoritative maintained feature map with ten entries (ADR-020 adds the agent-tools entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical.",
       "read_scope": "full"
     },
     {
@@ -183,11 +183,19 @@
       "read_scope": "full"
     },
     {
+      "path": ".claude/skills/verify-hab/features/agent-tools.md",
+      "sha256": "559b2471ac88ef665f73110343abbbe21a241fa4c1b862e3483b871c9abe34b4",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the five delivery tools for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and choices; reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only.",
+      "read_scope": "full"
+    },
+    {
       "path": ".claude/skills/verify-hab/features/access-control.md",
       "sha256": "98dfd748987ab9bf02324dd99dcf47e312f4fef044189c133e26e31a8bef4adf",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Wire recipe for absent/unknown bearer refusal, exactly-five standard tools for known synthetic identity, no mutation after denied calls and sender-scoped receipt status; explicitly not production Auth0 binding.",
+      "summary": "Wire recipe for absent/unknown bearer refusal, exactly the four agent tools at /mcp and the five delivery tools at /mcp/delivery for a known synthetic identity (ADR-020), no mutation after denied calls and sender-scoped receipt status; explicitly not production Auth0 binding.",
       "read_scope": "full"
     },
     {
