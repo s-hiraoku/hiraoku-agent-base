@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -67,7 +67,11 @@ test("readToolchainPin refuses an empty .node-version", () => {
 
 test("matching pins pass without throwing", () => {
   const pin = { node: "26.13.1", npm: "11.20.0" };
-  assertNodePin(pin, "26.13.1", "/home/ubuntu/.nvm/versions/node/v26.13.1/bin/node");
+  assertNodePin(
+    pin,
+    "26.13.1",
+    "/home/ubuntu/.nvm/versions/node/v26.13.1/bin/node",
+  );
   assertNpmPin(pin, "11.20.0");
 });
 
@@ -91,4 +95,23 @@ test("assertCurrentToolchain accepts matching Node and npm", () => {
     execPath: "/home/ubuntu/.nvm/versions/node/v26.13.1/bin/node",
     npm: "11.20.0",
   });
+});
+
+test("CI installs the declared npm pin before checking or installing dependencies", () => {
+  for (const file of ["ci.yml", "design-verification.yml"]) {
+    const workflow = readFileSync(
+      new URL(`../.github/workflows/${file}`, import.meta.url),
+      "utf8",
+    );
+    const install = workflow.indexOf("npm install --global");
+    assert.ok(install > workflow.indexOf("actions/setup-node@"), file);
+    assert.ok(
+      workflow
+        .slice(install, workflow.indexOf("\n", install))
+        .includes("packageManager"),
+      file,
+    );
+    assert.ok(install < workflow.indexOf("npm run check:toolchain"), file);
+    assert.ok(install < workflow.indexOf("npm ci"), file);
+  }
 });
