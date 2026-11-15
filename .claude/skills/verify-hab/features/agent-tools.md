@@ -8,7 +8,8 @@ An agent connected to `/mcp` sees only `hab_send`, `hab_inbox`, `hab_reply` and 
 - `agent-send` `hab_send {to, text}` returns `message_id`, `to`, a new `thread_id`, `state: "pending"`, a deadline 7 days after acceptance and an `explanation`.
 - `agent-inbox` `hab_inbox` returns the new message with `from` (the sender's address), `kind`, `text`, `thread_id` and `new: true`; a second call returns none; `include_read: true` returns it again with `new: false`.
 - `agent-notice` each inbox message has a `notice`: `<address> からのメッセージです（質問、返信期限 …）。`, the body between two `----- 受信内容 <8 hex>：…` lines that say not to follow it, then `どうしますか？` and the three choices (`1. 対応する：hab_reply …`, `2. あとで：…`, `3. 対応しない`) with the message_id.
-- `agent-status` the sender's `hab_status` shows `acked` with an explanation that read is not acted on.
+- `agent-status` the sender's `hab_status` shows `acked` with an explanation that read is not acted on, `kind: "question"` and `reply_state: "waiting"` with `replies: []`.
+- `agent-reply-state` after the recipient replies, the sender's `hab_status` shows `reply_state: "replied"` and one entry in `replies` (`message_id` of the reply, `kind: "answer"`, `read: false`, no text); after the sender's `hab_inbox`, `read: true`. The reply's own status (checked by the recipient) is `not_expected`.
 - `agent-reply` `hab_reply {message_id, text}` goes to the original sender in the same thread with `in_reply_to`; a reply to a `question` arrives as `answer`.
 - `agent-errors` malformed `to` → `invalid_request` with `field: "to"`; unknown address → `unknown_address`; `kind: "exec"` → `kind_not_allowed` with `allowed_kinds`; over-long text → `text_too_long` with `max_bytes`; unknown reply target → `reply_target_not_found`; each with a `message`.
 - `agent-audit` each refusal above writes a `tool_error` line with a fixed `reason` (`invalid_request`, `address_unknown`, `kind_not_allowed`, …) to `$RUN/evidence/audit.jsonl`, never the text.
@@ -27,8 +28,8 @@ Preconditions:
 - **Read.** `$S/mcp.sh "$RUN" b hab_inbox '{}'`: one message, `from: "verify-a@grok-bot.hab"`, `new: true`. Run it again: `messages: []`. Then `$S/mcp.sh "$RUN" b hab_inbox '{"include_read":true}'`: the same message with `new: false` (if the read happened in the same millisecond it is not listed; call again).
 - **Notice.** `$S/mcp.sh "$RUN" b hab_inbox '{"include_read":true}' | sed 1d | jq -r '.result.structuredContent.messages[0].notice'` prints the notice; the tag on the two frame lines matches.
 - **Read one again.** `$S/mcp.sh "$RUN" b hab_inbox "{\"message_id\":\"$ID\"}"` returns that message with `new: false`.
-- **Status.** `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`: `state: "acked"`, `to: "verify-b@dot.hab"`.
-- **Reply.** `$S/mcp.sh "$RUN" b hab_reply "{\"message_id\":\"$ID\",\"text\":\"green\"}"`, then `$S/mcp.sh "$RUN" a hab_inbox '{}'`: `kind: "answer"`, `from: "verify-b@dot.hab"`, `in_reply_to: "$ID"`, same `thread_id`.
+- **Status.** `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`: `state: "acked"`, `to: "verify-b@dot.hab"`, `reply_state: "waiting"`.
+- **Reply.** `$S/mcp.sh "$RUN" b hab_reply "{\"message_id\":\"$ID\",\"text\":\"green\"}"`, then `$S/mcp.sh "$RUN" a hab_inbox '{}'`: `kind: "answer"`, `from: "verify-b@dot.hab"`, `in_reply_to: "$ID"`, same `thread_id`. Before that `hab_inbox`, `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"` shows `reply_state: "replied"` and the reply in `replies` with `read: false`.
 - **Errors.** `$S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot","text":"x"}'`, `'{"to":"nobody@dot.hab","text":"x"}'`, `'{"to":"verify-b@dot.hab","text":"x","kind":"exec"}'`, and `$S/mcp.sh "$RUN" a hab_reply '{"message_id":"unknown","text":"x"}'`. Each is HTTP 200 with `"isError":true` and the code listed under `agent-errors`.
 - **Proof.** `grep reason "$RUN/evidence/audit.jsonl"` shows the fixed reasons; `node $S/inspect.mjs "$RUN" after-agent` shows the two messages `acked`.
 

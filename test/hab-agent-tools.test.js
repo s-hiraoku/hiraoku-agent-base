@@ -138,6 +138,9 @@ test("send, read, reply and status round trip with only addresses and text", asy
   assert.equal(status.state, "acked");
   assert.equal(status.to, f.b.address);
   assert.match(status.explanation, /does not mean it replied/);
+  assert.equal(status.kind, "question");
+  assert.equal(status.reply_state, "waiting");
+  assert.deepEqual(status.replies, []);
 
   const reply = await f.ok("b", "hab_reply", {
     message_id: sent.message_id,
@@ -146,7 +149,37 @@ test("send, read, reply and status round trip with only addresses and text", asy
   assert.equal(reply.to, f.a.address);
   assert.equal(reply.thread_id, sent.thread_id);
   assert.equal(reply.in_reply_to, sent.message_id);
+  // The sender sees the reply on its own message before and after reading it.
+  const answered = await f.ok("a", "hab_status", {
+    message_id: sent.message_id,
+  });
+  assert.equal(answered.reply_state, "replied");
+  assert.deepEqual(
+    answered.replies.map(({ message_id, kind, read }) => ({
+      message_id,
+      kind,
+      read,
+    })),
+    [{ message_id: reply.message_id, kind: "answer", read: false }],
+  );
+  assert.match(answered.explanation, /replied/);
+  assert.equal(Object.hasOwn(answered.replies[0], "text"), false);
+  // The recipient cannot read the sender's status, and the reply itself expects no reply.
+  assert.equal(
+    (await f.fails("b", "hab_status", { message_id: sent.message_id })).error,
+    "not_found",
+  );
   const answer = (await f.ok("a", "hab_inbox")).messages[0];
+  assert.equal(
+    (await f.ok("a", "hab_status", { message_id: sent.message_id }))
+      .replies[0].read,
+    true,
+  );
+  assert.equal(
+    (await f.ok("b", "hab_status", { message_id: reply.message_id }))
+      .reply_state,
+    "not_expected",
+  );
   assert.equal(answer.kind, "answer");
   assert.equal(answer.from, f.b.address);
   assert.equal(answer.in_reply_to, sent.message_id);

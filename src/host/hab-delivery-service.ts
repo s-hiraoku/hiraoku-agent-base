@@ -147,6 +147,11 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
           this.#registry
             .addressesOf([receipt.recipient_id])
             .get(receipt.recipient_id) ?? null,
+        ...this.#backend.repliesWithAuthorization(
+          context,
+          messageId,
+          authorization,
+        ),
       };
     });
   }
