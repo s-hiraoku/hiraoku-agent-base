@@ -5,7 +5,7 @@ import { Buffer } from "node:buffer";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { HabNotifierClient } from "../src/agent-notify/index.ts";
+import { HabNotifierClient, SQLiteNotices } from "../src/agent-notify/index.ts";
 import { main, tokenProblem } from "../scripts/hab-notify.ts";
 
 test("hab-notify prints usage, lists no notices and refuses a decision it never showed", async (t) => {
@@ -196,4 +196,75 @@ test("run logs a repeating error once, not on every check", async (t) => {
   process.emit("SIGTERM");
   assert.equal(await running, 0);
   assert.deepEqual(lines, [JSON.stringify({ error: "token_expired" })]);
+});
+
+test("generic states API is cursor independent and fenced by connection, recipient and session", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hab-adapter-states-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "notify.json");
+  const config = {
+    hab_url: "https://hab.example/mcp",
+    agent_id: "agent-b",
+    token: { env: "MISSING_SYNTHETIC_TOKEN" },
+    store: join(dir, "state.sqlite"),
+    screen: {
+      type: "jsonl",
+      path: join(dir, "screen.jsonl"),
+      target: "future-product:session",
+    },
+  };
+  writeFileSync(path, JSON.stringify(config));
+  const output = [];
+  const run = (cmd, request) =>
+    main(
+      ["--config", path, cmd],
+      (s) => output.push(JSON.parse(s)),
+      () => JSON.stringify(request),
+    );
+  assert.equal(await run("binding"), 0);
+  const binding = output.at(-1).binding_id;
+  assert.equal(await run("states", { binding_id: binding }), 0);
+  assert.deepEqual(output.at(-1), { binding_id: binding, states: [] });
+  assert.equal(await run("states", { binding_id: "another-session" }), 1);
+  assert.equal(output.at(-1).error, "binding_mismatch");
+  const store = new SQLiteNotices(config.store, binding);
+  const message = {
+    sender_id: "sender",
+    message_id: "m-action",
+    from: "sender@example.hab",
+    kind: "question",
+    thread_id: "thread",
+    in_reply_to: null,
+    sent_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 60000).toISOString(),
+    display: "Synthetic notice",
+    handoff_prompt: "Synthetic prompt",
+  };
+  store.insertShowing(message, Date.now());
+  store.transition(message, ["showing"], "shown", Date.now());
+  store.close();
+  assert.equal(
+    await run("adapter-action", {
+      binding_id: binding,
+      sender_id: "sender",
+      message_id: "m-action",
+      choice: "later",
+    }),
+    0,
+  );
+  const acted = output.at(-1);
+  assert.equal(acted.changed, true);
+  assert.equal(acted.state, "later");
+  assert.equal(acted.binding_id, binding);
+  assert.ok(acted.states[0].revision > 0);
+  assert.equal(await run("states", { binding_id: binding }), 0);
+  assert.deepEqual(output.at(-1).states, acted.states);
+  // No token or network is needed. Reusing a decision store after recipient replacement is refused.
+  config.agent_id = "different-recipient";
+  writeFileSync(path, JSON.stringify(config));
+  assert.equal(await run("binding"), 0);
+  const next = output.at(-1).binding_id;
+  assert.notEqual(next, binding);
+  assert.equal(await run("states", { binding_id: next }), 1);
+  assert.equal(output.at(-1).error, "notices_target_mismatch");
 });

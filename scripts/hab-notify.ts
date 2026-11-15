@@ -47,6 +47,7 @@ import {
   codexTarget,
   hermesDesktopPage,
 } from "../src/agent-notify/index.ts";
+import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import type { AgentScreen } from "../src/agent-notify/index.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
 
@@ -56,10 +57,12 @@ const usage = `usage:
   hab-notify --config <notify.json> show-again <message_id> [sender_id]
   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
   hab-notify --config <notify.json> action   (one decision as JSON on stdin)
-  hab-notify --config <notify.json> statusline`;
+  hab-notify --config <notify.json> statusline
+  hab-notify --config <notify.json> binding|states|adapter-action`;
 
 /** The card's binding, sent with every request from Hermes Desktop's actions_command. */
 const cardBinding = {
+  binding_id: z.string().min(1),
   backend_namespace: z.string().min(1),
   profile_scope: z.string().min(1),
   receiver_id: z.string().min(1),
@@ -246,6 +249,7 @@ const hermesBinding = (
   backend_namespace: screen.backend_namespace,
   profile_scope: screen.profile_scope,
   receiver_id: config.agent_id,
+  connection_id: config.hab_url.replace(/\/+$/, ""),
 });
 
 type ScreenConfig = NotifyConfig["screen"];
@@ -291,6 +295,7 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
       return new ProductScreen({
         path,
         target: codexTarget(binding),
+        handoff_capability: screen.app_server ? "bound-session" : "unsupported",
         ...display,
         handoff: (message) => codexHandoff(binding, message),
       });
@@ -312,6 +317,33 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
         handoff: chatgptConnectorHandoff,
       });
   }
+}
+
+/** Connection + recipient + product session fence for every configured adapter. */
+export function boundScreen(config: NotifyConfig): AgentScreen {
+  const screen = configuredScreen(config);
+  const product = config.screen;
+  const connection = JSON.stringify([
+    config.hab_url.replace(/\/+$/, ""),
+    product.type === "codex" ? (product.app_server?.url ?? null) : null,
+    product.type === "claude-code" ? (product.channel_socket ?? null) : null,
+  ]);
+  return {
+    ...(screen.capabilities ? { capabilities: screen.capabilities } : {}),
+    target:
+      product.type === "hermes-desktop"
+        ? screen.target
+        : bindingIdentity({
+            product: product.type,
+            connection_id: connection,
+            recipient_id: config.agent_id,
+            session_id: screen.target,
+          }),
+    show: (message) => screen.show(message),
+    handoff: (message) => screen.handoff(message),
+    report: (message, state) =>
+      screen.report?.(message, state) ?? Promise.resolve(),
+  };
 }
 
 /** `statusline`: the Claude Code status line for the bound session; never calls HAB. */
@@ -337,7 +369,7 @@ async function statusline(
   const binding = claudeBinding(screen);
   const store = new SQLiteNotices(
     expand(config.store),
-    claudeCodeTarget(binding),
+    boundScreen(config).target,
   );
   try {
     // The hints must run as shown: this node, this script and this config.
@@ -408,7 +440,7 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     { ...common, policy: { ...base, resource_url: `${url}/delivery` } },
     () => tokenProblem(config),
   );
-  const target = screen ?? configuredScreen(config);
+  const target = screen ?? boundScreen(config);
   const store = new SQLiteNotices(expand(config.store), target.target);
   return {
     notifier: new ReceiptNotifier({ hab, screen: target, store }),
@@ -473,6 +505,70 @@ export async function main(
     }
     return 0;
   }
+  // Product-independent local API: snapshots are independent of notice pagination.
+  // Clients retain this binding from initial setup and send it on every subsequent call.
+  if (["binding", "states", "adapter-action"].includes(command!)) {
+    let store: SQLiteNotices | undefined;
+    try {
+      const screen = boundScreen(config);
+      if (command === "binding") {
+        out(
+          JSON.stringify({
+            binding_id: screen.target,
+            capabilities: screen.capabilities ?? null,
+          }),
+        );
+        return 0;
+      }
+      const request = z
+        .strictObject({
+          binding_id: z.string().min(1),
+          ...(command === "adapter-action"
+            ? {
+                sender_id: z.string().min(1),
+                message_id: z.string().min(1),
+                choice: z.enum(["accept", "later", "decline"]),
+              }
+            : {}),
+        })
+        .parse(JSON.parse(readInput(input)));
+      if (request.binding_id !== screen.target) {
+        out(JSON.stringify({ error: "binding_mismatch" }));
+        return 1;
+      }
+      if (command === "states") {
+        store = new SQLiteNotices(expand(config.store), screen.target);
+        out(JSON.stringify(store.states()));
+      } else {
+        const created = createNotifier(config);
+        store = created.store;
+        const decision = request as {
+          sender_id: string;
+          message_id: string;
+          choice: "accept" | "later" | "decline";
+        };
+        const result = await created.notifier.decide(
+          decision.message_id,
+          decision.choice,
+          decision.sender_id,
+        );
+        out(JSON.stringify({ ...result, ...store.states() }));
+      }
+      return 0;
+    } catch (error) {
+      out(
+        JSON.stringify({
+          error:
+            error instanceof z.ZodError
+              ? "invalid_request"
+              : errorCode(error, config),
+        }),
+      );
+      return 1;
+    } finally {
+      store?.close();
+    }
+  }
   let action: z.infer<typeof actionSchema> | undefined;
   if (command === "action") {
     // The press must be for a card this notifier showed: the same conversation, reader and
@@ -492,6 +588,7 @@ export async function main(
       return 2;
     }
     if (
+      parsed.data.binding_id !== boundScreen(config).target ||
       screen.type !== "hermes-desktop" ||
       parsed.data.stored_session_id !== screen.session_id ||
       parsed.data.backend_namespace !== screen.backend_namespace ||
@@ -551,6 +648,7 @@ export async function main(
                 sender_id: record.sender_id,
                 message_id: record.message_id,
                 state: record.state,
+                revision: record.revision,
               })),
             }),
           );

@@ -28,16 +28,27 @@ export interface ProductScreenOptions {
   display_command?: TrustedCommand;
   /** Gives the user-approved request to the bound session. */
   handoff: (message: PeekedMessage) => Promise<HandoffResult>;
+  handoff_capability?: "unsupported" | "bound-session";
   now?: () => number;
 }
 
 export class ProductScreen implements AgentScreen {
+  readonly capabilities: {
+    publication: "file";
+    display_acknowledgement: false;
+    handoff: "unsupported" | "bound-session";
+  };
   readonly target: string;
   readonly #file: JsonlScreen;
   readonly #display: TrustedCommand | undefined;
   readonly #handoff: (message: PeekedMessage) => Promise<HandoffResult>;
   constructor(options: ProductScreenOptions) {
     this.target = options.target;
+    this.capabilities = {
+      publication: "file",
+      display_acknowledgement: false,
+      handoff: options.handoff_capability ?? "unsupported",
+    };
     this.#file = new JsonlScreen(options.path, options.target, options.now);
     this.#display = options.display_command;
     this.#handoff = options.handoff;
@@ -60,6 +71,7 @@ export class ProductScreen implements AgentScreen {
       display: message.display,
       choices: INCOMING_CHOICES.map((item) => ({ ...item })),
     });
+    return "published" as const;
   }
   handoff(message: PeekedMessage): Promise<HandoffResult> {
     return this.#handoff(message);

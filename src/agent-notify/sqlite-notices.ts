@@ -46,6 +46,7 @@ interface Row {
   sender_id: string;
   message_id: string;
   state: NoticeState;
+  revision: number;
   sender: string | null;
   expires_at: number;
   shown_at: number;
@@ -68,16 +69,65 @@ export class SQLiteNotices {
     }
     this.#db = new DatabaseSync(path);
     try {
-      this.#db.exec("PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL");
-      this.#db.exec(SCHEMA);
-      this.#db
-        .prepare("INSERT OR IGNORE INTO notices_meta(id,target) VALUES(1,?)")
-        .run(target);
-      const bound = this.#db
-        .prepare("SELECT target FROM notices_meta WHERE id=1")
-        .get() as { target: string };
-      if (bound.target !== target)
-        throw new MessagingError("notices_target_mismatch");
+      this.#db.exec("PRAGMA busy_timeout=5000");
+      // Refuse an existing foreign binding before even journal-mode/schema migration.
+      // Repeat the check under the write lock below to cover competing initializers.
+      const checkBinding = () => {
+        const meta = this.#db
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='notices_meta'",
+          )
+          .get();
+        if (!meta) return;
+        const bound = this.#db
+          .prepare("SELECT target FROM notices_meta WHERE id=1")
+          .get() as { target: string } | undefined;
+        if (bound && bound.target !== target)
+          throw new MessagingError("notices_target_mismatch");
+      };
+      checkBinding();
+      this.#db.exec("PRAGMA journal_mode=WAL");
+      // Upgrade existing stores without changing their binding or decisions. A durable
+      // store-wide sequence survives clock changes, concurrent writers and restarts.
+      const columns = (table: string) =>
+        this.#db.prepare(`PRAGMA table_info(${table})`).all() as {
+          name: string;
+        }[];
+      this.#db.exec("BEGIN IMMEDIATE");
+      try {
+        checkBinding();
+        this.#db.exec(SCHEMA);
+        this.#db
+          .prepare("INSERT OR IGNORE INTO notices_meta(id,target) VALUES(1,?)")
+          .run(target);
+        checkBinding();
+        if (
+          !columns("notices_meta").some((column) => column.name === "revision")
+        )
+          this.#db.exec(
+            "ALTER TABLE notices_meta ADD COLUMN revision INTEGER NOT NULL DEFAULT 0",
+          );
+        if (!columns("notices").some((column) => column.name === "revision"))
+          this.#db.exec(
+            "ALTER TABLE notices ADD COLUMN revision INTEGER NOT NULL DEFAULT 0",
+          );
+        this.#db.exec(`
+          CREATE TRIGGER IF NOT EXISTS notices_insert_revision AFTER INSERT ON notices BEGIN
+            UPDATE notices_meta SET revision=revision+1 WHERE id=1;
+            UPDATE notices SET revision=(SELECT revision FROM notices_meta WHERE id=1)
+              WHERE sender_id=NEW.sender_id AND message_id=NEW.message_id;
+          END;
+          CREATE TRIGGER IF NOT EXISTS notices_state_revision AFTER UPDATE OF state ON notices BEGIN
+            UPDATE notices_meta SET revision=revision+1 WHERE id=1;
+            UPDATE notices SET revision=(SELECT revision FROM notices_meta WHERE id=1)
+              WHERE sender_id=NEW.sender_id AND message_id=NEW.message_id;
+          END;
+        `);
+        this.#db.exec("COMMIT");
+      } catch (error) {
+        this.#db.exec("ROLLBACK");
+        throw error;
+      }
     } catch (error) {
       this.#db.close();
       throw error;
@@ -96,6 +146,7 @@ export class SQLiteNotices {
       sender_id: row.sender_id,
       target: this.#target,
       state: row.state,
+      revision: row.revision,
       from: row.sender,
       expires_at: new Date(row.expires_at).toISOString(),
       shown_at: new Date(row.shown_at).toISOString(),
@@ -147,6 +198,18 @@ export class SQLiteNotices {
       )
       .run(to, now, key.sender_id, key.message_id, ...from);
     return result.changes === 1;
+  }
+  /** Authoritative mutable state, independent of the immutable notice/event cursor. */
+  states() {
+    return {
+      binding_id: this.#target,
+      states: this.all().map(({ sender_id, message_id, state, revision }) => ({
+        sender_id,
+        message_id,
+        state,
+        revision,
+      })),
+    };
   }
   /** Messages waiting for a choice: shown or later, oldest first. */
   open(): NoticeRecord[] {

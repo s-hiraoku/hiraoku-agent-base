@@ -46,7 +46,8 @@ export class ReceiptNotifier {
   }
   /**
    * One check: expire undecided notices past their deadline, then page through every
-   * unread message and show each one not shown before. Returns the IDs shown now. A
+   * unread message and publish each new notice. Returns the IDs published now.
+   * The legacy `shown` state is publication success, not a render acknowledgement. A
    * notice the screen did not finish showing stays `showing`, so the next check shows it again.
    */
   async check(): Promise<string[]> {

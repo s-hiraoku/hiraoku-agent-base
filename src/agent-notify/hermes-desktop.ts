@@ -17,6 +17,7 @@
  * the notifier records `unknown` and never resends. Without a configured command, `handoff`
  * returns `unsupported`. It never falls back to another session or a CLI.
  */
+import { bindingIdentity } from "./binding.ts";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import type {
@@ -30,6 +31,8 @@ import type { TrustedCommand } from "./command.ts";
 import { appendPrivate } from "./private-file.ts";
 
 export interface HermesDesktopBinding {
+  /** HAB connection identity; CLI supplies the normalized endpoint URL. */
+  connection_id?: string;
   /** The saved Hermes conversation (session) ID shown in Desktop. */
   session_id: string;
   /** The Hermes profile that owns it, such as `local-lab`. */
@@ -83,7 +86,17 @@ export const submissionId = (message: {
     .slice(0, 32);
 
 export const hermesDesktopTarget = (binding: HermesDesktopBinding) =>
-  `hermes-desktop:${binding.profile}:${binding.session_id}`;
+  bindingIdentity({
+    product: "hermes-desktop",
+    session_id: binding.session_id,
+    profile: binding.profile,
+    recipient_id: binding.receiver_id,
+    connection_id: JSON.stringify([
+      binding.connection_id ?? null,
+      binding.backend_namespace,
+      binding.profile_scope,
+    ]),
+  });
 
 interface NoticeLine {
   type: "notice";
@@ -103,9 +116,17 @@ const bindingKey = (binding: HermesDesktopBinding) =>
     binding.backend_namespace,
     binding.profile_scope,
     binding.receiver_id,
+    binding.connection_id ?? null,
   ]);
 
 export class HermesDesktopScreen implements AgentScreen {
+  get capabilities() {
+    return {
+      publication: "file",
+      display_acknowledgement: false,
+      handoff: this.#handoff ? "bound-session" : "unsupported",
+    } as const;
+  }
   readonly target: string;
   readonly #path: string;
   readonly #now: () => number;
@@ -141,6 +162,7 @@ export class HermesDesktopScreen implements AgentScreen {
       display: fitHermesText(message.display),
       binding: this.#binding,
     });
+    return "published" as const;
   }
   async handoff(message: PeekedMessage): Promise<HandoffResult> {
     if (!this.#handoff) return "unsupported";

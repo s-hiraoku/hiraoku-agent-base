@@ -47,3 +47,9 @@ export type {
   NotifierHab,
   PeekedMessage,
 } from "./contract.ts";
+export { NoticeStateProjection } from "./state-sync.ts";
+export type { NoticeStates, NoticeStateSnapshot } from "./state-sync.ts";
+
+export { bindingIdentity } from "./binding.ts";
+export type { AgentBinding } from "./binding.ts";
+export type { PublicationResult, ScreenCapabilities } from "./contract.ts";

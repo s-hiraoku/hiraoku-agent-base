@@ -284,15 +284,15 @@ Sources: [docs/hab-product-spec.md:136](../../docs/hab-product-spec.md#L136-L157
 
 ### HAB-F27 — Arrival notice before any work
 
-When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply.
+When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply. Publication alone does not establish display or session admission. Mutable decision snapshots are revision-ordered independently of immutable notice pagination and bound to the exact connection/recipient/product-session identity; stale responses cannot regress state and missing state cannot authorize work.
 
 Reason: The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.
 
-Scope: src/agent-notify, hab_peek and the hab:notify CLI with the JSONL screen. Covered in js-root by test/agent-notify.test.js, test/hab-peek.test.js and test/hab-notify-cli.test.js. A product AgentScreen (Hermes Desktop) and acceptance in an existing product session are not covered. Decision: **accepted**.
+Scope: src/agent-notify, hab_peek and hab:notify CLI; js-root covers notifier, peek, shared binding/states/adapter-action, revision migration/concurrent writers/expiry and synthetic product-neutral projection contracts. JSONL and the bundled static-session Claude channel safely refuse unsupported handoff. Mock Codex/Hermes/channel tests do not prove native product rendering, user approval, current-session admission or reply. The separately maintained Hermes Desktop UI and actual Gemini integration are not changed or verified here. Decision: **accepted**.
 
 Checks: js-root.
 
-Sources: [docs/hab-decisions.md:95](../../docs/hab-decisions.md#L95-L105), [docs/receiver/arrival-notifier.md:60](../../docs/receiver/arrival-notifier.md#L60-L76).
+Sources: [docs/hab-decisions.md:95](../../docs/hab-decisions.md#L95-L105), [docs/receiver/arrival-notifier.md:248](../../docs/receiver/arrival-notifier.md#L248-L272), [shared adapter contract](../../docs/receiver/arrival-notifier.md#L281-L332).
 
 ### HAB-A01 — Common transport and recipient authority
 

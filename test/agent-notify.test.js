@@ -452,24 +452,17 @@ test("end to end: hab_peek shows it, 対応する hands the prompt over, the ses
 
   assert.deepEqual(await notifier.decide(sent.message_id, "accept"), {
     changed: true,
-    state: "queued",
+    state: "unsupported",
   });
-  const handoff = lines().find((line) => line.type === "handoff");
-  assert.ok(handoff.prompt.includes("ビルドを確認できますか？"));
+  assert.equal(
+    lines().some((line) => line.type === "handoff"),
+    false,
+  );
   assert.equal(
     (await agentCall("a", "hab_status", { message_id: sent.message_id })).state,
     "acked",
   );
-  // The bound session itself answers with hab_reply and the message_id from the prompt.
-  const id = /message_id "([^"]+)"/.exec(handoff.prompt)[1];
-  const reply = await agentCall("b", "hab_reply", {
-    message_id: id,
-    text: "確認しました",
-  });
-  assert.equal(reply.in_reply_to, sent.message_id);
-  const [answer] = (await agentCall("a", "hab_inbox")).messages;
-  assert.equal(answer.text, "確認しました");
-  assert.equal(answer.kind, "answer");
+  // No product session consumed this file. Do not simulate a reply as proof of admission.
 });
 
 test("mail beyond the first page is shown, also behind 50 put-off notices", async (t) => {
@@ -575,7 +568,7 @@ test("screen files are created owner-only and an open existing one is refused be
   chmodSync(open, 0o644);
   const screen = new JsonlScreen(open, "synthetic:session-1");
   await assert.rejects(screen.show(notice), /insecure_screen_file/);
-  await assert.rejects(screen.handoff(notice), /insecure_screen_file/);
+  assert.equal(await screen.handoff(notice), "unsupported");
   assert.equal(readFileSync(open, "utf8"), "");
 });
 

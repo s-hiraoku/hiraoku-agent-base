@@ -3,7 +3,8 @@
  * product's own integration reads (for example a display-only message panel). The product
  * shows `display` in the bound session, sends the user's choice back with
  * `hab-notify decide`, and, on a `handoff` line, gives `prompt` to that same session.
- * Because the file cannot confirm a start, a handoff is reported as `queued`.
+ * File publication cannot prove session admission. Handoff is unsupported; a product adapter
+ * must use an official, bound-session input API instead.
  */
 import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
 import type {
@@ -15,6 +16,11 @@ import type {
 import { appendPrivate } from "./private-file.ts";
 
 export class JsonlScreen implements AgentScreen {
+  readonly capabilities = {
+    publication: "file",
+    display_acknowledgement: false,
+    handoff: "unsupported",
+  } as const;
   readonly target: string;
   readonly #path: string;
   readonly #now: () => number;
@@ -45,16 +51,10 @@ export class JsonlScreen implements AgentScreen {
       display: message.display,
       choices: INCOMING_CHOICES.map((item) => ({ ...item })),
     });
+    return "published" as const;
   }
-  async handoff(message: PeekedMessage): Promise<HandoffResult> {
-    this.#write({
-      type: "handoff",
-      message_id: message.message_id,
-      sender_id: message.sender_id,
-      thread_id: message.thread_id,
-      prompt: message.handoff_prompt,
-    });
-    return "queued";
+  async handoff(): Promise<HandoffResult> {
+    return "unsupported";
   }
   async report(message: PeekedMessage, state: NoticeState) {
     this.#write({

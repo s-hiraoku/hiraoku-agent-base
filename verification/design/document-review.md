@@ -392,3 +392,34 @@ ADR-018 maintenance (2026-11-13) re-read every changed document diff since main:
 ## A2A Task store on node:sqlite (2026-11-13)
 
 Driver maintenance re-read the changed documents. `docs/a2a/a2a-sdk-preview.md` drops `better-sqlite3` and `@types/better-sqlite3` from its fixed dependencies and says the SDK's `DatabaseTaskStore` runs on Kysely over `node:sqlite` with no native addon; its row meaning is unchanged. `docs/history/testing/a2a-bounded-performance.md` keeps the recorded runs' driver statement and adds that a new run would also wrap SDK `all` and `run` calls; HAB-V11 was re-cited after rereading lines 13–21, with no change to its statement or scope. `verification/design/README.md` records the change. No requirement, conflict or adopted statement changes.
+
+## Product-neutral notification adapters (2026-11-15)
+
+Reread the arrival-notifier design and the shared CLI, SQLite notice store, projection,
+binding identity, JSONL/Hermes/product screens and Claude channel changes. The owner’s
+requested separation keeps authentication/delivery/decision persistence in HAB and only
+product display, choice collection and same-conversation admission in product adapters.
+The new local `binding`, `states` and `adapter-action` contract supplies versioned state
+independently of the immutable notice cursor. A stale poll cannot override a newer action;
+changed immutable content or another binding is rejected. Missing state is unknown, not
+permission to act. Existing stores under a different connection/recipient/session identity
+must not be silently relabelled or discarded.
+
+This maintenance does not lower the original same-session requirement: publication is not
+a displayed card, and a JSONL write is not queued model input. JSONL therefore refuses
+handoff; Claude’s static startup session label is insufficient after `/clear` or resume,
+so the default channel path refuses without a product-side atomic bound-session delivery
+capability. Gemini examples are synthetic extension-contract tests, not a Gemini product
+implementation. The separately maintained Hermes UI has not gained snapshot polling from
+this HAB-only change. All native rendering, approval and same-session acceptance gates
+remain manual and unverified by this maintenance run.
+
+The rollout/rollback paragraph was also reviewed: no automatic deployment, backup only
+after stopping the owned notifier, no concurrent old/new notifiers, and no blind restore
+of a pre-decision snapshot that could replay completed handling. Additive revision columns
+do not authorize undoing binding identity or re-enabling unverified queued handoff.
+
+Follow-up boundary review: legacy Hermes action requests must carry the common binding_id
+and event files retain the HAB connection identity. Missing old bindings are refused rather
+than relabelled; existing consumers must explicitly migrate. SQLite checks an existing
+binding before schema/journal migration, with unchanged-schema/data regression coverage.

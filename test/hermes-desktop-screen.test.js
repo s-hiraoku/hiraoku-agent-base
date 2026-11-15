@@ -18,11 +18,12 @@ import {
   ReceiptNotifier,
   SQLiteNotices,
   hermesDesktopPage,
+  hermesDesktopTarget,
   submissionId,
   fitHermesText,
   HERMES_TEXT_BYTES,
 } from "../src/agent-notify/index.ts";
-import { main } from "../scripts/hab-notify.ts";
+import { main, boundScreen } from "../scripts/hab-notify.ts";
 
 // ADR-021, Hermes Desktop: notices reach a saved conversation through Desktop's
 // display-only external-message reader (cursor-v1). Showing starts no model work.
@@ -112,10 +113,7 @@ test("Hermes Desktop pages show each notice once, in order, in Hermes's event sh
     has_more: false,
   });
   const screen = new HermesDesktopScreen(path, binding);
-  assert.equal(
-    screen.target,
-    "hermes-desktop:local-lab:20261114_101500_ab12cd",
-  );
+  assert.equal(screen.target, hermesDesktopTarget(binding));
   for (const id of ["m1", "m2", "m3"]) await screen.show(message(id));
   const first = hermesDesktopPage(path, binding, { limit: 2 });
   assertHermesAccepts(first);
@@ -209,7 +207,7 @@ test("hab-notify events is the Hermes reader: one JSON page, no store, no HAB", 
       },
     }),
   );
-  await new HermesDesktopScreen(path, binding).show(message("m1"));
+  await boundScreen(JSON.parse(readFileSync(config, "utf8"))).show(message("m1"));
   const lines = [];
   const out = (line) => lines.push(line);
   // Hermes appends --limit 100, then --after <cursor> once it has one.
@@ -391,7 +389,7 @@ test("hab-notify action records a Desktop button press only for this card's bind
     }),
   );
   // Show m1 through the same store and screen the CLI will open.
-  const screen = new HermesDesktopScreen(path, binding);
+  const screen = boundScreen(JSON.parse(readFileSync(config, "utf8")));
   const store = new SQLiteNotices(storePath, screen.target);
   const hab = {
     async peek() {
@@ -406,6 +404,7 @@ test("hab-notify action records a Desktop button press only for this card's bind
 
   const press = {
     action: "decide",
+    binding_id: screen.target,
     backend_namespace: binding.backend_namespace,
     profile_scope: binding.profile_scope,
     receiver_id: "agent-b",
@@ -422,6 +421,7 @@ test("hab-notify action records a Desktop button press only for this card's bind
       () => (typeof body === "string" ? body : JSON.stringify(body)),
     );
   for (const wrong of [
+    { binding_id: "previous-connection" },
     { stored_session_id: "20261114_other" },
     { backend_namespace: "other" },
     { profile_scope: "other" },
@@ -449,6 +449,7 @@ test("hab-notify action records a Desktop button press only for this card's bind
   // A reopened conversation asks what each card became, with the same binding check.
   const states = {
     action: "states",
+    binding_id: screen.target,
     backend_namespace: binding.backend_namespace,
     profile_scope: binding.profile_scope,
     receiver_id: "agent-b",
@@ -459,7 +460,9 @@ test("hab-notify action records a Desktop button press only for this card's bind
   assert.equal(await run({ ...states, message_id: "m1" }), 2);
   assert.equal(await run(states), 0);
   assert.deepEqual(JSON.parse(lines.at(-1)), {
-    states: [{ sender_id: "agent-a", message_id: "m1", state: "later" }],
+    states: [
+      { sender_id: "agent-a", message_id: "m1", state: "later", revision: 3 },
+    ],
   });
   // 対応する while HAB cannot be told (no token here): the choice is kept, nothing is
   // handed off, and pressing again changes nothing.
@@ -543,5 +546,35 @@ test("a fragment left by a killed writer never hides the notices after it", asyn
   assert.deepEqual(
     page.events.map((e) => e.message_id),
     ["m1", "m3"],
+  );
+});
+
+test("HAB endpoint change cannot replay old notices with identical product IDs", async (t) => {
+  const { path } = setup(t);
+  const first = { ...binding, connection_id: "https://first.example/hab/mcp" };
+  const second = {
+    ...binding,
+    connection_id: "https://second.example/hab/mcp",
+  };
+  await new HermesDesktopScreen(path, first).show(message("same-id"));
+  assert.notEqual(hermesDesktopTarget(first), hermesDesktopTarget(second));
+  assert.deepEqual(hermesDesktopPage(path, second, { limit: 100 }).events, []);
+  await new HermesDesktopScreen(path, second).show(message("same-id"));
+  const events = hermesDesktopPage(path, second, { limit: 100 }).events;
+  assert.equal(events.length, 1);
+  assert.equal(events[0].binding_id, hermesDesktopTarget(second));
+  assert.equal(events[0].event_id.endsWith(":1"), true);
+});
+
+test("legacy notices lacking connection binding cannot replay into a configured endpoint", async (t) => {
+  const { path } = setup(t);
+  await new HermesDesktopScreen(path, binding).show(message("legacy"));
+  const endpointBinding = {
+    ...binding,
+    connection_id: "https://hab.example/mcp",
+  };
+  assert.deepEqual(
+    hermesDesktopPage(path, endpointBinding, { limit: 100 }).events,
+    [],
   );
 });
