@@ -1226,6 +1226,14 @@
       "review": "reviewed",
       "summary": "Pinned Python dependencies for the synthetic plugin backend test job, not product-design authority.",
       "exclusion_reason": "License or test dependency metadata, not adopted HAB behavioral requirements."
+    },
+    {
+      "path": "docs/reply-monitoring.md",
+      "sha256": "054e49ce2b49c0882aa8e3c795f3ada5bff5d9d8dab70d1b89e1826a9a0df134",
+      "role": "normative",
+      "review": "reviewed",
+      "read_scope": "full",
+      "summary": "Optional user-authorized reply monitoring consumes additive send/status advice: read-only status at 15 seconds, then 60 seconds, then five minutes, bounded by 30 minutes and message expiry; terminal/replied states stop polling. Product owns durable scheduler and inbox persistence/display, not the HAB host. No Dots scheduler is implemented. Inbox read side effects and untrusted body boundary remain unchanged. Notifier telemetry is observed transition timing, not exact OAuth timing or a latency fix. OAuth refresh stays with existing credential owner; no competing adapter refresh or live configuration changes. Reviewed against reply-watch policy, isolated agent-catalog roundtrip and notifier logging tests; native scheduler/OAuth timing remains unverified."
     }
   ],
   "requirements": [
