@@ -349,8 +349,9 @@ export function ReceivedMessages({ view, visible, onChoose }) {
     let pendingList = null;
     const renderCard = (card) => h("article", { key: displayKey(card.notice) }, h("div", null, "送信元: ", card.notice.address || card.notice.sender_id), h("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, card.notice.text), h("div", { role: "status" }, card.unavailable
         ? "状態確認待ち（操作できません）"
-        : stateLabels[card.decision?.state] ||
-            "状態確認待ち（操作できません）"), canChoose(card)
+        : Object.hasOwn(stateLabels, card.decision?.state)
+            ? stateLabels[card.decision.state]
+            : "状態確認待ち（操作できません）"), canChoose(card)
         ? h("div", null, "対応しますか？", ...card.decision.choices.map((choice) => h(sdk.Button, {
             key: choice.choice,
             disabled: card.unavailable || view.busy || !!view.error,

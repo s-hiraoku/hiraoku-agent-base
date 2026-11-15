@@ -103,6 +103,15 @@ test("new notifications and deferred or uncertain states stay visible ahead of c
   }
 });
 
+test("undocumented decision states cannot expose inherited object values as labels", () => {
+  for (const state of ["__proto__", "constructor", "toString", "undocumented"]) {
+    const result = tree([card(state)]);
+    assert.match(visibleText(result), /状態確認待ち（操作できません）/);
+    assert.match(visibleText(result), new RegExp(`body-${state}`));
+    assert.equal(nodes(result, "button").length, 0);
+  }
+});
+
 test("authoritative decision then polling and remount do not restore handled body; errors stay visible", () => {
   assert.match(visibleText(tree([card("shown", "one")])), /body-one/);
   const handled = card("queued", "one");

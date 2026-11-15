@@ -71,8 +71,9 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
         { role: "status" },
         card.unavailable
           ? "状態確認待ち（操作できません）"
-          : stateLabels[card.decision?.state] ||
-              "状態確認待ち（操作できません）",
+          : Object.hasOwn(stateLabels, card.decision?.state)
+            ? stateLabels[card.decision.state]
+            : "状態確認待ち（操作できません）",
       ),
       canChoose(card)
         ? h(
