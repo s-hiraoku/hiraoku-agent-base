@@ -86,6 +86,8 @@ export class DurableSender {
           "invalid_contract",
           "invalid_reference",
           "unsupported_version",
+          "recipient_unavailable",
+          "kind_not_allowed",
         ];
         if (typeof code === "string" && permanent.includes(code)) {
           this.#store.quarantine(job, code);

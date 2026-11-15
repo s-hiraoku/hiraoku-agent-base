@@ -11,7 +11,7 @@ import {
   HOST_LEASE_MS,
 } from "./adapter-host-fixtures.js";
 import { code } from "./inbox-fixtures.js";
-import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
+import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function question(f) {
   const source = f.submit();
@@ -42,11 +42,11 @@ test("Adapter host: finite MCP question-answer-ACK path uses explicit actions wi
   // budget. Dedicated timeout cases below retain their short fail-closed limits.
   f.state.timeout_ms = 5000;
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_poll") await sleep(1100);
+    if (tool === "hab_poll") await sleep(1100);
   };
   const { key } = await question(f);
   f.state.afterNetwork = null;
-  assert.deepEqual(f.state.tools, ["relay_poll", "relay_ack"]);
+  assert.deepEqual(f.state.tools, ["hab_poll", "hab_ack"]);
   assert.equal(f.queued().length, 0);
   const list = await f.step({ op: "inbox" });
   assert.equal(list.value[0].receipt_confirmed, true);
@@ -148,12 +148,12 @@ test("Adapter host: a stop during poll discards late delivery and sends no ACK",
   f.resume();
   f.submit();
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_poll") f.pause();
+    if (tool === "hab_poll") f.pause();
   };
   const result = await f.step({ op: "receive" });
   assert.equal(result.state, "incomplete");
   assert.equal(result.reason, "host_epoch_changed");
-  assert.deepEqual(f.state.tools, ["relay_poll"]);
+  assert.deepEqual(f.state.tools, ["hab_poll"]);
   assert.equal(f.inbox.inbox().length, 0);
 });
 test("Adapter host: a stop after remote ACK preserves the exact local ACK request for recovery", async (t) => {
@@ -161,21 +161,21 @@ test("Adapter host: a stop after remote ACK preserves the exact local ACK reques
   f.resume();
   const { key } = f.submit();
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_ack") f.pause();
+    if (tool === "hab_ack") f.pause();
   };
   assert.equal((await f.step({ op: "receive" })).reason, "host_epoch_changed");
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, false);
   const request = f.inboxRaw
-    .prepare("SELECT request_id FROM relay_receiver_acks")
+    .prepare("SELECT request_id FROM receiver_acks")
     .get().request_id;
   f.state.afterNetwork = null;
   f.resume();
-  f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
+  f.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
   assert.equal((await f.step({ op: "receive" })).state, "done");
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
   assert.equal(
-    f.inboxRaw.prepare("SELECT request_id FROM relay_receiver_acks").get()
+    f.inboxRaw.prepare("SELECT request_id FROM receiver_acks").get()
       .request_id,
     request,
   );
@@ -190,7 +190,7 @@ test("Adapter host: a stop after remote submit retains sending lease and same re
     message = f.answer(key);
   await f.step({ op: "answer", source: key, message });
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_submit") f.pause();
+    if (tool === "hab_submit") f.pause();
   };
   assert.equal((await f.step({ op: "send" })).reason, "host_epoch_changed");
   assert.equal(f.queued()[0].state, "sending");
@@ -199,7 +199,7 @@ test("Adapter host: a stop after remote submit retains sending lease and same re
     "pending",
   );
   // Exercise a same-ID submit replay slower than the old 400ms claim lease.
-  f.state.afterNetwork = (tool) => tool === "relay_submit" ? sleep(HOST_LEASE_MS + 100) : undefined;
+  f.state.afterNetwork = (tool) => tool === "hab_submit" ? sleep(HOST_LEASE_MS + 100) : undefined;
   f.resume();
   await sleep(recoveryLeaseMs + 50);
   const recovered = await f.step({ op: "send" });
@@ -291,7 +291,7 @@ test("Adapter host: authorization revoked during RPC stops later save and ACK", 
   const result = await f.step({ op: "receive" });
   assert.equal(result.reason, "host_forbidden");
   assert.equal(f.inbox.inbox().length, 0);
-  assert.deepEqual(f.state.tools, ["relay_poll"]);
+  assert.deepEqual(f.state.tools, ["hab_poll"]);
 });
 test("Adapter host: actor change during RPC cannot borrow the original actor's admission", async (t) => {
   const f = await hostFixture(t);
@@ -460,7 +460,7 @@ test("Adapter host: real loopback HTTP MCP receives and sends through the fixed 
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const url = "http://127.0.0.1:" + server.address().port + "/mcp";
-  handle = createRelayNodeHandler(f.gateway({ resource_url: url }));
+  handle = createMcpNodeHandler(f.gateway({ resource_url: url }));
   f.state.resource_url = url;
   const host = f.makeHost({ network: globalThis.fetch });
   f.resume(host);

@@ -8,7 +8,7 @@ import {
 } from "node:crypto";
 import { openSync, closeSync, fstatSync, constants } from "node:fs";
 import { z } from "zod";
-import { MessagingError } from "../messaging/delivery-service.ts";
+import { MessagingError, denied } from "../messaging/delivery-service.ts";
 import {
   habDiscoverySchema,
   habHostIdentitySchema,
@@ -31,7 +31,7 @@ import {
   habSlug,
   habAddress,
   parseHabAddress,
-  relayOperations,
+  deliveryOperations,
   HAB_ADDRESS_PATTERN,
 } from "./registry.ts";
 import type {
@@ -115,8 +115,8 @@ const principalSchema = z.strictObject({
   connection_id: claim,
 });
 const rights = z
-  .array(z.enum(relayOperations))
-  .max(relayOperations.length)
+  .array(z.enum(deliveryOperations))
+  .max(deliveryOperations.length)
   .refine((v) => new Set(v).size === v.length)
   .transform((v) => v.sort());
 const epoch = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -249,7 +249,7 @@ export class SQLiteHabRegistry {
     { context: unknown; address: string; expected_agent_id?: string }
   >();
   #inside = false;
-  #relayDepth = 0;
+  #authorizedDepth = 0;
   constructor(
     path: string,
     options: RegistryOptions,
@@ -527,7 +527,7 @@ export class SQLiteHabRegistry {
       .all();
     if (!rows.length) return;
     const now = this.#iso();
-    const all = JSON.stringify([...relayOperations].sort());
+    const all = JSON.stringify([...deliveryOperations].sort());
     for (const agentId of new Set(rows.map((row) => String(row.agent_id)))) {
       const own = rows.filter((row) => row.agent_id === agentId);
       const agent = this.#db
@@ -1384,7 +1384,7 @@ export class SQLiteHabRegistry {
       };
     });
   }
-  /** Selection is untrusted until withRelay verifies its group membership under the registry lock. */
+  /** Selection is untrusted until withAuthorization verifies its group membership under the registry lock. */
   selectAddress(
     context: unknown,
     address: string,
@@ -1452,33 +1452,32 @@ export class SQLiteHabRegistry {
     });
   }
   /**
-   * A withRelay called inside another's action joins its transaction, so a guard that
+   * A withAuthorization called inside another's action joins its transaction, so a guard that
    * checks one context and the operation it admits for another share one Registry lock.
    */
-  #relayTx<T>(action: () => T): T {
-    if (this.#relayDepth) return action();
+  #authorizedTx<T>(action: () => T): T {
+    if (this.#authorizedDepth) return action();
     return this.#tx(() => {
-      this.#relayDepth++;
+      this.#authorizedDepth++;
       try {
         return action();
       } finally {
-        this.#relayDepth--;
+        this.#authorizedDepth--;
       }
     });
   }
-  /** Registry lock precedes Relay's write lock and remains held through Relay COMMIT. */
-  withRelay<T>(
+  /** Checks the caller and runs the action under the Registry lock, held through the delivery store's COMMIT. */
+  withAuthorization<T>(
     context: unknown,
     operation: AgentOperation,
     action: (authorization: Authorization, agentId: string) => T,
   ): T {
     this.#assertReady();
-    return this.#relayTx(() => {
+    return this.#authorizedTx(() => {
       try {
-        if (this.#stopRecord().stopped !== 0)
-          throw new MessagingError("forbidden");
+        if (this.#stopRecord().stopped !== 0) throw denied("registry_stopped");
       } catch {
-        throw new MessagingError("forbidden");
+        throw denied("registry_stopped");
       }
       let individual;
       try {
@@ -1488,7 +1487,7 @@ export class SQLiteHabRegistry {
             : undefined;
         individual = this.#verified(selected ? selected.context : context);
       } catch {
-        throw new MessagingError("forbidden");
+        throw denied("credential_unverified");
       }
       const expiry = Date.parse(individual.expires_at);
       const selected =
@@ -1500,14 +1499,16 @@ export class SQLiteHabRegistry {
           "SELECT group_id FROM hab_auth_group_bindings WHERE fingerprint=? AND state='active'",
         )
         .get(this.#principalHash(individual.principal));
-      if (!shared) throw new MessagingError("forbidden");
+      if (!shared) throw denied("connection_not_bound");
       const group = this.#group(String(shared.group_id));
       if (
         group.state !== "active" ||
         !group.operations.includes(operation) ||
         (operation === "resolve" && !group.operations.includes("submit"))
       )
-        throw new MessagingError("forbidden");
+        throw denied(
+          group.state !== "active" ? "group_inactive" : "operation_not_granted",
+        );
       let previousSelected = false;
       let members = selected
         ? this.#db
@@ -1533,20 +1534,48 @@ export class SQLiteHabRegistry {
           previousSelected = members.length === 1;
         }
       }
-      if (members.length !== 1) throw new MessagingError("forbidden");
-      const local = this.#peer(String(members[0].agent_id));
+      if (members.length !== 1)
+        throw denied(
+          selected
+            ? "address_not_in_group"
+            : members.length === 0
+              ? "no_active_address"
+              : "address_selection_required",
+        );
+      let local: AgentRecord;
+      try {
+        local = this.#peer(String(members[0].agent_id));
+      } catch {
+        throw denied("caller_inactive");
+      }
       if (
         selected?.expected_agent_id !== undefined &&
         selected.expected_agent_id !== local.agent_id
       )
-        throw new MessagingError("forbidden");
+        throw denied("expected_agent_mismatch");
       const policyEpoch = this.#globalEpoch();
       if (
         !local.operations.includes(operation) ||
         (operation === "resolve" && !local.operations.includes("submit"))
       )
-        throw new MessagingError("forbidden");
-      {
+        throw denied("operation_not_granted");
+      // A run of the same read-only operation by one agent (a notifier polling every few
+      // seconds) is one record whose `at` is its latest use, so polling cannot push the
+      // other records out of the bounded table.
+      const last =
+        operation === "poll" || operation === "status"
+          ? (this.#db
+              .prepare(
+                "SELECT id,operation FROM hab_auth_group_authorizations WHERE group_id=? AND agent_id=? ORDER BY id DESC LIMIT 1",
+              )
+              .get(group.group_id, local.agent_id) as
+              { id: number; operation: string } | undefined)
+          : undefined;
+      if (last?.operation === operation)
+        this.#db
+          .prepare("UPDATE hab_auth_group_authorizations SET at=? WHERE id=?")
+          .run(this.#iso(), last.id);
+      else {
         // Bounded retention, not a lifetime quota: keep the newest records so routine
         // polling cannot exhaust the table and permanently deny every group member.
         this.#db
@@ -1569,30 +1598,39 @@ export class SQLiteHabRegistry {
       let alive = true;
       const authorization: Authorization = {
         authorize: (incoming, op, peerId, kind) => {
-          try {
-            if (
-              !alive ||
-              incoming !== context ||
-              op !== operation ||
-              expiry <= this.#now() ||
-              this.#globalEpoch() !== policyEpoch
-            )
-              return undefined;
-            if (
-              kind !== undefined &&
-              !this.#options.allowed_kinds.includes(kind)
-            )
-              return undefined;
-            if (peerId !== undefined) {
-              this.#peer(peerId);
-              const sender = op === "submit" ? local.agent_id : peerId,
-                recipient = op === "submit" ? peerId : local.agent_id;
-              if (this.#blocked(sender, recipient)) return undefined;
-            }
-            return { agent_id: local.agent_id };
-          } catch {
+          // Out-of-scope or stale use is a plain refusal (no decision), not a policy reason.
+          if (
+            !alive ||
+            incoming !== context ||
+            op !== operation ||
+            expiry <= this.#now() ||
+            this.#globalEpoch() !== policyEpoch
+          )
             return undefined;
+          if (kind !== undefined && !this.#options.allowed_kinds.includes(kind))
+            throw new MessagingError("kind_not_allowed", {
+              reason: "kind_not_allowed",
+              details: { allowed_kinds: [...this.#options.allowed_kinds] },
+            });
+          if (peerId !== undefined) {
+            try {
+              this.#peer(peerId);
+            } catch (error) {
+              throw new MessagingError("recipient_unavailable", {
+                reason:
+                  error instanceof RegistryError
+                    ? "peer_unknown"
+                    : "peer_inactive",
+              });
+            }
+            const sender = op === "submit" ? local.agent_id : peerId,
+              recipient = op === "submit" ? peerId : local.agent_id;
+            if (this.#blocked(sender, recipient))
+              throw new MessagingError("recipient_unavailable", {
+                reason: "pair_blocked",
+              });
           }
+          return { agent_id: local.agent_id };
         },
       };
       try {
@@ -1607,34 +1645,66 @@ export class SQLiteHabRegistry {
     address: string,
   ): { recipient_id: string; address: string; normalization_version: 1 } {
     const canonicalAddress = parseHabAddress(address).address;
-    return this.withRelay(context, "resolve", (_authorization, senderId) => {
-      const active = `SELECT agent_id FROM ${this.#agentTable()} WHERE state='active' AND `;
-      let row = this.#db.prepare(active + "address=?").get(canonicalAddress);
-      let previous = false;
-      if (!row) {
-        // A renamed agent's previous name selects only that same ID, and only for its grace period.
-        const graceId = this.#graceAgentId(canonicalAddress);
-        if (graceId) {
-          row = this.#db.prepare(active + "agent_id=?").get(graceId);
-          previous = row !== undefined;
+    return this.withAuthorization(
+      context,
+      "resolve",
+      (_authorization, senderId) => {
+        const active = `SELECT agent_id FROM ${this.#agentTable()} WHERE state='active' AND `;
+        let row = this.#db.prepare(active + "address=?").get(canonicalAddress);
+        let previous = false;
+        if (!row) {
+          // A renamed agent's previous name selects only that same ID, and only for its grace period.
+          const graceId = this.#graceAgentId(canonicalAddress);
+          if (graceId) {
+            row = this.#db.prepare(active + "agent_id=?").get(graceId);
+            previous = row !== undefined;
+          }
         }
-      }
-      if (!row || this.#blocked(senderId, String(row.agent_id)))
-        throw new MessagingError("forbidden");
-      this.#peer(String(row.agent_id));
-      if (previous)
-        this.#recordPreviousUse(
-          canonicalAddress,
-          String(row.agent_id),
-          senderId,
-        );
-      // v1 output echoes the requested address; hab_discover shows the current name.
-      return {
-        recipient_id: String(row.agent_id),
-        address: canonicalAddress,
-        normalization_version: 1,
-      };
-    });
+        if (!row)
+          throw new MessagingError("unknown_address", {
+            reason: "address_unknown",
+          });
+        if (this.#blocked(senderId, String(row.agent_id)))
+          throw new MessagingError("unknown_address", {
+            reason: "pair_blocked",
+          });
+        try {
+          this.#peer(String(row.agent_id));
+        } catch {
+          throw new MessagingError("unknown_address", {
+            reason: "peer_inactive",
+          });
+        }
+        if (previous)
+          this.#recordPreviousUse(
+            canonicalAddress,
+            String(row.agent_id),
+            senderId,
+          );
+        // v1 output echoes the requested address; hab_discover shows the current name.
+        return {
+          recipient_id: String(row.agent_id),
+          address: canonicalAddress,
+          normalization_version: 1,
+        };
+      },
+    );
+  }
+  /**
+   * Current addresses of these agent IDs, for showing who sent a message the caller already
+   * received. Only HabDeliveryService calls it, inside an authorized operation; IDs that no
+   * longer exist are left out.
+   */
+  addressesOf(agentIds: readonly string[]): Map<string, string> {
+    const out = new Map<string, string>();
+    const query = this.#db.prepare(
+      `SELECT address FROM ${this.#agentTable()} WHERE agent_id=?`,
+    );
+    for (const agentId of new Set(agentIds)) {
+      const row = query.get(agentId);
+      if (row) out.set(agentId, String(row.address));
+    }
+    return out;
   }
   get discoveryEnabled(): boolean {
     return this.#options.discovery !== undefined;

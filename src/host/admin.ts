@@ -1,5 +1,5 @@
 /**
- * Operator management for the configured local Relay. It reuses the service config
+ * Operator management for the configured HAB host. It reuses the service config
  * and keys, opens only the existing registry, and never issues or prints credentials.
  * Every mutation goes through the Registry's own administrator port.
  */
@@ -16,7 +16,7 @@ import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
   RegistryError,
   parseHabAddress,
-  relayOperations,
+  deliveryOperations,
 } from "../hab/registry.ts";
 import type { AgentOperation, IndividualPrincipal } from "../hab/registry.ts";
 
@@ -52,7 +52,7 @@ type ManagedCredential = {
 };
 
 const operator = Object.freeze({});
-const request = () => `relay-admin-${randomUUID()}`;
+const request = () => `hab-admin-${randomUUID()}`;
 const same = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && [...a].sort().join() === [...b].sort().join();
 
@@ -67,8 +67,8 @@ function open(configPath: string) {
   }
   const { config } = loaded;
   const path = join(config.directory, "registry.sqlite");
-  // Schema upgrades belong to the explicitly configured Relay start, never an admin command.
-  if (!existsSync(path)) throw new HostAdminError("relay_not_initialized");
+  // Schema upgrades belong to the explicitly configured host start, never an admin command.
+  if (!existsSync(path)) throw new HostAdminError("host_not_initialized");
   let version: unknown;
   let unconverted = false;
   let namesVersion: unknown;
@@ -93,7 +93,7 @@ function open(configPath: string) {
       raw.close();
     }
   } catch {
-    throw new HostAdminError("relay_not_initialized");
+    throw new HostAdminError("host_not_initialized");
   }
   if (
     version === 1 ||
@@ -376,12 +376,12 @@ function principalFor(
 export function hostAdminConnect(configPath: string, input: ConnectInput) {
   const address = parseHabAddress(input.address);
   const operations = [
-    ...new Set(input.operations ?? relayOperations),
+    ...new Set(input.operations ?? deliveryOperations),
   ] as AgentOperation[];
   if (
     !operations.length ||
     operations.some(
-      (op) => !(relayOperations as readonly string[]).includes(op),
+      (op) => !(deliveryOperations as readonly string[]).includes(op),
     )
   )
     throw new HostAdminError("invalid_operations");
@@ -555,5 +555,5 @@ export function hostAdminDisconnect(configPath: string, addressInput: string) {
 export function hostAdminErrorCode(error: unknown): string {
   if (error instanceof HostAdminError || error instanceof RegistryError)
     return error.code;
-  return "relay_admin_failed";
+  return "admin_failed";
 }

@@ -3,11 +3,11 @@ import { DurableReceiver } from "../../src/agent-sdk/index.ts";
 
 import { pendingBackends } from "./manifest.js";
 
-export async function relayBackend(t) {
+export async function hostBackend(t) {
   const f = await journey(t);
   await f.enrollAll();
   return {
-    id: "hab-host-jetstream",
+    id: "hab-host-sqlite",
     agent: (name) => f.agents[name].agent_id,
     message: (to, patch) => f.makeMessage(to, patch),
     transport: (name) => ({
@@ -37,7 +37,7 @@ export async function relayBackend(t) {
 }
 
 export const backends = [
-  { id: "hab-host-jetstream", create: relayBackend },
+  { id: "hab-host-sqlite", create: hostBackend },
   ...pendingBackends,
 ];
 

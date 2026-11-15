@@ -1,6 +1,38 @@
 import { spawn } from "node:child_process";
 import { open } from "node:fs/promises";
 import { createServer } from "node:net";
+import { parseArgs } from "node:util";
+
+export class LabArgumentError extends Error {
+  constructor(code) {
+    super(code);
+    this.code = code;
+  }
+}
+
+/** `--full` and `--release` only, each at most once; `--release` implies `--full`. */
+export function parseLabOptions(args) {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: { full: { type: "boolean" }, release: { type: "boolean" } },
+      allowPositionals: false,
+      strict: true,
+      tokens: true,
+    });
+  } catch {
+    throw new LabArgumentError("invalid_lab_arguments");
+  }
+  const seen = new Set();
+  for (const token of parsed.tokens) {
+    if (token.kind !== "option" || seen.has(token.name))
+      throw new LabArgumentError("invalid_lab_arguments");
+    seen.add(token.name);
+  }
+  const release = parsed.values.release ?? false;
+  return { full: (parsed.values.full ?? false) || release, release };
+}
 
 export async function assertLoopbackPortFree(port) {
   const server = createServer((socket) => socket.destroy());
@@ -27,7 +59,7 @@ export async function assertLoopbackPortFree(port) {
   });
 }
 
-export function labEnvironment(parent, scratch, preparedNats) {
+export function labEnvironment(parent, scratch) {
   return {
     PATH: parent.PATH ?? "/usr/bin:/bin",
     ...(parent.SystemRoot ? { SystemRoot: parent.SystemRoot } : {}),
@@ -39,7 +71,6 @@ export function labEnvironment(parent, scratch, preparedNats) {
     NO_COLOR: "1",
     NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
     HAB_DELIVERY_LAB: "synthetic-only",
-    ...(preparedNats ? { HAB_NATS_SERVER: preparedNats.stagedPath } : {}),
   };
 }
 

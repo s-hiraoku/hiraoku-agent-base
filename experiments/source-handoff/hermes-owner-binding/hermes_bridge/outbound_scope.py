@@ -31,7 +31,7 @@ class NativeStatusScope:
             raise ValueError("native_outbound_policy_invalid")
 
     def arguments(self, name, args):
-        if (name != "relay_status" or not isinstance(args, dict)
+        if (name != "hab_status" or not isinstance(args, dict)
             or set(args) != {"message_id", "as_address", "expected_agent_id"}
             or args.get("message_id") not in self.message_ids
             or args.get("as_address") != self.as_address or args.get("expected_agent_id") != self.agent_id):
@@ -58,13 +58,13 @@ class NativeOutboundScope:
 
     def arguments(self, name, args):
         """Constrain routing again in the native child; no caller-selected identity."""
-        if not isinstance(args, dict) or name not in ("relay_submit", "relay_status"):
+        if not isinstance(args, dict) or name not in ("hab_submit", "hab_status"):
             raise ValueError("native_outbound_refused")
         if args.get("as_address") != self.as_address or args.get("expected_agent_id") != self.agent_id:
             raise ValueError("native_outbound_refused")
         if args.get("message_id") not in self.message_ids:
             raise ValueError("native_outbound_refused")
-        if name == "relay_status":
+        if name == "hab_status":
             if set(args) != {"message_id", "as_address", "expected_agent_id"}:
                 raise ValueError("native_outbound_refused")
         elif (set(args) != {"version", "message_id", "recipient_id", "kind", "body", "thread_id", "in_reply_to", "first_sent_at", "expires_at", "as_address", "expected_agent_id"}
@@ -101,7 +101,7 @@ def assignment(result, scope, operation):
         or selected.get("registration_state") != "active"
         or not isinstance(selected.get("authorized_operations"), list)
         or not all(isinstance(op,str) and op in ("submit","status","poll","ack","resolve") for op in selected["authorized_operations"])
-        or operation.removeprefix("relay_") not in selected["authorized_operations"]
+        or operation.removeprefix("hab_") not in selected["authorized_operations"]
         or set(connection) != {"kind", "id", "binding_id"}
         or not all(_id(connection.get(k)) for k in ("id", "binding_id"))):
         raise ValueError("native_identity_unverified")

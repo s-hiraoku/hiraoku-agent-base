@@ -11,7 +11,7 @@
       "imageSHA256": "2a30433e7237d57ca3d1dc39644de5ba4053058cffc66070d8f5fd5ee4e8ddc6"
     },
     {
-      "source": "docs/hab-topology.md",
+      "source": "docs/history/hab-topology.md",
       "id": "hab-target",
       "image": "docs/diagrams/hab-target.png",
       "mermaidSHA256": "8a599fef2172695af03d79b7a26948cec1c7a85474b00061d089634fcb7b3391",

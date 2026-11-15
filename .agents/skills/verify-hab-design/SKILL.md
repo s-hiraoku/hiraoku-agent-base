@@ -9,7 +9,7 @@ Read [the HAB bundle](../../../verification/design/README.md), [contract](../../
 
 ## Launch
 
-Identify HAB through Git origin, read repository instructions and the pinned `.node-version`/package manager. Install the committed locks with `npm ci` and `npm ci --prefix packages/relay-nats --ignore-scripts` in an isolated worktree, then the pinned broker with `mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`. JetStream is the only delivery backend, so the root suite and the real helper fail without it. Locate an external reviewed hirastack checkout; its pinned generation version is in the bundle. Do not copy a HAB contract into hirastack or vendor the generic engine here.
+Identify HAB through Git origin, read repository instructions and the pinned `.node-version`/package manager. Install the committed lock with `npm ci` in an isolated worktree. Delivery is the host's own SQLite store (ADR-018), so no broker is needed. Locate an external reviewed hirastack checkout; its pinned generation version is in the bundle. Do not copy a HAB contract into hirastack or vendor the generic engine here.
 
 Start from no previous run state. Choose a NEW absolute evidence directory outside HAB. Review every contract argv and side effect before `--execute`. The real helper starts only its own scaffold on OS-selected loopback port0 and uses new synthetic state. Never probe/stop/drive an unowned service, use live credentials or change real agent/config/grant settings merely to satisfy verification.
 

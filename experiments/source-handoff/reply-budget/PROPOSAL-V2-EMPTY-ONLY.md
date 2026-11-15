@@ -8,8 +8,8 @@ An EMPTY-only exception is materially smaller and safer than arbitrary populated
 
 Baseline: main 4c4663e42acc2fb27ffbe640531c0f5e5cfec1c9. Source:
 - src/adapter-policy/sqlite-reply-budget.ts:131–149 binds max_records; :182–188 rejects mismatched schema/policy; :405–408 calls the outbox action AFTER committing the reservation.
-- docs/adapter-reply-budget.md:50–54 excludes policy changes/reset and requires stop at capacity.
-- docs/answer-intents.md:64 requires one producer journal, budget and outbox per identity.
+- docs/receiver/adapter-reply-budget.md:50–54 excludes policy changes/reset and requires stop at capacity.
+- docs/receiver/answer-intents.md:64 requires one producer journal, budget and outbox per identity.
 - src/answer-intents/sqlite-journal.ts:135–145 also binds journal max_records. Raising the budget alone does not raise answer-journal capacity.
 - src/agent-sdk/sqlite-outbox.ts:193–235 binds identity/key/schema, NOT max_records. Its capacity is a separate configuration decision, not this migration.
 - ../single-owner-runtime/runtime.ts:178–183 automatically tries enqueue for a prepared intent. A pause on the budget alone does not eliminate silent retry.

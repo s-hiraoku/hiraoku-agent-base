@@ -6,7 +6,7 @@ import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
-import { limits } from "./relay-http-fixtures.js";
+import { limits } from "./mcp-http-fixtures.js";
 export const syntheticToken = "synthetic_only_external_owner_not_native_proof_12345";
 
 export function syntheticStores(directory) {

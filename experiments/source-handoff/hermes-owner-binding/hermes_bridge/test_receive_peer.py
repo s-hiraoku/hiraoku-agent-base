@@ -108,7 +108,7 @@ class Harness:
             self.source.close()
 
 
-def call(identifier=1, name="relay_poll", args=None):
+def call(identifier=1, name="hab_poll", args=None):
     return {
         "version": 1,
         "type": "call",
@@ -172,7 +172,7 @@ class ReceivePeerFrameTests(unittest.TestCase):
     def test_unknown_fields_operations_and_bad_ids_are_refused(self):
         for frame in [
             {**call(), "extra": "not a capability"},
-            call(name="relay_submit"),
+            call(name="hab_submit"),
             call(name="shell"),
             call(args=[]),
             call(identifier=True),
@@ -192,7 +192,7 @@ class ReceivePeerTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_poll_and_ack_only_after_initial_and_native_guards(self):
         h = self.harness()
-        for identifier, name in [(1, "relay_poll"), (2, "relay_ack")]:
+        for identifier, name in [(1, "hab_poll"), (2, "hab_ack")]:
             h.source.send(call(identifier, name, {"fixed": "synthetic"}))
             initial = await h.next()
             self.assertEqual(

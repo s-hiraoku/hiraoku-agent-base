@@ -2,14 +2,12 @@
 import process from "node:process";
 import { setInterval } from "node:timers";
 import { join } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createRecipientHostMcpServer } from "../src/adapter-host/mcp.ts";
 import { SQLiteAnswerJournal } from "../src/answer-intents/sqlite-journal.ts";
 import { hostFixture, limits } from "./adapter-host-fixtures.js";
-import { useParentTestBroker } from "./jetstream-delivery.js";
 // A private descriptor created by the owning test, never a product configuration.
-useParentTestBroker(JSON.parse(readFileSync(process.env.HAB_TEST_BROKER_FILE, "utf8")));
 if (process.env.HAB_TEST_COMPATIBILITY_PID_FILE)
   writeFileSync(process.env.HAB_TEST_COMPATIBILITY_PID_FILE, String(process.pid), { mode: 0o600, flag: "wx" });
 const cleanup = [];
@@ -32,7 +30,7 @@ const stop = async () => {
 };
 process.once("SIGTERM", stop);
 process.stdin.once("end", stop);
-// Bound a broken test child; the parent independently owns broker and scratch cleanup.
+// Bound a broken test child; the parent independently owns scratch cleanup.
 setTimeout(() => process.exit(2), 30000).unref();
 const f = await hostFixture({ after: (action) => cleanup.push(action) });
 const journal = new SQLiteAnswerJournal(join(f.dir, "recipient-answers.sqlite"), {

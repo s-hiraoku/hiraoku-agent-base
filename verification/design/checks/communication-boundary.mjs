@@ -26,14 +26,21 @@ const slash = (path) => path.split(sep).join("/");
 const sdkPath = (name) => `src/agent-sdk/${name}`;
 const messagingPath = (name) => `src/messaging/${name}`;
 const hostMcpPath = (name) => `src/host/mcp/${name}`;
-// Registry-owned sender capacity policy, used by the JetStream journal.
+// Registry-owned sender capacity policy, used by the SQLite delivery store.
 const registryCore = ["src/hab/agent-capacity.ts"];
-// docs/hab-relay-spec.md section 3.1: domain/durable storage must not depend
+// The host's delivery store (ADR-018): durable storage, no MCP/OAuth/HTTP.
+const deliveryCore = ["src/delivery/sqlite-delivery.ts"];
+// docs/hab-messaging-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
 const coreModules = new Set([
-  ...["index.ts", "contract.ts", "delivery-service.ts", "tool-errors.ts"].map(
-    messagingPath,
-  ),
+  ...[
+    "index.ts",
+    "contract.ts",
+    "delivery-service.ts",
+    "tool-errors.ts",
+    // Pure formatting of the incoming-message notice (ADR-020); node:crypto only.
+    "incoming-notice.ts",
+  ].map(messagingPath),
   ...[
     "index.ts",
     "sender.ts",
@@ -49,6 +56,7 @@ const coreModules = new Set([
   ].map(sdkPath),
   hostMcpPath("writer-admission.ts"),
   ...registryCore,
+  ...deliveryCore,
 ]);
 const outerModules = new Set([
   sdkPath("mcp-client.ts"),
@@ -57,6 +65,8 @@ const outerModules = new Set([
   ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
     hostMcpPath,
   ),
+  // The portable tools/list input schema; MCP SDK types and zod only.
+  hostMcpPath("published-schema.ts"),
 ]);
 const corePackages = new Set([
   "node:buffer",
@@ -73,6 +83,7 @@ const communicationPolicy = {
     name.startsWith("src/messaging/") ||
     name.startsWith("src/host/mcp/") ||
     registryCore.includes(name) ||
+    deliveryCore.includes(name) ||
     shared.has(name),
   allowsPackage: (name) =>
     name.startsWith("node:") ||
@@ -294,6 +305,7 @@ if (mode === "--self-test") {
     ...sourceEntries(target, "src/messaging"),
     ...sourceEntries(target, "src/host/mcp"),
     ...registryCore,
+    ...deliveryCore,
   ];
   assert(entries.length > 0, "empty communication source set");
   for (const name of entries)

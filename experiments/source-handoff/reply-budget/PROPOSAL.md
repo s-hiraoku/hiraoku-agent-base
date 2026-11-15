@@ -28,7 +28,7 @@ Only max_records may increase, with old < new <= 10000. Thread limit, global rat
 - HAB-E09: Same exclusive owner DB/path/inode for the identity; no lease timeout takeover or copied replacement. Unknown native activity cannot be treated as stopped by acquiring the OS lock.
 - HAB-E11: Retain all existing dedup/unknown evidence. No independent state restore or deadline refresh. Capacity change cannot reclassify unknown execution as absent.
 
-References: docs/adapter-reply-budget.md sections 枠の単位と消費点 and 保存・障害・運用; docs/answer-intents.md; docs/adapter-owner.md; verification/design/design-principles.md HAB-E06/E07/E09/E11. Implementation anchors: src/adapter-policy/sqlite-reply-budget.ts (#binding, #meta, #records, migrate, withReply), src/agent-sdk/sqlite-outbox.ts migrate, private composition runtime.ts runSingleOwner flow and openOwnedStores.
+References: docs/receiver/adapter-reply-budget.md sections 枠の単位と消費点 and 保存・障害・運用; docs/receiver/answer-intents.md; docs/receiver/adapter-owner.md; verification/design/design-principles.md HAB-E06/E07/E09/E11. Implementation anchors: src/adapter-policy/sqlite-reply-budget.ts (#binding, #meta, #records, migrate, withReply), src/agent-sdk/sqlite-outbox.ts migrate, private composition runtime.ts runSingleOwner flow and openOwnedStores.
 
 ## Authority and exact approval
 
