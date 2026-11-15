@@ -142,10 +142,19 @@ test("send, read, reply and status round trip with only addresses and text", asy
   assert.equal(status.reply_state, "waiting");
   assert.deepEqual(status.replies, []);
 
+  const submits = () =>
+    f.registryRaw
+      .prepare(
+        "SELECT count(*) n FROM hab_auth_group_authorizations WHERE agent_id=? AND operation='submit'",
+      )
+      .get(f.b.agent_id).n;
+  const submitsBefore = submits();
   const reply = await f.ok("b", "hab_reply", {
     message_id: sent.message_id,
     text: "Build is green.",
   });
+  // Reading the original and sending the reply is one authorization, not two.
+  assert.equal(submits(), submitsBefore + 1);
   assert.equal(reply.to, f.a.address);
   assert.equal(reply.thread_id, sent.thread_id);
   assert.equal(reply.in_reply_to, sent.message_id);
@@ -171,8 +180,8 @@ test("send, read, reply and status round trip with only addresses and text", asy
   );
   const answer = (await f.ok("a", "hab_inbox")).messages[0];
   assert.equal(
-    (await f.ok("a", "hab_status", { message_id: sent.message_id }))
-      .replies[0].read,
+    (await f.ok("a", "hab_status", { message_id: sent.message_id })).replies[0]
+      .read,
     true,
   );
   assert.equal(

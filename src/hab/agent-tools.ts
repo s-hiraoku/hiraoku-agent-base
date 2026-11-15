@@ -28,6 +28,12 @@ export interface HabAgentService {
     context: unknown,
     messageId: string,
   ): ReceivedMessage & { from: string | null };
+  /** Optional: read the original and submit the reply under one authorization. */
+  reply?(
+    context: unknown,
+    messageId: string,
+    build: (original: ReceivedMessage & { from: string | null }) => unknown,
+  ): { original: ReceivedMessage & { from: string | null }; receipt: Receipt };
   inbox(
     context: unknown,
     options: {
@@ -304,19 +310,17 @@ export function runHabAgentTool(
       >;
       checkId(message_id, "message_id");
       checkText(service, text);
-      const original = service.received(context, message_id);
-      // A message can be answered until its deadline (the notice's 返信期限), read or not.
-      if (
-        original.state === "expired" ||
-        original.state === "quarantined" ||
-        Date.parse(original.expires_at) <= Date.now()
-      )
-        throw new MessagingError("reply_target_expired", {
-          reason: `reply_target_${original.state}`,
-        });
-      const receipt = service.submit(
-        context,
-        envelope({
+      const build = (original: ReceivedMessage & { from: string | null }) => {
+        // A message can be answered until its deadline (the notice's 返信期限), read or not.
+        if (
+          original.state === "expired" ||
+          original.state === "quarantined" ||
+          Date.parse(original.expires_at) <= Date.now()
+        )
+          throw new MessagingError("reply_target_expired", {
+            reason: `reply_target_${original.state}`,
+          });
+        return envelope({
           recipient_id: original.sender_id,
           kind: original.kind === "question" ? "answer" : "notice",
           text,
@@ -325,8 +329,16 @@ export function runHabAgentTool(
             sender_id: original.sender_id,
             message_id: original.message_id,
           },
-        }),
-      );
+        });
+      };
+      let original: ReceivedMessage & { from: string | null };
+      let receipt: Receipt;
+      if (service.reply)
+        ({ original, receipt } = service.reply(context, message_id, build));
+      else {
+        original = service.received(context, message_id);
+        receipt = service.submit(context, build(original));
+      }
       return {
         ...sent(receipt, original.from, original.thread_id),
         in_reply_to: original.message_id,
