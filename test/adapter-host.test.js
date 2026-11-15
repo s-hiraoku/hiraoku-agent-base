@@ -36,7 +36,9 @@ test("Adapter host: fresh gate is paused; missing authority cannot resume or use
   assert.equal(f.state.tools.length, 0);
 });
 test("Adapter host: finite MCP question-answer-ACK path uses explicit actions without Tasks", async (t) => {
-  const f = await hostFixture(t);
+  // This success-path regression also exceeds the short expiry-test lease.
+  // Expiry/timeout cases below keep their deliberately short limits.
+  const f = await hostFixture(t, {}, { outboxLeaseMs: 5000 });
   f.resume();
   // Exercise success after a poll response slower than the former 1s fixture
   // budget. Dedicated timeout cases below retain their short fail-closed limits.
@@ -56,7 +58,12 @@ test("Adapter host: finite MCP question-answer-ACK path uses explicit actions wi
     (await f.step({ op: "answer", source: key, message })).state,
     "done",
   );
-  assert.equal((await f.step({ op: "send" })).state, "done");
+  f.state.afterNetwork = async (tool) => {
+    if (tool === "hab_submit") await sleep(HOST_LEASE_MS + 100);
+  };
+  const sent = await f.step({ op: "send" });
+  assert.equal(sent.state, "done", JSON.stringify(sent));
+  f.state.afterNetwork = null;
   const delivery = f.service.poll(f.contexts.a);
   assert.equal(delivery.message.message_id, message.message_id);
   f.service.ack(f.contexts.a, {
