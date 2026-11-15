@@ -16,8 +16,12 @@ import {
   gateVerdict,
   executeNode,
   observedCases,
+  parseLabOptions,
 } from "./lib/delivery-lab.mjs";
-import { parseLabOptions, prepareNatsServer } from "./lib/nats-input.mjs";
+import {
+  assertCurrentToolchain,
+  readToolchainPin,
+} from "./lib/toolchain.mjs";
 import {
   pendingBackends,
   pendingMigrationRequirements,
@@ -32,11 +36,7 @@ try {
   process.exit(2);
 }
 const { release, full } = options;
-const pinnedNode = readFileSync(join(repo, ".node-version"), "utf8").trim();
-if (process.versions.node !== pinnedNode)
-  throw Error(
-    `delivery lab requires Node ${pinnedNode}; current ${process.versions.node}`,
-  );
+assertCurrentToolchain(readToolchainPin(repo));
 const root = join(repo, ".lab");
 mkdirSync(root, { recursive: true, mode: 0o700 });
 const run = mkdtempSync(join(root, "run-"));
@@ -48,15 +48,15 @@ const pending = [
   ...pendingMigrationRequirements,
 ];
 const regressionFiles = [
-  "relay-contract",
-  "relay-receiver",
-  "relay-sender",
+  "messaging-contract",
+  "receiver",
+  "sender",
   "hab-enrollment-delivery",
   "hab-auth-groups",
   "hab-discovery",
   "receive-supervisor",
-  "relay-inbox-maintenance",
-  "relay-outbox-maintenance",
+  "inbox-maintenance",
+  "outbox-maintenance",
 ].map((name) => `test/${name}.test.js`);
 const definitions = [
   { id: "shared-contracts", files: ["test/delivery-lab/contracts.test.js"] },
@@ -65,10 +65,9 @@ const definitions = [
     files: [
       "test/delivery-lab/sqlite-failures.test.js",
       "test/delivery-lab/harness.test.js",
-      "test/delivery-lab/nats-input.test.js",
     ],
   },
-  { id: "relay-regressions", files: regressionFiles },
+  { id: "delivery-regressions", files: regressionFiles },
 ];
 if (full)
   definitions.push({
@@ -96,7 +95,6 @@ const report = {
   release_requested: release,
   pending,
   groups,
-  nats_input: { state: "not-requested", backend_executed: false },
 };
 const snapshot = () => {
   const files = execFileSync(
@@ -141,26 +139,6 @@ try {
     env,
     encoding: "utf8",
   }).trim();
-  if (options.natsServer) {
-    let prepared;
-    try {
-      prepared = prepareNatsServer(options.natsServer, scratch);
-    } catch (error) {
-      report.nats_input = {
-        state: "rejected",
-        code: error.code,
-        backend_executed: false,
-      };
-      throw error;
-    }
-    report.nats_input = { ...prepared.evidence, handoff: "pending" };
-    definitions.unshift({
-      id: "nats-input-handoff",
-      files: [join(repo, "test/delivery-lab/nats-input.probe.js")],
-      cwd: prepared.fixtureCwd,
-      env: labEnvironment(process.env, scratch, prepared),
-    });
-  }
   report.expected_groups = definitions.map(({ id }) => id);
   for (const definition of definitions) {
     if (interrupted) throw Error("delivery lab interrupted");
@@ -168,8 +146,8 @@ try {
     const started = Date.now();
     const log = join(run, `${definition.id}.tap`);
     const execution = await executeNode({
-      cwd: definition.cwd ?? repo,
-      env: definition.env ?? env,
+      cwd: repo,
+      env,
       log,
       args: [
         "--test",
@@ -187,11 +165,6 @@ try {
     } catch (error) {
       parse_error = error.message;
     }
-    if (definition.id === "nats-input-handoff")
-      report.nats_input.handoff =
-        execution.exit_code === 0 && totals?.pass === 1 && totals?.fail === 0
-          ? "observed"
-          : "failed";
     groups.push({
       id: definition.id,
       ...execution,

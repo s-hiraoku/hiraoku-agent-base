@@ -6,9 +6,9 @@ import { DatabaseSync } from "node:sqlite";
 import { SQLiteHabRegistry } from "../src/hab/sqlite-registry.ts";
 import { SQLiteEnrollmentJournal } from "../src/hab/sqlite-enrollment-journal.ts";
 import { runHabEnrollment } from "../src/hab/enrollment.ts";
-import { jetstreamDelivery } from "./jetstream-delivery.js";
+import { sqliteDelivery } from "./delivery-fixture.js";
 import { options, operations, principal } from "./hab-registry-fixtures.js";
-import { limits, message } from "./relay-http-fixtures.js";
+import { limits, message } from "./mcp-http-fixtures.js";
 import { setup } from "./hab-http-fixtures.js";
 
 export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
@@ -106,7 +106,7 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
       agents[name] = registry.inspect(admin, saved.agent_id);
     return result;
   };
-  delivery = await jetstreamDelivery(t, {
+  delivery = await sqliteDelivery(t, {
     registry,
     limits,
     directory: dir,
@@ -164,15 +164,15 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
         ? raw("registry.sqlite", (db) =>
             Number(db.prepare(`SELECT count(*) n FROM ${table}`).get().n),
           )
-        : raw("jetstream-journal.sqlite", (db) =>
+        : raw("delivery.sqlite", (db) =>
             Number(
               db
                 .prepare(
                   {
-                    relay_messages: "SELECT count(*) n FROM nats_messages",
-                    relay_deliveries: "SELECT count(*) n FROM nats_messages",
-                    relay_ack_receipts:
-                      "SELECT count(*) n FROM nats_messages WHERE ack_request_id IS NOT NULL",
+                    messages: "SELECT count(*) n FROM delivery_messages",
+                    deliveries: "SELECT count(*) n FROM delivery_messages",
+                    ack_receipts:
+                      "SELECT count(*) n FROM delivery_messages WHERE ack_request_id IS NOT NULL",
                   }[table],
                 )
                 .get().n,
@@ -201,18 +201,18 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
     // Fault injection only in newly created test DBs; never alter original payload IDs/deadlines.
     dueOutbox(name) {
       raw(`outbox-${name}.sqlite`, (db) =>
-        db.exec("UPDATE relay_outbox SET next_retry_at=0"),
+        db.exec("UPDATE outbox SET next_retry_at=0"),
       );
     },
     dueAck(name) {
       raw(`inbox-${name}.sqlite`, (db) =>
-        db.exec("UPDATE relay_receiver_acks SET next_retry_at=0"),
+        db.exec("UPDATE receiver_acks SET next_retry_at=0"),
       );
     },
     expireLeases() {
-      raw("jetstream-journal.sqlite", (db) =>
+      raw("delivery.sqlite", (db) =>
         db.exec(
-          "UPDATE nats_messages SET lease_until=0,next_visible_at=0 WHERE state='leased'",
+          "UPDATE delivery_messages SET lease_until=0,next_visible_at=0 WHERE state='leased'",
         ),
       );
     },

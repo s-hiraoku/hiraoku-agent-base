@@ -12,7 +12,7 @@ import { SQLiteEnrollmentJournal } from "../../src/hab/sqlite-enrollment-journal
 import { runHabEnrollment } from "../../src/hab/enrollment.ts";
 import { HabHttpGateway } from "../../src/hab/http.ts";
 import { HabMcpClient } from "../../src/hab/mcp-client.ts";
-import { createRelayNodeHandler } from "../../src/host/mcp/http-node.ts";
+import { createMcpNodeHandler } from "../../src/host/mcp/http-node.ts";
 import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
 import { SQLiteOutbox } from "../../src/agent-sdk/sqlite-outbox.ts";
 import { makeReplayBoundMessageId } from "../../src/messaging/contract.ts";
@@ -21,9 +21,8 @@ import { SQLiteAnswerJournal } from "../../src/answer-intents/sqlite-journal.ts"
 import { SQLiteHostControl } from "../../src/agent-sdk/sqlite-host-control.ts";
 import { SQLiteHostOwner } from "../../src/agent-sdk/sqlite-host-owner.ts";
 import { AdapterHostCycle } from "../../src/adapter-host/cycle.ts";
-import { JetStreamRelay } from "../../packages/relay-nats/src/backend.ts";
-import { HabJetStreamService } from "../../src/host/hab-delivery-service.ts";
-import { startLocalBroker } from "./nats-broker.ts";
+import { SqliteDelivery } from "../../src/delivery/sqlite-delivery.ts";
+import { HabDeliveryService } from "../../src/host/hab-delivery-service.ts";
 
 const limits = Object.freeze({
   envelope_bytes: 32768,
@@ -62,8 +61,7 @@ export async function runLocalMvp(signal) {
     agents = {},
     locals = new Map();
   let registry,
-    broker,
-    relay,
+    deliveryStore,
     delivery,
     enrollment,
     server,
@@ -93,7 +91,7 @@ export async function runLocalMvp(signal) {
   };
   const descriptor = (n) => ({
     issuer: "https://issuer.example/",
-    audience: "https://relay.example/mcp",
+    audience: "https://hab.example/mcp",
     subject: "synthetic-owner",
     client_id: "synthetic-shared-client",
     connection_id: "mvp-" + n,
@@ -142,24 +140,14 @@ export async function runLocalMvp(signal) {
       poll_scan_limit: 20,
       fair_poll: true,
     };
-    relay = await JetStreamRelay.open({
+    deliveryStore = SqliteDelivery.open({
       ...queue,
       fingerprint_key: key(43),
-      journal_path: join(directory, "jetstream-journal.sqlite"),
-      server: broker.server,
-      user: broker.user,
-      password: broker.password,
-      stream: "HAB_MVP",
-      subject_prefix: "habMvp",
-      max_consumers: 10,
-      broker_max_bytes: 4000000,
-      broker_max_message_bytes: 64000,
-      request_timeout_ms: 2000,
+      path: join(directory, "delivery.sqlite"),
       limits,
-      prefetch_per_recipient: queue.max_pending_per_recipient,
       authorization: { authorize: () => undefined },
     });
-    delivery = new HabJetStreamService(registry, relay, queue);
+    delivery = new HabDeliveryService(registry, deliveryStore);
     enrollment = new SQLiteEnrollmentJournal(
       join(directory, "enrollment.sqlite"),
       { max_sessions: 3, busy_timeout_ms: 100 },
@@ -212,11 +200,11 @@ export async function runLocalMvp(signal) {
         const tool = req.headers["mcp-name"];
         if (
           [
-            "relay_resolve",
-            "relay_submit",
-            "relay_status",
-            "relay_poll",
-            "relay_ack",
+            "hab_resolve",
+            "hab_submit",
+            "hab_status",
+            "hab_poll",
+            "hab_ack",
           ].includes(tool)
         )
           tools.add(tool);
@@ -228,7 +216,7 @@ export async function runLocalMvp(signal) {
     await once(server, "listening");
     port = server.address().port;
     url = "http://127.0.0.1:" + port + "/mcp";
-    gateway = createRelayNodeHandler(
+    gateway = createMcpNodeHandler(
       new HabHttpGateway(
         delivery,
         {
@@ -368,10 +356,10 @@ export async function runLocalMvp(signal) {
             new Headers(init?.headers).get("Mcp-Name") ??
             (input instanceof Request ? input.headers.get("Mcp-Name") : null);
           if (
-            (n === "a" && tool === "relay_submit" && dropSubmit) ||
-            (n === "b" && tool === "relay_ack" && dropAck)
+            (n === "a" && tool === "hab_submit" && dropSubmit) ||
+            (n === "b" && tool === "hab_ack" && dropAck)
           ) {
-            if (tool === "relay_submit") dropSubmit = false;
+            if (tool === "hab_submit") dropSubmit = false;
             else dropAck = false;
             await response.body?.cancel();
             throw Error("synthetic response loss after server commit");
@@ -403,14 +391,8 @@ export async function runLocalMvp(signal) {
       status = host.status(operator);
     if (status.paused) host.setPaused(operator, false, status.epoch);
   };
-  // The host's pump publishes accepted messages on its next cycle; the simulation runs that
-  // cycle explicitly before each receive so every stage stays deterministic.
-  const pump = async () => {
-    for (let cycle = 0; cycle < 2; cycle++) await relay.pumpOnce();
-  };
   const step = async (n, command) => {
     check();
-    if (command.op === "receive") await pump();
     return locals.get(n).host.stepOnce(operator, command);
   };
   const done = async (n, command) => {
@@ -437,9 +419,9 @@ export async function runLocalMvp(signal) {
   };
   const closeCentral = async () => {
     enrollment?.close();
-    await relay?.close();
+    await deliveryStore?.close();
     registry?.close();
-    enrollment = relay = delivery = registry = undefined;
+    enrollment = deliveryStore = delivery = registry = undefined;
   };
   const coldRestart = async () => {
     for (const n of ["a", "b", "c"]) {
@@ -468,11 +450,6 @@ export async function runLocalMvp(signal) {
   };
   signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    check();
-    broker = await startLocalBroker(join(directory, "broker"), {
-      maxFileStore: "64MB",
-      keepAlive: true,
-    });
     check();
     await openCentral();
     await startServer();
@@ -645,13 +622,14 @@ export async function runLocalMvp(signal) {
       0,
     );
     stage("loop-denial");
-    const db = new DatabaseSync(join(directory, "jetstream-journal.sqlite"), {
+    const db = new DatabaseSync(join(directory, "delivery.sqlite"), {
       readOnly: true,
     });
     const count = (where) =>
       Number(
-        db.prepare("SELECT count(*) n FROM nats_messages WHERE " + where).get()
-          .n,
+        db
+          .prepare("SELECT count(*) n FROM delivery_messages WHERE " + where)
+          .get().n,
       );
     try {
       report.counters = {
@@ -682,7 +660,6 @@ export async function runLocalMvp(signal) {
     report.cleanup.server_closed = !server?.listening;
     for (const n of ["a", "b", "c"]) closeLocal(n);
     await closeCentral();
-    await broker?.stop();
     rmSync(directory, { recursive: true, force: true });
     report.cleanup.temporary_state_removed = !existsSync(directory);
   }

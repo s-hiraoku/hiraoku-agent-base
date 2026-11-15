@@ -34,20 +34,20 @@ export interface InboxOptions {
   retry_cap_ms: number;
   max_attempts: number;
 }
-const SCHEMA = `CREATE TABLE relay_inbox_meta(version INTEGER NOT NULL,agent_id TEXT NOT NULL,key_check TEXT NOT NULL);
-CREATE TABLE relay_inbox(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,body TEXT NOT NULL,fingerprint TEXT NOT NULL,received_at INTEGER NOT NULL,receipt_confirmed INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(sender_id,message_id));
-CREATE TABLE relay_receiver_acks(request_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,generation INTEGER NOT NULL,request TEXT,fingerprint TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed','obsolete','quarantined')),attempts INTEGER NOT NULL DEFAULT 0,next_retry_at INTEGER NOT NULL DEFAULT 0,retry_until INTEGER NOT NULL,receipt TEXT,reason TEXT,UNIQUE(sender_id,message_id,generation),FOREIGN KEY(sender_id,message_id) REFERENCES relay_inbox(sender_id,message_id));`;
-const MIGRATION_2 = `ALTER TABLE relay_inbox ADD COLUMN released_at INTEGER;
-ALTER TABLE relay_inbox ADD COLUMN expires_at INTEGER;
-ALTER TABLE relay_inbox ADD COLUMN ack_retry_until INTEGER;
-ALTER TABLE relay_inbox ADD COLUMN ack_terminal_at INTEGER;
-ALTER TABLE relay_inbox ADD COLUMN retain_until INTEGER;
-ALTER TABLE relay_receiver_acks ADD COLUMN terminal_at INTEGER;
-ALTER TABLE relay_receiver_acks ADD COLUMN retain_until INTEGER;
-CREATE INDEX relay_inbox_retention ON relay_inbox(released_at,retain_until);
-CREATE INDEX relay_receiver_acks_retention ON relay_receiver_acks(state,retain_until);
-CREATE TABLE relay_inbox_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired_acks INTEGER NOT NULL,purged_acks INTEGER NOT NULL,purged_messages INTEGER NOT NULL);
-INSERT INTO relay_inbox_maintenance_totals VALUES(1,0,0,0,0);`;
+const SCHEMA = `CREATE TABLE inbox_meta(version INTEGER NOT NULL,agent_id TEXT NOT NULL,key_check TEXT NOT NULL);
+CREATE TABLE inbox(sender_id TEXT NOT NULL,message_id TEXT NOT NULL,body TEXT NOT NULL,fingerprint TEXT NOT NULL,received_at INTEGER NOT NULL,receipt_confirmed INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(sender_id,message_id));
+CREATE TABLE receiver_acks(request_id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,message_id TEXT NOT NULL,generation INTEGER NOT NULL,request TEXT,fingerprint TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed','obsolete','quarantined')),attempts INTEGER NOT NULL DEFAULT 0,next_retry_at INTEGER NOT NULL DEFAULT 0,retry_until INTEGER NOT NULL,receipt TEXT,reason TEXT,UNIQUE(sender_id,message_id,generation),FOREIGN KEY(sender_id,message_id) REFERENCES inbox(sender_id,message_id));`;
+const MIGRATION_2 = `ALTER TABLE inbox ADD COLUMN released_at INTEGER;
+ALTER TABLE inbox ADD COLUMN expires_at INTEGER;
+ALTER TABLE inbox ADD COLUMN ack_retry_until INTEGER;
+ALTER TABLE inbox ADD COLUMN ack_terminal_at INTEGER;
+ALTER TABLE inbox ADD COLUMN retain_until INTEGER;
+ALTER TABLE receiver_acks ADD COLUMN terminal_at INTEGER;
+ALTER TABLE receiver_acks ADD COLUMN retain_until INTEGER;
+CREATE INDEX inbox_retention ON inbox(released_at,retain_until);
+CREATE INDEX receiver_acks_retention ON receiver_acks(state,retain_until);
+CREATE TABLE inbox_maintenance_totals(id INTEGER PRIMARY KEY CHECK(id=1),last_at INTEGER NOT NULL,expired_acks INTEGER NOT NULL,purged_acks INTEGER NOT NULL,purged_messages INTEGER NOT NULL);
+INSERT INTO inbox_maintenance_totals VALUES(1,0,0,0,0);`;
 const identifier = (value: unknown): value is string =>
   typeof value === "string" &&
   /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(value);
@@ -106,7 +106,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
     try {
       this.#db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000");
       this.#db.function(
-        "relay_inbox_gc_safe",
+        "inbox_gc_safe",
         { deterministic: true },
         (id, expiry) => Number(isReplayBoundMessageId(id, expiry)),
       );
@@ -154,7 +154,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
     this.#tx(() => {
       if (
         !this.#db
-          .prepare("SELECT 1 FROM sqlite_master WHERE name='relay_inbox_meta'")
+          .prepare("SELECT 1 FROM sqlite_master WHERE name='inbox_meta'")
           .get()
       ) {
         if (
@@ -167,10 +167,10 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           throw new MessagingError("unknown_schema");
         this.#db.exec(SCHEMA);
         this.#db
-          .prepare("INSERT INTO relay_inbox_meta VALUES(1,?,?)")
+          .prepare("INSERT INTO inbox_meta VALUES(1,?,?)")
           .run(this.#options.agent_id, this.#keyCheck());
       }
-      const rows = this.#db.prepare("SELECT * FROM relay_inbox_meta").all();
+      const rows = this.#db.prepare("SELECT * FROM inbox_meta").all();
       if (rows.length !== 1 || ![1, 2, 3, 4].includes(Number(rows[0].version)))
         throw new MessagingError("unsupported_schema");
       if (
@@ -183,14 +183,14 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         this.#db.exec(MIGRATION_2);
         const messages = this.#db
           .prepare(
-            "SELECT sender_id,message_id,body,fingerprint,received_at FROM relay_inbox",
+            "SELECT sender_id,message_id,body,fingerprint,received_at FROM inbox",
           )
           .all();
         if (messages.length > this.#options.max_records)
           throw new MessagingError("inbox_capacity_exceeded");
         this.#db
           .prepare(
-            "UPDATE relay_receiver_acks SET terminal_at=CASE WHEN state='pending' THEN NULL ELSE ? END,retain_until=max(retry_until,?)+?",
+            "UPDATE receiver_acks SET terminal_at=CASE WHEN state='pending' THEN NULL ELSE ? END,retain_until=max(retry_until,?)+?",
           )
           .run(now, now, RECORD_RETENTION_MS);
         for (const row of messages) {
@@ -212,13 +212,13 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
             throw new MessagingError("invalid_inbox_record");
           const ack = this.#db
             .prepare(
-              "SELECT coalesce(max(retry_until),0) horizon,max(terminal_at) terminal FROM relay_receiver_acks WHERE sender_id=? AND message_id=?",
+              "SELECT coalesce(max(retry_until),0) horizon,max(terminal_at) terminal FROM receiver_acks WHERE sender_id=? AND message_id=?",
             )
             .get(row.sender_id!, row.message_id!)!;
           const expiry = Date.parse(message.expires_at);
           this.#db
             .prepare(
-              "UPDATE relay_inbox SET expires_at=?,ack_retry_until=?,ack_terminal_at=?,retain_until=? WHERE sender_id=? AND message_id=?",
+              "UPDATE inbox SET expires_at=?,ack_retry_until=?,ack_terminal_at=?,retain_until=? WHERE sender_id=? AND message_id=?",
             )
             .run(
               expiry,
@@ -234,21 +234,21 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
               row.message_id!,
             );
         }
-        this.#db.exec("UPDATE relay_inbox_meta SET version=2");
+        this.#db.exec("UPDATE inbox_meta SET version=2");
       }
       const version = Number(
-        this.#db.prepare("SELECT version FROM relay_inbox_meta").get()!.version,
+        this.#db.prepare("SELECT version FROM inbox_meta").get()!.version,
       );
       // Schema 3 attachment columns are dropped, not migrated; schema 3 inboxes keep opening.
       if (version === 3)
         this.#db.exec(
-          "DROP TRIGGER relay_attachment_identity; ALTER TABLE relay_inbox DROP COLUMN has_attachments; ALTER TABLE relay_inbox DROP COLUMN attachment_guard",
+          "DROP TRIGGER attachment_identity; ALTER TABLE inbox DROP COLUMN has_attachments; ALTER TABLE inbox DROP COLUMN attachment_guard",
         );
-      if (version < 4) this.#db.exec("UPDATE relay_inbox_meta SET version=4");
+      if (version < 4) this.#db.exec("UPDATE inbox_meta SET version=4");
       // An additive read index, not a record-format change. Released tombstones have
       // an empty body and must not enter the JSON expressions or source lookup.
       this.#db
-        .exec(`CREATE INDEX IF NOT EXISTS relay_inbox_reply_source ON relay_inbox(
+        .exec(`CREATE INDEX IF NOT EXISTS inbox_reply_source ON inbox(
         json_extract(body,'$.in_reply_to.sender_id'),
         json_extract(body,'$.in_reply_to.message_id'),received_at,sender_id,message_id
       ) WHERE released_at IS NULL`);
@@ -304,14 +304,14 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       const now = this.#now();
       const existing = this.#db
         .prepare(
-          "SELECT fingerprint FROM relay_inbox WHERE sender_id=? AND message_id=?",
+          "SELECT fingerprint FROM inbox WHERE sender_id=? AND message_id=?",
         )
         .get(sender_id, message.message_id);
       if (existing && existing.fingerprint !== fingerprint)
         throw new MessagingError("inbox_content_conflict");
       const prior = this.#db
         .prepare(
-          "SELECT fingerprint FROM relay_receiver_acks WHERE sender_id=? AND message_id=? AND generation=?",
+          "SELECT fingerprint FROM receiver_acks WHERE sender_id=? AND message_id=? AND generation=?",
         )
         .get(sender_id, message.message_id, request.generation);
       const leaseFingerprint = this.#leaseFingerprint(request);
@@ -329,7 +329,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       const generations = Number(
         this.#db
           .prepare(
-            "SELECT count(*) n FROM relay_receiver_acks WHERE sender_id=? AND message_id=?",
+            "SELECT count(*) n FROM receiver_acks WHERE sender_id=? AND message_id=?",
           )
           .get(sender_id, message.message_id)!.n,
       );
@@ -339,7 +339,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           : Number(
               this.#db
                 .prepare(
-                  "SELECT count(*) n FROM (SELECT DISTINCT sender_id,message_id FROM relay_receiver_acks)",
+                  "SELECT count(*) n FROM (SELECT DISTINCT sender_id,message_id FROM receiver_acks)",
                 )
                 .get()!.n,
             ) >= this.#options.max_ack_records
@@ -348,12 +348,12 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       if (!existing) {
         const usage = this.#db
           .prepare(
-            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM relay_inbox WHERE released_at IS NULL",
+            "SELECT count(*) n,coalesce(sum(length(cast(body AS BLOB))),0) bytes FROM inbox WHERE released_at IS NULL",
           )
           .get()!;
         const retained = this.#db
           .prepare(
-            "SELECT count(*) n,coalesce(sum(relay_inbox_gc_safe(message_id,expires_at)=0),0) held FROM relay_inbox",
+            "SELECT count(*) n,coalesce(sum(inbox_gc_safe(message_id,expires_at)=0),0) held FROM inbox",
           )
           .get()!;
         const body = JSON.stringify(message);
@@ -377,7 +377,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
           throw new MessagingError("inbox_legacy_id_capacity_exceeded");
         this.#db
           .prepare(
-            "INSERT INTO relay_inbox(sender_id,message_id,body,fingerprint,received_at,expires_at,ack_retry_until,retain_until) VALUES(?,?,?,?,?,?,?,?)",
+            "INSERT INTO inbox(sender_id,message_id,body,fingerprint,received_at,expires_at,ack_retry_until,retain_until) VALUES(?,?,?,?,?,?,?,?)",
           )
           .run(
             sender_id,
@@ -395,7 +395,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       }
       this.#db
         .prepare(
-          "UPDATE relay_inbox SET ack_retry_until=max(ack_retry_until,?),retain_until=max(retain_until,?) WHERE sender_id=? AND message_id=?",
+          "UPDATE inbox SET ack_retry_until=max(ack_retry_until,?),retain_until=max(retain_until,?) WHERE sender_id=? AND message_id=?",
         )
         .run(
           now + this.#options.ack_retry_ms,
@@ -405,7 +405,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         );
       this.#db
         .prepare(
-          "INSERT INTO relay_receiver_acks(request_id,sender_id,message_id,generation,request,fingerprint,state,retry_until,retain_until) VALUES(?,?,?,?,?,?,'pending',?,?)",
+          "INSERT INTO receiver_acks(request_id,sender_id,message_id,generation,request,fingerprint,state,retry_until,retain_until) VALUES(?,?,?,?,?,?,'pending',?,?)",
         )
         .run(
           request.request_id,
@@ -422,20 +422,20 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
   #ackTerminal(senderId: string, messageId: string, now: number): void {
     this.#db
       .prepare(
-        "UPDATE relay_inbox SET ack_terminal_at=max(coalesce(ack_terminal_at,0),?),retain_until=max(retain_until,?) WHERE sender_id=? AND message_id=?",
+        "UPDATE inbox SET ack_terminal_at=max(coalesce(ack_terminal_at,0),?),retain_until=max(retain_until,?) WHERE sender_id=? AND message_id=?",
       )
       .run(now, now + RECORD_RETENTION_MS, senderId, messageId);
   }
   #expireAcks(now: number, limit: number): number {
     const rows = this.#db
       .prepare(
-        "SELECT request_id,sender_id,message_id FROM relay_receiver_acks WHERE state='pending' AND (retry_until<=? OR attempts>=?) ORDER BY retry_until,request_id LIMIT ?",
+        "SELECT request_id,sender_id,message_id FROM receiver_acks WHERE state='pending' AND (retry_until<=? OR attempts>=?) ORDER BY retry_until,request_id LIMIT ?",
       )
       .all(now, this.#options.max_attempts, limit);
     for (const row of rows) {
       this.#db
         .prepare(
-          "UPDATE relay_receiver_acks SET state='quarantined',request=NULL,reason='retry_exhausted',terminal_at=?,retain_until=max(retry_until,?)+? WHERE request_id=?",
+          "UPDATE receiver_acks SET state='quarantined',request=NULL,reason='retry_exhausted',terminal_at=?,retain_until=max(retry_until,?)+? WHERE request_id=?",
         )
         .run(now, now, RECORD_RETENTION_MS, row.request_id!);
       this.#ackTerminal(String(row.sender_id), String(row.message_id), now);
@@ -446,7 +446,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
     const now = this.#now();
     const pending = this.#db
       .prepare(
-        "SELECT a.request_id FROM relay_receiver_acks a JOIN relay_inbox i USING(sender_id,message_id) WHERE a.state='pending' AND a.next_retry_at<=? AND a.retry_until>? AND a.attempts<? ORDER BY a.next_retry_at,a.request_id LIMIT 1",
+        "SELECT a.request_id FROM receiver_acks a JOIN inbox i USING(sender_id,message_id) WHERE a.state='pending' AND a.next_retry_at<=? AND a.retry_until>? AND a.attempts<? ORDER BY a.next_retry_at,a.request_id LIMIT 1",
       )
       .get(now, now, this.#options.max_attempts);
     return this.#claimVerifiedAck(pending ? String(pending.request_id) : null);
@@ -458,7 +458,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       if (selected === null) return null;
       const row = this.#db
         .prepare(
-          "SELECT * FROM relay_receiver_acks WHERE state='pending' AND next_retry_at<=? AND request_id=?",
+          "SELECT * FROM receiver_acks WHERE state='pending' AND next_retry_at<=? AND request_id=?",
         )
         .get(now, selected);
       if (!row) return null;
@@ -468,7 +468,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       );
       this.#db
         .prepare(
-          "UPDATE relay_receiver_acks SET attempts=attempts+1,next_retry_at=? WHERE request_id=?",
+          "UPDATE receiver_acks SET attempts=attempts+1,next_retry_at=? WHERE request_id=?",
         )
         .run(now + backoff, row.request_id!);
       return parseAck(JSON.parse(String(row.request)), this.#options.limits);
@@ -492,7 +492,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       const now = this.#now();
       const row = this.#db
         .prepare(
-          "SELECT fingerprint,receipt,state FROM relay_receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
+          "SELECT fingerprint,receipt,state FROM receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
         )
         .get(request.request_id, request.sender_id, request.message_id);
       if (!row || row.fingerprint !== this.#leaseFingerprint(request))
@@ -511,7 +511,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       if (row.state === "confirmed") return;
       this.#db
         .prepare(
-          "UPDATE relay_receiver_acks SET state='confirmed',request=NULL,receipt=?,reason=NULL,terminal_at=?,retain_until=max(retain_until,?+?) WHERE request_id=?",
+          "UPDATE receiver_acks SET state='confirmed',request=NULL,receipt=?,reason=NULL,terminal_at=?,retain_until=max(retain_until,?+?) WHERE request_id=?",
         )
         .run(
           JSON.stringify(safe),
@@ -523,7 +523,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       this.#ackTerminal(request.sender_id, request.message_id, now);
       this.#db
         .prepare(
-          "UPDATE relay_inbox SET receipt_confirmed=1 WHERE sender_id=? AND message_id=?",
+          "UPDATE inbox SET receipt_confirmed=1 WHERE sender_id=? AND message_id=?",
         )
         .run(request.sender_id, request.message_id);
     });
@@ -540,7 +540,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       const now = this.#now();
       const row = this.#db
         .prepare(
-          "SELECT fingerprint,state FROM relay_receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
+          "SELECT fingerprint,state FROM receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
         )
         .get(request.request_id, request.sender_id, request.message_id);
       if (!row || row.fingerprint !== this.#leaseFingerprint(request))
@@ -548,7 +548,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       if (row.state !== "pending") return;
       this.#db
         .prepare(
-          "UPDATE relay_receiver_acks SET state=?,request=NULL,reason=?,terminal_at=?,retain_until=max(retry_until,?)+? WHERE request_id=? AND state='pending'",
+          "UPDATE receiver_acks SET state=?,request=NULL,reason=?,terminal_at=?,retain_until=max(retry_until,?)+? WHERE request_id=? AND state='pending'",
         )
         .run(
           reason === "invalid_ack" ? "obsolete" : "quarantined",
@@ -577,7 +577,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       this.#now();
       const row = this.#db
         .prepare(
-          "SELECT body,fingerprint,received_at,receipt_confirmed FROM relay_inbox WHERE sender_id=? AND message_id=? AND released_at IS NULL",
+          "SELECT body,fingerprint,received_at,receipt_confirmed FROM inbox WHERE sender_id=? AND message_id=? AND released_at IS NULL",
         )
         .get(senderId, messageId);
       if (!row) throw new MessagingError("not_found");
@@ -615,7 +615,7 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       throw new MessagingError("invalid_request");
     this.#now();
     const query = this.#db.prepare(
-      `SELECT sender_id,body,received_at,receipt_confirmed FROM relay_inbox
+      `SELECT sender_id,body,received_at,receipt_confirmed FROM inbox
        WHERE released_at IS NULL${
          source
            ? `
@@ -651,8 +651,8 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       count(*) retained,
       coalesce(sum(released_at IS NULL),0) bodies,
       coalesce(sum(CASE WHEN released_at IS NULL THEN length(cast(body AS BLOB)) ELSE 0 END),0) bytes,
-      (SELECT count(*) FROM (SELECT sender_id,message_id FROM relay_receiver_acks GROUP BY sender_id,message_id)) acks
-      FROM relay_inbox`,
+      (SELECT count(*) FROM (SELECT sender_id,message_id FROM receiver_acks GROUP BY sender_id,message_id)) acks
+      FROM inbox`,
       )
       .get()!;
     return (
@@ -671,14 +671,14 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       const now = this.#now(),
         row = this.#db
           .prepare(
-            "SELECT released_at FROM relay_inbox WHERE sender_id=? AND message_id=?",
+            "SELECT released_at FROM inbox WHERE sender_id=? AND message_id=?",
           )
           .get(senderId, messageId);
       if (!row) throw new MessagingError("not_found");
       if (row.released_at !== null) return false;
       this.#db
         .prepare(
-          "UPDATE relay_inbox SET body='',released_at=?,retain_until=max(retain_until,?+?) WHERE sender_id=? AND message_id=?",
+          "UPDATE inbox SET body='',released_at=?,retain_until=max(retain_until,?+?) WHERE sender_id=? AND message_id=?",
         )
         .run(now, now, RECORD_RETENTION_MS, senderId, messageId);
       return true;
@@ -697,9 +697,9 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
       this.#expireAcks(now, this.#options.max_ack_records);
       const released = this.#db
         .prepare(
-          `UPDATE relay_inbox SET body='',released_at=?,retain_until=max(retain_until,?+?)
+          `UPDATE inbox SET body='',released_at=?,retain_until=max(retain_until,?+?)
         WHERE sender_id=? AND message_id=? AND released_at IS NULL AND receipt_confirmed=0 AND expires_at<=?
-        AND NOT EXISTS(SELECT 1 FROM relay_receiver_acks a WHERE a.sender_id=relay_inbox.sender_id AND a.message_id=relay_inbox.message_id AND a.state='pending')`,
+        AND NOT EXISTS(SELECT 1 FROM receiver_acks a WHERE a.sender_id=inbox.sender_id AND a.message_id=inbox.message_id AND a.state='pending')`,
         )
         .run(now, now, RECORD_RETENTION_MS, senderId, messageId, now);
       return released.changes === 1;
@@ -714,14 +714,14 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         cutoff = now - RECORD_RETENTION_MS;
       if (
         !this.#db
-          .prepare("SELECT 1 FROM relay_inbox_maintenance_totals WHERE id=1")
+          .prepare("SELECT 1 FROM inbox_maintenance_totals WHERE id=1")
           .get()
       )
         throw new MessagingError("maintenance_state_unavailable");
       const expired = this.#expireAcks(now, limit);
       const acks = this.#db
         .prepare(
-          `SELECT a.request_id FROM relay_receiver_acks a JOIN relay_inbox i USING(sender_id,message_id)
+          `SELECT a.request_id FROM receiver_acks a JOIN inbox i USING(sender_id,message_id)
         WHERE a.state IN ('confirmed','obsolete','quarantined') AND a.request IS NULL
         AND a.terminal_at<=? AND a.retry_until<=? AND a.retain_until<=? AND i.expires_at<=?
         ORDER BY a.retain_until,a.request_id LIMIT ?`,
@@ -729,15 +729,15 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         .all(cutoff, cutoff, now, cutoff, limit - expired);
       for (const row of acks)
         this.#db
-          .prepare("DELETE FROM relay_receiver_acks WHERE request_id=?")
+          .prepare("DELETE FROM receiver_acks WHERE request_id=?")
           .run(row.request_id!);
       const eligible = `released_at<=? AND body='' AND received_at<=? AND expires_at<=?
         AND ack_retry_until<=? AND coalesce(ack_terminal_at,0)<=? AND retain_until<=?
-        AND NOT EXISTS(SELECT 1 FROM relay_receiver_acks a WHERE a.sender_id=relay_inbox.sender_id AND a.message_id=relay_inbox.message_id)`;
+        AND NOT EXISTS(SELECT 1 FROM receiver_acks a WHERE a.sender_id=inbox.sender_id AND a.message_id=inbox.message_id)`;
       const messages = this.#db
         .prepare(
-          `SELECT sender_id,message_id FROM relay_inbox WHERE ${eligible}
-        AND relay_inbox_gc_safe(message_id,expires_at)=1 ORDER BY retain_until,sender_id,message_id LIMIT ?`,
+          `SELECT sender_id,message_id FROM inbox WHERE ${eligible}
+        AND inbox_gc_safe(message_id,expires_at)=1 ORDER BY retain_until,sender_id,message_id LIMIT ?`,
         )
         .all(
           cutoff,
@@ -750,18 +750,18 @@ export class SQLiteInbox implements ReceiverStore, InboxLifecycleStore {
         );
       for (const row of messages)
         this.#db
-          .prepare("DELETE FROM relay_inbox WHERE sender_id=? AND message_id=?")
+          .prepare("DELETE FROM inbox WHERE sender_id=? AND message_id=?")
           .run(row.sender_id!, row.message_id!);
       const held = Number(
         this.#db
           .prepare(
-            `SELECT count(*) n FROM relay_inbox WHERE ${eligible} AND relay_inbox_gc_safe(message_id,expires_at)=0`,
+            `SELECT count(*) n FROM inbox WHERE ${eligible} AND inbox_gc_safe(message_id,expires_at)=0`,
           )
           .get(cutoff, cutoff, cutoff, cutoff, cutoff, now)!.n,
       );
       this.#db
         .prepare(
-          "UPDATE relay_inbox_maintenance_totals SET last_at=?,expired_acks=expired_acks+?,purged_acks=purged_acks+?,purged_messages=purged_messages+? WHERE id=1",
+          "UPDATE inbox_maintenance_totals SET last_at=?,expired_acks=expired_acks+?,purged_acks=purged_acks+?,purged_messages=purged_messages+? WHERE id=1",
         )
         .run(now, expired, acks.length, messages.length);
       return {

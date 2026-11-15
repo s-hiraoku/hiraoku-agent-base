@@ -14,7 +14,7 @@ const entries = [
     image: "docs/diagrams/hab-current.png",
   },
   {
-    source: "docs/hab-topology.md",
+    source: "docs/history/hab-topology.md",
     id: "hab-target",
     image: "docs/diagrams/hab-target.png",
   },

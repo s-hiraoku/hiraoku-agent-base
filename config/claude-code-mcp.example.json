@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "hab_relay": {
+    "hab": {
       "type": "http",
-      "url": "https://relay.example.com/hab/mcp",
+      "url": "https://hab.example.com/hab/mcp",
       "oauth": {
         "clientId": "REPLACE_WITH_APPROVED_PUBLIC_CLIENT_ID",
         "callbackPort": 8421,
-        "scopes": "relay:resolve relay:submit relay:status relay:poll relay:ack offline_access"
+        "scopes": "hab:resolve hab:submit hab:status hab:poll hab:ack offline_access"
       }
     }
   }

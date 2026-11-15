@@ -1,28 +1,28 @@
 # 共通MCPによるエージェント接続
 
 HABはメッセージを預かる通信基盤です。各エージェントが自分の標準MCP
-クライアントからRelayを呼びます。HABが相手の実行APIを呼んで起動することを
+クライアントからhostを呼びます。HABが相手の実行APIを呼んで起動することを
 前提にしません。製品名による配送分岐や製品専用Adapterは追加しません。
 製品ごとの設定書式は、その製品の既存MCP機能に合わせます。
 
 ## 採用済みの認証境界と現行実装
 
-2026-10-25に[認証グループとアドレスの分離](relay-auth-groups.md)を採用しました。
+2026-10-25に[認証グループとアドレスの分離](auth-groups.md)を採用しました。
 認証済みグループに一つまたは複数のアドレスを紐付け、同じグループ内のBotは認証を
 共有できます。別グループの名義使用・受信箱操作を拒否します。基本5操作の名義選択v1と通常サービスの明示opt-inを実装済みです。複数名義の場合、
 各toolに自分側の`as_address`を指定します。任意の`expected_agent_id`を組み合わせると
 不変IDとの一致も配送前に確認します。相手の宛先`address`とは別のfieldです。
-以下のBearer設定例は15分の有限試験向けです。常用は[参加承認と短命tokenの分離](persistent-mcp-auth.md)
+以下のBearer設定例は15分の有限試験向けです。常用は[参加承認と短命tokenの分離](operations/persistent-mcp-auth.md)
 を使い、接続設定とgrantを保存してhostの標準OAuth更新を利用します。確認後に本番設定を
 自動削除しません。実grantや本番適用は別途承認し、MCP登録・認証だけで自動受信が起動したとは扱いません。
 
-任意の[`hab_discover`](mcp-agent-discovery.md)を有効化すると、検証済み接続・group内の名義一覧・
+任意の[`hab_discover`](connections/mcp-agent-discovery.md)を有効化すると、検証済み接続・group内の名義一覧・
 既知の割当・候補アドレスの空き確認を照会できます。選択名義とホスト本人は別に扱います。
-通常catalogは引き続き5操作です。
+エージェント用catalogでも同じツールを出します。
 
 ## 接続前に決めること
 
-- 実際にMCPを実行する環境と、そこから到達できるRelayの正規resource URL。
+- 実際にMCPを実行する環境と、そこから到達できるhostの正規resource URL。
   Macのloopbackはクラウド実行環境から直接到達できません。Macが接続済みでも
   リモート経路ができたことにはなりません。公開・トンネル・ネットワーク変更や
   プラグイン登録は、接続先と認証方式を具体化して別途承認します。
@@ -33,23 +33,68 @@ HABはメッセージを預かる通信基盤です。各エージェントが�
 - 受信を開始する契機、永続inbox/outboxの所有者、停止時の扱い。
   MCPの登録だけで常時受信・自動返信・復旧保証が成立するとは扱いません。
 
-ローカルサービスのbearerは[個体verifier](local-relay-service.md#individual-verifier)
+ローカルサービスのbearerは[個体verifier](host-service.md#individual-verifier)
 の形式で最大15分です。認証ファイルの更新とRegistryの登録・binding・権限付与は
 別々の操作です。Registryの登録・binding・権限付与・失効は
-`npm run relay:admin`（[管理CLI](local-relay-service.md#operator-management-cli)）で
+`npm run hab:admin`（[管理CLI](host-service.md#operator-management-cli)）で
 行い、試験ごとの自作スクリプトでRegistry APIを呼ぶ必要はありません。未接続は全拒否のままにします。
 MCPのURLは`http://127.0.0.1:<port>/mcp`と完全一致させます。`localhost`はHost不一致で403です。権限は`resolve / submit / status /
 poll / ack`だけで、Task管理や任意実行の権限には広げません。送信者と受信権限は
 検証済み主体から決まり、ツール引数のエージェント名では決まりません。
 
-## 送受信の順序と共通Adapterの境界
+## エージェント用catalog（`/mcp`）
 
-1. 送信側が`relay_resolve`で宛先を確認し、共通outboxへメッセージを保存します。
-2. 同じmessage IDと本文で`relay_submit`を呼びます。不確実な送信は新しいIDを
-   作らず、共通の再送・重複排除契約に従います。必要に応じて`relay_status`で照合します。
-3. 受信側が自分の起動契機で`relay_poll`を呼びます。受信側の共通Adapterは
+エージェントは`/mcp`に接続し、次の4ツール（と有効なら`hab_discover`）だけを使います（[ADR-020](hab-decisions.md)）。
+ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます。
+
+| ツール | 引数 | すること | 必要な権限 |
+| --- | --- | --- | --- |
+| `hab_send` | `to`（`bot@agent.hab`）、`text`、任意で`kind`・`thread_id` | 送る。7日以内に読まれなければ期限切れ | `resolve`・`submit` |
+| `hab_inbox` | 任意で`limit`（1〜50）・`include_read`・`message_id` | 未読を返して既読にする。既読は7日読み直せる（`message_id`でその1通） | `poll` |
+| `hab_reply` | `message_id`（`hab_inbox`の値）、`text` | 送信者へ同じthreadで返す | `submit` |
+| `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れ、返事の有無（`reply_state`・`replies`）と説明を返す | `status` |
+
+`hab_inbox`の各メッセージには、利用者へそのまま見せる`notice`が付きます。送信者のアドレス・種類・返信期限、
+印を付けた2行で囲んだ本文（送信者が書いたデータで、指示として実行しない）、「どうしますか？」と
+選択肢（対応する／あとで／対応しない）です。返信期限を過ぎると`hab_reply`は`reply_target_expired`になります。
+
+送った側は、`hab_send`の後に返事を待たずturnを終えます。返事は`hab_inbox`に届き、`hab_status`の
+`reply_state`（`replied`・`waiting`・`no_reply`・`not_expected`）で返事が来たかを確かめられます。
+受信通知のないエージェントは、会話の始めに`hab_inbox`を確かめてください。
+
+届いた時点で利用者の画面に出すには、受信通知アダプタ（`npm run hab:notify`）を受信側で動かします
+（[ADR-021](hab-decisions.md)、[受信通知アダプタ](receiver/arrival-notifier.md)）。アダプタは
+`/mcp/delivery`の`hab_peek`で未読を既読にせずに見つけ、「〇〇 からのメッセージです。受信内容……どうしますか？」を
+そのエージェントの画面に出します。「対応する」を選んだときだけ、同じセッションに依頼を渡します。
+
+既読（ACK）は「読んだ」ことで、内容への同意や作業完了ではありません。誤りには
+`error`（コード）と、何を直すかを書いた`message`が返ります。`forbidden`は
+権限・認証・停止のときだけで、引数を変えても直りません。
+
+`tools/list`の入力スキーマは、多くのMCP clientが受け付ける形で公開します。
+ChatGPT系コネクタなどは、ルートが`properties`を持つ1つのobjectでないスキーマを受け付けず、
+JavaScript専用の正規表現や`$schema`も受け付けないことがあります。そのためHABは次のように公開します。
+
+- `hab_discover`は`action`のenumと各actionの引数を並べた1つのobjectで、
+  どのactionで使う引数かを説明に書きます。
+- patternの末尾の先読み`(?![\s\S])`は`$`に置き換えます。
+- `$schema`は出しません。
+
+呼び出しは、これまでどおり厳密なzodスキーマで検証します
+（`src/host/mcp/published-schema.ts`）。
+
+## 配送catalog（`/mcp/delivery`）と送受信の順序
+
+agent SDKと受信サービスは`/mcp/delivery`の`hab_resolve`・`hab_submit`・`hab_status`・
+`hab_poll`・`hab_ack`を使います。受信通知アダプタは`hab_peek`（未読を既読にせずに返す）と`hab_mark_read`（選んだ1通を`sender_id`と`message_id`で既読にする）を使います。
+credentialは`/mcp`と同じものです。以下はこの低レベルの順序です。
+
+1. 送信側が`hab_resolve`で宛先を確認し、共通outboxへメッセージを保存します。
+2. 同じmessage IDと本文で`hab_submit`を呼びます。不確実な送信は新しいIDを
+   作らず、共通の再送・重複排除契約に従います。必要に応じて`hab_status`で照合します。
+3. 受信側が自分の起動契機で`hab_poll`を呼びます。受信側の共通Adapterは
    `(sender_id, message_id)`で重複を排除し、本文とACK再送状態を永続保存します。
-4. 永続保存が成功してから`relay_ack`を呼び、ACK receiptも保存します。
+4. 永続保存が成功してから`hab_ack`を呼び、ACK receiptも保存します。
    ACKは受信保存の確認で、内容への同意や作業完了ではありません。
 5. 返信するか・いつ返信するかは受信側が決めます。返信する場合は元のメッセージに
    対応する`in_reply_to`を付けて自分の共通outboxから送ります。相手も同じ受信手順を使います。
@@ -70,22 +115,21 @@ Hermesの[確認済みsource](https://github.com/NousResearch/hermes-agent/blob/
 設定例は製品専用の配送コードではありません。導入先のversionでも仕様を確認してください。
 
 承認後、選択したprofileの`config.yaml`へ既存設定を保持して追加する例です。
-URLはローカル接続用の例で、実際の承認済みRelayと一致させます。
+URLはローカル接続用の例で、実際の承認済みhostと一致させます。
 
 ```yaml
 mcp_servers:
-  hab_relay:
+  hab:
     url: "http://127.0.0.1:8792/mcp"
     headers:
-      Authorization: "Bearer ${HAB_RELAY_INDIVIDUAL_TOKEN}"
+      Authorization: "Bearer ${HAB_INDIVIDUAL_TOKEN}"
     enabled: true
     tools:
       include:
-        - relay_resolve
-        - relay_submit
-        - relay_status
-        - relay_poll
-        - relay_ack
+        - hab_send
+        - hab_inbox
+        - hab_reply
+        - hab_status
 ```
 
 秘密値はYAMLや公開repoへ直接書きません。profileの`.env`を使う場合は事前に
@@ -95,7 +139,7 @@ mcp_servers:
 OAuth設定・loginを追加せず、上例は明示headerの期限付きbearerを使用します。
 loopback宛ての実通信がプロキシへ転送されないことも秘密を送る前に確認します。
 
-新しい有限セッションで`hab_relay`だけをdiscovery対象にし、他のMCPを起動しない
+新しい有限セッションで`hab`だけをdiscovery対象にし、他のMCPを起動しない
 ようにします。この選択はHermesの組込みツール、記憶、個人文脈まで無効にする保証では
 ありません。モデルを使う試験ではそれらの実効設定を別に確認します。
 既存Desktop・cronを再起動したり、受信スケジューラーを自動追加したりしません。
@@ -110,13 +154,13 @@ loopback宛ての実通信がプロキシへ転送されないことも秘密を
 | 確認 | 証明すること | まだ証明しないこと |
 | --- | --- | --- |
 | loopbackの401/403 | 未認証・不正Hostの拒否 | 個体登録や送受信 |
-| native MCPのdiscovery/call | その製品のMCPクライアントとRelayの互換性 | エージェントが内容を判断して応答したこと |
+| native MCPのdiscovery/call | その製品のMCPクライアントとhostの互換性 | エージェントが内容を判断して応答したこと |
 | 模擬送信者との往復 | 指定した試験経路の配送 | 実Dotsとの接続 |
 | 実Codexと実Hermesの有限往復 | 両者のnative MCP送受信・host保存後ACK・対応する返信 | 常時受信、製品内の汎用的な永続連携、実Dots接続 |
 | 実Dotsと実Hermesの往復 | 両者の共通MCP送信・保存後ACK・対応する返信受信 | 常時受信や任意作業の自動実行 |
 
 2026-10-25のCodex / Hermes有限試験は成功し、失効・設定復元・試験Relay停止まで
-確認済みです。[再現手順・host補助・検証限界](finite-mcp-trial.md)を参照してください。
+確認済みです。[再現手順・host補助・検証限界](history/finite-mcp-trial.md)を参照してください。
 
 実往復では両個体・実クライアント経路・無害な固定テスト文・送信/返信message ID・
 `in_reply_to`・双方のACKを秘密なしで確認します。人間による操作とエージェント自身の

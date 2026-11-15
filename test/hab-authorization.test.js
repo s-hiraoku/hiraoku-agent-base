@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HabJetStreamService } from "../src/host/hab-delivery-service.ts";
-import { queue } from "./jetstream-delivery.js";
+import { HabDeliveryService } from "../src/host/hab-delivery-service.ts";
 import {
   fixture,
   options,
@@ -9,7 +8,7 @@ import {
   operations,
   code,
 } from "./hab-registry-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 function submission(to, entropy = "1".repeat(32)) {
   return { ...message(entropy), recipient_id: to.agent_id };
 }
@@ -169,7 +168,7 @@ test("operation grants and unknown kinds are checked independently of a valid bi
   assert.throws(
     () =>
       f.hab.submit(f.contexts.a, { ...submission(b), kind: "unapproved-kind" }),
-    code("forbidden"),
+    code("kind_not_allowed"),
   );
   assert.equal(f.count(), 0);
   assert.equal(a.operations.length, operations.length);
@@ -185,7 +184,7 @@ test("resolve hides unknown, stopped, retired and blocked destinations with the 
   for (const address of ["unknown@grok-bot.hab", b.address, c.address])
     assert.throws(
       () => f.hab.resolve(f.contexts.a, address),
-      code("forbidden"),
+      code("unknown_address"),
     );
   assert.throws(
     () => f.hab.resolve(f.contexts.a, "B@grok-bot.hab"),
@@ -200,7 +199,7 @@ test("resolve hides unknown, stopped, retired and blocked destinations with the 
   block(f, a, activeB, true);
   assert.throws(
     () => f.hab.resolve(f.contexts.a, b.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
 });
 
@@ -211,13 +210,14 @@ test("stopped destination rejects duplicate submit while sender can inspect its 
     m = submission(b);
   const receipt = f.hab.submit(f.contexts.a, m);
   access(f, b, "stopped");
-  assert.throws(() => f.hab.submit(f.contexts.a, m), code("forbidden"));
+  assert.throws(
+    () => f.hab.submit(f.contexts.a, m),
+    code("recipient_unavailable"),
+  );
   assert.deepEqual(f.hab.status(f.contexts.a, m.message_id), receipt);
   assert.equal(f.count(), 1);
   assert.notEqual(
-    f.raw
-      .prepare("SELECT coalesce(outbox,candidate) body FROM nats_messages")
-      .get().body,
+    f.raw.prepare("SELECT body FROM delivery_messages").get().body,
     null,
   );
 });
@@ -229,7 +229,10 @@ test("directional blocks affect submit, pending delivery and exact ACK retry wit
   const m = submission(b),
     accepted = f.hab.submit(f.contexts.a, m);
   block(f, a, b, true);
-  assert.throws(() => f.hab.submit(f.contexts.a, m), code("forbidden"));
+  assert.throws(
+    () => f.hab.submit(f.contexts.a, m),
+    code("recipient_unavailable"),
+  );
   assert.equal(f.hab.poll(f.contexts.b), null);
   assert.equal(f.hab.status(f.contexts.a, m.message_id).state, "pending");
   const reverse = submission(a, "2".repeat(32));
@@ -244,7 +247,10 @@ test("directional blocks affect submit, pending delivery and exact ACK retry wit
   a = f.registry.inspect(f.admin, a.agent_id);
   b = f.registry.inspect(f.admin, b.agent_id);
   block(f, a, b, true, "block-again");
-  assert.throws(() => f.hab.ack(f.contexts.b, request), code("forbidden"));
+  assert.throws(
+    () => f.hab.ack(f.contexts.b, request),
+    code("recipient_unavailable"),
+  );
   assert.equal(accepted.recipient_id, b.agent_id);
 });
 
@@ -272,7 +278,7 @@ test("scoped authorization cannot escape its transaction, change operation/conte
     a = f.enroll("a"),
     b = f.enroll("b");
   let saved;
-  f.registry.withRelay(f.contexts.a, "submit", (authorization) => {
+  f.registry.withAuthorization(f.contexts.a, "submit", (authorization) => {
     saved = authorization;
     assert.deepEqual(
       authorization.authorize(f.contexts.a, "submit", b.agent_id, "question"),
@@ -306,12 +312,15 @@ test("scoped authorization cannot escape its transaction, change operation/conte
     code("forbidden"),
   );
   assert.throws(
-    () => f.registry.withRelay(f.contexts.a, "submit", () => Promise.resolve()),
+    () =>
+      f.registry.withAuthorization(f.contexts.a, "submit", () =>
+        Promise.resolve(),
+      ),
     code("async_registry_boundary"),
   );
 });
 
-test("registry write guard spans Relay commit so another connection cannot revoke in the authorization gap", async (t) => {
+test("registry write guard spans the delivery commit so another connection cannot revoke in the authorization gap", async (t) => {
   const f = await fixture(t);
   f.enroll("a");
   const b = f.enroll("b"),
@@ -326,33 +335,31 @@ test("registry write guard spans Relay commit so another connection cannot revok
   };
   let checked = false;
   const backend = f.delivery.backend;
-  const composed = new HabJetStreamService(
-    f.registry,
-    {
-      prefetchWindow: backend.prefetchWindow,
-      admitWithAuthorization(context, input, authorization) {
-        return backend.admitWithAuthorization(context, input, {
-          authorize(...args) {
-            const result = authorization.authorize(...args);
-            if (args[1] === "submit" && args[2] !== undefined) {
-              assert.throws(
-                () => second.setAccess(f.admin, stop),
-                code("registry_unavailable"),
-              );
-              checked = true;
-            }
-            return result;
-          },
-        });
-      },
+  const composed = new HabDeliveryService(f.registry, {
+    admitWithAuthorization(context, input, authorization) {
+      return backend.admitWithAuthorization(context, input, {
+        authorize(...args) {
+          const result = authorization.authorize(...args);
+          if (args[1] === "submit" && args[2] !== undefined) {
+            assert.throws(
+              () => second.setAccess(f.admin, stop),
+              code("registry_unavailable"),
+            );
+            checked = true;
+          }
+          return result;
+        },
+      });
     },
-    queue,
-  );
+  });
   const m = submission(b);
   composed.submit(f.contexts.a, m);
   assert.equal(checked, true);
   second.setAccess(f.admin, stop);
-  assert.throws(() => f.hab.submit(f.contexts.a, m), code("forbidden"));
+  assert.throws(
+    () => f.hab.submit(f.contexts.a, m),
+    code("recipient_unavailable"),
+  );
   assert.equal(f.count(), 1);
 });
 

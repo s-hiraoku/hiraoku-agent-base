@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Drive the configured Relay's A2A entry (HAB_VERIFY_A2A=1 configured.sh start) over HTTP.
+# Drive the configured host's A2A entry (HAB_VERIFY_A2A=1 configured.sh start) over HTTP.
 # Usage: a2a.sh <run-dir> <x|a|b|none|BAD> <SendMessage|GetTask|card> ['<json-params>']
 #   SendMessage params default to the fixed connectivity_check with returnImmediately.
 #   "card" GETs /.well-known/agent-card.json. "none" sends no Authorization; "BAD" an unknown bearer.

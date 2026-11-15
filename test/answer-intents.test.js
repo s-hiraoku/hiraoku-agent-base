@@ -15,7 +15,7 @@ import {
   DELIVERY_TTL_MS,
   RECORD_RETENTION_MS,
 } from "../src/messaging/contract.ts";
-import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
+import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 const body = () => ({
   parts: [{ type: "text", text: "synthetic durable answer" }],
 });
@@ -229,7 +229,7 @@ test("Answer intents: confirmed handoff never recreates an independently missing
     { key } = f.receive();
   f.prepare(key);
   f.enqueue(key);
-  f.outboxRaw.prepare("DELETE FROM relay_outbox").run();
+  f.outboxRaw.prepare("DELETE FROM outbox").run();
   assert.equal(f.inspect(key).outbox_state, "missing");
   assert.equal(f.enqueue(key).state, "enqueued");
   assert.equal(f.queued().length, 0);
@@ -649,7 +649,7 @@ test("Answer intents: real loopback HTTP MCP receive-restart-answer-send-ACK use
   const url = "http://127.0.0.1:" + server.address().port + "/mcp";
   server.on(
     "request",
-    createRelayNodeHandler(f.gateway({ resource_url: url })),
+    createMcpNodeHandler(f.gateway({ resource_url: url })),
   );
   try {
     f.state.resource_url = url;

@@ -8,7 +8,7 @@ import {
   principal,
   code,
 } from "./hab-registry-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 import { groupFixture as shared } from "./hab-group-fixtures.js";
 
 test("one verified group uses two addresses; another group cannot select them", async (t) => {
@@ -67,7 +67,7 @@ test("address stop affects one name; group stop affects both and incoming resolu
   assert.throws(() => f.hab.poll(f.select(f.second)), code("forbidden"));
   assert.throws(
     () => f.hab.resolve(f.contexts.b, f.second.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   f.access("active", operations);
   // The group stop stopped its members; reactivating the group re-grants no address.
@@ -107,7 +107,7 @@ test("membership and group binding survive reopen; refreshed credential retains 
   const reopened = f.open();
   reopened.migrate();
   assert.equal(
-    reopened.withRelay(
+    reopened.withAuthorization(
       reopened.selectAddress(f.contexts.a, f.second.address),
       "poll",
       (_auth, id) => id,
@@ -116,7 +116,7 @@ test("membership and group binding survive reopen; refreshed credential retains 
   );
   f.mutable.expires_at = new Date(Date.now() + 15000).toISOString();
   assert.equal(
-    reopened.withRelay(
+    reopened.withAuthorization(
       reopened.selectAddress(f.contexts.a, f.first.address),
       "poll",
       (_auth, id) => id,
@@ -126,7 +126,7 @@ test("membership and group binding survive reopen; refreshed credential retains 
   f.mutable.individual = false;
   assert.throws(
     () =>
-      reopened.withRelay(
+      reopened.withAuthorization(
         reopened.selectAddress(f.contexts.a, f.first.address),
         "poll",
         () => true,
@@ -318,7 +318,7 @@ test("migrate moves an earlier build's direct bindings into single-member groups
     ["revoked"],
   );
   assert.equal(
-    upgraded.withRelay(f.contexts.a, "poll", (_auth, id) => id),
+    upgraded.withAuthorization(f.contexts.a, "poll", (_auth, id) => id),
     a.agent_id,
   );
   const hab = f.habFor(upgraded);
@@ -339,7 +339,7 @@ test("migrate moves an earlier build's direct bindings into single-member groups
     code("unsupported_registry_group_schema"),
   );
   assert.throws(
-    () => upgraded.withRelay(f.contexts.a, "poll", () => true),
+    () => upgraded.withAuthorization(f.contexts.a, "poll", () => true),
     code("registry_not_migrated"),
   );
 });
@@ -420,7 +420,7 @@ test("a config that still turns authentication groups off is ignored", async (t)
     off = f.open({ authentication_groups: false });
   off.migrate();
   assert.equal(
-    off.withRelay(
+    off.withAuthorization(
       off.selectAddress(f.contexts.a, f.first.address),
       "poll",
       (_auth, id) => id,
@@ -570,7 +570,7 @@ test("last group binding revocation stops retained contexts and preserves creden
   assert.throws(() => f.hab.poll(selected), code("forbidden"));
   assert.throws(
     () => f.hab.resolve(f.contexts.b, f.first.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   assert.equal(
     f.registry.inspectGroup(f.admin, f.group.group_id).state,
@@ -694,7 +694,7 @@ test("scoped group authorization cannot escape, change address or permit a concu
   concurrent.migrate();
   const currentEpoch = f.registry.inspectGroup(f.admin, f.group.group_id).epoch;
   let saved;
-  f.registry.withRelay(selected, "poll", (authorization) => {
+  f.registry.withAuthorization(selected, "poll", (authorization) => {
     saved = authorization;
     assert.equal(
       authorization.authorize(selected, "poll").agent_id,
@@ -716,16 +716,50 @@ test("scoped group authorization cannot escape, change address or permit a concu
 
 test("group authorization records keep the newest entries instead of exhausting delivery", async (t) => {
   const f = await shared(t, { max_audit_records: 30 });
+  // Alternate status and poll so no two records in a row can be merged.
+  const input = { ...message(), recipient_id: f.external.agent_id };
+  f.hab.submit(f.select(f.first), input);
   for (let i = 0; i < 45; i++)
-    assert.equal(f.hab.poll(f.select(f.first)), null);
+    if (i % 2) assert.equal(f.hab.poll(f.select(f.first)), null);
+    else f.hab.status(f.select(f.first), input.message_id);
   const rows = f.registry.groupAuthorizations(f.admin, {
     group_id: f.group.group_id,
     after_id: 0,
     limit: 100,
   });
   assert.equal(rows.length, 30);
-  assert.equal(rows.at(-1).id, 45);
-  assert.equal(rows[0].id, 16);
+  assert.equal(rows.at(-1).id, 46);
+  assert.equal(rows[0].id, 17);
+});
+
+test("repeated polls by one agent are one authorization record, so they push nothing out", async (t) => {
+  const f = await shared(t, { max_audit_records: 30 });
+  const input = { ...message(), recipient_id: f.external.agent_id };
+  f.hab.submit(f.select(f.first), input);
+  for (let i = 0; i < 20; i++) {
+    f.hab.poll(f.select(f.first));
+    f.hab.poll(f.select(f.second));
+  }
+  const rows = () =>
+    f.registry
+      .groupAuthorizations(f.admin, {
+        group_id: f.group.group_id,
+        after_id: 0,
+        limit: 100,
+      })
+      .map((r) => [r.agent_id, r.operation]);
+  assert.deepEqual(rows(), [
+    [f.first.agent_id, "submit"],
+    [f.first.agent_id, "poll"],
+    [f.second.agent_id, "poll"],
+  ]);
+  // A different operation starts a new record; the next poll does too.
+  f.hab.status(f.select(f.first), input.message_id);
+  f.hab.poll(f.select(f.first));
+  assert.deepEqual(rows().slice(3), [
+    [f.first.agent_id, "status"],
+    [f.first.agent_id, "poll"],
+  ]);
 });
 
 test("createBoundGroup needs group_bind and group_member as well as group_create, and a refusal leaves nothing", async (t) => {
