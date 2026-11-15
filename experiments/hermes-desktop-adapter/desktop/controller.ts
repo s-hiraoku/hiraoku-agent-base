@@ -86,6 +86,7 @@ export function createDisplayController(
   rest: (path: string, options: any) => Promise<any>,
   owner: ComposerOwner,
   publish: (view: any) => void,
+  now: () => number = () => performance.now(),
 ) {
   let closed = false,
     loading = false,
@@ -115,6 +116,7 @@ export function createDisplayController(
   async function refresh() {
     if (closed || loading || busy || !owner.visible) return;
     loading = true;
+    const deadline = now() + 20000;
     show();
     try {
       if (!binding) {
@@ -123,44 +125,52 @@ export function createDisplayController(
         if (!bindingMatches(result, owner)) return;
         binding = result;
       }
-      const selected = selectRetainedKeys(cards, offset);
-      const retained = selected.keys;
-      offset = selected.offset;
-      cards = cards.map((card) =>
-        selected.skipped.has(displayKey(card.notice))
-          ? { ...card, unavailable: true }
-          : card,
-      );
-      const page = await rest(`${path}/query`, {
-        ...options,
-        method: "POST",
-        body: {
-          ...identity(),
-          ...(after ? { after } : {}),
-          retained_keys: retained,
-        },
-      });
-      if (closed) return;
-      if (
-        page.binding_id !== binding.binding_id ||
-        typeof page.next_cursor !== "string" ||
-        page.next_cursor.length > 2048
-      )
-        throw new Error("Receiver identity changed.");
-      for (const event of page.events ?? []) {
+      // Bound catch-up work; the timer resumes from the last validated cursor.
+      for (let count = 0; count < 4; count++) {
+        const remaining = deadline - now();
+        if (remaining <= 0) break;
+        const selected = selectRetainedKeys(cards, offset);
+        const retained = selected.keys;
+        offset = selected.offset;
+        cards = cards.map((card) =>
+          selected.skipped.has(displayKey(card.notice))
+            ? { ...card, unavailable: true }
+            : card,
+        );
+        const page = await rest(`${path}/query`, {
+          ...options,
+          timeoutMs: Math.max(1, Math.floor(remaining)),
+          method: "POST",
+          body: {
+            ...identity(),
+            ...(after ? { after } : {}),
+            retained_keys: retained,
+          },
+        });
+        if (closed) return;
         if (
-          event.stored_session_id !== owner.storedSessionId ||
-          event.backend_namespace !== binding.backend_namespace ||
-          event.profile_scope !== binding.profile_scope ||
-          event.receiver_id !== binding.receiver_id
+          page.binding_id !== binding.binding_id ||
+          typeof page.next_cursor !== "string" ||
+          page.next_cursor.length > 2048
         )
-          throw new Error("Notice belongs to another conversation.");
+          throw new Error("Receiver identity changed.");
+        for (const event of page.events ?? []) {
+          if (
+            event.stored_session_id !== owner.storedSessionId ||
+            event.backend_namespace !== binding.backend_namespace ||
+            event.profile_scope !== binding.profile_scope ||
+            event.receiver_id !== binding.receiver_id
+          )
+            throw new Error("Notice belongs to another conversation.");
+        }
+        cards = projectDisplaySnapshot(cards, page, binding.binding_id, () => {
+          limited = true;
+        });
+        const previousCursor = after;
+        after = page.next_cursor;
+        show("");
+        if (page.has_more !== true || after === previousCursor) break;
       }
-      cards = projectDisplaySnapshot(cards, page, binding.binding_id, () => {
-        limited = true;
-      });
-      after = page.next_cursor;
-      show("");
     } catch (error) {
       cards = cards.map((card) => ({ ...card, unavailable: true }));
       show(String(error));

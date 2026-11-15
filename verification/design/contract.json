@@ -1207,7 +1207,7 @@
     },
     {
       "path": "experiments/hermes-desktop-adapter/README.md",
-      "sha256": "2fc1d88ca2e12afcb1ee19c3422cbbeda2d22141df440aea7e9f8ebc333becb7",
+      "sha256": "46957a47a7b0b6c8beeeb1aefc91e34cc2242bcff2e0503eae56de7b1b6f3da9",
       "role": "context",
       "review": "reviewed",
       "summary": "Runtime plugin integration guide: common notifier remains authoritative; inline conversation context and explicit REST owner need a minimal generic SDK patch. Covers strict binding, bounded UI history, shared synthetic wire fixtures, operational migration, unsupported live verification and the operator-pinned connection trust boundary."

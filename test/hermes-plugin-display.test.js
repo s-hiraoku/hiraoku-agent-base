@@ -361,3 +361,65 @@ test("controller roundtrip matches real Python adapter fixture exactly", async (
   assert.equal(views.at(-1).cards[0].decision.state, "queued");
   controller.dispose();
 });
+
+test("catch-up is serial, advances cursors and stops at four pages or the shared deadline", async () => {
+  let count = 0;
+  let clock = 0;
+  const requests = [];
+  const controller = createDisplayController(
+    async (path, options) => {
+      if (path === "/binding") return binding;
+      requests.push(options);
+      count++;
+      // Reentrant timer refresh must not start a second concurrent query.
+      await controller.refresh();
+      return { ...page(), has_more: true, next_cursor: `cursor${count}` };
+    },
+    owner,
+    () => {},
+    () => clock,
+  );
+  await controller.refresh();
+  assert.equal(count, 4);
+  assert.deepEqual(
+    requests.map((r) => r.body.after),
+    [undefined, "cursor1", "cursor2", "cursor3"],
+  );
+  await controller.refresh();
+  assert.equal(count, 8);
+  assert.equal(requests[4].body.after, "cursor4");
+  controller.dispose();
+
+  const timeouts = [];
+  const timed = createDisplayController(
+    async (path, options) => {
+      if (path === "/binding") {
+        clock += 5000;
+        return binding;
+      }
+      timeouts.push(options.timeoutMs);
+      clock += 8000;
+      return { ...page(), has_more: true, next_cursor: `time${clock}` };
+    },
+    owner,
+    () => {},
+    () => clock,
+  );
+  await timed.refresh();
+  assert.deepEqual(timeouts, [15000, 7000]);
+  timed.dispose();
+
+  let stalledCount = 0;
+  const stalled = createDisplayController(
+    async (path) => {
+      if (path === "/binding") return binding;
+      stalledCount++;
+      return { ...page(), has_more: true };
+    },
+    owner,
+    () => {},
+  );
+  await stalled.refresh();
+  assert.equal(stalledCount, 2); // Equal cursor stops even when has_more is true.
+  stalled.dispose();
+});

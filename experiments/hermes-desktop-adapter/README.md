@@ -112,3 +112,9 @@ The shared `tests/fixtures/roundtrip.json` is generated from the real backend ad
 against a synthetic HAB runner and replayed by both Python and Node tests. It covers
 initial cursor omission, bounded retained-key refresh, the common `{choice,label}`
 shape, an explicit decision and a later authoritative state. No native agent is used.
+
+Catch-up uses at most four serial pages per refresh under a shared 20-second budget.
+The backend requests 50 notices normally; only a locally detected output-size overflow
+retries the same read-only cursor once with a one-notice page. Other failures and
+user decisions are never retried automatically. Remaining history resumes on the next
+poll, including after a bounded display-window eviction.

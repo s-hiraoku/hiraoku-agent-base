@@ -198,6 +198,8 @@ def test_one_maximum_size_notice_fits_bounded_page_and_advances(harness, text):
     async def page(config, home, verb, payload=None, args=()):
         if verb == "events":
             observed.append(args)
+            if args[:2] == ["--limit", "50"]:
+                raise mod.Unavailable("response_too_large")
             assert args[:2] == ["--limit", "1"]
         result = await old(config, home, verb, payload, args)
         assert len(mod.compact(result).encode()) < mod.MAX_BYTES
@@ -206,7 +208,8 @@ def test_one_maximum_size_notice_fits_bounded_page_and_advances(harness, text):
     result = asyncio.run(a.query("session", request(c, after="previous")))
     assert result["events"][0]["text"] == text
     assert result["next_cursor"] == "next"
-    assert observed == [["--limit", "1", "--after", "previous"]]
+    assert observed == [["--limit", "50", "--after", "previous"],
+                        ["--limit", "1", "--after", "previous"]]
 
 
 def test_oversized_config_is_refused_before_unbounded_read(harness):
@@ -309,3 +312,52 @@ def test_shared_frontend_backend_roundtrip_fixture(harness):
     assert action_calls == [{"binding_id": "binding", "sender_id": "sender", "message_id": "message", "choice": "accept"}]
     assert fixture["operations"][-1]["response"]["events"] == []
     assert fixture["operations"][-1]["response"]["decision_states"][0]["state"] == "queued"
+
+
+
+def test_normal_page_retains_50_notice_throughput(harness):
+    a, c, _, _, _, event = harness
+    original = a.run
+    reads = []
+    async def normal(config, home, verb, payload=None, args=()):
+        result = await original(config, home, verb, payload, args)
+        if verb == "events":
+            reads.append(args)
+            result["events"] = [{**event, "event_id": f"e{i}", "message_id": f"m{i}"} for i in range(50)]
+            result["has_more"] = True
+        return result
+    a.run = normal
+    result = asyncio.run(a.query("session", request(c)))
+    assert len(result["events"]) == len(result["decision_states"]) == 50
+    assert result["has_more"] is True
+    assert reads == [["--limit", "50"]]
+
+
+@pytest.mark.parametrize("error", [mod.Unavailable("command_failed"), ValueError("bad_json"), OSError("io")])
+def test_arbitrary_reader_failure_is_never_retried(harness, error):
+    a, c, _, _, _, _ = harness
+    original = a.run
+    reads = []
+    async def broken(config, home, verb, payload=None, args=()):
+        if verb == "events":
+            reads.append(args)
+            raise error
+        return await original(config, home, verb, payload, args)
+    a.run = broken
+    with pytest.raises(type(error)):
+        asyncio.run(a.query("session", request(c, after="previous")))
+    assert reads == [["--limit", "50", "--after", "previous"]]
+
+
+def test_oversized_single_notice_fallback_has_exactly_two_attempts(harness):
+    a, c, _, _, _, _ = harness
+    original = a.run
+    reads = []
+    async def oversized(config, home, verb, payload=None, args=()):
+        if verb == "events":
+            reads.append(args)
+            raise mod.Unavailable("response_too_large")
+        return await original(config, home, verb, payload, args)
+    a.run = oversized
+    with pytest.raises(mod.Unavailable): asyncio.run(a.query("session", request(c)))
+    assert reads == [["--limit", "50"], ["--limit", "1"]]

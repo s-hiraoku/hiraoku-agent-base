@@ -179,10 +179,19 @@ class Adapter:
         after = request.get("after")
         if after is not None and (not isinstance(after, str) or not after or len(after) > 2048):
             raise Unavailable("invalid_cursor")
-        args = ["--limit", "1"] + (["--after", after] if after else [])
-        page = await self.run(config, self.home, "events", args=args)
+        suffix = ["--after", after] if after else []
+        limit = 50
+        try:
+            page = await self.run(config, self.home, "events", args=["--limit", str(limit), *suffix])
+        except Unavailable as error:
+            # Only our byte-bound failure permits one smaller read at the SAME cursor.
+            # No command/action error is retried, and no cursor is committed on failure.
+            if error.args != ("response_too_large",):
+                raise
+            limit = 1
+            page = await self.run(config, self.home, "events", args=["--limit", "1", *suffix])
         events = page.get("events")
-        if (page.get("source") != "external_agent" or not isinstance(events, list) or len(events) > 1
+        if (page.get("source") != "external_agent" or not isinstance(events, list) or len(events) > limit
                 or not isinstance(page.get("next_cursor"), str)
                 or not re.fullmatch(r"[A-Za-z0-9_-]{1,2048}", page["next_cursor"])
                 or type(page.get("has_more")) is not bool):
