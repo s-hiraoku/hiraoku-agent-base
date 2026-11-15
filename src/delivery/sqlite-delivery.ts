@@ -55,6 +55,13 @@ export interface SqliteDeliveryOptions extends DeliveryQueueOptions {
   limits: ContractLimits;
   authorization: Authorization;
 }
+/** One reply to a sent message, as hab_status shows it (no body). */
+export interface ReplySummary {
+  message_id: string;
+  kind: string;
+  received_at: string;
+  read: boolean;
+}
 interface Row {
   sender_id: string;
   message_id: string;
@@ -535,6 +542,52 @@ export class SqliteDelivery {
       const row = this.#row(sender, messageId);
       if (!row) throw new MessagingError("not_found");
       return this.#receipt(row);
+    });
+  }
+  /**
+   * Replies to a message the caller sent: messages the recipient sent back in the same
+   * thread after it (hab_reply keeps the thread), with the sent message's own kind.
+   * Metadata only, oldest first, at most 5. `read` means the caller has read it. Rows
+   * already purged are not listed.
+   */
+  repliesWithAuthorization(
+    context: unknown,
+    messageId: string,
+    authorization: Authorization,
+  ): { kind: string; replies: ReplySummary[] } {
+    if (!id(messageId)) throw new MessagingError("invalid_request");
+    const sender = this.#identity(context, "status", authorization);
+    return this.#tx(() => {
+      if (this.#identity(context, "status", authorization) !== sender)
+        throw new MessagingError("forbidden");
+      this.#refresh(Date.now());
+      const original = this.#row(sender, messageId);
+      if (!original) throw new MessagingError("not_found");
+      const rows = this.#db
+        .prepare(
+          "SELECT message_id,kind,accepted_at,state FROM delivery_messages WHERE sender_id=? AND recipient_id=? AND thread_key=? AND accepted_at>=? AND NOT (sender_id=? AND message_id=?) ORDER BY accepted_at,message_id LIMIT 5",
+        )
+        .all(
+          original.recipient_id,
+          sender,
+          original.thread_key,
+          original.accepted_at,
+          // A message sent to one's own address is not its own reply.
+          sender,
+          messageId,
+        ) as unknown as Pick<
+        Row,
+        "message_id" | "kind" | "accepted_at" | "state"
+      >[];
+      return {
+        kind: original.kind,
+        replies: rows.map((row) => ({
+          message_id: row.message_id,
+          kind: row.kind,
+          received_at: new Date(row.accepted_at).toISOString(),
+          read: row.state === "acked",
+        })),
+      };
     });
   }
   lookupReceipt(senderId: string, messageId: string): Receipt | null {
