@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { HAB_AGENT_INSTRUCTIONS } from "../src/hab/agent-tools.ts";
+import {
+  HAB_AGENT_INSTRUCTIONS,
+  runHabAgentTool,
+} from "../src/hab/agent-tools.ts";
 import {
   MAX_DELIVERY_TTL_MS,
   isReplayBoundMessageId,
@@ -183,6 +186,11 @@ test("send, read, reply and status round trip with only addresses and text", asy
     "not_found",
   );
   const answer = (await f.ok("a", "hab_inbox")).messages[0];
+  const readReply = await f.ok("a", "hab_status", {
+    message_id: sent.message_id,
+  });
+  assert.equal(readReply.reply_state, "replied");
+  assert.equal(readReply.reply_watch.action, "stop");
   assert.equal(
     (await f.ok("a", "hab_status", { message_id: sent.message_id })).replies[0]
       .read,
@@ -436,4 +444,33 @@ test("a full inbox is returned in batches that fit the response limit, none read
   }
   assert.deepEqual(seen, ids);
   assert.deepEqual((await f.ok("b", "hab_inbox")).messages, []);
+});
+
+test("invalid additive watch times never hide an already accepted send result", () => {
+  for (const field of ["accepted_at", "expires_at"]) {
+    const receipt = {
+      message_id: "accepted-1",
+      state: "pending",
+      accepted_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      [field]: "invalid",
+    };
+    let submits = 0;
+    const service = {
+      textLimit: 1024,
+      resolve: () => ({ recipient_id: "b" }),
+      submit: () => {
+        submits++;
+        return receipt;
+      },
+    };
+    const result = runHabAgentTool(service, null, "hab_send", {
+      to: "b@agent.hab",
+      text: "synthetic",
+    });
+    assert.equal(result.message_id, receipt.message_id);
+    assert.equal(result.state, "pending");
+    assert.equal(Object.hasOwn(result, "reply_watch"), false);
+    assert.equal(submits, 1);
+  }
 });

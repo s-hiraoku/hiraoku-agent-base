@@ -4,7 +4,9 @@
 `ReplyWatchAdapter` and `hab:reply-watch` CLI now execute those checks in a
 sending owner's resident process. Standard HAB messages do not require this
 adapter. The HAB server does not start a background agent or install a Dots
-scheduler.
+scheduler. Advice is omitted if its times cannot be interpreted, preserving an
+already accepted send result. Once all replies are read, status advice returns
+`stop` while `reply_state` remains `replied`; it does not request another inbox read.
 
 ## Owner integration
 

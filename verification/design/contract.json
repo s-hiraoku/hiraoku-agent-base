@@ -1229,11 +1229,11 @@
     },
     {
       "path": "docs/reply-monitoring.md",
-      "sha256": "06bfd6192de90fc3648c63a660dece1a1f610982ac5dba915127b0ff02b6ff02",
+      "sha256": "8996a8930ade6b9cc3b0b793b626104ca7a9004526b5dad2940db632f4decd06",
       "role": "normative",
       "review": "reviewed",
       "read_scope": "full",
-      "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance."
+      "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance. Review follow-up preserves accepted sends if additive planning fails and stops advice after all replies are read, with reply_state unchanged."
     }
   ],
   "requirements": [
