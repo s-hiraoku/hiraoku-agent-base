@@ -104,6 +104,8 @@ test(
     );
     assert.deepEqual(listed.result.tools.map((tool) => tool.name).sort(), [
       "hab_ack",
+      "hab_mark_read",
+      "hab_peek",
       "hab_poll",
       "hab_resolve",
       "hab_status",

@@ -15,7 +15,8 @@ TOOLS = frozenset(
     ("hab_resolve", "hab_submit", "hab_status", "hab_poll", "hab_ack")
 )
 
-OPTIONAL_TOOLS = frozenset(("hab_discover", "hab_register"))
+# hab_peek, hab_mark_read: the arrival notifier's tools (ADR-021); this receiver never calls them.
+OPTIONAL_TOOLS = frozenset(("hab_discover", "hab_register", "hab_peek", "hab_mark_read"))
 TASK_TOOLS = frozenset(("hab_task_send", "hab_task_get", "hab_task_list", "hab_task_cancel"))
 
 

@@ -77,7 +77,8 @@ export interface InboxMessage {
   in_reply_to: { sender_id: string; message_id: string } | null;
   sent_at: string;
   received_at: string;
-  read_at: string;
+  /** When it was marked read; null for a peek, which leaves it unread. */
+  read_at: string | null;
   expires_at: string;
   /** Whether this read returned it for the first time. */
   new: boolean;
