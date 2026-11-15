@@ -227,7 +227,7 @@ export type NotifyConfig = z.infer<typeof configSchema>;
 const expand = (path: string) =>
   resolve(path.startsWith("~/") ? homedir() + path.slice(1) : path);
 
-function readToken(config: NotifyConfig): string {
+export function readToken(config: Pick<NotifyConfig, "token">): string {
   let token: unknown;
   if ("env" in config.token) token = process.env[config.token.env];
   else {
@@ -278,7 +278,7 @@ function jwtExpiry(token: string): number | undefined {
  * own `exp`; an opaque token without either is left to HAB.
  */
 export function tokenProblem(
-  config: NotifyConfig,
+  config: Pick<NotifyConfig, "token">,
   now = Date.now(),
 ): string | undefined {
   let token: string;

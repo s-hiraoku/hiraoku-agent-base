@@ -433,6 +433,8 @@ export class DeliveryMcpClient implements SenderTransport, ReceiverTransport {
         (response.url && response.url !== this.#policy.resource_url)
       )
         fail();
+      if (response.status === 401 || response.status === 403)
+        throw new ClientFailure("forbidden");
       if (
         response.status !== 200 ||
         (response.headers.has("content-encoding") &&
