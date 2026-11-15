@@ -565,13 +565,16 @@ export class SqliteDelivery {
       if (!original) throw new MessagingError("not_found");
       const rows = this.#db
         .prepare(
-          "SELECT message_id,kind,accepted_at,state FROM delivery_messages WHERE sender_id=? AND recipient_id=? AND thread_key=? AND accepted_at>=? ORDER BY accepted_at,message_id LIMIT 5",
+          "SELECT message_id,kind,accepted_at,state FROM delivery_messages WHERE sender_id=? AND recipient_id=? AND thread_key=? AND accepted_at>=? AND NOT (sender_id=? AND message_id=?) ORDER BY accepted_at,message_id LIMIT 5",
         )
         .all(
           original.recipient_id,
           sender,
           original.thread_key,
           original.accepted_at,
+          // A message sent to one's own address is not its own reply.
+          sender,
+          messageId,
         ) as unknown as Pick<
         Row,
         "message_id" | "kind" | "accepted_at" | "state"

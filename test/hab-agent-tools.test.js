@@ -203,6 +203,27 @@ test("send, read, reply and status round trip with only addresses and text", asy
   assert.equal((await f.ok("b", "hab_inbox")).messages[0].kind, "notice");
 });
 
+test("a question sent to one's own address is not its own reply", async (t) => {
+  const f = await setup(t);
+  const sent = await f.ok("a", "hab_send", {
+    to: f.a.address,
+    text: "Note to self",
+  });
+  const before = await f.ok("a", "hab_status", { message_id: sent.message_id });
+  assert.equal(before.reply_state, "waiting");
+  assert.deepEqual(before.replies, []);
+  const reply = await f.ok("a", "hab_reply", {
+    message_id: sent.message_id,
+    text: "Done.",
+  });
+  const after = await f.ok("a", "hab_status", { message_id: sent.message_id });
+  assert.equal(after.reply_state, "replied");
+  assert.deepEqual(
+    after.replies.map((r) => r.message_id),
+    [reply.message_id],
+  );
+});
+
 test("an explicit thread and kind are kept, and read messages can be read again", async (t) => {
   const f = await setup(t);
   const sent = await f.ok("a", "hab_send", {
