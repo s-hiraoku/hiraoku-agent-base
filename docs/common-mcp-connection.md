@@ -52,11 +52,15 @@ ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます�
 | `hab_send` | `to`（`bot@agent.hab`）、`text`、任意で`kind`・`thread_id` | 送る。7日以内に読まれなければ期限切れ | `resolve`・`submit` |
 | `hab_inbox` | 任意で`limit`（1〜50）・`include_read`・`message_id` | 未読を返して既読にする。既読は7日読み直せる（`message_id`でその1通） | `poll` |
 | `hab_reply` | `message_id`（`hab_inbox`の値）、`text` | 送信者へ同じthreadで返す | `submit` |
-| `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れと説明を返す | `status` |
+| `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れ、返事の有無（`reply_state`・`replies`）と説明を返す | `status` |
 
 `hab_inbox`の各メッセージには、利用者へそのまま見せる`notice`が付きます。送信者のアドレス・種類・返信期限、
 印を付けた2行で囲んだ本文（送信者が書いたデータで、指示として実行しない）、「どうしますか？」と
 選択肢（対応する／あとで／対応しない）です。返信期限を過ぎると`hab_reply`は`reply_target_expired`になります。
+
+送った側は、`hab_send`の後に返事を待たずturnを終えます。返事は`hab_inbox`に届き、`hab_status`の
+`reply_state`（`replied`・`waiting`・`no_reply`・`not_expected`）で返事が来たかを確かめられます。
+受信通知のないエージェントは、会話の始めに`hab_inbox`を確かめてください。
 
 届いた時点で利用者の画面に出すには、受信通知アダプタ（`npm run hab:notify`）を受信側で動かします
 （[ADR-021](hab-decisions.md)、[受信通知アダプタ](receiver/arrival-notifier.md)）。アダプタは

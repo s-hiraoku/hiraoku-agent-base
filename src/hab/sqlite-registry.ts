@@ -1559,7 +1559,23 @@ export class SQLiteHabRegistry {
         (operation === "resolve" && !local.operations.includes("submit"))
       )
         throw denied("operation_not_granted");
-      {
+      // A run of the same read-only operation by one agent (a notifier polling every few
+      // seconds) is one record whose `at` is its latest use, so polling cannot push the
+      // other records out of the bounded table.
+      const last =
+        operation === "poll" || operation === "status"
+          ? (this.#db
+              .prepare(
+                "SELECT id,operation FROM hab_auth_group_authorizations WHERE group_id=? AND agent_id=? ORDER BY id DESC LIMIT 1",
+              )
+              .get(group.group_id, local.agent_id) as
+              { id: number; operation: string } | undefined)
+          : undefined;
+      if (last?.operation === operation)
+        this.#db
+          .prepare("UPDATE hab_auth_group_authorizations SET at=? WHERE id=?")
+          .run(this.#iso(), last.id);
+      else {
         // Bounded retention, not a lifetime quota: keep the newest records so routine
         // polling cannot exhaust the table and permanently deny every group member.
         this.#db
