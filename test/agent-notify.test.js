@@ -299,6 +299,32 @@ test("a waiting 対応する past the reply deadline expires and is never handed
   assert.deepEqual(f.calls.handoff, []);
 });
 
+test("a waiting 対応する that expires while earlier retries run is not handed off", async (t) => {
+  let now = Date.now();
+  const f = setup(t, {
+    unread: [
+      message("m1"),
+      message("m2", { expires_at: new Date(now + 5000).toISOString() }),
+    ],
+    now: () => now,
+  });
+  const n = f.make();
+  await n.check();
+  f.hab.failRead = true;
+  await n.decide("m1", "accept");
+  await n.decide("m2", "accept");
+  f.hab.failRead = false;
+  // m1's handoff is slow: m2's deadline passes before m2's turn.
+  f.screen.handoff = async (m) => {
+    f.calls.handoff.push(m.message_id);
+    now += 10_000;
+    return "started";
+  };
+  await n.check();
+  assert.deepEqual(f.calls.handoff, ["m1"]);
+  assert.equal(n.get("m2").state, "expired");
+});
+
 test("対応しない while HAB cannot be told stays declining and is finished on a later check", async (t) => {
   let clock = Date.now();
   const f = setup(t, { unread: [message("m1")], now: () => clock });

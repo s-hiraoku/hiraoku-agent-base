@@ -60,9 +60,17 @@ export class ReceiptNotifier {
     for (const stuck of this.#store.stuckDeclines(now))
       await this.#finishDecline(stuck);
     // 対応する choices made while HAB could not be told: hand them off now, if HAB answers.
-    for (const waiting of this.#store.waitingAccepts())
-      if (this.#store.transition(waiting, ["accept_waiting"], "accepting", now))
+    for (const waiting of this.#store.waitingAccepts()) {
+      // Earlier retries may have taken a while: recheck the deadline before each claim.
+      const at = this.#now();
+      if (Date.parse(waiting.expires_at) <= at) {
+        if (this.#store.transition(waiting, ["accept_waiting"], "expired", at))
+          await this.#report(waiting, "expired");
+        continue;
+      }
+      if (this.#store.transition(waiting, ["accept_waiting"], "accepting", at))
         await this.#finishAccept(waiting);
+    }
     const shown: string[] = [];
     let failure: unknown;
     let after: string | undefined;
