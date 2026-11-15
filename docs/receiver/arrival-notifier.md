@@ -348,7 +348,7 @@ handoff. No fallback CLI, new session or address impersonation is permitted.
 Binding identity is now connection/recipient/session specific. Opening an old decision
 store under a changed binding fails with `notices_target_mismatch`. Do not relabel that
 store or silently create an empty replacement: that could lose the guard against duplicate
-handling. Stop the old notifier, preserve its records, reconcile pending/unknown decisions,
+handling. Stop the old notifier, preserve its records, reconcile in-flight decisions and preserve terminal unknown outcomes,
 and explicitly configure the intended binding before migration. No running notifier,
 credential, profile, Desktop installation or deployment is changed by this PR.
 
@@ -406,8 +406,12 @@ The plan contains `source`, a new `destination_directory`, `expected_source_targ
 `binding_id` must equal the migration report destination target. Do not guess product names
 or connection strings. This read-only command does not open the old decision store. Source and destination parent must be canonical,
 owner-private paths. Symlinks, a busy writer, pending WAL/rollback journal, or unsettled states (`showing`,
-`accepting`, `accept_waiting`, `declining`, `unknown`) are refused. Reconcile those states
+`accepting`, `accept_waiting`, `declining`) are refused. Reconcile those states
 without deleting their duplicate guards; this tool does not supply that reconciliation.
+An existing `unknown` outcome is terminal and may be copied unchanged, retaining its
+revision, decision timestamp and original message. It remains unknown, not a successful
+handoff, and migration never retries it. Reopening/checking or selecting accept/later/decline
+does not re-admit that retained record or mark it read again.
 
 Only after an operator independently verifies the original connection, recipient and
 existing conversation, stops all old notifiers, and commits not to restart that source:
@@ -424,9 +428,26 @@ For a legacy Hermes store, `hermes_screen` is required: `source` is the paired p
 JSONL file, `legacy_binding` is the exact old tuple `[session_id, profile,
 backend_namespace, profile_scope, receiver_id]`, and `expected_source_sha256` is the
 screen fingerprint from inspection. The database and screen must come from the same
-offline source and verified binding. Migration refuses missing notices/decisions,
-payload or binding disagreement, incomplete screen records and changed fingerprints.
+offline source and verified binding. Migration refuses missing required notices,
+unsupported missing-decision records, payload or binding disagreement, incomplete screen
+records and changed fingerprints.
 Do not generate a replacement empty feed or bind unrelated historical messages.
+
+The decision store's seven-day retention pruning can leave older Hermes JSONL notices
+without a corresponding database decision. Legacy JSONL has no structured expiry, so a
+missing row is **not proof of legitimate expiry**. Such complete, internally consistent
+legacy notices and their associated historical state lines are quarantined in place:
+the converted feed preserves their original bytes, old binding, line order and cursor
+positions. They are not rebound, inserted back into the decision database, or displayed
+by the new binding-aware UI. State-only records without a matching notice, notices with
+a different binding, and conflicting duplicate payloads are refused; retained database
+rows must still match their notice payload. The original feed and database backups are
+kept unchanged. Inspection and the manifest report `screen_quarantined_notice_count`
+(unique notice keys), `screen_quarantined_notice_lines` (notice-line count), and
+`screen_quarantine_reason: "unverifiable_missing_decision"`; review these counts before
+cutover rather than treating quarantine as verified expiry. This prevents old-feed
+redisplay only: it is **not a tombstone** that rejects future HAB redelivery of a key
+whose database record was pruned.
 The SQLite transaction does not lock JSONL writers. Inode and fingerprint checks reject
 observed changes, but cannot prevent a write after the final check. All old feed writers
 must remain stopped under the explicit offline attestation throughout migration/cutover.
@@ -474,3 +495,9 @@ necessary; a companion commit is not evidence that the live Desktop has these ch
 The paired database/feed migration and Desktop cache cutover described above have not
 been applied to the live installation by this change. Earlier Desktop acceptance results
 do not validate this new release, two-choice reply cards, or the new binding migration.
+
+The same isolated companion checkout also completed a production build and unsigned
+mac-arm64 packaging, with a clean `f19527817a251ed37432d1bd87d6c2fd934d7eed` source stamp.
+Layered-icon generation warned that Xcode was unavailable, and notarization was intentionally
+skipped. This proves build/package creation only: the packaged native application was not
+launched, installed or used for a real message, and no signing/notarization acceptance is claimed.

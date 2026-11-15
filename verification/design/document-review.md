@@ -488,3 +488,42 @@ and the separate companion's focused tests do not prove native compatibility of 
 release, two-choice rendering or live migration. All six manual gates remain unverified.
 The js-root mapping includes these regression files; no aggregate success is claimed by
 this semantic maintenance entry.
+
+## Retention-pruned Hermes history quarantine (2026-11-15)
+
+Read SQLiteNotices.maintain and the actual HermesDesktopScreen JSONL writer: the database
+prunes every state after the expiry retention interval, while the append-only screen feed
+retains notices. Unlike the generic JSONL screen, the legacy Hermes notice has no
+structured expires_at. Missing rows therefore cannot be classified as proven legitimate
+expiration from a display string or timestamp. Migration now validates schema, old binding
+and repeated immutable content, and keeps such notices verbatim under their OLD binding.
+The new reader skips them while advancing over their original indexes. Related state lines
+are retained even before a matching notice; a state-only orphan remains an error. A live
+shown/later DB row still requires its matching notice, and known-row payload mismatches
+remain rejected. No missing decision is recreated and no body is admitted to a new session. Quarantine
+is not a durable tombstone for possible future HAB redelivery of a pruned key.
+
+Inspection and the manifest distinguish quarantined unique notices from repeated notice
+lines and label the reason unverifiable_missing_decision. They contain no message bodies.
+DB/feed fingerprints reviewed before execution still reject intervening changes. Synthetic
+regressions exercise actual retention pruning, source/backup preservation, mixed live and
+quarantined event indexes, malformed/mismatched history and the absence of resurrected
+rows. New UI omission is intentional quarantine, not data deletion or native rendering
+proof: original backup/feed history remains private for explicit reconciliation. The live
+installation, operator review and cutover have not been exercised; all six manual gates
+remain unverified. This review records scope, not fresh aggregate execution success.
+
+
+## Terminal unknown preservation and isolated packaging evidence
+
+Rechecked notifier transition guards: unknown is a terminal uncertain outcome, not an
+in-flight choice. The migration now copies it unchanged instead of requiring reconciliation
+as if it could retry. Generic and paired Hermes synthetic tests reopen and check twice,
+then request accept/later/decline and showAgain without a new show, handoff or markRead;
+state, revision, decided_at and message remain preserved. Showing, accepting, accept_waiting
+and declining still block migration. Unknown is never relabelled as success.
+
+The companion status now reports isolated production-build and unsigned mac-arm64 package
+success with a clean source stamp. Xcode layered icons were unavailable; notarization was
+intentionally skipped. This is reported external build evidence, not native runtime,
+installation, real delivery or signing/notarization acceptance. Manual gates stay open.

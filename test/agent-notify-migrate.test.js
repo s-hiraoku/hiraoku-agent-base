@@ -97,7 +97,7 @@ test("migration refuses missing attestation, changed source and unsettled outcom
     /fingerprint_required/,
   );
   const store = new SQLiteNotices(plan.source, "legacy-session");
-  store.transition(message, ["queued"], "unknown", 3);
+  store.transition(message, ["queued"], "accepting", 3);
   store.close();
   assert.throws(
     () =>
@@ -113,7 +113,7 @@ test("migration refuses missing attestation, changed source and unsettled outcom
     false,
   );
   const settled = new SQLiteNotices(plan.source, "legacy-session");
-  settled.transition(message, ["unknown"], "declined", 4);
+  settled.transition(message, ["accepting"], "declined", 4);
   settled.close();
   assert.throws(
     () =>
@@ -421,7 +421,7 @@ test("paired migration rejects missing notices, mixed binding, changed payload a
     ],
     [JSON.stringify(lines[0]), /incomplete/],
     [
-      JSON.stringify({ ...lines[0], message_id: "absent" }) + "\n",
+      JSON.stringify({ ...lines[1], message_id: "absent" }) + "\n",
       /missing_decision/,
     ],
   ]) {
@@ -547,5 +547,200 @@ test("paired migration retains reply-specific choices in the authoritative messa
     assert.deepEqual(JSON.parse(migrated).choices, choices);
   } finally {
     destination.close();
+  }
+});
+
+test("pruned Hermes history stays quarantined under old binding without shifting live event indexes", async (t) => {
+  const { writeFileSync } = await import("node:fs");
+  const { hermesDesktopPage } =
+    await import("../src/agent-notify/hermes-desktop.ts");
+  const { plan, screen, lines, message, legacy } = await hermesFixture(t);
+  const removed = {
+    ...message,
+    message_id: "pruned",
+    expires_at: "2026-01-02T00:00:00Z",
+  };
+  const store = new SQLiteNotices(plan.source, plan.expected_source_target);
+  store.insertShowing(removed, Date.parse("2026-01-01T00:00:00Z"));
+  store.transition(
+    removed,
+    ["showing"],
+    "shown",
+    Date.parse("2026-01-01T00:00:01Z"),
+  );
+  store.maintain(Date.parse("2026-02-01T00:00:00Z"));
+  assert.equal(store.get(removed), undefined);
+  store.close();
+  const orphan = { ...lines[0], message_id: removed.message_id };
+  const history = [
+    { ...lines[1], message_id: removed.message_id, state: "expired" },
+    orphan,
+    lines[0],
+    { ...orphan, at: "2026-01-01T00:00:03Z" },
+    { ...lines[1], message_id: removed.message_id },
+    lines[2],
+  ];
+  const bytes = history.map((x) => JSON.stringify(x)).join("\n") + "\n";
+  writeFileSync(screen, bytes);
+  const before = readFileSync(plan.source);
+  const inspection = inspectNoticeMigration(plan);
+  assert.equal(inspection.screen_quarantined_notice_count, 1);
+  assert.equal(inspection.screen_quarantined_notice_lines, 2);
+  assert.ok(!JSON.stringify(inspection).includes(message.display));
+  migrateNoticesOffline(reviewedPair(plan), attestation);
+  assert.deepEqual(readFileSync(plan.source), before);
+  assert.equal(readFileSync(screen, "utf8"), bytes);
+  assert.equal(
+    readFileSync(
+      join(plan.destination_directory, "source-screen.jsonl"),
+      "utf8",
+    ),
+    bytes,
+  );
+  const output = readFileSync(
+    join(plan.destination_directory, "screen.jsonl"),
+    "utf8",
+  )
+    .trimEnd()
+    .split("\n");
+  assert.equal(output.length, history.length);
+  for (const index of [0, 1, 3, 4])
+    assert.equal(output[index], JSON.stringify(history[index]));
+  const binding = {
+    session_id: legacy[0],
+    profile: legacy[1],
+    backend_namespace: legacy[2],
+    profile_scope: legacy[3],
+    receiver_id: legacy[4],
+    connection_id: "https://verified-host/hab/mcp",
+  };
+  const page = hermesDesktopPage(
+    join(plan.destination_directory, "screen.jsonl"),
+    binding,
+    { limit: 10 },
+  );
+  assert.deepEqual(
+    page.events.map((x) => x.event_id),
+    ["sender:message:1", "sender:message:3"],
+  );
+  assert.equal(page.next_cursor, "4");
+  const destination = new SQLiteNotices(
+    join(plan.destination_directory, "notices.sqlite"),
+    bindingIdentity(plan.destination_binding),
+  );
+  assert.equal(destination.get(removed), undefined);
+  assert.equal(destination.get(message).state, "later");
+  destination.close();
+  const manifest = JSON.parse(
+    readFileSync(join(plan.destination_directory, "manifest.json"), "utf8"),
+  );
+  assert.equal(manifest.screen_quarantined_notice_count, 1);
+  assert.equal(
+    manifest.screen_quarantine_reason,
+    "unverifiable_missing_decision",
+  );
+});
+
+test("orphan quarantine never trusts expiry guesses, foreign bindings or conflicting duplicate payloads", async (t) => {
+  const { writeFileSync } = await import("node:fs");
+  const { plan, screen, lines } = await hermesFixture(t);
+  const orphan = {
+    ...lines[0],
+    message_id: "unverifiable",
+    at: "2099-01-01T00:00:00Z",
+  };
+  // Age is not evidence of expiry. Even a recent/future orphan can only be hidden,
+  // never rebound or granted a resurrected decision row.
+  writeFileSync(
+    screen,
+    [...lines, orphan].map((x) => JSON.stringify(x)).join("\n") + "\n",
+  );
+  assert.equal(inspectNoticeMigration(plan).screen_quarantined_notice_count, 1);
+  const reviewed = reviewedPair(plan);
+  for (const [extra, error] of [
+    [{ ...orphan, binding: '["foreign"]' }, /binding_mismatch/],
+    [{ ...orphan, display: "tampered duplicate" }, /payload_mismatch/],
+    [{ ...lines[1], message_id: "no-notice" }, /missing_decision/],
+  ]) {
+    writeFileSync(
+      screen,
+      [...lines, orphan, extra].map((x) => JSON.stringify(x)).join("\n") + "\n",
+    );
+    assert.throws(() => inspectNoticeMigration(plan), error);
+    assert.throws(
+      () => migrateNoticesOffline(reviewed, attestation),
+      /screen_changed/,
+    );
+  }
+  assert.equal(existsSync(plan.destination_directory), false);
+});
+
+for (const paired of [false, true]) {
+  test(`migration preserves unknown as non-retryable terminal outcome (${paired ? "Hermes pair" : "generic"})`, async (t) => {
+    const { ReceiptNotifier } = await import("../src/agent-notify/notifier.ts");
+    const { plan, message } = paired ? await hermesFixture(t) : fixture(t);
+    const store = new SQLiteNotices(plan.source, plan.expected_source_target);
+    store.transition(message, [paired ? "later" : "queued"], "unknown", 1234);
+    const before = store.get(message);
+    store.close();
+    const inspection = inspectNoticeMigration(plan);
+    assert.ok(
+      inspection.states.some((x) => x.state === "unknown" && x.count === 1),
+    );
+    const reviewed = paired
+      ? reviewedPair(plan)
+      : { ...plan, expected_source_sha256: inspection.source_sha256 };
+    migrateNoticesOffline(reviewed, attestation);
+    const target = bindingIdentity(plan.destination_binding);
+    for (let reopen = 0; reopen < 2; reopen++) {
+      const destination = new SQLiteNotices(
+        join(plan.destination_directory, "notices.sqlite"),
+        target,
+      );
+      let sideEffects = 0;
+      const forbidden = async () => {
+        sideEffects++;
+        throw new Error("unexpected effect");
+      };
+      const notifier = new ReceiptNotifier({
+        store: destination,
+        now: () => Date.parse("2026-02-01T00:00:00Z"),
+        hab: {
+          peek: async () => ({ messages: [message], next_cursor: null }),
+          markRead: forbidden,
+        },
+        screen: {
+          target,
+          show: forbidden,
+          handoff: forbidden,
+          report: forbidden,
+        },
+      });
+      assert.deepEqual(destination.get(message), { ...before, target });
+      assert.deepEqual(await notifier.check(), []);
+      for (const choice of ["accept", "later", "decline"]) {
+        assert.deepEqual(
+          await notifier.decide(message.message_id, choice, message.sender_id),
+          { changed: false, state: "unknown" },
+        );
+      }
+      assert.deepEqual(
+        await notifier.showAgain(message.message_id, message.sender_id),
+        { changed: false, state: "unknown" },
+      );
+      assert.deepEqual(destination.get(message), { ...before, target });
+      assert.equal(sideEffects, 0);
+      destination.close();
+    }
+  });
+}
+
+test("all in-flight migration states still require reconciliation", (t) => {
+  const { plan } = fixture(t);
+  for (const state of ["showing", "accepting", "accept_waiting", "declining"]) {
+    const db = new DatabaseSync(plan.source);
+    db.prepare("UPDATE notices SET state=?").run(state);
+    db.close();
+    assert.throws(() => inspectNoticeMigration(plan), /unsettled_decisions/);
   }
 });

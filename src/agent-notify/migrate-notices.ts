@@ -206,7 +206,7 @@ function screenCopy(db: DatabaseSync, plan: NoticeMigrationPlan) {
   )
     throw new Error("migration_screen_incomplete");
   const lines = text ? text.slice(0, -1).split("\n") : [];
-  const converted = lines.map((line) => {
+  const parsedLines = lines.map((line) => {
     let parsed: unknown;
     try {
       parsed = JSON.parse(line);
@@ -217,12 +217,39 @@ function screenCopy(db: DatabaseSync, plan: NoticeMigrationPlan) {
       state = stateLineSchema.safeParse(parsed);
     if (!n.success && !state.success)
       throw new Error("migration_screen_unsupported_schema");
+    return { line, n, state };
+  });
+  // Legacy Hermes feeds contain no structured expiry. Missing DB rows cannot be
+  // proven expired (nor safely recreated). Preserve their bytes and indexes under
+  // the OLD binding, invisible to the new reader, instead of reviving authority.
+  // Collect notices first so state lines before their notice remain supported.
+  const quarantined = new Map<string, string>();
+  let quarantinedLines = 0;
+  for (const { n } of parsedLines) {
+    if (!n.success) continue;
+    if (n.data.binding !== oldKey)
+      throw new Error("migration_screen_binding_mismatch");
+    if (byKey.has(pairKey(n.data))) continue;
+    const immutable = JSON.stringify([
+      n.data.from,
+      n.data.display,
+      n.data.binding,
+    ]);
+    const previous = quarantined.get(pairKey(n.data));
+    if (previous !== undefined && previous !== immutable)
+      throw new Error("migration_screen_payload_mismatch");
+    quarantined.set(pairKey(n.data), immutable);
+    quarantinedLines++;
+  }
+  const converted = parsedLines.map(({ line, n, state }) => {
     const value = n.success ? n.data : state.data!;
     const row = byKey.get(pairKey(value));
-    if (!row) throw new Error("migration_screen_missing_decision");
+    if (!row) {
+      if (!quarantined.has(pairKey(value)))
+        throw new Error("migration_screen_missing_decision");
+      return line;
+    }
     if (n.success) {
-      if (n.data.binding !== oldKey)
-        throw new Error("migration_screen_binding_mismatch");
       const message = peekedMessageSchema.parse(JSON.parse(row.message));
       if (
         message.sender_id !== n.data.sender_id ||
@@ -259,6 +286,8 @@ function screenCopy(db: DatabaseSync, plan: NoticeMigrationPlan) {
     converted: converted.length ? converted.join("\n") + "\n" : "",
     source_sha256,
     notice_count: seen.size,
+    quarantined_notice_count: quarantined.size,
+    quarantined_notice_lines: quarantinedLines,
     verify,
   };
 }
@@ -279,7 +308,7 @@ function inspectLocked(db: DatabaseSync, plan: NoticeMigrationPlan) {
     throw new Error("migration_source_corrupt");
   const blocked = db
     .prepare(
-      "SELECT COUNT(*) AS n FROM notices WHERE state IN ('showing','accepting','accept_waiting','declining','unknown')",
+      "SELECT COUNT(*) AS n FROM notices WHERE state IN ('showing','accepting','accept_waiting','declining')",
     )
     .get() as { n: number };
   if (blocked.n)
@@ -339,6 +368,9 @@ export function inspectNoticeMigration(plan: NoticeMigrationPlan) {
             return {
               screen_source_sha256: screen.source_sha256,
               screen_notice_count: screen.notice_count,
+              screen_quarantined_notice_count: screen.quarantined_notice_count,
+              screen_quarantine_reason: "unverifiable_missing_decision",
+              screen_quarantined_notice_lines: screen.quarantined_notice_lines,
             };
           })()
         : {}),
@@ -446,6 +478,11 @@ export function migrateNoticesOffline(
                 screen_source_sha256: screen.source_sha256,
                 screen_sha256: hash(join(staging, "screen.jsonl")),
                 screen_notice_count: screen.notice_count,
+                screen_quarantined_notice_count:
+                  screen.quarantined_notice_count,
+                screen_quarantine_reason: "unverifiable_missing_decision",
+                screen_quarantined_notice_lines:
+                  screen.quarantined_notice_lines,
               }
             : {}),
           attestation,
