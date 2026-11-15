@@ -1,0 +1,3 @@
+name: hab-desktop-adapter
+version: 0.1.0
+description: "Display HAB notices and user decisions in an explicitly bound existing Hermes Desktop conversation."

@@ -264,7 +264,22 @@ test("generic states API is cursor independent and fenced by connection, recipie
   ]);
   assert.ok(acted.states[0].revision > 0);
   assert.equal(await run("states", { binding_id: binding }), 0);
-  assert.deepEqual(output.at(-1).states, acted.states);
+  assert.deepEqual(
+    output
+      .at(-1)
+      .states.map(({ sender_id, message_id, state, revision }) => ({
+        sender_id,
+        message_id,
+        state,
+        revision,
+      })),
+    acted.states,
+  );
+  assert.deepEqual(
+    output.at(-1).states[0].choices.map((x) => x.choice),
+    ["accept", "later", "decline"],
+  );
+  assert.equal("choices" in acted.states[0], false);
   // No token or network is needed. Reusing a decision store after recipient replacement is refused.
   config.agent_id = "different-recipient";
   writeFileSync(path, JSON.stringify(config));
@@ -336,6 +351,16 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
     choices: [{ choice: "accept", label: "界".repeat(22000) }],
   };
   store.insertShowing(huge, 1000);
+  const reply = {
+    ...template,
+    message_id: "reply",
+    in_reply_to: "earlier",
+    choices: [
+      { choice: "accept", label: "会話に渡す" },
+      { choice: "later", label: "あとで" },
+    ],
+  };
+  store.insertShowing(reply, 1001);
   store.close();
   for (const command of ["states", "action"]) {
     const envelope = command === "action" ? base : { binding_id };
@@ -391,6 +416,7 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
     assert.deepEqual(JSON.parse(output.at(-1)).states, []);
     for (const bad of [
       keys.slice(0, 51),
+      keys.slice(0, 250),
       [keys[0], keys[0]],
       [{ sender_id: "界".repeat(171), message_id: "x" }],
     ]) {
@@ -457,4 +483,41 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
   assert.deepEqual(JSON.parse(output.at(-1)), {
     error: "state_response_too_large",
   });
+  assert.equal(
+    await run("states", {
+      binding_id,
+      keys: [{ sender_id: huge.sender_id, message_id: huge.message_id }],
+    }),
+    1,
+  );
+  assert.deepEqual(JSON.parse(output.at(-1)), {
+    error: "state_response_too_large",
+  });
+  assert.equal(
+    await run("states", {
+      binding_id,
+      keys: [{ sender_id: reply.sender_id, message_id: reply.message_id }],
+    }),
+    0,
+  );
+  assert.deepEqual(JSON.parse(output.at(-1)).states[0].choices, reply.choices);
+  const corrupt = new SQLiteNotices(config.store, binding_id);
+  corrupt.insertShowing(
+    {
+      ...template,
+      message_id: "malformed",
+      choices: [{ choice: "execute", label: "private invalid choice" }],
+    },
+    1002,
+  );
+  corrupt.close();
+  assert.equal(
+    await run("states", {
+      binding_id,
+      keys: [{ sender_id: template.sender_id, message_id: "malformed" }],
+    }),
+    1,
+  );
+  assert.deepEqual(JSON.parse(output.at(-1)), { error: "invalid_request" });
+  assert.ok(!output.at(-1).includes("private"));
 });

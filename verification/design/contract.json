@@ -1196,6 +1196,36 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Optional owner-local immutable native launch claim before any native create/prompt. Reuses actual SQLiteInbox exact-source receipt-confirmed question proof and existing RecipientAuthorization plus current held-host guard; no owner attach/acquire or native dispatch. Dedicated HMAC-bound SQLite stores only metadata/fingerprints. Duplicate/reopen/lost response returns original claim and never automatic relaunch; count/integrity/capacity/private-file checks fail closed. It is not a Task DB, native admission receipt, answer result, approval or delivery proof. Existing native/manual gates stay unverified; actual receiver handoff and immutable-budget migration remain separate. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order."
+    },
+    {
+      "path": "experiments/hermes-desktop-adapter/HERMES-LICENSE.txt",
+      "sha256": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6",
+      "role": "excluded",
+      "review": "reviewed",
+      "summary": "MIT license for Hermes-derived SDK patch; upstream attribution preserved.",
+      "exclusion_reason": "License or test dependency metadata, not adopted HAB behavioral requirements."
+    },
+    {
+      "path": "experiments/hermes-desktop-adapter/README.md",
+      "sha256": "46957a47a7b0b6c8beeeb1aefc91e34cc2242bcff2e0503eae56de7b1b6f3da9",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Runtime plugin integration guide: common notifier remains authoritative; inline conversation context and explicit REST owner need a minimal generic SDK patch. Covers strict binding, bounded UI history, shared synthetic wire fixtures, operational migration, unsupported live verification and the operator-pinned connection trust boundary."
+    },
+    {
+      "path": "experiments/hermes-desktop-adapter/sdk/README.md",
+      "sha256": "13981a113a19e5932fbe5f1f3c95b7dbdfe530a030b7ed1d508ab2b34e0ec99a",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Exact-base generic SDK patch and verification scope. Records five ownership tests, typecheck/lint, thirteen of fourteen baseline checks and unchanged proof-script encoding failures. No claim of native display or installed application."
+    },
+    {
+      "path": "experiments/hermes-desktop-adapter/tests/requirements.txt",
+      "sha256": "6ecf80d3fab1b45be0b99b5430a876965a9906ed796ea607a41395a2da07ef0f",
+      "role": "excluded",
+      "review": "reviewed",
+      "summary": "Pinned Python dependencies for the synthetic plugin backend test job, not product-design authority.",
+      "exclusion_reason": "License or test dependency metadata, not adopted HAB behavioral requirements."
     }
   ],
   "requirements": [

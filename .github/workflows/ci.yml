@@ -20,6 +20,8 @@ jobs:
       - name: Check toolchain pins
         run: npm run check:toolchain
       - run: npm ci
+      - name: Check generated Hermes runtime plugin
+        run: node experiments/hermes-desktop-adapter/desktop/build.mjs --check
       - run: node docs/diagrams/render-mermaid.mjs --check
       - run: npm run lint
       - run: npm run typecheck
@@ -30,3 +32,16 @@ jobs:
           NODE_OPTIONS: --disable-warning=ExperimentalWarning
         run: |
           node --test --test-timeout=120000 test/*.test.js
+  hermes-adapter-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - run: python -m pip install -r experiments/hermes-desktop-adapter/tests/requirements.txt
+      - name: Test isolated Hermes plugin transport
+        run: python -m pytest experiments/hermes-desktop-adapter/tests/test_backend.py -q

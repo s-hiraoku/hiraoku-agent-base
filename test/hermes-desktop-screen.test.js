@@ -23,6 +23,7 @@ import {
   fitHermesText,
   HERMES_TEXT_BYTES,
 } from "../src/agent-notify/index.ts";
+import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import { main, boundScreen } from "../scripts/hab-notify.ts";
 
 // ADR-021, Hermes Desktop: notices reach a saved conversation through Desktop's
@@ -597,4 +598,85 @@ test("legacy notices lacking connection binding cannot replay into a configured 
     hermesDesktopPage(path, endpointBinding, { limit: 100 }).events,
     [],
   );
+});
+
+test("Hermes screen exposes immutable copied exact binding used by its target", async (t) => {
+  const { path } = setup(t);
+  const input = { ...binding, connection_id: "https://hab.invalid/mcp" };
+  const original = { ...input };
+  const screen = new HermesDesktopScreen(path, input);
+  const expected = {
+    product: "hermes-desktop",
+    session_id: input.session_id,
+    profile: input.profile,
+    recipient_id: input.receiver_id,
+    connection_id: JSON.stringify([
+      input.connection_id,
+      input.backend_namespace,
+      input.profile_scope,
+    ]),
+  };
+  assert.deepEqual(screen.binding, expected);
+  assert.equal(screen.target, bindingIdentity(expected));
+  assert.ok(Object.isFrozen(screen.binding));
+  assert.throws(() => {
+    screen.binding.session_id = "other";
+  }, TypeError);
+  assert.throws(() => {
+    screen.binding = expected;
+  }, TypeError);
+  input.session_id = "changed";
+  input.receiver_id = "changed";
+  input.connection_id = "https://other.invalid";
+  input.profile = "changed";
+  input.backend_namespace = "changed";
+  input.profile_scope = "changed";
+  assert.deepEqual(screen.binding, expected);
+  await screen.show(message("immutable-binding"));
+  assert.equal(
+    hermesDesktopPage(path, original, { limit: 10 }).events.length,
+    1,
+  );
+  assert.equal(hermesDesktopPage(path, input, { limit: 10 }).events.length, 0);
+});
+
+test("binding CLI exposes Hermes product connection recipient profile and exact saved session", async (t) => {
+  const { dir, path } = setup(t);
+  const configPath = join(dir, "notify.json");
+  const config = {
+    hab_url: "https://hab.invalid/mcp",
+    agent_id: "agent-b",
+    token: { env: "UNSET_TEST_ONLY" },
+    store: join(dir, "unused.sqlite"),
+    screen: {
+      type: "hermes-desktop",
+      path,
+      session_id: binding.session_id,
+      profile: binding.profile,
+      backend_namespace: binding.backend_namespace,
+      profile_scope: binding.profile_scope,
+    },
+  };
+  writeFileSync(configPath, JSON.stringify(config));
+  const output = [];
+  assert.equal(
+    await main(["--config", configPath, "binding"], (line) =>
+      output.push(JSON.parse(line)),
+    ),
+    0,
+  );
+  const result = output[0];
+  assert.deepEqual(result.destination_binding, {
+    product: "hermes-desktop",
+    session_id: binding.session_id,
+    profile: binding.profile,
+    recipient_id: "agent-b",
+    connection_id: JSON.stringify([
+      config.hab_url,
+      binding.backend_namespace,
+      binding.profile_scope,
+    ]),
+  });
+  assert.equal(result.binding_id, bindingIdentity(result.destination_binding));
+  assert.equal(existsSync(config.store), false);
 });

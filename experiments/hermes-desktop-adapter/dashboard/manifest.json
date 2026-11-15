@@ -1,0 +1,7 @@
+{
+  "name": "hab-desktop-adapter",
+  "label": "HAB Desktop adapter",
+  "description": "Profile-local transport for the common HAB notifier contract.",
+  "version": "0.1.0",
+  "api": "plugin_api.py"
+}

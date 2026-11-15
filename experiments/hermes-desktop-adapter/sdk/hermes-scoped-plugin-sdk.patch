@@ -1,0 +1,332 @@
+diff --git a/apps/desktop/ENGINEERING.md b/apps/desktop/ENGINEERING.md
+index 7974846ab8e..5bfa478901a 100644
+--- a/apps/desktop/ENGINEERING.md
++++ b/apps/desktop/ENGINEERING.md
+@@ -167,3 +167,18 @@ point (Billing, status chip, ready screen) opens the one free-tier sign-in dialo
+ from the onboarding picker that moved apps shows the same result screen once onboarding leaves the
+ screen (onboarding paints above every dialog). Never branch on
+ provider display names: the picker row carries `free_tier_row`, status cards carry `free_tier`.
++
++### Scoped composer plugins
++
++`usePluginComposerContext()` is available only inside a composer contribution and
++returns its own stored session, connection, profile and visibility, not window
++focus. Drafts and unresolved owners return `null`; inactive or historical views
++set `visible: false`. Plugins must not substitute a global focused owner.
++
++Feature-detect `PLUGIN_REST_OWNER_SUPPORTED === true` before using
++`ctx.rest(path, { owner: { connectionId, profile } })`. Explicit incomplete owners
++are rejected; omitted owners retain legacy active-route behavior. An explicit
++owner pins both reads and writes even when another gateway becomes active.
++This is routing, not authorization: the plugin backend must still validate its
++configured destination and user decision. These generic APIs do not submit a
++message or start an agent turn.
+diff --git a/apps/desktop/src/api/plugins-owner.test.ts b/apps/desktop/src/api/plugins-owner.test.ts
+new file mode 100644
+index 00000000000..20ec1668b8d
+--- /dev/null
++++ b/apps/desktop/src/api/plugins-owner.test.ts
+@@ -0,0 +1,41 @@
++import { afterEach, expect, it, vi } from 'vitest'
++
++import { setApiRequestConnection, setApiRequestProfile } from './client'
++import { pluginRest } from './plugins'
++
++afterEach(() => {
++  setApiRequestConnection(null)
++  setApiRequestProfile(null)
++  Reflect.deleteProperty(window, 'hermesDesktop')
++})
++it('pins explicit owner for reads and writes despite an unrelated ambient gateway', async () => {
++  const api = vi.fn().mockResolvedValue({ ok: true })
++  Object.defineProperty(window, 'hermesDesktop', { configurable: true, value: { api } })
++  setApiRequestConnection('ambient')
++  setApiRequestProfile('other')
++  await pluginRest('fixture', '/binding', { owner: { connectionId: 'bound', profile: 'work' } })
++  await pluginRest('fixture', '/decision', {
++    owner: { connectionId: 'bound', profile: 'work' },
++    method: 'POST',
++    body: { decision: 'later' }
++  })
++  expect(api).toHaveBeenNthCalledWith(
++    1,
++    expect.objectContaining({ path: '/api/plugins/fixture/binding', connectionId: 'bound', profile: 'work' })
++  )
++  expect(api).toHaveBeenNthCalledWith(
++    2,
++    expect.objectContaining({ connectionId: 'bound', profile: 'work', method: 'POST' })
++  )
++})
++it('rejects incomplete explicit owners before transport, keeps omitted-owner compatibility', async () => {
++  const api = vi.fn().mockResolvedValue({ ok: true })
++  Object.defineProperty(window, 'hermesDesktop', { configurable: true, value: { api } })
++  setApiRequestProfile('legacy')
++  await expect(pluginRest('fixture', '/binding', { owner: { connectionId: '', profile: 'work' } })).rejects.toThrow(
++    'owner requires'
++  )
++  expect(api).not.toHaveBeenCalled()
++  await pluginRest('fixture', '/binding')
++  expect(api).toHaveBeenCalledWith(expect.objectContaining({ profile: 'legacy' }))
++})
+diff --git a/apps/desktop/src/api/plugins.ts b/apps/desktop/src/api/plugins.ts
+index 86d4e8a6764..d8ad31b11d1 100644
+--- a/apps/desktop/src/api/plugins.ts
++++ b/apps/desktop/src/api/plugins.ts
+@@ -43,6 +43,8 @@ export async function activeConnection(): Promise<HermesConnection> {
+ /** Options for a plugin REST call — mirrors the app's own `hermesDesktop.api`
+  *  shape, minus the path (which is namespace-derived). */
+ export interface PluginRestOptions {
++  /** Explicit immutable route; omitted preserves the legacy active-owner behavior. */
++  owner?: { connectionId: string; profile: string }
+   method?: string
+   body?: unknown
+   /** Single-file multipart upload (see HermesApiRequest.upload). */
+@@ -76,6 +78,18 @@ export async function pluginRest<T>(pluginId: string, path: string, opts: Plugin
+   }
+ 
+   const suffix = pluginPathSuffix('pluginRest', path)
++  const owner = opts.owner
++
++  if (
++    owner !== undefined &&
++    (!owner ||
++      typeof owner.connectionId !== 'string' ||
++      !owner.connectionId.trim() ||
++      typeof owner.profile !== 'string' ||
++      !owner.profile.trim())
++  ) {
++    throw new Error('Plugin REST owner requires connectionId and profile')
++  }
+ 
+   return hermesApi<T>({
+     path: `/api/plugins/${pluginId}${suffix}`,
+@@ -83,7 +97,7 @@ export async function pluginRest<T>(pluginId: string, path: string, opts: Plugin
+     body: opts.body,
+     upload: opts.upload,
+     timeoutMs: opts.timeoutMs,
+-    ...profileScoped()
++    ...(owner ? { connectionId: owner.connectionId, profile: owner.profile } : profileScoped())
+   })
+ }
+ 
+diff --git a/apps/desktop/src/app/chat/composer/index.tsx b/apps/desktop/src/app/chat/composer/index.tsx
+index ff92f9a73da..0a8f2ea6670 100644
+--- a/apps/desktop/src/app/chat/composer/index.tsx
++++ b/apps/desktop/src/app/chat/composer/index.tsx
+@@ -17,7 +17,6 @@ import { useBusyInputMode } from '@/app/session/hooks/use-busy-input-mode'
+ import { composerFloatingStrip, composerInputBacking } from '@/components/chat/composer-dock'
+ import { useSetupChatView } from '@/components/onboarding/first-run/assembly'
+ import { OnboardingSkip } from '@/components/onboarding/skip-setup'
+-import { Slot as ContribSlot } from '@/contrib/react/slot'
+ import { useI18n } from '@/i18n'
+ import { chatMessageText } from '@/lib/chat-messages'
+ import { sanitizeComposerInput } from '@/lib/composer-input-sanitize'
+@@ -26,6 +25,7 @@ import { triggerHaptic } from '@/lib/haptics'
+ import { $touchPointer } from '@/lib/touch-interaction'
+ import { useStoreSelector, useStoresSelector } from '@/lib/use-session-slice'
+ import { cn } from '@/lib/utils'
++import { ComposerContributionSlot as ContribSlot } from '@/sdk/composer-context'
+ import { sessionCompacting } from '@/store/compaction'
+ import { draftRetry } from '@/store/composer-draft-retry'
+ import { browseBackward, browseForward, deriveUserHistory, isBrowsingHistory } from '@/store/composer-input-history'
+diff --git a/apps/desktop/src/sdk/composer-context-main.test.tsx b/apps/desktop/src/sdk/composer-context-main.test.tsx
+new file mode 100644
+index 00000000000..1bfdd536627
+--- /dev/null
++++ b/apps/desktop/src/sdk/composer-context-main.test.tsx
+@@ -0,0 +1,60 @@
++import { render, screen } from '@testing-library/react'
++import { atom } from 'nanostores'
++import { expect, it, vi } from 'vitest'
++
++import { ChatRuntimeBoundary } from '@/app/chat'
++import { PRIMARY_SESSION_VIEW, SessionViewProvider } from '@/app/chat/session-view'
++import { stubThreadEnvironment } from '@/components/assistant-ui/test-utils'
++import { registry } from '@/contrib/registry'
++import { $activeGatewayProfile } from '@/store/profile'
++import { $connection, _resetSessionOwnerHintsForTests, setSessionOwnerHint } from '@/store/session'
++
++import { ComposerContributionSlot, usePluginComposerContext } from './composer-context'
++
++stubThreadEnvironment()
++
++function Probe() {
++  return <output>{JSON.stringify(usePluginComposerContext())}</output>
++}
++
++it('the real main-chat runtime publishes its saved local-lab owner to contribution slots', () => {
++  _resetSessionOwnerHintsForTests({ storage: true })
++  $connection.set({ mode: 'local', connectionId: 'local' } as never)
++  $activeGatewayProfile.set('local-lab')
++  setSessionOwnerHint('saved-main', { connectionId: 'local', profile: 'local-lab' })
++  const dispose = registry.register({ id: 'main-probe', area: 'composer.top', render: () => <Probe /> })
++
++  const view = {
++    ...PRIMARY_SESSION_VIEW,
++    $messages: atom([]),
++    $runtimeId: atom<string | null>('runtime'),
++    $storedId: atom<string | null>('saved-main')
++  }
++
++  const rendered = render(
++    <SessionViewProvider value={view}>
++      <ChatRuntimeBoundary
++        busy={false}
++        onCancel={vi.fn()}
++        onEdit={vi.fn()}
++        onReload={vi.fn()}
++        onThreadMessagesChange={vi.fn()}
++        suppressMessages={false}
++      >
++        <ComposerContributionSlot area="composer.top" />
++      </ChatRuntimeBoundary>
++    </SessionViewProvider>
++  )
++
++  expect(JSON.parse(screen.getByRole('status').textContent!)).toEqual({
++    storedSessionId: 'saved-main',
++    connectionId: 'local',
++    profile: 'local-lab',
++    visible: true
++  })
++  rendered.unmount()
++  dispose()
++  _resetSessionOwnerHintsForTests({ storage: true })
++  $connection.set(null)
++  $activeGatewayProfile.set('default')
++})
+diff --git a/apps/desktop/src/sdk/composer-context.test.tsx b/apps/desktop/src/sdk/composer-context.test.tsx
+new file mode 100644
+index 00000000000..99dfad752c1
+--- /dev/null
++++ b/apps/desktop/src/sdk/composer-context.test.tsx
+@@ -0,0 +1,61 @@
++import { act, render, screen } from '@testing-library/react'
++import { atom } from 'nanostores'
++import { afterEach, expect, it, vi } from 'vitest'
++
++import { ComposerScopeProvider, MAIN_COMPOSER_SCOPE } from '@/app/chat/composer/scope'
++import { PaneVisibleContext } from '@/components/pane-shell/pane-visibility'
++import { registry } from '@/contrib/registry'
++
++import { ComposerContributionSlot, usePluginComposerContext } from './composer-context'
++
++const stored = atom<string | null>('saved')
++vi.mock('@/app/chat/session-view', () => ({ useSessionView: () => ({ $storedId: stored }) }))
++const disposers: (() => void)[] = []
++afterEach(() => {
++  disposers.splice(0).forEach(fn => fn())
++  stored.set('saved')
++})
++
++function Probe() {
++  return <output>{JSON.stringify(usePluginComposerContext())}</output>
++}
++
++function mountSlot(connectionId?: string, profile?: string, visible = true) {
++  return (
++    <ComposerScopeProvider value={{ ...MAIN_COMPOSER_SCOPE, connectionId, profile }}>
++      <PaneVisibleContext.Provider value={visible}>
++        <ComposerContributionSlot area="composer.top" />
++      </PaneVisibleContext.Provider>
++    </ComposerScopeProvider>
++  )
++}
++
++it('projects each composer owner independently rather than the focused window owner', () => {
++  disposers.push(registry.register({ id: 'probe', area: 'composer.top', render: () => <Probe /> }))
++
++  const view = render(
++    <>
++      {mountSlot('one', 'work')}
++      {mountSlot('two', 'work')}
++    </>
++  )
++
++  expect(screen.getAllByRole('status').map(el => JSON.parse(el.textContent!))).toEqual([
++    { storedSessionId: 'saved', connectionId: 'one', profile: 'work', visible: true },
++    { storedSessionId: 'saved', connectionId: 'two', profile: 'work', visible: true }
++  ])
++  view.rerender(mountSlot('one', 'work', false))
++  expect(JSON.parse(screen.getByRole('status').textContent!).visible).toBe(false)
++  act(() => stored.set(null))
++  expect(screen.getByRole('status').textContent).toBe('null')
++})
++it('returns null outside the contribution or with incomplete owner, never ambient fallback', () => {
++  disposers.push(registry.register({ id: 'probe', area: 'composer.top', render: () => <Probe /> }))
++  render(
++    <>
++      <Probe />
++      {mountSlot(undefined, 'work')}
++    </>
++  )
++  expect(screen.getAllByRole('status').map(el => el.textContent)).toEqual(['null', 'null'])
++})
+diff --git a/apps/desktop/src/sdk/composer-context.tsx b/apps/desktop/src/sdk/composer-context.tsx
+new file mode 100644
+index 00000000000..4b12ea96c50
+--- /dev/null
++++ b/apps/desktop/src/sdk/composer-context.tsx
+@@ -0,0 +1,43 @@
++import { useStore } from '@nanostores/react'
++import { createContext, useContext, useMemo } from 'react'
++
++import { useComposerScope } from '@/app/chat/composer/scope'
++import { useSessionView } from '@/app/chat/session-view'
++import { useTranscriptWindow } from '@/components/assistant-ui/thread/transcript-window'
++import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
++import { Slot, type SlotProps } from '@/contrib/react/slot'
++
++/** The exact existing conversation owning a composer contribution, never window focus. */
++export interface PluginComposerContext {
++  storedSessionId: string
++  connectionId: string
++  profile: string
++  visible: boolean
++}
++
++const Context = createContext<PluginComposerContext | null>(null)
++
++/** Null outside a composer contribution, on drafts, or while ownership is unresolved. */
++export const usePluginComposerContext = (): PluginComposerContext | null => useContext(Context)
++
++/** Host-only boundary: do not export this provider through the plugin SDK. */
++export function ComposerContributionSlot(props: SlotProps) {
++  const scope = useComposerScope()
++  const storedSessionId = useStore(useSessionView().$storedId)
++  const paneVisible = usePaneVisible()
++  const { isHistorical } = useTranscriptWindow()
++  const connectionId = scope.connectionId
++  const profile = scope.profile
++  const visible = paneVisible && !isHistorical
++
++  const value = useMemo<PluginComposerContext | null>(
++    () => (storedSessionId && connectionId && profile ? { storedSessionId, connectionId, profile, visible } : null),
++    [storedSessionId, connectionId, profile, visible]
++  )
++
++  return (
++    <Context.Provider value={value}>
++      <Slot {...props} />
++    </Context.Provider>
++  )
++}
+diff --git a/apps/desktop/src/sdk/index.ts b/apps/desktop/src/sdk/index.ts
+index de411600f93..7cca6d1d12b 100644
+--- a/apps/desktop/src/sdk/index.ts
++++ b/apps/desktop/src/sdk/index.ts
+@@ -125,6 +125,7 @@ import { $viewport, type ViewportRect } from './viewport'
+ 
+ /** Pane, status bar and titlebar slots; see `./areas` for the mount rules. */
+ export * from './areas'
++export { type PluginComposerContext, usePluginComposerContext } from './composer-context'
+ /** The plugin authoring contract (`HermesPlugin`, `PluginContext`, `ctx.*` door types). */
+ export type * from './plugin-contract'
+ export type { PluginProfileRequestOptions, PluginProfileRoute } from './profile-request'
+@@ -1985,3 +1986,6 @@ export { atom, computed } from 'nanostores'
+ /** Markdown renderer (same pipeline core chat surfaces use) so plugins render
+  *  message text as a preview instead of raw Markdown source. */
+ export { Streamdown } from 'streamdown'
++
++/** Feature-detect before passing an explicit owner to ctx.rest on older hosts. */
++export const PLUGIN_REST_OWNER_SUPPORTED = true
