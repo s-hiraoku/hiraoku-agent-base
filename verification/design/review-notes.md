@@ -145,3 +145,14 @@ PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 a
 2026-11-10 managed transport semantic maintenance: Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release. F16/E09 statements and native/manual gates remain unchanged; their scopes and new normative citation now distinguish the cooperative boundary from existing guarded fetch. Independent code review found and fixed reentrant abort during atomic authorization. Fifteen focused synthetic checks pass; full/hosted evidence remains separate.
 
 Managed transport packaging (2026-11-10): reviewed the 15-case focused suite and strict full-regression gate; expected root inventory is 1353 (1338 + 15), not aggregate execution evidence. Committed feature source precedes successor-pin generation. Full aggregate outcome and descendant cleanup remain unverified; hosted and native/manual evidence are separate.
+
+## Shared notification state and binding contract (2026-11-15)
+
+HAB-F27 retains its original user-choice and same-existing-session boundary. New automated
+coverage in `test/agent-notify-state-sync.test.js` proves durable revision ordering,
+restart/concurrent-writer/expiry behavior, legacy schema migration and the product-neutral
+projection with synthetic adapter names. CLI tests exercise exact binding fences for
+state reads and user-choice writes. These checks do not prove that an actual product
+renders a card, polls existing cards after its event cursor is exhausted, or hands work to
+the original conversation. The historical `shown` state is publication evidence only.
+No deployment, live credentials, production stores or independent product code is used.

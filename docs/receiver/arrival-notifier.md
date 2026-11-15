@@ -48,9 +48,9 @@ verify-b@dot.hab から返事が届きました。
 | 読む・返す | 受信側のセッション自身（`/mcp` の 4 ツール） |
 | 画面に出す（`show`）と、同じセッションへ渡す（`handoff`） | 各エージェントの `AgentScreen` |
 
-新しいエージェントをつなぐときに用意するのは `AgentScreen` の 2 つの操作だけです。`show` はその会話・セッションの画面に `display` を出し、モデルを動かしません。`handoff` は利用者が選んだ後に `handoff_prompt` をそのセッションへ入力し、`started`（受け付けた）・`queued`（入力に入れたが開始は未確認）・`unsupported`（正式な入口がない）のどれかを返します。正式な入口がなければ `unsupported` を返し、別のセッションや同じアドレスの CLI で代用しません。
+新しいエージェントをつなぐときに用意するのは `AgentScreen` の 2 つの操作だけです。`show` は `display` をモデルを動かさず発行します。`published` は発行のみ、`displayed` は製品の描画確認がある場合だけです。`handoff` は利用者が選んだ後に `handoff_prompt` をそのセッションへ入力し、`started`（受け付けた）・`queued`（入力に入れたが開始は未確認）・`unsupported`（正式な入口がない）のどれかを返します。正式な入口がなければ `unsupported` を返し、別のセッションや同じアドレスの CLI で代用しません。
 
-製品に依存しない `JsonlScreen` も同梱しています。`notice`・`handoff`・`state` の各イベントを 1 行ずつ JSON で書きます。製品側の連携（表示専用の外部メッセージ欄など）がそのファイルを読み、選択を `hab-notify decide` で返します。
+製品に依存しない `JsonlScreen` も同梱しています。`notice`・`state` の各イベントを 1 行ずつ JSON で書きます。製品側の連携（表示専用の外部メッセージ欄など）がそのファイルを読み、選択を `hab-notify decide` で返します。ファイル書込みは実表示や入力受付の証拠ではないため、JSONL 単体の `handoff` は `unsupported` です。
 
 ## 動かし方
 
@@ -160,16 +160,17 @@ Hermes の欄は、本文が 128 KiB を超えるカードを受け付けませ�
 
 Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードの本文は表示したときのまま残ります。
 
-カードの「1. 対応する」「2. あとで」「3. 対応しない」ボタンは、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
+カードの `choices` に応じたボタン（通常は「対応する」「あとで」「対応しない」、返信は「会話に渡す」「あとで」）は、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", binding_id, backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
 
+- `binding_id`（接続先・受信者・会話を含む完全な結び付け）
 - `stored_session_id`（会話）
 - `backend_namespace`
 - `profile_scope`
 - `receiver_id`（受信者）
 
-設定と合っていれば `decide` と同じ処理をして `{changed, state}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
+設定と合っていれば `decide` と同じ処理をして `{changed, state, revision}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
 
-会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。各カードの `choices`（ボタンとその文言）も返します。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだボタンを示したまま、ほかの 2 つを押せるようにします。決まったカードには状態だけを出し、ボタンは出しません。
+会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", binding_id, backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state, revision, choices}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだ状態を示したまま、そのカードの `choices` に含まれる他の選択肢を使えます。返信カードは「会話に渡す」「あとで」の 2 択で、通常の依頼は 3 択です。決まったカードには状態だけを出し、ボタンは出しません。
 
 「対応する」を選ぶと、`handoff.command` を 1 回だけ実行します。標準入力には `{session_id, text, submission_id}` を渡します。このコマンドは `hermes_bridge.desktop_handoff` で、Hermes の実行環境で動きます。動きは次の 3 段です。
 
@@ -199,10 +200,10 @@ Hermes 以外の 3 製品にも画面アダプタを用意しました。実機�
 | --- | --- | --- | --- |
 | 自動新着検知 | 対応（`hab:notify run`） | 対応（`hab:notify run`） | 対応（`hab:notify run`） |
 | 製品の画面への受信通知・対応確認 | **非対応**。app-server には表示専用の通知がない。`thread/inject_items` はモデルが読む履歴に入るので使わない。通知はファイルと `display_command` で出す | 対応：status line（`hab-notify statusline`）。モデルには渡らない | **非対応**。ChatGPT に外から表示を出す公開の仕組みがない。通知はファイルと `display_command` で出す |
-| 既存セッションへの正式な引渡し | 実装済み・**実機未確認**：起動中の app-server に WebSocket で接続し、`thread/resume` → `turn/start` | 実装済み・**実機未確認**：channel（research preview）`notifications/claude/channel` | **非対応**（`unsupported`）。利用者が会話を開き、`hab_inbox {"include_read": true}` で読むよう頼む |
+| 既存セッションへの正式な引渡し | 実装済み・**実機未確認**：起動中の app-server に WebSocket で接続し、`thread/resume` → `turn/start` | **非対応**：同梱 channel は現在の会話を原子的に照合できないため `unsupported` | **非対応**（`unsupported`）。利用者が会話を開き、`hab_inbox {"include_read": true}` で読むよう頼む |
 | 利用者判断の保持とメッセージとの結び付け | 対応（共通の選択記録） | 対応（共通の選択記録） | 対応（共通の選択記録） |
 | 同一セッションからの処理・返信 | 未確認（そのスレッドが HAB MCP の `hab_reply` を使える設定が必要） | 未確認（そのセッションに HAB MCP が必要） | 手動（会話の中で `hab_inbox {"include_read": true}`・`hab_reply`） |
-| 開始の確認 | `turn/start` の結果に turn があれば `started` | 確認できない（Claude Code は event に応答しない）ので `queued` | — |
+| 開始の確認 | `turn/start` の結果に turn があれば `started` | 同梱 channel は `unsupported`。起動時の session ID だけでは引き渡さない | — |
 
 ### Codex
 
@@ -230,7 +231,7 @@ Codex には、他のプログラムから使う公開の口として app-server
 
 ### Claude Code
 
-Claude Code では、表示に status line、引渡しに channel を使います。
+Claude Code では表示に status line を使います。channel の配送部はありますが、同梱 CLI は現在の会話を検証できないため引渡しを拒否します。
 
 ```json
 "screen": {
@@ -243,21 +244,15 @@ Claude Code では、表示に status line、引渡しに channel を使いま�
 
 表示：Claude Code の設定 `statusLine` に `{"type": "command", "command": "node /abs/scripts/hab-notify.ts --config /abs/notify.json statusline", "refreshInterval": 15}` を書きます。Claude Code はセッションの JSON（`session_id` を含む）を標準入力に渡し、出力を画面下に表示します。モデルには渡りません。`statusline` は `session_id` が設定と一致するときだけ、選択待ち（`shown`）の最も古い通知の `display` 全文と、選び方（`<node> <scripts/hab-notify.ts> --config <この設定> decide <id> accept|later|decline <sender_id>`。そのまま実行できるよう、動いている node・スクリプト・設定ファイルの絶対パスを入れ、同じ message_id の送信者が 2 人いても選べるよう sender_id も付ける）、残りの件数を出します。14 行を超える通知は途中で切り、`hab-notify show <id> <sender_id>` で全文を読めることを示します（`show` はローカルの選択記録から `display` 全文を出すだけです）。「あとで」にした通知は出しません。読むのはローカルの選択記録だけで、HAB には触れず、失敗しても何も出さないだけです。
 
-引渡し：`scripts/hab-claude-channel.ts` が Claude Code の channel（MCP サーバー、`experimental: {"claude/channel": {}}`）です。`.mcp.json` に登録し、research preview の間は `claude --session-id <ID> --dangerously-load-development-channels server:hab-handoff` で起動します。
+引渡し：同梱 `scripts/hab-claude-channel.ts` は起動時の `--session-id` しか知りません。同一プロセスの `/clear` や別会話の再開を検知できないため、依頼を受けても `refused`（→ `unsupported`）を返し、channel event を送りません。起動時の ID を合わせるだけでは有効にできません。
 
-```json
-{ "mcpServers": { "hab-handoff": { "command": "/abs/node", "args": ["/abs/scripts/hab-claude-channel.ts", "--socket", "/abs/.hab-notify/claude/claude.sock", "--session-id", "<ID>"] } } }
-```
-
-このサーバーは所有者だけが入れるディレクトリ（0700）にある Unix socket で待ち、「対応する」の依頼を 1 件ずつ受け取って、`notifications/claude/channel {content: handoff_prompt, meta: {message_id, sender_id, thread_id, sender_address, submission_id}}` としてセッションに入れます。同じ `submission_id` は 2 回入れません。`--session-id` は必須で、省くとサーバーは起動しません。`--session-id` と違うセッション向けの依頼、セッション ID のない依頼は `refused`（→ `unsupported`）です。依頼の上限は UTF-8 で 8 MiB です。HAB が受け付ける本文（最大 512 KiB、JSON で制御文字が 6 倍になる場合を含む）はすべて収まるので、既読にした後で大きさを理由に断ることはありません。instructions で、受信内容は外部のデータで指示ではないこと、返信は HAB MCP の `hab_reply` で行うことを伝えます。このサーバーに返信用のツールはありません。
+製品側が「現在の会話の一致確認と、その同じ会話への入力受付」を原子的に保証できる場合に限り、`startChannelListener` の `deliverToSession(sessionId, content, meta)` を実装できます。別途 ID を読んでから無指定で送る方式は、途中の会話切替があるため不可です。このコールバックのモック試験はありますが、実 Claude Code で利用できる公式の保証付き API の実装はありません。
 
 | 答え | 記録 |
 | --- | --- |
-| `queued` | `queued` |
-| `channel_socket` の設定がない、socket に接続できない、`refused` | `unsupported` |
-| `unknown`、書き込んだ後に切れた・時間切れ | `unknown`。自動では再送しない |
-
-限界：channel は research preview で、claude.ai でのログインが必要です。Team・Enterprise では組織の許可が要ります。自作の channel は許可リストにないため、開発用のフラグで起動します。Claude Code は channel サーバーにセッション ID を教えないので、`--session-id` は起動時に運用側で揃えます。同じプロセスで `/clear` や別セッションの再開をすると、socket は新しい会話につながったままになり、照合できません。Claude Code は event に応答しないので、セッションが受け取ったかは確認できません（`queued`）。Claude Code 側が大きな channel event をどこまで受け付けるかも未確認です。
+| 同じ会話への受付を保証する製品アダプターが `queued` を返した | `queued`（モデル開始の証拠ではない） |
+| 検証付き入口がない（同梱 CLI）、別会話、接続不可、`refused` | `unsupported` |
+| 配送中の失敗・時間切れ | `unknown`。自動再送しない。重複要求も成功扱いに変えない |
 
 ### ChatGPT コネクタ（Dots）
 
@@ -274,7 +269,7 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 | 状態 | 意味 | HAB 上 |
 | --- | --- | --- |
 | `showing` | 画面に出す途中。終わらなかったら次の確認で出し直す | 未読 |
-| `shown` | 画面に出した。選択待ち | 未読 |
+| `shown` | 旧名称。通知を発行済み、選択待ち。実表示の証拠ではない | 未読 |
 | `later` | 「あとで」。`show-again` で同じメッセージを出し直せる | 未読 |
 | `declining` | 「対応しない」を受けて既読にしている最中。HAB に伝えられなかったとき、または途中で止まったときは、1 分たった後の確認で既読にし直して `declined` にする | 未読または既読 |
 | `declined` | 「対応しない」。何も始めない | 既読 |
@@ -301,3 +296,245 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 - ADR-017 の SDK 受信（保存してから ACK）と同じ受信者で並べて使わないでください。ACK された本文は `hab_peek` にも `hab_inbox` にも出ません。
 - Hermes Desktop では、表示（外部メッセージ欄）、カードのボタン、同じ会話への引渡し（`prompt.submit`）を実装しました。ボタンはローカル版 Hermes のブランチにあり、Hermes 本体には入っていません。2026-11-15 に Mac mini の既存 Desktop セッションで、Dots から届いた 3 通について「あとで」と「対応する」から `hab_reply` までを確かめました。CLI だけの往復は Desktop の合格に数えません。
 - Codex・Claude Code・ChatGPT コネクタ（Dots）の画面アダプタは、代わりの部品（偽の app-server、テスト用の MCP クライアント）でしか確かめていません。各製品の実機での表示・引渡し・返信は未確認です。
+
+## Product-neutral adapter contract and synchronization
+
+HAB owns delivery authentication, receipt lookup, decision persistence, expiry and the
+at-most-once handoff guard. A product adapter owns only display, user-choice collection,
+and admission into the explicitly bound existing conversation. Gemini CLI, Gemini App
+and a Gemini API application are different products: this contract does **not** claim a
+working native Gemini or Antigravity integration. Adding either later should require only
+the product-owned adapter, not a second delivery or decision engine. No native integration
+for either product is part of this change. The synthetic adapter contract tests demonstrate the
+extension point, not a real Gemini session.
+
+The local CLI provides a shared bridge for every configured screen:
+
+- `binding` returns `binding_id`. Pin this at explicit integration setup, not on every
+  click. The ID fences HAB endpoint, recipient, product and its configured session (and
+  configured product connection). It is not a credential or a permission grant.
+- `states` takes `{"binding_id":"...","keys":[{"sender_id":"...","message_id":"..."}]}`
+  on stdin. The response includes `scope:"requested"`, the exact requested `keys`, and
+  versioned `states` only for those retained rows. An absent row means authority is missing
+  for that requested key, not for any other card. Poll retained cards even when the notice
+  cursor is caught up. The Hermes legacy `action` with `action:"states"` accepts the same
+  optional `keys` alongside its existing binding fields and returns choices with each state.
+- `adapter-action` takes the same binding plus `sender_id`, `message_id` and `choice`
+  (`accept`, `later`, `decline`). Its bounded reply contains the decision, `revision`, and
+  a one-key snapshot with `scope:"requested"` and `keys:[the acted-on key]`, never the whole
+  database. Do not treat other cards absent from this reply as missing. Only invoke it for
+  the user's actual choice; receipt alone is not approval.
+
+Requested-key batches allow at most 50 unique keys, with each ID at most 512 UTF-8 bytes.
+An empty key list succeeds with an empty requested scope. Duplicate keys, oversized IDs
+or input over 64 KiB are rejected before a decision. State query replies including newline
+are limited to 60 KiB, below the Hermes command reader's 64 KiB ceiling. Oversized queries
+return only `state_response_too_large`, never a truncated success. A single pathological
+record may therefore remain unavailable; clients must not silently drop it. Keys omitted
+retain the legacy whole-store response shape, but large stores explicitly fail that byte
+limit. New integrations must request current card keys rather than repeatedly fetching all
+history. On a failed batch, mark only those keys unavailable; validate echoed keys/scope and
+preserve successful unrelated batches. A missing requested row is not permission to act.
+The adapter-action response is small by construction (one bounded key, fixed binding hash,
+state and revision, no body/choices), avoiding a post-decision whole-store size failure.
+
+Each snapshot entry carries a SQLite-backed monotonically increasing `revision`. Use
+`NoticeStateProjection` to keep immutable notice data separate from mutable decisions.
+Merge both poll and action responses by revision, never response arrival order. Older
+responses are ignored, same-revision disagreement is rejected, and another binding is
+rejected. A repeated identical notice is harmless; changing its immutable content is not.
+A failed/empty poll must not clear previously known decisions or enable action buttons.
+Pending button state is transient UI state, not a replacement for authoritative decisions.
+A missing decision has unknown status, not implicit permission to act.
+
+The existing Hermes `events` cursor remains an immutable-notice feed for compatibility;
+it is **not** a stream of decision updates. A Hermes consumer must poll the state API for
+already displayed cards even after reaching the end of that feed and apply the revision
+rules above. This HAB change does not update the separately maintained Hermes Desktop UI.
+Its real rendering, polling and same-session behavior require independent product tests.
+
+`shown` is a historical decision-state name meaning the adapter accepted publication.
+It is not proof of pixels rendered, user attention, or model execution. File publication
+is `published`; a product may claim `displayed` only with its actual display acknowledgement.
+Likewise `queued` requires confirmed admission into that bound session, not a file write.
+The JSONL transport cannot provide that guarantee and refuses handoff as `unsupported`.
+The Claude Code static channel session label cannot establish identity after `/clear` or
+resume; without an atomic product-side bound-session delivery implementation it refuses
+handoff. No fallback CLI, new session or address impersonation is permitted.
+
+### Safe migration and verification limits
+
+Binding identity is now connection/recipient/session specific. Opening an old decision
+store under a changed binding fails with `notices_target_mismatch`. Do not relabel that
+store or silently create an empty replacement: that could lose the guard against duplicate
+handling. Stop the old notifier, preserve its records, reconcile in-flight decisions and preserve terminal unknown outcomes,
+and explicitly configure the intended binding before migration. No running notifier,
+credential, profile, Desktop installation or deployment is changed by this PR.
+
+Rollback: this is a draft, with no automatic deployment or database rebinding. Before a
+manual rollout, stop only the owned notifier and take an offline consistent backup of its
+SQLite database and private screen file together with the configuration. Keep the old
+binding's decision history. Restoring an old database snapshot after new decisions have
+been made can replay previously handled mail, so it is not a safe routine rollback. If the
+new version has accepted any choices, keep it stopped and reconcile that history before
+restoring an older release; do not run old and new notifiers concurrently. The SQLite
+revision-column migration is additive, but the stricter identity format is deliberately
+not auto-rewritten back to a legacy target. JSONL and bundled static Claude handoffs that
+previously returned `queued` now return `unsupported`; this is an intentional safety
+restriction, not a claim of feature equivalence. Native integrations must provide actual
+same-session admission before enabling that capability again.
+
+The Hermes-specific legacy `action` request also requires the exact common `binding_id`
+from its event/setup, in addition to its existing reader fields. Requests without this
+connection fence are rejected, not guessed. Existing Hermes consumers need to propagate
+this field before enabling actions with this version. Old events without the configured
+HAB connection identity are not relabelled for a new connection.
+
+### Gemini の接続対象と残る製品側実装（2026-11-15 調査）
+
+「Gemini」は以下の別製品を区別します。共通契約のテスト成功を、実製品での通知表示・同じ既存会話への引渡し成功とは扱いません。
+
+| 対象 | 公式に確認できた入口 | この実装に必要なもの |
+| --- | --- | --- |
+| Gemini CLI を利用する既存 ACP ホスト／IDE | ACP の stdio 接続と session ID を指定した prompt。現在の接続をホストが所有する | 利用中のホスト（Zed、JetBrains、独自 UI 等）を特定し、そのホスト内に通知表示・判断操作・同じ既存接続への入力受付を実装する |
+| ターミナルの Gemini CLI | MCP ツール利用。組込み通知は作業完了・ユーザー操作待ち向け | 外部 HAB 通知カードを既存 TUI に追加し、既存会話へ入力する正式な入口は今回の調査で未確認。別の `gemini --acp`／resume 起動で代用しない |
+| Gemini Apps（Web／モバイル） | Custom Connected Apps の remote MCP、ツール結果に紐付けた MCP Apps UI | 外部から既存会話へのプッシュ通知・モデルを動かさないカード追加の入口は未確認。ユーザー起点のツール利用と区別する。公式利用条件・対象アカウントの確認も必要 |
+| Gemini API を使う独自アプリ | Interactions API の `previous_interaction_id` による会話継続 | その独自アプリが表示・判断・会話継続を所有する。Gemini Apps や既存 CLI の会話には接続したことにならない |
+
+Gemini CLI の ACP はクライアントとエージェント間の stdio 接続です。新しいプロセスで過去セッションを読み込むことは、利用者が現在見ているプロセス・画面への接続ではありません。実機の `@google/gemini-cli` 0.45.2 のインストール済みコードも読み取り確認し、prompt は当該プロセス内の session map を参照し、loadSession は保存履歴から session を構築することを確認しました。エージェント起動・認証・実メッセージ送信は行っていません。
+
+既存の `src/owner-integrations/acp-stdio.ts` は、明示的に許可された専用プロセスを起動し `session/new` で専用セッションを作る別用途の owner driver です。`fixedWake` は信頼済み固定文のみで、受信本文を流す入口ではありません。`acp-updates.ts` は進捗フレームの検証・制限用であり、通知カードの表示機構ではありません。この専用 owner driver を「既存会話アダプター」として流用しません。
+
+次の実装単位は新しい共通層ではなく、利用する製品ホスト内の薄い `AgentScreen` です。共通の binding・判断永続化・revision 同期を使い、ホストが通知を描画し、明示的な選択後に現在の接続／会話を照合して入力します。ホスト・製品・対象会話が未指定の段階では実接続を有効にしません。
+
+公式確認先：
+- [Gemini CLI ACP mode](https://geminicli.com/docs/cli/acp-mode/)（stdio と session 操作）
+- [Gemini CLI notifications](https://geminicli.com/docs/cli/notifications/)（作業完了・操作待ち通知であり HAB 到着通知ではない）
+- [Connected Apps MCP developer guide](https://developers.google.com/connected-apps/mcp)（ユーザーのクエリによる呼出し、ツール結果と UI resource の結合）
+- [Gemini Apps custom apps](https://support.google.com/gemini/answer/17209137?hl=en-JS)（確認時点では US・個人 Google アカウント・英語等の条件。利用可否を推測しない）
+- [Interactions API](https://ai.google.dev/gemini-api/docs/interactions-overview)（API アプリ独自の会話継続）
+
+### Explicit offline legacy-store copy migration
+
+`node scripts/hab-migrate-notices.ts inspect PLAN.json` validates an offline source and
+returns its fingerprint, binding labels and state counts (not message bodies). This does
+not infer the legacy connection/recipient, change configuration or authorize migration.
+The plan contains `source`, a new `destination_directory`, `expected_source_target`, and
+`destination_binding` (`product`, `connection_id`, `recipient_id`, `session_id`, optional
+`profile`). Copy `destination_binding` from `hab-notify --config <new-config> binding`, whose
+`binding_id` must equal the migration report destination target. Do not guess product names
+or connection strings. This read-only command does not open the old decision store. Source and destination parent must be canonical,
+owner-private paths. Symlinks, a busy writer, pending WAL/rollback journal, or unsettled states (`showing`,
+`accepting`, `accept_waiting`, `declining`) are refused. Reconcile those states
+without deleting their duplicate guards; this tool does not supply that reconciliation.
+An existing `unknown` outcome is terminal and may be copied unchanged, retaining its
+revision, decision timestamp and original message. It remains unknown, not a successful
+handoff, and migration never retries it. Reopening/checking or selecting accept/later/decline
+does not re-admit that retained record or mark it read again.
+
+Only after an operator independently verifies the original connection, recipient and
+existing conversation, stops all old notifiers, and commits not to restart that source:
+add the inspected `expected_source_sha256` to the plan and supply a separate attestation
+file containing both `notifiers_stopped_and_source_will_not_restart: true` and
+`old_connection_recipient_and_existing_session_verified: true`. Run
+`node scripts/hab-migrate-notices.ts migrate PLAN.json ATTESTATION.json`.
+These are operator assertions, not facts proven by old database contents. An exclusive
+SQLite transaction fences concurrent writers during copying; it cannot stop an old binary
+from reopening the source after the command exits. Maintaining the offline cutover is an
+operator prerequisite, not an automatic safety guarantee.
+
+For a legacy Hermes store, `hermes_screen` is required: `source` is the paired private
+JSONL file, `legacy_binding` is the exact old tuple `[session_id, profile,
+backend_namespace, profile_scope, receiver_id]`, and `expected_source_sha256` is the
+screen fingerprint from inspection. The database and screen must come from the same
+offline source and verified binding. Migration refuses missing required notices,
+unsupported missing-decision records, payload or binding disagreement, incomplete screen
+records and changed fingerprints.
+Do not generate a replacement empty feed or bind unrelated historical messages.
+
+The decision store's seven-day retention pruning can leave older Hermes JSONL notices
+without a corresponding database decision. Legacy JSONL has no structured expiry, so a
+missing row is **not proof of legitimate expiry**. Such complete, internally consistent
+legacy notices and their associated historical state lines are quarantined in place:
+the converted feed preserves their original bytes, old binding, line order and cursor
+positions. They are not rebound, inserted back into the decision database, or displayed
+by the new binding-aware UI. State-only records without a matching notice, notices with
+a different binding, and conflicting duplicate payloads are refused; retained database
+rows must still match their notice payload. The original feed and database backups are
+kept unchanged. Inspection and the manifest report `screen_quarantined_notice_count`
+(unique notice keys), `screen_quarantined_notice_lines` (notice-line count), and
+`screen_quarantine_reason: "unverifiable_missing_decision"`; review these counts before
+cutover rather than treating quarantine as verified expiry. This prevents old-feed
+redisplay only: it is **not a tombstone** that rejects future HAB redelivery of a key
+whose database record was pruned.
+The SQLite transaction does not lock JSONL writers. Inode and fingerprint checks reject
+observed changes, but cannot prevent a write after the final check. All old feed writers
+must remain stopped under the explicit offline attestation throughout migration/cutover.
+
+The command atomically publishes one private new directory containing `source.sqlite`
+(unaltered database backup), `notices.sqlite` (rebound copy preserving decisions/revisions),
+`source-screen.jsonl` (original Hermes feed), `screen.jsonl` (matching converted feed),
+and `manifest.json` (fingerprints and attestation). Screen files apply to Hermes migration;
+other supported store-only migrations omit them. Neither source is overwritten. Point the
+new configuration at the paired `notices.sqlite` and `screen.jsonl` from this same bundle,
+not at a mixed old/new pair. Stop all producers and consumers during cutover. Restart
+Hermes Desktop or explicitly clear the affected external-message feed/cache and its paging
+cursor before enabling the new reader: replacing files alone does not remove cached cards
+with the old binding. This cache reset is an operator cutover step, not performed by the
+migration command. Keep the old feed and database together as evidence; do not run them.
+
+Repeated execution refuses an existing destination rather than replacing later decisions.
+A crash before publication can leave a private staging directory or `.migration-lock`;
+inspect and reconcile that attempt before clearing it, never blindly rerun another path.
+No automatic launch, deployment, credential edit or rollback occurs. Do not point a
+notifier at the backup. Never restore the old snapshot after new choices without explicit
+reconciliation: a restored snapshot could execute a previously handled message again.
+
+### Hermes Desktop companion status (2026-11-15)
+
+A separate, unapplied Hermes companion commit `99dc5e1aef21e719e87b004d3093376ac2734708`
+was prepared against `b189f28f7462e1cbb568db6878f096277048c079` of the
+`hab-external-message-actions` branch. It is not included in this HAB repository and is
+not an installed release. It propagates exact binding IDs through decisions and retained-card
+state queries, uses revision-monotonic merges, and disables actions when authoritative
+state is unavailable. It preserves the current reply-specific choices and rejects delayed poll
+responses; a fresh complete snapshot can restore temporarily unavailable actions. A complete empty snapshot differs from a failed query; immutable
+notice identity is checked independently of mutable decision state. The configured trusted
+action command must enforce the full connection/recipient/session binding (the HAB command
+does); the UI cannot prove a third-party command's identity enforcement.
+
+The companion's focused Python tests (69), UI tests (42), Desktop typecheck, frontend lint
+and all 14 canonical repository checks passed in an isolated checkout. The full UI suite
+was deliberately stopped for host load, and the full Python suite/native Desktop acceptance
+were not performed. Apply the separately reviewed patch only to an independent matching
+checkout; no upstream publication, installed-app modification, real-agent start or native
+message delivery was performed. Coordinated release and the six manual gates remain
+necessary; a companion commit is not evidence that the live Desktop has these changes.
+
+The paired database/feed migration and Desktop cache cutover described above have not
+been applied to the live installation by this change. Earlier Desktop acceptance results
+do not validate this new release, two-choice reply cards, or the new binding migration.
+
+The current companion revision completed a production build and unsigned
+mac-arm64 packaging (both exit 0), with a clean `99dc5e1aef21e719e87b004d3093376ac2734708` source stamp (`dirty:false`).
+Layered-icon generation warned that Xcode was unavailable, and notarization was intentionally
+skipped. This proves build/package creation only: the packaged native application was not
+launched, installed or used for a real message, and no signing/notarization acceptance is claimed.
+
+The new companion uses `POST /api/sessions/{session_id}/external-messages/query`
+with `{after, retained_keys}` (at most 50 retained keys and a 16,000-byte serialized
+retained-key budget). The legacy GET route remains. Retained keys include the full card
+binding; newly paged events and retained cards are grouped by binding and queried from HAB
+in batches of at most 50, also constrained by a 12,000-byte key-array budget. The backend
+requires exact `scope:"requested"`/`keys` echo and rejects foreign or duplicate state rows.
+It reports `decision_checked_keys` and `decision_error_keys`, each keyed by binding,
+sender and message, so one failed batch does not disable every unrelated card. Missing
+authority is applied only within checked keys; other cards are not missing merely because
+they were not requested in this poll. A decision POST preflights only its own key and
+rechecks the existing conversation before forwarding the user's choice. These are isolated
+implementation/test results, not evidence that the installed Desktop uses this contract.
+The latest companion also preserves compact UTF-8 JSON when forwarding retained keys,
+so added serializer whitespace cannot spuriously exceed the key-array budget. Build/package
+verification for `99dc5e1aef21e719e87b004d3093376ac2734708` completed as recorded above,
+superseding the preceding `15f2267` package. No package was launched, installed,
+deployed or notarized.

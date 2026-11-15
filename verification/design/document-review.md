@@ -392,3 +392,191 @@ ADR-018 maintenance (2026-11-13) re-read every changed document diff since main:
 ## A2A Task store on node:sqlite (2026-11-13)
 
 Driver maintenance re-read the changed documents. `docs/a2a/a2a-sdk-preview.md` drops `better-sqlite3` and `@types/better-sqlite3` from its fixed dependencies and says the SDK's `DatabaseTaskStore` runs on Kysely over `node:sqlite` with no native addon; its row meaning is unchanged. `docs/history/testing/a2a-bounded-performance.md` keeps the recorded runs' driver statement and adds that a new run would also wrap SDK `all` and `run` calls; HAB-V11 was re-cited after rereading lines 13–21, with no change to its statement or scope. `verification/design/README.md` records the change. No requirement, conflict or adopted statement changes.
+
+## Product-neutral notification adapters (2026-11-15)
+
+Reread the arrival-notifier design and the shared CLI, SQLite notice store, projection,
+binding identity, JSONL/Hermes/product screens and Claude channel changes. The owner’s
+requested separation keeps authentication/delivery/decision persistence in HAB and only
+product display, choice collection and same-conversation admission in product adapters.
+The new local `binding`, `states` and `adapter-action` contract supplies versioned state
+independently of the immutable notice cursor. A stale poll cannot override a newer action;
+changed immutable content or another binding is rejected. Missing state is unknown, not
+permission to act. Existing stores under a different connection/recipient/session identity
+must not be silently relabelled or discarded.
+
+This maintenance does not lower the original same-session requirement: publication is not
+a displayed card, and a JSONL write is not queued model input. JSONL therefore refuses
+handoff; Claude’s static startup session label is insufficient after `/clear` or resume,
+so the default channel path refuses without a product-side atomic bound-session delivery
+capability. Gemini examples are synthetic extension-contract tests, not a Gemini product
+implementation. The separately maintained Hermes UI has not gained snapshot polling from
+this HAB-only change. All native rendering, approval and same-session acceptance gates
+remain manual and unverified by this maintenance run.
+
+The rollout/rollback paragraph was also reviewed: no automatic deployment, backup only
+after stopping the owned notifier, no concurrent old/new notifiers, and no blind restore
+of a pre-decision snapshot that could replay completed handling. Additive revision columns
+do not authorize undoing binding identity or re-enabling unverified queued handoff.
+
+Follow-up boundary review: legacy Hermes action requests must carry the common binding_id
+and event files retain the HAB connection identity. Missing old bindings are refused rather
+than relabelled; existing consumers must explicitly migrate. SQLite checks an existing
+binding before schema/journal migration, with unchanged-schema/data regression coverage.
+
+## Offline copy migration and Gemini product boundaries (2026-11-15 follow-up)
+
+Read the appended Gemini product matrix and its linked official reference list. The
+documented CLI ACP host, standalone TUI, Gemini Apps and API application are different
+connections, not interchangeable routes into an existing conversation. Existing dedicated
+ACP owner processes create their own sessions and are not reused as an existing-session
+notification adapter. This is a capability/limitation classification, not native acceptance.
+
+Read the offline migration module, strict CLI plan/attestation schema and regression tests.
+The source is not rebound in place: an exclusive transaction fences writers while a
+private new bundle is copied, verified and published. Pending WAL or rollback journals,
+unknown/in-flight decisions, mismatched fingerprints/bindings, unsafe paths and existing
+destinations are refused. The original backup and all settled decision fields/revisions
+are preserved; a pre-revision legacy schema retains its queued decision and duplicate guard.
+Unexpected JSON/IO failures are sanitized, not echoed with private payloads or paths.
+A store cannot prove its missing old recipient/backend identity, and the exclusive lock
+cannot prevent an old binary reopening after completion. Explicit operator verification
+and permanently keeping the old source offline remain prerequisites, not tested facts.
+
+The binding CLI now returns destination_binding from the same normalized object used to
+compute its actual target hash (including Hermes connection tuple), rather than requiring
+an operator to reconstruct it. No token or message content is included. Tests check the
+returned object hashes back to binding_id. No actual store migration, configuration
+cutover, live user approval or Gemini/Hermes product test is performed by these checks.
+
+## Separately maintained Hermes companion status
+
+Reviewed the appended companion-status section: it names an unapplied external Hermes
+commit and exact base, not a HAB-tree implementation or installed release. It documents
+retained-card binding/revision synchronization and unavailable-state action refusal, with
+focused Python/UI and canonical-check evidence reported by the separate implementation
+review. This HAB maintenance did not independently run that external checkout. Full UI
+testing was stopped for host load; full Python and actual Desktop acceptance remain
+unverified. No automatic check here is promoted to native parity, deployment or real
+message admission; all six manual gates and coordinated-release prerequisites remain.
+
+## Main reply choices and paired Hermes migration (2026-11-15 integration)
+
+Semantically reconciled main `6e26238` (#217 Gemini planning and #219 reply cards)
+with the product-neutral adapter contract. A linked reply offers only `accept` (会話に渡す)
+and `later`; an ordinary request retains its three choices. The host supplies choices,
+the notifier rejects disallowed decline, and older messages without choices retain their
+legacy default. This does not weaken connection/recipient/session binding, monotonic
+revisions or the publication-versus-admission distinction. The F27 requirement and its
+source citations retain both changes, rather than selecting one side of the merge.
+
+Reviewed the paired offline migration implementation and synthetic regressions. Legacy
+Hermes cannot migrate the decision database alone: the matching private JSONL feed is
+required, since settled shown/later records are not automatically re-published. A new
+atomic bundle contains both original backups and converted DB/feed. Notice binding is
+changed only after explicit old-identity attestation; all line order and repeated notices
+remain, preserving cursor indexes and event IDs. DB message JSON, including reply choices,
+settled decisions, revisions and duplicate guards is retained. Unknown schema or lines,
+unmatched payload/binding, absent required cards, unfinished records, oversized feed and
+observed fingerprint/inode races fail closed. JSONL has no cooperating exclusive lock:
+writers must remain offline; the final fingerprint check is not prevention of a later write.
+
+The documented Desktop cache/cursor reset is a controlled future cutover prerequisite,
+not part of the migration tool or a step executed by this maintenance. No source data,
+real agent, service, configuration or installed Desktop was changed. Prior Desktop trials
+and the separate companion's focused tests do not prove native compatibility of this
+release, two-choice rendering or live migration. All six manual gates remain unverified.
+The js-root mapping includes these regression files; no aggregate success is claimed by
+this semantic maintenance entry.
+
+## Retention-pruned Hermes history quarantine (2026-11-15)
+
+Read SQLiteNotices.maintain and the actual HermesDesktopScreen JSONL writer: the database
+prunes every state after the expiry retention interval, while the append-only screen feed
+retains notices. Unlike the generic JSONL screen, the legacy Hermes notice has no
+structured expires_at. Missing rows therefore cannot be classified as proven legitimate
+expiration from a display string or timestamp. Migration now validates schema, old binding
+and repeated immutable content, and keeps such notices verbatim under their OLD binding.
+The new reader skips them while advancing over their original indexes. Related state lines
+are retained even before a matching notice; a state-only orphan remains an error. A live
+shown/later DB row still requires its matching notice, and known-row payload mismatches
+remain rejected. No missing decision is recreated and no body is admitted to a new session. Quarantine
+is not a durable tombstone for possible future HAB redelivery of a pruned key.
+
+Inspection and the manifest distinguish quarantined unique notices from repeated notice
+lines and label the reason unverifiable_missing_decision. They contain no message bodies.
+DB/feed fingerprints reviewed before execution still reject intervening changes. Synthetic
+regressions exercise actual retention pruning, source/backup preservation, mixed live and
+quarantined event indexes, malformed/mismatched history and the absence of resurrected
+rows. New UI omission is intentional quarantine, not data deletion or native rendering
+proof: original backup/feed history remains private for explicit reconciliation. The live
+installation, operator review and cutover have not been exercised; all six manual gates
+remain unverified. This review records scope, not fresh aggregate execution success.
+
+
+## Terminal unknown preservation and isolated packaging evidence
+
+Rechecked notifier transition guards: unknown is a terminal uncertain outcome, not an
+in-flight choice. The migration now copies it unchanged instead of requiring reconciliation
+as if it could retry. Generic and paired Hermes synthetic tests reopen and check twice,
+then request accept/later/decline and showAgain without a new show, handoff or markRead;
+state, revision, decided_at and message remain preserved. Showing, accepting, accept_waiting
+and declining still block migration. Unknown is never relabelled as success.
+
+The companion status now reports isolated production-build and unsigned mac-arm64 package
+success with a clean source stamp. Xcode layered icons were unavailable; notarization was
+intentionally skipped. This is reported external build evidence, not native runtime,
+installation, real delivery or signing/notarization acceptance. Manual gates stay open.
+
+## Bounded requested-key state queries
+
+Reviewed the 64 KiB Hermes command boundary against the retained HAB decision store.
+Whole-store replies can exceed that bound with ordinary accumulated history. Generic
+states and Hermes action/states now accept at most 50 unique keys, each ID at most
+512 UTF-8 bytes, with a 64 KiB input and 60 KiB output budget. Responses explicitly echo
+requested scope/keys; absent rows concern only those keys, never unrelated retained cards.
+Legacy omitted-key calls keep their shape but reject oversized output without partial
+success. Empty requested batches are valid. No query invokes HAB or changes decisions.
+
+The new generic adapter-action returns only its affected key's state/revision plus the
+requested-scope metadata. Its IDs are validated before effects, and bounded fields exclude
+message bodies/choices and all other DB rows, so accumulated history cannot cause an
+oversized response after a decision. The reusable projection merges returned rows without
+clearing unrelated records. Regression fixtures contain 3000 retained rows, request one
+or fifty keys without calling all(), validate missing/unrequested separation, Unicode
+byte/count limits, binding fences, duplicate rejection and oversized choice-label errors.
+This is synthetic transport/contract evidence, not actual native UI or deployment proof.
+
+
+## Updated bounded-query Hermes companion
+
+Read the external companion at 15f2267c730d68be24f4954c61620d32f9632e22: its
+POST query accepts retained_keys without long query URLs, scopes bounded HAB calls to
+retained/new card keys and checks exact requested-key echo. The response distinguishes
+per-key checked/error authority; action preflight queries only the selected key and
+rechecks conversation identity. Documentation now names reported Python65/UI42 and the
+unchanged 14 canonical checks on this revision, preserving the exact b189f28 base.
+Earlier f195278 production/unsigned-package evidence remains labelled historical; the
+new build is pending, and no native rendering/approval/installation gate is satisfied.
+
+
+Final companion packaging follow-up: reported production-build and unsigned mac-arm64
+packaging both exited 0 for 15f2267c730d68be24f4954c61620d32f9632e22 with dirty:false.
+The current documentation now supersedes the prior companion package and removes pending
+status. This does not assert native execution, installation, deployment or notarization;
+none occurred. Manual gates remain unverified. Earlier pending notes are historical.
+
+
+Companion compact-JSON follow-up: read commit 99dc5e1aef21e719e87b004d3093376ac2734708.
+POST query forwarding now uses compact separators with ensure_ascii=False, matching the
+UTF-8 retained-key budget without whitespace inflation. Reported focused Python tests are
+69, UI42 and canonical14 unchanged. Documented current source advances while 15f2267
+package evidence remains historical; new-revision build/package is pending. No native
+runtime or manual acceptance claim changes.
+
+
+Final compact-JSON companion package evidence: production build and unsigned mac-arm64
+packaging for 99dc5e1aef21e719e87b004d3093376ac2734708 both exited 0 with dirty:false,
+as reported and checked by the coordinating thread. Current docs remove pending and
+supersede the earlier package evidence. No actual launch, installation, deployment or
+notarization occurred; manual gates remain unverified. No code changes accompany this update.

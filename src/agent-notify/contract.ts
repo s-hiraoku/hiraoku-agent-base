@@ -6,6 +6,7 @@
  * request after the user chose 対応する.
  */
 import { z } from "zod";
+import type { AgentBinding } from "./binding.ts";
 import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
 import type { IncomingChoice } from "../messaging/incoming-notice.ts";
 
@@ -74,12 +75,23 @@ export interface NotifierHab {
  */
 export type HandoffResult = "started" | "queued" | "unsupported";
 
+/** Publication is not evidence of rendering. Only a product render acknowledgement may say displayed. */
+export type PublicationResult = "published" | "displayed";
+export interface ScreenCapabilities {
+  publication: "file" | "product";
+  /** Whether the adapter can obtain a product render acknowledgement. */
+  display_acknowledgement: boolean;
+  handoff: "unsupported" | "bound-session";
+}
+
 /** The per-agent adapter. Both calls address the one session this notifier is bound to. */
 export interface AgentScreen {
   /** A label for logs and the decision record, such as `hermes-desktop:<session>`. */
   readonly target: string;
-  /** Shows the notice in that session. Must not start model work. */
-  show(message: PeekedMessage): Promise<void>;
+  readonly capabilities?: ScreenCapabilities;
+  readonly binding?: AgentBinding;
+  /** Publishes without model work. Legacy void means no display evidence, not displayed. */
+  show(message: PeekedMessage): Promise<PublicationResult | void>;
   /** Gives the user-approved request to that session. */
   handoff(message: PeekedMessage): Promise<HandoffResult>;
   /** Optional: tells the user what happened after a decision (for example `unsupported`). */
@@ -88,7 +100,8 @@ export interface AgentScreen {
 
 /**
  * Where one message stands:
- * - `shown`: on the user's screen, waiting for a choice (still unread in HAB).
+ * - `shown`: legacy name for successful publication, waiting for a choice (still unread in HAB).
+ *   It is NOT proof that a product rendered the notice or the user saw it.
  * - `later`: the user chose あとで; it stays unread and can be shown again.
  * - `declining`: the user chose 対応しない and it is being marked read. If HAB could not be
  *   told, or the notifier stopped here, a later check retries the (idempotent) mark-read.
@@ -118,6 +131,8 @@ export type NoticeState =
   | "expired";
 
 export interface NoticeRecord {
+  /** Monotonic version of mutable state, never a wall-clock ordering token. */
+  revision: number;
   message_id: string;
   sender_id: string;
   target: string;

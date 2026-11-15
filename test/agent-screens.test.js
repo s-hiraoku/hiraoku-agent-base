@@ -34,7 +34,7 @@ import {
   submissionId,
   websocketConnect,
 } from "../src/agent-notify/index.ts";
-import { main } from "../scripts/hab-notify.ts";
+import { main, boundScreen } from "../scripts/hab-notify.ts";
 
 // ADR-021 adapters for Codex, Claude Code and ChatGPT connectors (Dots). Each shows the
 // notice without starting model work and hands the request only to its bound session.
@@ -387,8 +387,9 @@ test("Claude Code: the channel delivers the approved request once, only for the 
   const server = await startChannelListener({
     socket,
     session_id: "sess-1",
-    deliver: async (content, meta) => {
+    deliverToSession: async (_session, content, meta) => {
       events.push({ content, meta });
+      return "queued";
     },
   });
   t.after(() => server.close());
@@ -439,7 +440,7 @@ test("Claude Code: a failed delivery is unknown; an unsafe socket directory or l
   const server = await startChannelListener({
     socket,
     session_id: "s",
-    deliver: async () => {
+    deliverToSession: async () => {
       throw new Error("closed");
     },
   });
@@ -485,8 +486,9 @@ test("Claude Code: the channel takes any message HAB accepts, counted in bytes",
   const server = await startChannelListener({
     socket,
     session_id: "s",
-    deliver: async (content) => {
+    deliverToSession: async (_session, content) => {
       events.push(content);
+      return "queued";
     },
   });
   t.after(() => server.close());
@@ -600,7 +602,7 @@ test("hab-claude-channel refuses to start without --session-id", async (t) => {
   assert.equal(existsSync(join(root, "c.sock")), false);
 });
 
-test("hab-claude-channel is a Claude Code channel: it declares claude/channel and emits one event", async (t) => {
+test("hab-claude-channel is a Claude Code channel: it declares claude/channel but refuses unverified session delivery", async (t) => {
   const root = dir(t);
   const socket = join(root, "claude.sock");
   const child = spawn(
@@ -640,13 +642,8 @@ test("hab-claude-channel is a Claude Code channel: it declares claude/channel an
       { session_id: "sess-1", channel_socket: socket },
       message("m1"),
     ),
-    "queued",
+    "unsupported",
   );
-  const event = await mcp.next(
-    (m) => m.method === "notifications/claude/channel",
-  );
-  assert.equal(event.params.content, "prompt m1");
-  assert.equal(event.params.meta.message_id, "m1");
 });
 
 test("ChatGPT connector (Dots): the notice is shown outside ChatGPT and 対応する is unsupported", async (t) => {
@@ -695,7 +692,7 @@ test("hab-notify statusline and the new screen types in the config", async (t) =
   });
   const store = new SQLiteNotices(
     join(root, "claude-code.sqlite"),
-    "claude-code:sess-1",
+    boundScreen(JSON.parse(readFileSync(claude, "utf8"))).target,
   );
   store.insertShowing(message("m1"), Date.now());
   store.transition(
@@ -793,4 +790,46 @@ test("hab-notify statusline and the new screen types in the config", async (t) =
     display_command: { command: ["notify-send"], cwd: root },
   });
   await assert.rejects(main(["--config", bad, "list"], () => {}));
+});
+
+test("Claude channel refuses a static startup label and a changed live conversation", async (t) => {
+  const root = dir(t);
+  let calls = 0;
+  const staticSocket = join(root, "static.sock");
+  const staticServer = await startChannelListener({
+    socket: staticSocket,
+    session_id: "s",
+    deliver: async () => {
+      calls++;
+    },
+  });
+  t.after(() => staticServer.close());
+  assert.equal(
+    await claudeCodeHandoff(
+      { session_id: "s", channel_socket: staticSocket },
+      message("static"),
+    ),
+    "unsupported",
+  );
+  assert.equal(calls, 0);
+  let current = "s";
+  const socket = join(root, "bound.sock");
+  const server = await startChannelListener({
+    socket,
+    session_id: "s",
+    deliverToSession: async (expected) => {
+      if (current !== expected) return "refused";
+      calls++;
+      return "queued";
+    },
+  });
+  t.after(() => server.close());
+  const binding = { session_id: "s", channel_socket: socket };
+  assert.equal(await claudeCodeHandoff(binding, message("before")), "queued");
+  current = "after-clear";
+  assert.equal(
+    await claudeCodeHandoff(binding, message("after")),
+    "unsupported",
+  );
+  assert.equal(calls, 1);
 });

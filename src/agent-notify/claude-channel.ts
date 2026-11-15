@@ -25,7 +25,17 @@ export interface ChannelListenerOptions {
    */
   session_id: string;
   /** Sends one channel event; resolves once written to Claude Code. */
-  deliver: (content: string, meta: Record<string, string>) => Promise<void>;
+  deliver?: (content: string, meta: Record<string, string>) => Promise<void>;
+  /**
+   * Product-owned atomic admission: verify the CURRENT conversation and enqueue in that
+   * same operation. A startup label or a separately sampled session ID is insufficient.
+   * Without this capability, fail closed. The bundled channel CLI cannot supply it.
+   */
+  deliverToSession?: (
+    sessionId: string,
+    content: string,
+    meta: Record<string, string>,
+  ) => Promise<"queued" | "refused">;
 }
 
 function parse(line: string): ChannelRequest | undefined {
@@ -94,7 +104,7 @@ export async function startChannelListener(
     throw new MessagingError("channel_session_required");
   checkDirectory(options.socket);
   await clearStale(options.socket);
-  const delivered = new Set<string>();
+  const delivered = new Map<string, "queued" | "unknown">();
   const server = createServer((connection) => {
     // Counted in bytes, not string length, so the limit matches the request as written.
     const chunks: Buffer[] = [];
@@ -120,15 +130,29 @@ export async function startChannelListener(
       const request = parse(Buffer.concat(chunks).toString("utf8"));
       if (!request || request.session_id !== options.session_id)
         return answer("refused");
+      if (!options.deliverToSession) return answer("refused");
       // A repeat is never delivered twice; it was queued the first time.
-      if (delivered.has(request.submission_id)) return answer("queued");
-      delivered.add(request.submission_id);
+      if (delivered.has(request.submission_id))
+        return answer(delivered.get(request.submission_id)!);
+      delivered.set(request.submission_id, "unknown");
       try {
-        await options.deliver(request.text, {
-          ...request.meta,
-          submission_id: request.submission_id,
-        });
-        answer("queued");
+        const result = await options.deliverToSession(
+          request.session_id,
+          request.text,
+          {
+            ...request.meta,
+            submission_id: request.submission_id,
+          },
+        );
+        if (result === "refused") {
+          delivered.delete(request.submission_id);
+          return answer("refused");
+        }
+        delivered.set(
+          request.submission_id,
+          result === "queued" ? "queued" : "unknown",
+        );
+        answer(delivered.get(request.submission_id)!);
       } catch {
         // It may or may not have been written to Claude Code.
         answer("unknown");

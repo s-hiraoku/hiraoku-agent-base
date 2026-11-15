@@ -192,10 +192,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/arrival-notifier.md",
-      "sha256": "e0246e1529fdb4a3918a50563b4a5f31b1b909507879aa1b944f9d0adfc5c6ee",
+      "sha256": "ce43ae133167e7457c39672a58144227419599db5391d7bd00584657b927b9e3",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Arrival notice recipe (ADR-021): hab_peek at /mcp/delivery returns unread mail with read_at null, the owner's display (sender, 受信内容, どうしますか？ 1. 対応する 2. あとで 3. 対応しない) and a tag-framed handoff_prompt, leaving the sender's status pending and hab_inbox still new; hab:notify check shows each message once through the JSONL screen; later keeps it unread and show-again re-shows it; accept marks it read and writes exactly one handoff (queued), a repeat is unchanged; decline marks read and starts nothing even for a body claiming approval; the bound session replies with hab_reply. Gotchas: peek offers only unread mail, do not combine with the SDK receive path for one address, a JSONL screen cannot confirm a start. Synthetic identities only. Also product-screens (codex, claude-code, chatgpt-connector: no handoff line, display_command, Dots always unsupported), claude-statusline (bound session only, cut display pointing to hab:notify show), claude-channel (one notifications/claude/channel per submission, required --session-id, 8 MiB byte limit) driven with a stand-in listener, and codex-turn (unit tests only; the connection is inside the timeout). A pass proves only the HAB side.",
+      "summary": "Maintained arrival-notifier recipe, rereviewed 2026-11-15: synthetic HAB peek/choice/expiry and token recovery with JSONL publication; accept is unsupported and emits no handoff. Static Claude channel refuses; only explicit product-owned atomic same-session delivery can admit work. Hermes events remain immutable and state responses add revision. Real-product reply verification is explicitly separate and must not be simulated using CLI identity. Existing Codex/mock transport tests remain synthetic; file publication is not displayed UI or queued work. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes.",
       "read_scope": "full"
     },
     {
@@ -801,10 +801,10 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "7fc79e7d57e93d9342ede1b55ca488bd5c5ff8437e9090493a12ceb6da8539fc",
+      "sha256": "6c31f4fc2b7989e1d50c83d432120db646c8f3034e4a103e5b3feedc10856499",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Arrival notifier (ADR-021): HAB owns finding unread mail without reading it (hab_peek), the display and handoff texts, the decision record, once-only handoff and expiry; each agent supplies an AgentScreen (show without model work, handoff to the same bound session returning started, queued or unsupported, never another session or a CLI under the same address). States showing (re-shown after an interrupted display), shown, later, declined, accepting, started, queued, unsupported, unknown, unavailable (HAB no longer offers it, so nothing is handed off) and expired; the owner-only (0600) store refuses a readable file; unknown and unsupported are never retried. Hermes Desktop: HermesDesktopScreen plus the hab-notify events reader feed Desktop's display-only external-message panel (cursor-v1, handoff_state pending, matching stored_session_id), with no store or HAB access; after 対応する a configured hermes_bridge.desktop_handoff command admits the request into the same saved conversation through Hermes's own owner client (session.resume, prompt.submit), with queued/refused(unsupported)/unknown answers and no resend. Limits: HAB read is not human consent or completion; do not combine with the SDK receive path; in-Desktop choice buttons, a real-gateway handoff test and an existing-Desktop-session acceptance are not done. Codex, Claude Code and ChatGPT connector (Dots) screens (ProductScreen: the same owner-only notice/state lines, never a handoff line, plus an optional trusted display_command): Codex has no display-only notice (thread/inject_items would enter model history), so it is shown outside Codex and 対応する connects to the running app-server WebSocket (capability token as bearer) for initialize, thread/resume, turn/start (started; refusals or a timeout before turn/start, including the connection, unsupported; a break after it unknown), never spawning an app-server or codex exec. Claude Code shows the notice in the status line (hab-notify statusline, bound session_id only, cut display pointing to hab-notify show) and hands off through a channel server (hab-claude-channel, research preview, owner-only Unix socket, required --session-id, once per submission_id, 8 MiB byte limit that holds any accepted message; queued only, since Claude Code does not acknowledge events). ChatGPT connectors have no public way to show or start work from outside, so handoff is always unsupported and the user asks Dots to read it with hab_inbox include_read. All three are unverified on the real products.",
+      "summary": "Arrival notifier (ADR-021), rereviewed 2026-11-15: HAB owns delivery authentication, unread lookup, user decision persistence, expiry and at-most-once handoff. Product adapters own publication, user choice and same-existing-session admission. Shared local binding/states/adapter-action commands fence connection, recipient, product and session; immutable notice pages and mutable SQLite revisions are separate, stale responses cannot override newer state, and absent state is unknown. shown is a legacy publication state, not rendered UI proof. JSONL refuses handoff; the static Claude channel refuses without product-owned atomic current-session admission. No fallback session or CLI. Existing stores must be preserved and reconciled rather than silently relabelled or discarded during binding migration. Hermes UI polling/rendering is a separate implementation; prior documented product acceptance is historical evidence, not verification of this change. Gemini CLI/App/API are distinct and not implemented here; synthetic adapter contracts are not native integration. Codex/Claude/ChatGPT actual product acceptance remains separately unverified. Rollback requires stopped owned notifier and consistent offline backup; restoring pre-decision state can duplicate handling, so reconcile decisions first and never run old/new concurrently. Additive schema does not justify reverting the stricter binding identity. Legacy Hermes action now also requires the common binding_id; old events without HAB connection identity are refused, and independent Hermes consumers must migrate before enabling actions. Follow-up: official-reference Gemini product matrix distinguishes existing ACP host, standalone CLI, Gemini Apps and API application without native acceptance. Explicit offline inspect/migrate CLI copies to a new private bundle, keeps original backup and decisions/revisions, requires source fingerprint/target plus operator-verified old identity/offline attestation, refuses WAL/rollback recovery and unsettled states, and never deploys or restarts. Existing destinations are not overwritten. binding returns exact normalized destination_binding so migration does not require guessed tuples. CLI unexpected errors are sanitized; source shutdown/identity remain operator prerequisites. Companion status identifies external unapplied Hermes commit f19527817a251ed37432d1bd87d6c2fd934d7eed on exact base b189f28f7462e1cbb568db6878f096277048c079, not included or installed by HAB. Reported focused Python69/UI42/typecheck/lint/canonical14 evidence is separate; full UI was stopped for host load, full Python/native Desktop were not performed. This maintenance does not independently prove those external results or satisfy the six manual gates. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. Terminal unknown is now copied unchanged, never retried or called successful; in-flight decisions still block. Separate clean-stamped companion production/unsigned mac-arm64 packaging succeeded, with Xcode icon warning and intentional notarization skip; no packaged runtime/native acceptance was performed. Bounded states queries accept up to 50 exact keys, echo requested scope/keys and preserve unrelated card authority; UTF-8 request/response limits reject oversized output explicitly. Generic adapter-action returns only its affected key state/revision and metadata, never the full retained history. Tests with 3000 rows preserve missing versus unrequested distinctions and fail closed on oversized records. Updated companion POST query batches retained/new keys with strict requested-scope echo and per-key checked/error reporting, plus one-key decision preflight. Previous15f2267 production build and unsigned mac-arm64 package both exited0 with dirty:false, superseding the historical f195278 package; no launch, installation, deployment or notarization occurred and native/manual acceptance remains unverified. Latest99dc5e1 compact UTF-8 JSON forwarding preserves the retained-key byte budget; its production build and unsigned mac-arm64 package both exited0 with dirty:false, superseding earlier15f2267 evidence. No runtime launch, installation, deployment or notarization occurred.",
       "read_scope": "full"
     },
     {
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "bd0dae0ca8ff7549c660b700df0ed8f731c67bbc98fc9ba1f9c4d61c690ff585",
+      "sha256": "631c3b07b890f97806879a0c525e9c6e2025535e57da819bcfcc5d656208a8d4",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1064,7 +1064,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "ca4864ac8f270b6f6bf0265ccd857f1d088acb5a0e284c156553a4b3e98f166e",
+      "sha256": "11ce9e3481e34328ade86353e6fb68d71eba317fd47e06a0df8953f4ff565dc4",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1081,7 +1081,7 @@
     },
     {
       "path": "verification/design/review-notes.md",
-      "sha256": "5d13183952e5db66013c53bcb2af7323af88aeff1a97f16785d71f6fe9ba9f54",
+      "sha256": "f67dcd6c6b44f77ac58a33f57da51137157f85f2361f7840b0709cae411effdf",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1913,9 +1913,9 @@
     {
       "id": "HAB-F27",
       "title": "Arrival notice before any work",
-      "statement": "When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply. A reply to a message the user sent (in_reply_to set) is shown as 「〇〇 から返事が届きました」 with only 会話に渡す and あとで; 会話に渡す is handled like 対応する, and 対応しない is refused for it.",
+      "statement": "When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply. Publication alone does not establish display or session admission. Mutable decision snapshots are revision-ordered independently of immutable notice pagination and bound to the exact connection/recipient/product-session identity; stale responses cannot regress state and missing state cannot authorize work. A reply to a message the user sent (in_reply_to set) is shown as 「〇〇 から返事が届きました」 with only 会話に渡す and あとで; 会話に渡す is handled like 対応する, and 対応しない is refused for it.",
       "rationale": "The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.",
-      "scope": "src/agent-notify, hab_peek and the hab:notify CLI with the JSONL screen. Covered in js-root by test/agent-notify.test.js, test/hab-peek.test.js and test/hab-notify-cli.test.js. A product AgentScreen (Hermes Desktop) and acceptance in an existing product session are not covered. The Codex, Claude Code and ChatGPT connector (Dots) screens are covered in js-root by test/agent-screens.test.js (fake and real-WebSocket app-server, the channel listener and the hab-claude-channel MCP server over stdio); none is checked against the real product.",
+      "scope": "src/agent-notify, hab_peek and hab:notify CLI; js-root covers notifier, peek, shared binding/states/adapter-action, revision migration/concurrent writers/expiry and synthetic product-neutral projection contracts. JSONL and the bundled static-session Claude channel safely refuse unsupported handoff. Mock Codex/Hermes/channel tests do not prove native product rendering, user approval, current-session admission or reply. The separately maintained Hermes Desktop UI and actual Gemini integration are not changed or verified here. Offline copy migration regressions in test/agent-notify-migrate.test.js cover settled decision/revision and duplicate-guard preservation, pre-revision schema, fingerprint/binding/offline-journal refusals, private output and explicit CLI attestation. Operator old identity/offline cutover and physical crash durability are not established. Paired legacy Hermes migration preserves the DB and notification JSONL together, all notice ordering and cursor/event indexes, reply-specific choices, revisions and duplicate guards. DB-only legacy Hermes migration, unsupported schemas/fields, missing live shown/later notices or mismatched known notices and changed screen fingerprints are refused. Synthetic races prove refusal of observed writes, not an absolute JSONL writer lock or native cutover. Missing DB rows after retention cannot prove expiry because legacy Hermes JSONL has no structured expiry. Strictly validated orphan notices and their associated state lines retain original bytes and old binding as quarantined history, invisible to the new reader; no decision row is recreated. State-only orphans and conflicting immutable duplicate payloads are refused. Inspection and manifest report quarantine counts without message bodies; source fingerprints fence changes after review. Quarantine is not a durable tombstone for future HAB redelivery of a pruned key. Terminal unknown outcomes migrate unchanged and remain non-retryable on check, reopen or repeated choices; only in-flight showing/accepting/accept_waiting/declining block migration. Bounded requested-key queries use at most 50 keys with 512-byte UTF-8 IDs and 64KiB input/60KiB response budgets, echo scope/keys and distinguish missing requested authority from unrequested cards. Oversized legacy all-store queries explicitly fail. Generic adapter-action returns only its affected key to prevent post-effect response growth; synthetic 3000-row tests prove key scoping and projection retention, not native acceptance.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -1928,16 +1928,34 @@
           "excerpt_sha256": "8f544aeeb1ba3e604160058a33d475c1948ad845f70a3407312969f798a9cec5"
         },
         {
-          "path": "docs/receiver/arrival-notifier.md",
-          "start": 272,
-          "end": 296,
-          "excerpt_sha256": "3700ffb5d2e72123ca58223201a0f78b2b990b04229c997c1719768b0f98b199"
-        },
-        {
           "path": "docs/receiver/receipt-confirmation.md",
           "start": 79,
           "end": 87,
           "excerpt_sha256": "82f797949a5100501312cfdc7c9a322a2562d535b5e6f5cd11878af59b7f2ca7"
+        },
+        {
+          "path": "docs/receiver/arrival-notifier.md",
+          "start": 20,
+          "end": 38,
+          "excerpt_sha256": "f41ab533a14d40821c0a5dfbe7af4267ad6097e15fb939f684c3b45f93531f4b"
+        },
+        {
+          "path": "docs/receiver/arrival-notifier.md",
+          "start": 267,
+          "end": 298,
+          "excerpt_sha256": "1c64c5483c9848a6c050ad14dd1f2c2eb6e81f1276a2abab8f15a4ec95895f4d"
+        },
+        {
+          "path": "docs/receiver/arrival-notifier.md",
+          "start": 300,
+          "end": 392,
+          "excerpt_sha256": "bc9477c28cdf030cfb0595d9c41e38129266c1f1ae865c32f00ee618fdadde9b"
+        },
+        {
+          "path": "docs/receiver/arrival-notifier.md",
+          "start": 417,
+          "end": 492,
+          "excerpt_sha256": "fb75a11969bb0872bd012c3504c04b91f0f6dfbc02ab074d3104ee4e3aa19550"
         }
       ]
     },
