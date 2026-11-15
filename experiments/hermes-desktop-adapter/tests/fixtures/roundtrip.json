@@ -1,0 +1,205 @@
+{
+  "owner": {
+    "storedSessionId": "session",
+    "connectionId": "connection",
+    "profile": "test",
+    "visible": true
+  },
+  "binding": {
+    "binding_id": "binding",
+    "stored_session_id": "session",
+    "connection_id": "connection",
+    "profile": "test",
+    "backend_namespace": "backend",
+    "profile_scope": "test",
+    "receiver_id": "recipient"
+  },
+  "operations": [
+    {
+      "name": "initial_query",
+      "path": "/sessions/session/query",
+      "request": {
+        "binding_id": "binding",
+        "stored_session_id": "session",
+        "connection_id": "connection",
+        "profile": "test",
+        "retained_keys": []
+      },
+      "response": {
+        "source": "external_agent",
+        "events": [
+          {
+            "event_id": "event",
+            "source": "external_agent",
+            "format": "plain_text",
+            "sender_id": "sender",
+            "receiver_id": "recipient",
+            "message_id": "message",
+            "address": "sender@example.hab",
+            "backend_namespace": "backend",
+            "profile_scope": "test",
+            "owner_kind": "session",
+            "received_at": "2026-01-01T00:00:00Z",
+            "text": "synthetic",
+            "binding_id": "binding",
+            "binding_generation": 1,
+            "logical_target": "session",
+            "stored_session_id": "session",
+            "handoff_state": "pending"
+          }
+        ],
+        "next_cursor": "next",
+        "has_more": false,
+        "decision_states": [
+          {
+            "binding_id": "binding",
+            "sender_id": "sender",
+            "message_id": "message",
+            "state": "shown",
+            "revision": 1,
+            "choices": [
+              {
+                "choice": "accept",
+                "label": "Handle"
+              },
+              {
+                "choice": "later",
+                "label": "Later"
+              }
+            ]
+          }
+        ],
+        "decision_checked_keys": [
+          {
+            "binding_id": "binding",
+            "sender_id": "sender",
+            "message_id": "message"
+          }
+        ],
+        "decision_error_keys": [],
+        "binding_id": "binding"
+      }
+    },
+    {
+      "name": "retained_query",
+      "path": "/sessions/session/query",
+      "request": {
+        "binding_id": "binding",
+        "stored_session_id": "session",
+        "connection_id": "connection",
+        "profile": "test",
+        "after": "next",
+        "retained_keys": [
+          {
+            "sender_id": "sender",
+            "message_id": "message"
+          }
+        ]
+      },
+      "response": {
+        "source": "external_agent",
+        "events": [],
+        "next_cursor": "next",
+        "has_more": false,
+        "decision_states": [
+          {
+            "binding_id": "binding",
+            "sender_id": "sender",
+            "message_id": "message",
+            "state": "shown",
+            "revision": 1,
+            "choices": [
+              {
+                "choice": "accept",
+                "label": "Handle"
+              },
+              {
+                "choice": "later",
+                "label": "Later"
+              }
+            ]
+          }
+        ],
+        "decision_checked_keys": [
+          {
+            "binding_id": "binding",
+            "sender_id": "sender",
+            "message_id": "message"
+          }
+        ],
+        "decision_error_keys": [],
+        "binding_id": "binding"
+      }
+    },
+    {
+      "name": "decision",
+      "path": "/sessions/session/decision",
+      "request": {
+        "binding_id": "binding",
+        "stored_session_id": "session",
+        "connection_id": "connection",
+        "profile": "test",
+        "sender_id": "sender",
+        "message_id": "message",
+        "choice": "accept"
+      },
+      "response": {
+        "binding_id": "binding",
+        "changed": true,
+        "state": "queued",
+        "revision": 2
+      }
+    },
+    {
+      "name": "after_decision_query",
+      "path": "/sessions/session/query",
+      "request": {
+        "binding_id": "binding",
+        "stored_session_id": "session",
+        "connection_id": "connection",
+        "profile": "test",
+        "after": "next",
+        "retained_keys": [
+          {
+            "sender_id": "sender",
+            "message_id": "message"
+          }
+        ]
+      },
+      "response": {
+        "source": "external_agent",
+        "events": [],
+        "next_cursor": "next",
+        "has_more": false,
+        "decision_states": [
+          {
+            "binding_id": "binding",
+            "sender_id": "sender",
+            "message_id": "message",
+            "state": "queued",
+            "revision": 2,
+            "choices": [
+              {
+                "choice": "accept",
+                "label": "Handle"
+              },
+              {
+                "choice": "later",
+                "label": "Later"
+              }
+            ]
+          }
+        ],
+        "decision_checked_keys": [
+          {
+            "binding_id": "binding",
+            "sender_id": "sender",
+            "message_id": "message"
+          }
+        ],
+        "decision_error_keys": [],
+        "binding_id": "binding"
+      }
+    }
+  ]
+}
