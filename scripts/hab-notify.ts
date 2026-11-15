@@ -24,6 +24,10 @@
  *       (screen type claude-code: the Claude Code status line command; reads the session
  *       JSON on stdin and only the local choice record, never HAB)
  *
+ *   hab-notify --config <notify.json> login
+ *       (token.oauth only: one browser sign-in that gives the notifier its own grant; after
+ *       it the notifier refreshes its token itself)
+ *
  * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
  */
 import { createNotifyCheckLog } from "./lib/notify-check-log.ts";
@@ -54,6 +58,13 @@ import { hermesDesktopAgentBinding } from "../src/agent-notify/hermes-desktop.ts
 import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import type { AgentScreen } from "../src/agent-notify/index.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
+import {
+  OAuthTokenFile,
+  jwtExpiry,
+  login,
+  validRedirectUri,
+  validTokenUrl,
+} from "../src/agent-notify/oauth-token.ts";
 
 const usage = `usage:
   hab-notify --config <notify.json> run|check|list
@@ -62,7 +73,8 @@ const usage = `usage:
   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
   hab-notify --config <notify.json> action   (one decision as JSON on stdin)
   hab-notify --config <notify.json> statusline
-  hab-notify --config <notify.json> binding|states|adapter-action`;
+  hab-notify --config <notify.json> binding|states|adapter-action
+  hab-notify --config <notify.json> login    (token.oauth: one browser sign-in)`;
 
 /** Requested state authority is scoped to these exact keys, never a whole-store snapshot. */
 export const STATE_KEYS_MAX = 50;
@@ -167,6 +179,34 @@ const configSchema = z.strictObject({
       expires_at_field: z.string().min(1).optional(),
     }),
     z.strictObject({ env: z.string().min(1) }),
+    /**
+     * The notifier's own OAuth grant, which it refreshes itself (`login` once, then
+     * automatic). Never the agent's own token file: both would spend one rotating refresh
+     * token, and reuse detection would revoke the agent's grant too.
+     */
+    z.strictObject({
+      oauth: z.strictObject({
+        file: z.string().min(1),
+        token_endpoint: z
+          .string()
+          .refine(validTokenUrl, "https token endpoint"),
+        client_id: z.string().min(1).max(512),
+        /** Defaults to hab_url. */
+        resource: z.url().optional(),
+        audience: z.string().min(1).max(2048).optional(),
+        /** Needed only by `login`. */
+        authorization_endpoint: z
+          .string()
+          .refine(validTokenUrl, "https authorization endpoint")
+          .optional(),
+        redirect_uri: z
+          .string()
+          .refine(validRedirectUri, "loopback redirect uri")
+          .optional(),
+        scope: z.string().min(1).max(4096).optional(),
+        refresh_before_s: z.number().int().min(0).max(3600).default(60),
+      }),
+    }),
   ]),
   store: z.string().min(1),
   screen: z.discriminatedUnion("type", [
@@ -229,6 +269,8 @@ const expand = (path: string) =>
 
 export function readToken(config: Pick<NotifyConfig, "token">): string {
   let token: unknown;
+  // The OAuth source is async (it may refresh); see tokenSource.
+  if ("oauth" in config.token) throw new MessagingError("token_unavailable");
   if ("env" in config.token) token = process.env[config.token.env];
   else {
     const file = JSON.parse(
@@ -254,23 +296,6 @@ export function readToken(config: Pick<NotifyConfig, "token">): string {
 /** A token that expires within this many ms is treated as already expired. */
 const TOKEN_SKEW_MS = 5_000;
 
-/** The `exp` of a JWT access token, in ms. An opaque token gives undefined. Not verified:
- * it only saves calls HAB would refuse. HAB still checks every token itself. */
-function jwtExpiry(token: string): number | undefined {
-  const parts = token.split(".");
-  if (parts.length !== 3) return undefined;
-  try {
-    const payload = JSON.parse(
-      Buffer.from(parts[1]!, "base64url").toString("utf8"),
-    ) as { exp?: unknown };
-    return typeof payload.exp === "number" && Number.isFinite(payload.exp)
-      ? payload.exp * 1000
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * Checked before each call to HAB, so a call HAB would refuse is never sent. The agent
  * refreshes its own token; a missing or expired one is a wait, named as such, and the next
@@ -291,6 +316,34 @@ export function tokenProblem(
   return expiry !== undefined && expiry <= now + TOKEN_SKEW_MS
     ? "token_expired"
     : undefined;
+}
+
+type OAuthConfig = Extract<NotifyConfig["token"], { oauth: unknown }>["oauth"];
+
+function oauthToken(config: NotifyConfig, oauth: OAuthConfig) {
+  return new OAuthTokenFile({
+    file: expand(oauth.file),
+    token_endpoint: oauth.token_endpoint,
+    client_id: oauth.client_id,
+    resource: oauth.resource ?? config.hab_url,
+    ...(oauth.audience ? { audience: oauth.audience } : {}),
+    refresh_before_ms: oauth.refresh_before_s * 1000,
+  });
+}
+
+/** The credential and the pre-call check for the configured token source. */
+function tokenSource(config: NotifyConfig) {
+  if ("oauth" in config.token) {
+    const token = oauthToken(config, config.token.oauth);
+    return {
+      authorization: () => token.authorization(),
+      ready: () => token.problem(),
+    };
+  }
+  return {
+    authorization: () => readToken(config),
+    ready: () => tokenProblem(config),
+  };
 }
 
 const hermesBinding = (
@@ -485,15 +538,16 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     json_depth: 32,
     json_nodes: 100_000,
   };
+  const token = tokenSource(config);
   const common = {
     limits,
-    authorization: () => readToken(config),
+    authorization: token.authorization,
     ...(config.as_address ? { as_address: config.as_address } : {}),
   };
   const url = config.hab_url.replace(/\/+$/, "");
   const hab = new HabNotifierClient(
     { ...common, policy: { ...base, resource_url: `${url}/delivery` } },
-    () => tokenProblem(config),
+    token.ready,
   );
   const target = screen ?? boundScreen(config);
   const store = new SQLiteNotices(expand(config.store), target.target);
@@ -504,12 +558,55 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
 }
 
 /**
+ * `login`: one browser sign-in that gives the notifier its own grant. Prints the URL to
+ * open (no secret), then whether a refresh token came back; never a token.
+ */
+async function loginCommand(
+  config: NotifyConfig,
+  out: (line: string) => void,
+): Promise<number> {
+  if (!("oauth" in config.token)) {
+    out(JSON.stringify({ error: "oauth_not_configured" }));
+    return 2;
+  }
+  const oauth = config.token.oauth;
+  if (!oauth.authorization_endpoint || !oauth.redirect_uri) {
+    out(JSON.stringify({ error: "oauth_not_configured" }));
+    return 2;
+  }
+  try {
+    const result = await login(
+      oauthToken(config, oauth),
+      {
+        authorization_endpoint: oauth.authorization_endpoint,
+        redirect_uri: oauth.redirect_uri,
+        client_id: oauth.client_id,
+        resource: oauth.resource ?? config.hab_url,
+        ...(oauth.audience ? { audience: oauth.audience } : {}),
+        ...(oauth.scope ? { scope: oauth.scope } : {}),
+      },
+      (url) => out(JSON.stringify({ open: url })),
+    );
+    out(JSON.stringify({ logged_in: true, ...result }));
+    return 0;
+  } catch (error) {
+    out(
+      JSON.stringify({
+        error: error instanceof MessagingError ? error.code : "login_failed",
+      }),
+    );
+    return 1;
+  }
+}
+
+/**
  * The MCP transport reports a credential that could not be read as transport_failed. When
  * the token itself is the cause (expired or missing), that is named instead.
  */
 function errorCode(error: unknown, config?: NotifyConfig): string {
   const code = error instanceof MessagingError ? error.code : "failed";
-  if (code !== "transport_failed" || !config) return code;
+  if (code !== "transport_failed" || !config || "oauth" in config.token)
+    return code;
   try {
     readToken(config);
   } catch (tokenError) {
@@ -531,6 +628,7 @@ export async function main(
     JSON.parse(readFileSync(expand(args[1]), "utf8")),
   );
   const [command, id, choice, sender] = args.slice(2);
+  if (command === "login") return loginCommand(config, out);
   if (command === "events") {
     // Reads only the local screen file: no token, store or HAB call.
     try {

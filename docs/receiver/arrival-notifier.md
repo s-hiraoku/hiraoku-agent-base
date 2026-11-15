@@ -75,11 +75,39 @@ npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
 
-token の更新はエージェント側の仕事です。アダプタは更新しません。Hermes は `expires_at`（期限の UNIX 秒）を書き、期限が切れたあと、自分の次の接続（約 3 分ごと）で更新します。`expires_at_field` を指定すると、期限を過ぎた token は HAB に送らず、`{"error":"token_expired"}` を返します。token の欄が空なら `token_unavailable` です。どちらも `transport_failed`（HAB に届かない、応答がおかしい）とは分けて出ます。`run` は期限切れの間もそのまま待ち、エージェントが更新した次の確認から自然に戻ります。
+`token.file` と `token.env` では、token の更新はエージェント側の仕事で、アダプタは更新しません。エージェントを使っていない間も通知を出し続けたいときは、次の [notifier 専用のログイン（`token.oauth`）](#notifier-専用のログインtokenoauth) を使います。Hermes は `expires_at`（期限の UNIX 秒）を書き、期限が切れたあと、自分の次の接続（約 3 分ごと）で更新します。`expires_at_field` を指定すると、期限を過ぎた token は HAB に送らず、`{"error":"token_expired"}` を返します。token の欄が空なら `token_unavailable` です。どちらも `transport_failed`（HAB に届かない、応答がおかしい）とは分けて出ます。`run` は期限切れの間もそのまま待ち、エージェントが更新した次の確認から自然に戻ります。
 
 - `expires_at_field` がなくても、token が JWT なら `exp` を読みます。過ぎているか 5 秒以内に切れる token は、同じく HAB に送らず `token_expired` です。期限は署名を確かめずに読むだけで、判断するのは HAB です。中身の読めない token と `exp` のない JWT は、そのまま HAB に送ります。
 - `run` は、同じ失敗が続くあいだ、始まりに `{"error":"token_expired"}` を 1 回、直ったときに `{"resumed":"token_expired"}` を 1 回だけ書きます。確認のたびには書きません。ほかの失敗（`transport_failed` など）も同じ扱いです。
 - 待っているあいだにボタンを押しても、選択は失われません。「対応する」は `accept_waiting`、「対応しない」は `declining` として残り、token が更新された後の確認で既読にして続きを進めます（[選択と状態](#選択と状態)）。「あとで」は HAB を呼ばないので、そのまま `later` になります。
+
+### notifier 専用のログイン（`token.oauth`）
+
+`token.oauth` にすると、notifier が自分の OAuth の許可（grant）を持ち、期限の前に自分で更新します。エージェントが止まっていても新着を拾えます。
+
+```json
+"token": {
+  "oauth": {
+    "file": "~/.hab-notify/<profile>/token.json",
+    "token_endpoint": "https://<tenant>/oauth/token",
+    "authorization_endpoint": "https://<tenant>/authorize",
+    "client_id": "<エージェントと同じ public client>",
+    "redirect_uri": "http://127.0.0.1:<port>/callback",
+    "resource": "https://<host>/hab/mcp"
+  }
+}
+```
+
+```sh
+npm run hab:notify -- --config notify.json login   # 最初に 1 回だけ。表示された URL をブラウザで開く
+```
+
+- エージェントの token ファイル（Hermes の `mcp-tokens/hab.json` など）は読みも書きもしません。同じ refresh token を両方が使うと、回転（rotation）した古い refresh token をもう一方が使った時点で「再利用」とみなされ、Auth0 は家族ごと失効させます（エージェント側も切れます）。notifier 専用のファイルなら、取り合いも書き込みの競合も起きません。
+- `client_id` はエージェントと同じ public client で構いません。HAB は主体と client で接続を照合するので、同じアドレスとして受け付けます。`redirect_uri` はその client に登録済みの loopback URL を使います（Hermes の固定 `redirect_port` と同じでよい。Hermes が自分のログイン中でなければ空いています）。
+- `login` は認可コード＋PKCE（S256）です。`state` の合わない応答は受け付けません。scope の既定は HAB の 5 scope と `offline_access` で、`scope` で変えられます。Auth0 で `resource` を対応付けていないテナントなら `audience` も指定します。表示するのは開く URL と `{"logged_in":true,"has_refresh_token":…}` だけで、token は出しません。
+- token ファイルは 0600 で、書き換えは同じフォルダの一時ファイルから rename で置き換えます。グループや他人が読めるファイルは `insecure_token_file` で断ります。
+- 期限の `refresh_before_s`（既定 60 秒）前になったら、次の確認で更新します。`run` と、画面から呼ばれる `action`・`decide` が同時に更新しようとしても、`<file>.lock` を持った 1 つだけが更新し、ほかはその結果を読みます。60 秒より古いロックは、死んだプロセスの残りとして消します。
+- 失敗の名前: ファイルがない、または refresh token がなく期限切れ → `token_login_required`。issuer が `invalid_grant` で断った（失効・期限切れ・再利用）→ `token_login_required`（`login` をやり直す）。通信の失敗や 5xx → `token_refresh_failed`（次の確認でやり直す）。ロック待ちが長すぎる → `token_refresh_busy`。どれも `run` では始まりと終わりに 1 回だけ記録します。
 
 ### 常駐させる（macOS の launchd）
 
