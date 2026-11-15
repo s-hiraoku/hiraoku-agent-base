@@ -18,21 +18,26 @@ class Endpoint extends HabMcpClient {
 
 export class HabNotifierClient implements NotifierHab {
   readonly #delivery: Endpoint;
-  readonly #ready: () => string | undefined;
+  readonly #ready: () => string | undefined | Promise<string | undefined>;
   /**
    * `delivery.policy.resource_url` is the delivery endpoint, such as `…/mcp/delivery`.
    * `ready` runs before each call and names why the call cannot be made yet, such as
-   * `token_expired`; the call then fails with that code and sends nothing.
+   * `token_expired`; the call then fails with that code and sends nothing. It may be async,
+   * such as a token refresh.
    */
   constructor(
     delivery: HabMcpClientOptions,
-    ready: () => string | undefined = () => undefined,
+    ready: () => string | undefined | Promise<string | undefined> = () =>
+      undefined,
   ) {
     this.#delivery = new Endpoint(delivery);
     this.#ready = ready;
   }
-  #call(tool: "hab_peek" | "hab_mark_read", args: Record<string, unknown>) {
-    const problem = this.#ready();
+  async #call(
+    tool: "hab_peek" | "hab_mark_read",
+    args: Record<string, unknown>,
+  ) {
+    const problem = await this.#ready();
     if (problem) throw new MessagingError(problem);
     return this.#delivery.call(tool, args);
   }
