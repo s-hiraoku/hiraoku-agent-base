@@ -18,13 +18,27 @@ class Endpoint extends HabMcpClient {
 
 export class HabNotifierClient implements NotifierHab {
   readonly #delivery: Endpoint;
-  /** `delivery.policy.resource_url` is the delivery endpoint, such as `…/mcp/delivery`. */
-  constructor(delivery: HabMcpClientOptions) {
+  readonly #ready: () => string | undefined;
+  /**
+   * `delivery.policy.resource_url` is the delivery endpoint, such as `…/mcp/delivery`.
+   * `ready` runs before each call and names why the call cannot be made yet, such as
+   * `token_expired`; the call then fails with that code and sends nothing.
+   */
+  constructor(
+    delivery: HabMcpClientOptions,
+    ready: () => string | undefined = () => undefined,
+  ) {
     this.#delivery = new Endpoint(delivery);
+    this.#ready = ready;
+  }
+  #call(tool: "hab_peek" | "hab_mark_read", args: Record<string, unknown>) {
+    const problem = this.#ready();
+    if (problem) throw new MessagingError(problem);
+    return this.#delivery.call(tool, args);
   }
   async peek(limit: number, after?: string): Promise<PeekPage> {
     const parsed = peekResultSchema.safeParse(
-      await this.#delivery.call("hab_peek", {
+      await this.#call("hab_peek", {
         limit,
         ...(after !== undefined ? { after } : {}),
       }),
@@ -33,7 +47,7 @@ export class HabNotifierClient implements NotifierHab {
     return parsed.data;
   }
   async markRead(messageId: string, senderId: string): Promise<boolean> {
-    const value = (await this.#delivery.call("hab_mark_read", {
+    const value = (await this.#call("hab_mark_read", {
       sender_id: senderId,
       message_id: messageId,
     })) as { sender_id?: unknown; message_id?: unknown; read?: unknown };

@@ -183,6 +183,48 @@ function readToken(config: NotifyConfig): string {
   return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
 }
 
+/** A token that expires within this many ms is treated as already expired. */
+const TOKEN_SKEW_MS = 5_000;
+
+/** The `exp` of a JWT access token, in ms. An opaque token gives undefined. Not verified:
+ * it only saves calls HAB would refuse. HAB still checks every token itself. */
+function jwtExpiry(token: string): number | undefined {
+  const parts = token.split(".");
+  if (parts.length !== 3) return undefined;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1]!, "base64url").toString("utf8"),
+    ) as { exp?: unknown };
+    return typeof payload.exp === "number" && Number.isFinite(payload.exp)
+      ? payload.exp * 1000
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Checked before each call to HAB, so a call HAB would refuse is never sent. The agent
+ * refreshes its own token; a missing or expired one is a wait, named as such, and the next
+ * check tries again. Expiry comes from `expires_at_field` when configured, else from a JWT's
+ * own `exp`; an opaque token without either is left to HAB.
+ */
+export function tokenProblem(
+  config: NotifyConfig,
+  now = Date.now(),
+): string | undefined {
+  let token: string;
+  try {
+    token = readToken(config);
+  } catch (error) {
+    return error instanceof MessagingError ? error.code : "token_unavailable";
+  }
+  const expiry = jwtExpiry(token.slice("Bearer ".length));
+  return expiry !== undefined && expiry <= now + TOKEN_SKEW_MS
+    ? "token_expired"
+    : undefined;
+}
+
 const hermesBinding = (
   config: NotifyConfig,
   screen: Extract<NotifyConfig["screen"], { type: "hermes-desktop" }>,
@@ -350,10 +392,10 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     ...(config.as_address ? { as_address: config.as_address } : {}),
   };
   const url = config.hab_url.replace(/\/+$/, "");
-  const hab = new HabNotifierClient({
-    ...common,
-    policy: { ...base, resource_url: `${url}/delivery` },
-  });
+  const hab = new HabNotifierClient(
+    { ...common, policy: { ...base, resource_url: `${url}/delivery` } },
+    () => tokenProblem(config),
+  );
   const target = screen ?? configuredScreen(config);
   const store = new SQLiteNotices(expand(config.store), target.target);
   return {
@@ -522,12 +564,19 @@ export async function main(
         };
         process.once("SIGTERM", stop);
         process.once("SIGINT", stop);
+        // An error that repeats on every check, such as waiting for the agent to refresh its
+        // token, is logged once when it starts and once when it ends.
+        let failing: string | undefined;
         while (!stopped) {
           try {
             const shown = await notifier.check();
+            if (failing) out(JSON.stringify({ resumed: failing }));
+            failing = undefined;
             if (shown.length) out(JSON.stringify({ shown }));
           } catch (error) {
-            out(JSON.stringify({ error: errorCode(error, config) }));
+            const code = errorCode(error, config);
+            if (code !== failing) out(JSON.stringify({ error: code }));
+            failing = code;
           }
           await new Promise((done) => setTimeout(done, config.interval_ms));
         }
