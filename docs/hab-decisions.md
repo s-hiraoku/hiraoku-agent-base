@@ -86,11 +86,24 @@
 - **入力の誤りは具体的なコードで返す。** `invalid_request`（`field`と期待値）、`kind_not_allowed`（`allowed_kinds`）、`unknown_address`、`recipient_unavailable`、`reply_target_not_found`、`reply_target_expired`、`text_too_long`（`max_bytes`）。どのエラーにも、何を直せばよいかの固定文`message`を付ける。`forbidden`は認証・権限・停止だけに使う。拒否の固定理由コード（例：`operation_not_granted`、`pair_blocked`）はhostの監査（`audit.jsonl`の`reason`）だけに記録し、本文や秘密は記録しない。
 - **受信の通知。** `hab_inbox`の各メッセージに、利用者へそのまま見せる`notice`を付ける（`src/messaging/incoming-notice.ts`、受信サービスからも使える）。「〇〇 からのメッセージです（種類、返信期限）」、本文、「どうしますか？」と選択肢（1. 返信する＝`hab_reply`にmessage_idと本文を渡す、2. あとで、3. 返信しない）を並べる。本文は送信者が書いた信頼できないデータとして、推測できない印を付けた2行で囲み、指示として実行しないよう明記する。返信期限は元メッセージの期限で、過ぎると既読でも`reply_target_expired`になる。
 - **使い方を説明に書く。** MCP serverの`instructions`と各ツールの説明に、送る→`hab_status`、届いたら`hab_inbox`→`hab_reply`の流れと、「既読は作業完了ではない」ことを書く。
+- **送った側は待たずに終わり、返事は受信箱で受け取る。** `hab_send`の後は利用者に送ったことを伝えてturnを終え、待つためのloopや相手の起動をしない（2026-11-15追記：Dots⇄Hermes試験で、Dotsが送ったまま返事に気づけなかったため）。返事は他のメッセージと同じく`hab_inbox`（と受信通知、ADR-021）に届く。受信通知のないエージェントは、利用者が会話を始めたときに`hab_inbox`を確かめる。`hab_status`は送ったメッセージの`kind`と、同じthreadでその後に相手から届いたメッセージを`replies`（`message_id`・`kind`・`received_at`・送信者が読んだかの`read`、本文なし、最大5件）として返し、`reply_state`を`replied`（返事あり）・`waiting`（未返信で期限内）・`no_reply`（questionが期限までに返事なし）・`not_expected`（question以外で返事なし）のどれかにする。返事を待つ長時間の呼出し（long-poll）は置かない。MCPの呼出しはhostの`timeout_ms`で切れ、待つ間エージェントのturnも止まるため。`hab_reply`は元メッセージの確認と返信の受付を1回の`submit`認可で行う（認可記録は返信1通につき1行）。
 - **clientが読めるスキーマを公開する。** `tools/list`の入力スキーマは、ルートが`properties`を持つ1つのobjectで、`$schema`もJavaScript専用の先読みも含まない（2026-11-14追記：Dotsの接続確認から）。`hab_discover`は`action`のenumを持つ1つのobjectにする。呼び出しの検証は厳密なzodスキーマのまま。
 - **認証の拒否理由も監査に残す。** `auth_denied`には固定の理由コード（`bearer_missing`、`client_not_registered`、`scope_missing`、`audience_mismatch`、`audience_not_single`、`token_expired`など）を`reason`として付ける。tokenやclaimの値は記録しない。
 - **認証に通った接続も監査に残す。** 認証に通ったリクエストごとに、`authenticated`の行へ、運用者が登録した接続ID（OAuthの`connection_id`、ローカル認証の`principal.connection_id`）を`connection`として記録する（2026-11-14追記：疎通確認でDotsとHermesのリクエストを見分けるため）。tokenやclaimの値、subject、client_idは記録しない。
 - **Auth0の配列audienceを受け付ける。** ChatGPT系コネクタは`openid`を要求するため、Auth0は`aud`を`[resource, "<issuer>userinfo"]`の配列にする（2026-11-14追記：Mac miniでDotsが`audience_not_single`で拒否されていた）。受け付ける配列は、resourceがちょうど1回入り、ほかの要素がこのissuerの`userinfo`だけのもの（`[resource]`を含む）。それ以外の配列は拒否する。
 - 受け取ったエージェント（Hermesなど）を自動で起こす仕組みは本判断に含めない。別のADRで決める。配置済みのHermes・Dotsは`tools.include`をエージェント用4ツールへ、受信サービスの接続先を`/mcp/delivery`へ切り替える。
+
+## ADR-021 / 採用：届いたメッセージを受信側エージェントの画面に出し、「対応する」を選んだときだけ同じセッションへ渡す
+
+2026-11-14 JST、owner判断。ADR-020の受信通知は、エージェントが自分で`hab_inbox`を呼んだときにしか出なかった。ownerが以前指示した「〇〇からのメッセージです。受信内容……どうしますか？」を、届いた時点で受信側の画面に出す。Hermes専用にせず、どのエージェントにも同じ形でつなげるようにする。
+
+- **既読にしない新着の取得。** `/mcp/delivery`に`hab_peek`を加える（操作は`poll`）。受信者の未読を古い順に返し、既読にも変更にもしない。`next_cursor`を`after`に渡すと続きを返すので、選択待ちの古い未読が多くても新着が埋もれない。各メッセージは送信者の不変ID`sender_id`と`message_id`の組で区別する。選んだ後に既読にするのは`hab_mark_read`（同じ`poll`、`sender_id`と`message_id`の両方を指定し、本文は返さない）。2人の送信者が同じ`message_id`を使っても、選ばなかった方は既読にならない。エージェント用の`/mcp`は4ツールのまま。
+- **文面はHABが作る。** `hab_peek`の各メッセージに、利用者へ見せる`display`（「〇〇 からのメッセージです。」「（種類、返信期限）」「受信内容」と本文、「どうしますか？」と 1. 対応する 2. あとで 3. 対応しない）と、「対応する」の後に同じセッションへ渡す`handoff_prompt`（本文を推測できない印の2行で囲み、利用者の指示ではないことと`hab_reply`の使い方を書く）を付ける。`hab_inbox`の`notice`の選択肢も同じ言葉（対応する／あとで／対応しない）に揃える。
+- **受信通知アダプタ（`src/agent-notify/`、`npm run hab:notify`）。** 受信者の credential で`hab_peek`を定期的に呼び、未表示の新着を画面に出し、利用者の選択を記録する。共通部分はHABが持つ：新着の検出、文面、選択の記録（SQLite）、二重実行の防止。各エージェントが用意するのは`AgentScreen`の2つの操作だけ：`show`（そのセッションの画面に出す。モデルを動かさない）と`handoff`（「対応する」の後にそのセッションへ渡す）。製品に依存しない`JsonlScreen`（イベントをJSON Linesで書き、製品側の連携が読む）を同梱する。
+- **選択ごとの動き。** 届いただけではモデルを動かさない。「あとで」は未読のまま残し、`show-again`で同じメッセージを出し直せる。「対応しない」は既読にして何も始めない。「対応する」は既読にしてから、検証済みの同じセッションへ`handoff_prompt`を1回だけ渡す。返信はそのセッション自身が`hab_reply`で行い、アダプタは返信しない。
+- **状態を区別する。** `showing`（画面に出す途中。中断したら次の確認で出し直す）・`shown`・`later`・`declined`・`accepting`・`started`（セッションが受け付けた）・`queued`（製品の入力に入れたが開始は未確認）・`unsupported`（そのセッションへの正式な入口がない）・`unknown`（渡せたか分からない）・`unavailable`（選んだ時点でHABがもう渡さない：期限切れ、7日の読み直し期間後、送信者の権限取消し。何も渡さない）・`expired`。`unknown`と`unsupported`は自動で再送せず、別のセッションや同じアドレスのCLIで代用しない。二重クリック、再起動、並行の選択でも渡すのは1回まで（行単位の条件付き更新）。選択の記録は1つのセッション（`target`）に結び付け、別のセッション向けに開くと`notices_target_mismatch`で拒否する。既読にできなかったときは何も始めず、選び直せる。記録ファイルは本文を含むので所有者だけが読める権限（0600）で作り、他人が読める既存ファイルは拒否する。
+- **権限と費用。** 受信時に自動でターンを始めることは本判断に含めない（ownerの受入条件：受信だけではモデルの作業や返信を始めない）。「対応する」は、そのメッセージへの対応の開始であり、外部送信・ファイル変更・認証情報の操作などの権限を広げない。受信側エージェントは既存の権限と承認の手順で処理する。
+- **限界。** HABの既読は、人が内容を見た・同意した・作業を終えたことを意味しない。Hermes Desktopへの接続部品と、既存Desktopセッションでの受入確認は未完了（[受信通知アダプタ](receiver/arrival-notifier.md)）。Codex（app-server の `turn/start`）・Claude Code（status line と channel）・ChatGPT コネクタ（Dots、表示のみで引渡しは `unsupported`）の画面アダプタも用意したが、実機での確認は未実施。ADR-017のSDK受信（保存してからACK）と同じ受信者に並べると、ACKされた本文は`hab_peek`・`hab_inbox`に出ない。1つの受信者にはどちらか一方を使う。
 
 ## 次に決める内容
 

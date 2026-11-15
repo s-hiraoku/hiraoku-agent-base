@@ -282,6 +282,18 @@ Checks: proposal-review, production-operations.
 
 Sources: [docs/hab-product-spec.md:136](../../docs/hab-product-spec.md#L136-L157), [docs/hab-product-spec.md:198](../../docs/hab-product-spec.md#L198-L204), [docs/hab-decisions.md:37](../../docs/hab-decisions.md#L37-L48), [docs/hab-decisions.md:60](../../docs/hab-decisions.md#L60-L68).
 
+### HAB-F27 — Arrival notice before any work
+
+When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply.
+
+Reason: The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.
+
+Scope: src/agent-notify, hab_peek and the hab:notify CLI with the JSONL screen. Covered in js-root by test/agent-notify.test.js, test/hab-peek.test.js and test/hab-notify-cli.test.js. A product AgentScreen (Hermes Desktop) and acceptance in an existing product session are not covered. Decision: **accepted**.
+
+Checks: js-root.
+
+Sources: [docs/hab-decisions.md:95](../../docs/hab-decisions.md#L95-L105), [docs/receiver/arrival-notifier.md:60](../../docs/receiver/arrival-notifier.md#L60-L76).
+
 ### HAB-A01 — Common transport and recipient authority
 
 Standard HAB transport authenticates and authorizes delivery; the receiving agent retains content judgment, execution and its existing approval rules. No product runner or product-specific approval layer is required by standard connection.

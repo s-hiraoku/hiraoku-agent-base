@@ -1,17 +1,17 @@
 ---
 name: verify-hab
-description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent does — the HAB MCP over loopback HTTP (agent tools hab_send/inbox/reply/status at /mcp, delivery tools hab_resolve/submit/status/poll/ack at /mcp/delivery) with three enrolled synthetic agents — plus the human enrollment terminal and the deny-all Hub server. Use it to prove a host, registry, enrollment or MCP-transport change works end to end in the real app, not just in unit tests, and to capture request/response/DB evidence.
+description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent does — the HAB MCP over loopback HTTP (agent tools hab_send/inbox/reply/status at /mcp, delivery tools hab_resolve/submit/status/poll/ack at /mcp/delivery) with three enrolled synthetic agents — plus the human enrollment terminal and the shipped deny-all configured host. Use it to prove a host, registry, enrollment or MCP-transport change works end to end in the real app, not just in unit tests, and to capture request/response/DB evidence.
 ---
 
 # Verify HAB
 
 HAB is a personal agent hub. Its user-facing surfaces today are:
 
-1. **HAB MCP over HTTP** (primary). Agents call `hab_send`, `hab_inbox`, `hab_reply`, `hab_status` on `POST /mcp` (ADR-020); this is what Grok Bot / Dots / Hermes use. The agent SDK and the receive service call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp/delivery` with the same token.
+1. **HAB MCP over HTTP** (primary). Agents call `hab_send`, `hab_inbox`, `hab_reply`, `hab_status` on `POST /mcp` (ADR-020); this is what Grok Bot / Dots / Hermes use. The agent SDK and the receive service call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp/delivery` with the same token; the arrival notifier (ADR-021) calls `hab_peek` and `hab_mark_read` there.
 2. **Enrollment terminal** (`npm run demo:hab-enrollment -- --interactive`). A human picks a product, reserves `<bot_name>@<agent_name>.hab` (`agent_name` is the product slug), binds and activates it.
-3. **Hub server** (`node src/server.ts`, fixed `127.0.0.1:8787`). Without an operator config it denies everything; only the deny-all boundary is drivable locally.
+3. **Configured host** (`npm run hab:host`). Without connected credentials it stays deny-all for agent work. Drive connect/disconnect and refusals with `configured.sh` per [features/configured-host.md](features/configured-host.md).
 
-The repo now ships a configured host CLI (`npm run hab:host`) and an operator CLI (`npm run hab:admin`); drive those with `configured.sh` per [features/configured-host.md](features/configured-host.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the SQLite delivery from `createSqliteDelivery` that the host wires, `HabHttpGateway` for both catalogs, `routeMcpNodeHandlers`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. Delivery is one SQLite file (`delivery.sqlite`) under `$RUN/instance`; no broker process runs (ADR-018). Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
+The operator CLI is `npm run hab:admin`. For the MCP stack recipes that are not the shipped host, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the SQLite delivery from `createSqliteDelivery` that the host wires, `HabHttpGateway` for both catalogs, `routeMcpNodeHandlers`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. Delivery is one SQLite file (`delivery.sqlite`) under `$RUN/instance`; no broker process runs (ADR-018). Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
 
 For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
 
@@ -43,7 +43,7 @@ Isolation: each run dir is its own instance on its own port, so parallel runs ar
 $S/doctor.sh "$RUN"
 ```
 
-Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the five delivery tools at `/mcp/delivery`. Every published input schema is portable (an object root with `properties`, no top-level `oneOf`/`anyOf`/`allOf`, no `$schema`, no lookaround in a `pattern`), since ChatGPT-style connectors refuse anything else. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
+Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the seven delivery tools at `/mcp/delivery`. Every published input schema is portable (an object root with `properties`, no top-level `oneOf`/`anyOf`/`allOf`, no `$schema`, no lookaround in a `pattern`), since ChatGPT-style connectors refuse anything else. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
 
 ## Drive
 
@@ -53,7 +53,7 @@ Every call is a real MCP `tools/call` (protocol `2026-07-28`, `Mcp-Method`/`Mcp-
 $S/mcp.sh "$RUN" <a|b|c|none|BAD> <tool|tools/list> '<json-arguments>'
 ```
 
-`none` sends no `Authorization`; `BAD` sends an unknown bearer. Agent tools go to `/mcp`; `hab_submit`, `hab_poll`, `hab_ack` and `hab_resolve` go to `/mcp/delivery`, and `HAB_CATALOG=delivery` sends `hab_status` or `tools/list` there too. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>","message":"<what to change>"}` (plus details such as `field` or `allowed_kinds`) with HTTP 200.
+`none` sends no `Authorization`; `BAD` sends an unknown bearer. Agent tools go to `/mcp`; `hab_submit`, `hab_poll`, `hab_ack`, `hab_resolve`, `hab_peek` and `hab_mark_read` go to `/mcp/delivery`, and `HAB_CATALOG=delivery` sends `hab_status` or `tools/list` there too. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>","message":"<what to change>"}` (plus details such as `field` or `allowed_kinds`) with HTTP 200.
 
 Agent round trip (a → b → a), the path a connected agent uses ([features/agent-tools.md](features/agent-tools.md)):
 
@@ -124,5 +124,5 @@ It kills only the pid in `stack.pid`, and only if that pid's command line is `st
 
 ## Other surfaces
 
-- **Hub server** (`node src/server.ts`): binds the fixed port `127.0.0.1:8787` and writes `runtime/` relative to its **cwd** — start it from a scratch dir (`cd "$(mktemp -d)" && node <repo>/src/server.ts &`, remember `$!`) so it never touches the repo's `runtime/`. Only one instance can run per host; if 8787 is already taken by something you did not start, do not drive it. Without `HAB_RUNTIME_CONFIG`, `POST /mcp` → `401`, a foreign `Host` → `403`. Authenticated Hub calls need Auth0 and are out of reach locally. Kill it by the pid you recorded.
 - **Unit/integration suites** (`npm test`, `npm run test:hab-integration`) are not a substitute for this skill's proof; run them in addition.
+- The retired fixed-port Task Hub entry (`src/server.ts` on `127.0.0.1:8787`) is gone from this tree. Do not look for it. Use the configured host path above for deny-all and operator CLI proof. Auth0-backed production identity remains out of reach locally.

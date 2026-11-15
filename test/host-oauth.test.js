@@ -280,6 +280,8 @@ test("second loopback ingress exposes only its fixed metadata, the agent and del
   assert.equal(listed.status, 200);
   assert.deepEqual(listed.body.result.tools.map((x) => x.name).sort(), [
     "hab_ack",
+    "hab_mark_read",
+    "hab_peek",
     "hab_poll",
     "hab_resolve",
     "hab_status",

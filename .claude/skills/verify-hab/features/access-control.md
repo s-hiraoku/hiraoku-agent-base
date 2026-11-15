@@ -20,10 +20,10 @@ Preconditions:
 
 - **No token.** Run `$S/mcp.sh "$RUN" none tools/list` and `$S/mcp.sh "$RUN" none hab_poll`. Both print `HTTP 401`; the saved `.headers` file has `www-authenticate: Bearer`.
 - **Unknown token.** Run `$S/mcp.sh "$RUN" BAD tools/list`. `HTTP 401`. `grep auth_denied "$RUN/evidence/audit.jsonl"` shows `bearer_missing` and `credential_rejected`. Each accepted request also writes an `authenticated` line whose `connection` is the registered connection ID (`verify-a`, `verify-b`, …), never the token.
-- **Known token.** Run `$S/mcp.sh "$RUN" a tools/list`. `HTTP 200` with exactly the agent catalog `hab_inbox, hab_reply, hab_send, hab_status`. Run `HAB_CATALOG=delivery $S/mcp.sh "$RUN" a tools/list`: the same token lists exactly `hab_ack, hab_poll, hab_resolve, hab_status, hab_submit` at `/mcp/delivery`.
+- **Known token.** Run `$S/mcp.sh "$RUN" a tools/list`. `HTTP 200` with exactly the agent catalog `hab_inbox, hab_reply, hab_send, hab_status`. Run `HAB_CATALOG=delivery $S/mcp.sh "$RUN" a tools/list`: the same token lists exactly `hab_ack, hab_mark_read, hab_peek, hab_poll, hab_resolve, hab_status, hab_submit` at `/mcp/delivery`.
 - **Proof.** Keep the three `.res`/`.headers` pairs. Run `node $S/inspect.mjs "$RUN" after-auth`: no `messages` and no `delivery_audit` rows were created by the refused calls.
 
 ## Gotchas
 
 - The tokens are synthetic (`verify-a|b|c`). A pass proves the gateway refuses unauthenticated calls, not that production Auth0 binding works.
-- The Hub server on 8787 has its own, separate deny-all boundary; see "Other surfaces" in `SKILL.md`.
+- A shipped host with no valid credential answers `tools/list` with HTTP 401. A valid local credential that is not connected to a Registry address still lists the full static agent or delivery catalog; authorization is checked when a tool is called (typically `forbidden` until connect). That path is covered by [configured-host.md](./configured-host.md), not a separate fixed-port Hub binary.
