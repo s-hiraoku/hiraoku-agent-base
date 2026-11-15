@@ -149,6 +149,8 @@ CIはlint・typecheck・TypeScript tool検査・root JavaScriptテスト全件�
 
 `.node-version`のNodeと`package.json`の`packageManager`（npm）を使います。`npm run check:toolchain`がこの2つを照合し、古いNodeがPATH先頭にあるとその時点で失敗します。fixtureは実エージェントや本番callbackへ接続しません。dotenvや`.env`は使いません。
 
+型検査の `tsc` は TypeScript 7（`@typescript/native` alias）を使います。ESLint と設計検証の AST API は TypeScript 6（`typescript` → `@typescript/typescript6` alias）を使います。これは [公式の併用方式](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0)です。`typescript` だけを 7 に置き換えると lint と通信境界の検証が壊れるため、両方を保持してください。
+
 試験は非rootユーザーで実行してください。rootは書込み拒否をすり抜けるため、権限系の試験はroot実行時に理由付きでskipされます（Dockerなどのroot CIでは非rootユーザーに切り替えます）。
 
 ```sh
