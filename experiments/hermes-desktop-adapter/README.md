@@ -118,3 +118,22 @@ The backend requests 50 notices normally; only a locally detected output-size ov
 retries the same read-only cursor once with a one-notice page. Other failures and
 user decisions are never retried automatically. Remaining history resumes on the next
 poll, including after a bounded display-window eviction.
+
+## Composer presentation
+
+Only notices that still need attention show their bodies above the input. `queued`,
+`started`, `declined`, and `expired` cards move into a closed-by-default history
+foldout, so handled messages no longer occupy the input area. Opening that history
+is a local display action, not a retry or a deletion. `queued` means accepted by the
+conversation, not execution or reply completion. `later`, in-flight decisions,
+unknown results, and unavailable states remain visible; unknown results are never
+silently treated as success. Failed history refresh is also announced outside the
+foldout, without reopening every handled message.
+
+All cards remain in the bounded display cache and continue receiving authoritative
+state updates. Folding does not alter HAB decisions, cursor progress, delivery,
+or conversation transcript. This is a composer notification UI, not an inserted chat
+message; no second Hermes session is created. A reload reconstructs the same groups
+from authoritative state rather than a local optimistic dismissal flag.
+
+The pending count and an explicit “末尾の受信通知を表示” control sit outside the pending list’s scroll viewport. Polling does not scroll or reorder the list; the control moves only that list to its end when clicked, preserving reading position until the user chooses to navigate. The scroll region is keyboard-focusable.

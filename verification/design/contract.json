@@ -1207,10 +1207,10 @@
     },
     {
       "path": "experiments/hermes-desktop-adapter/README.md",
-      "sha256": "46957a47a7b0b6c8beeeb1aefc91e34cc2242bcff2e0503eae56de7b1b6f3da9",
+      "sha256": "bc46630bbe0a3d86918cd8c05a2a4b04b5df1575f4f16447efbe07bbedf4e6c9",
       "role": "context",
       "review": "reviewed",
-      "summary": "Runtime plugin integration guide: common notifier remains authoritative; inline conversation context and explicit REST owner need a minimal generic SDK patch. Covers strict binding, bounded UI history, shared synthetic wire fixtures, operational migration, unsupported live verification and the operator-pinned connection trust boundary."
+      "summary": "Runtime plugin integration guide: common notifier remains authoritative; inline conversation context and explicit REST owner need a minimal generic SDK patch. Covers strict binding, bounded UI history, shared synthetic wire fixtures, operational migration, unsupported live verification and the operator-pinned connection trust boundary. Composer presentation collapses handled history without changing decisions; explicit list navigation preserves reading position and uncertain states remain visible."
     },
     {
       "path": "experiments/hermes-desktop-adapter/sdk/README.md",
