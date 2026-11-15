@@ -254,16 +254,92 @@ test("a failed handoff is unknown and is not sent again", async (t) => {
   assert.deepEqual(f.calls.handoff, ["m1"]);
 });
 
-test("if marking read fails, nothing starts and the choice can be made again", async (t) => {
+test("対応する while HAB cannot be told is kept, handed off once on a later check", async (t) => {
   const f = setup(t, { unread: [message("m1")] });
   const n = f.make();
   await n.check();
   f.hab.failRead = true;
-  await assert.rejects(n.decide("m1", "accept"), /offline/);
-  assert.equal(n.get("m1").state, "shown");
+  assert.deepEqual(await n.decide("m1", "accept"), {
+    changed: true,
+    state: "accept_waiting",
+  });
+  assert.deepEqual(f.calls.handoff, []);
+  // Pressing again, or choosing otherwise, changes nothing while it waits.
+  assert.equal((await n.decide("m1", "accept")).changed, false);
+  assert.equal((await n.decide("m1", "decline")).changed, false);
+  // Still unreachable: the next check leaves it waiting.
+  await n.check().catch(() => {});
+  assert.equal(n.get("m1").state, "accept_waiting");
   assert.deepEqual(f.calls.handoff, []);
   f.hab.failRead = false;
-  assert.equal((await n.decide("m1", "accept")).state, "started");
+  await n.check();
+  assert.equal(n.get("m1").state, "started");
+  assert.deepEqual(f.calls.handoff, ["m1"]);
+  assert.deepEqual(f.calls.reports.at(-1), ["m1", "started"]);
+  // Restarts and more checks never hand it off again.
+  await f.make().check();
+  assert.deepEqual(f.calls.handoff, ["m1"]);
+});
+
+test("a waiting 対応する past the reply deadline expires and is never handed off", async (t) => {
+  let now = Date.now();
+  const f = setup(t, {
+    unread: [message("m1", { expires_at: new Date(now + 1000).toISOString() })],
+    now: () => now,
+  });
+  const n = f.make();
+  await n.check();
+  f.hab.failRead = true;
+  assert.equal((await n.decide("m1", "accept")).state, "accept_waiting");
+  now += 2000;
+  f.hab.failRead = false;
+  await n.check();
+  assert.equal(n.get("m1").state, "expired");
+  assert.deepEqual(f.calls.reports.at(-1), ["m1", "expired"]);
+  assert.deepEqual(f.calls.handoff, []);
+});
+
+test("a waiting 対応する that expires while earlier retries run is not handed off", async (t) => {
+  let now = Date.now();
+  const f = setup(t, {
+    unread: [
+      message("m1"),
+      message("m2", { expires_at: new Date(now + 5000).toISOString() }),
+    ],
+    now: () => now,
+  });
+  const n = f.make();
+  await n.check();
+  f.hab.failRead = true;
+  await n.decide("m1", "accept");
+  await n.decide("m2", "accept");
+  f.hab.failRead = false;
+  // m1's handoff is slow: m2's deadline passes before m2's turn.
+  f.screen.handoff = async (m) => {
+    f.calls.handoff.push(m.message_id);
+    now += 10_000;
+    return "started";
+  };
+  await n.check();
+  assert.deepEqual(f.calls.handoff, ["m1"]);
+  assert.equal(n.get("m2").state, "expired");
+});
+
+test("対応しない while HAB cannot be told stays declining and is finished on a later check", async (t) => {
+  let clock = Date.now();
+  const f = setup(t, { unread: [message("m1")], now: () => clock });
+  const n = f.make();
+  await n.check();
+  f.hab.failRead = true;
+  assert.deepEqual(await n.decide("m1", "decline"), {
+    changed: true,
+    state: "declining",
+  });
+  f.hab.failRead = false;
+  clock += 61 * 1000;
+  await n.check();
+  assert.equal(n.get("m1").state, "declined");
+  assert.deepEqual(f.calls.handoff, []);
 });
 
 test("a notice past its reply deadline expires instead of starting", async (t) => {
@@ -544,7 +620,7 @@ test("a decline interrupted before HAB marked it read is finished on a later che
   assert.equal(n.get("m1").state, "declining");
   f.hab.markRead = markRead;
   const restarted = f.make();
-  clock += 16 * 60 * 1000;
+  clock += 61 * 1000;
   await restarted.check();
   assert.equal(restarted.get("m1").state, "declined");
   assert.deepEqual(f.calls.readKeys, ["sender-a/m1"]);
