@@ -40,6 +40,7 @@ import {
   SQLiteNotices,
   chatgptConnectorHandoff,
   choicesOf,
+  peekedMessageSchema,
   chatgptConnectorTarget,
   claudeCodeHandoff,
   claudeCodeStatusLine,
@@ -604,11 +605,12 @@ export async function main(
         return stateResponse(out, {
           binding_id: screen.target,
           states: selectedStates(store, keys).map(
-            ({ sender_id, message_id, state, revision }) => ({
+            ({ sender_id, message_id, state, revision, message }) => ({
               sender_id,
               message_id,
               state,
               revision,
+              choices: choicesOf(peekedMessageSchema.parse(message)),
             }),
           ),
           ...(keys === undefined ? {} : { scope: "requested", keys }),

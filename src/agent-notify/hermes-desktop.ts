@@ -17,7 +17,7 @@
  * the notifier records `unknown` and never resends. Without a configured command, `handoff`
  * returns `unsupported`. It never falls back to another session or a CLI.
  */
-import { bindingIdentity } from "./binding.ts";
+import { bindingIdentity, type AgentBinding } from "./binding.ts";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import type {
@@ -130,6 +130,10 @@ export class HermesDesktopScreen implements AgentScreen {
     } as const;
   }
   readonly target: string;
+  readonly #agentBinding: Readonly<AgentBinding>;
+  get binding(): Readonly<AgentBinding> {
+    return this.#agentBinding;
+  }
   readonly #path: string;
   readonly #now: () => number;
   readonly #sessionId: string;
@@ -141,7 +145,10 @@ export class HermesDesktopScreen implements AgentScreen {
     options: { handoff?: HermesDesktopHandoff; now?: () => number } = {},
   ) {
     this.#path = path;
-    this.target = hermesDesktopTarget(binding);
+    this.#agentBinding = Object.freeze({
+      ...hermesDesktopAgentBinding(binding),
+    });
+    this.target = bindingIdentity(this.#agentBinding);
     this.#sessionId = binding.session_id;
     this.#binding = bindingKey(binding);
     this.#handoff = options.handoff;
