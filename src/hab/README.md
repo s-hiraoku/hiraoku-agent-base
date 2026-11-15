@@ -1,10 +1,10 @@
 # HAB registration and policy boundary
 
 This optional integration owns HAB names, product enrollment and individual
-authorization. The reusable Relay core never imports `src/hab`, parses `.hab`
+authorization. The reusable messaging core never imports `src/hab`, parses `.hab`
 addresses or queries registry tables. The four-method `DeliveryService` port lets
-the existing HTTP/MCP adapters accept the composed `HabJetStreamService`
-([packages/relay-nats](../../packages/relay-nats/DESIGN.md)), the only delivery backend. No existing
+the existing HTTP/MCP adapters accept the composed `HabDeliveryService`
+over the SQLite delivery store ([delivery store](../../docs/delivery-store.md)), the only delivery backend. No existing
 runtime, route, credential, Hermes setting or process is changed by this module.
 
 ## Names and enrollment
@@ -70,18 +70,18 @@ explicit fresh grants. Retirement revokes all live bindings and cannot be undone
 
 ## Current authorization and transaction order
 
-`HabJetStreamService` composes the JetStream journal with the registry. Each
+`HabDeliveryService` composes the SQLite delivery store with the registry. Each
 operation obtains the registry's `BEGIN IMMEDIATE` write guard **before** the
-journal transaction, and holds it until the synchronous journal call/commit finishes.
+delivery store transaction, and holds it until the synchronous store call/commit finishes.
 Every admin mutation uses that same registry write lock. A stop/block/revoke
 therefore serializes before or after the delivery operation; another process
-cannot commit revocation between its authorization check and Relay commit.
-No registry/Relay SQL JOIN or shared schema is needed.
+cannot commit revocation between its authorization check and delivery commit.
+No registry/delivery SQL JOIN or shared schema is needed.
 
-All hosts must use this composition and the lock order **registry → Relay**.
-Do not take a Relay write lock and then try to acquire the registry lock. Only
+All hosts must use this composition and the lock order **registry → delivery**.
+Do not take a delivery write lock and then try to acquire the registry lock. Only
 synchronous callbacks are supported; promises and admin reentrancy are refused.
-A `withRelay` called inside another's callback joins its transaction instead, so
+A `withAuthorization` called inside another's callback joins its transaction instead, so
 a guard can check one context and admit an operation for another under one lock
 (the A2A host checks its caller this way before the host identity submits). The scoped
 `Authorization` expires on callback exit, checks the current registry epoch and
@@ -103,7 +103,7 @@ apply sender → recipient on submit, candidate delivery and ACK (including exac
 committed ACK retry). Stopped/retired peers also deny those operations. This first
 policy uses immediate refusal, with no drain-only ACK exception. Bodies already
 accepted remain tracked until normal ACK/expiry; registry changes never delete
-Relay data. A sender with current status rights can inspect its own receipt even
+delivery data. A sender with current status rights can inspect its own receipt even
 when the peer is stopped; it cannot inspect another sender's receipt.
 
 `resolve(context,address)` is a local host API, also exposed by the optional HAB
@@ -113,7 +113,7 @@ address and normalization version. Unknown, inactive and blocked targets share
 `forbidden`. Malformed syntax has a fixed validation error. Save the resolved ID
 in the durable outbox before sending; retries use that stored ID and never
 re-resolve or redirect it. Acceptance still checks current state, so a cached
-resolution cannot bypass a later stop. The standalone Relay catalog remains
+resolution cannot bypass a later stop. The standalone delivery catalog remains
 four tools. The separate human management workflow below adds no MCP tool.
 
 ## Human enrollment workflow
@@ -168,7 +168,7 @@ low-level `createBoundGroup` port remains trusted-host-only and is not a
 terminal/MCP API.
 
 `./sqlite-enrollment-journal.ts` is a dedicated private, explicit-migration
-SQLite store (schema 1), independent of the existing schema-1 registry and Relay
+SQLite store (schema 1), independent of the existing schema-1 registry and host
 DBs. New files are 0600; symlinks, loose permissions, foreign/schema-version
 databases and malformed/foreign-field checkpoints are refused. The host must
 protect its parent, sidecars and backups. Explicit session capacity bounds
@@ -211,23 +211,30 @@ the global emergency-stop latch.
 ## Managed attachments removed
 
 The HAB upload, acceptance, read and attachment MCP/HTTP compositions have been
-deleted together with the Relay attachment modules. An attachment body part is
-refused by the shared contract before any registry or Relay transaction.
+deleted together with the delivery attachment modules. An attachment body part is
+refused by the shared contract before any registry or host transaction.
 
 ## Optional HAB MCP/HTTP and client
 
-`./mcp.ts` provides `createHabMcpServer`: exactly the four Relay tools plus
-`relay_resolve`. Its strict input is `{address}` using the shared version-1 HAB
+`./mcp.ts` provides `createHabMcpServer` with two catalogs (ADR-020). The
+`agent` catalog, served by the host at `/mcp`, has only `hab_send`, `hab_inbox`,
+`hab_reply` and `hab_status` (`./agent-tools.ts`), plus `hab_discover` when
+enabled, and MCP server instructions describing the flow. The host fills in every
+envelope field; argument mistakes get specific codes (`invalid_request` with
+`field`, `kind_not_allowed`, `unknown_address`, `text_too_long`,
+`reply_target_not_found`, `reply_target_expired`). The `delivery` catalog, served
+at `/mcp/delivery` for the agent SDK and the receive service, has the four HAB
+delivery tools plus `hab_resolve`. Its strict input is `{address}` using the shared version-1 HAB
 grammar, including a published JSON Schema pattern. It accepts no sender,
 principal, mailbox, recipient selector or alternative URL. The result contains
 only `{recipient_id,address,normalization_version:1}`. Lookup is read-only and
 idempotent as a query; hints never replace current authorization. Registration,
 binding, activation, maintenance, Task, arbitrary shell and subscriptions are
-absent. Importing the generic Relay factory still exposes exactly four tools,
+absent. Importing the generic delivery factory still exposes exactly four tools,
 even when the supplied service also implements the HAB directory interface.
 
-The explicit `HabHttpGateway` in `./http.ts` selects that catalog using host-code
-composition hooks in the existing gateway. It inherits the same mandatory
+The explicit `HabHttpGateway` in `./http.ts` serves one catalog, chosen by host
+code at construction (callers cannot choose), using host-code composition hooks in the existing gateway. It inherits the same mandatory
 verification-before-protocol, fixed resource/Host/Origin checks, input/response
 byte limits, deadline, active/rate limits and audit. The common MCP executor
 rechecks the gate after async context resolution and before the synchronous
@@ -238,8 +245,8 @@ edits no runtime and provisions no credentials. The optional Node callback works
 with this gateway; the activating host still owns its TCP/header/proxy/TLS bounds.
 
 `HabMcpClient` in `./mcp-client.ts` adds the fixed `resolve(address)` operation to
-`RelayMcpClient`. The protected host-subclass transport hook carries no HAB naming
-policy into reusable Relay code. It shares that client's fixed endpoint, existing
+`DeliveryMcpClient`. The protected host-subclass transport hook carries no HAB naming
+policy into reusable delivery code. It shares that client's fixed endpoint, existing
 credential port, JSON/SSE decoding, response limits, deadline and active counter
 with submit/status/poll/ACK. No generic tool-call MCP API, arbitrary destination,
 OAuth flow, implicit send or automatic retry is added. Input is validated before
@@ -270,7 +277,7 @@ resolution is locally tested, not enabled on an existing production endpoint.
 `SQLiteHabRegistry` explicitly opens a dedicated private database; `migrate()`
 must be called explicitly. Unknown databases/schema versions, changed keys,
 symlinks and loose file modes are refused. New files are 0600. The host must own
-a private parent directory and protect sidecars/backups. No existing Task/Relay
+a private parent directory and protect sidecars/backups. No existing Task/delivery
 database is migrated. Tests use only new temporary directories and synthetic keys.
 
 Finite explicit caps bound product/individual/binding reservations, management
@@ -312,8 +319,8 @@ registered mock Grok/dot/Hermes labels to MCP lookup and private durable journal
 send/reply/ACK, recover lost acceptance after journal/client restart without
 re-resolution, check foreign receipt refusal, deny cached resolution after stop
 and retry a lost lookup without creating a message. A second
-registry connection is unable to revoke in the Relay authorization/commit gap.
-Catalog/contract/client tests also cover separation from standalone Relay,
+registry connection is unable to revoke in the delivery authorization/commit gap.
+Catalog/contract/client tests also cover separation from standalone delivery catalog,
 malformed/foreign arguments, revoked/missing context, unknown/blocked targets,
 redacted failures, JSON/SSE, byte/concurrency limits and stalled audit admission.
 The 33 human-management tests additionally cover separate confirmations,
@@ -329,7 +336,7 @@ server/database/client reopen, lost submit/ACK responses, inbox save failure,
 lease fencing, stop/block/revocation, explicit rotation, unchanged deadlines,
 passive body handling and durable application handoff. Stop during uncertain
 acceptance or ACK quarantines the journal without dropping the local body or
-creating a replacement message. The [integration matrix](../../docs/hab-relay-integration.md)
+creating a replacement message. The [integration matrix](../../docs/history/hab-relay-integration.md)
 records injection methods and limits: same-process reopen, synthetic identity
 ports and accelerated retry/lease state are not production cold-start, real
 identity proof, reply budgets or backup/restore acceptance.
@@ -360,8 +367,8 @@ CLI refuses a registry whose direct bindings are not moved yet
 
 A separately authorized administrator creates a group, binds a freshly verified
 connection, attaches registered addresses, and grants group/address operations.
-`selectAddress(context, address)` creates an opaque selection; `withRelay` checks
-its verified group's membership under the same write guard used for Relay commit.
+`selectAddress(context, address)` creates an opaque selection; `withAuthorization` checks
+its verified group's membership under the same write guard used for delivery commit.
 Group members may use one another's names. Foreign-group names, inactive members,
 ambiguous omitted selection and stale/revoked credentials are denied. A group with one
 active member can omit selection.
@@ -376,7 +383,7 @@ and selected address are recorded separately in bounded authorization records,
 without raw claims or credentials. This is authorization provenance, not proof of
 which Bot ran or a substitute for delivery receipts.
 
-See [the adopted design and current limits](../../docs/relay-auth-groups.md).
+See [the adopted design and current limits](../../docs/auth-groups.md).
 The five basic HAB MCP tools accept optional `as_address` and a paired
 `expected_agent_id` consistency check. The selector is removed before core dispatch;
 foreign group names and mismatched immutable IDs are rejected before delivery.
@@ -392,6 +399,6 @@ node --test test/hab-auth-groups.test.js test/hab-registry.test.js test/hab-auth
 ### Optional MCP agent discovery
 
 `RegistryOptions.discovery` explicitly enables `hab_discover` in addition to the
-existing five tools. See [the discovery contract](../../docs/mcp-agent-discovery.md)
+existing five tools. See [the discovery contract](../../docs/connections/mcp-agent-discovery.md)
 for group-scoped reads, candidate occupancy policy, live paging and the optional
 trusted host-identity port. Registration and presence remain separate.

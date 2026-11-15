@@ -11,7 +11,7 @@ const receipt={sender_id:'fake-agent',message_id:message.message_id,recipient_id
 const encode=value=>JSON.stringify({content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value});
 function fixture() {
   const signal=new AbortController(), state={calls:[], checks:0, active:0, alive:true, result:receipt, work:undefined};
-  const port={version:1,resource_url:'https://relay.example/mcp',get activeRequests(){return state.active},
+  const port={version:1,resource_url:'https://hab.example/mcp',get activeRequests(){return state.active},
     async callTool(name,args,control){state.calls.push({name,args,control});state.active++;
       try {control.check();if(state.work) await state.work;control.check();return encode(state.result)} finally {state.active--}}};
   const options={as_address:'worker@demo.hab',limits,policy:{resource_url:port.resource_url,agent_id:'fake-agent',
@@ -22,7 +22,7 @@ function fixture() {
 test('native sender reuses exact HAB routing and receipt validators',async()=>{
   const f=fixture();assert.deepEqual(await f.client.submit(message),receipt);assert.deepEqual(await f.client.status(message.message_id),receipt);
   assert.equal(f.state.calls.length,2);assert.deepEqual(f.state.calls[0].args,{...message,as_address:'worker@demo.hab',expected_agent_id:'fake-agent'});
-  assert.equal(f.state.calls[1].name,'relay_status');assert.equal(f.client.activeRequests,0);assert.ok(f.state.checks>=5);
+  assert.equal(f.state.calls[1].name,'hab_status');assert.equal(f.client.activeRequests,0);assert.ok(f.state.checks>=5);
 });
 test('forged sender and changed receipt refuse, no arbitrary resolve',async()=>{
   const f=fixture();f.state.result={...receipt,sender_id:'other'};await assert.rejects(f.client.submit(message),/forbidden/);
@@ -53,10 +53,10 @@ test('native business error is sanitized and preserves durable sender status rec
   await assert.rejects(f.client.status(message.message_id),/not_found/);
 });
 test('real owned Node/Python IPC composes native-manager fixture through standard sender contract',async(t)=>{
-  const {NativeRelayStdioPort}=await import('./native_stdio.ts');
+  const {NativeHabStdioPort}=await import('./native_stdio.ts');
   const {fileURLToPath}=await import('node:url');
-  const port=NativeRelayStdioPort.start({command:'/usr/bin/python3',args:['-B',fileURLToPath(new URL('./fake_outbound_entry.py',import.meta.url))],
-    cwd:fileURLToPath(new URL('.',import.meta.url)),env:{},resource_url:'https://relay.example/mcp',max_frame_bytes:65536,shutdown_timeout_ms:200});
+  const port=NativeHabStdioPort.start({command:'/usr/bin/python3',args:['-B',fileURLToPath(new URL('./fake_outbound_entry.py',import.meta.url))],
+    cwd:fileURLToPath(new URL('.',import.meta.url)),env:{},resource_url:'https://hab.example/mcp',max_frame_bytes:65536,shutdown_timeout_ms:200});
   t.after(()=>port.close());
   const f=fixture();const client=new NativeHabMcpClient(port,{...f.options,policy:{...f.options.policy,timeout_ms:5000}},
     {signal:f.signal.signal,check(){assert.equal(f.state.alive,true)}});

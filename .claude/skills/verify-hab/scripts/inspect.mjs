@@ -13,7 +13,7 @@ const run = resolve(process.argv[2] ?? ""),
   label = process.argv[3] ?? "db";
 const open = (name) =>
   new DatabaseSync(join(run, "instance", `${name}.sqlite`), { readOnly: true });
-const relay = open("jetstream-journal"),
+const delivery = open("delivery"),
   registry = open("registry");
 const snapshot = {
   agents: registry
@@ -22,33 +22,33 @@ const snapshot = {
   bindings: registry
     .prepare("SELECT agent_id, state FROM hab_bindings ORDER BY agent_id")
     .all(),
-  // The JetStream journal stores pair-scoped thread keys as JSON [[a, b], thread_id].
-  messages: relay
+  // The delivery store keeps pair-scoped thread keys as JSON [[a, b], thread_id].
+  messages: delivery
     .prepare(
-      "SELECT sender_id, message_id, recipient_id, thread_key FROM nats_messages ORDER BY message_id",
+      "SELECT sender_id, message_id, recipient_id, thread_key FROM delivery_messages ORDER BY message_id",
     )
     .all()
     .map(({ thread_key, ...m }) => ({
       ...m,
       thread_id: JSON.parse(thread_key)[1],
     })),
-  deliveries: relay
+  deliveries: delivery
     .prepare(
-      "SELECT message_id, recipient_id, state, generation, sequence FROM nats_messages ORDER BY message_id",
+      "SELECT message_id, recipient_id, state, generation FROM delivery_messages ORDER BY message_id",
     )
     .all(),
-  delivery_audit: relay
-    .prepare("SELECT message_id, event FROM nats_delivery_audit ORDER BY id")
+  delivery_audit: delivery
+    .prepare("SELECT message_id, event FROM delivery_audit ORDER BY id")
     .all(),
   ack_receipts: Number(
-    relay
+    delivery
       .prepare(
-        "SELECT count(*) n FROM nats_messages WHERE ack_receipt_id IS NOT NULL",
+        "SELECT count(*) n FROM delivery_messages WHERE ack_receipt_id IS NOT NULL",
       )
       .get().n,
   ),
 };
-relay.close();
+delivery.close();
 registry.close();
 const json = JSON.stringify(snapshot, null, 2);
 const evidence = join(run, "evidence");

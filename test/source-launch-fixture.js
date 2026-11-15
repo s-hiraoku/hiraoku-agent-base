@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { syntheticStores } from "./external-owner-fixture.js";
 import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
 import { SQLiteSourceLaunchJournal } from "../src/owner-integrations/source-launch-journal.ts";
-import { message, limits } from "./relay-http-fixtures.js";
+import { message, limits } from "./mcp-http-fixtures.js";
 export function sourceFixture(directory, patch = {}) {
   const stores = syntheticStores(directory), context = {}, operator = {};
   const inbox = stores.binding.hostOptions.inbox;

@@ -12,7 +12,6 @@ async def check():
     """Exercise the recipient tools against the parent-owned synthetic host."""
     node, fixture, mode = sys.argv[1:]
     params = StdioServerParameters(command=node, args=[fixture], env={
-        "HAB_TEST_BROKER_FILE": os.environ["HAB_TEST_BROKER_FILE"],
         "HAB_TEST_COMPATIBILITY": mode,
         "HAB_TEST_COMPATIBILITY_PID_FILE": os.environ["HAB_TEST_COMPATIBILITY_PID_FILE"],
         "TMPDIR": os.environ["TMPDIR"],

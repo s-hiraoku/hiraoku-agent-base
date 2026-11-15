@@ -2,12 +2,12 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
 import { fixture, limits } from "./inbox-fixtures.js";
-import { message as sourceMessage, policy } from "./relay-http-fixtures.js";
+import { message as sourceMessage, policy } from "./mcp-http-fixtures.js";
 import { SQLiteHostControl } from "../src/agent-sdk/sqlite-host-control.ts";
 import { AdapterHostCycle } from "../src/adapter-host/cycle.ts";
 import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
 import { SQLiteReplyBudget } from "../src/adapter-policy/sqlite-reply-budget.ts";
-import { RelayMcpClient } from "../src/agent-sdk/mcp-client.ts";
+import { DeliveryMcpClient } from "../src/agent-sdk/mcp-client.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 export { limits };
 export function deferred() {
@@ -77,7 +77,7 @@ export async function hostFixture(
   const controlRaw = new DatabaseSync(path),
     outboxRaw = new DatabaseSync(join(f.dir, "host-outbox.sqlite"));
   const inboxRaw = new DatabaseSync(join(f.dir, "bridge-inbox.sqlite")),
-    serverRaw = new DatabaseSync(join(f.dir, "relay.sqlite"));
+    serverRaw = new DatabaseSync(join(f.dir, "delivery.sqlite"));
   const state = {
     enabled: true,
     denied: new Set(),
@@ -103,7 +103,7 @@ export async function hostFixture(
       limits,
       transport: (fetch) => {
         state.fetchPorts.push(fetch);
-        const c = new RelayMcpClient({
+        const c = new DeliveryMcpClient({
           limits,
           policy: {
             resource_url: state.resource_url,
@@ -203,7 +203,7 @@ export async function hostFixture(
     outboxRaw,
     inboxRaw,
     serverRaw,
-    queued: () => outboxRaw.prepare("SELECT * FROM relay_outbox").all(),
+    queued: () => outboxRaw.prepare("SELECT * FROM outbox").all(),
     audit: () => controlRaw.prepare("SELECT * FROM adapter_host_audit").all(),
   };
 }

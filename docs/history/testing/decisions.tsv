@@ -1,0 +1,30 @@
+ts	phase	decision	why	evidence	result
+2026-11-01T09:03:00Z	frame	最新main d83ad6eをSSD専用checkoutに取得	別taskと本番を変更せず比較基準を固定する	.git/HEAD	VERIFIED
+2026-11-01T09:05:00Z	workflow	導入済みpstack 1.16.0のfigure-it-outと関連principleを読む	ユーザーのpstack利用指示に従い検証と判断記録を先に作る	open-pstack 1.16.0 manifest	VERIFIED
+2026-11-01T09:06:00Z	baseline	現行の主要8ファイル100テストを実行	変更前の実動作と比較する	.lab/baseline/relay.tap	100 pass 0 fail
+2026-11-01T09:06:30Z	workflow	pstack追加使用を更新担当の結果まで保留	親から更新競合を避ける指示が来たため本体を変更しない	docs/history/testing/plan.md	pending update result
+2026-11-01T09:09:00Z	design	共通backend契約に未実装A2AとJetStreamを理由付きskip登録	fakeのpassを製品backendの実証に見せない	test/delivery-lab/backends.js	NOT VERIFIED until execution
+2026-11-01T00:21:10Z	audit	先行5行のtsを訂正する。JST表示をUTCのZとして記した	履歴は消さず、先行時刻は正確なUTCとして使わない	docs/history/testing/decisions.tsv; .lab/run-kUvLmB/report.json	先行5行のUTC時刻はINCONCLUSIVE
+2026-11-01T00:21:10Z	workflow	pstack更新担当の同版確認を受け保留を解除しnative手順を再開	本体は変更せず設定済みinherit-parentを使う	.lab/pstack/hab-lab-how.md	独立context。provider/model多様性は増えない
+2026-11-01T00:21:10Z	faults	初回clock fixture失敗をvarargs overrideへ修正	SQLite組込みの引数違いで差し替えが効いていなかった	.lab/run-liKEss/storage-and-harness.tap; .lab/run-dEKjew/storage-and-harness.tap	初回6pass1failから7pass0fail
+2026-11-01T00:21:10Z	regression	全JSのCLI9失敗を固定ExperimentalWarning設定で再確認	継承NODE_OPTIONSは拒否しSQLite警告だけを環境条件として固定する	.lab/run-kUvLmB/full-regression.tap; .lab/run-dEKjew/full-regression.tap	1436pass0fail
+2026-11-01T00:21:10Z	design	3候補とcross-judgeを比較しCを基礎にAとBの証拠保存を採用	release全回帰必須、sender照合、source inventory、child異常系、cleanup失敗保存を補う	.lab/pstack/hab-lab-judge.md; docs/history/testing/architecture.md	post-scaffold review。事前設計完了とはしない
+2026-11-01T00:21:10Z	comments	no-commentsの削除候補1件を削除し抑制なしを確認	fixtureの意図を繰り返すコメントだった	.lab/pstack/hab-lab-comment-review.md	1削除。MUST KILLと制約commentなし
+2026-11-01T00:21:10Z	crash	SIGKILL fixtureの生成arrow式を修正して再試験	最初は子processの構文誤りで保存前に終了した	.lab/run-BPi07t/storage-and-harness.tap; .lab/run-zQxf2i/storage-and-harness.tap	F05成功。故障/環境10pass0fail
+2026-11-01T00:21:10Z	baseline	PR114の仕様だけが追加された最新main8322093へfast-forward	並行A2A/NATS担当と公開仕様の受入境界を合わせる	docs/hab-product-spec.md	code baseline d83ad6eを維持。製品コード変更なし
+2026-11-01T00:26:56Z	audit	警告抑制の記述を訂正する。固定flagはExperimentalWarning種別全体を抑制する	SQLite警告だけに限定したflagではない	scripts/lib/delivery-lab.mjs	継承optionsは拒否。他warning種別は維持
+2026-11-01T00:26:56Z	isolation	最終全回帰の固定8789競合6失敗を保持しport事前検査とown-listener確認を追加	既存CLIが自分の子listener確認前に未知processへprobeする余地を除く	.lab/run-IQeWW4/full-regression.tap; .lab/pstack/hab-lab-final-review.md	外部processは停止しない。full回帰は直列
+2026-11-01T00:26:56Z	isolation	ready markerを期待ファイル一覧へ追加し検査socket破棄と2秒上限を加える	独立レビューがmarker追加による1失敗とpreflightのclose待ちを指摘した	.lab/run-b7Z5a1/full-regression.tap; .lab/pstack/hab-lab-port-review.md	受理済み試験コードの修正。次runで検証
+2026-11-01T00:26:56Z	verification	Python既存試験を許可リスト環境で再確認	HAB設定やAPI keyを継承せずHermes境界も検証する	.lab/python-verification/report.json	34+13pass、0fail
+2026-11-01T00:31:13Z	audit	IQeWW4の固定port競合という記述は推定と訂正する	観測はbind関連6失敗で、元のnative errorは製品側で伏せられていた	.lab/run-IQeWW4/full-regression.tap	原因未確定。以後はpreflightでerror codeを保存
+2026-11-01T00:31:13Z	verification	cleanな実装commit216e639でrelease全回帰を実行	合成契約と実storage/process故障を通した後も未実装を合格にしない	.lab/run-54gpBL/report.json	全JS1436pass、新規19pass、16skip、gateは期待通りBLOCKED
+2026-11-01T00:31:13Z	cleanup	専用checkoutに結び付くnode/workerd/esbuildの残存を読み取り確認	自分の試験processだけが終了した証拠を残す	.lab/process-inspection.json	該当0件。停止操作なし
+2026-11-01T00:31:13Z	handoff	検証後の結果文書とpatchをローカルで保存する	本番や公開先を変更せず親が具体物を確認できるようにする	docs/history/testing/results.md	ローカルのみ。CI配線と公開は未実施
+2026-11-01T01:04:23Z	nats-pins	公式APIの4archive digestを照合し実行せずbinary hashと長さを導出	候補自身のversion出力やcaller指定SHAを信頼根拠にしない	.lab/nats-official-pins/verified-pins.json	Darwin/Linux x64/arm64のpin記録一致。binary未実行
+2026-11-01T01:04:23Z	nats-design	実装前にhowと3候補とcross-judgeを比較してB案を採用	同じverified bytesのprivate copyと専用child境界を小さく保つ	.lab/nats-runner/synthesis.json; .lab/nats-runner/design/	native inherit-parent。model/provider多様性なし
+2026-11-01T01:04:23Z	nats-code	専用SSD worktreeの単独ownerがverifier/probe/fixtures/CIを実装	同じCLIとevidence規則を複数writerで分散させない	caef55bf68915a624225304d0c28c3cf1fb6d88a	ローカルのみ。依存/製品sourceの変更なし
+2026-11-01T01:04:23Z	nats-fixture	fixture digest誤記の初回3失敗と訂正後10成功を保持	inert fixtureを公式binary受入れと混同しない	.lab/nats-runner/worker-evidence/	focused10pass。初回失敗は削除しない
+2026-11-01T01:04:23Z	nats-review	独立reviewで阻害不具合なし。worker baselineのsource2件不一致を区別	途中runを最終commitの根拠にしない	.lab/nats-runner/hab-verified-runner-review.md	親のclean commit runで最終検証する
+2026-11-01T01:04:23Z	nats-verify	clean caef55bで公式path正例と全JS回帰を実行	実CLIとprivate childの観測を最終SHAへ結び付ける	.lab/run-4ikWOc/report.json; .lab/nats-runner/public-positive.json	引渡し1pass、guard10pass、全JS1436pass。backend_executed false
+2026-11-01T01:04:23Z	nats-ci	Node版/nested lab/artifact限定範囲とYAMLをローカル確認	secretやbinaryやstoreをartifactへ含めず実行範囲を可視化する	.lab/nats-runner/ci-local-check.json	構文/主要構成pass。hosted CIとLinux未実行
+2026-11-01T01:04:23Z	nats-cleanup	両専用checkoutを引数/実行pathに持つ試験processを確認	他taskを停止せず今回の残存を記録する	.lab/nats-runner/process-inspection.json	該当0件。停止操作なし

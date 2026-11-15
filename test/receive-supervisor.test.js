@@ -104,10 +104,10 @@ test("Receive supervisor: durable host stores and ACKs once, restart does not re
   assert.equal(nextInbox.inbox().length, 1);
   assert.equal(nextInbox.inbox()[0].receipt_confirmed, true);
   assert.deepEqual(f.state.tools, [
-    "relay_poll",
-    "relay_ack",
-    "relay_poll",
-    "relay_poll",
+    "hab_poll",
+    "hab_ack",
+    "hab_poll",
+    "hab_poll",
   ]);
   assert.equal(f.inbox.inbox().length, 1);
   assert.equal(f.queued().length, 0);
@@ -120,7 +120,7 @@ test("Receive supervisor: lost ACK response is reconciled before polling another
   f.submit();
   let lost = false;
   f.state.afterNetwork = async (tool) => {
-    if (tool === "relay_ack" && !lost) {
+    if (tool === "hab_ack" && !lost) {
       lost = true;
       throw new Error("private endpoint detail");
     }
@@ -131,7 +131,7 @@ test("Receive supervisor: lost ACK response is reconciled before polling another
       if (waits.length === 1) {
         assert.equal(f.inbox.inbox()[0].receipt_confirmed, false);
         // Advance the existing ACK retry eligibility, not the envelope or receipt identity.
-        f.inboxRaw.exec("UPDATE relay_receiver_acks SET next_retry_at=0");
+        f.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
       } else stop.abort();
     },
   });
@@ -139,10 +139,10 @@ test("Receive supervisor: lost ACK response is reconciled before polling another
   assert.equal(result.retries, 1);
   assert.deepEqual(waits, [1000, 30000]);
   assert.deepEqual(f.state.tools, [
-    "relay_poll",
-    "relay_ack",
-    "relay_ack",
-    "relay_poll",
+    "hab_poll",
+    "hab_ack",
+    "hab_ack",
+    "hab_poll",
   ]);
   assert.equal(f.inbox.inbox().length, 1);
   assert.equal(f.inbox.inbox()[0].receipt_confirmed, true);
@@ -198,7 +198,7 @@ test("Receive supervisor: stop waits for the current receive and prevents overla
     retries: 0,
     drained: true,
   });
-  assert.deepEqual(f.state.tools, ["relay_poll"]);
+  assert.deepEqual(f.state.tools, ["hab_poll"]);
 });
 test("Receive supervisor: transport failures back off to a cap and success resets the delay", async () => {
   const stop = new AbortController(),

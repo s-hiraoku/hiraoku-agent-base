@@ -16,7 +16,7 @@ import { test, type TestContext } from "node:test";
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const artifacts = [
   "README.md",
-  "docs/hab-topology.md",
+  "docs/history/hab-topology.md",
   "docs/diagrams/manifest.json",
   "docs/diagrams/hab-current.png",
   "docs/diagrams/hab-target.png",

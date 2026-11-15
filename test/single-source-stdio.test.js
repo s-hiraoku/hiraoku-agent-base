@@ -9,7 +9,6 @@ import { setTimeout as delay } from "node:timers/promises";
 import { performance } from "node:perf_hooks";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { startLocalBroker } from "../scripts/lib/nats-broker.ts";
 
 /** Wait for independently published child evidence under a bounded deadline. */
 async function until(read, timeout = 5000) {
@@ -22,10 +21,10 @@ async function until(read, timeout = 5000) {
   }
 }
 
-/** Parent owns broker/scratch; child owns only borrowed synthetic host stores. */
+/** Parent owns scratch; child owns only borrowed synthetic host stores. */
 async function fixture(t, { lifetimeMs = 15000, mode = "normal" } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "hab-single-source-stdio-"));
-  let broker, transport, client, stderrDone, closed;
+  let transport, client, stderrDone, closed;
   let diagnostics = "";
   const closeClient = async () => {
     await client?.close();
@@ -40,14 +39,9 @@ async function fixture(t, { lifetimeMs = 15000, mode = "normal" } = {}) {
   t.after(() => closed ??= (async () => {
     try { await closeClient(); }
     finally {
-      await broker?.stop();
       rmSync(directory, { recursive: true, force: true });
     }
   })());
-  broker = await startLocalBroker(join(directory, "broker"));
-  writeFileSync(join(directory, "broker.json"), JSON.stringify({
-    server: broker.server, user: broker.user, password: broker.password,
-  }), { mode: 0o600 });
   transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("./single-source-stdio-child.js", import.meta.url))],

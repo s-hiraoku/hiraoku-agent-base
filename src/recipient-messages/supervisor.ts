@@ -20,7 +20,7 @@ export type RecipientOwnerState = Readonly<{
   source: Readonly<MessageSource>;
   /** accepted is native admission, not model completion; unknown is never waiting_owner. */
   phase: RecipientPhase | "not_started" | "reply_queued" | "blocked";
-  /** A reply can be accepted by Relay without being received or ACKed by its recipient. */
+  /** A reply can be accepted by the HAB host without being received or ACKed by its recipient. */
   outbox_state?: ReturnType<
     RecipientMessages["enqueueReplyOnce"]
   >["outbox_state"];

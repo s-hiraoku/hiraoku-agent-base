@@ -4,7 +4,7 @@ import {
   RegistryError,
   habAddress,
   habSlug,
-  relayOperations,
+  deliveryOperations,
 } from "./registry.ts";
 import type { AgentOperation, AgentRecord, ProductRecord } from "./registry.ts";
 import type { SQLiteHabRegistry } from "./sqlite-registry.ts";
@@ -28,7 +28,7 @@ const slug = z.string().refine((v) => {
 });
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const grants = z
-  .array(z.enum(relayOperations))
+  .array(z.enum(deliveryOperations))
   .min(1)
   .max(5)
   .refine((v) => new Set(v).size === v.length)
@@ -346,7 +346,7 @@ export async function runHabEnrollment(
         throw new EnrollmentError("enrollment_review_required");
       const group = registry.inspectGroup(admin(), live.group_id);
       const choice = await ui.operations(structuredClone(agent), [
-        ...relayOperations,
+        ...deliveryOperations,
       ]);
       if (choice === null) return pause();
       const parsed = grants.safeParse(choice);

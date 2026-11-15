@@ -1,0 +1,938 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { createHmac } from "node:crypto";
+import {
+  comparisonMaterial,
+  makeReplayBoundMessageId,
+  RECORD_RETENTION_MS,
+} from "../src/messaging/index.ts";
+import { DurableReceiver } from "../src/agent-sdk/index.ts";
+import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
+import { authorizedDelivery } from "./delivery-fixture.js";
+const day = 86400000;
+const limits = {
+  envelope_bytes: 32768,
+  text_bytes: 16000,
+  data_bytes: 16000,
+  parts: 8,
+  json_depth: 20,
+  json_nodes: 1000,
+};
+const options = {
+  agent_id: "b",
+  fingerprint_key: new Uint8Array(32).fill(43),
+  limits,
+  max_records: 10,
+  max_body_bytes: 100000,
+  max_ack_records: 30,
+  ack_retry_ms: day,
+  retry_base_ms: 1000,
+  retry_cap_ms: 60000,
+  max_attempts: 5,
+};
+function message(at = Date.now() - 100, entropy = "1".repeat(32)) {
+  const first = new Date(at).toISOString();
+  return {
+    version: 1,
+    message_id: makeReplayBoundMessageId(first, entropy),
+    recipient_id: "b",
+    kind: "question",
+    body: { parts: [{ type: "text", text: "synthetic inbox fixture" }] },
+    thread_id: "thread-ab",
+    in_reply_to: null,
+    first_sent_at: first,
+    expires_at: new Date(at + 3600000).toISOString(),
+  };
+}
+function delivery(m = message(), generation = 1) {
+  return {
+    message: { ...m, sender_id: "a" },
+    generation,
+    lease_token: "x".repeat(43),
+    lease_until: new Date(
+      Math.min(Date.now() + 30000, Date.parse(m.expires_at)),
+    ).toISOString(),
+  };
+}
+function receipt(req) {
+  return {
+    recipient_id: "b",
+    sender_id: req.sender_id,
+    message_id: req.message_id,
+    request_id: req.request_id,
+    receipt_id: "receipt-dummy",
+    acked_at: new Date().toISOString(),
+    state: "acked",
+  };
+}
+function fixture(t, patch = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "hab-inbox-maintenance-")),
+    path = join(dir, "inbox.sqlite"),
+    stores = [];
+  t.after(() => {
+    for (const s of stores) {
+      try {
+        s.close();
+      } catch {
+        /* already closed */
+      }
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const open = (extra = {}) => {
+    const s = new SQLiteInbox(path, { ...options, ...patch, ...extra });
+    stores.push(s);
+    return s;
+  };
+  const store = open();
+  store.migrate();
+  const raw = new DatabaseSync(path);
+  raw.exec("PRAGMA foreign_keys=ON");
+  t.after(() => raw.close());
+  return { dir, path, store, raw, open };
+}
+function code(fn, expected) {
+  assert.throws(fn, (e) => e.code === expected);
+}
+function row(f, id) {
+  return f.raw
+    .prepare("SELECT * FROM inbox WHERE sender_id='a' AND message_id=?")
+    .get(id);
+}
+function ack(f) {
+  return f.raw
+    .prepare("SELECT * FROM receiver_acks ORDER BY generation")
+    .get();
+}
+function seed(
+  f,
+  {
+    entropy = "2".repeat(32),
+    legacy,
+    released = true,
+    state = "confirmed",
+    horizon = Date.now() - 39 * day,
+  } = {},
+) {
+  const at = Date.now() - 40 * day,
+    m = message(at, entropy);
+  if (legacy) m.message_id = legacy;
+  const expiry = Date.parse(m.expires_at),
+    terminal = state === "pending" ? null : at + 1000,
+    until = Math.max(expiry, horizon, at + 2000) + RECORD_RETENTION_MS;
+  f.raw
+    .prepare(
+      `INSERT INTO inbox(sender_id,message_id,body,fingerprint,received_at,receipt_confirmed,released_at,expires_at,ack_retry_until,ack_terminal_at,retain_until)
+    VALUES('a',?,?,?,?,?,?,?,?,?,?)`,
+    )
+    .run(
+      m.message_id,
+      released ? "" : JSON.stringify(m),
+      createHmac("sha256", options.fingerprint_key)
+        .update(comparisonMaterial("a", m, limits))
+        .digest("hex"),
+      at,
+      Number(state === "confirmed"),
+      released ? at + 2000 : null,
+      expiry,
+      horizon,
+      terminal,
+      until,
+    );
+  const req = {
+    sender_id: "a",
+    message_id: m.message_id,
+    generation: 1,
+    lease_token: "x".repeat(43),
+    request_id: `ack-${entropy}`,
+  };
+  const fingerprint = createHmac("sha256", options.fingerprint_key)
+    .update(
+      JSON.stringify([
+        req.sender_id,
+        req.message_id,
+        req.generation,
+        req.lease_token,
+      ]),
+    )
+    .digest("hex");
+  f.raw
+    .prepare(
+      `INSERT INTO receiver_acks(request_id,sender_id,message_id,generation,request,fingerprint,state,retry_until,receipt,terminal_at,retain_until)
+    VALUES(?,'a',?,1,?,?,?,?,?,?,?)`,
+    )
+    .run(
+      req.request_id,
+      m.message_id,
+      state === "pending" ? JSON.stringify(req) : null,
+      fingerprint,
+      state,
+      horizon,
+      state === "confirmed" ? JSON.stringify(receipt(req)) : null,
+      terminal,
+      until,
+    );
+  return { m, req };
+}
+async function realHost(t, f) {
+  const { service } = await authorizedDelivery(t, {
+    authorization: {
+      authorize(ctx) {
+        return ["a", "b"].includes(ctx) ? { agent_id: ctx } : undefined;
+      },
+    },
+    limits,
+    directory: f.dir,
+    queue: {
+      max_pending: 10,
+      max_pending_per_recipient: 5,
+      poll_scan_limit: 10,
+      agent_capacity: undefined,
+    },
+  });
+  return service;
+}
+
+test("explicit application handoff is idempotent and released bodies never reappear on exact/new-generation delivery", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const app = new Map();
+  const entry = f.store.inbox()[0];
+  app.set(
+    `${entry.sender_id}/${entry.message.message_id}`,
+    structuredClone(entry.message),
+  );
+  assert.equal(f.store.releaseBody("a", d.message.message_id), true);
+  const before = row(f, d.message.message_id);
+  assert.equal(before.body, "");
+  assert.equal(before.receipt_confirmed, 0);
+  assert.equal(f.store.inbox().length, 0);
+  assert.equal(f.store.releaseBody("a", d.message.message_id), false);
+  f.store.save(d);
+  f.store.save({ ...d, generation: 2 });
+  assert.equal(f.store.inbox().length, 0);
+  assert.equal(f.raw.prepare("SELECT count(*) n FROM inbox").get().n, 1);
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
+    2,
+  );
+  assert.equal(row(f, d.message.message_id).released_at, before.released_at);
+  assert.deepEqual(app.get(`a/${d.message.message_id}`), entry.message);
+  const changed = structuredClone(d);
+  changed.message.body.parts[0].text = "changed";
+  code(() => f.store.save(changed), "inbox_content_conflict");
+});
+
+test("lost server ACK response recovers after release and restart without a second application handoff", async (t) => {
+  const f = fixture(t),
+    service = await realHost(t, f),
+    m = message(),
+    requests = [];
+  service.submit("a", m);
+  const receiver = new DurableReceiver(f.store, {
+    async poll() {
+      return service.poll("b");
+    },
+    async ack(req) {
+      requests.push(req);
+      service.ack("b", req);
+      throw Error("synthetic response loss");
+    },
+  });
+  await assert.rejects(receiver.receiveOnce(), /ack_transport_failed/);
+  const app = structuredClone(receiver.inbox()[0].message);
+  f.store.releaseBody("a", m.message_id);
+  f.store.close();
+  const reopened = f.open();
+  reopened.migrate();
+  f.raw.exec("UPDATE receiver_acks SET next_retry_at=0");
+  await new DurableReceiver(reopened, {
+    async poll() {
+      return service.poll("b");
+    },
+    async ack(req) {
+      requests.push(req);
+      return service.ack("b", req);
+    },
+  }).receiveOnce();
+  assert.deepEqual(requests[1], requests[0]);
+  assert.deepEqual(app, m);
+  assert.equal(reopened.inbox().length, 0);
+  assert.equal(row(f, m.message_id).receipt_confirmed, 1);
+  assert.equal(ack(f).state, "confirmed");
+  assert.equal(ack(f).request, null);
+});
+
+test("failed release preserves the complete body and can be retried after another connection reopens", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  f.raw.exec(
+    "CREATE TRIGGER fail_release BEFORE UPDATE OF released_at ON inbox BEGIN SELECT RAISE(ABORT,'synthetic release failure'); END",
+  );
+  assert.throws(
+    () => f.store.releaseBody("a", d.message.message_id),
+    /synthetic release failure/,
+  );
+  assert.deepEqual(f.store.inbox()[0].message, messageFrom(d));
+  assert.equal(row(f, d.message.message_id).released_at, null);
+  f.raw.exec("DROP TRIGGER fail_release");
+  const other = f.open();
+  other.migrate();
+  assert.equal(other.releaseBody("a", d.message.message_id), true);
+  assert.equal(f.store.releaseBody("a", d.message.message_id), false);
+});
+function messageFrom(d) {
+  const m = { ...d.message };
+  delete m.sender_id;
+  return m;
+}
+
+test("unknown/foreign release and malformed local inputs do not change another sender's body", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  code(() => f.store.releaseBody("c", d.message.message_id), "not_found");
+  for (const id of ["", "../a", "a@b", 1, null])
+    code(
+      () => f.store.releaseBody(id, d.message.message_id),
+      "invalid_request",
+    );
+  const req = f.store.claimAck();
+  code(
+    () =>
+      f.store.rejectAck({ ...req, lease_token: "y".repeat(43) }, "invalid_ack"),
+    "unknown_local_ack",
+  );
+  code(() => f.store.rejectAck(req, "unknown"), "invalid_failure_reason");
+  assert.equal(ack(f).state, "pending");
+  assert.equal(f.store.inbox().length, 1);
+});
+
+test("unseen expired delivery and new expired generations are rejected while an exact saved journal stays retryable", (t) => {
+  const f = fixture(t),
+    old = delivery(message(Date.now() - 2 * 3600000));
+  code(() => f.store.save(old), "expired_delivery");
+  assert.equal(f.store.inbox().length, 0);
+  const { m } = seed(f, { released: false, state: "pending" });
+  const d = delivery(m);
+  f.store.save(d);
+  code(() => f.store.save({ ...d, generation: 2 }), "expired_delivery");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
+    1,
+  );
+  assert.equal(f.store.inbox().length, 1);
+});
+
+test("bounded maintenance clears exhausted token journals but never an unconsumed body even after 40 days", (t) => {
+  const f = fixture(t),
+    { m } = seed(f, { released: false, state: "pending" });
+  const result = f.store.maintain(1);
+  assert.deepEqual(result, {
+    expired_acks: 1,
+    purged_acks: 0,
+    purged_messages: 0,
+    safety_held: 0,
+  });
+  assert.equal(ack(f).state, "quarantined");
+  assert.equal(ack(f).request, null);
+  assert.ok(ack(f).terminal_at > Date.now() - 10000);
+  assert.equal(f.store.maintain(1000).purged_messages, 0);
+  assert.deepEqual(f.store.inbox()[0].message, m);
+});
+
+test("ACKs and released tombstones share the batch budget; collection recovers quotas and cannot replay the old delivery", (t) => {
+  const f = fixture(t, { max_records: 1, max_ack_records: 1 }),
+    { m } = seed(f);
+  code(() => f.store.save(delivery()), "inbox_capacity_exceeded");
+  assert.deepEqual(f.store.maintain(1), {
+    expired_acks: 0,
+    purged_acks: 1,
+    purged_messages: 0,
+    safety_held: 0,
+  });
+  assert.ok(row(f, m.message_id));
+  code(() => f.store.save(delivery(m)), "expired_delivery");
+  assert.deepEqual(f.store.maintain(1), {
+    expired_acks: 0,
+    purged_acks: 0,
+    purged_messages: 1,
+    safety_held: 0,
+  });
+  code(() => f.store.save(delivery(m)), "expired_delivery");
+  const forged = message();
+  forged.message_id = m.message_id;
+  code(() => f.store.save(delivery(forged)), "invalid_contract");
+  f.store.save(delivery());
+  assert.equal(f.store.inbox().length, 1);
+  assert.deepEqual(f.raw.prepare("PRAGMA foreign_key_check").all(), []);
+  const totals = f.raw
+    .prepare("SELECT * FROM inbox_maintenance_totals")
+    .all();
+  assert.equal(totals.length, 1);
+  assert.equal(totals[0].purged_messages, 1);
+  assert.equal(Object.hasOwn(totals[0], "message_id"), false);
+});
+
+test("an old confirmed ACK may be collected while its unconsumed message remains available", (t) => {
+  const f = fixture(t),
+    { m } = seed(f, { released: false });
+  assert.deepEqual(f.store.maintain(1000), {
+    expired_acks: 0,
+    purged_acks: 1,
+    purged_messages: 0,
+    safety_held: 0,
+  });
+  assert.deepEqual(f.store.inbox()[0].message, m);
+  assert.equal(f.store.releaseBody("a", m.message_id), true);
+  assert.equal(f.store.maintain(1000).purged_messages, 0);
+  assert.ok(row(f, m.message_id).released_at > Date.now() - 10000);
+});
+
+test("legacy tombstones stay deduplicated after ACK collection without blocking time-bound IDs", (t) => {
+  const f = fixture(t),
+    legacy = seed(f, { legacy: "legacy-1" }),
+    safe = seed(f, { entropy: "3".repeat(32) });
+  assert.deepEqual(f.store.maintain(1000), {
+    expired_acks: 0,
+    purged_acks: 2,
+    purged_messages: 1,
+    safety_held: 1,
+  });
+  assert.ok(row(f, legacy.m.message_id));
+  assert.equal(row(f, safe.m.message_id), undefined);
+  code(() => f.store.save(delivery(legacy.m)), "expired_delivery");
+  assert.equal(f.store.inbox().length, 0);
+});
+
+test("cached retention cannot bypass recent release/receive/expiry/ACK terminal/horizon dates or a live pending journal", (t) => {
+  const f = fixture(t);
+  const fields = [
+    "released_at",
+    "received_at",
+    "expires_at",
+    "ack_terminal_at",
+    "ack_retry_until",
+  ];
+  for (let i = 0; i < fields.length; i++) {
+    const { m } = seed(f, { entropy: String(i + 2).repeat(32) });
+    f.raw
+      .prepare(
+        `UPDATE inbox SET ${fields[i]}=?,retain_until=0 WHERE message_id=?`,
+      )
+      .run(Date.now() - day, m.message_id);
+  }
+  const pending = seed(f, {
+    entropy: "7".repeat(32),
+    state: "pending",
+    horizon: Date.now() + day,
+  });
+  f.raw.exec("UPDATE inbox SET retain_until=0");
+  const result = f.store.maintain(1000);
+  assert.equal(result.purged_messages, 0);
+  assert.ok(row(f, pending.m.message_id));
+  assert.equal(f.raw.prepare("SELECT count(*) n FROM inbox").get().n, 6);
+  const journal = f.raw
+    .prepare("SELECT state,request FROM receiver_acks WHERE request_id=?")
+    .get(pending.req.request_id);
+  assert.equal(journal.state, "pending");
+  assert.deepEqual(JSON.parse(journal.request), pending.req);
+});
+
+test("exact save/confirm/reject/read/release repetitions never renew retention dates", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const req = f.store.claimAck(),
+    r = receipt(req);
+  f.store.confirmAck(req, r);
+  f.store.releaseBody("a", d.message.message_id);
+  // Make any accidental renewal observable without relying on elapsed wall time.
+  f.raw.exec(
+    "UPDATE inbox SET released_at=released_at-10000,ack_terminal_at=ack_terminal_at-10000,retain_until=retain_until-10000; UPDATE receiver_acks SET terminal_at=terminal_at-10000,retain_until=retain_until-10000",
+  );
+  const before = row(f, d.message.message_id),
+    journal = ack(f);
+  f.store.save(d);
+  f.store.confirmAck(req, r);
+  f.store.rejectAck(req, "invalid_ack");
+  f.store.releaseBody("a", d.message.message_id);
+  f.store.inbox();
+  f.store.maintain(1000);
+  assert.deepEqual(row(f, d.message.message_id), before);
+  assert.deepEqual(ack(f), journal);
+  code(
+    () => f.store.confirmAck(req, { ...r, receipt_id: "different" }),
+    "local_ack_receipt_conflict",
+  );
+});
+
+test("a late valid ACK receipt can reconcile exhausted journals after body release without reinserting data", (t) => {
+  const f = fixture(t, { max_attempts: 1 }),
+    d = delivery();
+  f.store.save(d);
+  const req = f.store.claimAck();
+  f.store.releaseBody("a", d.message.message_id);
+  assert.equal(f.store.maintain(1).expired_acks, 1);
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(ack(f).state, "confirmed");
+  assert.equal(row(f, d.message.message_id).receipt_confirmed, 1);
+  assert.equal(f.store.inbox().length, 0);
+  assert.equal(row(f, d.message.message_id).body, "");
+});
+
+test("purge failures roll back ACK deletion, tombstone deletion and maintenance totals together", (t) => {
+  const f = fixture(t),
+    a = seed(f),
+    b = seed(f, { entropy: "3".repeat(32) }),
+    pending = seed(f, {
+      entropy: "4".repeat(32),
+      state: "pending",
+      released: false,
+    });
+  f.raw.exec(
+    `CREATE TRIGGER fail_gc BEFORE DELETE ON inbox WHEN OLD.message_id='${b.m.message_id}' BEGIN SELECT RAISE(ABORT,'synthetic purge failure'); END`,
+  );
+  assert.throws(() => f.store.maintain(1000), /synthetic purge failure/);
+  assert.ok(row(f, a.m.message_id));
+  assert.ok(row(f, b.m.message_id));
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
+    3,
+  );
+  const rolledBack = f.raw
+    .prepare("SELECT state,request FROM receiver_acks WHERE request_id=?")
+    .get(pending.req.request_id);
+  assert.equal(rolledBack.state, "pending");
+  assert.deepEqual(JSON.parse(rolledBack.request), pending.req);
+  assert.equal(
+    f.raw.prepare("SELECT last_at FROM inbox_maintenance_totals").get()
+      .last_at,
+    0,
+  );
+  f.raw.exec("DROP TRIGGER fail_gc");
+  assert.equal(f.store.maintain(1000).purged_messages, 2);
+});
+
+function downgrade(f) {
+  f.store.close();
+  f.raw
+    .exec(`DROP INDEX inbox_retention; DROP INDEX receiver_acks_retention;
+    DROP INDEX inbox_reply_source;
+    ALTER TABLE inbox DROP COLUMN released_at; ALTER TABLE inbox DROP COLUMN expires_at;
+    ALTER TABLE inbox DROP COLUMN ack_retry_until; ALTER TABLE inbox DROP COLUMN ack_terminal_at;
+    ALTER TABLE inbox DROP COLUMN retain_until;
+    ALTER TABLE receiver_acks DROP COLUMN terminal_at; ALTER TABLE receiver_acks DROP COLUMN retain_until;
+    DROP TABLE inbox_maintenance_totals; UPDATE inbox_meta SET version=1;`);
+}
+
+test("v1 migration preserves body and stable pending ACK, verifies identity before changes and rolls back a failed upgrade", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const pending = ack(f).request;
+  downgrade(f);
+  f.raw.exec(
+    "CREATE TRIGGER fail_upgrade BEFORE UPDATE ON inbox_meta BEGIN SELECT RAISE(ABORT,'synthetic upgrade failure'); END",
+  );
+  const wrong = f.open({ agent_id: "c" });
+  code(() => wrong.migrate(), "inbox_identity_mismatch");
+  wrong.close();
+  const upgraded = f.open();
+  code(() => upgraded.maintain(1), "schema_not_ready");
+  assert.throws(() => upgraded.migrate(), /synthetic upgrade failure/);
+  assert.equal(
+    f.raw.prepare("SELECT version FROM inbox_meta").get().version,
+    1,
+  );
+  assert.equal(
+    f.raw
+      .prepare("PRAGMA table_info(inbox)")
+      .all()
+      .some((r) => r.name === "released_at"),
+    false,
+  );
+  code(() => upgraded.inbox(), "schema_not_ready");
+  f.raw.exec("DROP TRIGGER fail_upgrade");
+  upgraded.migrate();
+  assert.deepEqual(upgraded.inbox()[0].message, messageFrom(d));
+  assert.equal(ack(f).request, pending);
+  assert.equal(
+    f.raw.prepare("SELECT version FROM inbox_meta").get().version,
+    4,
+  );
+  assert.deepEqual(f.raw.prepare("PRAGMA foreign_key_check").all(), []);
+  const before = row(f, d.message.message_id);
+  upgraded.migrate();
+  assert.deepEqual(row(f, d.message.message_id), before);
+});
+
+test("v1 confirmed receipts are preserved with a conservative migration terminal date; corrupted body cannot be upgraded", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const req = f.store.claimAck(),
+    r = receipt(req);
+  f.store.confirmAck(req, r);
+  const saved = ack(f).receipt;
+  downgrade(f);
+  const body = row(f, d.message.message_id).body;
+  f.raw.exec("UPDATE inbox SET body='{}'");
+  const upgraded = f.open();
+  assert.throws(() => upgraded.migrate());
+  assert.equal(
+    f.raw.prepare("SELECT version FROM inbox_meta").get().version,
+    1,
+  );
+  f.raw.prepare("UPDATE inbox SET body=?").run(body);
+  upgraded.migrate();
+  assert.equal(ack(f).receipt, saved);
+  assert.ok(ack(f).terminal_at > Date.now() - 10000);
+  assert.equal(
+    ack(f).retain_until,
+    Math.max(ack(f).retry_until, ack(f).terminal_at) + RECORD_RETENTION_MS,
+  );
+  assert.equal(upgraded.inbox()[0].receipt_confirmed, true);
+});
+
+test("invalid budgets, missing counters and unsupported schema fail closed without deleting data", (t) => {
+  const f = fixture(t);
+  seed(f);
+  for (const limit of [0, -1, 1001, 0.1, NaN, "1", null])
+    code(() => f.store.maintain(limit), "invalid_request");
+  f.raw.exec("DELETE FROM inbox_maintenance_totals");
+  code(() => f.store.maintain(1000), "maintenance_state_unavailable");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
+    1,
+  );
+  f.raw.exec("UPDATE inbox_meta SET version=99");
+  const newer = f.open();
+  code(() => newer.migrate(), "unsupported_schema");
+});
+
+test("schema 3 inbox with retired attachment columns still opens, drops them and claims its pending ACK", (t) => {
+  const f = fixture(t),
+    d = delivery();
+  f.store.save(d);
+  const pending = ack(f).request;
+  f.store.close();
+  f.raw
+    .exec(`ALTER TABLE inbox ADD COLUMN has_attachments INTEGER NOT NULL DEFAULT 0 CHECK(has_attachments IN (0,1));
+ALTER TABLE inbox ADD COLUMN attachment_guard TEXT NOT NULL DEFAULT '';
+CREATE TRIGGER attachment_identity BEFORE UPDATE OF has_attachments,attachment_guard ON inbox BEGIN SELECT RAISE(ABORT,'immutable attachment identity');END;
+UPDATE inbox_meta SET version=3;`);
+  const upgraded = f.open();
+  upgraded.migrate();
+  assert.equal(
+    f.raw.prepare("SELECT version FROM inbox_meta").get().version,
+    4,
+  );
+  assert.equal(
+    f.raw
+      .prepare(
+        "SELECT count(*) n FROM sqlite_master WHERE sql LIKE '%attachment%'",
+      )
+      .get().n,
+    0,
+  );
+  assert.deepEqual(upgraded.inbox()[0].message, messageFrom(d));
+  assert.equal(JSON.stringify(upgraded.claimAck()), pending);
+});
+
+test("a released body frees its record slot while its tombstone still deduplicates and ACK history stays bounded", (t) => {
+  const f = fixture(t, { max_records: 1, max_ack_records: 2 }),
+    first = delivery(message(Date.now() - 100, "3".repeat(32))),
+    second = delivery(message(Date.now() - 100, "4".repeat(32))),
+    third = delivery(message(Date.now() - 100, "5".repeat(32)));
+  f.store.save(first);
+  code(() => f.store.save(second), "inbox_capacity_exceeded");
+  assert.equal(f.store.releaseBody("a", first.message.message_id), true);
+  f.store.save(second);
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [second.message.message_id],
+  );
+  f.store.save({ ...first, generation: 2 });
+  assert.equal(f.store.inbox().length, 1, "the tombstone still deduplicates");
+  assert.equal(f.store.releaseBody("a", second.message.message_id), true);
+  code(() => f.store.save(third), "inbox_capacity_exceeded");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
+    3,
+    "ACK history of two messages, not released bodies, bounds what the inbox retains",
+  );
+});
+
+test("legacy IDs cannot grow the retained rows past the dedup bound across retention cycles", (t) => {
+  const bound = { max_records: 1, max_ack_records: 1 };
+  const f = fixture(t, bound);
+  const rows = () =>
+    f.raw.prepare("SELECT count(*) n FROM inbox").get().n;
+  const age = () => {
+    const shift = RECORD_RETENTION_MS + 10 * day;
+    f.raw
+      .prepare(
+        "UPDATE inbox SET received_at=received_at-?,released_at=released_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift, shift, shift, shift);
+    f.raw
+      .prepare(
+        "UPDATE receiver_acks SET retry_until=retry_until-?,terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift);
+  };
+  const cycle = (m) => {
+    f.store.save(delivery(m));
+    const req = f.store.claimAck();
+    f.store.confirmAck(req, receipt(req));
+    assert.equal(f.store.releaseBody("a", m.message_id), true);
+    age();
+    f.store.maintain(1000);
+  };
+  const legacy = (i) => ({
+    ...message(Date.now() - 100, String(i).repeat(32)),
+    message_id: `legacy-${i}`,
+  });
+  const held = legacy(1);
+  cycle(held);
+  const refused = [];
+  for (let i = 2; i <= 5; i++) {
+    try {
+      cycle(legacy(i));
+    } catch (error) {
+      if (error.code !== "inbox_legacy_id_capacity_exceeded") throw error;
+      refused.push(i);
+    }
+    assert.ok(
+      rows() <= bound.max_records + bound.max_ack_records,
+      `cycle ${i} keeps the retained rows within the bound, found ${rows()}`,
+    );
+  }
+  assert.deepEqual(refused, [2, 3, 4, 5], "new legacy IDs are refused");
+  f.store.save(delivery(held, 2));
+  assert.deepEqual(
+    f.store.inbox(),
+    [],
+    "a replay of the held ID is not handed off again",
+  );
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  age();
+  f.store.maintain(1000);
+  const bound_id = delivery(message(Date.now() - 100, "6".repeat(32)));
+  f.store.save(bound_id);
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [bound_id.message.message_id],
+    "a replay-bound ID still saves once legacy IDs are refused",
+  );
+  assert.ok(rows() <= bound.max_records + bound.max_ack_records);
+});
+
+test("lease redeliveries of one message take one ACK history slot, so its reply still fits", (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  const accepted = message(Date.now() - 100, "7".repeat(32));
+  for (const generation of [1, 2]) {
+    f.store.save(delivery(accepted, generation));
+    f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  }
+  f.store.save(delivery(accepted, 3));
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(f.store.releaseBody("a", accepted.message_id), true);
+  const result = message(Date.now() - 100, "8".repeat(32));
+  f.store.save(delivery(result));
+  assert.deepEqual(
+    f.store.inbox().map((entry) => entry.message.message_id),
+    [result.message_id],
+    "the reply after three lease generations is saved",
+  );
+  f.store.releaseBody("a", result.message_id);
+  const third = message(Date.now() - 100, "9".repeat(32));
+  f.store.save(delivery(third));
+  f.store.releaseBody("a", third.message_id);
+  code(
+    () => f.store.save(delivery(message(Date.now() - 100, "a".repeat(32)))),
+    "inbox_capacity_exceeded",
+  );
+});
+
+test("a body whose ACK can never be confirmed is released once it expires, and only then", async (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  const soon = (entropy) => message(Date.now() - 3600000 + 400, entropy);
+  const lost = soon("c".repeat(32)),
+    pending = soon("d".repeat(32));
+  f.store.save(delivery(lost));
+  f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  f.store.save(delivery(pending));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", lost.message_id),
+    false,
+    "an unexpired body may still get a new generation",
+  );
+  code(
+    () => f.store.save(delivery(message(Date.now() - 100, "e".repeat(32)))),
+    "inbox_capacity_exceeded",
+  );
+  await new Promise((done) => setTimeout(done, 500));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", pending.message_id),
+    false,
+    "a pending ACK may still confirm it",
+  );
+  assert.equal(f.store.releaseUnconfirmable("a", lost.message_id), true);
+  assert.equal(f.store.releaseUnconfirmable("a", lost.message_id), false);
+  const next = delivery(message(Date.now() - 100, "e".repeat(32)));
+  f.store.save(next);
+  const req = f.store.claimAck();
+  f.store.confirmAck(req, receipt(req));
+  assert.equal(
+    f.store.releaseUnconfirmable("a", next.message.message_id),
+    false,
+    "a confirmed body is the application's to release",
+  );
+  code(() => f.store.save(delivery(lost, 2)), "expired_delivery");
+  assert.deepEqual(
+    f.store
+      .inbox()
+      .map((entry) => entry.message.message_id)
+      .sort(),
+    [pending.message_id, next.message.message_id].sort(),
+  );
+});
+
+test("one message keeps at most max_attempts ACK generations", (t) => {
+  const f = fixture(t, { max_attempts: 2 });
+  const m = message(Date.now() - 100, "b".repeat(32));
+  for (const generation of [1, 2]) {
+    f.store.save(delivery(m, generation));
+    f.store.rejectAck(f.store.claimAck(), "invalid_ack");
+  }
+  code(() => f.store.save(delivery(m, 3)), "inbox_capacity_exceeded");
+  assert.equal(
+    f.raw.prepare("SELECT count(*) n FROM receiver_acks").get().n,
+    2,
+  );
+});
+
+test("replay-bound IDs are collected every retention cycle, so new IDs keep saving within the row bound and a collected ID is never handed off again", (t) => {
+  const bound = { max_records: 1, max_ack_records: 1 };
+  const f = fixture(t, bound);
+  const count = (table) =>
+    f.raw.prepare(`SELECT count(*) n FROM ${table}`).get().n;
+  const shift = RECORD_RETENTION_MS + 10 * day;
+  // Moves every row `shift` into the past. Each replay-bound ID is renamed to the one
+  // bound to its shifted send time, as if the message had really arrived back then.
+  const age = () => {
+    f.raw.exec("PRAGMA foreign_keys=OFF");
+    for (const { message_id } of f.raw
+      .prepare("SELECT message_id FROM inbox")
+      .all()) {
+      const [, first, entropy] = message_id.split(".");
+      const aged = `rm1.${Number(first) - shift}.${entropy}`;
+      for (const table of ["inbox", "receiver_acks"])
+        f.raw
+          .prepare(`UPDATE ${table} SET message_id=? WHERE message_id=?`)
+          .run(aged, message_id);
+    }
+    f.raw.exec("PRAGMA foreign_keys=ON");
+    f.raw
+      .prepare(
+        "UPDATE inbox SET received_at=received_at-?,released_at=released_at-?,expires_at=expires_at-?,ack_retry_until=ack_retry_until-?,ack_terminal_at=ack_terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift, shift, shift, shift);
+    f.raw
+      .prepare(
+        "UPDATE receiver_acks SET retry_until=retry_until-?,terminal_at=terminal_at-?,retain_until=retain_until-?",
+      )
+      .run(shift, shift, shift);
+  };
+  const confirm = () => {
+    const req = f.store.claimAck();
+    f.store.confirmAck(req, receipt(req));
+  };
+  for (let i = 1; i <= 5; i++) {
+    const entropy = i.toString(16).repeat(32);
+    const m = message(Date.now() - 100, entropy);
+    f.store.save(delivery(m));
+    confirm();
+    assert.equal(f.store.releaseBody("a", m.message_id), true);
+    f.store.save(delivery(m, 2));
+    confirm();
+    assert.deepEqual(
+      f.store.inbox(),
+      [],
+      `cycle ${i}: a redelivery inside the retention period is deduplicated`,
+    );
+    code(
+      () => f.store.save(delivery(message(Date.now() - 100, "f".repeat(32)))),
+      "inbox_capacity_exceeded",
+    );
+    assert.deepEqual(
+      f.store.maintain(1000),
+      { expired_acks: 0, purged_acks: 0, purged_messages: 0, safety_held: 0 },
+      `cycle ${i}: nothing is collected before its retention ends`,
+    );
+    age();
+    assert.deepEqual(
+      f.store.maintain(1000),
+      { expired_acks: 0, purged_acks: 2, purged_messages: 1, safety_held: 0 },
+      `cycle ${i}: the ID, its tombstone and both ACK generations are collected`,
+    );
+    assert.equal(count("inbox"), 0);
+    assert.equal(count("receiver_acks"), 0);
+    const replay = message(Date.parse(m.first_sent_at) - shift, entropy);
+    code(() => f.store.save(delivery(replay)), "expired_delivery");
+    assert.deepEqual(
+      f.store.inbox(),
+      [],
+      `cycle ${i}: the collected ID is never handed off again`,
+    );
+  }
+  const totals = f.raw
+    .prepare(
+      "SELECT purged_acks,purged_messages FROM inbox_maintenance_totals",
+    )
+    .get();
+  assert.deepEqual({ ...totals }, { purged_acks: 10, purged_messages: 5 });
+});
+
+test("capacity for a new reply batch includes retained ACK history and retained rows, without changing retention", (t) => {
+  const f = fixture(t, { max_records: 2, max_ack_records: 3 });
+  assert.equal(f.store.hasCapacityFor(2, 100000), true);
+  for (const entropy of ["2".repeat(32), "3".repeat(32)])
+    seed(f, { entropy, released: false, state: "pending" });
+  assert.equal(f.store.hasCapacityFor(2, 100000), false);
+  for (const entry of f.store.inbox())
+    assert.equal(
+      f.store.releaseUnconfirmable("a", entry.message.message_id),
+      true,
+    );
+  assert.equal(f.store.inbox().length, 0);
+  assert.equal(
+    f.store.hasCapacityFor(2, 100000),
+    false,
+    "two retained ACK histories leave only one slot",
+  );
+  assert.equal(f.store.hasCapacityFor(1, 100000), true);
+  assert.equal(
+    f.store.maintain(100).purged_acks,
+    0,
+    "new terminal time still keeps ACK history for 30 days",
+  );
+  assert.ok(ack(f).terminal_at > Date.now() - 10000);
+  for (const args of [
+    [-1, 0],
+    [1.5, 0],
+    [0, -1],
+    [0, NaN],
+  ])
+    code(() => f.store.hasCapacityFor(...args), "invalid_request");
+});

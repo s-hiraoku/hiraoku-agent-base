@@ -1,40 +1,39 @@
 ---
 name: verify-hab
-description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent does — the HAB Relay MCP over loopback HTTP (relay_resolve/submit/status/poll/ack) with three enrolled synthetic agents — plus the human enrollment terminal and the deny-all Hub server. Use it to prove a Relay, registry, enrollment or MCP-transport change works end to end in the real app, not just in unit tests, and to capture request/response/DB evidence.
+description: Launch and drive HAB (hiraoku-agent-base) the way a connected agent does — the HAB MCP over loopback HTTP (agent tools hab_send/inbox/reply/status at /mcp, delivery tools hab_resolve/submit/status/poll/ack at /mcp/delivery) with three enrolled synthetic agents — plus the human enrollment terminal and the shipped deny-all configured host. Use it to prove a host, registry, enrollment or MCP-transport change works end to end in the real app, not just in unit tests, and to capture request/response/DB evidence.
 ---
 
 # Verify HAB
 
 HAB is a personal agent hub. Its user-facing surfaces today are:
 
-1. **HAB Relay MCP over HTTP** (primary). Agents call `relay_resolve`, `relay_submit`, `relay_status`, `relay_poll`, `relay_ack` on `POST /mcp`. This is what Grok Bot / Dots / Hermes will use.
+1. **HAB MCP over HTTP** (primary). Agents call `hab_send`, `hab_inbox`, `hab_reply`, `hab_status` on `POST /mcp` (ADR-020); this is what Grok Bot / Dots / Hermes use. The agent SDK and the receive service call `hab_resolve`, `hab_submit`, `hab_status`, `hab_poll`, `hab_ack` on `POST /mcp/delivery` with the same token; the arrival notifier (ADR-021) calls `hab_peek` and `hab_mark_read` there.
 2. **Enrollment terminal** (`npm run demo:hab-enrollment -- --interactive`). A human picks a product, reserves `<bot_name>@<agent_name>.hab` (`agent_name` is the product slug), binds and activates it.
-3. **Hub server** (`node src/server.ts`, fixed `127.0.0.1:8787`). Without an operator config it denies everything; only the deny-all boundary is drivable locally.
+3. **Configured host** (`npm run hab:host`). Without connected credentials it stays deny-all for agent work. Drive connect/disconnect and refusals with `configured.sh` per [features/configured-host.md](features/configured-host.md).
 
-The repo now ships a configured Relay CLI (`npm run relay:local`) and an operator CLI (`npm run relay:admin`); drive those with `configured.sh` per [features/configured-relay.md](features/configured-relay.md). For everything else, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the JetStream delivery from `createJetStreamDelivery` that the host wires, `HabHttpGateway`, `createRelayNodeHandler`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. JetStream is the only delivery backend, so the stack and `configured.sh` each start their own private loopback `nats-server` with its store under `$RUN/instance`. Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
+The operator CLI is `npm run hab:admin`. For the MCP stack recipes that are not the shipped host, `scripts/stack.mjs` in this skill is **verification scaffolding**: it composes the repo's own classes (`SQLiteHabRegistry`, `runHabEnrollment`, the SQLite delivery from `createSqliteDelivery` that the host wires, `HabHttpGateway` for both catalogs, `routeMcpNodeHandlers`), enrolls three agents through the real enrollment workflow, and listens on a loopback port. Delivery is one SQLite file (`delivery.sqlite`) under `$RUN/instance`; no broker process runs (ADR-018). Authority is synthetic and tokens are static (`Bearer verify-a|b|c`). It never reads `config/*.local.json`, `.env`, Auth0 or any real agent. Do not present a pass here as a production-connection result.
 
 For changes to message, execution, or approval responsibilities, also drive [the common MCP boundary](features/communication-boundary.md). Ordinary messaging must remain usable without a Task or a product-specific runner.
 
-All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 26 (they source nvm if `node` is older), `jq`, `curl`, `lsof`, `ps`, and the pinned `nats-server` 2.15.2: set `HAB_NATS_SERVER`, or install it once with `mkdir -m 700 -p .runtime && node packages/relay-nats/scripts/install-server.mjs > .runtime/nats-install.json`. Without it the launch fails with `nats_server_required`. `tmux` is needed only for the enrollment terminal.
+All helpers live in `.claude/skills/verify-hab/scripts/` (below: `S=.claude/skills/verify-hab/scripts`, run from the repo root). They need Node ≥ 26 (they source nvm if `node` is older), `jq`, `curl`, `lsof` and `ps`. `tmux` is needed only for the enrollment terminal.
 
 ## Launch
 
 ```sh
 npm ci                                   # once per checkout (Node >= 26)
-npm ci --prefix packages/relay-nats --ignore-scripts   # JetStream client, once per checkout
 RUN=/tmp/hab-verify/$(date +%Y%m%d-%H%M%S)   # one run dir per verification run
 S=.claude/skills/verify-hab/scripts
 $S/launch.sh "$RUN"                      # optional 2nd arg: fixed port (default: free port)
 ```
 
-`launch.sh` starts `stack.mjs` in the background from an empty run dir: it starts a private `nats-server`, migrates fresh SQLite DBs (Registry, enrollment, JetStream journal), registers products `grok-bot`, `dot`, `hermes`, enrolls `verify-a@grok-bot.hab` (agent `a`), `verify-b@dot.hab` (`b`), `verify-c@hermes.hab` (`c`) with all five operations, and listens. **Ready** means the log line `HAB_VERIFY_READY <url>` appeared **and** the doctor (run automatically) prints `DOCTOR_OK <url>`. Anything else exits non-zero with the log tail.
+`launch.sh` starts `stack.mjs` in the background from an empty run dir: it migrates fresh SQLite DBs (Registry, enrollment, delivery), registers products `grok-bot`, `dot`, `hermes`, enrolls `verify-a@grok-bot.hab` (agent `a`), `verify-b@dot.hab` (`b`), `verify-c@hermes.hab` (`c`) with all five operations, and listens. **Ready** means the log line `HAB_VERIFY_READY <url>` appeared **and** the doctor (run automatically) prints `DOCTOR_OK <url>`. Anything else exits non-zero with the log tail.
 
 Layout of a run dir:
 
-- `$RUN/instance/` — `state.json` (url, port, pid, agent ids/addresses/tokens), `stack.pid`, `registry.sqlite`, `jetstream-journal.sqlite` (admission, lease, ACK and the redacted delivery audit), `enrollment.sqlite`, `volume.local.json`, `broker/` (the private broker's config and JetStream store). Disposable.
+- `$RUN/instance/` — `state.json` (url, port, pid, agent ids/addresses/tokens), `stack.pid`, `registry.sqlite`, `delivery.sqlite` (admission, lease, ACK and the redacted delivery audit), `enrollment.sqlite`, `volume.local.json`. Disposable.
 - `$RUN/evidence/` — every request/response, DB snapshots, `audit.jsonl` (HTTP gateway audit categories), `stack.log`. Survives cleanup.
 
-Re-running `launch.sh "$RUN"` on a run dir whose instance was stopped with `cleanup.sh --stop-only` **reopens the same DBs and broker store on the same port** without re-enrolling (restart test). The stack stops its broker when it stops.
+Re-running `launch.sh "$RUN"` on a run dir whose instance was stopped with `cleanup.sh --stop-only` **reopens the same DBs on the same port** without re-enrolling (restart test).
 
 Isolation: each run dir is its own instance on its own port, so parallel runs are safe. Never drive a run dir you did not launch.
 
@@ -44,7 +43,7 @@ Isolation: each run dir is its own instance on its own port, so parallel runs ar
 $S/doctor.sh "$RUN"
 ```
 
-Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the five `relay_*` tools. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
+Read-only; writes nothing. Checks: the pid in `stack.pid` is alive and is `stack.mjs` for this run dir; that pid owns the listening port; unauthenticated `tools/list` → `401`; each of `a`,`b`,`c` sees exactly the four agent tools at `/mcp` and the seven delivery tools at `/mcp/delivery`. Every published input schema is portable (an object root with `properties`, no top-level `oneOf`/`anyOf`/`allOf`, no `$schema`, no lookaround in a `pattern`), since ChatGPT-style connectors refuse anything else. Run it first whenever anything looks off. `DOCTOR_FAIL` means do not drive — clean up and relaunch.
 
 ## Drive
 
@@ -54,7 +53,18 @@ Every call is a real MCP `tools/call` (protocol `2026-07-28`, `Mcp-Method`/`Mcp-
 $S/mcp.sh "$RUN" <a|b|c|none|BAD> <tool|tools/list> '<json-arguments>'
 ```
 
-`none` sends no `Authorization`; `BAD` sends an unknown bearer. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>"}` with HTTP 200.
+`none` sends no `Authorization`; `BAD` sends an unknown bearer. Agent tools go to `/mcp`; `hab_submit`, `hab_poll`, `hab_ack`, `hab_resolve`, `hab_peek` and `hab_mark_read` go to `/mcp/delivery`, and `HAB_CATALOG=delivery` sends `hab_status` or `tools/list` there too. It prints `HTTP <code>` then the JSON-RPC body, and saves `NNN-<agent>-<tool>.{req,headers,res}` in evidence. Tool results are in `.result.structuredContent`; a tool-level refusal has `"isError":true` and `{"error":"<code>","message":"<what to change>"}` (plus details such as `field` or `allowed_kinds`) with HTTP 200.
+
+Agent round trip (a → b → a), the path a connected agent uses ([features/agent-tools.md](features/agent-tools.md)):
+
+```sh
+SENT=$($S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot.hab","text":"hello from a"}' | sed 1d | jq -c .result.structuredContent)
+ID=$(jq -r .message_id <<<"$SENT")
+$S/mcp.sh "$RUN" b hab_inbox '{}'                                  # new message, now read
+$S/mcp.sh "$RUN" b hab_reply "{\"message_id\":\"$ID\",\"text\":\"hi\"}"
+$S/mcp.sh "$RUN" a hab_inbox '{}'                                  # kind "answer", in_reply_to $ID
+$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"           # "acked" with an explanation
+```
 
 Build a valid message (replay-bound id `rm1.<ms>.<32hex>`, one-hour deadline):
 
@@ -62,19 +72,18 @@ Build a valid message (replay-bound id `rm1.<ms>.<32hex>`, one-hour deadline):
 MSG=$($S/new-message.sh "$RUN" b "hello from a")       # to agent b; optional 4th arg kind: question|answer|notice
 ```
 
-The following raw round trip proves Relay wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses the agent SDK's DurableReceiver and SQLiteInbox (`src/agent-sdk/receiver.ts`, `src/agent-sdk/sqlite-inbox.ts`) and an independent SQLite read before network ACK.
+The following raw round trip proves HAB wire semantics only. Saving `poll.json` and inspecting server ACK state do not prove recipient durable storage. For committed receiver storage before ACK, run `npm run test:communication-boundary` per [the boundary recipe](features/communication-boundary.md), which uses the agent SDK's DurableReceiver and SQLiteInbox (`src/agent-sdk/receiver.ts`, `src/agent-sdk/sqlite-inbox.ts`) and an independent SQLite read before network ACK.
 
 Raw wire round trip (a → b):
 
 ```sh
-$S/mcp.sh "$RUN" a relay_resolve '{"address":"verify-b@dot.hab"}'
-$S/mcp.sh "$RUN" a relay_submit "$MSG"                       # state "pending"
+$S/mcp.sh "$RUN" a hab_resolve '{"address":"verify-b@dot.hab"}'
+$S/mcp.sh "$RUN" a hab_submit "$MSG"                       # state "pending"
 ID=$(jq -r .message_id <<<"$MSG")
-sleep 0.1                                                     # the pump publishes on its next 20 ms cycle
-$S/mcp.sh "$RUN" b relay_poll '{}' | tee /dev/stderr | sed 1d > "$RUN/poll.json"
+$S/mcp.sh "$RUN" b hab_poll '{}' | tee /dev/stderr | sed 1d > "$RUN/poll.json"
 ACK=$(jq -c '.result.structuredContent.delivery | {sender_id:.message.sender_id, message_id:.message.message_id, generation, lease_token, request_id:"verify-ack-1"}' "$RUN/poll.json")
-$S/mcp.sh "$RUN" b relay_ack "$ACK"                          # state "acked"
-$S/mcp.sh "$RUN" a relay_status "{\"message_id\":\"$ID\"}"   # sender sees "acked"
+$S/mcp.sh "$RUN" b hab_ack "$ACK"                          # state "acked"
+HAB_CATALOG=delivery $S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"   # sender receipt "acked"
 node $S/inspect.mjs "$RUN" after-ack                          # DB side effects
 ```
 
@@ -84,8 +93,8 @@ Feature-by-feature recipes: [`features/README.md`](features/README.md).
 
 - Where: `$RUN/evidence/` (numbered `NNN-*` in call order, plus `audit.jsonl`, `stack.log`).
 - Exercise the user path through MCP HTTP using `mcp.sh`, or the owned protocol fixtures in the boundary recipe. Enrollment uses the terminal in tmux. Durable receiver proof uses the real agent SDK client and SQLiteInbox (`src/agent-sdk`) with independent readback. Do not write DB rows or edit `state.json` to make a drive pass.
-- Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `relay_status` after receiver `relay_ack`) and `inspect.mjs` (read-only snapshot of the Registry and the JetStream journal: agents, bindings, messages, deliveries with state/generation/broker sequence, delivery audit events, ack receipt count; bodies omitted).
-- Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
+- Capture the action **and** the resulting state: the request/response of the action, then a second, independent view — another agent's tool call (e.g. sender `hab_status` after receiver `hab_ack`) and `inspect.mjs` (read-only snapshot of the Registry and the delivery store: agents, bindings, messages, deliveries with state/generation, delivery audit events, ack receipt count; bodies omitted).
+- Check side effects, not just the response: delivery rows and audit events in `inspect.mjs`, gateway categories (`request`, `authenticated` with the connection ID, `tool_started`, `tool_succeeded`, …) in `audit.jsonl`.
 - Mocks: only identity is synthetic (static bearer → synthetic verified connection), because Auth0/production identity binding is not built yet. Storage, HTTP, MCP framing, registry authorization and enrollment are the real code.
 - Report the feature/sub-feature ID and the evidence file names with every claim.
 
@@ -96,7 +105,7 @@ $S/cleanup.sh "$RUN"               # stop our stack (by pid file, never by name)
 $S/cleanup.sh "$RUN" --stop-only   # stop only; keep DBs for a restart test
 ```
 
-It kills only the pid in `stack.pid`, and only if that pid's command line is `stack.mjs <this run dir>`; a stale pid file is removed without killing anything. The stack stops its own `nats-server` on SIGTERM; `ps -eo args | grep "[n]ats-server -c $RUN"` must print nothing afterwards. After cleanup, `ls "$RUN/evidence"` must still list the proof. Run cleanup after every failed attempt too. For the enrollment terminal, kill only the tmux session you named (`tmux kill-session -t <name>`); the demo deletes its own temp DB on exit.
+It kills only the pid in `stack.pid`, and only if that pid's command line is `stack.mjs <this run dir>`; a stale pid file is removed without killing anything. After cleanup, `ls "$RUN/evidence"` must still list the proof. Run cleanup after every failed attempt too. For the enrollment terminal, kill only the tmux session you named (`tmux kill-session -t <name>`); the demo deletes its own temp DB on exit.
 
 ## Helpers
 
@@ -105,15 +114,15 @@ It kills only the pid in `stack.pid`, and only if that pid's command line is `st
 | `launch.sh`      | `$S/launch.sh <run-dir> [port]`                                          | start/reopen stack, wait for ready, run doctor |
 | `doctor.sh`      | `$S/doctor.sh <run-dir>`                                                 | read-only health check                         |
 | `mcp.sh`         | `$S/mcp.sh <run-dir> <a\|b\|c\|none\|BAD> <tool\|tools/list> ['<json>']` | one MCP call, saved as evidence                |
-| `new-message.sh` | `$S/new-message.sh <run-dir> <to> [text] [kind]`                         | print valid `relay_submit` arguments           |
+| `new-message.sh` | `$S/new-message.sh <run-dir> <to> [text] [kind]`                         | print valid `hab_submit` arguments           |
 | `inspect.mjs`    | `node $S/inspect.mjs <run-dir> [label]`                                  | read-only DB snapshot, saved as evidence       |
 | `cleanup.sh`     | `$S/cleanup.sh <run-dir> [--stop-only]`                                  | stop what this run started, keep evidence      |
-| `stack.mjs`      | (via `launch.sh`) `node $S/stack.mjs <run-dir> [port]`                   | the scaffolding host and its private broker    |
-| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| restart \| stop` | shipped Relay + broker + operator CLI (`HAB_VERIFY_A2A=1` adds A2A) |
-| `a2a.sh`         | `$S/a2a.sh <run-dir> <x\|a\|b\|none\|BAD> <SendMessage\|GetTask\|card> ['<json>']` | one A2A call to the configured Relay, saved as evidence |
-| `new-reply.sh`   | `$S/new-reply.sh <poll-file> <execution_accepted\|execution_result> <task-id> [state] [result]` | print `relay_submit` arguments replying to a polled request |
+| `stack.mjs`      | (via `launch.sh`) `node $S/stack.mjs <run-dir> [port]`                   | the scaffolding host                           |
+| `configured.sh`  | `$S/configured.sh <run-dir> start [port] \| admin <args> \| restart \| stop` | shipped host + operator CLI (`HAB_VERIFY_A2A=1` adds A2A) |
+| `a2a.sh`         | `$S/a2a.sh <run-dir> <x\|a\|b\|none\|BAD> <SendMessage\|GetTask\|card> ['<json>']` | one A2A call to the configured host, saved as evidence |
+| `new-reply.sh`   | `$S/new-reply.sh <poll-file> <execution_accepted\|execution_result> <task-id> [state] [result]` | print `hab_submit` arguments replying to a polled request |
 
 ## Other surfaces
 
-- **Hub server** (`node src/server.ts`): binds the fixed port `127.0.0.1:8787` and writes `runtime/` relative to its **cwd** — start it from a scratch dir (`cd "$(mktemp -d)" && node <repo>/src/server.ts &`, remember `$!`) so it never touches the repo's `runtime/`. Only one instance can run per host; if 8787 is already taken by something you did not start, do not drive it. Without `HAB_RUNTIME_CONFIG`, `POST /mcp` → `401`, a foreign `Host` → `403`. Authenticated Hub calls need Auth0 and are out of reach locally. Kill it by the pid you recorded.
 - **Unit/integration suites** (`npm test`, `npm run test:hab-integration`) are not a substitute for this skill's proof; run them in addition.
+- The retired fixed-port Task Hub entry (`src/server.ts` on `127.0.0.1:8787`) is gone from this tree. Do not look for it. Use the configured host path above for deny-all and operator CLI proof. Auth0-backed production identity remains out of reach locally.

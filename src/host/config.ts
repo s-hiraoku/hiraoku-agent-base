@@ -30,7 +30,7 @@ export type HostA2aConfig = z.infer<typeof a2aConfigSchema>;
 const keys = z.strictObject({
   version: z.literal(1),
   registry_fingerprint_key: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
-  relay_fingerprint_key: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
+  delivery_fingerprint_key: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/),
 });
 const schema = z.strictObject({
   version: z.literal(1),
@@ -72,7 +72,7 @@ const schema = z.strictObject({
 function read(path: string) {
   // Preserve the existing bounded/canonical/private file reader and additionally reject hardlinks.
   if (!isAbsolute(path) || lstatSync(path).nlink !== 1)
-    throw Error("local_relay_config_rejected");
+    throw Error("host_config_rejected");
   return readRuntimeConfig(path);
 }
 /**
@@ -83,7 +83,7 @@ export class HostStartError extends Error {
   readonly reason: string;
   readonly fields: readonly string[];
   constructor(reason: string, fields: readonly string[] = []) {
-    super("local_relay_start_rejected");
+    super("host_start_rejected");
     this.name = "HostStartError";
     this.reason = reason;
     this.fields = Object.freeze([...fields]);
@@ -127,7 +127,7 @@ export function readHostConfig(configPath: string) {
       secrets.registry_fingerprint_key,
       "hex",
     ),
-    relay_fingerprint_key: Buffer.from(secrets.relay_fingerprint_key, "hex"),
+    delivery_fingerprint_key: Buffer.from(secrets.delivery_fingerprint_key, "hex"),
     readCredentials: () => read(config.credentials_file),
     readOAuth: () =>
       config.ingress ? read(config.ingress.oauth_file) : undefined,

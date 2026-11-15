@@ -1,27 +1,21 @@
-/** Starts the configured host: local auth, optional OAuth ingress, JetStream delivery and audit. */
+/** Starts the configured host: local auth, optional OAuth ingress, SQLite delivery and audit. */
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedOAuthAuthority } from "./oauth-auth.ts";
 import { startHostServer } from "./server.ts";
-import { createJetStreamDelivery } from "./delivery.ts";
+import { createSqliteDelivery } from "./delivery.ts";
 import { HostStartError, readHostConfig, stage } from "./config.ts";
 // Fixed codes from the composed classes that are safe and useful to surface.
 const hostReasons = new Set([
-  "local_relay_private_path_required",
-  "local_relay_extension_storage_unavailable",
-  "broker_unavailable",
-  "broker_store_missing",
-  "broker_configuration_mismatch",
-  "unsupported_broker_version",
-  "loopback_broker_required",
-  "journal_migration_required",
+  "host_private_path_required",
+  "host_extension_storage_unavailable",
+  "legacy_jetstream_journal_present",
   "journal_key_or_version_mismatch",
   "unknown_journal_schema",
   "insecure_journal_file",
-  "insufficient_prefetch_window",
-  "invalid_local_relay_options",
-  "invalid_local_relay_ingress",
-  "invalid_local_relay_a2a",
+  "invalid_host_options",
+  "invalid_host_ingress",
+  "invalid_host_a2a",
   "a2a_identity_conflict",
   "a2a_identity_retired",
   "a2a_identity_renamed",
@@ -41,7 +35,7 @@ const hostReasons = new Set([
 function hostReason(error: unknown): string {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
   if (code === "EADDRINUSE") return "port_in_use";
-  // Another Relay process already owns this state directory.
+  // Another host process already owns this state directory.
   if ((error as Error | undefined)?.message === "host_owner_busy")
     return "state_in_use";
   if (code === "EACCES") return "port_or_file_access_denied";
@@ -69,7 +63,7 @@ export async function startHost(configPath: string) {
     if (remote && remote.resource.resource !== config.ingress!.resource_url)
       throw new HostStartError("oauth_resource_mismatch");
     const delivery = stage("config_invalid", () =>
-      createJetStreamDelivery(config.delivery, secrets.relay_fingerprint_key),
+      createSqliteDelivery(config.delivery, secrets.delivery_fingerprint_key),
     );
     let sink: LocalAudit | undefined;
     let host: Awaited<ReturnType<typeof startHostServer>>;
@@ -98,9 +92,9 @@ export async function startHost(configPath: string) {
         authority: auth.authority,
         verify: auth.verify,
         audit: {
-          record: (category, correlation) => {
-            if (!sink) throw Error("local_relay_audit_unavailable");
-            sink.record(category, correlation);
+          record: (category, correlation, reason) => {
+            if (!sink) throw Error("host_audit_unavailable");
+            sink.record(category, correlation, reason);
           },
         },
         delivery,
