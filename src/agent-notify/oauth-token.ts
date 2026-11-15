@@ -19,6 +19,7 @@ import {
   constants,
   fstatSync,
   fsyncSync,
+  mkdirSync,
   openSync,
   readFileSync,
   renameSync,
@@ -27,6 +28,7 @@ import {
   writeSync,
 } from "node:fs";
 import { createServer } from "node:http";
+import { dirname } from "node:path";
 import { z } from "zod";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import { HAB_OAUTH_SCOPES } from "../host/mcp/oauth-resource.ts";
@@ -247,6 +249,15 @@ export class OAuthTokenFile {
     }
   }
 
+  /** Creates the token file's folder (0700) on first use, before anything is issued. */
+  prepare() {
+    try {
+      mkdirSync(dirname(this.#o.file), { recursive: true, mode: 0o700 });
+    } catch {
+      throw new MessagingError("token_unavailable");
+    }
+  }
+
   /** Exchanges an authorization code (the `login` command) and stores the grant. */
   async exchangeCode(code: string, verifier: string, redirectUri: string) {
     const grant = await this.#request({
@@ -412,6 +423,8 @@ export async function login(
     !validRedirectUri(options.redirect_uri)
   )
     throw new MessagingError("invalid_request");
+  // Before the browser is sent anywhere: a code must never be issued with nowhere to keep it.
+  token.prepare();
   const redirect = new URL(options.redirect_uri);
   const verifier = randomBytes(32).toString("base64url");
   const state = randomBytes(16).toString("base64url");
@@ -431,6 +444,8 @@ export async function login(
 
   return new Promise((resolve, reject) => {
     let settled = false;
+    // The single-use code goes to the token endpoint once, even if the browser reloads.
+    let claimed = false;
     const finish = (
       error: Error | undefined,
       value?: { has_refresh_token: boolean },
@@ -460,6 +475,11 @@ export async function login(
         reply(400, "このログインの応答ではありません。");
         return;
       }
+      if (claimed) {
+        reply(409, "このログインはすでに処理しています。");
+        return;
+      }
+      claimed = true;
       const code = url.searchParams.get("code");
       if (url.searchParams.get("error") || !code) {
         reply(400, "ログインできませんでした。ターミナルを確認してください。");

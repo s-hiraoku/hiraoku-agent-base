@@ -224,15 +224,20 @@ const freePort = () =>
   });
 
 test("login uses PKCE through the loopback callback and stores the grant", async (t) => {
-  const { file } = setup(t);
-  const issuer = fakeIssuer(() => [
-    200,
-    {
-      access_token: "synthetic-at-login",
-      refresh_token: "synthetic-rt-login",
-      expires_in: 600,
-    },
-  ]);
+  const { dir } = setup(t);
+  // First-time setup: the profile folder does not exist yet.
+  const file = join(dir, "profile", "token.json");
+  const issuer = fakeIssuer(
+    () => [
+      200,
+      {
+        access_token: "synthetic-at-login",
+        refresh_token: "synthetic-rt-login",
+        expires_in: 600,
+      },
+    ],
+    150,
+  );
   const port = await freePort();
   const redirect = `http://127.0.0.1:${port}/callback`;
   let opened;
@@ -257,10 +262,13 @@ test("login uses PKCE through the loopback callback and stores the grant", async
   // A callback without this login's state is refused and the login keeps waiting.
   const stray = await globalThis.fetch(`${redirect}?code=x&state=other`);
   assert.equal(stray.status, 400);
-  const back = await globalThis.fetch(
-    `${redirect}?code=synthetic-code&state=${q.get("state")}`,
-  );
-  assert.equal(back.status, 200);
+  const callback = `${redirect}?code=synthetic-code&state=${q.get("state")}`;
+  const first = globalThis.fetch(callback);
+  await new Promise((r) => setTimeout(r, 50));
+  // A reload while the code is being exchanged does not spend it again.
+  const reload = await globalThis.fetch(callback);
+  assert.equal(reload.status, 409);
+  assert.equal((await first).status, 200);
   assert.deepEqual(await done, { has_refresh_token: true });
   const body = issuer.calls[0].body;
   assert.equal(body.grant_type, "authorization_code");
@@ -270,6 +278,8 @@ test("login uses PKCE through the loopback callback and stores the grant", async
     createHash("sha256").update(body.code_verifier).digest("base64url"),
     q.get("code_challenge"),
   );
+  assert.equal(issuer.calls.length, 1);
+  assert.equal(statSync(join(dir, "profile")).mode & 0o777, 0o700);
   const saved = JSON.parse(readFileSync(file, "utf8"));
   assert.equal(saved.refresh_token, "synthetic-rt-login");
   assert.equal(statSync(file).mode & 0o777, 0o600);
