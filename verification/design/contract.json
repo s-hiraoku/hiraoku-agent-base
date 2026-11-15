@@ -801,10 +801,10 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "d5d78a62f0f9a16355a91b4ccea46e8330446a9d24d6c75b8553d042c14a6c9d",
+      "sha256": "57f2b57b49d5715d9cbb6e61f22327e9a13875d1cee3924d89dc1464249ebb17",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Arrival notifier (ADR-021), rereviewed 2026-11-15: HAB owns delivery authentication, unread lookup, user decision persistence, expiry and at-most-once handoff. Product adapters own publication, user choice and same-existing-session admission. Shared local binding/states/adapter-action commands fence connection, recipient, product and session; immutable notice pages and mutable SQLite revisions are separate, stale responses cannot override newer state, and absent state is unknown. shown is a legacy publication state, not rendered UI proof. JSONL refuses handoff; the static Claude channel refuses without product-owned atomic current-session admission. No fallback session or CLI. Existing stores must be preserved and reconciled rather than silently relabelled or discarded during binding migration. Hermes UI polling/rendering is a separate implementation; prior documented product acceptance is historical evidence, not verification of this change. Gemini CLI/App/API are distinct and not implemented here; synthetic adapter contracts are not native integration. Codex/Claude/ChatGPT actual product acceptance remains separately unverified. Rollback requires stopped owned notifier and consistent offline backup; restoring pre-decision state can duplicate handling, so reconcile decisions first and never run old/new concurrently. Additive schema does not justify reverting the stricter binding identity. Legacy Hermes action now also requires the common binding_id; old events without HAB connection identity are refused, and independent Hermes consumers must migrate before enabling actions.",
+      "summary": "Arrival notifier (ADR-021), rereviewed 2026-11-15: HAB owns delivery authentication, unread lookup, user decision persistence, expiry and at-most-once handoff. Product adapters own publication, user choice and same-existing-session admission. Shared local binding/states/adapter-action commands fence connection, recipient, product and session; immutable notice pages and mutable SQLite revisions are separate, stale responses cannot override newer state, and absent state is unknown. shown is a legacy publication state, not rendered UI proof. JSONL refuses handoff; the static Claude channel refuses without product-owned atomic current-session admission. No fallback session or CLI. Existing stores must be preserved and reconciled rather than silently relabelled or discarded during binding migration. Hermes UI polling/rendering is a separate implementation; prior documented product acceptance is historical evidence, not verification of this change. Gemini CLI/App/API are distinct and not implemented here; synthetic adapter contracts are not native integration. Codex/Claude/ChatGPT actual product acceptance remains separately unverified. Rollback requires stopped owned notifier and consistent offline backup; restoring pre-decision state can duplicate handling, so reconcile decisions first and never run old/new concurrently. Additive schema does not justify reverting the stricter binding identity. Legacy Hermes action now also requires the common binding_id; old events without HAB connection identity are refused, and independent Hermes consumers must migrate before enabling actions. Follow-up: official-reference Gemini product matrix distinguishes existing ACP host, standalone CLI, Gemini Apps and API application without native acceptance. Explicit offline inspect/migrate CLI copies to a new private bundle, keeps original backup and decisions/revisions, requires source fingerprint/target plus operator-verified old identity/offline attestation, refuses WAL/rollback recovery and unsettled states, and never deploys or restarts. Existing destinations are not overwritten. binding returns exact normalized destination_binding so migration does not require guessed tuples. CLI unexpected errors are sanitized; source shutdown/identity remain operator prerequisites. Companion status identifies external unapplied Hermes commit abdb33d9839491a0604a1e278695822e68c9181d on exact base5910a49, not included or installed by HAB. Reported focused Python40/UI32/typecheck/lint/canonical14 evidence is separate; full UI was stopped for host load, full Python/native Desktop were not performed. This maintenance does not independently prove those external results or satisfy the six manual gates.",
       "read_scope": "full"
     },
     {
@@ -1055,7 +1055,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "a2d5a7c1a9cf702b66320ec4569757a1d883ee76e6700bc8a8f3416855fb1fcb",
+      "sha256": "0fcbc44558551853e6af21b1ddbda91fe6e091c7654a42936e69dd62ddc3f33d",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1064,7 +1064,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "9d3443694b1a6c489626dbf95a511c1e76d2079a2b970241437ce110c3da3bf8",
+      "sha256": "b5590fcf4f9a05599486ffecafe2e994e67a72f09c7f4b0cd21919b2b4dfd73b",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1915,7 +1915,7 @@
       "title": "Arrival notice before any work",
       "statement": "When mail arrives, the recipient's agent screen shows the sender, the body and どうしますか？ with 対応する, あとで and 対応しない, found through hab_peek, which leaves the message unread. Arrival alone starts no model work. あとで keeps it unread and re-showable; 対応しない marks it read and starts nothing; only 対応する marks it read and hands the framed request to the same bound session, at most once across repeated or concurrent choices and restarts. A handoff that may or may not have reached the session is unknown and an absent entrance is unsupported; neither is retried or redirected to another session. The session itself replies with hab_reply. Publication alone does not establish display or session admission. Mutable decision snapshots are revision-ordered independently of immutable notice pagination and bound to the exact connection/recipient/product-session identity; stale responses cannot regress state and missing state cannot authorize work.",
       "rationale": "The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.",
-      "scope": "src/agent-notify, hab_peek and hab:notify CLI; js-root covers notifier, peek, shared binding/states/adapter-action, revision migration/concurrent writers/expiry and synthetic product-neutral projection contracts. JSONL and the bundled static-session Claude channel safely refuse unsupported handoff. Mock Codex/Hermes/channel tests do not prove native product rendering, user approval, current-session admission or reply. The separately maintained Hermes Desktop UI and actual Gemini integration are not changed or verified here.",
+      "scope": "src/agent-notify, hab_peek and hab:notify CLI; js-root covers notifier, peek, shared binding/states/adapter-action, revision migration/concurrent writers/expiry and synthetic product-neutral projection contracts. JSONL and the bundled static-session Claude channel safely refuse unsupported handoff. Mock Codex/Hermes/channel tests do not prove native product rendering, user approval, current-session admission or reply. The separately maintained Hermes Desktop UI and actual Gemini integration are not changed or verified here. Offline copy migration regressions in test/agent-notify-migrate.test.js cover settled decision/revision and duplicate-guard preservation, pre-revision schema, fingerprint/binding/offline-journal refusals, private output and explicit CLI attestation. Operator old identity/offline cutover and physical crash durability are not established.",
       "decision": "accepted",
       "checks": [
         "js-root"
@@ -1944,6 +1944,12 @@
           "start": 281,
           "end": 332,
           "excerpt_sha256": "0e60756638d8dc18bba74963a8e99aa7b0edea77f5b20ca8e69a41c4bf9d6916"
+        },
+        {
+          "path": "docs/receiver/arrival-notifier.md",
+          "start": 377,
+          "end": 410,
+          "excerpt_sha256": "f5d313071f6154a24c29898e78125cd717815ab198a7ed35429244db7c5a7667"
         }
       ]
     },

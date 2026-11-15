@@ -85,18 +85,20 @@ export const submissionId = (message: {
     .digest("hex")
     .slice(0, 32);
 
+export const hermesDesktopAgentBinding = (binding: HermesDesktopBinding) => ({
+  product: "hermes-desktop",
+  session_id: binding.session_id,
+  profile: binding.profile,
+  recipient_id: binding.receiver_id,
+  connection_id: JSON.stringify([
+    binding.connection_id ?? null,
+    binding.backend_namespace,
+    binding.profile_scope,
+  ]),
+});
+
 export const hermesDesktopTarget = (binding: HermesDesktopBinding) =>
-  bindingIdentity({
-    product: "hermes-desktop",
-    session_id: binding.session_id,
-    profile: binding.profile,
-    recipient_id: binding.receiver_id,
-    connection_id: JSON.stringify([
-      binding.connection_id ?? null,
-      binding.backend_namespace,
-      binding.profile_scope,
-    ]),
-  });
+  bindingIdentity(hermesDesktopAgentBinding(binding));
 
 interface NoticeLine {
   type: "notice";

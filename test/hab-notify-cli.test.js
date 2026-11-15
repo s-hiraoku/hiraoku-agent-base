@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { HabNotifierClient, SQLiteNotices } from "../src/agent-notify/index.ts";
+import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import { main, tokenProblem } from "../scripts/hab-notify.ts";
 
 test("hab-notify prints usage, lists no notices and refuses a decision it never showed", async (t) => {
@@ -223,6 +224,7 @@ test("generic states API is cursor independent and fenced by connection, recipie
     );
   assert.equal(await run("binding"), 0);
   const binding = output.at(-1).binding_id;
+  assert.equal(bindingIdentity(output.at(-1).destination_binding), binding);
   assert.equal(await run("states", { binding_id: binding }), 0);
   assert.deepEqual(output.at(-1), { binding_id: binding, states: [] });
   assert.equal(await run("states", { binding_id: "another-session" }), 1);

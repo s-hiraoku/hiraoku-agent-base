@@ -6,6 +6,7 @@
  * request after the user chose 対応する.
  */
 import { z } from "zod";
+import type { AgentBinding } from "./binding.ts";
 import type { IncomingChoice } from "../messaging/incoming-notice.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
@@ -74,6 +75,7 @@ export interface AgentScreen {
   /** A label for logs and the decision record, such as `hermes-desktop:<session>`. */
   readonly target: string;
   readonly capabilities?: ScreenCapabilities;
+  readonly binding?: AgentBinding;
   /** Publishes without model work. Legacy void means no display evidence, not displayed. */
   show(message: PeekedMessage): Promise<PublicationResult | void>;
   /** Gives the user-approved request to that session. */

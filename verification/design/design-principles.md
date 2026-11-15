@@ -288,7 +288,7 @@ When mail arrives, the recipient's agent screen shows the sender, the body and ã
 
 Reason: The owner asked to be told on arrival and to decide before anything runs (ADR-021); a body or an arrival must not stand in for the user's choice.
 
-Scope: src/agent-notify, hab_peek and hab:notify CLI; js-root covers notifier, peek, shared binding/states/adapter-action, revision migration/concurrent writers/expiry and synthetic product-neutral projection contracts. JSONL and the bundled static-session Claude channel safely refuse unsupported handoff. Mock Codex/Hermes/channel tests do not prove native product rendering, user approval, current-session admission or reply. The separately maintained Hermes Desktop UI and actual Gemini integration are not changed or verified here. Decision: **accepted**.
+Scope: src/agent-notify, hab_peek and hab:notify CLI; js-root covers notifier, peek, shared binding/states/adapter-action, revision migration/concurrent writers/expiry and synthetic product-neutral projection contracts. JSONL and the bundled static-session Claude channel safely refuse unsupported handoff. Mock Codex/Hermes/channel tests do not prove native product rendering, user approval, current-session admission or reply. The separately maintained Hermes Desktop UI and actual Gemini integration are not changed or verified here. Offline copy migration regressions in test/agent-notify-migrate.test.js cover settled decision/revision and duplicate-guard preservation, pre-revision schema, fingerprint/binding/offline-journal refusals, private output and explicit CLI attestation. Operator old identity/offline cutover and physical crash durability are not established. Decision: **accepted**.
 
 Checks: js-root.
 

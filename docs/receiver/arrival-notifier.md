@@ -349,3 +349,82 @@ from its event/setup, in addition to its existing reader fields. Requests withou
 connection fence are rejected, not guessed. Existing Hermes consumers need to propagate
 this field before enabling actions with this version. Old events without the configured
 HAB connection identity are not relabelled for a new connection.
+
+### Gemini の接続対象と残る製品側実装（2026-11-15 調査）
+
+「Gemini」は以下の別製品を区別します。共通契約のテスト成功を、実製品での通知表示・同じ既存会話への引渡し成功とは扱いません。
+
+| 対象 | 公式に確認できた入口 | この実装に必要なもの |
+| --- | --- | --- |
+| Gemini CLI を利用する既存 ACP ホスト／IDE | ACP の stdio 接続と session ID を指定した prompt。現在の接続をホストが所有する | 利用中のホスト（Zed、JetBrains、独自 UI 等）を特定し、そのホスト内に通知表示・判断操作・同じ既存接続への入力受付を実装する |
+| ターミナルの Gemini CLI | MCP ツール利用。組込み通知は作業完了・ユーザー操作待ち向け | 外部 HAB 通知カードを既存 TUI に追加し、既存会話へ入力する正式な入口は今回の調査で未確認。別の `gemini --acp`／resume 起動で代用しない |
+| Gemini Apps（Web／モバイル） | Custom Connected Apps の remote MCP、ツール結果に紐付けた MCP Apps UI | 外部から既存会話へのプッシュ通知・モデルを動かさないカード追加の入口は未確認。ユーザー起点のツール利用と区別する。公式利用条件・対象アカウントの確認も必要 |
+| Gemini API を使う独自アプリ | Interactions API の `previous_interaction_id` による会話継続 | その独自アプリが表示・判断・会話継続を所有する。Gemini Apps や既存 CLI の会話には接続したことにならない |
+
+Gemini CLI の ACP はクライアントとエージェント間の stdio 接続です。新しいプロセスで過去セッションを読み込むことは、利用者が現在見ているプロセス・画面への接続ではありません。実機の `@google/gemini-cli` 0.45.2 のインストール済みコードも読み取り確認し、prompt は当該プロセス内の session map を参照し、loadSession は保存履歴から session を構築することを確認しました。エージェント起動・認証・実メッセージ送信は行っていません。
+
+既存の `src/owner-integrations/acp-stdio.ts` は、明示的に許可された専用プロセスを起動し `session/new` で専用セッションを作る別用途の owner driver です。`fixedWake` は信頼済み固定文のみで、受信本文を流す入口ではありません。`acp-updates.ts` は進捗フレームの検証・制限用であり、通知カードの表示機構ではありません。この専用 owner driver を「既存会話アダプター」として流用しません。
+
+次の実装単位は新しい共通層ではなく、利用する製品ホスト内の薄い `AgentScreen` です。共通の binding・判断永続化・revision 同期を使い、ホストが通知を描画し、明示的な選択後に現在の接続／会話を照合して入力します。ホスト・製品・対象会話が未指定の段階では実接続を有効にしません。
+
+公式確認先：
+- [Gemini CLI ACP mode](https://geminicli.com/docs/cli/acp-mode/)（stdio と session 操作）
+- [Gemini CLI notifications](https://geminicli.com/docs/cli/notifications/)（作業完了・操作待ち通知であり HAB 到着通知ではない）
+- [Connected Apps MCP developer guide](https://developers.google.com/connected-apps/mcp)（ユーザーのクエリによる呼出し、ツール結果と UI resource の結合）
+- [Gemini Apps custom apps](https://support.google.com/gemini/answer/17209137?hl=en-JS)（確認時点では US・個人 Google アカウント・英語等の条件。利用可否を推測しない）
+- [Interactions API](https://ai.google.dev/gemini-api/docs/interactions-overview)（API アプリ独自の会話継続）
+
+### Explicit offline legacy-store copy migration
+
+`node scripts/hab-migrate-notices.ts inspect PLAN.json` validates an offline source and
+returns its fingerprint, binding labels and state counts (not message bodies). This does
+not infer the legacy connection/recipient, change configuration or authorize migration.
+The plan contains `source`, a new `destination_directory`, `expected_source_target`, and
+`destination_binding` (`product`, `connection_id`, `recipient_id`, `session_id`, optional
+`profile`). Copy `destination_binding` from `hab-notify --config <new-config> binding`, whose
+`binding_id` must equal the migration report destination target. Do not guess product names
+or connection strings. This read-only command does not open the old decision store. Source and destination parent must be canonical,
+owner-private paths. Symlinks, a busy writer, pending WAL/rollback journal, or unsettled states (`showing`,
+`accepting`, `accept_waiting`, `declining`, `unknown`) are refused. Reconcile those states
+without deleting their duplicate guards; this tool does not supply that reconciliation.
+
+Only after an operator independently verifies the original connection, recipient and
+existing conversation, stops all old notifiers, and commits not to restart that source:
+add the inspected `expected_source_sha256` to the plan and supply a separate attestation
+file containing both `notifiers_stopped_and_source_will_not_restart: true` and
+`old_connection_recipient_and_existing_session_verified: true`. Run
+`node scripts/hab-migrate-notices.ts migrate PLAN.json ATTESTATION.json`.
+These are operator assertions, not facts proven by old database contents. An exclusive
+SQLite transaction fences concurrent writers during copying; it cannot stop an old binary
+from reopening the source after the command exits. Maintaining the offline cutover is an
+operator prerequisite, not an automatic safety guarantee.
+
+The command atomically publishes a private new directory with `source.sqlite` (unaltered
+backup), `notices.sqlite` (rebound copy with every decision/revision preserved), and
+`manifest.json` (fingerprints and attestation). It never overwrites or relabels the source.
+Repeated execution refuses an existing destination rather than replacing later decisions.
+A crash before publication can leave a private staging directory or `.migration-lock`;
+inspect and reconcile that attempt before clearing it, never blindly rerun another path.
+No automatic launch, deployment, credential edit or rollback occurs. Do not point a
+notifier at the backup. Never restore the old snapshot after new choices without explicit
+reconciliation: a restored snapshot could execute a previously handled message again.
+
+### Hermes Desktop companion status (2026-11-15)
+
+A separate, unapplied Hermes companion commit `abdb33d9839491a0604a1e278695822e68c9181d`
+was prepared against `5910a49ffc698ba1c09597d7d583f7cf89ab750d` of the
+`hab-external-message-actions` branch. It is not included in this HAB repository and is
+not an installed release. It propagates exact binding IDs through decisions and retained-card
+state queries, uses revision-monotonic merges, and disables actions when authoritative
+state is unavailable. A complete empty snapshot differs from a failed query; immutable
+notice identity is checked independently of mutable decision state. The configured trusted
+action command must enforce the full connection/recipient/session binding (the HAB command
+does); the UI cannot prove a third-party command's identity enforcement.
+
+The companion's focused Python tests (40), UI tests (32), Desktop typecheck, frontend lint
+and all 14 canonical repository checks passed in an isolated checkout. The full UI suite
+was deliberately stopped for host load, and the full Python suite/native Desktop acceptance
+were not performed. Apply the separately reviewed patch only to an independent matching
+checkout; no upstream publication, installed-app modification, real-agent start or native
+message delivery was performed. Coordinated release and the six manual gates remain
+necessary; a companion commit is not evidence that the live Desktop has these changes.

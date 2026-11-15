@@ -423,3 +423,39 @@ Follow-up boundary review: legacy Hermes action requests must carry the common b
 and event files retain the HAB connection identity. Missing old bindings are refused rather
 than relabelled; existing consumers must explicitly migrate. SQLite checks an existing
 binding before schema/journal migration, with unchanged-schema/data regression coverage.
+
+## Offline copy migration and Gemini product boundaries (2026-11-15 follow-up)
+
+Read the appended Gemini product matrix and its linked official reference list. The
+documented CLI ACP host, standalone TUI, Gemini Apps and API application are different
+connections, not interchangeable routes into an existing conversation. Existing dedicated
+ACP owner processes create their own sessions and are not reused as an existing-session
+notification adapter. This is a capability/limitation classification, not native acceptance.
+
+Read the offline migration module, strict CLI plan/attestation schema and regression tests.
+The source is not rebound in place: an exclusive transaction fences writers while a
+private new bundle is copied, verified and published. Pending WAL or rollback journals,
+unknown/in-flight decisions, mismatched fingerprints/bindings, unsafe paths and existing
+destinations are refused. The original backup and all settled decision fields/revisions
+are preserved; a pre-revision legacy schema retains its queued decision and duplicate guard.
+Unexpected JSON/IO failures are sanitized, not echoed with private payloads or paths.
+A store cannot prove its missing old recipient/backend identity, and the exclusive lock
+cannot prevent an old binary reopening after completion. Explicit operator verification
+and permanently keeping the old source offline remain prerequisites, not tested facts.
+
+The binding CLI now returns destination_binding from the same normalized object used to
+compute its actual target hash (including Hermes connection tuple), rather than requiring
+an operator to reconstruct it. No token or message content is included. Tests check the
+returned object hashes back to binding_id. No actual store migration, configuration
+cutover, live user approval or Gemini/Hermes product test is performed by these checks.
+
+## Separately maintained Hermes companion status
+
+Reviewed the appended companion-status section: it names an unapplied external Hermes
+commit and exact base, not a HAB-tree implementation or installed release. It documents
+retained-card binding/revision synchronization and unavailable-state action refusal, with
+focused Python/UI and canonical-check evidence reported by the separate implementation
+review. This HAB maintenance did not independently run that external checkout. Full UI
+testing was stopped for host load; full Python and actual Desktop acceptance remain
+unverified. No automatic check here is promoted to native parity, deployment or real
+message admission; all six manual gates and coordinated-release prerequisites remain.

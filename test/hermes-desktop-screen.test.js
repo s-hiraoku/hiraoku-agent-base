@@ -207,7 +207,9 @@ test("hab-notify events is the Hermes reader: one JSON page, no store, no HAB", 
       },
     }),
   );
-  await boundScreen(JSON.parse(readFileSync(config, "utf8"))).show(message("m1"));
+  await boundScreen(JSON.parse(readFileSync(config, "utf8"))).show(
+    message("m1"),
+  );
   const lines = [];
   const out = (line) => lines.push(line);
   // Hermes appends --limit 100, then --after <cursor> once it has one.
@@ -440,11 +442,16 @@ test("hab-notify action records a Desktop button press only for this card's bind
     assert.deepEqual(JSON.parse(lines.at(-1)), { error: "invalid_request" });
   }
   assert.equal(await run(press), 0);
-  assert.deepEqual(JSON.parse(lines.at(-1)), { changed: true, state: "later" });
+  assert.deepEqual(JSON.parse(lines.at(-1)), {
+    changed: true,
+    state: "later",
+    revision: 3,
+  });
   assert.equal(await run(press), 0);
   assert.deepEqual(JSON.parse(lines.at(-1)), {
     changed: false,
     state: "later",
+    revision: 3,
   });
   // A reopened conversation asks what each card became, with the same binding check.
   const states = {
@@ -470,11 +477,13 @@ test("hab-notify action records a Desktop button press only for this card's bind
   assert.deepEqual(JSON.parse(lines.at(-1)), {
     changed: true,
     state: "accept_waiting",
+    revision: 5,
   });
   assert.equal(await run({ ...press, choice: "accept" }), 0);
   assert.deepEqual(JSON.parse(lines.at(-1)), {
     changed: false,
     state: "accept_waiting",
+    revision: 5,
   });
   assert.equal(readFileSync(path, "utf8").includes('"type":"handoff"'), false);
 });

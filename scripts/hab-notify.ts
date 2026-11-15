@@ -47,6 +47,7 @@ import {
   codexTarget,
   hermesDesktopPage,
 } from "../src/agent-notify/index.ts";
+import { hermesDesktopAgentBinding } from "../src/agent-notify/hermes-desktop.ts";
 import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import type { AgentScreen } from "../src/agent-notify/index.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
@@ -328,17 +329,19 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
     product.type === "codex" ? (product.app_server?.url ?? null) : null,
     product.type === "claude-code" ? (product.channel_socket ?? null) : null,
   ]);
+  const binding =
+    product.type === "hermes-desktop"
+      ? hermesDesktopAgentBinding(hermesBinding(config, product))
+      : {
+          product: product.type,
+          connection_id: connection,
+          recipient_id: config.agent_id,
+          session_id: screen.target,
+        };
   return {
     ...(screen.capabilities ? { capabilities: screen.capabilities } : {}),
-    target:
-      product.type === "hermes-desktop"
-        ? screen.target
-        : bindingIdentity({
-            product: product.type,
-            connection_id: connection,
-            recipient_id: config.agent_id,
-            session_id: screen.target,
-          }),
+    binding,
+    target: bindingIdentity(binding),
     show: (message) => screen.show(message),
     handoff: (message) => screen.handoff(message),
     report: (message, state) =>
@@ -516,6 +519,7 @@ export async function main(
           JSON.stringify({
             binding_id: screen.target,
             capabilities: screen.capabilities ?? null,
+            destination_binding: screen.binding,
           }),
         );
         return 0;
@@ -654,15 +658,24 @@ export async function main(
           );
           return 0;
         }
-        out(
-          JSON.stringify(
-            await notifier.decide(
-              action!.message_id,
-              action!.choice,
-              action!.sender_id,
-            ),
-          ),
-        );
+        {
+          const result = await notifier.decide(
+            action!.message_id,
+            action!.choice,
+            action!.sender_id,
+          );
+          const record = store.get({
+            message_id: action!.message_id,
+            sender_id: action!.sender_id,
+          });
+          out(
+            JSON.stringify({
+              ...result,
+              state: record!.state,
+              revision: record!.revision,
+            }),
+          );
+        }
         return 0;
       case "show": {
         if (!id) break;
