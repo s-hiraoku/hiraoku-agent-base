@@ -342,6 +342,30 @@ test("対応しない while HAB cannot be told stays declining and is finished o
   assert.deepEqual(f.calls.handoff, []);
 });
 
+test("a reply card offers only 会話に渡す and あとで, and is handed off on 会話に渡す", async (t) => {
+  const choices = [
+    { choice: "accept", label: "会話に渡す" },
+    { choice: "later", label: "あとで" },
+  ];
+  const f = setup(t, {
+    unread: [message("r1", { kind: "answer", in_reply_to: "m0", choices })],
+  });
+  const n = f.make();
+  await n.check();
+  await assert.rejects(n.decide("r1", "decline"), (error) => {
+    assert.equal(error.code, "invalid_request");
+    assert.deepEqual(error.details, {
+      field: "choice",
+      allowed: ["accept", "later"],
+    });
+    return true;
+  });
+  assert.equal(n.get("r1").state, "shown");
+  assert.equal((await n.decide("r1", "later")).state, "later");
+  assert.equal((await n.decide("r1", "accept")).state, "started");
+  assert.deepEqual(f.calls.handoff, ["r1"]);
+});
+
 test("a notice past its reply deadline expires instead of starting", async (t) => {
   let now = Date.now();
   const f = setup(t, {
