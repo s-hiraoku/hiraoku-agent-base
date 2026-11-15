@@ -330,49 +330,97 @@ export class OAuthTokenFile {
     return grant.data;
   }
 
-  /** Runs `work` while holding `<file>.lock`, created with O_EXCL so one process holds it. */
+  /**
+   * Runs `work` while holding `<file>.lock`, created with O_EXCL so one process holds it.
+   * The lock names its holder by a random nonce, and the holder removes only its own lock.
+   */
   async #locked<T>(work: () => Promise<T>): Promise<T> {
     const lock = `${this.#o.file}.lock`;
+    const owner = `${process.pid} ${randomBytes(12).toString("hex")}\n`;
     const deadline = this.#now() + this.#o.lock_wait_ms;
-    let fd: number | undefined;
-    while (fd === undefined) {
-      try {
-        fd = openSync(
-          lock,
-          constants.O_WRONLY |
-            constants.O_CREAT |
-            constants.O_EXCL |
-            constants.O_NOFOLLOW,
-          0o600,
-        );
-        writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST")
-          throw new MessagingError("token_unavailable");
-        try {
-          // A token request ends within timeout_ms, far below lock_stale_ms, so an old lock
-          // was left by a process that died while holding it.
-          if (Date.now() - statSync(lock).mtimeMs > this.#o.lock_stale_ms)
-            unlinkSync(lock);
-        } catch {
-          // Removed by its holder meanwhile.
-        }
-        if (this.#now() >= deadline)
-          throw new MessagingError("token_refresh_busy");
-        await sleep(100);
-      }
+    for (;;) {
+      if (createExclusive(lock, owner)) break;
+      this.#reclaimStale(lock);
+      if (this.#now() >= deadline)
+        throw new MessagingError("token_refresh_busy");
+      await sleep(100);
     }
     try {
       return await work();
     } finally {
-      closeSync(fd);
       try {
-        unlinkSync(lock);
+        if (readFileSync(lock, "utf8") === owner) unlinkSync(lock);
       } catch {
-        // Already removed as stale by another process.
+        // Already gone.
       }
     }
   }
+
+  /**
+   * Removes a lock left by a process that died while holding it. A token request ends within
+   * timeout_ms, far below lock_stale_ms, so only an old lock is stale. Reclaiming happens
+   * under a second lock and re-checks the age there, so two processes never both see the
+   * same stale lock and then delete the new holder's lock.
+   */
+  #reclaimStale(lock: string) {
+    const stale = (path: string, age: number) => {
+      try {
+        return Date.now() - statSync(path).mtimeMs > age;
+      } catch {
+        return false;
+      }
+    };
+    if (!stale(lock, this.#o.lock_stale_ms)) return;
+    const guard = `${lock}.reclaim`;
+    // The guard is held for a stat and an unlink; one older than lock_stale_ms is a crash.
+    if (stale(guard, this.#o.lock_stale_ms)) {
+      try {
+        unlinkSync(guard);
+      } catch {
+        // Removed meanwhile.
+      }
+    }
+    const mark = `${process.pid} ${randomBytes(12).toString("hex")}\n`;
+    if (!createExclusive(guard, mark)) return;
+    try {
+      if (stale(lock, this.#o.lock_stale_ms)) unlinkSync(lock);
+    } catch {
+      // Removed by its holder meanwhile.
+    } finally {
+      try {
+        if (readFileSync(guard, "utf8") === mark) unlinkSync(guard);
+      } catch {
+        // Already gone.
+      }
+    }
+  }
+}
+
+/** Creates `path` 0600 with `text` if it does not exist; false if it already does. */
+function createExclusive(path: string, text: string): boolean {
+  let fd: number;
+  try {
+    fd = openSync(
+      path,
+      constants.O_WRONLY |
+        constants.O_CREAT |
+        constants.O_EXCL |
+        constants.O_NOFOLLOW,
+      0o600,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw new MessagingError("token_unavailable");
+  }
+  try {
+    writeSync(fd, text);
+  } catch {
+    closeSync(fd);
+    unlinkSync(path);
+    throw new MessagingError("token_unavailable");
+  }
+  closeSync(fd);
+  return true;
 }
 
 export interface LoginOptions {

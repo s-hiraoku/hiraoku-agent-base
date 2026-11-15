@@ -211,8 +211,14 @@ test("a lock left by a dead process is removed; a live one is waited for", async
   assert.equal(issuer.calls.length, 0);
   const old = (Date.now() - 120_000) / 1000;
   utimesSync(`${file}.lock`, old, old);
+  // Another process is reclaiming the same stale lock right now: this one leaves it alone.
+  writeFileSync(`${file}.lock.reclaim`, "2 live\n");
+  assert.equal(await now.problem(), "token_refresh_busy");
+  assert.equal(existsSync(`${file}.lock`), true);
+  rmSync(`${file}.lock.reclaim`);
   assert.equal(await now.authorization(), "Bearer synthetic-at-2");
   assert.equal(existsSync(`${file}.lock`), false);
+  assert.equal(existsSync(`${file}.lock.reclaim`), false);
 });
 
 const freePort = () =>
