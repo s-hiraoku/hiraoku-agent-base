@@ -26,6 +26,7 @@
  *
  * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
  */
+import { createNotifyCheckLog } from "./lib/notify-check-log.ts";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
@@ -795,17 +796,15 @@ export async function main(
         process.once("SIGINT", stop);
         // An error that repeats on every check, such as waiting for the agent to refresh its
         // token, is logged once when it starts and once when it ends.
-        let failing: string | undefined;
+        const checkLog = createNotifyCheckLog(out);
         while (!stopped) {
           try {
+            const started = performance.now();
             const shown = await notifier.check();
-            if (failing) out(JSON.stringify({ resumed: failing }));
-            failing = undefined;
-            if (shown.length) out(JSON.stringify({ shown }));
+            checkLog.succeeded(shown, Math.round(performance.now() - started));
           } catch (error) {
             const code = errorCode(error, config);
-            if (code !== failing) out(JSON.stringify({ error: code }));
-            failing = code;
+            checkLog.failed(code);
           }
           await new Promise((done) => setTimeout(done, config.interval_ms));
         }

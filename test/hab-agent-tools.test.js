@@ -101,6 +101,8 @@ test("send, read, reply and status round trip with only addresses and text", asy
   );
   assert.equal(sent.to, f.b.address);
   assert.equal(sent.state, "pending");
+  assert.equal(sent.reply_watch.action, "check_status");
+  assert.ok(Date.parse(sent.reply_watch.next_check_at) >= before + 15000);
   assert.match(sent.thread_id, /^t-[A-Za-z0-9_-]{16}$/);
   const deadline = Date.parse(sent.expires_at) - Date.parse(sent.accepted_at);
   assert.ok(
@@ -140,6 +142,7 @@ test("send, read, reply and status round trip with only addresses and text", asy
   assert.match(status.explanation, /does not mean it replied/);
   assert.equal(status.kind, "question");
   assert.equal(status.reply_state, "waiting");
+  assert.equal(status.reply_watch.action, "check_status");
   assert.deepEqual(status.replies, []);
 
   const submits = () =>
@@ -163,6 +166,7 @@ test("send, read, reply and status round trip with only addresses and text", asy
     message_id: sent.message_id,
   });
   assert.equal(answered.reply_state, "replied");
+  assert.equal(answered.reply_watch.action, "read_reply");
   assert.deepEqual(
     answered.replies.map(({ message_id, kind, read }) => ({
       message_id,
