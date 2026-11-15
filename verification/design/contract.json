@@ -1064,7 +1064,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "11ce9e3481e34328ade86353e6fb68d71eba317fd47e06a0df8953f4ff565dc4",
+      "sha256": "0fdce9ad3880d76215cb0c9bbf1a6a0aaf373a26f56d9e31cbf228990f3287ce",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1229,11 +1229,11 @@
     },
     {
       "path": "docs/reply-monitoring.md",
-      "sha256": "054e49ce2b49c0882aa8e3c795f3ada5bff5d9d8dab70d1b89e1826a9a0df134",
+      "sha256": "06bfd6192de90fc3648c63a660dece1a1f610982ac5dba915127b0ff02b6ff02",
       "role": "normative",
       "review": "reviewed",
       "read_scope": "full",
-      "summary": "Optional user-authorized reply monitoring consumes additive send/status advice: read-only status at 15 seconds, then 60 seconds, then five minutes, bounded by 30 minutes and message expiry; terminal/replied states stop polling. Product owns durable scheduler and inbox persistence/display, not the HAB host. No Dots scheduler is implemented. Inbox read side effects and untrusted body boundary remain unchanged. Notifier telemetry is observed transition timing, not exact OAuth timing or a latency fix. OAuth refresh stays with existing credential owner; no competing adapter refresh or live configuration changes. Reviewed against reply-watch policy, isolated agent-catalog roundtrip and notifier logging tests; native scheduler/OAuth timing remains unverified."
+      "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance."
     }
   ],
   "requirements": [
@@ -3770,7 +3770,7 @@
       "cwd": ".",
       "timeout_seconds": 900,
       "protocol": "node-tap",
-      "proves": "Complete current top-level JavaScript test inventory plus typed CLI compatibility and offline native-preflight checks, including real local HTTP/SQLite with the SQLite delivery store, bounded optional execution, authority, recovery, attachment-part refusal and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required.",
+      "proves": "Complete current top-level JavaScript test inventory plus typed CLI compatibility and offline native-preflight checks, including real local HTTP/SQLite with the SQLite delivery store, bounded optional execution, authority, recovery, attachment-part refusal and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required. Optional sender reply-watch adapter/CLI: automatic accepted-send registration, durable owner-scoped due work, real synthetic-authority HTTP reply detection with unread reply preserved, bounded retry/deadline/auth stop, and resident timer consumption. Existing durable sender HTTP refusal semantics remain unchanged.",
       "limitations": "Scenario-specific functional evidence with synthetic authorities and substituted external runtimes. Does not run native agent models, production OAuth, GUI, real media failures or every possible policy. Explicit NODE_OPTIONS matches the CI environment because CLI fixtures compare stderr exactly; it suppresses ExperimentalWarning category only, not test assertions or skip/failure handling.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"

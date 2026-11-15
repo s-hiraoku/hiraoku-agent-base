@@ -24,6 +24,9 @@ export type SendInput = {
   thread_id?: string;
 };
 class Endpoint extends HabMcpClient {
+  protected override get distinguishAuthenticationRefusal() {
+    return true;
+  }
   agentCall(tool: "hab_send" | "hab_status", input: Record<string, unknown>) {
     return this.requestTool(tool, input);
   }
@@ -35,6 +38,7 @@ export class ReplyWatchClient {
     options: HabMcpClientOptions,
     ready = (): string | undefined => undefined,
   ) {
+    if (!options.as_address) throw new MessagingError("invalid_request");
     this.#endpoint = new Endpoint(options);
     this.#ready = ready;
   }

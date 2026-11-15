@@ -16,7 +16,7 @@ const configSchema = z.strictObject({
   connection_id: z.string().min(1).max(2048),
   agent_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
   session_id: z.string().min(1).max(2048),
-  as_address: z.string().optional(),
+  as_address: z.string().min(1),
   store: z.string().refine(isAbsolute, "absolute private SQLite path"),
   token: z.union([
     z.strictObject({ env: z.string().min(1) }),

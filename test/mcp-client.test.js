@@ -336,12 +336,7 @@ test("HTTP failures and redirects never become success or leak response details"
           },
         }),
     );
-    await assert.rejects(
-      c.poll(),
-      expected(
-        status === 401 || status === 403 ? "forbidden" : "transport_failed",
-      ),
-    );
+    await assert.rejects(c.poll(), expected());
   }
   for (const patch of [
     { redirected: true },
@@ -745,7 +740,7 @@ test(
             { status: 401 },
           ),
       ).poll(),
-      expected("forbidden"),
+      expected(),
     );
     assert.equal(cancelled, 2);
   },

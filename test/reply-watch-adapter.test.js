@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import process from "node:process";
 import { test } from "node:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -25,6 +26,7 @@ const scope = {
   connection_id: "owner-a",
   agent_id: "a",
   session_id: "session-a",
+  as_address: "a@grok-bot.hab",
 };
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), "hab-reply-watch-"));
@@ -284,7 +286,13 @@ test("real owned HTTP/SQLite agent path sends, checks original reply and leaves 
   });
   assert.equal(result.monitoring, "saved");
   async function callAsB(name, args) {
-    const response = await fetch(request("tools/call", { name, arguments: args }, { url, headers: { Authorization: "Bearer fixture-b" } }));
+    const response = await globalThis.fetch(
+      request(
+        "tools/call",
+        { name, arguments: args },
+        { url, headers: { Authorization: "Bearer fixture-b" } },
+      ),
+    );
     const result = (await decode(response)).result;
     assert.notEqual(result.isError, true);
     return result.structuredContent;
@@ -358,4 +366,201 @@ test("shipped CLI send automatically saves a watch and local list/cancel make no
   await run("check");
   assert.equal(output.at(-1)[0].state, "stopped");
   assert.equal(calls, 1);
+});
+
+test(
+  "resident CLI run consumes a saved watch on its timer and idles after reply",
+  { timeout: 30000 },
+  async (t) => {
+    const f = setup(t),
+      config = join(f.dir, "resident.json"),
+      output = [];
+    const key = "HAB_REPLY_WATCH_RESIDENT_SYNTHETIC";
+    process.env[key] = "synthetic";
+    t.after(() => delete process.env[key]);
+    writeFileSync(
+      config,
+      JSON.stringify({
+        ...scope,
+        store: f.path,
+        token: { env: key },
+        normal_interval_ms: 1000,
+      }),
+    );
+    const at = Date.now();
+    const value = {
+      ...sent,
+      accepted_at: new Date(at).toISOString(),
+      expires_at: new Date(at + 3600000).toISOString(),
+    };
+    let checks = 0,
+      finish;
+    const checked = new Promise((r) => {
+      finish = r;
+    });
+    const rpc = async (_url, init) => {
+      const req = JSON.parse(init.body);
+      assert.equal(req.params.name, "hab_status");
+      assert.equal(req.params.arguments.message_id, sent.message_id);
+      assert.equal(req.params.arguments.expected_agent_id, scope.agent_id);
+      checks++;
+      finish();
+      const data = {
+        ...value,
+        reply_state: "replied",
+        replies: [{ message_id: "answer-resident" }],
+      };
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: req.id,
+          result: {
+            resultType: "complete",
+            content: [{ type: "text", text: JSON.stringify(data) }],
+            structuredContent: data,
+          },
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    };
+    // Reopened schedule, due after a real short wait; only the scheduler clock is substituted.
+    const seed = new ReplyWatchAdapter(
+      f.path,
+      scope,
+      f.transport,
+      () => at - 14900,
+    );
+    seed.watch(value);
+    seed.close();
+    const running = main(
+      ["--config", config, "run"],
+      (s) => output.push(s),
+      () => "",
+      rpc,
+    );
+    try {
+      await checked;
+      await new Promise((r) => setTimeout(r, 1250));
+      assert.equal(checks, 1);
+      const records = f.open().records();
+      assert.equal(records[0].state, "replied");
+      assert.deepEqual(JSON.parse(records[0].reply_ids), ["answer-resident"]);
+    } finally {
+      process.emit("SIGTERM");
+      assert.equal(await running, 0);
+    }
+    assert.deepEqual(output, []);
+  },
+);
+
+test("abandoned bounded request claims recover after lease without moving the original stop time", async (t) => {
+  const f = setup(t),
+    w = f.open();
+  w.watch(sent);
+  const { DatabaseSync } = await import("node:sqlite");
+  const raw = new DatabaseSync(f.path);
+  raw
+    .prepare("UPDATE reply_watches SET claim='abandoned', lease_until=?")
+    .run(start + 75000);
+  raw.close();
+  f.setNow(start + 15000);
+  await w.checkDue();
+  assert.equal(f.calls(), 0);
+  f.setNow(start + 75000);
+  await w.checkDue();
+  assert.equal(f.calls(), 1);
+  assert.equal(w.records()[0].stop_at, start + 1800000);
+  assert.equal(w.records()[0].claim, null);
+});
+
+for (const status of [401, 403])
+  test(`HTTP ${status} stops the actual client path`, async (t) => {
+    const f = setup(t);
+    let calls = 0;
+    const options = {
+      policy: {
+        resource_url: scope.resource_url,
+        agent_id: scope.agent_id,
+        max_request_bytes: 65536,
+        max_response_bytes: 131072,
+        timeout_ms: 2000,
+        max_active_requests: 1,
+        max_sse_events: 16,
+        max_sse_lines: 128,
+        max_json_depth: 32,
+        max_json_nodes: 10000,
+      },
+      limits,
+      as_address: scope.as_address,
+      authorization: () => "Bearer synthetic",
+      fetch: async () => {
+        calls++;
+        return new Response(null, { status });
+      },
+    };
+    const w = new ReplyWatchAdapter(
+      join(f.dir, "http-auth.sqlite"),
+      scope,
+      new ReplyWatchClient(options),
+      () => start + 15000,
+    );
+    t.after(() => w.close());
+    const seed = new ReplyWatchAdapter(
+      join(f.dir, "http-auth.sqlite"),
+      scope,
+      f.transport,
+      () => start,
+    );
+    seed.watch(sent);
+    seed.close();
+    await w.checkDue();
+    await w.checkDue();
+    assert.equal(calls, 1);
+    assert.equal(w.records()[0].state, "auth_required");
+  });
+
+test("local watch-save failure preserves accepted ID and never repeats the send", async (t) => {
+  const f = setup(t),
+    w = f.open();
+  let sends = 0;
+  f.transport.send = async () => {
+    sends++;
+    return sent;
+  };
+  const { DatabaseSync } = await import("node:sqlite");
+  const raw = new DatabaseSync(f.path);
+  raw.exec(
+    "CREATE TRIGGER fail_watch_save BEFORE INSERT ON reply_watches BEGIN SELECT RAISE(ABORT, 'synthetic disk failure'); END",
+  );
+  raw.close();
+  const result = await w.send({ to: "b@agent.hab", text: "synthetic" });
+  assert.equal(result.message_id, sent.message_id);
+  assert.equal(result.monitoring, "save_failed");
+  assert.equal(sends, 1);
+  assert.deepEqual(w.records(), []);
+});
+
+test("transient failures cap backoff and successful status resets it within the original bound", async (t) => {
+  const f = setup(t),
+    w = f.open();
+  w.watch(sent);
+  f.transport.status = async () => {
+    throw new MessagingError("transport_failed");
+  };
+  for (const delay of [30000, 60000, 120000, 240000, 300000, 300000]) {
+    const at = w.records()[0].next_at;
+    f.setNow(at);
+    await w.checkDue();
+    assert.equal(w.records()[0].next_at - at, delay);
+    assert.equal(w.records()[0].stop_at, start + 1800000);
+  }
+  f.transport.status = async () => ({
+    ...sent,
+    reply_state: "waiting",
+    replies: [],
+  });
+  f.setNow(w.records()[0].next_at);
+  await w.checkDue();
+  assert.equal(w.records()[0].failures, 0);
+  assert.equal(w.records()[0].state, "waiting");
 });
