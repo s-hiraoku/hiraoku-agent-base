@@ -6,17 +6,17 @@ import { z } from 'zod';
 
 import type {
   NativeCallControl,
-  NativeRelayPort,
+  NativeHabPort,
   NativeTool,
 } from "./native_mcp_client.ts";
 
-export interface NativeRelayStdioOptions {
+export interface NativeHabStdioOptions {
   resource_url: string;
   /** Bytes per JSON frame, excluding the newline; applies in both directions. */
   max_frame_bytes: number;
   shutdown_timeout_ms: number;
 }
-export interface NativeRelayStdioStart extends NativeRelayStdioOptions {
+export interface NativeHabStdioStart extends NativeHabStdioOptions {
   /** Already approved local executables/config paths only. No shell or token arguments. */
   command: string;
   args: string[];
@@ -62,7 +62,7 @@ type Pending = {
   resolve: (value: string) => void;
   reject: (error: Error) => void;
 };
-function validate(options: NativeRelayStdioOptions) {
+function validate(options: NativeHabStdioOptions) {
   try {
     const url = new URL(options.resource_url);
     if (
@@ -89,9 +89,9 @@ function validate(options: NativeRelayStdioOptions) {
   }
 }
 
-export class NativeRelayStdioPort implements NativeRelayPort {
+export class NativeHabStdioPort implements NativeHabPort {
   readonly #child: ChildProcessWithoutNullStreams;
-  readonly #options: Readonly<NativeRelayStdioOptions>;
+  readonly #options: Readonly<NativeHabStdioOptions>;
   readonly #exited: Promise<void>;
   #onExit!: () => void;
   #pending: Pending | undefined;
@@ -104,7 +104,7 @@ export class NativeRelayStdioPort implements NativeRelayPort {
   #killTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** Explicit lifecycle action. Construction below only attaches to an existing owned child. */
-  static start(options: NativeRelayStdioStart): NativeRelayStdioPort {
+  static start(options: NativeHabStdioStart): NativeHabStdioPort {
     validate(options);
     if (
       typeof options.command !== "string" ||
@@ -138,14 +138,14 @@ export class NativeRelayStdioPort implements NativeRelayPort {
         detached: false,
         windowsHide: true,
       });
-      return new NativeRelayStdioPort(child, options);
+      return new NativeHabStdioPort(child, options);
     } catch {
       throw new StdioFailure("native_stdio_failed");
     }
   }
   constructor(
     child: ChildProcessWithoutNullStreams,
-    options: NativeRelayStdioOptions,
+    options: NativeHabStdioOptions,
   ) {
     validate(options);
     if (
@@ -393,7 +393,7 @@ export class NativeRelayStdioPort implements NativeRelayPort {
     args: Readonly<Record<string, unknown>>,
     control: NativeCallControl,
   ) {
-    if (!["relay_poll", "relay_ack", "relay_submit", "relay_status"].includes(name))
+    if (!["hab_poll", "hab_ack", "hab_submit", "hab_status"].includes(name))
       return Promise.reject(new StdioFailure("native_stdio_forbidden"));
     return this.#request("call", { name, args }, control);
   }

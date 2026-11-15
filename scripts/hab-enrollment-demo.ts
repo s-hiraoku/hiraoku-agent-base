@@ -50,7 +50,7 @@ if (
         ? {
             principal: {
               issuer: "https://issuer.example/",
-              audience: "https://relay.example/mcp",
+              audience: "https://hab.example/mcp",
               subject: "synthetic-owner",
               client_id: "synthetic-client",
               connection_id: "synthetic-bot-a",

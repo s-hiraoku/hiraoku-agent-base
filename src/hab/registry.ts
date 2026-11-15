@@ -1,6 +1,6 @@
 import type { HabHostIdentity } from "./discovery.ts";
 
-/** HAB naming/administration contract. Relay core never imports this module. */
+/** HAB naming/administration contract. The messaging core never imports this module. */
 export const ADDRESS_NORMALIZATION_VERSION = 1 as const;
 export class RegistryError extends Error {
   readonly code: string;
@@ -10,14 +10,14 @@ export class RegistryError extends Error {
     this.code = code;
   }
 }
-export const relayOperations = [
+export const deliveryOperations = [
   "submit",
   "status",
   "poll",
   "ack",
   "resolve",
 ] as const;
-export type AgentOperation = (typeof relayOperations)[number];
+export type AgentOperation = (typeof deliveryOperations)[number];
 export type AgentState =
   "waiting_connection" | "active" | "stopped" | "retired";
 export interface ProductRecord {

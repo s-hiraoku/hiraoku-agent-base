@@ -4,16 +4,16 @@ import { test } from "node:test";
 
 const refusals = [
   {
-    name: "hab-relay",
+    name: "hab-host",
     args: [],
     status: 1,
     diagnostic: /reason=config_required/,
   },
   {
-    name: "hab-relay-admin",
+    name: "hab-admin",
     args: [],
     status: 2,
-    diagnostic: /relay_admin_rejected usage/,
+    diagnostic: /admin_rejected usage/,
   },
   {
     name: "native-trial-preflight",
@@ -85,9 +85,9 @@ test("importing the legacy operator modules preserves exports without starting a
       "-e",
       `
     import assert from "node:assert/strict";
-    import { main as relay } from "./scripts/hab-relay.mjs";
-    import { main as admin } from "./scripts/hab-relay-admin.mjs";
-    for (const entry of [relay, admin]) assert.equal(typeof entry, "function");
+    import { main as host } from "./scripts/hab-host.mjs";
+    import { main as admin } from "./scripts/hab-admin.mjs";
+    for (const entry of [host, admin]) assert.equal(typeof entry, "function");
   `,
     ],
     {
@@ -103,4 +103,17 @@ test("importing the legacy operator modules preserves exports without starting a
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, "");
   assert.equal(result.stderr, "");
+});
+
+test("hab:host and hab:admin are the only host commands; no relay:* alias remains", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { scripts } = JSON.parse(await readFile("package.json", "utf8")) as {
+    scripts: Record<string, string>;
+  };
+  assert.equal(scripts["hab:host"], "node scripts/hab-host.ts");
+  assert.equal(scripts["hab:admin"], "node scripts/hab-admin.ts");
+  assert.deepEqual(
+    Object.keys(scripts).filter((name) => /relay/i.test(name + scripts[name])),
+    [],
+  );
 });

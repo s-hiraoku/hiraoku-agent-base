@@ -19,7 +19,7 @@ The places that hold the address as text are handled as follows.
 
 | Holder of the old address | Behaviour after a rename |
 | --- | --- |
-| Another agent's address book or saved contact | During the grace period `relay_resolve(old)` returns the same `recipient_id`. The v1 output still echoes the requested address, so existing clients keep working; the current name is read with `hab_discover`. After the grace period the old name is refused like any unknown name (`forbidden`). |
+| Another agent's address book or saved contact | During the grace period `hab_resolve(old)` returns the same `recipient_id`. The v1 output still echoes the requested address, so existing clients keep working; the current name is read with `hab_discover`. After the grace period the old name is refused like any unknown name (`forbidden`). |
 | The renamed agent's own `as_address` (frozen in its MCP client) | During the grace period the old name is accepted as the caller's own name only when the authenticated binding and `expected_agent_id`, if given, select the same `agent_id`. After the grace period it fails closed. Refresh the host's stored address before then. |
 | Host config: `a2a.identity`, `a2a.recipient` | Resolved through the same rule, so the A2A entry keeps working during the grace period: the identity stays the same agent and the recipient resolves to the same ID. The rename procedure must update the config in the same maintenance window. A start after the grace period with an old identity is refused with `a2a_identity_renamed`; an old recipient is refused like any unknown name. |
 | Host attestations | Become `unknown/stale_address_attestation` until refreshed. They never become ownership proof for the old name. |
@@ -34,7 +34,7 @@ Rules:
 - The grace period is a registry option, `rename_grace_days` (0–365, default 30),
   measured in the registry clock from the latest rename away from that name. Each
   previous name has its own period; 0 refuses a previous name at once. Each use of a
-  previous name (a `relay_resolve`, or the agent's own frozen `as_address`) is counted
+  previous name (a `hab_resolve`, or the agent's own frozen `as_address`) is counted
   per caller ID in `hab_previous_name_uses`, with no message content, so the operator
   can see which callers still use it. The table holds at most `max_audit_records`
   rows; when it is full, existing counts keep growing and new callers are not listed.
@@ -45,7 +45,7 @@ Rules:
   is a new audited CAS operation, not deletion or reassignment of history.
 - The `agent_name` (product or execution environment) cannot change. A rename across
   namespaces is refused.
-- `relay:admin status` lists `previous_names`: each previous name with its agent ID,
+- `hab:admin status` lists `previous_names`: each previous name with its agent ID,
   current name, rename time, grace end, whether it still resolves, and the callers
   that used it. It reports `config_previous_address` (still resolving) or
   `config_previous_address_expired` when `a2a.identity` or `a2a.recipient` names a
@@ -53,7 +53,7 @@ Rules:
 
 ## Schema and permissions
 
-`registry.agent_rename: true` explicitly upgrades registry v2 to v3 during Relay
+`registry.agent_rename: true` explicitly upgrades registry v2 to v3 during host
 initialization. The v2 group schema is the base; every registry has it, because
 every connection authenticates through a group. Without this flag the v2 schema and
 immutable-address behavior are unchanged.
@@ -84,12 +84,12 @@ same management contract applies to all participating products.
    into commands or logs.
 2. Deploy v3-capable code with the explicit flag and perform initialization.
    Existing v1/v2 handles refuse the changed schema and must reopen.
-3. Inspect `relay:admin status`; save the selected `agent_id`, address and `epoch`,
+3. Inspect `hab:admin status`; save the selected `agent_id`, address and `epoch`,
    chosen new `bot_name`, and a stable `request_id` in the management journal.
 4. Invoke the operator CLI once (all values below are synthetic):
 
    ```sh
-   npm run relay:admin -- --config /private/service.local.json rename \
+   npm run hab:admin -- --config /private/service.local.json rename \
      --agent-id example-agent --expected-address old@example.hab \
      --bot-name renamed --expected-epoch 4 --request-id journaled-rename-1
    ```
@@ -105,7 +105,7 @@ same management contract applies to all participating products.
    renaming is independent and is not performed by this command.
 7. Verify `whoami`, scoped directory, new-address resolution, old-address resolution
    to the same ID during the grace period, pending delivery/ACK/status, and unchanged
-   grants. Before the grace end, check `previous_names[].callers` in `relay:admin
+   grants. Before the grace end, check `previous_names[].callers` in `hab:admin
    status` and tell any caller still listed. Previously accepted envelopes
    and replies continue to use the same immutable sender/recipient IDs.
 

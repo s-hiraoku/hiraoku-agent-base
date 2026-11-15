@@ -28,7 +28,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     action: (authorization: Authorization) => T,
   ): T {
     this.#assertCurrent();
-    return this.#registry.withRelay(
+    return this.#registry.withAuthorization(
       context,
       operation,
       (authorization, agentId) => {
@@ -58,6 +58,137 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     return this.#run(context, "ack", (authorization) =>
       this.#backend.ackWithAuthorization(context, input, authorization),
     );
+  }
+  /** Reads the caller's host inbox; unread messages become read (ACKed). Runs under `poll`. */
+  inbox(
+    context: unknown,
+    options: {
+      limit: number;
+      include_read: boolean;
+      message_id?: string;
+      sender_id?: string;
+      max_bytes?: number;
+      peek?: boolean;
+      after?: { accepted_at: number; sender_id: string; message_id: string };
+    },
+  ) {
+    return this.#run(context, "poll", (authorization) => {
+      const messages = this.#backend.readInboxWithAuthorization(
+        context,
+        authorization,
+        options,
+      );
+      const addresses = this.#registry.addressesOf(
+        messages.map((message) => message.sender_id),
+      );
+      return messages.map((message) => ({
+        ...message,
+        from: addresses.get(message.sender_id) ?? null,
+      }));
+    });
+  }
+  /**
+   * The caller's unread messages, left unread (ADR-021): the arrival notifier shows them to
+   * the user before anything reads them. Runs under `poll`, like reading the inbox.
+   */
+  peek(
+    context: unknown,
+    options: {
+      limit: number;
+      max_bytes?: number;
+      after?: { accepted_at: number; sender_id: string; message_id: string };
+    },
+  ) {
+    return this.inbox(context, { ...options, include_read: false, peek: true });
+  }
+  /**
+   * Marks one received message read, named by sender and ID (ADR-021): the arrival
+   * notifier calls it after the user chose. Returns whether the message is known within
+   * the 7-day re-read window (already read counts). Runs under `poll`, like the inbox.
+   */
+  markRead(context: unknown, key: { sender_id: string; message_id: string }) {
+    return (
+      this.inbox(context, {
+        limit: 1,
+        include_read: false,
+        message_id: key.message_id,
+        sender_id: key.sender_id,
+      }).length === 1
+    );
+  }
+  /** A message the caller received, for building a reply. Runs under `submit`. */
+  received(context: unknown, messageId: string) {
+    return this.#run(context, "submit", (authorization) => {
+      const message = this.#backend.receivedWithAuthorization(
+        context,
+        messageId,
+        authorization,
+      );
+      return {
+        ...message,
+        from:
+          this.#registry
+            .addressesOf([message.sender_id])
+            .get(message.sender_id) ?? null,
+      };
+    });
+  }
+  /**
+   * Reads the message being answered and submits the reply built from it, under one
+   * `submit` authorization (one authorization record per reply).
+   */
+  reply(
+    context: unknown,
+    messageId: string,
+    build: (original: ReturnType<HabDeliveryService["received"]>) => unknown,
+  ) {
+    return this.#run(context, "submit", (authorization) => {
+      const message = this.#backend.receivedWithAuthorization(
+        context,
+        messageId,
+        authorization,
+      );
+      const original = {
+        ...message,
+        from:
+          this.#registry
+            .addressesOf([message.sender_id])
+            .get(message.sender_id) ?? null,
+      };
+      return {
+        original,
+        receipt: this.#backend.admitWithAuthorization(
+          context,
+          build(original),
+          authorization,
+        ),
+      };
+    });
+  }
+  /** The sender's receipt with the recipient's current address. Runs under `status`. */
+  statusWithAddress(context: unknown, messageId: string) {
+    return this.#run(context, "status", (authorization) => {
+      const receipt = this.#backend.statusWithAuthorization(
+        context,
+        messageId,
+        authorization,
+      );
+      return {
+        ...receipt,
+        to:
+          this.#registry
+            .addressesOf([receipt.recipient_id])
+            .get(receipt.recipient_id) ?? null,
+        ...this.#backend.repliesWithAuthorization(
+          context,
+          messageId,
+          authorization,
+        ),
+      };
+    });
+  }
+  get textLimit() {
+    return this.#backend.textLimit;
   }
   get discoveryEnabled() {
     return this.#registry.discoveryEnabled;

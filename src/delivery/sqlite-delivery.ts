@@ -7,6 +7,8 @@ import type {
   Receipt,
   Delivery,
   AckReceipt,
+  InboxMessage,
+  ReceivedMessage,
 } from "../messaging/delivery-service.ts";
 import {
   parseSubmission,
@@ -15,6 +17,7 @@ import {
   validateLimits,
   RECORD_RETENTION_MS,
   MAX_ACK_RETRY_MS,
+  READ_BODY_RETENTION_MS,
   isReplayBoundMessageId,
 } from "../messaging/contract.ts";
 import type {
@@ -51,6 +54,13 @@ export interface SqliteDeliveryOptions extends DeliveryQueueOptions {
   fingerprint_key: Uint8Array;
   limits: ContractLimits;
   authorization: Authorization;
+}
+/** One reply to a sent message, as hab_status shows it (no body). */
+export interface ReplySummary {
+  message_id: string;
+  kind: string;
+  received_at: string;
+  read: boolean;
 }
 interface Row {
   sender_id: string;
@@ -120,6 +130,19 @@ type ResolvedOptions = Required<
   Omit<SqliteDeliveryOptions, "agent_capacity" | "path">
 > & { agent_capacity?: AgentCapacityPolicy };
 
+/**
+ * Upper estimate of one inbox message's share of an MCP tool response: the text appears
+ * twice (as `text` and inside the notice), once in structuredContent and once more as an
+ * escaped JSON string in `content`, plus fixed fields.
+ */
+function inboxResponseCost(message: Submission): number {
+  const text = message.body.parts
+    .flatMap((part) => (part.type === "text" ? [part.text] : []))
+    .join("\n\n");
+  const once = Buffer.byteLength(JSON.stringify(text));
+  const twice = Buffer.byteLength(JSON.stringify(JSON.stringify(text)));
+  return 2 * once + 2 * twice + 4096;
+}
 export class SqliteDelivery {
   readonly #db: DatabaseSync;
   readonly #options: ResolvedOptions;
@@ -273,11 +296,14 @@ export class SqliteDelivery {
     let decision;
     try {
       decision = authorization.authorize(context, operation, peer, kind);
-    } catch {
-      throw new MessagingError("forbidden");
+    } catch (error) {
+      // A policy refusal keeps its public code and audit reason; anything else is opaque.
+      throw error instanceof MessagingError
+        ? error
+        : new MessagingError("forbidden", { reason: "authorization_failed" });
     }
     if (!decision || !id(decision.agent_id))
-      throw new MessagingError("forbidden");
+      throw new MessagingError("forbidden", { reason: "authorization_denied" });
     return decision.agent_id;
   }
   #row(sender: string, message: string): Row | undefined {
@@ -305,8 +331,17 @@ export class SqliteDelivery {
       )
       .run(sender, message, at, event);
   }
+  /** The host's limit on the UTF-8 bytes of all text parts of one message. */
+  get textLimit(): number {
+    return this.#options.limits.text_bytes;
+  }
   /** Expires overdue records and returns lapsed leases to the queue (or quarantine). */
   #refresh(now: number) {
+    this.#db
+      .prepare(
+        "UPDATE delivery_messages SET body=NULL,body_bytes=0 WHERE state='acked' AND body IS NOT NULL AND acked_at<=?",
+      )
+      .run(now - READ_BODY_RETENTION_MS);
     const expired = this.#db
       .prepare(
         `UPDATE delivery_messages SET state='expired',body=NULL,body_bytes=0,token_hash=NULL,retain_until=expires_at+? WHERE state IN ${LIVE} AND expires_at<=? RETURNING sender_id,message_id`,
@@ -509,6 +544,52 @@ export class SqliteDelivery {
       return this.#receipt(row);
     });
   }
+  /**
+   * Replies to a message the caller sent: messages the recipient sent back in the same
+   * thread after it (hab_reply keeps the thread), with the sent message's own kind.
+   * Metadata only, oldest first, at most 5. `read` means the caller has read it. Rows
+   * already purged are not listed.
+   */
+  repliesWithAuthorization(
+    context: unknown,
+    messageId: string,
+    authorization: Authorization,
+  ): { kind: string; replies: ReplySummary[] } {
+    if (!id(messageId)) throw new MessagingError("invalid_request");
+    const sender = this.#identity(context, "status", authorization);
+    return this.#tx(() => {
+      if (this.#identity(context, "status", authorization) !== sender)
+        throw new MessagingError("forbidden");
+      this.#refresh(Date.now());
+      const original = this.#row(sender, messageId);
+      if (!original) throw new MessagingError("not_found");
+      const rows = this.#db
+        .prepare(
+          "SELECT message_id,kind,accepted_at,state FROM delivery_messages WHERE sender_id=? AND recipient_id=? AND thread_key=? AND accepted_at>=? AND NOT (sender_id=? AND message_id=?) ORDER BY accepted_at,message_id LIMIT 5",
+        )
+        .all(
+          original.recipient_id,
+          sender,
+          original.thread_key,
+          original.accepted_at,
+          // A message sent to one's own address is not its own reply.
+          sender,
+          messageId,
+        ) as unknown as Pick<
+        Row,
+        "message_id" | "kind" | "accepted_at" | "state"
+      >[];
+      return {
+        kind: original.kind,
+        replies: rows.map((row) => ({
+          message_id: row.message_id,
+          kind: row.kind,
+          received_at: new Date(row.accepted_at).toISOString(),
+          read: row.state === "acked",
+        })),
+      };
+    });
+  }
   lookupReceipt(senderId: string, messageId: string): Receipt | null {
     return this.#tx(() => {
       this.#refresh(Date.now());
@@ -554,7 +635,13 @@ export class SqliteDelivery {
           )
             throw new MessagingError("forbidden");
         } catch (error) {
-          if (error instanceof MessagingError && error.code === "forbidden")
+          // A candidate this pair may no longer exchange is skipped, as before.
+          if (
+            error instanceof MessagingError &&
+            ["forbidden", "recipient_unavailable", "kind_not_allowed"].includes(
+              error.code,
+            )
+          )
             continue;
           throw error;
         }
@@ -635,7 +722,230 @@ export class SqliteDelivery {
       lease_until: new Date(until).toISOString(),
     };
   }
-  /** Records the recipient's saved ACK and releases the body. A matching retry returns the same receipt. */
+  /**
+   * The recipient's host inbox. Unread messages are marked read (ACKed) in the same
+   * transaction and returned once with `new: true`; with `include_read`, messages read in
+   * the last READ_BODY_RETENTION_MS follow, newest first. A message another client holds
+   * under a poll lease is skipped until that lease ends. With `peek` (ADR-021, the arrival
+   * notifier) unread messages are returned without marking them read and nothing changes.
+   */
+  readInboxWithAuthorization(
+    context: unknown,
+    authorization: Authorization,
+    options: {
+      limit: number;
+      include_read: boolean;
+      message_id?: string;
+      /** With message_id: only that sender's message (two senders may share an ID). */
+      sender_id?: string;
+      /** Response budget: messages are taken (and marked read) only while they fit. */
+      max_bytes?: number;
+      /** Return unread messages only, leaving them unread. */
+      peek?: boolean;
+      /** With peek: only messages after this one in inbox order (accepted_at, sender, ID). */
+      after?: { accepted_at: number; sender_id: string; message_id: string };
+    },
+  ): InboxMessage[] {
+    if (
+      !Number.isInteger(options.limit) ||
+      options.limit < 1 ||
+      options.limit > 50
+    )
+      throw new MessagingError("invalid_request", {
+        details: { field: "limit", min: 1, max: 50 },
+      });
+    if (options.message_id !== undefined && !id(options.message_id))
+      throw new MessagingError("invalid_request", {
+        details: { field: "message_id" },
+      });
+    if (
+      options.sender_id !== undefined &&
+      (options.message_id === undefined || !id(options.sender_id))
+    )
+      throw new MessagingError("invalid_request", {
+        details: { field: "sender_id" },
+      });
+    const recipient = this.#identity(context, "poll", authorization);
+    return this.#tx(() => {
+      if (this.#identity(context, "poll", authorization) !== recipient)
+        throw new MessagingError("forbidden");
+      const now = Date.now();
+      this.#refresh(now);
+      const out: InboxMessage[] = [];
+      const allowed = (row: Row) => {
+        try {
+          return (
+            this.#identity(
+              context,
+              "poll",
+              authorization,
+              row.sender_id,
+              row.kind,
+            ) === recipient
+          );
+        } catch (error) {
+          if (
+            error instanceof MessagingError &&
+            ["forbidden", "recipient_unavailable", "kind_not_allowed"].includes(
+              error.code,
+            )
+          )
+            return false;
+          throw error;
+        }
+      };
+      // No scan limit: pending rows per recipient are bounded by
+      // max_pending_per_recipient, so denied senders cannot hide later messages.
+      const only = options.message_id;
+      const from = options.sender_id;
+      const sql =
+        (only ? " AND message_id=?" : "") + (from ? " AND sender_id=?" : "");
+      const args = [...(only ? [only] : []), ...(from ? [from] : [])];
+      const after = options.peek ? options.after : undefined;
+      const unread = this.#db
+        .prepare(
+          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
+        )
+        .all(
+          recipient,
+          ...args,
+          ...(after
+            ? [after.accepted_at, after.sender_id, after.message_id]
+            : []),
+        ) as unknown as Row[];
+      let spent = 0;
+      // Whether one more message still fits the response; the first always does,
+      // since a single message is bounded by the contract's text limit.
+      const fits = (message: Submission) => {
+        if (options.max_bytes === undefined) return true;
+        const cost = inboxResponseCost(message);
+        if (out.length > 0 && spent + cost > options.max_bytes) return false;
+        spent += cost;
+        return true;
+      };
+      for (const row of unread) {
+        if (out.length >= options.limit) break;
+        if (!allowed(row)) continue;
+        const message = this.#stored(row);
+        if (!fits(message)) break;
+        if (options.peek) {
+          out.push(this.#inboxMessage(row, message, null, true));
+          continue;
+        }
+        const requestId = `inbox-${randomUUID()}`;
+        this.#db
+          .prepare(
+            // The kept body stays charged to the byte quotas until #refresh releases it.
+            "UPDATE delivery_messages SET state='acked',token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=? AND state='pending'",
+          )
+          .run(
+            requestId,
+            this.#hash("inbox-read", requestId),
+            randomUUID(),
+            now,
+            Math.max(row.expires_at, now + MAX_ACK_RETRY_MS) +
+              RECORD_RETENTION_MS,
+            row.sender_id,
+            row.message_id,
+          );
+        this.#audit(row.sender_id, row.message_id, now, "acked");
+        out.push(this.#inboxMessage(row, message, now, true));
+      }
+      if (
+        !options.peek &&
+        (options.include_read || only) &&
+        out.length < options.limit
+      ) {
+        const read = this.#db
+          .prepare(
+            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${sql} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
+          )
+          .all(
+            recipient,
+            now - READ_BODY_RETENTION_MS,
+            now,
+            ...args,
+          ) as unknown as Row[];
+        for (const row of read) {
+          if (out.length >= options.limit) break;
+          if (!allowed(row)) continue;
+          const message = this.#stored(row);
+          if (!fits(message)) break;
+          out.push(this.#inboxMessage(row, message, row.acked_at!, false));
+        }
+      }
+      return out;
+    });
+  }
+  #inboxMessage(
+    row: Row,
+    message: Submission,
+    readAt: number | null,
+    fresh: boolean,
+  ): InboxMessage {
+    const thread = JSON.parse(row.thread_key) as [string[], string];
+    const texts = message.body.parts.flatMap((part) =>
+      part.type === "text" ? [part.text] : [],
+    );
+    return {
+      message_id: row.message_id,
+      sender_id: row.sender_id,
+      kind: row.kind,
+      text: texts.join("\n\n"),
+      data_parts: message.body.parts.filter((part) => part.type === "data")
+        .length,
+      thread_id: thread[1],
+      in_reply_to: message.in_reply_to,
+      sent_at: message.first_sent_at,
+      received_at: new Date(row.accepted_at).toISOString(),
+      read_at: readAt === null ? null : new Date(readAt).toISOString(),
+      expires_at: new Date(row.expires_at).toISOString(),
+      new: fresh,
+    };
+  }
+  /**
+   * A message the caller received with this ID, for building a reply. Metadata only; it
+   * does not read the body or change its state. Refuses an ID that is ambiguous.
+   */
+  receivedWithAuthorization(
+    context: unknown,
+    messageId: string,
+    authorization: Authorization,
+  ): ReceivedMessage {
+    if (!id(messageId))
+      throw new MessagingError("invalid_request", {
+        details: { field: "message_id" },
+      });
+    const recipient = this.#identity(context, "submit", authorization);
+    return this.#tx(() => {
+      this.#refresh(Date.now());
+      const rows = this.#db
+        .prepare(
+          "SELECT * FROM delivery_messages WHERE recipient_id=? AND message_id=? LIMIT 2",
+        )
+        .all(recipient, messageId) as unknown as Row[];
+      if (rows.length !== 1)
+        throw new MessagingError("reply_target_not_found", {
+          reason: rows.length
+            ? "reply_target_ambiguous"
+            : "reply_target_unknown",
+        });
+      const row = rows[0];
+      return {
+        message_id: row.message_id,
+        sender_id: row.sender_id,
+        kind: row.kind,
+        thread_id: (JSON.parse(row.thread_key) as [string[], string])[1],
+        state: row.state,
+        expires_at: new Date(row.expires_at).toISOString(),
+      };
+    });
+  }
+  /**
+   * Records the recipient's saved ACK and releases the body: an SDK receiver holds its own
+   * durable copy. (Only a host-inbox read keeps the body for re-reading.) A matching retry
+   * returns the same receipt.
+   */
   ackWithAuthorization(
     context: unknown,
     input: unknown,

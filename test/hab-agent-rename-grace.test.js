@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { fixture, code } from "./hab-registry-fixtures.js";
 import { groupFixture } from "./hab-group-fixtures.js";
-import { message } from "./relay-http-fixtures.js";
+import { message } from "./mcp-http-fixtures.js";
 import { provisionHostA2aIdentity } from "../src/host/a2a.ts";
 
 const renamed = (f, agent, bot_name = "renamed", request_id = "rename") =>
@@ -68,7 +68,7 @@ test("a previous name never reaches a stopped agent or another ID", async (t) =>
   });
   assert.throws(
     () => f.hab.resolve(f.contexts.b, a.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   f.registry.setAccess(f.admin, {
     request_id: "restart-a",
@@ -114,7 +114,7 @@ test("zero grace refuses a previous name at once and status reports that it no l
   renamed(f, a);
   assert.throws(
     () => f.hab.resolve(f.contexts.b, a.address),
-    code("forbidden"),
+    code("unknown_address"),
   );
   const [previous] = f.registry.previousNames(f.admin);
   assert.equal(previous.resolves, false);

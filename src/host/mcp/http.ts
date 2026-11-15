@@ -4,13 +4,13 @@ import type { WriterOperation } from "./writer-admission.ts";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import type { AuditSink, AuditCategory } from "../../security.ts";
 import { protocolAdmission } from "../../protocol.ts";
-import { createRelayMcpServer, relayMcpSchemas } from "./server.ts";
-import type { RelayMcpGate } from "./server.ts";
-import type { RelayContextResolver } from "./server.ts";
+import { createDeliveryMcpServer, deliveryMcpSchemas } from "./server.ts";
+import type { DeliveryMcpGate } from "./server.ts";
+import type { DeliveryContextResolver } from "./server.ts";
 import type { z } from "zod";
-import { RelayOAuthResource, RELAY_OAUTH_SCOPES } from "./oauth-resource.ts";
+import { McpOAuthResource, HAB_OAUTH_SCOPES } from "./oauth-resource.ts";
 import type { DeliveryService } from "../../messaging/delivery-service.ts";
-export interface RelayHttpPolicy {
+export interface McpHttpPolicy {
   resource_url: string;
   /** Explicit opt-in, fixed issuer discovery and tool consent metadata. */
   oauth_issuer?: string;
@@ -22,18 +22,29 @@ export interface RelayHttpPolicy {
   requests_per_window: number;
   window_ms: number;
 }
-export type RelayHttpVerifier = (input: {
+export type McpHttpVerifier = (input: {
   authorization: string;
   resource: string;
   signal: AbortSignal;
+  /** Optional: name a fixed refusal reason (`/^[a-z][a-z0-9_]{0,47}$/`) for the audit log. */
+  deny?: (reason: string) => void;
+  /**
+   * Optional: on success, name the operator-registered connection ID this credential
+   * belongs to, so the audit log can tell connections apart. Never a token or claim value.
+   */
+  accept?: (connection: string) => void;
 }) => unknown | Promise<unknown>;
+const DENY_REASON = /^[a-z][a-z0-9_]{0,47}$/;
+const CONNECTION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 class HttpFailure extends Error {
   readonly status: number;
   readonly category: AuditCategory;
-  constructor(status: number, category: AuditCategory) {
-    super("Relay HTTP rejected");
+  readonly reason: string | undefined;
+  constructor(status: number, category: AuditCategory, reason?: string) {
+    super("MCP HTTP rejected");
     this.status = status;
     this.category = category;
+    this.reason = reason;
   }
 }
 function origin(value: string): URL {
@@ -49,25 +60,25 @@ function origin(value: string): URL {
         ["127.0.0.1", "[::1]", "localhost"].includes(u.hostname)
       ))
   )
-    throw Error("invalid_relay_http_policy");
+    throw Error("invalid_mcp_http_policy");
   return u;
 }
-export class RelayHttpGateway {
-  readonly #policy: Readonly<RelayHttpPolicy>;
-  readonly oauth: RelayOAuthResource | undefined;
-  get policy(): Readonly<RelayHttpPolicy> {
+export class McpHttpGateway {
+  readonly #policy: Readonly<McpHttpPolicy>;
+  readonly oauth: McpOAuthResource | undefined;
+  get policy(): Readonly<McpHttpPolicy> {
     return this.#policy;
   }
   readonly #service: DeliveryService;
   readonly #audit: AuditSink;
-  readonly #verify: RelayHttpVerifier;
+  readonly #verify: McpHttpVerifier;
   readonly #admission: WriterAdmission | undefined;
   protected get writerOperations(): Readonly<Record<string, WriterOperation>> {
     return {
-      relay_submit: "submit",
-      relay_status: "status",
-      relay_poll: "poll",
-      relay_ack: "ack",
+      hab_submit: "submit",
+      hab_status: "status",
+      hab_poll: "poll",
+      hab_ack: "ack",
     };
   }
   /** Host-owned read catalog still uses HTTP authentication, audit and request bounds. */
@@ -76,7 +87,7 @@ export class RelayHttpGateway {
   }
   /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
   protected get toolSchemas(): Record<string, z.ZodType> {
-    return relayMcpSchemas;
+    return deliveryMcpSchemas;
   }
   /** Trusted host may narrow admission to an already authenticated local name. */
   protected writerContext(
@@ -88,12 +99,15 @@ export class RelayHttpGateway {
     void _input;
     return context;
   }
-  protected createServer(resolve: RelayContextResolver, gate: RelayMcpGate) {
-    return createRelayMcpServer(
+  protected createServer(
+    resolve: DeliveryContextResolver,
+    gate: DeliveryMcpGate,
+  ) {
+    return createDeliveryMcpServer(
       this.#service,
       resolve,
       gate,
-      this.oauth ? RELAY_OAUTH_SCOPES : undefined,
+      this.oauth ? HAB_OAUTH_SCOPES : undefined,
     );
   }
   #window = 0;
@@ -101,9 +115,9 @@ export class RelayHttpGateway {
   #active = 0;
   constructor(
     service: DeliveryService,
-    policy: RelayHttpPolicy,
+    policy: McpHttpPolicy,
     audit: AuditSink,
-    verify: RelayHttpVerifier = () => null,
+    verify: McpHttpVerifier = () => null,
     admission?: WriterAdmission,
   ) {
     try {
@@ -138,12 +152,12 @@ export class RelayHttpGateway {
       )
         throw Error();
     } catch {
-      throw Error("invalid_relay_http_policy");
+      throw Error("invalid_mcp_http_policy");
     }
     this.oauth =
       policy.oauth_issuer === undefined
         ? undefined
-        : new RelayOAuthResource(policy.oauth_issuer, policy.resource_url);
+        : new McpOAuthResource(policy.oauth_issuer, policy.resource_url);
     this.#policy = Object.freeze({
       ...policy,
       allowed_origins: Object.freeze([...policy.allowed_origins]),
@@ -214,9 +228,11 @@ export class RelayHttpGateway {
       )
         throw new HttpFailure(504, "resource_rejected");
     };
-    const record = async (category: AuditCategory) => {
+    const record = async (category: AuditCategory, reason?: string) => {
       check();
-      await this.#audit.record(category, correlation);
+      await (reason === undefined
+        ? this.#audit.record(category, correlation)
+        : this.#audit.record(category, correlation, reason));
       check();
     };
     let cancelStatus = 504;
@@ -238,7 +254,7 @@ export class RelayHttpGateway {
     const onAbort = () => stop(408);
     request.signal.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => stop(504), this.policy.timeout_ms);
-    const gate: RelayMcpGate = {
+    const gate: DeliveryMcpGate = {
       check,
       begin: async () => {
         pendingTools++;
@@ -250,11 +266,13 @@ export class RelayHttpGateway {
           throw error;
         }
         let finished = false;
-        return async (success) => {
+        return async (success, reason) => {
           if (finished) return;
           finished = true;
           try {
-            await record(success ? "tool_succeeded" : "tool_error");
+            await (success
+              ? record("tool_succeeded")
+              : record("tool_error", reason));
           } finally {
             pendingTools--;
             releaseAdmission();
@@ -295,26 +313,43 @@ export class RelayHttpGateway {
         if (u.href !== resource.href || request.method !== "POST")
           throw new HttpFailure(405, "resource_rejected");
         const authorization = request.headers.get("authorization");
+        if (!authorization)
+          throw new HttpFailure(401, "auth_denied", "bearer_missing");
         if (
-          !authorization ||
           authorization.length > 8192 ||
           !/^Bearer [A-Za-z0-9._~+\/-]+=*$/i.test(authorization)
         )
-          throw new HttpFailure(401, "auth_denied");
+          throw new HttpFailure(401, "auth_denied", "bearer_malformed");
         let context: unknown;
+        let denied: string | undefined;
+        let connection: string | undefined;
         try {
           context = await this.#verify({
             authorization,
             resource: this.policy.resource_url,
             signal: abort.signal,
+            deny: (reason) => {
+              if (denied === undefined && DENY_REASON.test(reason))
+                denied = reason;
+            },
+            accept: (id) => {
+              if (connection === undefined && CONNECTION_ID.test(id))
+                connection = id;
+            },
           });
         } catch {
           check();
-          throw new HttpFailure(401, "auth_denied");
+          throw new HttpFailure(401, "auth_denied", "verifier_failed");
         }
         check();
         if (context === null || context === undefined || context === false)
-          throw new HttpFailure(401, "auth_denied");
+          throw new HttpFailure(
+            401,
+            "auth_denied",
+            denied ?? "credential_rejected",
+          );
+        // Which registered connection made this request; the ID only, never the credential.
+        await record("authenticated", connection);
         if (
           !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
             request.headers.get("content-type") ?? "",
@@ -482,7 +517,7 @@ export class RelayHttpGateway {
                 )
               : new HttpFailure(503, "transport_error");
         try {
-          await record(failure.category);
+          await record(failure.category, failure.reason);
         } catch {
           return empty(503);
         }

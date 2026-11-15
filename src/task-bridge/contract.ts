@@ -1,4 +1,4 @@
-/** Integration contract; intentionally outside the reusable Relay core. */
+/** Integration contract; intentionally outside the reusable messaging core. */
 import { z } from "zod";
 import { parseSubmission, validateLimits } from "../messaging/contract.ts";
 import type { ContractLimits } from "../messaging/contract.ts";

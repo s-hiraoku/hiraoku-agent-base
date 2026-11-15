@@ -1,18 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
-  fixture as relayFixture,
+  fixture as deliveryFixture,
   message,
   limits,
-} from "./relay-http-fixtures.js";
+} from "./mcp-http-fixtures.js";
 import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 export { limits };
 export const code = (wanted) => (error) =>
   error.code === wanted || error.message === wanted;
-/** A relay fixture with recipient b's durable inbox. */
+/** A delivery fixture with recipient b's durable inbox. */
 export async function fixture(t) {
-  const f = await relayFixture(t),
+  const f = await deliveryFixture(t),
     inbox = new SQLiteInbox(join(f.dir, "bridge-inbox.sqlite"), {
       agent_id: "b",
       fingerprint_key: new Uint8Array(32).fill(44),

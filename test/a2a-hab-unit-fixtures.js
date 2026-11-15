@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { InMemoryTaskStore, ServerCallContext } from "@a2a-js/sdk/server";
 import { SendMessageRequest } from "@a2a-js/sdk";
-import { HabA2aHandler, habRelayAgentCard } from "../src/a2a/hab-adapter.ts";
+import { HabA2aHandler, habAgentCard } from "../src/a2a/hab-adapter.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 import { RESPONSE } from "../src/task-bridge/contract.ts";
@@ -98,13 +98,13 @@ export function fixture() {
   });
   const route = makeRoute();
   const handler = new HabA2aHandler(
-    habRelayAgentCard("http://127.0.0.1:12345/a2a"),
+    habAgentCard("http://127.0.0.1:12345/a2a"),
     store,
     (ctx) =>
       ctx.user.userName === "sender-a" ? route : makeRoute(ctx.user.userName),
   );
   const reply = (task, kind = "execution_accepted", patch = {}) => {
-    const source = task.metadata.hab_relay.source;
+    const source = task.metadata.hab.source;
     const first = new Date().toISOString();
     const value =
       kind === "execution_accepted"
@@ -125,11 +125,11 @@ export function fixture() {
           first,
           randomUUID().replaceAll("-", ""),
         ),
-        recipient_id: task.metadata.hab_relay.sender_id,
+        recipient_id: task.metadata.hab.sender_id,
         kind,
         thread_id: source.thread_id,
         in_reply_to: {
-          sender_id: task.metadata.hab_relay.sender_id,
+          sender_id: task.metadata.hab.sender_id,
           message_id: source.message_id,
         },
         first_sent_at: first,

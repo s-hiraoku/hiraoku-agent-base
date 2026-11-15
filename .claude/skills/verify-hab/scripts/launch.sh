@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the verify-hab Relay stack in the background and wait until it is usable.
+# Start the verify-hab host stack in the background and wait until it is usable.
 # Usage: launch.sh <run-dir> [port]     (run-dir is created; reuse it to test restart)
 # Ready = "HAB_VERIFY_READY <url>" in <run-dir>/evidence/stack.log AND doctor passes.
 set -euo pipefail

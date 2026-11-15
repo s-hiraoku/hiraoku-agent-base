@@ -12,7 +12,7 @@ import { SQLiteEnrollmentJournal } from "../../src/hab/sqlite-enrollment-journal
 import { runHabEnrollment } from "../../src/hab/enrollment.ts";
 import { HabHttpGateway } from "../../src/hab/http.ts";
 import { HabMcpClient } from "../../src/hab/mcp-client.ts";
-import { createRelayNodeHandler } from "../../src/host/mcp/http-node.ts";
+import { createMcpNodeHandler } from "../../src/host/mcp/http-node.ts";
 import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
 import { SQLiteOutbox } from "../../src/agent-sdk/sqlite-outbox.ts";
 import { makeReplayBoundMessageId } from "../../src/messaging/contract.ts";
@@ -61,7 +61,7 @@ export async function runLocalMvp(signal) {
     agents = {},
     locals = new Map();
   let registry,
-    relay,
+    deliveryStore,
     delivery,
     enrollment,
     server,
@@ -91,7 +91,7 @@ export async function runLocalMvp(signal) {
   };
   const descriptor = (n) => ({
     issuer: "https://issuer.example/",
-    audience: "https://relay.example/mcp",
+    audience: "https://hab.example/mcp",
     subject: "synthetic-owner",
     client_id: "synthetic-shared-client",
     connection_id: "mvp-" + n,
@@ -140,14 +140,14 @@ export async function runLocalMvp(signal) {
       poll_scan_limit: 20,
       fair_poll: true,
     };
-    relay = SqliteDelivery.open({
+    deliveryStore = SqliteDelivery.open({
       ...queue,
       fingerprint_key: key(43),
       path: join(directory, "delivery.sqlite"),
       limits,
       authorization: { authorize: () => undefined },
     });
-    delivery = new HabDeliveryService(registry, relay);
+    delivery = new HabDeliveryService(registry, deliveryStore);
     enrollment = new SQLiteEnrollmentJournal(
       join(directory, "enrollment.sqlite"),
       { max_sessions: 3, busy_timeout_ms: 100 },
@@ -200,11 +200,11 @@ export async function runLocalMvp(signal) {
         const tool = req.headers["mcp-name"];
         if (
           [
-            "relay_resolve",
-            "relay_submit",
-            "relay_status",
-            "relay_poll",
-            "relay_ack",
+            "hab_resolve",
+            "hab_submit",
+            "hab_status",
+            "hab_poll",
+            "hab_ack",
           ].includes(tool)
         )
           tools.add(tool);
@@ -216,7 +216,7 @@ export async function runLocalMvp(signal) {
     await once(server, "listening");
     port = server.address().port;
     url = "http://127.0.0.1:" + port + "/mcp";
-    gateway = createRelayNodeHandler(
+    gateway = createMcpNodeHandler(
       new HabHttpGateway(
         delivery,
         {
@@ -356,10 +356,10 @@ export async function runLocalMvp(signal) {
             new Headers(init?.headers).get("Mcp-Name") ??
             (input instanceof Request ? input.headers.get("Mcp-Name") : null);
           if (
-            (n === "a" && tool === "relay_submit" && dropSubmit) ||
-            (n === "b" && tool === "relay_ack" && dropAck)
+            (n === "a" && tool === "hab_submit" && dropSubmit) ||
+            (n === "b" && tool === "hab_ack" && dropAck)
           ) {
-            if (tool === "relay_submit") dropSubmit = false;
+            if (tool === "hab_submit") dropSubmit = false;
             else dropAck = false;
             await response.body?.cancel();
             throw Error("synthetic response loss after server commit");
@@ -419,9 +419,9 @@ export async function runLocalMvp(signal) {
   };
   const closeCentral = async () => {
     enrollment?.close();
-    await relay?.close();
+    await deliveryStore?.close();
     registry?.close();
-    enrollment = relay = delivery = registry = undefined;
+    enrollment = deliveryStore = delivery = registry = undefined;
   };
   const coldRestart = async () => {
     for (const n of ["a", "b", "c"]) {
