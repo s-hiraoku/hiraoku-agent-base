@@ -56,16 +56,13 @@ export class ReceiptNotifier {
     // A handoff interrupted by a stop or crash: report it as unknown, never resend it.
     for (const abandoned of this.#store.abandon(now))
       await this.#report(abandoned, "unknown");
-    // A decline interrupted before HAB marked it read: marking read again is harmless.
-    for (const stuck of this.#store.stuckDeclines(now)) {
-      try {
-        await this.#hab.markRead(stuck.message_id, stuck.sender_id);
-      } catch {
-        continue;
-      }
-      if (this.#store.transition(stuck, ["declining"], "declined", now))
-        await this.#report(stuck, "declined");
-    }
+    // A decline HAB was not told about yet: marking read again is harmless.
+    for (const stuck of this.#store.stuckDeclines(now))
+      await this.#finishDecline(stuck);
+    // 対応する choices made while HAB could not be told: hand them off now, if HAB answers.
+    for (const waiting of this.#store.waitingAccepts())
+      if (this.#store.transition(waiting, ["accept_waiting"], "accepting", now))
+        await this.#finishAccept(waiting);
     const shown: string[] = [];
     let failure: unknown;
     let after: string | undefined;
@@ -95,6 +92,10 @@ export class ReceiptNotifier {
     }
     if (failure !== undefined) throw failure;
     return shown;
+  }
+  /** Every notice this notifier showed for its session, with where each one stands. */
+  records(): NoticeRecord[] {
+    return this.#store.all();
   }
   /** Notices waiting for a choice (shown or later). */
   open(): NoticeRecord[] {
@@ -141,43 +142,64 @@ export class ReceiptNotifier {
           ? { changed: true, state: "later" }
           : this.#unchanged(record);
       case "decline":
-        return this.#decided(record, "declining", async () => {
-          await this.#hab.markRead(record.message_id, record.sender_id);
-          return "declined";
-        });
+        if (
+          !this.#store.transition(record, ["shown", "later"], "declining", now)
+        )
+          return this.#unchanged(record);
+        return { changed: true, state: await this.#finishDecline(record) };
       case "accept":
-        return this.#decided(record, "accepting", async () => {
-          // HAB no longer offers it to this recipient: hand off nothing.
-          if (!(await this.#hab.markRead(record.message_id, record.sender_id)))
-            return "unavailable";
-          try {
-            return await this.#screen.handoff(record.message);
-          } catch {
-            // The session may or may not have the request. Never send it again by itself.
-            return "unknown";
-          }
-        });
+        if (
+          !this.#store.transition(record, ["shown", "later"], "accepting", now)
+        )
+          return this.#unchanged(record);
+        return { changed: true, state: await this.#finishAccept(record) };
     }
   }
-  async #decided(
-    record: NoticeRecord,
-    claim: NoticeState,
-    run: () => Promise<NoticeState>,
-  ): Promise<DecisionResult> {
-    if (!this.#store.transition(record, ["shown", "later"], claim, this.#now()))
-      return this.#unchanged(record);
-    let state: NoticeState;
+  /**
+   * Tells HAB about a `declining` claim. If HAB cannot be reached, the claim stays
+   * `declining` and a later check tries again: the choice is never lost.
+   */
+  async #finishDecline(record: NoticeRecord): Promise<NoticeState> {
     try {
-      state = await run();
-    } catch (error) {
-      // Marking read failed before anything started: the choice can be made again.
-      this.#store.transition(record, [claim], record.state, this.#now());
-      throw error;
+      await this.#hab.markRead(record.message_id, record.sender_id);
+    } catch {
+      return "declining";
     }
-    if (state !== claim)
-      this.#store.transition(record, [claim], state, this.#now());
+    if (this.#store.transition(record, ["declining"], "declined", this.#now()))
+      await this.#report(record, "declined");
+    return "declined";
+  }
+  /**
+   * Finishes an `accepting` claim: mark read, then hand off once. If HAB cannot be told
+   * (for example while the token waits to be refreshed), nothing is handed off and the
+   * claim becomes `accept_waiting`, which every later check tries again.
+   */
+  async #finishAccept(record: NoticeRecord): Promise<NoticeState> {
+    let offered: boolean;
+    try {
+      offered = await this.#hab.markRead(record.message_id, record.sender_id);
+    } catch {
+      this.#store.transition(
+        record,
+        ["accepting"],
+        "accept_waiting",
+        this.#now(),
+      );
+      return "accept_waiting";
+    }
+    let state: NoticeState;
+    // HAB no longer offers it to this recipient: hand off nothing.
+    if (!offered) state = "unavailable";
+    else
+      try {
+        state = await this.#screen.handoff(record.message);
+      } catch {
+        // The session may or may not have the request. Never send it again by itself.
+        state = "unknown";
+      }
+    this.#store.transition(record, ["accepting"], state, this.#now());
     await this.#report(record, state);
-    return { changed: true, state };
+    return state;
   }
   #unchanged(key: NoticeKey): DecisionResult {
     return { changed: false, state: this.#store.get(key)!.state };

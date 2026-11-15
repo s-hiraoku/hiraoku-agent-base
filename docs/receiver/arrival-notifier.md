@@ -61,7 +61,47 @@ token の更新はエージェント側の仕事です。アダプタは更新�
 
 - `expires_at_field` がなくても、token が JWT なら `exp` を読みます。過ぎているか 5 秒以内に切れる token は、同じく HAB に送らず `token_expired` です。期限は署名を確かめずに読むだけで、判断するのは HAB です。中身の読めない token と `exp` のない JWT は、そのまま HAB に送ります。
 - `run` は、同じ失敗が続くあいだ、始まりに `{"error":"token_expired"}` を 1 回、直ったときに `{"resumed":"token_expired"}` を 1 回だけ書きます。確認のたびには書きません。ほかの失敗（`transport_failed` など）も同じ扱いです。
-- 待っているあいだにボタンを押すと、選択は記録されず同じ理由で失敗します。カードはそのまま残るので、token が更新された後にもう一度押せます。「あとで」は HAB を呼ばないので、待っているあいだも使えます。
+- 待っているあいだにボタンを押しても、選択は失われません。「対応する」は `accept_waiting`、「対応しない」は `declining` として残り、token が更新された後の確認で既読にして続きを進めます（[選択と状態](#選択と状態)）。「あとで」は HAB を呼ばないので、そのまま `later` になります。
+
+### 常駐させる（macOS の launchd）
+
+`run` は、手で起動しただけでは再起動やログアウトで止まります。macOS では、利用者の LaunchAgent として登録します。作り方と確認は [HAB host の LaunchAgent](../operations/host-launchagent.md) と同じです。マージ済みのコミットから作ったリリースを内蔵ディスクに置き、既存のジョブと名前が重ならないことを確かめ、`~/Library/LaunchAgents/` に 0600 で新しく作ります。次はひな形で、そのままでは読み込めません。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>local.hab.notify.PROFILE</string>
+  <key>ProgramArguments</key><array>
+    <string>/ABSOLUTE/RELEASE/runtime/bin/node</string>
+    <string>/ABSOLUTE/RELEASE/source/scripts/hab-notify.ts</string>
+    <string>--config</string>
+    <string>/ABSOLUTE/HOME/.hab-notify/PROFILE/notify.json</string>
+    <string>run</string>
+  </array>
+  <key>WorkingDirectory</key><string>/ABSOLUTE/RELEASE/source</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>ProcessType</key><string>Background</string>
+  <key>Umask</key><integer>63</integer>
+  <key>StandardOutPath</key><string>/ABSOLUTE/HOME/.hab-notify/PROFILE/run.log</string>
+  <key>StandardErrorPath</key><string>/ABSOLUTE/HOME/.hab-notify/PROFILE/run.err.log</string>
+</dict></plist>
+```
+
+- `run` が書くのは、表示した ID、失敗の名前、`resumed` だけです。token も本文も書かないので、ログは所有者だけが読めるファイル（`Umask` 63 で 0600）に残せます。同じ失敗は始まりと終わりの 1 行ずつなので、ログはほとんど増えません。
+- `SIGTERM` を受けると、その回の確認を終えてから終了コード 0 で止まります（長くても `interval_ms` 待ちます）。`SuccessfulExit` が false なので、止めた後に勝手に起動し直すことはありません。異常終了のときだけ 30 秒おいて起動し直します。
+- `bootout` で止めるのは、このジョブだけです。止めている間に届いたメッセージは未読のまま HAB に残り、次に起動したときにカードになります。選択の記録（`store`）は消しません。
+- ログインしている間だけ動くジョブです。ログアウト中は、エージェント（Hermes Desktop）も動いていないので、カードを出す先もありません。
+
+```sh
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/local.hab.notify.PROFILE.plist"
+launchctl print "gui/$(id -u)/local.hab.notify.PROFILE" | grep -E 'state|pid'
+launchctl bootout "gui/$(id -u)/local.hab.notify.PROFILE"
+```
+
+同じ `store` を使う `run` は 1 つだけにします。手で起動した `run` があれば、先に止めてから読み込みます。
 
 ## Hermes Desktop
 
@@ -110,6 +150,8 @@ Hermes の欄は `handoff_state: pending` のカードしか受け付けませ�
 - `receiver_id`（受信者）
 
 設定と合っていれば `decide` と同じ処理をして `{changed, state}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
+
+会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだボタンを示したまま、ほかの 2 つを押せるようにします。決まったカードには状態だけを出し、ボタンは出しません。
 
 「対応する」を選ぶと、`handoff.command` を 1 回だけ実行します。標準入力には `{session_id, text, submission_id}` を渡します。このコマンドは `hermes_bridge.desktop_handoff` で、Hermes の実行環境で動きます。動きは次の 3 段です。
 
@@ -216,9 +258,10 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 | `showing` | 画面に出す途中。終わらなかったら次の確認で出し直す | 未読 |
 | `shown` | 画面に出した。選択待ち | 未読 |
 | `later` | 「あとで」。`show-again` で同じメッセージを出し直せる | 未読 |
-| `declining` | 「対応しない」を受けて既読にしている最中。途中で止まり 15 分たっても残っていれば、次の確認で既読にし直して `declined` にする | 未読または既読 |
+| `declining` | 「対応しない」を受けて既読にしている最中。HAB に伝えられなかったとき、または途中で止まったときは、1 分たった後の確認で既読にし直して `declined` にする | 未読または既読 |
 | `declined` | 「対応しない」。何も始めない | 既読 |
 | `accepting` | 「対応する」を受けて渡している最中。通知アダプタが途中で止まり 15 分たっても残っていれば、次の確認で `unknown` にする（再送しない） | 既読 |
+| `accept_waiting` | 「対応する」を受けたが、HAB に既読を伝えられなかった（token の更新待ちなど）。何も渡していない。確認のたびに既読にし直し、できたら渡す。返信期限を過ぎたら `expired` | 未読 |
 | `started` / `queued` | セッションが受け付けた／入力に入れた | 既読 |
 | `unsupported` | そのセッションへの正式な入口がない | 既読 |
 | `unknown` | 渡せたか分からない。自動では再送しない | 既読 |
@@ -231,12 +274,12 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 - 表示できなかった新着や、表示の途中で止まった新着は `showing` のまま残り、次の確認で出し直します。
 - 選択の記録と画面ファイル（`screen.path`）は本文を含むので、所有者だけが読める権限（0600）で作ります。他人が読める既存のファイルは書き込む前に拒否します（記録は `insecure_notices_file`、画面ファイルは `insecure_screen_file`）。
 - 選択は行単位の条件付き更新で 1 回だけ通ります。二重クリック、再起動、並行の選択でも `handoff` は 1 回までです。
-- 既読にできなかったときは何も始めず、元の状態に戻します（選び直せます）。
+- HAB に既読を伝えられなかったときは何も渡しません。それでも選択は残し、選び直しは求めません。「対応する」は `accept_waiting`、「対応しない」は `declining` のまま、後の確認で続きを進めます。待っている間に押し直しても、記録は変わりません。
 - 本文に「承認済み」などと書かれていても、選択の代わりにはなりません。届いたメッセージから `handoff` が呼ばれることはありません。
 
 ## 限界と未完了
 
 - HAB の既読は、人が内容を見た・同意した・作業を終えたことを意味しません。
 - ADR-017 の SDK 受信（保存してから ACK）と同じ受信者で並べて使わないでください。ACK された本文は `hab_peek` にも `hab_inbox` にも出ません。
-- Hermes Desktop では、表示（外部メッセージ欄）と、同じ会話への引渡し（`prompt.submit`）を実装しました。Desktop の中で選ぶ操作（ボタン）はまだありません。引渡しは、本物の gateway ではなく代わりの部品でしか確かめていません。既存 Desktop セッションでの受入確認も未実施です。CLI だけの往復は Desktop の合格に数えません。
+- Hermes Desktop では、表示（外部メッセージ欄）、カードのボタン、同じ会話への引渡し（`prompt.submit`）を実装しました。ボタンはローカル版 Hermes のブランチにあり、Hermes 本体には入っていません。2026-11-15 に Mac mini の既存 Desktop セッションで、Dots から届いた 3 通について「あとで」と「対応する」から `hab_reply` までを確かめました。CLI だけの往復は Desktop の合格に数えません。
 - Codex・Claude Code・ChatGPT コネクタ（Dots）の画面アダプタは、代わりの部品（偽の app-server、テスト用の MCP クライアント）でしか確かめていません。各製品の実機での表示・引渡し・返信は未確認です。
