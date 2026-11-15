@@ -452,17 +452,18 @@ reconciliation: a restored snapshot could execute a previously handled message a
 
 ### Hermes Desktop companion status (2026-11-15)
 
-A separate, unapplied Hermes companion commit `abdb33d9839491a0604a1e278695822e68c9181d`
-was prepared against `5910a49ffc698ba1c09597d7d583f7cf89ab750d` of the
+A separate, unapplied Hermes companion commit `f19527817a251ed37432d1bd87d6c2fd934d7eed`
+was prepared against `b189f28f7462e1cbb568db6878f096277048c079` of the
 `hab-external-message-actions` branch. It is not included in this HAB repository and is
 not an installed release. It propagates exact binding IDs through decisions and retained-card
 state queries, uses revision-monotonic merges, and disables actions when authoritative
-state is unavailable. A complete empty snapshot differs from a failed query; immutable
+state is unavailable. It preserves the current reply-specific choices and rejects delayed poll
+responses; a fresh complete snapshot can restore temporarily unavailable actions. A complete empty snapshot differs from a failed query; immutable
 notice identity is checked independently of mutable decision state. The configured trusted
 action command must enforce the full connection/recipient/session binding (the HAB command
 does); the UI cannot prove a third-party command's identity enforcement.
 
-The companion's focused Python tests (40), UI tests (32), Desktop typecheck, frontend lint
+The companion's focused Python tests (51), UI tests (38), Desktop typecheck, frontend lint
 and all 14 canonical repository checks passed in an isolated checkout. The full UI suite
 was deliberately stopped for host load, and the full Python suite/native Desktop acceptance
 were not performed. Apply the separately reviewed patch only to an independent matching
