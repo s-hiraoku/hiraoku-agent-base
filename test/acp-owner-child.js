@@ -1,14 +1,19 @@
 /** Explicitly synthetic ACP executable. Never loads a product, model, profile or credentials. */
 import process from "node:process";
 import assert from "node:assert/strict";
-import { writeFileSync, realpathSync, existsSync } from "node:fs";
+import { writeFileSync, renameSync, realpathSync, existsSync } from "node:fs";
 import { setInterval, clearInterval } from "node:timers";
 import { createInterface } from "node:readline";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 const mode = process.argv[2], events = [];
-const save = () => writeFileSync("synthetic-observations.json", JSON.stringify({ pid: process.pid,
-  startedAt, cleanEnv: Object.keys(process.env).every(key => key === "__CF_USER_TEXT_ENCODING"), execArgv: process.execArgv, events }), { mode: 0o600 });
+const save = () => {
+  // Readers must see a complete snapshot while this child publishes new events.
+  const temporary = "synthetic-observations.json.tmp";
+  writeFileSync(temporary, JSON.stringify({ pid: process.pid,
+    startedAt, cleanEnv: Object.keys(process.env).every(key => key === "__CF_USER_TEXT_ENCODING"), execArgv: process.execArgv, events }), { mode: 0o600 });
+  renameSync(temporary, "synthetic-observations.json");
+};
 const startedAt = Date.now();
 save();
 const send = message => process.stdout.write(JSON.stringify(message) + "\n");
