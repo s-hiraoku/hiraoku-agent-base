@@ -492,7 +492,7 @@ reconciliation: a restored snapshot could execute a previously handled message a
 
 ### Hermes Desktop companion status (2026-11-15)
 
-A separate, unapplied Hermes companion commit `15f2267c730d68be24f4954c61620d32f9632e22`
+A separate, unapplied Hermes companion commit `99dc5e1aef21e719e87b004d3093376ac2734708`
 was prepared against `b189f28f7462e1cbb568db6878f096277048c079` of the
 `hab-external-message-actions` branch. It is not included in this HAB repository and is
 not an installed release. It propagates exact binding IDs through decisions and retained-card
@@ -503,7 +503,7 @@ notice identity is checked independently of mutable decision state. The configur
 action command must enforce the full connection/recipient/session binding (the HAB command
 does); the UI cannot prove a third-party command's identity enforcement.
 
-The companion's focused Python tests (65), UI tests (42), Desktop typecheck, frontend lint
+The companion's focused Python tests (69), UI tests (42), Desktop typecheck, frontend lint
 and all 14 canonical repository checks passed in an isolated checkout. The full UI suite
 was deliberately stopped for host load, and the full Python suite/native Desktop acceptance
 were not performed. Apply the separately reviewed patch only to an independent matching
@@ -516,7 +516,7 @@ been applied to the live installation by this change. Earlier Desktop acceptance
 do not validate this new release, two-choice reply cards, or the new binding migration.
 
 The current companion revision completed a production build and unsigned
-mac-arm64 packaging (both exit 0), with a clean `15f2267c730d68be24f4954c61620d32f9632e22` source stamp (`dirty:false`).
+mac-arm64 packaging (both exit 0), with a clean `99dc5e1aef21e719e87b004d3093376ac2734708` source stamp (`dirty:false`).
 Layered-icon generation warned that Xcode was unavailable, and notarization was intentionally
 skipped. This proves build/package creation only: the packaged native application was not
 launched, installed or used for a real message, and no signing/notarization acceptance is claimed.
@@ -533,5 +533,8 @@ authority is applied only within checked keys; other cards are not missing merel
 they were not requested in this poll. A decision POST preflights only its own key and
 rechecks the existing conversation before forwarding the user's choice. These are isolated
 implementation/test results, not evidence that the installed Desktop uses this contract.
-The clean-stamped build/package evidence above covers this revision and supersedes the
-earlier companion package. It was not launched, installed, deployed or notarized.
+The latest companion also preserves compact UTF-8 JSON when forwarding retained keys,
+so added serializer whitespace cannot spuriously exceed the key-array budget. Build/package
+verification for `99dc5e1aef21e719e87b004d3093376ac2734708` completed as recorded above,
+superseding the preceding `15f2267` package. No package was launched, installed,
+deployed or notarized.

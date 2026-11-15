@@ -565,3 +565,18 @@ packaging both exited 0 for 15f2267c730d68be24f4954c61620d32f9632e22 with dirty:
 The current documentation now supersedes the prior companion package and removes pending
 status. This does not assert native execution, installation, deployment or notarization;
 none occurred. Manual gates remain unverified. Earlier pending notes are historical.
+
+
+Companion compact-JSON follow-up: read commit 99dc5e1aef21e719e87b004d3093376ac2734708.
+POST query forwarding now uses compact separators with ensure_ascii=False, matching the
+UTF-8 retained-key budget without whitespace inflation. Reported focused Python tests are
+69, UI42 and canonical14 unchanged. Documented current source advances while 15f2267
+package evidence remains historical; new-revision build/package is pending. No native
+runtime or manual acceptance claim changes.
+
+
+Final compact-JSON companion package evidence: production build and unsigned mac-arm64
+packaging for 99dc5e1aef21e719e87b004d3093376ac2734708 both exited 0 with dirty:false,
+as reported and checked by the coordinating thread. Current docs remove pending and
+supersede the earlier package evidence. No actual launch, installation, deployment or
+notarization occurred; manual gates remain unverified. No code changes accompany this update.
