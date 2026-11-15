@@ -19,6 +19,24 @@ verify-a@grok-bot.hab からのメッセージです。
 
 届いただけではモデルを動かしません。「対応する」を選んだときだけ、そのエージェントの同じセッションに依頼を渡します。返信はそのセッション自身が `hab_reply` で行います。
 
+自分が送ったメッセージへの返事（`in_reply_to` があるもの）は、自分が頼んだことへの答えなので、軽い確認にします（利用者の判断、2026-11-15）。
+
+```text
+verify-b@dot.hab から返事が届きました。
+（回答、あなたが送ったメッセージ "rm1.…" への返事）
+
+受信内容
+ビルドは緑です。
+
+どうしますか？
+1. 会話に渡す
+2. あとで
+```
+
+「会話に渡す」は「対応する」と同じ処理で、既読にしてから同じセッションに 1 回だけ渡します。渡す文面（`handoff_prompt`）は「利用者が、HAB で届いた次の返事を会話に渡しました。」で始まり、元のメッセージの ID と、返事への返信は不要なことを伝えます。返事のカードに「対応しない」はなく、`decide … decline` は `invalid_request`（`allowed: ["accept","later"]`）で断ります。`hab_peek` は各メッセージに `choices`（`{choice, label}` の並び）を付け、各画面アダプタはそのとおりに出します。`choices` のない古い host からのメッセージは 3 つです。
+
+受信通知は、質問をどの会話から送ったかを知りません。返事は、受信通知が結び付いた会話のカードに出ます。
+
 ## HAB が持つ部分と、各エージェントが用意する部分
 
 | 役割 | 置き場所 |
@@ -151,7 +169,7 @@ Hermes の欄は `handoff_state: pending` のカードしか受け付けませ�
 
 設定と合っていれば `decide` と同じ処理をして `{changed, state}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
 
-会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだボタンを示したまま、ほかの 2 つを押せるようにします。決まったカードには状態だけを出し、ボタンは出しません。
+会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。各カードの `choices`（ボタンとその文言）も返します。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだボタンを示したまま、ほかの 2 つを押せるようにします。決まったカードには状態だけを出し、ボタンは出しません。
 
 「対応する」を選ぶと、`handoff.command` を 1 回だけ実行します。標準入力には `{session_id, text, submission_id}` を渡します。このコマンドは `hermes_bridge.desktop_handoff` で、Hermes の実行環境で動きます。動きは次の 3 段です。
 

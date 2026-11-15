@@ -12,6 +12,7 @@ import type {
   NoticeState,
   NotifierHab,
 } from "./contract.ts";
+import { choicesOf } from "./contract.ts";
 import type { NoticeKey, SQLiteNotices } from "./sqlite-notices.ts";
 
 export interface DecisionResult {
@@ -135,6 +136,12 @@ export class ReceiptNotifier {
     senderId?: string,
   ): Promise<DecisionResult> {
     const record = this.#require(messageId, senderId);
+    // Only a choice the card offered: a reply to the user's own message has no 対応しない.
+    const offered = choicesOf(record.message).map((item) => item.choice);
+    if (!offered.includes(choice))
+      throw new MessagingError("invalid_request", {
+        details: { field: "choice", allowed: offered },
+      });
     const now = this.#now();
     if (
       (record.state === "shown" || record.state === "later") &&

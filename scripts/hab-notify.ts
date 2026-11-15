@@ -39,6 +39,7 @@ import {
   ReceiptNotifier,
   SQLiteNotices,
   chatgptConnectorHandoff,
+  choicesOf,
   chatgptConnectorTarget,
   claudeCodeHandoff,
   claudeCodeStatusLine,
@@ -551,6 +552,8 @@ export async function main(
                 sender_id: record.sender_id,
                 message_id: record.message_id,
                 state: record.state,
+                // The buttons this card offers, with their labels.
+                choices: choicesOf(record.message),
               })),
             }),
           );

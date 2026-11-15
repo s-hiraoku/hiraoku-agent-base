@@ -5,7 +5,7 @@
  * `hab-notify decide`, and, on a `handoff` line, gives `prompt` to that same session.
  * Because the file cannot confirm a start, a handoff is reported as `queued`.
  */
-import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
+import { choicesOf } from "./contract.ts";
 import type {
   AgentScreen,
   HandoffResult,
@@ -43,7 +43,7 @@ export class JsonlScreen implements AgentScreen {
       kind: message.kind,
       expires_at: message.expires_at,
       display: message.display,
-      choices: INCOMING_CHOICES.map((item) => ({ ...item })),
+      choices: choicesOf(message),
     });
   }
   async handoff(message: PeekedMessage): Promise<HandoffResult> {

@@ -37,7 +37,7 @@ export {
   chatgptConnectorTarget,
 } from "./chatgpt-connector.ts";
 export type { ChatGptConnectorBinding } from "./chatgpt-connector.ts";
-export { peekedMessageSchema } from "./contract.ts";
+export { choicesOf, peekedMessageSchema } from "./contract.ts";
 export type {
   AgentScreen,
   HandoffResult,
