@@ -22,7 +22,7 @@ jobs:
         run: python3 -B -m unittest discover -s verification/experiments/cross-process-handoff -p 'test_*.py' -v
       - name: Prepare HAB native dependencies
         run: |
-          test "$(npm --version)" = 11.20.0
+          npm run check:toolchain
           npm ci
       - name: Read pinned generic coordinator only
         uses: actions/checkout@v4

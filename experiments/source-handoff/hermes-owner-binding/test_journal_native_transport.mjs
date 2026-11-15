@@ -8,7 +8,7 @@ import { syntheticStores } from '../../../test/external-owner-fixture.js';
 import { AnswerIntents } from '../../../src/answer-intents/answers.ts';
 import { AdapterHostCycle } from '../../../src/adapter-host/cycle.ts';
 import { journalNativeTransport } from './journal_native_transport.ts';
-import { NativeRelayStdioPort } from './native_stdio.ts';
+import { NativeHabStdioPort } from './native_stdio.ts';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 const deferred = () => { let resolve; const promise = new Promise(r => {resolve=r}); return {promise,resolve}; };
@@ -21,13 +21,13 @@ function fixture(t) {
   const state={opened:[],closed:[],calls:[],closing:null,closeError:false,openError:false};
   const abort=new AbortController();
   const operation={signal:abort.signal,check(){if(abort.signal.aborted)throw Error('fixture_stopped')}};
-  const options={client:{as_address:'worker@demo.hab',limits:base.limits,policy:{resource_url:'https://relay.example/mcp',agent_id:base.control.agentId,
+  const options={client:{as_address:'worker@demo.hab',limits:base.limits,policy:{resource_url:'https://hab.example/mcp',agent_id:base.control.agentId,
     max_request_bytes:65536,max_response_bytes:131072,timeout_ms:5000,max_active_requests:1,max_sse_events:16,max_sse_lines:1000,max_json_depth:32,max_json_nodes:10000}},
     openPeer(scope){
       state.opened.push(scope);if(state.openError)throw Error('fixture_open_uncertain');
-      return {version:1,resource_url:'https://relay.example/mcp',activeRequests:0,
+      return {version:1,resource_url:'https://hab.example/mcp',activeRequests:0,
         async callTool(name,args,control){control.check();state.calls.push([name,args]);
-          const value=name==='relay_poll'?{delivery:null}:name==='relay_ack'?{...args,recipient_id:base.control.agentId,receipt_id:'fixture-ack',acked_at:new Date().toISOString(),state:'acked'}:{
+          const value=name==='hab_poll'?{delivery:null}:name==='hab_ack'?{...args,recipient_id:base.control.agentId,receipt_id:'fixture-ack',acked_at:new Date().toISOString(),state:'acked'}:{
             sender_id:base.control.agentId,message_id:args.message_id,recipient_id:source.sender_id,receipt_id:'fixture-receipt',accepted_at:new Date().toISOString(),
             expires_at:view.answers.get(source,()=>{}).expires_at,state:'pending'};
           return JSON.stringify({content:[{type:'text',text:JSON.stringify(value)}],structuredContent:value});},
@@ -86,7 +86,7 @@ test('status recovery needs exact durable ID but neither released source body no
   assert.equal(f.base.inbox.releaseBody(f.source.sender_id,f.source.message_id),true);
   const io=f.transport('recover');await io.status(intent.reply_id);
   assert.equal(f.state.opened[0].mode,'status');assert.equal('thread_id' in f.state.opened[0],false);
-  assert.deepEqual(f.state.opened[0].message_ids,[intent.reply_id]);assert.equal(f.state.calls[0][0],'relay_status');
+  assert.deepEqual(f.state.opened[0].message_ids,[intent.reply_id]);assert.equal(f.state.calls[0][0],'hab_status');
   assert.throws(()=>io.submit(job.message));assert.equal(f.state.opened.length,1);
 });
 test('receive and recovery stages cannot use each other operations',async t=>{
@@ -124,9 +124,9 @@ test('actual managed host sends new journaled answer without predeclared IDs and
 test('actual owned Node/Python peers enforce late journal submit scope then body-free status-only scope',async t=>{
   const f=fixture(t),intent=f.prepare(),job=f.base.outbox.claim(intent.reply_id),ports=[];
   const make=journalNativeTransport({...f.options,openPeer(scope){
-    const port=NativeRelayStdioPort.start({command:'/usr/bin/python3',args:['-B',fileURLToPath(new URL('./fake_journal_scope_entry.py',import.meta.url))],
+    const port=NativeHabStdioPort.start({command:'/usr/bin/python3',args:['-B',fileURLToPath(new URL('./fake_journal_scope_entry.py',import.meta.url))],
       cwd:fileURLToPath(new URL('.',import.meta.url)),env:{HAB_SYNTHETIC_SCOPE:JSON.stringify(scope),HAB_SYNTHETIC_EXPIRY:intent.expires_at},
-      resource_url:'https://relay.example/mcp',max_frame_bytes:65536,shutdown_timeout_ms:200});
+      resource_url:'https://hab.example/mcp',max_frame_bytes:65536,shutdown_timeout_ms:200});
     ports.push(port);return port;
   }});
   t.after(async()=>{for(const port of ports)await port.close()});

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Print relay_submit arguments that reply to a polled execution_request.
+# Print hab_submit arguments that reply to a polled execution_request.
 # Usage: new-reply.sh <poll-response-file> <execution_accepted|execution_result> <engine-task-id> [state] [result]
-#   <poll-response-file> is the JSON-RPC body of a relay_poll (mcp.sh output without its HTTP line).
+#   <poll-response-file> is the JSON-RPC body of a hab_poll (mcp.sh output without its HTTP line).
 #   For execution_result, state is succeeded|failed|cancelled (default succeeded), result is text or "null".
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); . "$here/_node.sh"

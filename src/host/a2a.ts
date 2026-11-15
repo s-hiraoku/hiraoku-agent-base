@@ -47,7 +47,7 @@ import { createHabA2aGateway } from "../a2a/hab-http.ts";
 import { createA2aNodeHandler } from "../a2a/http-node.ts";
 import type { HabA2aRoute } from "../a2a/hab-contract.ts";
 import type { InboxEntry } from "../agent-sdk/receiver.ts";
-import type { RelayHttpVerifier } from "./mcp/http.ts";
+import type { McpHttpVerifier } from "./mcp/http.ts";
 import type { HostA2aConfig } from "./config.ts";
 
 export const HOST_A2A_ISSUER = "urn:hab:host";
@@ -229,7 +229,7 @@ function hostRoute(options: {
   const { registry, context, identity, outbox, inbox } = options;
   const recipientId = registry.resolve(context, options.recipient).recipient_id;
   const caller = () =>
-    registry.withRelay(context, "submit", (authorization, agentId) => {
+    registry.withAuthorization(context, "submit", (authorization, agentId) => {
       if (
         agentId === identity.agent_id ||
         authorization.authorize(
@@ -254,7 +254,7 @@ function hostRoute(options: {
   // The host identity's admission joins this Registry transaction, so a revocation
   // commits either before the caller check here or after the message is admitted.
   const sender = options.sender((admit) =>
-    registry.withRelay(context, "submit", () => {
+    registry.withAuthorization(context, "submit", () => {
       assertCurrent();
       return admit();
     }),
@@ -271,19 +271,22 @@ function hostRoute(options: {
         message.kind !== "execution_request"
       )
         throw new MessagingError("forbidden");
-      return registry.withRelay(context, "submit", (authorization, agentId) =>
-        outbox.enqueueGuarded(message, () => {
-          if (
-            agentId !== ownerId ||
-            authorization.authorize(
-              context,
-              "submit",
-              recipientId,
-              "execution_request",
-            )?.agent_id !== ownerId
-          )
-            throw new MessagingError("forbidden");
-        }),
+      return registry.withAuthorization(
+        context,
+        "submit",
+        (authorization, agentId) =>
+          outbox.enqueueGuarded(message, () => {
+            if (
+              agentId !== ownerId ||
+              authorization.authorize(
+                context,
+                "submit",
+                recipientId,
+                "execution_request",
+              )?.agent_id !== ownerId
+            )
+              throw new MessagingError("forbidden");
+          }),
       );
     },
     delivery(messageId) {
@@ -322,7 +325,7 @@ export interface HostA2aDependencies {
   fingerprintKey: Uint8Array;
   timeoutMs: number;
   privateFile(name: string): string;
-  verify: RelayHttpVerifier;
+  verify: McpHttpVerifier;
   /** Throws once ownership is lost or the host is stopping. */
   assertOwner(): void;
   stopping(): boolean;
@@ -469,7 +472,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
       }
       if (confirmed.length !== held.length) {
         // Keep the finite reply slots: defer a fresh ID whose usefulness depends on
-        // a held reply failing. It is neither saved nor ACKed. Its relay lease may
+        // a held reply failing. It is neither saved nor ACKed. Its delivery lease may
         // retry or expire; no unconfirmed outcome justifies discarding it as known.
         const assumed = held.map((entry) => ({
           ...entry,
@@ -667,7 +670,7 @@ export async function startHostA2a(deps: HostA2aDependencies) {
     await once(server, "listening");
     const bound = server.address();
     if (!bound || typeof bound === "string" || bound.address !== "127.0.0.1")
-      throw Error("local_relay_listener_rejected");
+      throw Error("host_listener_rejected");
     const endpoint = `http://127.0.0.1:${bound.port}/a2a`;
     const gateway = (wired.gateway = createHabA2aGateway({
       endpoint,

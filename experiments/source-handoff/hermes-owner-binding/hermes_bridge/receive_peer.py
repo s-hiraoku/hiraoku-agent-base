@@ -73,7 +73,7 @@ class ReceivePeer:
         if type(outbound) is not bool:
             raise PeerError("invalid_native_scope")
         # Trusted constructor choice only; incoming frames cannot expand this set.
-        self.calls = frozenset(("relay_poll", "relay_ack", "relay_submit", "relay_status") if outbound else ("relay_poll", "relay_ack"))
+        self.calls = frozenset(("hab_poll", "hab_ack", "hab_submit", "hab_status") if outbound else ("hab_poll", "hab_ack"))
         self.limit = max_frame_bytes
         self.queue = asyncio.Queue(maxsize=1)
         self.current = None

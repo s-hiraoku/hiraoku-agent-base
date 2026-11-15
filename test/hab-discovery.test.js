@@ -10,7 +10,7 @@ import {
   operations,
   principal,
 } from "./hab-registry-fixtures.js";
-import { policy, request, decode } from "./relay-http-fixtures.js";
+import { policy, request, decode } from "./mcp-http-fixtures.js";
 import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 
 const discovery = { availability_namespaces: ["grok-bot"] };
@@ -71,7 +71,7 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
   const plain = await fixture(t);
   plain.enroll("a");
   const g = gateway(plain);
-  assert.equal((await decode(await g.fetch(request()))).result.tools.length, 5);
+  assert.equal((await decode(await g.fetch(request()))).result.tools.length, 7);
   const disabled = await call(g, { action: "whoami" });
   assert.ok(disabled.body.error || disabled.body.result?.isError);
   assert.throws(
@@ -81,12 +81,14 @@ test("discovery is opt-in; HTTP and SDK catalogs expose a bounded read-only tool
   const f = await group(t),
     enabled = gateway(f);
   const tools = (await decode(await enabled.fetch(request()))).result.tools;
-  assert.equal(tools.length, 6);
+  assert.equal(tools.length, 8);
   const tool = tools.find((x) => x.name === "hab_discover");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.equal(tool.annotations.idempotentHint, true);
-  for (const branch of tool.inputSchema.oneOf ?? tool.inputSchema.anyOf)
-    assert.equal(branch.additionalProperties, false);
+  // Published flat for clients that only accept a plain object root; zod still validates.
+  assert.equal(tool.inputSchema.type, "object");
+  assert.equal(tool.inputSchema.additionalProperties, false);
+  assert.deepEqual(tool.inputSchema.required, ["action"]);
   const handler = createMcpHandler(() =>
     createHabMcpServer(f.hab, () => f.contexts.a),
   );
