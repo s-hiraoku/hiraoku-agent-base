@@ -527,3 +527,41 @@ The companion status now reports isolated production-build and unsigned mac-arm6
 success with a clean source stamp. Xcode layered icons were unavailable; notarization was
 intentionally skipped. This is reported external build evidence, not native runtime,
 installation, real delivery or signing/notarization acceptance. Manual gates stay open.
+
+## Bounded requested-key state queries
+
+Reviewed the 64 KiB Hermes command boundary against the retained HAB decision store.
+Whole-store replies can exceed that bound with ordinary accumulated history. Generic
+states and Hermes action/states now accept at most 50 unique keys, each ID at most
+512 UTF-8 bytes, with a 64 KiB input and 60 KiB output budget. Responses explicitly echo
+requested scope/keys; absent rows concern only those keys, never unrelated retained cards.
+Legacy omitted-key calls keep their shape but reject oversized output without partial
+success. Empty requested batches are valid. No query invokes HAB or changes decisions.
+
+The new generic adapter-action returns only its affected key's state/revision plus the
+requested-scope metadata. Its IDs are validated before effects, and bounded fields exclude
+message bodies/choices and all other DB rows, so accumulated history cannot cause an
+oversized response after a decision. The reusable projection merges returned rows without
+clearing unrelated records. Regression fixtures contain 3000 retained rows, request one
+or fifty keys without calling all(), validate missing/unrequested separation, Unicode
+byte/count limits, binding fences, duplicate rejection and oversized choice-label errors.
+This is synthetic transport/contract evidence, not actual native UI or deployment proof.
+
+
+## Updated bounded-query Hermes companion
+
+Read the external companion at 15f2267c730d68be24f4954c61620d32f9632e22: its
+POST query accepts retained_keys without long query URLs, scopes bounded HAB calls to
+retained/new card keys and checks exact requested-key echo. The response distinguishes
+per-key checked/error authority; action preflight queries only the selected key and
+rechecks conversation identity. Documentation now names reported Python65/UI42 and the
+unchanged 14 canonical checks on this revision, preserving the exact b189f28 base.
+Earlier f195278 production/unsigned-package evidence remains labelled historical; the
+new build is pending, and no native rendering/approval/installation gate is satisfied.
+
+
+Final companion packaging follow-up: reported production-build and unsigned mac-arm64
+packaging both exited 0 for 15f2267c730d68be24f4954c61620d32f9632e22 with dirty:false.
+The current documentation now supersedes the prior companion package and removes pending
+status. This does not assert native execution, installation, deployment or notarization;
+none occurred. Manual gates remain unverified. Earlier pending notes are historical.

@@ -313,11 +313,30 @@ The local CLI provides a shared bridge for every configured screen:
 - `binding` returns `binding_id`. Pin this at explicit integration setup, not on every
   click. The ID fences HAB endpoint, recipient, product and its configured session (and
   configured product connection). It is not a credential or a permission grant.
-- `states` takes `{"binding_id":"..."}` on stdin and returns a complete retained decision
-  snapshot independently of the notice cursor. Poll it even when there are no new notices.
+- `states` takes `{"binding_id":"...","keys":[{"sender_id":"...","message_id":"..."}]}`
+  on stdin. The response includes `scope:"requested"`, the exact requested `keys`, and
+  versioned `states` only for those retained rows. An absent row means authority is missing
+  for that requested key, not for any other card. Poll retained cards even when the notice
+  cursor is caught up. The Hermes legacy `action` with `action:"states"` accepts the same
+  optional `keys` alongside its existing binding fields and returns choices with each state.
 - `adapter-action` takes the same binding plus `sender_id`, `message_id` and `choice`
-  (`accept`, `later`, `decline`). It returns the decision and versioned snapshot. Only
-  invoke it for the user's actual choice; receipt alone is not approval.
+  (`accept`, `later`, `decline`). Its bounded reply contains the decision, `revision`, and
+  a one-key snapshot with `scope:"requested"` and `keys:[the acted-on key]`, never the whole
+  database. Do not treat other cards absent from this reply as missing. Only invoke it for
+  the user's actual choice; receipt alone is not approval.
+
+Requested-key batches allow at most 50 unique keys, with each ID at most 512 UTF-8 bytes.
+An empty key list succeeds with an empty requested scope. Duplicate keys, oversized IDs
+or input over 64 KiB are rejected before a decision. State query replies including newline
+are limited to 60 KiB, below the Hermes command reader's 64 KiB ceiling. Oversized queries
+return only `state_response_too_large`, never a truncated success. A single pathological
+record may therefore remain unavailable; clients must not silently drop it. Keys omitted
+retain the legacy whole-store response shape, but large stores explicitly fail that byte
+limit. New integrations must request current card keys rather than repeatedly fetching all
+history. On a failed batch, mark only those keys unavailable; validate echoed keys/scope and
+preserve successful unrelated batches. A missing requested row is not permission to act.
+The adapter-action response is small by construction (one bounded key, fixed binding hash,
+state and revision, no body/choices), avoiding a post-decision whole-store size failure.
 
 Each snapshot entry carries a SQLite-backed monotonically increasing `revision`. Use
 `NoticeStateProjection` to keep immutable notice data separate from mutable decisions.
@@ -473,7 +492,7 @@ reconciliation: a restored snapshot could execute a previously handled message a
 
 ### Hermes Desktop companion status (2026-11-15)
 
-A separate, unapplied Hermes companion commit `f19527817a251ed37432d1bd87d6c2fd934d7eed`
+A separate, unapplied Hermes companion commit `15f2267c730d68be24f4954c61620d32f9632e22`
 was prepared against `b189f28f7462e1cbb568db6878f096277048c079` of the
 `hab-external-message-actions` branch. It is not included in this HAB repository and is
 not an installed release. It propagates exact binding IDs through decisions and retained-card
@@ -484,7 +503,7 @@ notice identity is checked independently of mutable decision state. The configur
 action command must enforce the full connection/recipient/session binding (the HAB command
 does); the UI cannot prove a third-party command's identity enforcement.
 
-The companion's focused Python tests (51), UI tests (38), Desktop typecheck, frontend lint
+The companion's focused Python tests (65), UI tests (42), Desktop typecheck, frontend lint
 and all 14 canonical repository checks passed in an isolated checkout. The full UI suite
 was deliberately stopped for host load, and the full Python suite/native Desktop acceptance
 were not performed. Apply the separately reviewed patch only to an independent matching
@@ -496,8 +515,23 @@ The paired database/feed migration and Desktop cache cutover described above hav
 been applied to the live installation by this change. Earlier Desktop acceptance results
 do not validate this new release, two-choice reply cards, or the new binding migration.
 
-The same isolated companion checkout also completed a production build and unsigned
-mac-arm64 packaging, with a clean `f19527817a251ed37432d1bd87d6c2fd934d7eed` source stamp.
+The current companion revision completed a production build and unsigned
+mac-arm64 packaging (both exit 0), with a clean `15f2267c730d68be24f4954c61620d32f9632e22` source stamp (`dirty:false`).
 Layered-icon generation warned that Xcode was unavailable, and notarization was intentionally
 skipped. This proves build/package creation only: the packaged native application was not
 launched, installed or used for a real message, and no signing/notarization acceptance is claimed.
+
+The new companion uses `POST /api/sessions/{session_id}/external-messages/query`
+with `{after, retained_keys}` (at most 50 retained keys and a 16,000-byte serialized
+retained-key budget). The legacy GET route remains. Retained keys include the full card
+binding; newly paged events and retained cards are grouped by binding and queried from HAB
+in batches of at most 50, also constrained by a 12,000-byte key-array budget. The backend
+requires exact `scope:"requested"`/`keys` echo and rejects foreign or duplicate state rows.
+It reports `decision_checked_keys` and `decision_error_keys`, each keyed by binding,
+sender and message, so one failed batch does not disable every unrelated card. Missing
+authority is applied only within checked keys; other cards are not missing merely because
+they were not requested in this poll. A decision POST preflights only its own key and
+rechecks the existing conversation before forwarding the user's choice. These are isolated
+implementation/test results, not evidence that the installed Desktop uses this contract.
+The clean-stamped build/package evidence above covers this revision and supersedes the
+earlier companion package. It was not launched, installed, deployed or notarized.

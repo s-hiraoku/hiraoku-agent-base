@@ -258,6 +258,10 @@ test("generic states API is cursor independent and fenced by connection, recipie
   assert.equal(acted.changed, true);
   assert.equal(acted.state, "later");
   assert.equal(acted.binding_id, binding);
+  assert.equal(acted.scope, "requested");
+  assert.deepEqual(acted.keys, [
+    { sender_id: "sender", message_id: "m-action" },
+  ]);
   assert.ok(acted.states[0].revision > 0);
   assert.equal(await run("states", { binding_id: binding }), 0);
   assert.deepEqual(output.at(-1).states, acted.states);
@@ -269,4 +273,188 @@ test("generic states API is cursor independent and fenced by connection, recipie
   assert.notEqual(next, binding);
   assert.equal(await run("states", { binding_id: next }), 1);
   assert.equal(output.at(-1).error, "notices_target_mismatch");
+});
+
+test("requested state keys stay bounded and scoped with 3000 retained records", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hab-bounded-states-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "notify.json");
+  const config = {
+    hab_url: "https://hab.invalid/mcp",
+    agent_id: "recipient",
+    token: { env: "UNSET_SYNTHETIC_TOKEN" },
+    store: join(dir, "notices.sqlite"),
+    screen: {
+      type: "hermes-desktop",
+      path: join(dir, "screen.jsonl"),
+      session_id: "session",
+      profile: "profile",
+      backend_namespace: "namespace",
+      profile_scope: "scope",
+    },
+  };
+  writeFileSync(path, JSON.stringify(config));
+  const output = [];
+  const run = (command, request) =>
+    main(
+      ["--config", path, command],
+      (s) => output.push(s),
+      () => JSON.stringify(request),
+    );
+  await run("binding");
+  const binding_id = JSON.parse(output.at(-1)).binding_id;
+  const base = {
+    binding_id,
+    action: "states",
+    backend_namespace: "namespace",
+    profile_scope: "scope",
+    receiver_id: "recipient",
+    stored_session_id: "session",
+  };
+  const template = {
+    sender_id: "sender".repeat(6),
+    from: null,
+    kind: "question",
+    thread_id: "t",
+    in_reply_to: null,
+    sent_at: "2026-01-01T00:00:00Z",
+    expires_at: "2027-01-01T00:00:00Z",
+    display: "private body",
+    handoff_prompt: "private prompt",
+  };
+  const store = new SQLiteNotices(config.store, binding_id);
+  const keys = [];
+  for (let i = 0; i < 3000; i++) {
+    const message = { ...template, message_id: String(i).padStart(40, "0") };
+    store.insertShowing(message, i);
+    store.transition(message, ["showing"], "later", i);
+    keys.push({ sender_id: message.sender_id, message_id: message.message_id });
+  }
+  const huge = {
+    ...template,
+    message_id: "huge",
+    choices: [{ choice: "accept", label: "界".repeat(22000) }],
+  };
+  store.insertShowing(huge, 1000);
+  store.close();
+  for (const command of ["states", "action"]) {
+    const envelope = command === "action" ? base : { binding_id };
+    assert.equal(await run(command, envelope), 1);
+    assert.deepEqual(JSON.parse(output.at(-1)), {
+      error: "state_response_too_large",
+    });
+    const requested = [
+      ...keys.slice(0, 49),
+      { sender_id: "missing", message_id: "absent" },
+    ];
+    const originalAll = SQLiteNotices.prototype.all;
+    SQLiteNotices.prototype.all = () => {
+      throw new Error("subset must not scan all records");
+    };
+    try {
+      assert.equal(await run(command, { ...envelope, keys: requested }), 0);
+    } finally {
+      SQLiteNotices.prototype.all = originalAll;
+    }
+    const result = JSON.parse(output.at(-1));
+    assert.equal(result.scope, "requested");
+    assert.deepEqual(result.keys, requested);
+    assert.equal(result.states.length, 49);
+    assert.deepEqual(
+      result.states.map(({ sender_id, message_id }) => ({
+        sender_id,
+        message_id,
+      })),
+      requested.slice(0, 49),
+    );
+    assert.ok(
+      result.states.every(
+        (x) => x.state === "later" && Number.isSafeInteger(x.revision),
+      ),
+    );
+    assert.ok(Buffer.byteLength(output.at(-1), "utf8") + 1 <= 60 * 1024);
+    assert.ok(!output.at(-1).includes("private body"));
+    assert.equal(await run(command, { ...envelope, keys: [keys[2999]] }), 0);
+    assert.equal(JSON.parse(output.at(-1)).states.length, 1);
+    assert.deepEqual(JSON.parse(output.at(-1)).keys, [keys[2999]]);
+    assert.ok(Buffer.byteLength(output.at(-1), "utf8") + 1 <= 60 * 1024);
+    assert.notEqual(
+      await run(command, {
+        ...envelope,
+        binding_id: "界".repeat(22000),
+        keys: [],
+      }),
+      0,
+    );
+    assert.equal(JSON.parse(output.at(-1)).error, "invalid_request");
+    assert.equal(await run(command, { ...envelope, keys: [] }), 0);
+    assert.deepEqual(JSON.parse(output.at(-1)).states, []);
+    for (const bad of [
+      keys.slice(0, 51),
+      [keys[0], keys[0]],
+      [{ sender_id: "界".repeat(171), message_id: "x" }],
+    ]) {
+      assert.notEqual(await run(command, { ...envelope, keys: bad }), 0);
+      assert.equal(JSON.parse(output.at(-1)).error, "invalid_request");
+    }
+    assert.equal(
+      await run(command, {
+        ...envelope,
+        binding_id: "foreign",
+        keys: [keys[0]],
+      }),
+      1,
+    );
+    assert.equal(JSON.parse(output.at(-1)).error, "binding_mismatch");
+  }
+  const originalAll = SQLiteNotices.prototype.all;
+  SQLiteNotices.prototype.all = () => {
+    throw new Error("action must not scan the DB");
+  };
+  try {
+    assert.equal(
+      await run("adapter-action", { binding_id, ...keys[0], choice: "later" }),
+      0,
+    );
+  } finally {
+    SQLiteNotices.prototype.all = originalAll;
+  }
+  const decision = JSON.parse(output.at(-1));
+  assert.equal(decision.scope, "requested");
+  assert.deepEqual(decision.keys, [keys[0]]);
+  assert.equal(decision.states.length, 1);
+  assert.equal(decision.revision, decision.states[0].revision);
+  assert.ok(Buffer.byteLength(output.at(-1), "utf8") + 1 <= 60 * 1024);
+  const { NoticeStateProjection } =
+    await import("../src/agent-notify/state-sync.ts");
+  const projection = new NoticeStateProjection(binding_id);
+  projection.merge({
+    binding_id,
+    states: [{ ...keys[1], state: "declined", revision: 1 }],
+  });
+  projection.merge(decision);
+  assert.equal(
+    projection.state(keys[1].sender_id, keys[1].message_id).state,
+    "declined",
+  );
+  assert.notEqual(
+    await run("adapter-action", {
+      binding_id,
+      sender_id: "界".repeat(171),
+      message_id: "x",
+      choice: "later",
+    }),
+    0,
+  );
+  assert.equal(JSON.parse(output.at(-1)).error, "invalid_request");
+  assert.equal(
+    await run("action", {
+      ...base,
+      keys: [{ sender_id: huge.sender_id, message_id: huge.message_id }],
+    }),
+    1,
+  );
+  assert.deepEqual(JSON.parse(output.at(-1)), {
+    error: "state_response_too_large",
+  });
 });

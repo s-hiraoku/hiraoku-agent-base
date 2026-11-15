@@ -62,6 +62,51 @@ const usage = `usage:
   hab-notify --config <notify.json> statusline
   hab-notify --config <notify.json> binding|states|adapter-action`;
 
+/** Requested state authority is scoped to these exact keys, never a whole-store snapshot. */
+export const STATE_KEYS_MAX = 50;
+export const STATE_REQUEST_BYTES = 64 * 1024;
+export const STATE_RESPONSE_BYTES = 60 * 1024;
+const stateKeySchema = z.strictObject({
+  sender_id: z
+    .string()
+    .min(1)
+    .refine((x) => Buffer.byteLength(x, "utf8") <= 512),
+  message_id: z
+    .string()
+    .min(1)
+    .refine((x) => Buffer.byteLength(x, "utf8") <= 512),
+});
+const stateKeysSchema = z
+  .array(stateKeySchema)
+  .max(STATE_KEYS_MAX)
+  .refine(
+    (keys) =>
+      new Set(
+        keys.map((key) => JSON.stringify([key.sender_id, key.message_id])),
+      ).size === keys.length,
+  );
+type StateKeys = z.infer<typeof stateKeysSchema>;
+function selectedStates(store: SQLiteNotices, keys?: StateKeys) {
+  return keys === undefined
+    ? store.all()
+    : keys.flatMap((key) => {
+        const record = store.get(key);
+        return record ? [record] : [];
+      });
+}
+function stateResponse(
+  out: (value: string) => void,
+  response: unknown,
+): number {
+  const text = JSON.stringify(response);
+  if (Buffer.byteLength(text, "utf8") + 1 > STATE_RESPONSE_BYTES) {
+    out(JSON.stringify({ error: "state_response_too_large" }));
+    return 1;
+  }
+  out(text);
+  return 0;
+}
+
 /** The card's binding, sent with every request from Hermes Desktop's actions_command. */
 const cardBinding = {
   binding_id: z.string().min(1),
@@ -83,7 +128,11 @@ const actionSchema = z.discriminatedUnion("action", [
     message_id: z.string().min(1),
     choice: z.enum(["accept", "later", "decline"]),
   }),
-  z.strictObject({ action: z.literal("states"), ...cardBinding }),
+  z.strictObject({
+    action: z.literal("states"),
+    ...cardBinding,
+    keys: stateKeysSchema.optional(),
+  }),
 ]);
 
 /** A trusted command from this config: absolute argv[0] and cwd. */
@@ -527,23 +576,43 @@ export async function main(
       }
       const request = z
         .strictObject({
-          binding_id: z.string().min(1),
+          binding_id: z.string().min(1).max(128),
           ...(command === "adapter-action"
             ? {
-                sender_id: z.string().min(1),
-                message_id: z.string().min(1),
+                ...stateKeySchema.shape,
                 choice: z.enum(["accept", "later", "decline"]),
               }
-            : {}),
+            : { keys: stateKeysSchema.optional() }),
         })
-        .parse(JSON.parse(readInput(input)));
+        .parse(
+          JSON.parse(
+            (() => {
+              const text = input();
+              if (Buffer.byteLength(text, "utf8") > STATE_REQUEST_BYTES)
+                throw new MessagingError("invalid_request");
+              return text;
+            })(),
+          ),
+        );
       if (request.binding_id !== screen.target) {
         out(JSON.stringify({ error: "binding_mismatch" }));
         return 1;
       }
       if (command === "states") {
         store = new SQLiteNotices(expand(config.store), screen.target);
-        out(JSON.stringify(store.states()));
+        const keys = (request as { keys?: StateKeys }).keys;
+        return stateResponse(out, {
+          binding_id: screen.target,
+          states: selectedStates(store, keys).map(
+            ({ sender_id, message_id, state, revision }) => ({
+              sender_id,
+              message_id,
+              state,
+              revision,
+            }),
+          ),
+          ...(keys === undefined ? {} : { scope: "requested", keys }),
+        });
       } else {
         const created = createNotifier(config);
         store = created.store;
@@ -557,7 +626,25 @@ export async function main(
           decision.choice,
           decision.sender_id,
         );
-        out(JSON.stringify({ ...result, ...store.states() }));
+        const key = {
+          sender_id: decision.sender_id,
+          message_id: decision.message_id,
+        };
+        const record = store.get(key)!;
+        // IDs were bounded before the decision and the binding is an exact fixed hash.
+        // Never serialize the retained DB or message/choices after a side effect.
+        out(
+          JSON.stringify({
+            ...result,
+            binding_id: screen.target,
+            revision: record.revision,
+            scope: "requested",
+            keys: [key],
+            states: [
+              { ...key, state: record.state, revision: record.revision },
+            ],
+          }),
+        );
       }
       return 0;
     } catch (error) {
@@ -582,7 +669,10 @@ export async function main(
     const parsed = actionSchema.safeParse(
       (() => {
         try {
-          return JSON.parse(input().slice(0, 64 * 1024));
+          const text = input();
+          if (Buffer.byteLength(text, "utf8") > STATE_REQUEST_BYTES)
+            return null;
+          return JSON.parse(text);
         } catch {
           return null;
         }
@@ -647,19 +737,17 @@ export async function main(
       case "action":
         if (action!.action === "states") {
           // Only the binding was checked; this reads the local record and never calls HAB.
-          out(
-            JSON.stringify({
-              states: notifier.records().map((record) => ({
-                sender_id: record.sender_id,
-                message_id: record.message_id,
-                state: record.state,
-                revision: record.revision,
-                // The buttons this card offers, with their labels.
-                choices: choicesOf(record.message),
-              })),
-            }),
-          );
-          return 0;
+          const keys = action!.keys;
+          return stateResponse(out, {
+            states: selectedStates(store, keys).map((record) => ({
+              sender_id: record.sender_id,
+              message_id: record.message_id,
+              state: record.state,
+              revision: record.revision,
+              choices: choicesOf(record.message),
+            })),
+            ...(keys === undefined ? {} : { scope: "requested", keys }),
+          });
         }
         {
           const result = await notifier.decide(
