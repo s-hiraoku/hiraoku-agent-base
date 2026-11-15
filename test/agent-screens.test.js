@@ -721,7 +721,10 @@ test("hab-notify statusline and the new screen types in the config", async (t) =
     .at(-1)
     .split("\n")
     .find((l) => l.startsWith("選択: "));
-  const argv = hint.slice("選択: ".length).split(" ");
+  // Each word is bare or single-quoted, so a path with spaces stays one word.
+  const argv = [
+    ...hint.slice("選択: ".length).matchAll(/'((?:[^']|'\\'')*)'|(\S+)/g),
+  ].map(([, quoted, bare]) => quoted?.replaceAll("'\\''", "'") ?? bare);
   assert.equal(argv[0], process.execPath);
   assert.match(argv[1], /scripts\/hab-notify\.ts$/);
   assert.deepEqual(argv.slice(2, 6), ["--config", claude, "decide", "m1"]);
