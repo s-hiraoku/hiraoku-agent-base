@@ -196,7 +196,12 @@ test("run logs a repeating error once, not on every check", async (t) => {
   await new Promise((done) => setTimeout(done, 2500));
   process.emit("SIGTERM");
   assert.equal(await running, 0);
-  assert.deepEqual(lines, [JSON.stringify({ error: "token_expired" })]);
+  assert.equal(lines.length, 1);
+  const failure = JSON.parse(lines[0]);
+  assert.equal(failure.error, "token_expired");
+  assert.equal(new Date(failure.at).toISOString(), failure.at);
+  assert.ok(Date.parse(failure.at) <= Date.now());
+  assert.deepEqual(Object.keys(failure).sort(), ["at", "error"]);
 });
 
 test("generic states API is cursor independent and fenced by connection, recipient and session", async (t) => {

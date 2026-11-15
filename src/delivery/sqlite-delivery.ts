@@ -554,7 +554,7 @@ export class SqliteDelivery {
     context: unknown,
     messageId: string,
     authorization: Authorization,
-  ): { kind: string; replies: ReplySummary[] } {
+  ): { kind: string; replies: ReplySummary[]; has_unread_replies: boolean } {
     if (!id(messageId)) throw new MessagingError("invalid_request");
     const sender = this.#identity(context, "status", authorization);
     return this.#tx(() => {
@@ -563,24 +563,33 @@ export class SqliteDelivery {
       this.#refresh(Date.now());
       const original = this.#row(sender, messageId);
       if (!original) throw new MessagingError("not_found");
+      const matching =
+        "sender_id=? AND recipient_id=? AND thread_key=? AND accepted_at>=? AND NOT (sender_id=? AND message_id=?)";
+      const params = [
+        original.recipient_id,
+        sender,
+        original.thread_key,
+        original.accepted_at,
+        sender,
+        messageId,
+      ];
+      // The public summary is capped; a read first page cannot prove later replies are read.
+      const unread = this.#db
+        .prepare(
+          `SELECT EXISTS(SELECT 1 FROM delivery_messages WHERE ${matching} AND state<>'acked') AS present`,
+        )
+        .get(...params) as { present: number };
       const rows = this.#db
         .prepare(
-          "SELECT message_id,kind,accepted_at,state FROM delivery_messages WHERE sender_id=? AND recipient_id=? AND thread_key=? AND accepted_at>=? AND NOT (sender_id=? AND message_id=?) ORDER BY accepted_at,message_id LIMIT 5",
+          `SELECT message_id,kind,accepted_at,state FROM delivery_messages WHERE ${matching} ORDER BY accepted_at,message_id LIMIT 5`,
         )
-        .all(
-          original.recipient_id,
-          sender,
-          original.thread_key,
-          original.accepted_at,
-          // A message sent to one's own address is not its own reply.
-          sender,
-          messageId,
-        ) as unknown as Pick<
+        .all(...params) as unknown as Pick<
         Row,
         "message_id" | "kind" | "accepted_at" | "state"
       >[];
       return {
         kind: original.kind,
+        has_unread_replies: unread.present === 1,
         replies: rows.map((row) => ({
           message_id: row.message_id,
           kind: row.kind,

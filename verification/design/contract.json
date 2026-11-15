@@ -184,18 +184,18 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/agent-tools.md",
-      "sha256": "4903f7f2af3191270fbad16c33d271c47c871a2b3eae4d04b6219abf28dda1b2",
+      "sha256": "56dbe55a8ef4fccc9953458cb7cc1ce8035ee12831c4e94686c75b6908460ab0",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read.",
+      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read. PR225 review: existing feature entries/recipe now describe additive bounded reply_watch, unread/read stop semantics, accepted-result preservation and actual optional owner runner regression coverage without native Dots claims. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/arrival-notifier.md",
-      "sha256": "4ced9eb90d1f294ec42494b2c65a80dbc9b390b30b4d97f69f844e0ff4871fa0",
+      "sha256": "00a255ddd434c79c9dcab59b04dc02b3e0f62fc91d6ff71d03cef91b5c6e3bd2",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Maintained arrival-notifier recipe, rereviewed 2026-11-15: notify-oauth (unit tests only) covers the notifier-owned grant, refresh and its failure codes. synthetic HAB peek/choice/expiry and token recovery with JSONL publication; accept is unsupported and emits no handoff. Static Claude channel refuses; only explicit product-owned atomic same-session delivery can admit work. Hermes events remain immutable and state responses add revision. Real-product reply verification is explicitly separate and must not be simulated using CLI identity. Existing Codex/mock transport tests remain synthetic; file publication is not displayed UI or queued work. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes.",
+      "summary": "Maintained arrival-notifier recipe, rereviewed 2026-11-15: notify-oauth (unit tests only) covers the notifier-owned grant, refresh and its failure codes. synthetic HAB peek/choice/expiry and token recovery with JSONL publication; accept is unsupported and emits no handoff. Static Claude channel refuses; only explicit product-owned atomic same-session delivery can admit work. Hermes events remain immutable and state responses add revision. Real-product reply verification is explicitly separate and must not be simulated using CLI identity. Existing Codex/mock transport tests remain synthetic; file publication is not displayed UI or queued work. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. PR225 review: exact run transition/publication timing fields, unchanged one-shot check, latest failure-code interval meaning and corresponding regression tests; OAuth/native gates unchanged.",
       "read_scope": "full"
     },
     {
@@ -381,10 +381,10 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "df72259052134723dfde0462cd73f651da6ec703954fb58b55f8718270c70aa9",
+      "sha256": "00c1a202a654f6c54ae484d58094ef4cd6ef73732ca323e6f847509323f5a259",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it. Reviewed PR #216: send ends the turn without a wait loop or starting the recipient; replies arrive through inbox and status exposes reply_state. Low-level durable send/receive and evidence boundaries remain unchanged."
+      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it. Reviewed PR #216: send ends the turn without a wait loop or starting the recipient; replies arrive through inbox and status exposes reply_state. Low-level durable send/receive and evidence boundaries remain unchanged. PR225 review: Japanese send/status table includes reply_watch; appended bounded owner-runner integration and external Dots wake/read/ACK boundary. Original cited ranges retain identical bytes and positions. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only."
     },
     {
       "path": "docs/diagrams/manifest.json",
@@ -1064,7 +1064,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "11ce9e3481e34328ade86353e6fb68d71eba317fd47e06a0df8953f4ff565dc4",
+      "sha256": "272c283434860f410f85f695ce71eac7c9f65d6daf6f0fc8732e62b11c7495af",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1226,6 +1226,14 @@
       "review": "reviewed",
       "summary": "Pinned Python dependencies for the synthetic plugin backend test job, not product-design authority.",
       "exclusion_reason": "License or test dependency metadata, not adopted HAB behavioral requirements."
+    },
+    {
+      "path": "docs/reply-monitoring.md",
+      "sha256": "4982eaa1f5b4826e3600e1fb673da5cfe4bed07f6f7ca628c6401c423f15d54d",
+      "role": "normative",
+      "review": "reviewed",
+      "read_scope": "full",
+      "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance. Review follow-up preserves accepted sends if additive planning fails and stops advice after all replies are read, with reply_state unchanged. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only."
     }
   ],
   "requirements": [
@@ -3762,7 +3770,7 @@
       "cwd": ".",
       "timeout_seconds": 900,
       "protocol": "node-tap",
-      "proves": "Complete current top-level JavaScript test inventory plus typed CLI compatibility and offline native-preflight checks, including real local HTTP/SQLite with the SQLite delivery store, bounded optional execution, authority, recovery, attachment-part refusal and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required.",
+      "proves": "Complete current top-level JavaScript test inventory plus typed CLI compatibility and offline native-preflight checks, including real local HTTP/SQLite with the SQLite delivery store, bounded optional execution, authority, recovery, attachment-part refusal and process-control scenarios. Nonempty TAP totals and zero skip/cancel/TODO are required. Optional sender reply-watch adapter/CLI: automatic accepted-send registration, durable owner-scoped due work, real synthetic-authority HTTP reply detection with unread reply preserved, bounded retry/deadline/auth stop, and resident timer consumption. Existing durable sender HTTP refusal semantics remain unchanged.",
       "limitations": "Scenario-specific functional evidence with synthetic authorities and substituted external runtimes. Does not run native agent models, production OAuth, GUI, real media failures or every possible policy. Explicit NODE_OPTIONS matches the CI environment because CLI fixtures compare stderr exactly; it suppresses ExperimentalWarning category only, not test assertions or skip/failure handling.",
       "env": {
         "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"

@@ -320,6 +320,10 @@ export class DeliveryMcpClient implements SenderTransport, ReceiverTransport {
       return Promise.reject(new MessagingError("invalid_request"));
     return this.#call(tool, args);
   }
+  /** Fixed outer profiles may distinguish auth refusal; durable delivery keeps its retry contract. */
+  protected get distinguishAuthenticationRefusal(): boolean {
+    return false;
+  }
   async #call(tool: string, args: unknown): Promise<unknown> {
     if (this.#active >= this.#policy.max_active_requests)
       throw new MessagingError("client_busy");
@@ -433,10 +437,16 @@ export class DeliveryMcpClient implements SenderTransport, ReceiverTransport {
         (response.url && response.url !== this.#policy.resource_url)
       )
         fail();
+      if (response.status !== 200)
+        throw new ClientFailure(
+          this.distinguishAuthenticationRefusal &&
+            [401, 403].includes(response.status)
+            ? "forbidden"
+            : "transport_failed",
+        );
       if (
-        response.status !== 200 ||
-        (response.headers.has("content-encoding") &&
-          response.headers.get("content-encoding") !== "identity")
+        response.headers.has("content-encoding") &&
+        response.headers.get("content-encoding") !== "identity"
       )
         fail();
       const type = response.headers.get("content-type") ?? "";

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HabHttpGateway } from "../src/hab/http.ts";
-import { HAB_AGENT_INSTRUCTIONS } from "../src/hab/agent-tools.ts";
+import {
+  HAB_AGENT_INSTRUCTIONS,
+  runHabAgentTool,
+} from "../src/hab/agent-tools.ts";
 import {
   MAX_DELIVERY_TTL_MS,
   isReplayBoundMessageId,
@@ -101,6 +104,8 @@ test("send, read, reply and status round trip with only addresses and text", asy
   );
   assert.equal(sent.to, f.b.address);
   assert.equal(sent.state, "pending");
+  assert.equal(sent.reply_watch.action, "check_status");
+  assert.ok(Date.parse(sent.reply_watch.next_check_at) >= before + 15000);
   assert.match(sent.thread_id, /^t-[A-Za-z0-9_-]{16}$/);
   const deadline = Date.parse(sent.expires_at) - Date.parse(sent.accepted_at);
   assert.ok(
@@ -140,6 +145,7 @@ test("send, read, reply and status round trip with only addresses and text", asy
   assert.match(status.explanation, /does not mean it replied/);
   assert.equal(status.kind, "question");
   assert.equal(status.reply_state, "waiting");
+  assert.equal(status.reply_watch.action, "check_status");
   assert.deepEqual(status.replies, []);
 
   const submits = () =>
@@ -163,6 +169,7 @@ test("send, read, reply and status round trip with only addresses and text", asy
     message_id: sent.message_id,
   });
   assert.equal(answered.reply_state, "replied");
+  assert.equal(answered.reply_watch.action, "read_reply");
   assert.deepEqual(
     answered.replies.map(({ message_id, kind, read }) => ({
       message_id,
@@ -179,6 +186,11 @@ test("send, read, reply and status round trip with only addresses and text", asy
     "not_found",
   );
   const answer = (await f.ok("a", "hab_inbox")).messages[0];
+  const readReply = await f.ok("a", "hab_status", {
+    message_id: sent.message_id,
+  });
+  assert.equal(readReply.reply_state, "replied");
+  assert.equal(readReply.reply_watch.action, "stop");
   assert.equal(
     (await f.ok("a", "hab_status", { message_id: sent.message_id })).replies[0]
       .read,
@@ -432,4 +444,69 @@ test("a full inbox is returned in batches that fit the response limit, none read
   }
   assert.deepEqual(seen, ids);
   assert.deepEqual((await f.ok("b", "hab_inbox")).messages, []);
+});
+
+test("invalid additive watch times never hide an already accepted send result", () => {
+  for (const field of ["accepted_at", "expires_at"]) {
+    const receipt = {
+      message_id: "accepted-1",
+      state: "pending",
+      accepted_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      [field]: "invalid",
+    };
+    let submits = 0;
+    const service = {
+      textLimit: 1024,
+      resolve: () => ({ recipient_id: "b" }),
+      submit: () => {
+        submits++;
+        return receipt;
+      },
+    };
+    const result = runHabAgentTool(service, null, "hab_send", {
+      to: "b@agent.hab",
+      text: "synthetic",
+    });
+    assert.equal(result.message_id, receipt.message_id);
+    assert.equal(result.state, "pending");
+    assert.equal(Object.hasOwn(result, "reply_watch"), false);
+    assert.equal(submits, 1);
+  }
+});
+
+test("read first-page summaries cannot hide a sixth unread reply", async (t) => {
+  const f = await setup(t);
+  const original = await f.ok("a", "hab_send", {
+    to: f.b.address,
+    text: "synthetic multiple replies",
+  });
+  await f.ok("b", "hab_inbox");
+  for (let i = 0; i < 5; i++)
+    await f.ok("b", "hab_reply", {
+      message_id: original.message_id,
+      text: `synthetic read ${i}`,
+    });
+  await f.ok("a", "hab_inbox");
+  const next = await f.ok("b", "hab_reply", {
+    message_id: original.message_id,
+    text: "synthetic sixth unread",
+  });
+  const status = await f.ok("a", "hab_status", {
+    message_id: original.message_id,
+  });
+  assert.equal(status.replies.length, 5);
+  assert.equal(
+    status.replies.every((reply) => reply.read),
+    true,
+  );
+  assert.equal(status.has_unread_replies, true);
+  assert.equal(status.reply_watch.action, "read_reply");
+  const unread = await f.ok("a", "hab_inbox", { message_id: next.message_id });
+  assert.equal(unread.messages.length, 1);
+  const read = await f.ok("a", "hab_status", {
+    message_id: original.message_id,
+  });
+  assert.equal(read.has_unread_replies, false);
+  assert.equal(read.reply_watch.action, "stop");
 });
