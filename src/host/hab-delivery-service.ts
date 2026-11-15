@@ -133,6 +133,38 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
       };
     });
   }
+  /**
+   * Reads the message being answered and submits the reply built from it, under one
+   * `submit` authorization (one authorization record per reply).
+   */
+  reply(
+    context: unknown,
+    messageId: string,
+    build: (original: ReturnType<HabDeliveryService["received"]>) => unknown,
+  ) {
+    return this.#run(context, "submit", (authorization) => {
+      const message = this.#backend.receivedWithAuthorization(
+        context,
+        messageId,
+        authorization,
+      );
+      const original = {
+        ...message,
+        from:
+          this.#registry
+            .addressesOf([message.sender_id])
+            .get(message.sender_id) ?? null,
+      };
+      return {
+        original,
+        receipt: this.#backend.admitWithAuthorization(
+          context,
+          build(original),
+          authorization,
+        ),
+      };
+    });
+  }
   /** The sender's receipt with the recipient's current address. Runs under `status`. */
   statusWithAddress(context: unknown, messageId: string) {
     return this.#run(context, "status", (authorization) => {
@@ -147,6 +179,11 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
           this.#registry
             .addressesOf([receipt.recipient_id])
             .get(receipt.recipient_id) ?? null,
+        ...this.#backend.repliesWithAuthorization(
+          context,
+          messageId,
+          authorization,
+        ),
       };
     });
   }
