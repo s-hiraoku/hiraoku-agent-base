@@ -24,7 +24,7 @@ DotsとHermesは検証例であり、設計を製品名へ固定しない。Grok
 | --- | --- | --- |
 | メッセージ配送 | 認証・group認可、宛先、永続inbox、保存後ACK、相関と再送の契約 | 製品に依存しない依頼・進捗・結果の共通表示 |
 | 配送store | [配送store](../delivery-store.md)に永続受付と本文配送・回復の境界がある（ADR-018でJetStreamを外した） | 実行journalとの連携。配送storeを作業実行の正本にはしない |
-| A2A | [SDK preview](../a2a/a2a-sdk-preview.md)と[Relay preview](../a2a/a2a-relay-preview.md)は固定 `connectivity_check`。任意prompt、継続、streaming、push、取消は未対応 | 汎用テキストとTask lifecycle、能力別のadapter契約 |
+| A2A | [SDK preview](../a2a/a2a-sdk-preview.md)と[Relay preview](../a2a/a2a-host-preview.md)は固定 `connectivity_check`。任意prompt、継続、streaming、push、取消は未対応 | 汎用テキストとTask lifecycle、能力別のadapter契約 |
 | Task bridge | 明示引受け、安定key、受付照合、固定結果の返信。保存ACKだけではTaskを作らない | 汎用の判断・承認・処理・結果の境界 |
 | Hermes受信 | 現在の受信経路は保存・ACK・表示まで。自動モデル処理と自動返信は未接続 | 受信側が所有する既存の判断・承認・返信経路への引渡し。HAB固有runnerは必須にしない |
 | Dots等 | MCP接続は常駐受信や自動wakeの証拠ではない。Dotsのinbox自動wake・表示は未確認 | 正式な受信・表示能力を製品別に確認し、手動経路も表示 |
@@ -241,7 +241,7 @@ backup復元で承認の消費記録や実行結果が巻き戻った場合は�
 
 ## 13. 関連仕様と一次資料
 
-- [HAB製品仕様](../hab-product-spec.md)、[配送契約](../hab-relay-spec.md)、[認証group](../relay-auth-groups.md)、[受信supervisor](../receiver/receive-supervisor.md)、[Task bridge](task-bridge.md)
-- [A2A SDK preview](../a2a/a2a-sdk-preview.md)、[A2A Relay preview](../a2a/a2a-relay-preview.md)、[配送store](../delivery-store.md)
+- [HAB製品仕様](../hab-product-spec.md)、[配送契約](../hab-messaging-spec.md)、[認証group](../auth-groups.md)、[受信supervisor](../receiver/receive-supervisor.md)、[Task bridge](task-bridge.md)
+- [A2A SDK preview](../a2a/a2a-sdk-preview.md)、[A2A Relay preview](../a2a/a2a-host-preview.md)、[配送store](../delivery-store.md)
 - [A2A 1.0公式仕様](https://a2a-protocol.org/v1.0.0/specification/)：TaskState、冪等性、非同期処理、認可、拡張を2026-11-04 UTCに確認。
 - [A2A Taskの扱い](https://a2a-protocol.org/v1.0.0/topics/life-of-a-task/)、[非同期更新](https://a2a-protocol.org/v1.0.0/topics/streaming-and-async/)、[拡張](https://a2a-protocol.org/v1.0.0/topics/extensions/)：標準とHAB profileの区分に使用。

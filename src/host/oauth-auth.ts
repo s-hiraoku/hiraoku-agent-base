@@ -5,11 +5,8 @@ import type {
   RegistryAuthority,
   IndividualPrincipal,
 } from "../hab/registry.ts";
-import type { RelayHttpVerifier } from "./mcp/http.ts";
-import {
-  RelayOAuthResource,
-  RELAY_OAUTH_SCOPES,
-} from "./mcp/oauth-resource.ts";
+import type { McpHttpVerifier } from "./mcp/http.ts";
+import { McpOAuthResource, HAB_OAUTH_SCOPES } from "./mcp/oauth-resource.ts";
 const claim = z
   .string()
   .min(1)
@@ -98,18 +95,18 @@ export function oauthConnectionWindow(entry: Config["connections"][number]) {
 /** Shared structural validation for the verifier and trusted operator management. */
 export function parseOAuthConfig(input: unknown): Config {
   const config = schema.parse(input);
-  new RelayOAuthResource(config.issuer, config.resource);
+  new McpOAuthResource(config.issuer, config.resource);
   const kids = new Set<string>(),
     clients = new Set<string>(),
     connections = new Set<string>();
   for (const key of config.keys) {
-    if (kids.has(key.kid)) throw Error("invalid_relay_oauth_config");
+    if (kids.has(key.kid)) throw Error("invalid_oauth_config");
     kids.add(key.kid);
   }
   for (const connection of config.connections) {
     const client = JSON.stringify([connection.subject, connection.client_id]);
     if (clients.has(client) || connections.has(connection.connection_id))
-      throw Error("invalid_relay_oauth_config");
+      throw Error("invalid_oauth_config");
     clients.add(client);
     connections.add(connection.connection_id);
   }
@@ -134,7 +131,7 @@ const header = z.object({
 });
 const claims = z.object({
   iss: claim,
-  aud: claim,
+  aud: z.union([claim, z.array(claim).min(1).max(2)]),
   sub: claim,
   azp: claim.optional(),
   client_id: claim.optional(),
@@ -143,6 +140,46 @@ const claims = z.object({
   exp: z.number().int().positive(),
   nbf: z.number().int().nonnegative().optional(),
 });
+/**
+ * Auth0 issues `aud` as a list when a client asks for `openid` along with the API audience,
+ * as ChatGPT-style connectors do: `[API identifier, "<issuer>userinfo"]`. Only that exact
+ * shape (or the resource alone in a list) is accepted; the resource must appear once and the
+ * only other entry may be this issuer's own userinfo endpoint. Any other list stays refused.
+ */
+export function acceptedAudienceList(
+  audiences: readonly string[],
+  resource: string,
+  issuer: string,
+): boolean {
+  const userinfo = issuer.replace(/\/*$/, "/") + "userinfo";
+  if (audiences.filter((a) => a === resource).length !== 1) return false;
+  return audiences.every((a) => a === resource || a === userinfo);
+}
+/** Fixed reasons the OAuth verifier gives the audit log when it refuses a token. */
+export type OAuthDenyReason =
+  | "oauth_disabled"
+  | "oauth_config_invalid"
+  | "oauth_config_changed"
+  | "resource_mismatch"
+  | "token_malformed"
+  | "token_header_invalid"
+  | "token_claims_invalid"
+  | "audience_not_single"
+  | "client_id_missing"
+  | "client_id_conflict"
+  | "issuer_mismatch"
+  | "audience_mismatch"
+  | "scope_missing"
+  | "client_not_registered"
+  | "subject_not_registered"
+  | "connection_revoked"
+  | "connection_outside_window"
+  | "token_lifetime_invalid"
+  | "token_expired"
+  | "token_not_yet_valid"
+  | "token_before_approval"
+  | "signing_key_unknown"
+  | "signature_invalid";
 export class PinnedOAuthAuthority {
   readonly #load: () => unknown;
   readonly #now: () => number;
@@ -166,12 +203,12 @@ export class PinnedOAuthAuthority {
   }
   static async create(load: () => unknown, now: () => number = Date.now) {
     if (typeof load !== "function" || typeof now !== "function")
-      throw Error("invalid_relay_oauth_config");
+      throw Error("invalid_oauth_config");
     const auth = new PinnedOAuthAuthority(load, now);
     try {
       await auth.#importKeys(auth.#current());
     } catch {
-      throw Error("invalid_relay_oauth_config");
+      throw Error("invalid_oauth_config");
     }
     return auth;
   }
@@ -218,44 +255,62 @@ export class PinnedOAuthAuthority {
   }
   get resource() {
     const { config } = this.#current();
-    return new RelayOAuthResource(config.issuer, config.resource);
+    return new McpOAuthResource(config.issuer, config.resource);
   }
-  readonly verify: RelayHttpVerifier = async ({
+  readonly verify: McpHttpVerifier = async ({
     authorization,
     resource,
     signal,
+    deny = () => {},
+    accept = () => {},
   }) => {
+    // Each refusal names a fixed reason for the audit log; never a claim value or the token.
+    const refuse = (reason: OAuthDenyReason) => {
+      deny(reason);
+      return null;
+    };
+    let stage: OAuthDenyReason = "oauth_config_invalid";
     try {
       const snapshot = this.#current(),
         c = snapshot.config;
-      if (
-        !c.enabled ||
-        signal.aborted ||
-        resource !== c.resource ||
-        authorization.length > 8192
-      )
-        return null;
+      if (!c.enabled) return refuse("oauth_disabled");
+      if (signal.aborted) return null;
+      if (resource !== c.resource) return refuse("resource_mismatch");
+      if (authorization.length > 8192) return refuse("token_malformed");
       const match =
         /^Bearer ([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$(?![\s\S])/.exec(
           authorization,
         );
-      if (!match) return null;
-      const h = header.parse(jsonPart(match[1])),
-        value = claims.parse(jsonPart(match[2]));
+      if (!match) return refuse("token_malformed");
+      stage = "token_malformed";
+      const rawHeader = jsonPart(match[1]),
+        rawClaims = jsonPart(match[2]);
+      stage = "token_header_invalid";
+      const h = header.parse(rawHeader);
+      stage = "token_claims_invalid";
+      const value = claims.parse(rawClaims);
+      stage = "oauth_config_invalid";
       const clientId = value.azp ?? value.client_id;
-      if (
-        !clientId ||
-        (value.azp && value.client_id && value.azp !== value.client_id) ||
-        value.iss !== c.issuer ||
-        value.aud !== resource
-      )
-        return null;
+      if (!clientId) return refuse("client_id_missing");
+      if (value.azp && value.client_id && value.azp !== value.client_id)
+        return refuse("client_id_conflict");
+      if (value.iss !== c.issuer) return refuse("issuer_mismatch");
+      if (Array.isArray(value.aud)) {
+        if (!acceptedAudienceList(value.aud, resource, c.issuer))
+          return refuse("audience_not_single");
+      } else if (value.aud !== resource) return refuse("audience_mismatch");
       const scopes = new Set(value.scope.split(" "));
-      if (!RELAY_OAUTH_SCOPES.every((s) => scopes.has(s))) return null;
+      if (!HAB_OAUTH_SCOPES.every((s) => scopes.has(s)))
+        return refuse("scope_missing");
       const binding = c.connections.find(
         (x) => x.subject === value.sub && x.client_id === clientId,
       );
-      if (!binding) return null;
+      if (!binding)
+        return refuse(
+          c.connections.some((x) => x.client_id === clientId)
+            ? "subject_not_registered"
+            : "client_not_registered",
+        );
       const window = oauthConnectionWindow(binding),
         approved = Date.parse(window.starts_at),
         approvedUntil = Date.parse(window.ends_at),
@@ -263,27 +318,31 @@ export class PinnedOAuthAuthority {
           c.version === 2 ? c.max_access_token_lifetime_seconds * 1000 : 900000;
       const issued = value.iat * 1000,
         expires = value.exp * 1000;
+      if (window.state !== "active") return refuse("connection_revoked");
+      if (snapshot.now < approved || snapshot.now >= approvedUntil)
+        return refuse("connection_outside_window");
       if (
-        window.state !== "active" ||
-        snapshot.now < approved ||
-        snapshot.now >= approvedUntil ||
         !Number.isSafeInteger(issued) ||
         !Number.isSafeInteger(expires) ||
-        issued > snapshot.now ||
-        expires <= snapshot.now ||
         expires <= issued ||
         expires - issued > maxTokenLifetime ||
-        (value.nbf !== undefined && value.nbf * 1000 > snapshot.now) ||
-        issued < approved ||
         (c.version === 1 && expires > approvedUntil)
       )
-        return null;
+        return refuse("token_lifetime_invalid");
+      if (expires <= snapshot.now) return refuse("token_expired");
+      if (
+        issued > snapshot.now ||
+        (value.nbf !== undefined && value.nbf * 1000 > snapshot.now)
+      )
+        return refuse("token_not_yet_valid");
+      if (issued < approved) return refuse("token_before_approval");
       // A valid final token may outlive participation; its authority never does.
       const contextExpires = Math.min(expires, approvedUntil);
       await this.#importKeys(snapshot);
       const key = this.#keys.get(h.kid);
+      if (!key) return refuse("signing_key_unknown");
+      stage = "signature_invalid";
       if (
-        !key ||
         !(await crypto.subtle.verify(
           "RSASSA-PKCS1-v1_5",
           key,
@@ -291,15 +350,15 @@ export class PinnedOAuthAuthority {
           new TextEncoder().encode(match[1] + "." + match[2]),
         ))
       )
-        return null;
+        return refuse("signature_invalid");
       const current = this.#current();
+      if (signal.aborted) return null;
       if (
-        signal.aborted ||
         current.material !== snapshot.material ||
-        current.revision !== snapshot.revision ||
-        current.now >= contextExpires
+        current.revision !== snapshot.revision
       )
-        return null;
+        return refuse("oauth_config_changed");
+      if (current.now >= contextExpires) return refuse("token_expired");
       const context = Object.freeze({});
       this.#contexts.set(context, {
         material: snapshot.material,
@@ -313,9 +372,10 @@ export class PinnedOAuthAuthority {
           connection_id: binding.connection_id,
         },
       });
+      accept(binding.connection_id);
       return context;
     } catch {
-      return null;
+      return refuse(stage);
     }
   };
   readonly authority: RegistryAuthority = {

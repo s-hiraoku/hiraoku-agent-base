@@ -1,6 +1,6 @@
 # Agent SDK: durable sender and save-then-ACK receiver
 
-This directory is the agent-side client of HAB delivery. An agent embeds it to call the host's MCP entry (`relay_submit`, `relay_status`, `relay_poll`, `relay_ack`) without losing a message across crashes, lost responses or restarts. The server side is elsewhere. The message contract and the `DeliveryService` port live in [`../messaging`](../messaging/index.ts), the Registry in [`../hab`](../hab/README.md), and the one host in [`../host`](../host). The host delivers through one SQLite file ([delivery store](../../docs/delivery-store.md), ADR-018).
+This directory is the agent-side client of HAB delivery. An agent embeds it to call the host's MCP entry (`hab_submit`, `hab_status`, `hab_poll`, `hab_ack`) without losing a message across crashes, lost responses or restarts. The server side is elsewhere. The message contract and the `DeliveryService` port live in [`../messaging`](../messaging/index.ts), the Registry in [`../hab`](../hab/README.md), and the one host in [`../host`](../host). The host delivers through one SQLite file ([delivery store](../../docs/delivery-store.md), ADR-018).
 
 Importing `./index.ts` performs no IO. It exports the pure `DurableSender` and `DurableReceiver` and their store and transport ports. The SQLite stores and the MCP transport are separate entry points, so a caller opts into each IO dependency by name.
 
@@ -10,7 +10,7 @@ Importing `./index.ts` performs no IO. It exports the pure `DurableSender` and `
 | `sqlite-inbox.ts` | `SQLiteInbox`, the receiver store and the local inbox lifecycle (`releaseBody`, `maintain`). |
 | `sender.ts` | `DurableSender`. `enqueue()` commits the immutable submission before any network call. `sendOnce()` claims at most one job. |
 | `sqlite-outbox.ts` | `SQLiteOutbox`, the sender store with lease fencing, bounded backoff and `maintain`. |
-| `mcp-client.ts` | `RelayMcpClient`, the fixed relay_* tool client over Streamable HTTP. It implements both transport ports. |
+| `mcp-client.ts` | `DeliveryMcpClient`, the fixed hab_* tool client over Streamable HTTP. It implements both transport ports. |
 | `receive-host.ts` | `HostCore`, the serialized, epoch-fenced command runner, and `ReceiveHost`, which accepts only `receive`. It needs a control, an inbox and a transport, plus an optional process owner. |
 | `sqlite-host-control.ts` | `SQLiteHostControl`, the durable pause/resume switch and epoch that stops a running command. A new control starts paused. |
 | `sqlite-host-owner.ts` | `SQLiteHostOwner`, the process-lifetime lock that keeps two hosts off the same stores. |
@@ -28,7 +28,7 @@ A lost acceptance response replays the exact original submission. Once the submi
 
 ## MCP transport
 
-`RelayMcpClient` makes one network attempt per operation, with byte, deadline, concurrency, SSE and JSON budgets supplied by the host. It refuses redirects, compressed responses and nonlocal plain HTTP. An injected credential provider supplies the Bearer header. The expected `agent_id` is a local result check, not identity proof; a mismatch returns `forbidden`, so the sender quarantines instead of replaying under other credentials. HTTP and protocol failures normalize to `relay_transport_failed`. Only allowlisted tool errors keep their code. The durable journals own retry, backoff and restart recovery.
+`DeliveryMcpClient` makes one network attempt per operation, with byte, deadline, concurrency, SSE and JSON budgets supplied by the host. It refuses redirects, compressed responses and nonlocal plain HTTP. An injected credential provider supplies the Bearer header. The expected `agent_id` is a local result check, not identity proof; a mismatch returns `forbidden`, so the sender quarantines instead of replaying under other credentials. HTTP and protocol failures normalize to `transport_failed`. Only allowlisted tool errors keep their code. The durable journals own retry, backoff and restart recovery.
 
 ## Receive host
 
@@ -37,9 +37,9 @@ A new agent receives with `ReceiveHost` and `ReceiveSupervisor` alone: no outbox
 ## Tests
 
 ```sh
-node --test test/relay-receiver.test.js test/relay-inbox-maintenance.test.js \
-  test/relay-sender.test.js test/relay-outbox-maintenance.test.js \
-  test/relay-mcp-client.test.js test/relay-mcp-client-http.test.js \
+node --test test/receiver.test.js test/inbox-maintenance.test.js \
+  test/sender.test.js test/outbox-maintenance.test.js \
+  test/mcp-client.test.js test/mcp-client-http.test.js \
   test/receive-host.test.js test/receive-supervisor.test.js
 ```
 

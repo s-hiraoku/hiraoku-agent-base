@@ -64,6 +64,6 @@ export function parseHabResolution(
       normalization_version: 1,
     };
   } catch {
-    throw new MessagingError("relay_transport_failed");
+    throw new MessagingError("transport_failed");
   }
 }

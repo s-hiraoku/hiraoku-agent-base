@@ -69,4 +69,4 @@ AdapterHostOptionsへ同じ個体の`answer_intents: SQLiteAnswerJournal`を任�
 
 `node --test test/answer-intents.test.js` の44シナリオで、準備前後の副作用、再起動とinbox本文解放、outbox応答消失、journal確認write失敗、同budget再利用、期限・30日GC・opaque保持、時計巻戻し、認可・停止・quota・容量・改ざん・rollback失敗・二接続／native並列producerを検証します。native loopback HTTP MCPでは実client経由の受信→prepare→journal再起動→引渡し→送信→返信ACKを確認します。一時DB・模擬認証・モデルなしです。
 
-既存Relay MCPはverify-hab skillでも別途回帰確認しました。これは新producer APIのMCP公開や実Bot接続を証明するものではありません。recv-ackの証拠は009-b-relay_ack.res、send-statusは011-a-relay_status.res、独立DB auditは012-inspect-after-ack.jsonです。専用processはcleanup済みで、raw evidenceは一時領域だけに保持します。新規credential・常駐起動・実エージェント接続・外部公開は行いません。
+既存HAB MCPはverify-hab skillでも別途回帰確認しました。これは新producer APIのMCP公開や実Bot接続を証明するものではありません。recv-ackの証拠は009-b-hab_ack.res、send-statusは011-a-hab_status.res、独立DB auditは012-inspect-after-ack.jsonです。専用processはcleanup済みで、raw evidenceは一時領域だけに保持します。新規credential・常駐起動・実エージェント接続・外部公開は行いません。

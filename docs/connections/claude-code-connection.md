@@ -29,24 +29,24 @@ HTTP接続時のtoken更新はnative clientに任せる。headless実行前にin
 1. 人間が選ぶ不変のHABアドレス、group、実行するClaudeセッションの範囲を確定する。
    user scopeは同じOSユーザーの他プロジェクトからも使える。local scopeでも同じ
    OSユーザー内の暗号的なセッション分離にはならない。
-2. Relayの正規HTTPS resource、public client、正確な
+2. hostの正規HTTPS resource、public client、正確な
    `http://localhost:PORT/callback`、5 scopeと更新資格情報の保存範囲を照合する。
    参加期間・失効方法とRegistry bindingを常用認証の手順で具体化する。
-3. 既存設定を保持し、対象scopeへ`claude mcp add-json hab_relay '<reviewed JSON entry>'`
+3. 既存設定を保持し、対象scopeへ`claude mcp add-json hab '<reviewed JSON entry>'`
    で登録する。例の`mcpServers`内の一つのentryを渡す。認証は別操作であり、必要な
-   新規永続アクセスの確認を済ませてから`claude mcp login hab_relay`を実行する。
+   新規永続アクセスの確認を済ませてから`claude mcp login hab`を実行する。
    client secretなしのpublic clientに`--client-secret`を付けない。
 4. native discoveryと`hab_discover(action=whoami)`でアドレス・不変ID・group・操作を
    Registryと照合する。表示名や`as_address`だけをsession本人性の根拠にしない。
 
 この手順は実値を推測した自動installerではない。認証なしの例を本番の
 `.mcp.json`としてcommitしない。登録解除は実際に追加した同じscopeに対して
-`claude mcp remove --scope <scope> hab_relay`を使い、OAuth資格情報とRelay参加・bindingの
+`claude mcp remove --scope <scope> hab`を使い、OAuth資格情報とHAB参加・bindingの
 失効も個別に確認する。MCP定義の削除だけで全資格情報の失効を主張しない。
 
 ## 受信・回答と受入れ
 
-Relayの5操作を列挙できても、Claudeの会話履歴を永続inboxとみなさない。
+HABの5操作を列挙できても、Claudeの会話履歴を永続inboxとみなさない。
 本文とACK再送状態のcommitを独立に確認してからACKする共通Adapterを配線する。
 専用stdio構成を選ぶ場合は、実recipientへのprivate pipe、検証済みlaunch context、
 専用stores、source別の現在権限をowner側で確定する。テストfixtureのallow contextを

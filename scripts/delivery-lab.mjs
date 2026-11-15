@@ -19,6 +19,10 @@ import {
   parseLabOptions,
 } from "./lib/delivery-lab.mjs";
 import {
+  assertCurrentToolchain,
+  readToolchainPin,
+} from "./lib/toolchain.mjs";
+import {
   pendingBackends,
   pendingMigrationRequirements,
 } from "../test/delivery-lab/manifest.js";
@@ -32,11 +36,7 @@ try {
   process.exit(2);
 }
 const { release, full } = options;
-const pinnedNode = readFileSync(join(repo, ".node-version"), "utf8").trim();
-if (process.versions.node !== pinnedNode)
-  throw Error(
-    `delivery lab requires Node ${pinnedNode}; current ${process.versions.node}`,
-  );
+assertCurrentToolchain(readToolchainPin(repo));
 const root = join(repo, ".lab");
 mkdirSync(root, { recursive: true, mode: 0o700 });
 const run = mkdtempSync(join(root, "run-"));
@@ -48,15 +48,15 @@ const pending = [
   ...pendingMigrationRequirements,
 ];
 const regressionFiles = [
-  "relay-contract",
-  "relay-receiver",
-  "relay-sender",
+  "messaging-contract",
+  "receiver",
+  "sender",
   "hab-enrollment-delivery",
   "hab-auth-groups",
   "hab-discovery",
   "receive-supervisor",
-  "relay-inbox-maintenance",
-  "relay-outbox-maintenance",
+  "inbox-maintenance",
+  "outbox-maintenance",
 ].map((name) => `test/${name}.test.js`);
 const definitions = [
   { id: "shared-contracts", files: ["test/delivery-lab/contracts.test.js"] },
@@ -67,7 +67,7 @@ const definitions = [
       "test/delivery-lab/harness.test.js",
     ],
   },
-  { id: "relay-regressions", files: regressionFiles },
+  { id: "delivery-regressions", files: regressionFiles },
 ];
 if (full)
   definitions.push({

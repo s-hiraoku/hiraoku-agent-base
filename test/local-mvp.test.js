@@ -59,11 +59,11 @@ test(
       ack_receipts: 4,
     });
     assert.deepEqual(report.mcp_tools, [
-      "relay_ack",
-      "relay_poll",
-      "relay_resolve",
-      "relay_status",
-      "relay_submit",
+      "hab_ack",
+      "hab_poll",
+      "hab_resolve",
+      "hab_status",
+      "hab_submit",
     ]);
     assert.ok(report.audit.tool_succeeded > 0);
     assert.equal(

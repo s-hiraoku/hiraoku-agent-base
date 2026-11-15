@@ -62,7 +62,7 @@ key の runtime ID は永続的な同一性であり、再起動で新 ID を作
 
 ## 明示 opt-in の共通 owner supervisor
 
-`src/recipient-messages/supervisor.ts` の `RecipientSupervisor` は、正式な native port を持つ受信側が明示的に選ぶ共通 orchestration である。受信専用 `ReceiveSupervisor` や Relay の通常 MCP catalog は変更しない。import / constructor は IO を開始せず、`run(signal)` だけが既存 host の receive → source 別の inspect / 必要時 handoff → 確定返信の enqueue → send を繰り返す。モデル、製品 runner、新しい状態 journal、権限発行、ログイン、承認 UI は追加しない。
+`src/recipient-messages/supervisor.ts` の `RecipientSupervisor` は、正式な native port を持つ受信側が明示的に選ぶ共通 orchestration である。受信専用 `ReceiveSupervisor` や host の通常 MCP catalog は変更しない。import / constructor は IO を開始せず、`run(signal)` だけが既存 host の receive → source 別の inspect / 必要時 handoff → 確定返信の enqueue → send を繰り返す。モデル、製品 runner、新しい状態 journal、権限発行、ログイン、承認 UI は追加しない。
 
 ```ts
 const owner = new RecipientSupervisor({
@@ -88,7 +88,7 @@ await owner.run(stop.signal);
 
 poll / ACK の一時的な transport 障害でも、すでに ACK 済みの source と既存 outbox は進められる。未確認 source は独立して拒否される。受信・送信の再送 ID、ACK journal、backoff、lease と unknown の照合は既存 host / inbox / outbox が担当する。native unknown を不存在に変えたり、新 runtime ID・返信 ID を作って再実行したりしない。周期は明示設定した有限間隔であり、native のモデル費用や実行回数の制限ではない。
 
-`observe` は native の `accepted / processing / waiting_owner / reply_ready / declined / unknown`、outbox 保存時の `reply_queued` と `outbox_state`、ローカル拒否の `blocked` と既知の安全な reason だけを通知する。`accepted` は native 入力受付、`waiting_owner` は native が報告した判断待ちである。HAB の受信済みをこの2状態に読み替えない。outbox の `accepted` も Relay 受付であり、相手の受信・ACK・既読ではない。通知は永続記録や送信側 API ではなく、再起動後は元の native / outbox から照合する。observer を承認や後続実行の根拠にしない。
+`observe` は native の `accepted / processing / waiting_owner / reply_ready / declined / unknown`、outbox 保存時の `reply_queued` と `outbox_state`、ローカル拒否の `blocked` と既知の安全な reason だけを通知する。`accepted` は native 入力受付、`waiting_owner` は native が報告した判断待ちである。HAB の受信済みをこの2状態に読み替えない。outbox の `accepted` も host 受付であり、相手の受信・ACK・既読ではない。通知は永続記録や送信側 API ではなく、再起動後は元の native / outbox から照合する。observer を承認や後続実行の根拠にしない。
 
 停止は新しい操作を止め、現在の native 呼出しが実際に戻るまで待つ。native 呼出しを timeout で切り離して次の instance を起動しない。host の未完了 IO は有限 drain を行い、`drained=false` なら所有権と store を保持する。停止時に pause / revoke / owner release / journal reset を自動実行しない。source 拒否は `blocked` として他の許可済み source を妨げず、owner・host の不明状態は全体を停止する。
 

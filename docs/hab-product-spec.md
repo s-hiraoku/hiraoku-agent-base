@@ -2,7 +2,7 @@
 
 仕様版：0.1。更新日：2026-11-12 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
 
-[README](../README.md) · [Relay契約](hab-relay-spec.md) · [認証group](relay-auth-groups.md) · [discovery](connections/mcp-agent-discovery.md) · [Task bridge](history/task-bridge.md)
+[README](../README.md) · [配送契約](hab-messaging-spec.md) · [認証group](auth-groups.md) · [discovery](connections/mcp-agent-discovery.md) · [Task bridge](history/task-bridge.md)
 
 標準接続は[共通MCP接続](common-mcp-connection.md)と[受信supervisor](receiver/receive-supervisor.md)を基準にする。受信側が定期poll・永続保存後ACKを行い、内容判断・実行と既存の承認機構は受信エージェント側に残す。製品固有のモデルrunner・承認adapterやTaskを通常通信の必須条件にはしない。非同期Taskと受信者承認の[追加設計](history/generic-agent-async-design.md)は任意連携の要件である。本文0.1の技術評価・配備状況は当時の基準であり、追加設計の実装完了を示さない。
 
@@ -158,7 +158,7 @@ HABではrecipientのdurable保存を先に行い、そのACKを配送storeが�
 
 ## 9. 配送・削除・復旧の要件
 
-現行Relayの配送TTLは初回送信から1時間、最小配送/dedup記録は30日という契約を基準とする。再送で期限を延長しない。Task期限やrecipient inboxの保持期間とは別であり、変更するときは明示的に仕様を更新する。
+現行hostの配送TTLは初回送信から1時間、最小配送/dedup記録は30日という契約を基準とする。再送で期限を延長しない。Task期限やrecipient inboxの保持期間とは別であり、変更するときは明示的に仕様を更新する。
 
 recipientは本文/dedup/ACK要求の保存後にACKする。確定ACKの応答消失は同じreceiptで回復でき、未確定の古いACKは現leaseを奪えない。期限切れでも保存済みか不明な場合は受領不明を維持する。storage failure、容量超過、失効を成功として返さない。
 
@@ -206,6 +206,6 @@ HABが提供する簡単な通信は、全製品の自動起動、無期限保�
 
 ## 13. 参照仕様
 
-- [HAB Relay](hab-relay-spec.md)、[認証group](relay-auth-groups.md)、[discovery](connections/mcp-agent-discovery.md)、[受信supervisor](receiver/receive-supervisor.md)、[Task bridge](history/task-bridge.md)
+- [HAB配送仕様](hab-messaging-spec.md)、[認証group](auth-groups.md)、[discovery](connections/mcp-agent-discovery.md)、[受信supervisor](receiver/receive-supervisor.md)、[Task bridge](history/task-bridge.md)
 - [A2A 1.0仕様](https://a2a-protocol.org/v1.0.0/specification/)、[公式JS SDK](https://github.com/a2aproject/a2a-js)
 - [配送store](delivery-store.md)、[ADR-018](hab-decisions.md)

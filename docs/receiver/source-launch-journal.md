@@ -3,7 +3,7 @@
 `SQLiteSourceLaunchJournal` in `src/owner-integrations/source-launch-journal.ts` is an
 owner-local deduplication seam for an explicitly composed recipient workflow. It does not
 receive, send, create a native session, invoke a model, create a Task or acquire an owner.
-No normal Relay, agent SDK or receive-supervisor path imports it. It is not installed.
+No normal host, agent SDK or receive-supervisor path imports it. It is not installed.
 
 ## Why a separate claim
 

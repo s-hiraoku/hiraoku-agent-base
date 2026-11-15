@@ -3,7 +3,7 @@ import { DurableReceiver } from "../../src/agent-sdk/index.ts";
 
 import { pendingBackends } from "./manifest.js";
 
-export async function relayBackend(t) {
+export async function hostBackend(t) {
   const f = await journey(t);
   await f.enrollAll();
   return {
@@ -37,7 +37,7 @@ export async function relayBackend(t) {
 }
 
 export const backends = [
-  { id: "hab-host-sqlite", create: relayBackend },
+  { id: "hab-host-sqlite", create: hostBackend },
   ...pendingBackends,
 ];
 

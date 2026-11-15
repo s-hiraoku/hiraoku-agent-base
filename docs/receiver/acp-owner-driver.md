@@ -2,7 +2,7 @@
 
 `createAcpOwnerDriver` in `src/owner-integrations/acp-stdio.ts` implements the wire/process
 portion of an `ExternalOwnerDriver`. It is optional user-managed owner integration, outside
-`adapter-host`, the agent SDK and the configured Relay. No standard messaging path imports it.
+`adapter-host`, the agent SDK and the configured host. No standard messaging path imports it.
 There is no product-specific runner, automatic installation, live factory, credential loader,
 queue consumer or grant/resume API. By default the driver sends no prompt. A separate explicit
 trusted-local fixed-wake option can send one bounded prompt after successful verification. This is reusable code, not a native
@@ -61,7 +61,7 @@ capture the returned driver's zero-argument `wake()`. Configuration is copied at
 The text must be nonempty, valid Unicode and at most 16 KiB of UTF-8. It is a local owner-approved
 instruction to use the existing six HAB tools; **never build it from external inbox content**.
 The recipient retrieves untrusted messages through those tools and applies its own policy and
-existing approvals. ReceiveSupervisor, core dispatch and the Relay never call this method.
+existing approvals. ReceiveSupervisor, core dispatch and the host never call this method.
 Runtime arguments to `wake`, including an external body, are refused. No production caller or
 persistent per-source ledger is installed by this module.
 

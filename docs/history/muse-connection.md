@@ -40,7 +40,7 @@ Hermesでの成功やMuse CodeのCLI機能を、Museアプリの成功として�
 3. OAuth方式、実client ID／callback、5つのRelay scope、refreshの要否を確定する。
    `offline_access`、新たな保存・grant・公開経路が必要なら、その具体的な対象と期間を
    利用者に示して必要な承認を得る。既存のHermes client IDを推測で流用しない。
-4. [認証グループ](../relay-auth-groups.md)と所属名義を確認する。同じ認証を共有する
+4. [認証グループ](../auth-groups.md)と所属名義を確認する。同じ認証を共有する
    Museの会話・Botは同じ信頼境界であり、別Bot本人の証明にはならない。
    不変アドレスを未登録のまま創作せず、既存Registryの登録・binding手順を使う。
 5. 初回はcatalogと、提供されていれば`hab_discover`の`whoami`だけを確認する。

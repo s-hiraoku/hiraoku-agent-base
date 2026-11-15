@@ -1,6 +1,6 @@
 # HAB ローカルMVP：起動・送受信・停止・再起動確認
 
-[README](../README.md) · [正式仕様のゲート](hab-relay-spec.md#20-導入と受入れゲート) · [受入れ表](history/mvp-acceptance.md)
+[README](../README.md) · [正式仕様のゲート](hab-messaging-spec.md#20-導入と受入れゲート) · [受入れ表](history/mvp-acceptance.md)
 
 **このMVPの完了条件は、モデルなしの模擬3個体で登録→MCP配送→返信→停止→永続状態からの再開→実行依頼を保存だけして実行しないことを、一つの有限コマンドで再現できることです。** 実Grok・Dots・Hermesの接続や、全DBの整合backupを含むG1全体の受入れとは分けます。
 
@@ -32,13 +32,13 @@ node scripts/hab-mvp-demo.mjs --simulate
 | enrollment | 実登録workflowで3個体を登録。同じ製品の2個体を含み、アドレスは別々 |
 | auth-denial | 認証なし・未知の模擬Bearerは401 |
 | paused-by-default | 各hostはowner取得後もpaused。送信を開始しない |
-| ambiguous-send | Relay commit後に送信応答を失わせ、senderは不明結果を保持。sender statusは受付済み |
+| ambiguous-send | delivery commit後に送信応答を失わせ、senderは不明結果を保持。sender statusは受付済み |
 | ambiguous-ack | inbox保存後、server ACK commit後の応答を失わせ、未確認の元ACKを保持 |
-| cold-start | 全host・Relay／registry／enrollment DB・listenerを閉じて再構成。同じ個体、保存済みpaused、ownerを確認 |
+| cold-start | 全host・host／registry／enrollment DB・listenerを閉じて再構成。同じ個体、保存済みpaused、ownerを確認 |
 | same-id-recovery | 明示resume後、同じ送信ID・receipt・元ACKで復旧。追加配送を作らない |
 | reply-intent-restart | 質問への回答を先に保存して原質問本文をrelease。返信journalを開き直し、未確認一覧の元ID・本文・期限でoutboxへ引渡し |
 | reply-roundtrip | 元質問への回答をMCPで送信し、相手のdurable inbox保存・ACKとsender statusで確認 |
-| offline-store-forward | 受信hostがpausedでもRelayへ蓄積。resume後に受領・ACK |
+| offline-store-forward | 受信hostがpausedでもhostへ蓄積。resume後に受領・ACK |
 | execution-request-inert | execution_requestを配送・保存・ACKしても受信hostは実行しない。本文は受信者のinboxに残り、送信者のstatusはacked |
 | loop-denial | 受け取った回答への自動answerを拒否し、追加intentを作らない。質問にshell要求の文字が含まれても本文を実行しない |
 | stopped | 全hostをpauseし、未完了workがないことを確認してownerを解放 |
@@ -61,7 +61,7 @@ JSONの期待する要点は以下です。実行ログそのものを公開repo
 }
 ```
 
-mcp_toolsにはrelay_resolve／submit／status／poll／ackの5種が並び、auditには固定categoryの件数だけを返します。本文・指紋・token・実行パスは出力しません。4配送は質問・回答・不在時通知・実行依頼です。MCPの双方の状態と、最後のDBの配送／ACK receipt件数を照合します。
+mcp_toolsにはhab_resolve／submit／status／poll／ackの5種が並び、auditには固定categoryの件数だけを返します。本文・指紋・token・実行パスは出力しません。4配送は質問・回答・不在時通知・実行依頼です。MCPの双方の状態と、最後のDBの配送／ACK receipt件数を照合します。
 
 ## 保存と再開の境界
 
@@ -82,7 +82,7 @@ npm run typecheck
 npm test
 ```
 
-MVPの5テストは、上記CLIそのものの13段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。配送・公平性等の回帰も続けます。補助的なRelay MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
+MVPの5テストは、上記CLIそのものの13段階、引数拒否、import時の無副作用、開始前abort、SIGTERM中断時のcleanupを確認します。通常のnpm test・CIにも含み、MVP scriptをlintの対象に加えています。配送・公平性等の回帰も続けます。補助的なHAB MCPの手動検証は[verify-hab](../.claude/skills/verify-hab/SKILL.md)で行えますが、MVP CLIの合格を別入口の検証だけで代用しません。
 
 ## 新規導入時の依存確認
 
@@ -92,12 +92,12 @@ MVPの5テストは、上記CLIそのものの13段階、引数拒否、import�
 
 ## 未検証ゲートと実接続の条件
 
-このMVPの各アドレスは、自分だけが所属する認証グループで接続します。実接続では[認証グループ設計](relay-auth-groups.md)に従い、本人が承認したグループ単位の認証とアドレス単位の配送名義を確認します。共有認証によるグループ内のBot専有性は保証しません。
+このMVPの各アドレスは、自分だけが所属する認証グループで接続します。実接続では[認証グループ設計](auth-groups.md)に従い、本人が承認したグループ単位の認証とアドレス単位の配送名義を確認します。共有認証によるグループ内のBot専有性は保証しません。
 
 | 対象 | 次に確認／承認が必要な内容 |
 | --- | --- |
 | G0 実Grok・Dots・Hermesの各個体 | 認証済み接続／グループと所属アドレス、選択名義の固定、送信前の永続保存、再送契機、受信inbox、poll／wakeの実能力。共有subjectや選択名義をBot本人の専有実行の証明にはしない |
-| 本番Relay入口 | 接続先URL・port／path、公開の有無、認証issuer／audience、認証済みclient／connectionとグループ／アドレスの対応、proxyのheader保持を確定。MVPの一時portや模擬tokenは転用しない |
+| 本番host入口 | 接続先URL・port／path、公開の有無、認証issuer／audience、認証済みclient／connectionとグループ／アドレスの対応、proxyのheader保持を確定。MVPの一時portや模擬tokenは転用しない |
 | 最初の実通信 | 対象の個体と相手を特定し、無害な固定テキストのquestion／answer各1通、resolve／submit／status／poll／ackだけの権限、停止条件・保存場所を確認して承認 |
 | 新規認証・永続起動 | credential／OAuthの発行・scope、保存先・有効期限、実daemonやcron、既存設定変更は個別確認。MVP実行の承認から引き継がない |
 | G1全体・運用 | 全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |

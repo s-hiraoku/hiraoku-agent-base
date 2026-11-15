@@ -4,7 +4,7 @@ For the overall HAB roles, current evidence and hosting decisions, start at [REA
 
 Dots retains personal context, consultation, important-mail decisions, mark-read after notification, and schedule summaries. Grok retains its existing connpass job and future Calendar/browser/long-task work. Hermes handles development experiments, MCP and Skills. These are design roles. Current limited task contracts are connectivity_check and the opt-in fixed shift_log_inventory; the diagnostic ping/pong service is separate. Verified server policy chooses the route and allowed task types. Results and notifications never submit tasks.
 
-Agent-to-agent messaging is separate from this Task Engine. Its requirements are in the [message delivery specification](../hab-relay-spec.md) (formerly the HAB Relay specification). The former Relay implementation was retired in [ADR-016](../hab-decisions.md): delivery runs only on NATS JetStream through the single host in `src/host`, agents use the five MCP tools or the optional A2A entry, and this Task server (`src/server.ts`) is not wired to that host.
+Agent-to-agent messaging is separate from this Task Engine. Its requirements are in the [message delivery specification](../hab-messaging-spec.md) (formerly the HAB Relay specification). The former Relay implementation was retired in [ADR-016](../hab-decisions.md): delivery runs only on NATS JetStream through the single host in `src/host`, agents use the five MCP tools or the optional A2A entry, and this Task server (`src/server.ts`) is not wired to that host.
 
 ## Authentication and tool contracts
 

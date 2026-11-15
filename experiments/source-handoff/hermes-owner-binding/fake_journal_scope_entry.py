@@ -26,9 +26,9 @@ async def main():
         raise ValueError("fixture_scope_mode_invalid")
     fixture = RuntimeFixture()
     fixture.catalog.append("hab_discover")
-    config = {"url":"https://relay.example/mcp", "auth":"oauth", "tools":{"include":sorted(TOOLS | {"hab_discover"})}}
+    config = {"url":"https://hab.example/mcp", "auth":"oauth", "tools":{"include":sorted(TOOLS | {"hab_discover"})}}
     sys.modules["hermes_constants"] = SimpleNamespace(get_hermes_home=lambda: "/fake/profile")
-    sys.modules["hermes_cli.config_backend"] = SimpleNamespace(read_config_doc_readonly=lambda _: {"mcp_servers":{"hab_relay":config}})
+    sys.modules["hermes_cli.config_backend"] = SimpleNamespace(read_config_doc_readonly=lambda _: {"mcp_servers":{"hab":config}})
     Base = fixture.core.ClientSession
     class Session(Base):
         async def call_tool(self, name, *, arguments):
@@ -39,8 +39,8 @@ async def main():
                     "selected_identity":{"agent_id":scope.agent_id,"address":scope.as_address,"registration_state":"active",
                         "authorized_operations":["submit","status"],"authentication_assignment":{"kind":"authentication_group","id":"fake-group","binding_state":"active"}},
                     "host_identity":{"state":"unknown"}}
-            elif name in ("relay_submit", "relay_status"):
-                if mode == "status" and name != "relay_status": raise AssertionError("status_fixture_must_not_submit")
+            elif name in ("hab_submit", "hab_status"):
+                if mode == "status" and name != "hab_status": raise AssertionError("status_fixture_must_not_submit")
                 value = {"sender_id":scope.agent_id,"message_id":arguments["message_id"],"recipient_id":scope.source_sender_id,
                     "receipt_id":"fake-receipt","accepted_at":datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z"),
                     "expires_at":expiry,"state":"pending"}
@@ -48,7 +48,7 @@ async def main():
                 raise AssertionError("fixture_outbound_only")
             return SimpleNamespace(model_dump_json=lambda **_:json.dumps({"content":[{"type":"text","text":json.dumps(value)}],"structuredContent":value}))
     fixture.core.ClientSession = Session
-    native = HermesNativeSession("/fake/profile", "hab_relay", "https://relay.example/mcp", runtime=fixture.runtime, outbound_scope=scope)
+    native = HermesNativeSession("/fake/profile", "hab", "https://hab.example/mcp", runtime=fixture.runtime, outbound_scope=scope)
     def no_projection(_): raise AssertionError("fixture_no_projection")
     await ReceivePeer(sys.stdin.buffer, sys.stdout.buffer, native, no_projection, max_frame_bytes=65536, outbound=True).run()
 

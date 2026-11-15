@@ -6,7 +6,7 @@ standard Python MCP SDK installed in a caller-selected environment. It reuses
 SQLite stores, including the host's SQLite delivery store. It is not a new runtime,
 product adapter, credential provider, polling loop or agent launcher.
 
-The earlier [finite native trial](../history/finite-mcp-trial.md) used the Relay's basic
+The earlier [finite native trial](../history/finite-mcp-trial.md) used the host's basic
 five tools. This check instead covers the recipient tools added in #141:
 
 - Fresh paused host refuses receive, send and inbox without auto-resuming.
@@ -86,4 +86,4 @@ verified: Hermes caps MCP text at 2,000,000 characters after transport and has a
 separate spillover layer. Larger transport buffers alone do not prove full text
 reaches the model. Its experimental events/webhook route requires an already
 running gateway plus HTTPS subscription/secret/approval and caps event payloads;
-it is not a wake API provided by HAB's existing five Relay operations.
+it is not a wake API provided by HAB's existing five HAB operations.

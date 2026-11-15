@@ -94,7 +94,7 @@ sinkにログイン、通信、async処理を置かないでください。例�
 その結果が確定してから、信頼済みproviderだけが `AuthenticationRecoveryError` を生成できます。
 例えばissuerの確認済み `invalid_grant` は `reauthentication_required` へ変換できますが、
 任意の例外の `code`、HTTP status、未検証JWTだけでは変換できません。
-`RelayMcpClient` はcredential providerからの型付き信号のみを保存し、fetch/遠隔レスポンスからは
+`DeliveryMcpClient` はcredential providerからの型付き信号のみを保存し、fetch/遠隔レスポンスからは
 昇格させません。native `HostManagedTransport` 側も同じ契約と既存operation guardに従います。
 refresh/discovery/loginをsupervisor側に移してguardを迂回してはいけません。
 

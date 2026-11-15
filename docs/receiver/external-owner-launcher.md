@@ -1,7 +1,7 @@
 # External owner launcher: trusted local composition
 
 This opt-in, product-independent launcher builds on [private recipient HTTP](private-recipient-http.md).
-It is not installed in the normal Relay, does not create Tasks, and supplies no product runner,
+It is not installed in the normal host, does not create Tasks, and supplies no product runner,
 native authentication, live credential issuer or permission policy. It is reusable orchestration
 code tested against an explicitly synthetic driver, not a completed native connection.
 
@@ -151,7 +151,7 @@ initialize and session/new over a dedicated owned channel, with bounded NDJSON p
 explicit synthetic executable regression. It adds no SDK dependency or product-specific verifier.
 Its correlated successful create response can support the native cause chain only with independently
 verified product commit behavior, exclusive configuration delivery and effective participant scope.
-Eager discovery alone is insufficient. The default Relay does not import or start this integration;
+Eager discovery alone is insufficient. The default host does not import or start this integration;
 real product startup remains unapproved by source-code or synthetic-test acceptance.
 
 Before live use, separately approve the actual executable/revision, profile and all effective viewers,

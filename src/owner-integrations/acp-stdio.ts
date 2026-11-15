@@ -1,4 +1,4 @@
-/** Optional owner integration. Never imported by the Relay or agent execution core. */
+/** Optional owner integration. Never imported by the messaging or agent execution core. */
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { isAbsolute } from "node:path";
 import { TextDecoder } from "node:util";

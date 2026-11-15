@@ -30,7 +30,7 @@ HAB名義、実行中のsession／botを別々に確認します。関連: [#112
 閲覧できます。停止・退役した所属も一覧に含め、その登録状態を表示します。
 製品やnamespaceが同じという理由では一覧の閲覧範囲を広げません。
 
-既存`relay_resolve / submit / status / poll / ack`とそのschemaは変更しません。
+既存`hab_resolve / submit / status / poll / ack`とそのschemaは変更しません。
 登録機能の未マージpatchを取り込まず、`hab_register`の有無に依存しません。
 追加toolを完全一致で拒否するクライアントは、利用前にcatalog allowlistの対応が
 必要です。受信専用クライアントのpoll／ack呼出し権限は広げません。
@@ -80,7 +80,7 @@ issuer、subject、client ID、connection claim、fingerprint、tokenは返し�
 | `host_assignment` | この接続のホストが証明できるsession／botだけ。証明なしは`unknown` |
 | `presence` | 現行Registryに観測機構がないため`unknown / not_observed`、観測時刻`null` |
 
-発行済みだがhost bindingが未設定なのか、Relayから見えないのかは、現行のデータだけでは
+発行済みだがhost bindingが未設定なのか、hostから見えないのかは、現行のデータだけでは
 区別できません。`host_assignment=unknown`を「空き」「未割当」「オフライン」には変換
 しません。`waiting_connection`も未発行や自由に取得できる名前とは扱いません。
 認証groupの割当と、製品内のsession／botへの割当は独立です。発行済みでもまだ
@@ -137,12 +137,12 @@ namespaceでは、Registryの完全一致照会で発行済みを`unavailable`�
 独立した不透明IDです。ホストは実session／botとの照合と永続保存の確認を担います。
 `binding_generation`も保存済みbindingの世代です。callbackはread-onlyで、DB／directoryの
 作成、receipt再保存、owner_referenceの発行、登録時申告からの推測を行ってはいけません。
-Relayは正規schema、時刻、有効期間（Registryの`max_context_ms`以内）、閲覧範囲内の
+hostは正規schema、時刻、有効期間（Registryの`max_context_ms`以内）、閲覧範囲内の
 agent IDとアドレスの一致を再検証します。不正な証明は拒否し、期限切れ証明は値を
 公開せず`unknown / stale_attestation`にします。ホストの証明は稼働監視ではありません。
 
 `startHostServer`は選ばれた認証authorityのこのportを引き継ぎます。通常のファイル設定
-にはhost session情報を創作するmappingを追加しません。Relay単独では各製品のsession／
+にはhost session情報を創作するmappingを追加しません。配送単独では各製品のsession／
 botや全hostの割当一覧を知りません。Hermes pluginの実identity storeへの配線は、
 未マージの登録実装との統合時に同じ不変IDとowner_referenceで行う別作業です。
 profileの`local-lab`→`hermes-hab`変更やHABアドレスのrenameは本機能では行いません。
@@ -154,5 +154,5 @@ profileの`local-lab`→`hermes-hab`変更やHABアドレスのrenameは本機�
 
 `test/hab-discovery.test.js`はgroup隔離、偽装、期限・失効、MAC cursorとfilter、
 情報非開示、候補照会後の登録競合、全テーブル無変更を検証します。
-`test/local-relay-host.test.js`では実loopback HTTPの起動・照会・ホスト本人の証明・
+`test/host-server.test.js`では実loopback HTTPの起動・照会・ホスト本人の証明・
 既存resolveとの併用も検証します。どちらも合成認証と一時DBだけを使います。

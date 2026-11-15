@@ -8,7 +8,7 @@ import { SQLiteEnrollmentJournal } from "../src/hab/sqlite-enrollment-journal.ts
 import { runHabEnrollment } from "../src/hab/enrollment.ts";
 import { sqliteDelivery } from "./delivery-fixture.js";
 import { options, operations, principal } from "./hab-registry-fixtures.js";
-import { limits, message } from "./relay-http-fixtures.js";
+import { limits, message } from "./mcp-http-fixtures.js";
 import { setup } from "./hab-http-fixtures.js";
 
 export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
@@ -169,10 +169,9 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
               db
                 .prepare(
                   {
-                    relay_messages: "SELECT count(*) n FROM delivery_messages",
-                    relay_deliveries:
-                      "SELECT count(*) n FROM delivery_messages",
-                    relay_ack_receipts:
+                    messages: "SELECT count(*) n FROM delivery_messages",
+                    deliveries: "SELECT count(*) n FROM delivery_messages",
+                    ack_receipts:
                       "SELECT count(*) n FROM delivery_messages WHERE ack_request_id IS NOT NULL",
                   }[table],
                 )
@@ -202,12 +201,12 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
     // Fault injection only in newly created test DBs; never alter original payload IDs/deadlines.
     dueOutbox(name) {
       raw(`outbox-${name}.sqlite`, (db) =>
-        db.exec("UPDATE relay_outbox SET next_retry_at=0"),
+        db.exec("UPDATE outbox SET next_retry_at=0"),
       );
     },
     dueAck(name) {
       raw(`inbox-${name}.sqlite`, (db) =>
-        db.exec("UPDATE relay_receiver_acks SET next_retry_at=0"),
+        db.exec("UPDATE receiver_acks SET next_retry_at=0"),
       );
     },
     expireLeases() {

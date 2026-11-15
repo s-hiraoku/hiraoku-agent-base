@@ -25,13 +25,13 @@
 | task_reply_prepare | 既存journalへ受付／結果の固定返信を保存 |
 | task_reply_enqueue | 保存済みTask返信を共通budget経由でoutboxへ引渡し |
 
-新規メッセージは `message_enqueue` へ既存Relay version 1のenvelopeを渡します。独立した同名操作の認可、現在のpause／epochと任意ownerを確認し、outbox commit内でも再確認します。senderや接続先URLは命令から指定できません。ID・本文・期限はcallerが確定したものを保存し、同じ内容の再投入は元のreceiptへ照合します。内容を変えた同IDは上書きしません。完了応答が失われても新ID・新期限は生成せず、元のenvelopeで照合します。結果は本文を含まないoutbox metadataで、queuedは配達成功を意味しません。実送信には別のsend命令が必要です。
+新規メッセージは `message_enqueue` へ既存HAB version 1のenvelopeを渡します。独立した同名操作の認可、現在のpause／epochと任意ownerを確認し、outbox commit内でも再確認します。senderや接続先URLは命令から指定できません。ID・本文・期限はcallerが確定したものを保存し、同じ内容の再投入は元のreceiptへ照合します。内容を変えた同IDは上書きしません。完了応答が失われても新ID・新期限は生成せず、元のenvelopeで照合します。結果は本文を含まないoutbox metadataで、queuedは配達成功を意味しません。実送信には別のsend命令が必要です。
 
 `in_reply_to` を持つenvelopeやanswer／execution_accepted／execution_resultはこの入口で拒否します。返信は元sourceに固定された既存answer／Task返信intentと共通budgetを通します。execution_requestもこの段階では配送するデータに留まり、Task引受け・submitは受信側の別操作です。契約による添付partの拒否、outboxの容量・期限・重複制御は変えません。この追加はローカルhost APIだけで、MCP catalog・製品設定・常駐loopを自動変更しません。実接続の構成側はmessage_enqueueの権限を明示してください。
 
 受信・ACK・一覧取得からTaskを作りません。Taskのclaim／heartbeat／complete／cancelやHermes実行は提供しません。Task Engineへの接続には、別途検証済みPrincipalを使う既存BridgeTasks portが必要です。hostの認可やHAB名からTask Principalを作りません。
 
-step結果のdoneはその命令の完了です。配送ACK・業務成功とは別で、Task queuedやRelay pendingをTask成功と解釈しません。途中の失効・停止・不明な通信・quota上限ではincompleteと固定reasonを返します。初期の権限不足・paused・busy・不正命令は副作用前に拒否します。未知の例外本文を返却・通知へコピーしません。
+step結果のdoneはその命令の完了です。配送ACK・業務成功とは別で、Task queuedやdelivery pendingをTask成功と解釈しません。途中の失効・停止・不明な通信・quota上限ではincompleteと固定reasonを返します。初期の権限不足・paused・busy・不正命令は副作用前に拒否します。未知の例外本文を返却・通知へコピーしません。
 
 ## 保存済み本文を明示的に読む
 
@@ -58,7 +58,7 @@ hostは同じ個体にbindingしたcontrol、SQLiteInbox、SQLiteOutbox、SQLite
 
 `HostAuthorization(context, operation, source|null)` は同期のhost portで、検証済みcontextから個体・actor・操作・source scopeを確認します。既定拒否、Promise拒否、別個体拒否、actor変更・失効拒否を適用します。命令にagent名・credential・送信先URL・scopeを指定する欄はありません。Taskのaccept／submit／observe／replyは別のhost操作へ対応させます。
 
-network clientはreceive／send命令の中で構築し、その命令専用のguarded fetchを使います。factoryはIOを始めず、固定resource・固定個体・現在の認証providerを持つRelayMcpClient等を組み立てるだけです。実認証の検証・tokenの取得は既存client／接続portの責務です。この実装はcredentialの発行・読取り・コピーや接続先の自動探索を行いません。
+network clientはreceive／send命令の中で構築し、その命令専用のguarded fetchを使います。factoryはIOを始めず、固定resource・固定個体・現在の認証providerを持つDeliveryMcpClient等を組み立てるだけです。実認証の検証・tokenの取得は既存client／接続portの責務です。この実装はcredentialの発行・読取り・コピーや接続先の自動探索を行いません。
 
 ### Product-owned managed transport (trusted local integration)
 
@@ -149,6 +149,6 @@ node --test --test-name-pattern="real loopback HTTP MCP" test/adapter-host.test.
 
 30シナリオで、受信→明示回答→送信／ACK、固定Taskの引受け・受付・結果返信、停止・再起動・世代変更、RPC中の失効、遅いcredential／fetch、timeout後の枠保持、ACK／送信応答消失、同key Task照合、終了後callback拒否、取り残された通信、制御audit容量・失敗・改ざん、native control競合を確認します。固定Taskはモデルなしの模擬workerで検証し、実エージェントを呼びません。
 
-既存HAB MCPは `verify-hab` でも別途回帰確認しました。recv-ackは `009-b-relay_ack.res`、send-statusは `011-a-relay_status.res`、独立DB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みで、raw evidenceは一時領域のみです。この確認は既存Relayの回帰試験であり、新hostを既定MCPや実製品へ配線した証明ではありません。
+既存HAB MCPは `verify-hab` でも別途回帰確認しました。recv-ackは `009-b-hab_ack.res`、send-statusは `011-a-hab_status.res`、独立DB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みで、raw evidenceは一時領域のみです。この確認は既存hostの回帰試験であり、新hostを既定MCPや実製品へ配線した証明ではありません。
 
 実製品の接続・常駐起動、認証binding、全入口へのowner適用、整合restore・運用監視・本番E2Eは未完了です。

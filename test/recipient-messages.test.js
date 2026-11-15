@@ -5,8 +5,8 @@ import { once } from "node:events";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fixture } from "./recipient-messages-fixtures.js";
 import { deferred, HOST_LEASE_MS } from "./adapter-host-fixtures.js";
-import { call, message } from "./relay-http-fixtures.js";
-import { createRelayNodeHandler } from "../src/host/mcp/http-node.ts";
+import { call, message } from "./mcp-http-fixtures.js";
+import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 
 const code = (wanted) => (error) => error.code === wanted;
 
@@ -56,7 +56,7 @@ test("explicit recipient handoff, native policy wait, exact approved reply and d
   assert.equal(f.service.status(f.contexts.a, key.message_id).state, "acked");
   // Cross the old short fixture lease without changing production lease checks.
   f.hostState.afterNetwork = (tool) =>
-    tool === "relay_submit" ? sleep(HOST_LEASE_MS + 100) : undefined;
+    tool === "hab_submit" ? sleep(HOST_LEASE_MS + 100) : undefined;
   f.resume();
   const sent = await f.step({ op: "send" });
   assert.equal(sent.state, "done", JSON.stringify(sent));
@@ -400,10 +400,10 @@ test("real loopback MCP receive, synthetic native judgment and policy, outbox an
     observed = [];
   let handle;
   const server = createServer((req, res) => {
-    if (req.headers["mcp-name"] === "relay_ack") {
+    if (req.headers["mcp-name"] === "hab_ack") {
       observed.push(
         f.inboxRaw
-          .prepare("SELECT body,receipt_confirmed FROM relay_inbox")
+          .prepare("SELECT body,receipt_confirmed FROM inbox")
           .get(),
       );
     }
@@ -416,7 +416,7 @@ test("real loopback MCP receive, synthetic native judgment and policy, outbox an
     await new Promise((resolve) => server.close(resolve));
   });
   const url = `http://127.0.0.1:${server.address().port}/mcp`;
-  handle = createRelayNodeHandler(f.gateway({ resource_url: url }));
+  handle = createMcpNodeHandler(f.gateway({ resource_url: url }));
   f.hostState.resource_url = url;
   // hostFixture and recipient fixture have independent authorization state.
   const host = f.makeHost({ network: globalThis.fetch });
@@ -425,7 +425,7 @@ test("real loopback MCP receive, synthetic native judgment and policy, outbox an
     key = { sender_id: "a", message_id: input.message_id },
     http = { fetch: globalThis.fetch };
   assert.equal(
-    (await call(http, "relay_submit", input, { url })).body.result
+    (await call(http, "hab_submit", input, { url })).body.result
       .structuredContent.state,
     "pending",
   );
@@ -448,7 +448,7 @@ test("real loopback MCP receive, synthetic native judgment and policy, outbox an
   const reply = (
     await call(
       http,
-      "relay_poll",
+      "hab_poll",
       {},
       { url, headers: { Authorization: "Bearer fixture-a" } },
     )

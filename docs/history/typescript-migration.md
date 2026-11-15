@@ -13,7 +13,7 @@ no new loader, transpiler or dependency is needed.
 The implementations of these entry points and helpers now live in TypeScript:
 
 - `scripts/build.ts`
-- `scripts/hab-relay.ts` and `scripts/hab-relay-admin.ts`
+- `scripts/hab-host.ts` and `scripts/hab-admin.ts`
 - `scripts/hab-enrollment-demo.ts`
 - `scripts/pilot-preflight.ts`
 - `scripts/native-trial-preflight.ts` and `scripts/lib/native-trial-preflight.ts`

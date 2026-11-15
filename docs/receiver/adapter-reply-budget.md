@@ -1,8 +1,8 @@
 # Adapterの永続返信budgetとloop制御
 
-[README](../../README.md) · [正式仕様](../hab-relay-spec.md) · [Task bridge](../history/task-bridge.md)
+[README](../../README.md) · [正式仕様](../hab-messaging-spec.md) · [Task bridge](../history/task-bridge.md)
 
-`src/adapter-policy/` は受信側integrationの独立部品です。Relay coreやHAB registryへ内容判断を追加せず、model・Task・HTTP呼出しや常駐loopを起動しません。既定MCP・runtimeへは未配線です。
+`src/adapter-policy/` は受信側integrationの独立部品です。messaging coreやHAB registryへ内容判断を追加せず、model・Task・HTTP呼出しや常駐loopを起動しません。既定MCP・runtimeへは未配線です。
 
 ## 許可する関係
 
@@ -16,7 +16,7 @@ answer、delivery_failure、notice、受付・結果通知からは自動返信�
 
 `InboxAnswers.enqueueOnce(context, sourceKey, message)` は、現在のhost認可と確認済みSQLiteInboxのsourceを照合してanswerを通常outboxへ保存します。sourceのsender・ID・宛先・kind・threadはdurable inboxから取り、本文から認証主体を作りません。未確認・未保存・本文解放済みの新規sourceは拒否します。既に予約した完全一致の返信は、保存済みsource metadataを使って本文解放後も照合できます。
 
-hostの認可providerは、検証済みcontextとsource scopeから受信個体・actorを返す同期portです。既定拒否、別個体拒否、Promise拒否、actor変更・途中失効拒否を適用し、予約commitとoutbox commitの前に確認します。個体名・IDを知っているだけでは許可しません。hostは受付済みoutboxの送信時にも現在の接続権限・Relayの認可を適用します。
+hostの認可providerは、検証済みcontextとsource scopeから受信個体・actorを返す同期portです。既定拒否、別個体拒否、Promise拒否、actor変更・途中失効拒否を適用し、予約commitとoutbox commitの前に確認します。個体名・IDを知っているだけでは許可しません。hostは受付済みoutboxの送信時にも現在の接続権限・hostの認可を適用します。
 
 ## 枠の単位と消費点
 
@@ -31,7 +31,7 @@ hostの認可providerは、検証済みcontextとsource scopeから受信個体�
 
 新しい予約をwrite transactionでcommitしてからoutboxへ渡します。送信前の障害、応答消失、quarantine、取消などでも枠を返却しません。枠を戻すと、送信済みか不明な状態で別返信を増やせるためです。同じID・同じ内容だけを再照合し、別ID・本文変更・宛先変更はconflictになります。再試行は予約時刻・thread件数・rate消費を更新せず、outboxの通常の再送上限・期限を使います。
 
-これは**新しい自動返信意図の受付rate**です。既に予約済みのbacklogやネットワーク再送の実送信rate・HTTP受付上限は、Sender／Relay／writer admissionでも別途制限します。複数DBを作って同じ個体の枠を分散する構成は許可しません。複数processは同じDBを共有し、原子的に枠を予約します。
+これは**新しい自動返信意図の受付rate**です。既に予約済みのbacklogやネットワーク再送の実送信rate・HTTP受付上限は、Sender／host／writer admissionでも別途制限します。複数DBを作って同じ個体の枠を分散する構成は許可しません。複数processは同じDBを共有し、原子的に枠を予約します。
 
 上限ではreply_thread_exhausted、reply_rate_exhausted、reply_budget_capacity_exceeded等を返して処理を止めます。別threadの自動生成・枠の自動リセット・新Task作成で迂回しません。rateはwindow経過後に回復しますが、元要求とthreadの消費は残ります。
 
@@ -57,9 +57,9 @@ InboxAnswersは返信envelopeを生成・保存するproducerの代わりでは�
 
 ## 検証範囲
 
-`node --test test/adapter-reply-budget.test.js` の36シナリオで、確認済み受信・ACKとの分離、許可関係、既定拒否、source／宛先／thread固定、同一返信の再試行、thread／rate／容量、再起動、失効、応答消失・別DBの確認失敗、期限、時計・行改ざん、rollback、native競合、answerとTask返信の共通枠を確認します。実SQLite／Relayのquestion→answer→ACKも確認し、Taskを起動しないことを検証します。Task返信はモデルなしの既存固定Taskを使います。
+`node --test test/adapter-reply-budget.test.js` の36シナリオで、確認済み受信・ACKとの分離、許可関係、既定拒否、source／宛先／thread固定、同一返信の再試行、thread／rate／容量、再起動、失効、応答消失・別DBの確認失敗、期限、時計・行改ざん、rollback、native競合、answerとTask返信の共通枠を確認します。実SQLite／hostのquestion→answer→ACKも確認し、Taskを起動しないことを検証します。Task返信はモデルなしの既存固定Taskを使います。
 
-既存の模擬MCP経路も `verify-hab` で別途回帰確認しました。recv-ackは `009-b-relay_ack.res`、send-statusは `011-a-relay_status.res`、独立したDB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みです。raw evidenceは一時領域のみで、公開repoへ入れません。この確認は既存Relayの回帰試験であり、未配線のbudget APIをMCPから操作した証拠ではありません。
+既存の模擬MCP経路も `verify-hab` で別途回帰確認しました。recv-ackは `009-b-hab_ack.res`、send-statusは `011-a-hab_status.res`、独立したDB auditは `012-inspect-after-ack.json` が証拠です。専用processはcleanup済みです。raw evidenceは一時領域のみで、公開repoへ入れません。この確認は既存hostの回帰試験であり、未配線のbudget APIをMCPから操作した証拠ではありません。
 
 [有限Adapter host](adapter-host.md)では、確認済みsourceの明示回答とTask返信に同じbudgetを組み立て、停止・通信前後・commitのguardも適用します。
 

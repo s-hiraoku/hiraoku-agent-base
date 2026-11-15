@@ -149,7 +149,7 @@ test("Host owner: lost owner after an RPC cannot save or ACK late data", async (
   const result = await host.stepOnce(f.context, { op: "receive" });
   assert.equal(result.reason, "host_owner_not_held");
   assert.equal(f.inbox.inbox().length, 0);
-  assert.deepEqual(f.state.tools, ["relay_poll"]);
+  assert.deepEqual(f.state.tools, ["hab_poll"]);
 });
 test("Host owner: file replacement and permission changes fail closed", async (t) => {
   const f = await fixture(t);

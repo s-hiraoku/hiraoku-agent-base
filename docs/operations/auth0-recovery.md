@@ -9,14 +9,14 @@
 
 | 対象 | 期限・拒否の意味 | 復旧の担当 |
 | --- | --- | --- |
-| access token (AT) | JWTの`exp`まで。Relayの設定上限と実`iat/exp`を別々に確認する | Hermesの標準OAuth clientがrefresh可能なら新ATを取得する |
+| access token (AT) | JWTの`exp`まで。hostの設定上限と実`iat/exp`を別々に確認する | Hermesの標準OAuth clientがrefresh可能なら新ATを取得する |
 | refresh token (RT) | issuerの最大・idle期限、取消、rotation/reuse検知など。ATの`exp`やRTファイルの存在から有効期限は分からない | 元のissuer/clientで更新。更新資格が使えない場合は本人が再認証 |
 | ブラウザーのログインsession | Auth0や上流IdPへの再ログイン要否。AT/RTやHAB参加期間とは別 | 本人が既存アカウントでログイン |
 | HAB参加承認・binding | `approved_at / approved_until / state`とRegistryの現在状態。RT更新で延長・復活しない | 正規の管理画面・CLIで確認。変更が必要なら別途承認 |
 | receiver process | `running`やLISTENは認証・受信成功の証拠ではない | native whoami、実受信保存・ACKで確認 |
 
 有効期限内のATを送っても401になる場合、単なる期限切れと決めつけません。
-Relayは署名・issuer・resource・scope・時刻・主体/client・参加承認を検査します。
+hostは署名・issuer・resource・scope・時刻・主体/client・参加承認を検査します。
 同じメールアドレス、同じclient、同じ表示名だけでは`subject`の一致を証明できません。
 
 ## 1. 送信を止め、既存の一件を保全する
@@ -90,7 +90,7 @@ issuerのrotation設定では古いRTの再使用がfamily全体の失効を招�
 native外で同じRTを使う更新処理を追加しません。
 
 更新後は新ATの期限だけでなく、同じ既存接続としてnative whoamiが通ることを確認します。
-fileのmtime更新は、どのflowが成功したか、Relayが本人を認可したかの証拠にはなりません。
+fileのmtime更新は、どのflowが成功したか、hostが本人を認可したかの証拠にはなりません。
 期限内ATへの401でSDKが対話flowへ進むこともあり、対話要求だけではRT失効は断定できません。
 Auth0の正規ログで対象client・時刻を限定し、refresh exchange成功/拒否、reuse検知、
 最大/idle期限、取消や設定変更を区別します。ログ全文やtokenを公開成果物へ移しません。
@@ -143,8 +143,8 @@ HABの既存回帰試験を、pinned Nodeと専用の一時broker/loopback環境
 実サービス・本番credentialを試験fixtureへ渡しません。
 
 ```sh
-node --test test/relay-oauth-auth.test.js test/relay-oauth-participation.test.js
-node --test test/local-relay-participation.test.js test/local-relay-admin.test.js
+node --test test/oauth-auth.test.js test/oauth-participation.test.js
+node --test test/host-participation.test.js test/host-admin.test.js
 node --test test/tools/native-trial-message.test.ts
 ```
 
