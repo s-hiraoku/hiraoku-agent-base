@@ -7,9 +7,12 @@ import { mkdtempSync, rmSync, readdirSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { runLocalMvp } from "../scripts/lib/local-mvp.mjs";
 const execute = promisify(execFile);
-const cli = new URL("../scripts/hab-mvp-demo.mjs", import.meta.url);
+const cli = fileURLToPath(
+  new URL("../scripts/hab-mvp-demo.mjs", import.meta.url),
+);
 const stages = [
   "enrollment",
   "auth-denial",
@@ -37,7 +40,7 @@ test(
     const root = directory(t);
     const { stdout, stderr } = await execute(
       process.execPath,
-      [cli.pathname, "--simulate"],
+      [cli, "--simulate"],
       {
         timeout: 12000,
         env: { ...process.env, TMPDIR: root },
@@ -93,7 +96,7 @@ test("Local MVP: missing, unknown and extra arguments refuse before creating sta
     ["--simulate", "--url", "https://invalid.example/"],
   ]) {
     await assert.rejects(
-      execute(process.execPath, [cli.pathname, ...args], {
+      execute(process.execPath, [cli, ...args], {
         env: { ...process.env, TMPDIR: root },
       }),
       (e) => e.code === 2 && e.stdout === "" && e.stderr.startsWith("Usage:"),
@@ -128,7 +131,7 @@ test(
   { timeout: 15000 },
   async (t) => {
     const root = directory(t),
-      child = spawn(process.execPath, [cli.pathname, "--simulate"], {
+      child = spawn(process.execPath, [cli, "--simulate"], {
         env: { ...process.env, TMPDIR: root },
         stdio: ["ignore", "pipe", "pipe"],
       });
