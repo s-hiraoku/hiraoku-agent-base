@@ -113,7 +113,7 @@ export async function main(
         process.once("SIGINT", stop);
         try {
           while (!controller.signal.aborted) {
-            await watcher.checkDue();
+            await watcher.checkDue(controller.signal);
             await delay(
               watcher.nextDelay(config.normal_interval_ms),
               undefined,

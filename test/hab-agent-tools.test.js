@@ -474,3 +474,39 @@ test("invalid additive watch times never hide an already accepted send result", 
     assert.equal(submits, 1);
   }
 });
+
+test("read first-page summaries cannot hide a sixth unread reply", async (t) => {
+  const f = await setup(t);
+  const original = await f.ok("a", "hab_send", {
+    to: f.b.address,
+    text: "synthetic multiple replies",
+  });
+  await f.ok("b", "hab_inbox");
+  for (let i = 0; i < 5; i++)
+    await f.ok("b", "hab_reply", {
+      message_id: original.message_id,
+      text: `synthetic read ${i}`,
+    });
+  await f.ok("a", "hab_inbox");
+  const next = await f.ok("b", "hab_reply", {
+    message_id: original.message_id,
+    text: "synthetic sixth unread",
+  });
+  const status = await f.ok("a", "hab_status", {
+    message_id: original.message_id,
+  });
+  assert.equal(status.replies.length, 5);
+  assert.equal(
+    status.replies.every((reply) => reply.read),
+    true,
+  );
+  assert.equal(status.has_unread_replies, true);
+  assert.equal(status.reply_watch.action, "read_reply");
+  const unread = await f.ok("a", "hab_inbox", { message_id: next.message_id });
+  assert.equal(unread.messages.length, 1);
+  const read = await f.ok("a", "hab_status", {
+    message_id: original.message_id,
+  });
+  assert.equal(read.has_unread_replies, false);
+  assert.equal(read.reply_watch.action, "stop");
+});

@@ -50,6 +50,7 @@ export interface HabAgentService {
   ): Receipt & {
     to: string | null;
     kind: string;
+    has_unread_replies: boolean;
     replies: {
       message_id: string;
       kind: string;
@@ -203,8 +204,7 @@ function envelope(fields: {
 /** Whether the recipient answered, as hab_status reports it. */
 type ReplyState = "replied" | "waiting" | "no_reply" | "not_expected";
 const replyExplanations: Readonly<Record<ReplyState, string>> = Object.freeze({
-  replied:
-    "The recipient replied. Reply IDs and read state are in `replies`.",
+  replied: "The recipient replied. Reply IDs and read state are in `replies`.",
   waiting: "No reply yet. Check again later; do not wait in a loop.",
   no_reply:
     "No reply arrived before the deadline. Send again if you still need an answer.",
@@ -418,12 +418,12 @@ export function runHabAgentTool(
         ...replyWatchAdvice(
           receipt.accepted_at,
           receipt.expires_at,
-          reply_state === "replied" &&
-            receipt.replies.every((reply) => reply.read)
+          reply_state === "replied" && !receipt.has_unread_replies
             ? "not_expected"
             : reply_state,
         ),
         replies: receipt.replies,
+        has_unread_replies: receipt.has_unread_replies,
         explanation: `${stateExplanations[receipt.state]} ${replyExplanations[reply_state]}`,
       };
     }

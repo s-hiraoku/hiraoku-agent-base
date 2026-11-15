@@ -564,3 +564,43 @@ test("transient failures cap backoff and successful status resets it within the 
   assert.equal(w.records()[0].failures, 0);
   assert.equal(w.records()[0].state, "waiting");
 });
+
+test("shutdown finishes the current check and never claims the remaining batch", async (t) => {
+  const f = setup(t),
+    w = f.open();
+  w.watch(sent);
+  w.watch({ ...sent, message_id: "original-2" });
+  f.setNow(start + 15000);
+  const controller = new AbortController();
+  let finish,
+    entered,
+    calls = 0;
+  const began = new Promise((r) => {
+    entered = r;
+  });
+  f.transport.status = async (messageId) => {
+    calls++;
+    entered();
+    await new Promise((r) => {
+      finish = r;
+    });
+    return {
+      ...sent,
+      message_id: messageId,
+      reply_state: "waiting",
+      replies: [],
+    };
+  };
+  const running = w.checkDue(controller.signal);
+  await began;
+  controller.abort();
+  finish();
+  await running;
+  assert.equal(calls, 1);
+  assert.equal(
+    w.records().find((r) => r.message_id === "original-2").lease_until,
+    0,
+  );
+  await w.checkDue(controller.signal);
+  assert.equal(calls, 1);
+});

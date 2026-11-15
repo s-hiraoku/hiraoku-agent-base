@@ -184,10 +184,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/agent-tools.md",
-      "sha256": "6373aeff0c7544b8a30eec01df6b2993ec89ed8dc342ef291187f09ca0cb3cd6",
+      "sha256": "56dbe55a8ef4fccc9953458cb7cc1ce8035ee12831c4e94686c75b6908460ab0",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read. PR225 review: existing feature entries/recipe now describe additive bounded reply_watch, unread/read stop semantics, accepted-result preservation and actual optional owner runner regression coverage without native Dots claims.",
+      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read. PR225 review: existing feature entries/recipe now describe additive bounded reply_watch, unread/read stop semantics, accepted-result preservation and actual optional owner runner regression coverage without native Dots claims. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only.",
       "read_scope": "full"
     },
     {
@@ -381,10 +381,10 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "b53ed62ffc5af1df3cb9aff635bb4ef917e3208a599f8c40050e3f921d337a5f",
+      "sha256": "00c1a202a654f6c54ae484d58094ef4cd6ef73732ca323e6f847509323f5a259",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it. Reviewed PR #216: send ends the turn without a wait loop or starting the recipient; replies arrive through inbox and status exposes reply_state. Low-level durable send/receive and evidence boundaries remain unchanged. PR225 review: Japanese send/status table includes reply_watch; appended bounded owner-runner integration and external Dots wake/read/ACK boundary. Original cited ranges retain identical bytes and positions."
+      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it. Reviewed PR #216: send ends the turn without a wait loop or starting the recipient; replies arrive through inbox and status exposes reply_state. Low-level durable send/receive and evidence boundaries remain unchanged. PR225 review: Japanese send/status table includes reply_watch; appended bounded owner-runner integration and external Dots wake/read/ACK boundary. Original cited ranges retain identical bytes and positions. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only."
     },
     {
       "path": "docs/diagrams/manifest.json",
@@ -1064,7 +1064,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "53ce816157f7264d35543774ab3187c553bd4b16449232b3db0dc7f1e96b1380",
+      "sha256": "272c283434860f410f85f695ce71eac7c9f65d6daf6f0fc8732e62b11c7495af",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1229,11 +1229,11 @@
     },
     {
       "path": "docs/reply-monitoring.md",
-      "sha256": "54d1289e36fc60bb351a74fc79b44768753f283112603939e4138857c4916cd2",
+      "sha256": "4982eaa1f5b4826e3600e1fb673da5cfe4bed07f6f7ca628c6401c423f15d54d",
       "role": "normative",
       "review": "reviewed",
       "read_scope": "full",
-      "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance. Review follow-up preserves accepted sends if additive planning fails and stops advice after all replies are read, with reply_state unchanged."
+      "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance. Review follow-up preserves accepted sends if additive planning fails and stops advice after all replies are read, with reply_state unchanged. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only."
     }
   ],
   "requirements": [

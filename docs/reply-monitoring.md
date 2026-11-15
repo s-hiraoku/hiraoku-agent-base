@@ -7,6 +7,8 @@ adapter. The HAB server does not start a background agent or install a Dots
 scheduler. Advice is omitted if its times cannot be interpreted, preserving an
 already accepted send result. Once all replies are read, status advice returns
 `stop` while `reply_state` remains `replied`; it does not request another inbox read.
+The bounded five-entry `replies` summary is not proof that all replies are read:
+`has_unread_replies` checks the complete matching set independently.
 
 ## Owner integration
 
@@ -25,7 +27,7 @@ watch from that result, never resend automatically. A lost send response also
 must not be retried automatically. For an existing retained `hab_send` result,
 call `adapter.watch(result)` in that same authenticated owner scope.
 
-The owner calls `await adapter.checkDue()` and waits `adapter.nextDelay()` before
+The owner calls `await adapter.checkDue(signal)` and waits `adapter.nextDelay()` before
 the next cycle. `nextDelay(normalMs)` returns the owner's normal cadence when
 there is no active watch. `records()` retains terminal state and matching reply
 IDs for the product's own display path. The adapter never reads reply bodies,

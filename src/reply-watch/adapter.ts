@@ -148,7 +148,8 @@ export class ReplyWatchAdapter {
     return Math.max(0, Math.min(normalMs, ...next.map((at) => at - now)));
   }
   /** Bounded page, atomic claims across processes; always recomputes from the original times. */
-  async checkDue() {
+  async checkDue(signal?: AbortSignal) {
+    if (signal?.aborted) return;
     const now = this.#now();
     this.#db
       .prepare(
@@ -162,6 +163,7 @@ export class ReplyWatchAdapter {
       )
       .slice(0, 50);
     for (const row of due) {
+      if (signal?.aborted) break;
       const claim = randomUUID();
       const started = this.#now();
       if (started >= row.stop_at) {
