@@ -33,6 +33,12 @@ CREATE INDEX IF NOT EXISTS notices_state ON notices(state,expires_at);`;
  */
 export const ACCEPTING_ABANDONED_MS = 15 * 60 * 1000;
 
+/**
+ * A `declining` claim older than this is retried: a decline in progress tells HAB within
+ * the 30-second call limit, so an older one failed or was left by a stopped notifier.
+ */
+export const DECLINE_RETRY_MS = 60 * 1000;
+
 /** Rows are kept this long after the reply deadline, then removed. */
 export const NOTICE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -166,29 +172,47 @@ export class SQLiteNotices {
       this.transition(row, ["accepting"], "unknown", now),
     );
   }
-  /** `declining` claims left by a stopped notifier (older than a running decline can be). */
+  /** `declining` claims that failed or were left by a stopped notifier (older than a running decline can be). */
   stuckDeclines(now: number): NoticeRecord[] {
     return (
       this.#db
         .prepare(
           "SELECT * FROM notices WHERE state='declining' AND decided_at<=?",
         )
-        .all(now - ACCEPTING_ABANDONED_MS) as unknown as Row[]
+        .all(now - DECLINE_RETRY_MS) as unknown as Row[]
     ).map((row) => this.#record(row));
   }
-  /** Marks undecided rows past their deadline expired and drops old rows. */
+  /** 対応する choices waiting for HAB, oldest first. */
+  waitingAccepts(): NoticeRecord[] {
+    return (
+      this.#db
+        .prepare(
+          "SELECT * FROM notices WHERE state='accept_waiting' ORDER BY decided_at,sender_id,message_id",
+        )
+        .all() as unknown as Row[]
+    ).map((row) => this.#record(row));
+  }
+  /** Every record of this target, oldest first: what each shown notice became. */
+  all(): NoticeRecord[] {
+    return (
+      this.#db
+        .prepare("SELECT * FROM notices ORDER BY shown_at,sender_id,message_id")
+        .all() as unknown as Row[]
+    ).map((row) => this.#record(row));
+  }
+  /** Marks undecided or still-waiting rows past their deadline expired and drops old rows. */
   maintain(now: number): NoticeRecord[] {
     const expired = (
       this.#db
         .prepare(
-          "SELECT * FROM notices WHERE state IN ('shown','later') AND expires_at<=?",
+          "SELECT * FROM notices WHERE state IN ('shown','later','accept_waiting') AND expires_at<=?",
         )
         .all(now) as unknown as Row[]
     ).map((row) => this.#record(row));
     // A notice never shown (`showing`) expires too, without a report.
     this.#db
       .prepare(
-        "UPDATE notices SET state='expired',decided_at=? WHERE state IN ('showing','shown','later') AND expires_at<=?",
+        "UPDATE notices SET state='expired',decided_at=? WHERE state IN ('showing','shown','later','accept_waiting') AND expires_at<=?",
       )
       .run(now, now);
     this.#db

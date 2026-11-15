@@ -76,10 +76,13 @@ export interface AgentScreen {
  * Where one message stands:
  * - `shown`: on the user's screen, waiting for a choice (still unread in HAB).
  * - `later`: the user chose あとで; it stays unread and can be shown again.
- * - `declining`: the user chose 対応しない and it is being marked read. A notifier that
- *   stopped here retries the (idempotent) mark-read on a later check.
+ * - `declining`: the user chose 対応しない and it is being marked read. If HAB could not be
+ *   told, or the notifier stopped here, a later check retries the (idempotent) mark-read.
  * - `declined`: the user chose 対応しない; marked read, nothing started.
  * - `accepting`: the user chose 対応する and the handoff is under way.
+ * - `accept_waiting`: the user chose 対応する, but HAB could not be told yet (for example
+ *   while the agent's token waits to be refreshed). The choice is kept: every check tries
+ *   again and then hands off, until the reply deadline.
  * - `started` / `queued` / `unsupported`: the handoff result (marked read).
  * - `unknown`: the handoff failed or timed out and may or may not have reached the session.
  *   It is never retried automatically, so the request cannot run twice.
@@ -92,6 +95,7 @@ export type NoticeState =
   | "declining"
   | "declined"
   | "accepting"
+  | "accept_waiting"
   | "started"
   | "queued"
   | "unsupported"

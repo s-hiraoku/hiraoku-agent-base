@@ -446,6 +446,34 @@ test("hab-notify action records a Desktop button press only for this card's bind
     changed: false,
     state: "later",
   });
+  // A reopened conversation asks what each card became, with the same binding check.
+  const states = {
+    action: "states",
+    backend_namespace: binding.backend_namespace,
+    profile_scope: binding.profile_scope,
+    receiver_id: "agent-b",
+    stored_session_id: binding.session_id,
+  };
+  assert.equal(await run({ ...states, stored_session_id: "other" }), 1);
+  assert.deepEqual(JSON.parse(lines.at(-1)), { error: "binding_mismatch" });
+  assert.equal(await run({ ...states, message_id: "m1" }), 2);
+  assert.equal(await run(states), 0);
+  assert.deepEqual(JSON.parse(lines.at(-1)), {
+    states: [{ sender_id: "agent-a", message_id: "m1", state: "later" }],
+  });
+  // 対応する while HAB cannot be told (no token here): the choice is kept, nothing is
+  // handed off, and pressing again changes nothing.
+  assert.equal(await run({ ...press, choice: "accept" }), 0);
+  assert.deepEqual(JSON.parse(lines.at(-1)), {
+    changed: true,
+    state: "accept_waiting",
+  });
+  assert.equal(await run({ ...press, choice: "accept" }), 0);
+  assert.deepEqual(JSON.parse(lines.at(-1)), {
+    changed: false,
+    state: "accept_waiting",
+  });
+  assert.equal(readFileSync(path, "utf8").includes('"type":"handoff"'), false);
 });
 
 test("a notice that does not fit is not half written, and a broken last line is never read", async (t) => {

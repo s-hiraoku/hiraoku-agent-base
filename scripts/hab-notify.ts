@@ -17,8 +17,9 @@
  *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
  *       local screen file, never HAB)
  *   hab-notify --config <notify.json> action
- *       (screen type hermes-desktop: Hermes Desktop's actions_command. Reads one decision
- *       {action: "decide", ...} on stdin from the card's buttons and prints {changed, state})
+ *       (screen type hermes-desktop: Hermes Desktop's actions_command. Reads one request on
+ *       stdin: {action: "decide", ...} from a card's button, printing {changed, state}, or
+ *       {action: "states", ...}, printing {states: [{sender_id, message_id, state}]})
  *   hab-notify --config <notify.json> statusline
  *       (screen type claude-code: the Claude Code status line command; reads the session
  *       JSON on stdin and only the local choice record, never HAB)
@@ -57,17 +58,28 @@ const usage = `usage:
   hab-notify --config <notify.json> action   (one decision as JSON on stdin)
   hab-notify --config <notify.json> statusline`;
 
-/** What Hermes Desktop's decision route sends for a button press on one card. */
-const actionSchema = z.strictObject({
-  action: z.literal("decide"),
+/** The card's binding, sent with every request from Hermes Desktop's actions_command. */
+const cardBinding = {
   backend_namespace: z.string().min(1),
   profile_scope: z.string().min(1),
   receiver_id: z.string().min(1),
-  sender_id: z.string().min(1),
-  message_id: z.string().min(1),
   stored_session_id: z.string().min(1),
-  choice: z.enum(["accept", "later", "decline"]),
-});
+};
+/**
+ * What Hermes Desktop sends: `decide` for a button press on one card, `states` to ask what
+ * each card of this conversation became (so a reopened conversation shows the choice made,
+ * not the buttons again).
+ */
+const actionSchema = z.discriminatedUnion("action", [
+  z.strictObject({
+    action: z.literal("decide"),
+    ...cardBinding,
+    sender_id: z.string().min(1),
+    message_id: z.string().min(1),
+    choice: z.enum(["accept", "later", "decline"]),
+  }),
+  z.strictObject({ action: z.literal("states"), ...cardBinding }),
+]);
 
 /** A trusted command from this config: absolute argv[0] and cwd. */
 const commandSchema = z.strictObject({
@@ -531,6 +543,19 @@ export async function main(
         );
         return 0;
       case "action":
+        if (action!.action === "states") {
+          // Only the binding was checked; this reads the local record and never calls HAB.
+          out(
+            JSON.stringify({
+              states: notifier.records().map((record) => ({
+                sender_id: record.sender_id,
+                message_id: record.message_id,
+                state: record.state,
+              })),
+            }),
+          );
+          return 0;
+        }
         out(
           JSON.stringify(
             await notifier.decide(
