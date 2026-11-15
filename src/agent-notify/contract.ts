@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import type { AgentBinding } from "./binding.ts";
+import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
 import type { IncomingChoice } from "../messaging/incoming-notice.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
@@ -25,8 +26,21 @@ export const peekedMessageSchema = z.object({
   expires_at: time,
   /** Shown to the user as soon as the message arrives. */
   display: z.string().min(1),
-  /** Given to the user's own session only after they chose 対応する. */
+  /** Given to the user's own session only after they chose 対応する (or 会話に渡す). */
   handoff_prompt: z.string().min(1),
+  /**
+   * What the user may choose, in display order. A reply to the user's own message offers
+   * only accept (会話に渡す) and later. Absent from an older host: all three.
+   */
+  choices: z
+    .array(
+      z.object({
+        choice: z.enum(["accept", "later", "decline"]),
+        label: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .optional(),
 });
 export type PeekedMessage = z.infer<typeof peekedMessageSchema>;
 export const peekResultSchema = z.object({
@@ -131,3 +145,10 @@ export interface NoticeRecord {
 }
 
 export type { IncomingChoice };
+
+/** The choices offered for one message, defaulting to the three of an older host. */
+export function choicesOf(message: {
+  choices?: { choice: IncomingChoice; label: string }[];
+}): { choice: IncomingChoice; label: string }[] {
+  return (message.choices ?? INCOMING_CHOICES).map((item) => ({ ...item }));
+}

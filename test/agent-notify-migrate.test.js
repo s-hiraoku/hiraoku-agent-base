@@ -270,3 +270,282 @@ test("pre-revision legacy schema migrates without resetting a settled decision",
   assert.equal(migrated.insertShowing(message, 9), false);
   migrated.close();
 });
+
+async function hermesFixture(t) {
+  const { writeFileSync } = await import("node:fs");
+  const value = fixture(t);
+  const { plan, message, root } = value;
+  const legacy = ["session", "profile", "namespace", "scope", "recipient"];
+  const oldTarget = "hermes-desktop:profile:session";
+  const source = new DatabaseSync(plan.source);
+  source.prepare("UPDATE notices_meta SET target=?").run(oldTarget);
+  source.prepare("UPDATE notices SET state='later'").run();
+  source.close();
+  const notice = {
+    type: "notice",
+    sender_id: message.sender_id,
+    message_id: message.message_id,
+    from: message.from,
+    display: message.display,
+    binding: JSON.stringify(legacy),
+    at: "2026-01-01T00:00:00Z",
+  };
+  const lines = [
+    notice,
+    {
+      type: "state",
+      sender_id: message.sender_id,
+      message_id: message.message_id,
+      state: "later",
+      at: "2026-01-01T00:00:01Z",
+    },
+    { ...notice, at: "2026-01-01T00:00:02Z" },
+  ];
+  const screen = join(root, "old-screen.jsonl");
+  writeFileSync(screen, lines.map((x) => JSON.stringify(x)).join("\n") + "\n", {
+    mode: 0o600,
+  });
+  Object.assign(plan, {
+    expected_source_target: oldTarget,
+    destination_binding: {
+      product: "hermes-desktop",
+      session_id: legacy[0],
+      profile: legacy[1],
+      recipient_id: legacy[4],
+      connection_id: JSON.stringify([
+        "https://verified-host/hab/mcp",
+        legacy[2],
+        legacy[3],
+      ]),
+    },
+    hermes_screen: { source: screen, legacy_binding: legacy },
+  });
+  return { ...value, lines, legacy, screen };
+}
+function reviewedPair(plan) {
+  const inspection = inspectNoticeMigration(plan);
+  return {
+    ...plan,
+    expected_source_sha256: inspection.source_sha256,
+    hermes_screen: {
+      ...plan.hermes_screen,
+      expected_source_sha256: inspection.screen_source_sha256,
+    },
+  };
+}
+test("paired Hermes migration preserves cursor/event identity, every line and current decisions", async (t) => {
+  const { hermesDesktopPage } =
+    await import("../src/agent-notify/hermes-desktop.ts");
+  const { plan, message, lines, legacy, screen } = await hermesFixture(t);
+  const before = readFileSync(screen),
+    dbBefore = readFileSync(plan.source);
+  const reviewed = reviewedPair(plan);
+  migrateNoticesOffline(reviewed, attestation);
+  assert.deepEqual(readFileSync(screen), before);
+  assert.deepEqual(readFileSync(plan.source), dbBefore);
+  assert.deepEqual(
+    readFileSync(join(plan.destination_directory, "source-screen.jsonl")),
+    before,
+  );
+  const transformed = readFileSync(
+    join(plan.destination_directory, "screen.jsonl"),
+    "utf8",
+  )
+    .trimEnd()
+    .split("\n")
+    .map((x) => JSON.parse(x));
+  assert.deepEqual(
+    transformed,
+    lines.map((x) =>
+      x.type === "notice"
+        ? {
+            ...x,
+            binding: JSON.stringify([
+              ...legacy,
+              "https://verified-host/hab/mcp",
+            ]),
+          }
+        : x,
+    ),
+  );
+  const binding = {
+    session_id: legacy[0],
+    profile: legacy[1],
+    backend_namespace: legacy[2],
+    profile_scope: legacy[3],
+    receiver_id: legacy[4],
+    connection_id: "https://verified-host/hab/mcp",
+  };
+  const page = hermesDesktopPage(
+    join(plan.destination_directory, "screen.jsonl"),
+    binding,
+    { limit: 10 },
+  );
+  assert.deepEqual(
+    page.events.map((x) => x.event_id),
+    ["sender:message:0", "sender:message:1"],
+  );
+  assert.equal(page.next_cursor, "2");
+  assert.equal(
+    hermesDesktopPage(
+      join(plan.destination_directory, "screen.jsonl"),
+      binding,
+      { limit: 10, after: "1" },
+    ).events[0].event_id,
+    "sender:message:1",
+  );
+  const migrated = new SQLiteNotices(
+    join(plan.destination_directory, "notices.sqlite"),
+    bindingIdentity(plan.destination_binding),
+  );
+  assert.equal(migrated.get(message).state, "later");
+  assert.equal(migrated.insertShowing(message, 10), false);
+  migrated.close();
+});
+test("paired migration rejects missing notices, mixed binding, changed payload and unknown lines", async (t) => {
+  const { writeFileSync } = await import("node:fs");
+  const { plan, screen, lines } = await hermesFixture(t);
+  for (const [text, error] of [
+    ["", /missing_notice/],
+    [
+      JSON.stringify({ ...lines[0], binding: '["other"]' }) + "\n",
+      /binding_mismatch/,
+    ],
+    [
+      JSON.stringify({ ...lines[0], display: "altered" }) + "\n",
+      /payload_mismatch/,
+    ],
+    [
+      JSON.stringify({ ...lines[0], decision_choices: ["accept"] }) + "\n",
+      /unsupported_schema/,
+    ],
+    [JSON.stringify(lines[0]), /incomplete/],
+    [
+      JSON.stringify({ ...lines[0], message_id: "absent" }) + "\n",
+      /missing_decision/,
+    ],
+  ]) {
+    writeFileSync(screen, text);
+    assert.throws(() => inspectNoticeMigration(plan), error);
+    assert.equal(existsSync(plan.destination_directory), false);
+  }
+});
+test("paired migration refuses fingerprint drift, destination mismatch and unsupported DB schema", async (t) => {
+  const { appendFileSync } = await import("node:fs");
+  const { plan, screen } = await hermesFixture(t);
+  const reviewed = reviewedPair(plan);
+  assert.throws(
+    () =>
+      migrateNoticesOffline(
+        {
+          ...reviewed,
+          hermes_screen: {
+            ...reviewed.hermes_screen,
+            expected_source_sha256: undefined,
+          },
+        },
+        attestation,
+      ),
+    /fingerprint_required/,
+  );
+  assert.throws(
+    () =>
+      inspectNoticeMigration({
+        ...plan,
+        destination_binding: {
+          ...plan.destination_binding,
+          recipient_id: "another",
+        },
+      }),
+    /binding_mismatch/,
+  );
+  appendFileSync(screen, "\n");
+  assert.throws(
+    () => migrateNoticesOffline(reviewed, attestation),
+    /screen_changed/,
+  );
+  const db = new DatabaseSync(plan.source);
+  db.exec("ALTER TABLE notices ADD COLUMN future_data TEXT");
+  db.close();
+  assert.throws(() => inspectNoticeMigration(plan), /unsupported_schema/);
+});
+
+test("paired migration catches a writer changing JSONL during staging and publishes neither file", async (t) => {
+  const fs = await import("node:fs");
+  const { syncBuiltinESMExports } = await import("node:module");
+  const { plan, screen } = await hermesFixture(t);
+  const reviewed = reviewedPair(plan);
+  const original = fs.default.fsyncSync;
+  let changed = false;
+  fs.default.fsyncSync = (fd) => {
+    if (!changed) {
+      changed = true;
+      fs.appendFileSync(screen, "\n");
+    }
+    return original(fd);
+  };
+  syncBuiltinESMExports();
+  try {
+    assert.throws(
+      () => migrateNoticesOffline(reviewed, attestation),
+      /screen_changed/,
+    );
+    assert.equal(existsSync(plan.destination_directory), false);
+    assert.equal(
+      existsSync(plan.destination_directory + ".migration-lock"),
+      false,
+    );
+  } finally {
+    fs.default.fsyncSync = original;
+    syncBuiltinESMExports();
+  }
+});
+test("paired migration rejects oversized screen without reading its contents", async (t) => {
+  const { truncateSync } = await import("node:fs");
+  const { plan, screen } = await hermesFixture(t);
+  truncateSync(screen, 64 * 1024 * 1024 + 1);
+  assert.throws(() => inspectNoticeMigration(plan), /screen_too_large/);
+});
+
+test("legacy Hermes refuses DB-only migration so existing cards cannot disappear", async (t) => {
+  const { plan } = await hermesFixture(t);
+  const reviewed = reviewedPair(plan);
+  const { hermes_screen: omitted, ...dbOnly } = reviewed;
+  assert.ok(omitted);
+  const before = readFileSync(plan.source);
+  assert.throws(
+    () => inspectNoticeMigration(dbOnly),
+    /migration_hermes_screen_required/,
+  );
+  assert.throws(
+    () => migrateNoticesOffline(dbOnly, attestation),
+    /migration_hermes_screen_required/,
+  );
+  assert.deepEqual(readFileSync(plan.source), before);
+  assert.equal(existsSync(plan.destination_directory), false);
+});
+
+test("paired migration retains reply-specific choices in the authoritative message", async (t) => {
+  const { plan, message } = await hermesFixture(t);
+  const choices = [
+    { choice: "accept", label: "会話に渡す" },
+    { choice: "later", label: "後で" },
+  ];
+  const source = new DatabaseSync(plan.source);
+  const original = JSON.stringify({ ...message, choices });
+  source.prepare("UPDATE notices SET message=?").run(original);
+  source.close();
+  migrateNoticesOffline(reviewedPair(plan), attestation);
+  const destination = new DatabaseSync(
+    join(plan.destination_directory, "notices.sqlite"),
+  );
+  try {
+    const migrated = destination
+      .prepare("SELECT message FROM notices")
+      .get().message;
+    assert.equal(migrated, original);
+    assert.deepEqual(JSON.parse(migrated).choices, choices);
+  } finally {
+    destination.close();
+  }
+});

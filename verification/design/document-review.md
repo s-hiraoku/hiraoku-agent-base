@@ -459,3 +459,32 @@ review. This HAB maintenance did not independently run that external checkout. F
 testing was stopped for host load; full Python and actual Desktop acceptance remain
 unverified. No automatic check here is promoted to native parity, deployment or real
 message admission; all six manual gates and coordinated-release prerequisites remain.
+
+## Main reply choices and paired Hermes migration (2026-11-15 integration)
+
+Semantically reconciled main `6e26238` (#217 Gemini planning and #219 reply cards)
+with the product-neutral adapter contract. A linked reply offers only `accept` (会話に渡す)
+and `later`; an ordinary request retains its three choices. The host supplies choices,
+the notifier rejects disallowed decline, and older messages without choices retain their
+legacy default. This does not weaken connection/recipient/session binding, monotonic
+revisions or the publication-versus-admission distinction. The F27 requirement and its
+source citations retain both changes, rather than selecting one side of the merge.
+
+Reviewed the paired offline migration implementation and synthetic regressions. Legacy
+Hermes cannot migrate the decision database alone: the matching private JSONL feed is
+required, since settled shown/later records are not automatically re-published. A new
+atomic bundle contains both original backups and converted DB/feed. Notice binding is
+changed only after explicit old-identity attestation; all line order and repeated notices
+remain, preserving cursor indexes and event IDs. DB message JSON, including reply choices,
+settled decisions, revisions and duplicate guards is retained. Unknown schema or lines,
+unmatched payload/binding, absent required cards, unfinished records, oversized feed and
+observed fingerprint/inode races fail closed. JSONL has no cooperating exclusive lock:
+writers must remain offline; the final fingerprint check is not prevention of a later write.
+
+The documented Desktop cache/cursor reset is a controlled future cutover prerequisite,
+not part of the migration tool or a step executed by this maintenance. No source data,
+real agent, service, configuration or installed Desktop was changed. Prior Desktop trials
+and the separate companion's focused tests do not prove native compatibility of this
+release, two-choice rendering or live migration. All six manual gates remain unverified.
+The js-root mapping includes these regression files; no aggregate success is claimed by
+this semantic maintenance entry.

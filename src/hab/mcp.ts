@@ -35,6 +35,7 @@ import type { InboxMessage } from "../messaging/delivery-service.ts";
 import {
   formatHandoffPrompt,
   formatIncomingDisplay,
+  incomingChoices,
 } from "../messaging/incoming-notice.ts";
 /** Which tools one MCP endpoint offers; host code chooses it, never the caller. */
 export type HabMcpCatalog = "agent" | "delivery";
@@ -357,7 +358,7 @@ function createDeliveryServer(
       "hab_peek",
       {
         description:
-          "For the arrival notifier (ADR-021): return the caller's unread messages oldest first WITHOUT marking them read. Each has `display` (show it to the user as soon as it arrives) and `handoff_prompt` (give it to the user's own session only after they chose 対応する). Reading and replying stay with the agent's hab_inbox and hab_reply.",
+          "For the arrival notifier (ADR-021): return the caller's unread messages oldest first WITHOUT marking them read. Each has `display` (show it to the user as soon as it arrives), `choices` (what the user may pick; a reply to the user's own message offers 会話に渡す and あとで) and `handoff_prompt` (give it to the user's own session only after they chose 対応する or 会話に渡す). Reading and replying stay with the agent's hab_inbox and hab_reply.",
         inputSchema: publishedInputSchema(habMcpSchemas.hab_peek),
         ...security,
         annotations: { readOnlyHint: true, idempotentHint: true },
@@ -394,6 +395,7 @@ function createDeliveryServer(
               text: message.text,
               data_parts: message.data_parts,
               reply_by: message.expires_at,
+              in_reply_to: message.in_reply_to?.message_id ?? null,
             };
             const entry: Partial<ReturnType<typeof inboxEntry>> =
               inboxEntry(message);
@@ -405,6 +407,8 @@ function createDeliveryServer(
               sender_id: message.sender_id,
               display: formatIncomingDisplay(fields),
               handoff_prompt: formatHandoffPrompt(fields),
+              // What the user may choose: a reply to their own message has two choices.
+              choices: incomingChoices(fields).map((item) => ({ ...item })),
             };
           });
           return {

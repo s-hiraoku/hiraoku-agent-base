@@ -19,6 +19,24 @@ verify-a@grok-bot.hab からのメッセージです。
 
 届いただけではモデルを動かしません。「対応する」を選んだときだけ、そのエージェントの同じセッションに依頼を渡します。返信はそのセッション自身が `hab_reply` で行います。
 
+自分が送ったメッセージへの返事（`in_reply_to` があるもの）は、自分が頼んだことへの答えなので、軽い確認にします（利用者の判断、2026-11-15）。
+
+```text
+verify-b@dot.hab から返事が届きました。
+（回答、あなたが送ったメッセージ "rm1.…" への返事）
+
+受信内容
+ビルドは緑です。
+
+どうしますか？
+1. 会話に渡す
+2. あとで
+```
+
+「会話に渡す」は「対応する」と同じ処理で、既読にしてから同じセッションに 1 回だけ渡します。渡す文面（`handoff_prompt`）は「利用者が、HAB で届いた次の返事を会話に渡しました。」で始まり、元のメッセージの ID と、返事への返信は不要なことを伝えます。返事のカードに「対応しない」はなく、`decide … decline` は `invalid_request`（`allowed: ["accept","later"]`）で断ります。`hab_peek` は各メッセージに `choices`（`{choice, label}` の並び）を付け、各画面アダプタはそのとおりに出します。`choices` のない古い host からのメッセージは 3 つです。
+
+受信通知は、質問をどの会話から送ったかを知りません。返事は、受信通知が結び付いた会話のカードに出ます。
+
 ## HAB が持つ部分と、各エージェントが用意する部分
 
 | 役割 | 置き場所 |
@@ -142,16 +160,17 @@ Hermes の欄は、本文が 128 KiB を超えるカードを受け付けませ�
 
 Hermes の欄は `handoff_state: pending` のカードしか受け付けません。そのため、選んだ後もカードの本文は表示したときのまま残ります。
 
-カードの「1. 対応する」「2. あとで」「3. 対応しない」ボタンは、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
+カードの `choices` に応じたボタン（通常は「対応する」「あとで」「対応しない」、返信は「会話に渡す」「あとで」）は、Mac mini のローカル版 Hermes（ブランチ `hab-external-message-actions`）に足したものです。reader に `actions_command` があるときだけ出ます。押すと Desktop の `POST /api/sessions/{id}/external-messages/decision` が、そのカードの `{action: "decide", binding_id, backend_namespace, profile_scope, receiver_id, sender_id, message_id, stored_session_id, choice}` を `hab-notify action` の標準入力に 1 回渡します。Desktop 自身はモデルを動かしません。`hab-notify action` は次のどれかが自分の設定と違えば `binding_mismatch` で断り、記録にも HAB にも触れません。
 
+- `binding_id`（接続先・受信者・会話を含む完全な結び付け）
 - `stored_session_id`（会話）
 - `backend_namespace`
 - `profile_scope`
 - `receiver_id`（受信者）
 
-設定と合っていれば `decide` と同じ処理をして `{changed, state}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
+設定と合っていれば `decide` と同じ処理をして `{changed, state, revision}` を返します。カードにはその状態（「この会話に渡しました。」など）を出します。ボタンのない Hermes では、これまでどおり `hab-notify decide` で選びます。
 
-会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", binding_id, backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだボタンを示したまま、ほかの 2 つを押せるようにします。決まったカードには状態だけを出し、ボタンは出しません。
+会話を開き直したときや Desktop を再起動したときは、Desktop が同じコマンドに `{action: "states", binding_id, backend_namespace, profile_scope, receiver_id, stored_session_id}` を渡し、その会話のカードがそれぞれどうなったかを `{states: [{sender_id, message_id, state, revision, choices}]}` で受け取ります。結び付けの確かめ方は `decide` と同じで、HAB は呼びません。Desktop は、選択待ち（`shown`）のカードだけにボタンを出します。「あとで」（`later`）のカードは、選んだ状態を示したまま、そのカードの `choices` に含まれる他の選択肢を使えます。返信カードは「会話に渡す」「あとで」の 2 択で、通常の依頼は 3 択です。決まったカードには状態だけを出し、ボタンは出しません。
 
 「対応する」を選ぶと、`handoff.command` を 1 回だけ実行します。標準入力には `{session_id, text, submission_id}` を渡します。このコマンドは `hermes_bridge.desktop_handoff` で、Hermes の実行環境で動きます。動きは次の 3 段です。
 
@@ -284,7 +303,9 @@ HAB owns delivery authentication, receipt lookup, decision persistence, expiry a
 at-most-once handoff guard. A product adapter owns only display, user-choice collection,
 and admission into the explicitly bound existing conversation. Gemini CLI, Gemini App
 and a Gemini API application are different products: this contract does **not** claim a
-working native Gemini integration. The synthetic adapter contract tests demonstrate the
+working native Gemini or Antigravity integration. Adding either later should require only
+the product-owned adapter, not a second delivery or decision engine. No native integration
+for either product is part of this change. The synthetic adapter contract tests demonstrate the
 extension point, not a real Gemini session.
 
 The local CLI provides a shared bridge for every configured screen:
@@ -399,9 +420,29 @@ SQLite transaction fences concurrent writers during copying; it cannot stop an o
 from reopening the source after the command exits. Maintaining the offline cutover is an
 operator prerequisite, not an automatic safety guarantee.
 
-The command atomically publishes a private new directory with `source.sqlite` (unaltered
-backup), `notices.sqlite` (rebound copy with every decision/revision preserved), and
-`manifest.json` (fingerprints and attestation). It never overwrites or relabels the source.
+For a legacy Hermes store, `hermes_screen` is required: `source` is the paired private
+JSONL file, `legacy_binding` is the exact old tuple `[session_id, profile,
+backend_namespace, profile_scope, receiver_id]`, and `expected_source_sha256` is the
+screen fingerprint from inspection. The database and screen must come from the same
+offline source and verified binding. Migration refuses missing notices/decisions,
+payload or binding disagreement, incomplete screen records and changed fingerprints.
+Do not generate a replacement empty feed or bind unrelated historical messages.
+The SQLite transaction does not lock JSONL writers. Inode and fingerprint checks reject
+observed changes, but cannot prevent a write after the final check. All old feed writers
+must remain stopped under the explicit offline attestation throughout migration/cutover.
+
+The command atomically publishes one private new directory containing `source.sqlite`
+(unaltered database backup), `notices.sqlite` (rebound copy preserving decisions/revisions),
+`source-screen.jsonl` (original Hermes feed), `screen.jsonl` (matching converted feed),
+and `manifest.json` (fingerprints and attestation). Screen files apply to Hermes migration;
+other supported store-only migrations omit them. Neither source is overwritten. Point the
+new configuration at the paired `notices.sqlite` and `screen.jsonl` from this same bundle,
+not at a mixed old/new pair. Stop all producers and consumers during cutover. Restart
+Hermes Desktop or explicitly clear the affected external-message feed/cache and its paging
+cursor before enabling the new reader: replacing files alone does not remove cached cards
+with the old binding. This cache reset is an operator cutover step, not performed by the
+migration command. Keep the old feed and database together as evidence; do not run them.
+
 Repeated execution refuses an existing destination rather than replacing later decisions.
 A crash before publication can leave a private staging directory or `.migration-lock`;
 inspect and reconcile that attempt before clearing it, never blindly rerun another path.
@@ -428,3 +469,7 @@ were not performed. Apply the separately reviewed patch only to an independent m
 checkout; no upstream publication, installed-app modification, real-agent start or native
 message delivery was performed. Coordinated release and the six manual gates remain
 necessary; a companion commit is not evidence that the live Desktop has these changes.
+
+The paired database/feed migration and Desktop cache cutover described above have not
+been applied to the live installation by this change. Earlier Desktop acceptance results
+do not validate this new release, two-choice reply cards, or the new binding migration.

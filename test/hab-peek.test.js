@@ -136,6 +136,11 @@ test("hab_peek shows new mail in the owner's format and leaves it unread", async
       ),
     );
   }
+  assert.deepEqual((await f.peek("b")).structuredContent.messages[0].choices, [
+    { choice: "accept", label: "対応する" },
+    { choice: "later", label: "あとで" },
+    { choice: "decline", label: "対応しない" },
+  ]);
   // Still unread: the sender sees it waiting, and the recipient's inbox returns it as new.
   assert.equal(
     (await f.onAgent("a", "hab_status", { message_id: sent.message_id })).state,
@@ -145,6 +150,44 @@ test("hab_peek shows new mail in the owner's format and leaves it unread", async
   assert.equal(inbox.messages[0].new, true);
   // Once read, it is no longer offered to the notifier.
   assert.deepEqual((await f.peek("b")).structuredContent.messages, []);
+});
+
+test("a reply to the caller's own message is shown as a reply with two choices", async (t) => {
+  const f = await setup(t);
+  const sent = await f.onAgent("a", "hab_send", {
+    to: f.b.address,
+    text: "ビルドを確認できますか？",
+  });
+  await f.onAgent("b", "hab_inbox");
+  const reply = await f.onAgent("b", "hab_reply", {
+    message_id: sent.message_id,
+    text: "緑です。",
+  });
+  const [message] = (await f.peek("a")).structuredContent.messages;
+  assert.equal(message.message_id, reply.message_id);
+  assert.equal(message.in_reply_to, sent.message_id);
+  assert.equal(
+    message.display,
+    [
+      `${f.b.address} から返事が届きました。`,
+      `（回答、あなたが送ったメッセージ "${sent.message_id}" への返事）`,
+      "",
+      "受信内容",
+      "緑です。",
+      "",
+      "どうしますか？",
+      "1. 会話に渡す",
+      "2. あとで",
+    ].join("\n"),
+  );
+  assert.deepEqual(message.choices, [
+    { choice: "accept", label: "会話に渡す" },
+    { choice: "later", label: "あとで" },
+  ]);
+  const lines = message.handoff_prompt.split("\n");
+  assert.equal(lines[0], "利用者が、HAB で届いた次の返事を会話に渡しました。");
+  assert.ok(lines[1].includes(`message_id "${sent.message_id}"`));
+  assert.ok(message.handoff_prompt.includes("返事への返信は不要です"));
 });
 
 test("hab_peek returns only the caller's mail and checks its limit", async (t) => {

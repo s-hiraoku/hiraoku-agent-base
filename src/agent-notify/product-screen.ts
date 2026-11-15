@@ -5,7 +5,7 @@
  * display command shows it (for example a desktop notification). Only the product-specific
  * handoff differs. The file never gets a `handoff` line: nothing that reads it may start work.
  */
-import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
+import { choicesOf } from "./contract.ts";
 import { runCommand } from "./command.ts";
 import type { TrustedCommand } from "./command.ts";
 import type {
@@ -69,7 +69,7 @@ export class ProductScreen implements AgentScreen {
       from: message.from,
       expires_at: message.expires_at,
       display: message.display,
-      choices: INCOMING_CHOICES.map((item) => ({ ...item })),
+      choices: choicesOf(message),
     });
     return "published" as const;
   }

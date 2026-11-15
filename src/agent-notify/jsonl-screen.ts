@@ -6,7 +6,7 @@
  * File publication cannot prove session admission. Handoff is unsupported; a product adapter
  * must use an official, bound-session input API instead.
  */
-import { INCOMING_CHOICES } from "../messaging/incoming-notice.ts";
+import { choicesOf } from "./contract.ts";
 import type {
   AgentScreen,
   HandoffResult,
@@ -49,7 +49,7 @@ export class JsonlScreen implements AgentScreen {
       kind: message.kind,
       expires_at: message.expires_at,
       display: message.display,
-      choices: INCOMING_CHOICES.map((item) => ({ ...item })),
+      choices: choicesOf(message),
     });
     return "published" as const;
   }

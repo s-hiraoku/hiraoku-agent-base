@@ -468,7 +468,18 @@ test("hab-notify action records a Desktop button press only for this card's bind
   assert.equal(await run(states), 0);
   assert.deepEqual(JSON.parse(lines.at(-1)), {
     states: [
-      { sender_id: "agent-a", message_id: "m1", state: "later", revision: 3 },
+      {
+        sender_id: "agent-a",
+        message_id: "m1",
+        state: "later",
+        revision: 3,
+        // An older host sends no choices: all three.
+        choices: [
+          { choice: "accept", label: "対応する" },
+          { choice: "later", label: "あとで" },
+          { choice: "decline", label: "対応しない" },
+        ],
+      },
     ],
   });
   // 対応する while HAB cannot be told (no token here): the choice is kept, nothing is

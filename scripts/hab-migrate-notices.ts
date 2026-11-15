@@ -13,6 +13,22 @@ const planSchema = z.strictObject({
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
+  hermes_screen: z
+    .strictObject({
+      source: z.string().min(1),
+      expected_source_sha256: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+      legacy_binding: z.tuple([
+        z.string().min(1),
+        z.string().min(1),
+        z.string().min(1),
+        z.string().min(1),
+        z.string().min(1),
+      ]),
+    })
+    .optional(),
   destination_binding: z.strictObject({
     product: z.string().min(1),
     connection_id: z.string().min(1),
@@ -43,6 +59,17 @@ const safeErrors = new Set([
   "migration_source_changed",
   "migration_copy_mismatch",
   "migration_decisions_changed",
+  "migration_unsupported_schema",
+  "migration_hermes_screen_required",
+  "migration_screen_changed",
+  "migration_screen_binding_mismatch",
+  "migration_screen_incomplete",
+  "migration_screen_unsupported_schema",
+  "migration_screen_missing_decision",
+  "migration_screen_payload_mismatch",
+  "migration_screen_missing_notice",
+  "migration_screen_fingerprint_required",
+  "migration_screen_too_large",
 ]);
 try {
   const [action, planFile, attestFile, ...extra] = process.argv.slice(2);
