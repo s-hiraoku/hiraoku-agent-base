@@ -124,4 +124,6 @@ rollout remain unverified; no live auth or polling settings were changed.
 Notifier logs timestamp failure/recovery/publication, observed `blocked_ms` and
 successful check `duration_ms`, deduplicating repeated identical failures without
 logging tokens or exception bodies. These measure notifier observations, not
-exact expiry/refresh times or end-to-end latency.
+exact expiry/refresh times or end-to-end latency. If the failure code changes
+from A to B, the failure interval restarts at B: `blocked_ms` measures the latest
+code's duration, not the sum of the whole outage.

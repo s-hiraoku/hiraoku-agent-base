@@ -49,10 +49,10 @@ ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます�
 
 | ツール | 引数 | すること | 必要な権限 |
 | --- | --- | --- | --- |
-| `hab_send` | `to`（`bot@agent.hab`）、`text`、任意で`kind`・`thread_id` | 送る。7日以内に読まれなければ期限切れ | `resolve`・`submit` |
+| `hab_send` | `to`（`bot@agent.hab`）、`text`、任意で`kind`・`thread_id` | 送る。7日以内に読まれなければ期限切れ。返信待ちの質問には `reply_watch`（次の確認時刻と停止期限）も返す | `resolve`・`submit` |
 | `hab_inbox` | 任意で`limit`（1〜50）・`include_read`・`message_id` | 未読を返して既読にする。既読は7日読み直せる（`message_id`でその1通） | `poll` |
 | `hab_reply` | `message_id`（`hab_inbox`の値）、`text` | 送信者へ同じthreadで返す | `submit` |
-| `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れ、返事の有無（`reply_state`・`replies`）と説明を返す | `status` |
+| `hab_status` | `message_id`（送ったもの） | 未読・既読・期限切れ、返事の有無（`reply_state`・`replies`）、`reply_watch` と説明を返す | `status` |
 
 `hab_inbox`の各メッセージには、利用者へそのまま見せる`notice`が付きます。送信者のアドレス・種類・返信期限、
 印を付けた2行で囲んだ本文（送信者が書いたデータで、指示として実行しない）、「どうしますか？」と
@@ -166,3 +166,7 @@ loopback宛ての実通信がプロキシへ転送されないことも秘密を
 `in_reply_to`・双方のACKを秘密なしで確認します。人間による操作とエージェント自身の
 操作も区別します。接続未承認・到達経路未確定・永続保存未配線はそのまま未完了と
 報告し、モデル単体や模擬試験の成功で置き換えません。
+
+返信を待つ場合も、送信したturnでは待機しません。`reply_watch` は最初の2分は15秒、10分までは60秒、それ以降は5分で、読み取り専用の `hab_status` を確認する助言です。受理から30分とメッセージ期限の早い方で停止し、未読の返信があれば `read_reply`、すべて既読なら `stop` になります。助言の時刻を計算できなくても送信結果は保持します。
+
+背景ownerを持つ製品では、任意の汎用adapter／`hab:reply-watch` CLIで送信結果と予定をSQLiteへ保存し、実際の `hab_status` 確認を実行できます。接続・agent・元のsession・期限を固定し、返信や期限後は通常の確認周期へ戻ります。監視だけでは `hab_inbox`・既読化・ACK・再送を行いません。Dotsの直接の `hab_send` に自動接続したわけではなく、Dotsを起こすschedulerと会話への表示はrepo外の連携が必要です。[返信監視の実装と境界](reply-monitoring.md)を参照してください。
