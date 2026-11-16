@@ -187,6 +187,38 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
       };
     });
   }
+  /**
+   * Who the verified caller receives as, for an event subscription (ADR-022). Runs under
+   * `poll`, the right that reads the inbox the events point to.
+   */
+  eventRecipient(context: unknown): { agent_id: string; address: string } {
+    return this.#run(context, "poll", (authorization) => {
+      const agentId = authorization.authorize(context, "poll")?.agent_id;
+      const address = agentId
+        ? this.#registry.addressesOf([agentId]).get(agentId)
+        : undefined;
+      if (!agentId || !address) throw new MessagingError("forbidden");
+      return { agent_id: agentId, address };
+    });
+  }
+  /** Keys of unread messages after a cursor, for the event dispatcher (ADR-022). */
+  arrivals(
+    agentId: string,
+    after: {
+      accepted_at: number;
+      sender_id: string;
+      message_id: string;
+    } | null,
+    limit: number,
+  ) {
+    this.#assertCurrent();
+    return this.#backend.arrivalsInternal(agentId, after, limit);
+  }
+  /** The current address of a subscribed recipient, or undefined once it is gone. */
+  addressOf(agentId: string): string | undefined {
+    this.#assertCurrent();
+    return this.#registry.addressesOf([agentId]).get(agentId);
+  }
   get textLimit() {
     return this.#backend.textLimit;
   }

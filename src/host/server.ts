@@ -1,4 +1,6 @@
 /** Explicit local composition. Import performs no IO, authentication or scheduling. */
+import { HabEvents } from "../hab/events.ts";
+import type { HabEventOptions, HabEventSource } from "../hab/events.ts";
 import type { Server } from "node:http";
 import { createServer } from "node:http";
 import { once } from "node:events";
@@ -54,6 +56,8 @@ export interface HostServerOptions {
     allowed_origins: readonly string[];
     authority: RegistryAuthority;
     verify: McpHttpVerifier;
+    /** MCP events for new mail on the agent endpoint (ADR-022). Absent means off. */
+    events?: Omit<HabEventOptions, "store">;
   };
   /** Independently verified individual mapping; no model-supplied agent name. */
   authority: RegistryAuthority;
@@ -162,6 +166,7 @@ export async function startHostServer(options: HostServerOptions) {
     ingressServer: Server | undefined,
     serviceClose: (() => Promise<void>) | undefined,
     a2a: Awaited<ReturnType<typeof startHostA2a>> | undefined,
+    events: HabEvents | undefined,
     stopping = false;
   // Only host code holds these. The first is the host A2A identity's verified context;
   // the second answers as administrator only while startup provisions that identity.
@@ -226,6 +231,11 @@ export async function startHostServer(options: HostServerOptions) {
         try {
           try {
             await a2a?.close();
+          } catch {
+            // Closing delivery and the Registry still runs.
+          }
+          try {
+            await events?.close();
           } catch {
             // Closing delivery and the Registry still runs.
           }
@@ -344,6 +354,19 @@ export async function startHostServer(options: HostServerOptions) {
     // The ingress serves both catalogs too. OAuth discovery metadata describes only the
     // agent endpoint; a token issued for it also opens the delivery endpoint.
     let ingressGateways: HabHttpGateway[] | undefined;
+    if (ingress?.events) {
+      const source = service as unknown as Partial<HabEventSource>;
+      if (
+        typeof source.eventRecipient !== "function" ||
+        typeof source.arrivals !== "function" ||
+        typeof source.addressOf !== "function"
+      )
+        throw Error("invalid_host_ingress");
+      events = new HabEvents(source as HabEventSource, {
+        ...ingress.events,
+        store: privateFile("events.sqlite"),
+      });
+    }
     if (ingress) {
       ingressGateways = catalogs.map(
         ([suffix, catalog]) =>
@@ -367,6 +390,7 @@ export async function startHostServer(options: HostServerOptions) {
             },
             undefined,
             catalog,
+            events,
           ),
       );
     }
@@ -418,6 +442,7 @@ export async function startHostServer(options: HostServerOptions) {
         throw Error("host_ingress_rejected");
       ingressPort = remoteAddress.port;
     }
+    events?.start();
     if (a2aConfig && identity)
       a2a = await startHostA2a({
         config: a2aConfig,

@@ -105,6 +105,15 @@
 - **権限と費用。** 受信時に自動でターンを始めることは本判断に含めない（ownerの受入条件：受信だけではモデルの作業や返信を始めない）。「対応する」は、そのメッセージへの対応の開始であり、外部送信・ファイル変更・認証情報の操作などの権限を広げない。受信側エージェントは既存の権限と承認の手順で処理する。
 - **限界。** HABの既読は、人が内容を見た・同意した・作業を終えたことを意味しない。Hermes Desktopへの接続部品と、既存Desktopセッションでの受入確認は未完了（[受信通知アダプタ](receiver/arrival-notifier.md)）。Codex（app-server の `turn/start`）・Claude Code（status line と channel）・ChatGPT コネクタ（Dots、表示のみで引渡しは `unsupported`）の画面アダプタも用意したが、実機での確認は未実施。ADR-017のSDK受信（保存してからACK）と同じ受信者に並べると、ACKされた本文は`hab_peek`・`hab_inbox`に出ない。1つの受信者にはどちらか一方を使う。
 
+## ADR-022 / 採用：クラウドのエージェントには「新着あり」の呼び鈴だけをMCPイベントで送る
+
+2026-11-16 JST、owner判断。Dots（ChatGPT）やMuseのようなクラウド製品は、会話で頼まれたときにしか`hab_inbox`を見ない。Mac mini上に受信通知（ADR-021）を置けないため、Dots⇄Muse試験では返事が届いても誰も気づかなかった。ChatGPTはMCPサーバーからのイベントで作業を始める仕組み（OpenAI MCP Events、webhook配送、Standard Webhooks署名）を持つので、HABはそれに合わせて「受信箱に新着がある」とだけ知らせる。基準は[MCPイベントで新着を知らせる](connections/mcp-events.md)とする。
+
+- **呼び鈴だけを送る。** イベントは`hab.message.received`の1種類で、中身は宛先アドレスと届いた時刻だけ。本文・送信者・種類・message IDは載せない。読むのは今までどおりエージェント自身の`hab_inbox`で、既読・ACK・認可の境界は変わらない（ADR-015の「受信側が取りに行く」は維持し、HABが押し出すのは呼び鈴に限る）。
+- **購読はエージェント自身の接続で行う。** 外部入口（ingress）のエージェント用`/mcp`だけが`events`を名乗り、`events/list`・`events/subscribe`・`events/unsubscribe`に答える。購読者は検証済みの接続が`poll`で読める受信者に限り、引数で他人の受信箱を指せない。配送用の`/mcp/delivery`とloopbackには出さない。設定`ingress.events`が無ければ従来どおり無効。
+- **送り先と頻度を絞る。** callbackは公開HTTPSだけ（名前解決した全アドレスが公開アドレスであることを確かめ、そのアドレスへ接続し、リダイレクトしない）。購読時に署名付きのchallengeで受け取り手を確かめる。購読の寿命は既定1時間・最長24時間で、ChatGPTが期限前に更新する。権限を取り消した接続は更新できず、遅くとも寿命で止まる。1受信者あたりの購読数、1件あたりの再送回数（8回、指数backoff）に上限を置き、410で購読を消す。
+- **限界。** 呼び鈴を受けたChatGPTが実際に作業を始めるか、どれだけ遅れるかはChatGPT側の判断で、HABは保証しない（MCP Eventsは2026年時点でドラフトの拡張）。Museには同じ仕組みが無いので、Muse自身の定期実行で`hab_inbox`を見させる。受信側の判断・承認（ADR-015）、「受信だけでは返信しない」（ADR-021の受入条件）はそのまま。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。

@@ -17,10 +17,12 @@ import type { HabMcpCatalog, HabMcpService } from "./mcp.ts";
 import { habAgentOperations } from "./agent-tools.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
+import type { HabEvents } from "./events.ts";
 /** One HAB MCP endpoint serving one catalog; the host decides which, never the caller. */
 export class HabHttpGateway extends McpHttpGateway {
   readonly #hab: HabMcpService;
   readonly catalog: HabMcpCatalog;
+  readonly #events: HabEvents | undefined;
   constructor(
     service: HabMcpService,
     policy: McpHttpPolicy,
@@ -28,6 +30,8 @@ export class HabHttpGateway extends McpHttpGateway {
     verify: McpHttpVerifier = () => null,
     admission?: WriterAdmission,
     catalog: HabMcpCatalog = "delivery",
+    /** MCP events for new mail (ADR-022); the agent catalog only. */
+    events?: HabEvents,
   ) {
     if (
       typeof service?.resolve !== "function" ||
@@ -37,6 +41,10 @@ export class HabHttpGateway extends McpHttpGateway {
     super(service, policy, audit, verify, admission);
     this.#hab = service;
     this.catalog = catalog;
+    this.#events = catalog === "agent" ? events : undefined;
+  }
+  protected override get eventsEnabled() {
+    return this.#events !== undefined;
   }
   protected override get writerOperations() {
     return this.catalog === "agent"
@@ -87,6 +95,7 @@ export class HabHttpGateway extends McpHttpGateway {
       this.oauth ? HAB_OAUTH_SCOPES : undefined,
       this.catalog,
       this.policy.max_response_bytes,
+      this.#events,
     );
   }
 }

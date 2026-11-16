@@ -42,6 +42,20 @@ const schema = z.strictObject({
       resource_url: z.string(),
       oauth_file: absolute,
       allowed_origins: z.array(z.string()).max(8),
+      /** MCP events for new mail on the agent endpoint (ADR-022). Absent means off. */
+      events: z
+        .strictObject({
+          default_ttl_ms: z
+            .number()
+            .int()
+            .min(60_000)
+            .max(86_400_000)
+            .optional(),
+          max_ttl_ms: z.number().int().min(60_000).max(86_400_000).optional(),
+          max_per_agent: z.number().int().min(1).max(64).optional(),
+          poll_ms: z.number().int().min(500).max(60_000).optional(),
+        })
+        .optional(),
     })
     .optional(),
   keys_file: absolute,
@@ -127,7 +141,10 @@ export function readHostConfig(configPath: string) {
       secrets.registry_fingerprint_key,
       "hex",
     ),
-    delivery_fingerprint_key: Buffer.from(secrets.delivery_fingerprint_key, "hex"),
+    delivery_fingerprint_key: Buffer.from(
+      secrets.delivery_fingerprint_key,
+      "hex",
+    ),
     readCredentials: () => read(config.credentials_file),
     readOAuth: () =>
       config.ingress ? read(config.ingress.oauth_file) : undefined,
