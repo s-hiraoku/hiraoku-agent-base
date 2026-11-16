@@ -23,9 +23,10 @@ const SECRET = "whsec_" + Buffer.alloc(32, 7).toString("base64");
 const URL_A = "https://hooks.example.com/cb/a";
 
 /** A fake callback that answers verification challenges and records deliveries. */
-function hooks(status = () => 200) {
+function hooks(status = () => 200, delayMs = 0, onEvent = async () => {}) {
   const seen = [];
   const post = async (url, body, headers) => {
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
     const parsed = JSON.parse(body);
     seen.push({ url, body, parsed, headers });
     if (parsed.type === "verification")
@@ -33,6 +34,7 @@ function hooks(status = () => 200) {
         status: 200,
         body: JSON.stringify({ challenge: parsed.challenge }),
       };
+    await onEvent(parsed);
     return { status: status(parsed), body: "" };
   };
   return {
@@ -52,7 +54,10 @@ async function setup(t, options = {}) {
   const f = await fixture(t);
   const a = f.enroll("a"),
     b = f.enroll("b");
-  const h = hooks(options.status);
+  let self;
+  const h = hooks(options.status, options.delayMs, (parsed) =>
+    options.onEvent ? options.onEvent(self, parsed) : undefined,
+  );
   const events = new HabEvents(f.hab, {
     store: temp(t),
     post: h.post,
@@ -93,7 +98,8 @@ async function setup(t, options = {}) {
       cursor: null,
       ...extra,
     });
-  return { ...f, a, b, h, events, gateway, rpc, send, subscribe };
+  self = { ...f, a, b, h, events, gateway, rpc, send, subscribe };
+  return self;
 }
 
 test("Standard Webhooks signature matches the published test vector", () => {
@@ -403,4 +409,50 @@ test("the subscription store is owner-only and endpoints without events reject t
   const e = new HabEvents(f.hab, { store: path, post: f.h.post });
   t.after(() => e.close());
   assert.equal(statSync(path).mode & 0o077, 0);
+});
+
+test("a webhook POST has a wall-clock deadline that covers name resolution", async () => {
+  const post = createHttpsPost(() => new Promise(() => {}), 50);
+  const started = Date.now();
+  await assert.rejects(
+    post(URL_A, "{}", {}),
+    (error) => error.reason === "timeout",
+  );
+  assert.ok(Date.now() - started < 2000);
+});
+
+test("an unsubscribe during a delivery stops the rest of that pass", async (t) => {
+  const f = await setup(t, {
+    onEvent: (self) =>
+      self.rpc("a", "events/unsubscribe", {
+        name: HAB_EVENT_NAME,
+        arguments: {},
+        delivery: { mode: "webhook", url: URL_A },
+      }),
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "one");
+  await f.send("b", f.a.address, "two");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  assert.equal(f.events.subscriptions().length, 0);
+});
+
+test("concurrent subscribes cannot together pass the per-recipient limit", async (t) => {
+  const f = await setup(t, { delayMs: 20, events: { max_per_agent: 2 } });
+  const answers = await Promise.all(
+    ["x", "y", "z"].map((n) =>
+      f.subscribe("a", {
+        delivery: {
+          mode: "webhook",
+          url: `https://hooks.example.com/cb/${n}`,
+          secret: SECRET,
+        },
+      }),
+    ),
+  );
+  assert.equal(answers.filter((r) => r.result).length, 2);
+  const refused = answers.find((r) => r.error);
+  assert.equal(refused.error.data.reason, "too_many_subscriptions");
+  assert.equal(f.events.subscriptions().length, 2);
 });

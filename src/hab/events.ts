@@ -177,13 +177,35 @@ type Lookup = (
 /**
  * POST over HTTPS to a public address: the name is resolved once, every answer must be
  * public, and the connection goes to the checked address while TLS still verifies the name.
- * No redirects, 10 s timeout, 64 KiB response cap.
+ * No redirects, 64 KiB response cap. `timeoutMs` (10 s) is a wall-clock deadline for the
+ * whole call, name resolution and the complete response included, so a callback that
+ * trickles bytes cannot hold the sequential dispatcher.
  */
 export function createHttpsPost(
   lookup: Lookup = (host) => dnsLookup(host, { all: true, verbatim: true }),
   timeoutMs = 10_000,
 ): WebhookPost {
-  return async (raw, body, headers) => {
+  return (raw, body, headers) => {
+    let cancel: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        cancel?.();
+        reject(callbackFailed("timeout"));
+      }, timeoutMs);
+    });
+    const attempt = post(raw, body, headers, (destroy) => {
+      cancel = destroy;
+    });
+    attempt.catch(() => {});
+    return Promise.race([attempt, deadline]).finally(() => clearTimeout(timer));
+  };
+  async function post(
+    raw: string,
+    body: string,
+    headers: Record<string, string>,
+    onRequest: (destroy: () => void) => void,
+  ): Promise<{ status: number; body: string }> {
     const url = callbackUrl(raw);
     const host = url.hostname.replace(/^\[|\]$/g, "");
     const addresses =
@@ -205,7 +227,6 @@ export function createHttpsPost(
             ...headers,
             "Content-Length": String(Buffer.byteLength(body)),
           },
-          timeout: timeoutMs,
           lookup: ((
             _hostname: string,
             options: { all?: boolean },
@@ -232,11 +253,11 @@ export function createHttpsPost(
           res.on("error", reject);
         },
       );
-      req.on("timeout", () => req.destroy(Error("timeout")));
+      onRequest(() => req.destroy(Error("timeout")));
       req.on("error", reject);
       req.end(body);
     });
-  };
+  }
 }
 
 // ---- Subscriptions ----
@@ -355,21 +376,16 @@ export class HabEvents {
     webhookKey(secret);
     const id = this.#id(recipient.agent_id, url);
     const now = this.#now();
-    const existing = this.#db
-      .prepare("SELECT id FROM hab_event_subscriptions WHERE id=?")
-      .get(id);
-    if (!existing) {
-      const count = this.#db
-        .prepare(
-          "SELECT count(*) n FROM hab_event_subscriptions WHERE agent_id=? AND expires_at>?",
-        )
-        .get(recipient.agent_id, now) as { n: number };
-      if (count.n >= this.#maxPerAgent) throw invalid("too_many_subscriptions");
-    }
+    if (!this.#has(id) && this.#count(recipient.agent_id) >= this.#maxPerAgent)
+      throw invalid("too_many_subscriptions");
     await this.#verify(recipient.agent_id, url, String(secret), id);
     const requested = params.ttlMs ?? this.#defaultTtl;
     const ttl = Math.max(60_000, Math.min(requested, this.#maxTtl));
     const expires = this.#now() + ttl;
+    // Checked again after the network wait, with no await before the insert, so
+    // concurrent subscribes cannot together pass the per-recipient limit.
+    if (!this.#has(id) && this.#count(recipient.agent_id) >= this.#maxPerAgent)
+      throw invalid("too_many_subscriptions");
     // A refresh keeps its place in the mail; only the secret and lifetime change.
     this.#db
       .prepare(
@@ -399,6 +415,20 @@ export class HabEvents {
       .prepare("DELETE FROM hab_event_subscriptions WHERE id=? AND agent_id=?")
       .run(this.#id(recipient.agent_id, url), recipient.agent_id);
     return {};
+  }
+  #has(id: string) {
+    return !!this.#db
+      .prepare("SELECT 1 FROM hab_event_subscriptions WHERE id=?")
+      .get(id);
+  }
+  #count(agentId: string) {
+    return (
+      this.#db
+        .prepare(
+          "SELECT count(*) n FROM hab_event_subscriptions WHERE agent_id=? AND expires_at>?",
+        )
+        .get(agentId, this.#now()) as { n: number }
+    ).n;
   }
   async #verify(agentId: string, url: string, secret: string, id: string) {
     const now = this.#now();
@@ -499,6 +529,15 @@ export class HabEvents {
     let cursor = row.cursor ? (JSON.parse(row.cursor) as Arrival) : null;
     let failures = row.failures;
     for (let sent = 0; sent < 10; sent++) {
+      // Re-read before every POST: an unsubscribe, expiry or refreshed secret during an
+      // earlier await must take effect before the next delivery.
+      const current = this.#db
+        .prepare(
+          "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
+        )
+        .get(row.id, this.#now()) as unknown as Row | undefined;
+      if (!current) return;
+      row = current;
       const [arrival] = this.#source.arrivals(row.agent_id, cursor, 1);
       if (!arrival) break;
       const eventId =
