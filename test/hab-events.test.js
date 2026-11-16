@@ -470,3 +470,43 @@ test("renewing an expired subscription needs a free slot, like a new one", async
   const renewed = await f.subscribe("a");
   assert.equal(renewed.error.data.reason, "too_many_subscriptions");
 });
+
+test("a message leased to a delivery client is still announced, so an expired lease is not skipped", async (t) => {
+  const f = await setup(t);
+  await f.subscribe("a");
+  const older = await f.send("b", f.a.address, "older");
+  await f.send("b", f.a.address, "newer");
+  f.raw
+    .prepare(
+      "UPDATE delivery_messages SET state='leased', lease_until=? WHERE message_id=?",
+    )
+    .run(Date.now() + 60_000, older.message_id);
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+});
+
+test("each message gets its own retry budget", async (t) => {
+  let now = Date.now();
+  let answer = 500;
+  const f = await setup(t, {
+    status: () => answer,
+    events: { now: () => now },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "first");
+  for (let i = 0; i < 7; i++) {
+    await f.events.dispatch();
+    now += 400_000;
+  }
+  assert.equal(f.h.events().length, 7);
+  // The first message is read before its last attempt; the next one starts from zero.
+  await f.rpc("a", "tools/call", { name: "hab_inbox", arguments: {} });
+  await f.send("b", f.a.address, "second");
+  await f.events.dispatch(); // one failure for the second message
+  now += 400_000;
+  answer = 202;
+  await f.events.dispatch();
+  const second = f.h.events().slice(7);
+  assert.equal(second.length, 2);
+  assert.equal(second[0].parsed.eventId, second[1].parsed.eventId);
+});

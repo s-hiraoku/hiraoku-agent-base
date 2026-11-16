@@ -295,6 +295,8 @@ interface Row {
   expires_at: number;
   cursor: string | null;
   failures: number;
+  /** The message the failures were counted for; another message starts from zero. */
+  failing: string | null;
   next_at: number;
 }
 export interface HabEventOptions {
@@ -341,7 +343,7 @@ export class HabEvents {
       CREATE TABLE IF NOT EXISTS hab_event_subscriptions (
         id TEXT PRIMARY KEY, agent_id TEXT NOT NULL, url TEXT NOT NULL,
         secret TEXT NOT NULL, expires_at INTEGER NOT NULL, cursor TEXT,
-        failures INTEGER NOT NULL DEFAULT 0, next_at INTEGER NOT NULL DEFAULT 0,
+        failures INTEGER NOT NULL DEFAULT 0, failing TEXT, next_at INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_callbacks (
         agent_id TEXT NOT NULL, url TEXT NOT NULL, verified_until INTEGER NOT NULL,
@@ -547,6 +549,8 @@ export class HabEvents {
       row = current;
       const [arrival] = this.#source.arrivals(row.agent_id, cursor, 1);
       if (!arrival) break;
+      const key = JSON.stringify([arrival.sender_id, arrival.message_id]);
+      if (row.failing !== key) failures = 0;
       const eventId =
         "evt_" +
         createHash("sha256")
@@ -585,7 +589,7 @@ export class HabEvents {
       if (delivered || status === 413 || failures + 1 >= MAX_ATTEMPTS) {
         cursor = arrival;
         failures = 0;
-        this.#save(row.id, cursor, 0, 0);
+        this.#save(row.id, cursor, 0, null, 0);
         continue;
       }
       failures += 1;
@@ -593,17 +597,30 @@ export class HabEvents {
         row.id,
         cursor,
         failures,
+        key,
         this.#now() + Math.min(300_000, 2000 * 2 ** failures),
       );
       return;
     }
   }
-  #save(id: string, cursor: Arrival | null, failures: number, nextAt: number) {
+  #save(
+    id: string,
+    cursor: Arrival | null,
+    failures: number,
+    failing: string | null,
+    nextAt: number,
+  ) {
     this.#db
       .prepare(
-        "UPDATE hab_event_subscriptions SET cursor=?, failures=?, next_at=? WHERE id=?",
+        "UPDATE hab_event_subscriptions SET cursor=?, failures=?, failing=?, next_at=? WHERE id=?",
       )
-      .run(cursor ? JSON.stringify(cursor) : null, failures, nextAt, id);
+      .run(
+        cursor ? JSON.stringify(cursor) : null,
+        failures,
+        failing,
+        nextAt,
+        id,
+      );
   }
   start() {
     if (this.#timer) return;

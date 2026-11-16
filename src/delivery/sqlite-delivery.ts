@@ -601,7 +601,8 @@ export class SqliteDelivery {
   }
   /**
    * Unread, unexpired messages waiting for one recipient after a cursor, oldest first, as
-   * keys only (no body, kind or sender address). Only the host's event dispatcher calls it
+   * keys only. Leased messages count too: the cursor passes them for good, and a lease that
+   * expires without an ACK must not leave its message behind the cursor un-announced. Keys (no body, kind or sender address). Only the host's event dispatcher calls it
    * (ADR-022), for a subscription its owner authorized; it changes nothing.
    */
   arrivalsInternal(
@@ -621,7 +622,7 @@ export class SqliteDelivery {
       return (
         this.#db
           .prepare(
-            `SELECT accepted_at,sender_id,message_id FROM delivery_messages WHERE recipient_id=? AND state='pending' AND expires_at>?${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id LIMIT ?`,
+            `SELECT accepted_at,sender_id,message_id FROM delivery_messages WHERE recipient_id=? AND state IN ('pending','leased') AND expires_at>?${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id LIMIT ?`,
           )
           .all(
             recipientId,
