@@ -599,6 +599,46 @@ export class SqliteDelivery {
       };
     });
   }
+  /**
+   * Unread, unexpired messages waiting for one recipient after a cursor, oldest first, as
+   * keys only. Leased messages count too: the cursor passes them for good, and a lease that
+   * expires without an ACK must not leave its message behind the cursor un-announced. Keys (no body, kind or sender address). Only the host's event dispatcher calls it
+   * (ADR-022), for a subscription its owner authorized; it changes nothing.
+   */
+  arrivalsInternal(
+    recipientId: string,
+    after: {
+      accepted_at: number;
+      sender_id: string;
+      message_id: string;
+    } | null,
+    limit: number,
+  ): { accepted_at: number; sender_id: string; message_id: string }[] {
+    if (!id(recipientId) || !Number.isInteger(limit) || limit < 1 || limit > 50)
+      throw new MessagingError("invalid_request");
+    return this.#tx(() => {
+      const now = Date.now();
+      this.#refresh(now);
+      return (
+        this.#db
+          .prepare(
+            `SELECT accepted_at,sender_id,message_id FROM delivery_messages WHERE recipient_id=? AND state IN ('pending','leased') AND expires_at>?${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id LIMIT ?`,
+          )
+          .all(
+            recipientId,
+            now,
+            ...(after
+              ? [after.accepted_at, after.sender_id, after.message_id]
+              : []),
+            limit,
+          ) as { accepted_at: number; sender_id: string; message_id: string }[]
+      ).map((row) => ({
+        accepted_at: Number(row.accepted_at),
+        sender_id: String(row.sender_id),
+        message_id: String(row.message_id),
+      }));
+    });
+  }
   lookupReceipt(senderId: string, messageId: string): Receipt | null {
     return this.#tx(() => {
       this.#refresh(Date.now());

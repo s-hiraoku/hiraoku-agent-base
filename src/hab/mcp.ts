@@ -4,7 +4,7 @@
  * hab_poll, hab_ack, hab_resolve, hab_peek and hab_discover) is for the SDK, the receive
  * service and the arrival notifier (ADR-021).
  */
-import { McpServer } from "@modelcontextprotocol/server";
+import { McpServer, ProtocolError } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   createDeliveryMcpServer,
@@ -23,6 +23,8 @@ import type { HabDirectory } from "./directory.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import type { HabDiscoveryService } from "./discovery.ts";
 import { HAB_ADDRESS_PATTERN } from "./registry.ts";
+import { HabEventError, habEventParamSchemas } from "./events.ts";
+import type { HabEvents } from "./events.ts";
 import {
   HAB_AGENT_INSTRUCTIONS,
   habAgentDescriptions,
@@ -207,6 +209,8 @@ export function createHabMcpServer(
   catalog: HabMcpCatalog = "delivery",
   /** The transport's response limit; hab_inbox reads no more than fits in it. */
   maxResponseBytes?: number,
+  /** MCP events for new mail (ADR-022); only the agent catalog offers them. */
+  events?: HabEvents,
 ) {
   if (typeof service?.resolve !== "function")
     throw new MessagingError("invalid_hab_mcp_service");
@@ -234,6 +238,8 @@ export function createHabMcpServer(
           security,
           maxResponseBytes,
         );
+  if (events && catalog === "agent")
+    registerHabEvents(server, events, resolveContext, gate);
   if (service.discoveryEnabled === true) {
     if (typeof service.discover !== "function")
       throw new MessagingError("invalid_hab_mcp_service");
@@ -458,4 +464,62 @@ function createDeliveryServer(
     );
   }
   return server;
+}
+
+/**
+ * events/list, events/subscribe and events/unsubscribe (ADR-022) on the agent catalog. Each
+ * runs on the request's verified connection, like a tool; a refusal names a fixed reason.
+ */
+function registerHabEvents(
+  server: McpServer,
+  events: HabEvents,
+  resolveContext: DeliveryContextResolver,
+  gate: DeliveryMcpGate | undefined,
+) {
+  server.server.registerCapabilities({ events: {} } as never);
+  const run = async (action: (context: unknown) => unknown) => {
+    let finish:
+      ((success: boolean, reason?: string) => Promise<void>) | undefined;
+    try {
+      gate?.check();
+      finish = await gate?.begin();
+      let context: unknown;
+      try {
+        context = await resolveContext();
+      } catch {
+        context = undefined;
+      }
+      if (context === null || context === undefined || context === false)
+        throw new MessagingError("forbidden");
+      const result = await action(context);
+      await finish?.(true);
+      return result as Record<string, unknown>;
+    } catch (error) {
+      const reason =
+        error instanceof HabEventError
+          ? error.reason
+          : error instanceof MessagingError
+            ? error.code
+            : "operation_failed";
+      await finish?.(false, reason).catch(() => {});
+      if (error instanceof HabEventError)
+        throw new ProtocolError(error.code, reason, { reason });
+      throw new ProtocolError(-32600, reason, { reason });
+    }
+  };
+  server.server.setRequestHandler(
+    "events/list",
+    { params: habEventParamSchemas.list },
+    () => run((context) => events.list(context)),
+  );
+  server.server.setRequestHandler(
+    "events/subscribe",
+    { params: z.unknown() },
+    (params) => run((context) => events.subscribe(context, params)),
+  );
+  server.server.setRequestHandler(
+    "events/unsubscribe",
+    { params: z.unknown() },
+    (params) => run((context) => events.unsubscribe(context, params)),
+  );
 }

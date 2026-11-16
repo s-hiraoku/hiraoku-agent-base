@@ -168,10 +168,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "8735bdde99dec126e3244f8bd569cf9cc396179f2f2ab81e312c03623f5935cf",
+      "sha256": "dde804aa205526adbfaf0408ff3404effb2447e3721c66b3763d684f2a957d7d",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative maintained feature map with eleven entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. The arrival-notifier entry also names the Codex, Claude Code and ChatGPT connector (Dots) screens. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation.",
+      "summary": "Authoritative maintained feature map with twelve entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. The arrival-notifier entry also names the Codex, Claude Code and ChatGPT connector (Dots) screens. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation. ADR-022 adds the mcp-events entry (ingress MCP Events doorbell).",
       "read_scope": "full"
     },
     {
@@ -196,6 +196,14 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "Maintained arrival-notifier recipe, rereviewed 2026-11-15: notify-oauth (unit tests only) covers the notifier-owned grant, refresh and its failure codes. synthetic HAB peek/choice/expiry and token recovery with JSONL publication; accept is unsupported and emits no handoff. Static Claude channel refuses; only explicit product-owned atomic same-session delivery can admit work. Hermes events remain immutable and state responses add revision. Real-product reply verification is explicitly separate and must not be simulated using CLI identity. Existing Codex/mock transport tests remain synthetic; file publication is not displayed UI or queued work. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. PR225 review: exact run transition/publication timing fields, unchanged one-shot check, latest failure-code interval meaning and corresponding regression tests; OAuth/native gates unchanged.",
+      "read_scope": "full"
+    },
+    {
+      "path": ".claude/skills/verify-hab/features/mcp-events.md",
+      "sha256": "fcd1b66bb7fb518375e4a9be87e6bf4c5bbc05e1e570712fcaf031c8ab2e07ba",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests.",
       "read_scope": "full"
     },
     {
@@ -476,10 +484,10 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "0b16bdd51eb2d25199513f3ea2866dbd3455a090516a7a5a43f750b1ac63507f",
+      "sha256": "ee873ce4e2b11bbfedba3ba16f05330d519b944046e76ecdeaf09fc97b96d008",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task."
     },
     {
       "path": "docs/hab-principles.md",
@@ -725,6 +733,14 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in read-only sixth tool distinguishes authenticated group, selected address and host-attested session identity. Directory is confined to own binding/group with filtered MAC live-keyset cursors; availability optionally leaks only occupancy in approved namespaces and never reserves/grants. Unknown/stale host evidence remains unknown, presence is unobserved, callback is trusted read-only host code. No inferred online state, registration or identity from profile paths."
+    },
+    {
+      "path": "docs/connections/mcp-events.md",
+      "sha256": "4f7978c4d033911e914a14d133d1c96f8307363adb1ce89e152298f496afd0b8",
+      "role": "normative",
+      "review": "reviewed",
+      "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified.",
+      "read_scope": "full"
     },
     {
       "path": "docs/history/migration-plan.md",
@@ -3508,8 +3524,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 114,
-          "end": 114,
+          "start": 123,
+          "end": 123,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {

@@ -86,6 +86,9 @@ export async function startHost(configPath: string) {
                 allowed_origins: config.ingress.allowed_origins,
                 authority: remote.authority,
                 verify: remote.verify,
+                ...(config.ingress.events
+                  ? { events: config.ingress.events }
+                  : {}),
               },
             }
           : {}),

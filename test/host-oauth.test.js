@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdtempSync,
   realpathSync,
   chmodSync,
@@ -163,16 +164,17 @@ function wire(
     tool,
     args = {},
     body,
+    // Another JSON-RPC method, such as events/list.
+    rpc,
+    params = {},
   } = {},
 ) {
+  const rpcMethod = rpc ?? (tool ? "tools/call" : "tools/list");
   return new Promise((resolve, reject) => {
     const payload =
       body ??
       JSON.stringify(
-        envelope(
-          tool ? "tools/call" : "tools/list",
-          tool ? { name: tool, arguments: args } : {},
-        ),
+        envelope(rpcMethod, tool ? { name: tool, arguments: args } : params),
       );
     const q = request(
       {
@@ -187,7 +189,7 @@ function wire(
             ? {
                 "Content-Type": "application/json",
                 "MCP-Protocol-Version": "2026-07-28",
-                "Mcp-Method": tool ? "tools/call" : "tools/list",
+                "Mcp-Method": rpcMethod,
                 ...(tool ? { "Mcp-Name": tool } : {}),
               }
             : {}),
@@ -409,4 +411,67 @@ test("ingress startup collision closes the local listener and releases the singl
   );
   const h = await f.start();
   assert.equal((await wire(h)).status, 401);
+});
+
+test("ingress events (ADR-022): the agent endpoint offers new-mail events only when configured", async (t) => {
+  const f = await fixture(t);
+  const off = await f.start();
+  const refused = await wire(off, {
+    token: f.jwt,
+    path: "/hab/mcp",
+    rpc: "events/list",
+  });
+  assert.equal(refused.status, 405);
+  await off.close();
+  const posts = [];
+  const h = await f.start({
+    ingress: {
+      ...f.options.ingress,
+      events: {
+        poll_ms: 500,
+        post: async (url, body) => {
+          const parsed = JSON.parse(body);
+          posts.push({ url, parsed });
+          return parsed.type === "verification"
+            ? {
+                status: 200,
+                body: JSON.stringify({ challenge: parsed.challenge }),
+              }
+            : { status: 200, body: "" };
+        },
+      },
+    },
+  });
+  const listed = await wire(h, {
+    token: f.jwt,
+    path: "/hab/mcp",
+    rpc: "events/list",
+  });
+  assert.equal(listed.status, 200);
+  assert.deepEqual(
+    listed.body.result.events.map((e) => e.name),
+    ["hab.message.received"],
+  );
+  // The delivery endpoint never offers events, even on the same connection.
+  const delivery = await wire(h, { token: f.jwt, rpc: "events/list" });
+  assert.equal(delivery.status, 405);
+  const sub = await wire(h, {
+    token: f.jwt,
+    path: "/hab/mcp",
+    rpc: "events/subscribe",
+    params: {
+      name: "hab.message.received",
+      arguments: {},
+      delivery: {
+        mode: "webhook",
+        url: "https://hooks.example.com/cb",
+        secret: "whsec_" + Buffer.alloc(32, 1).toString("base64"),
+      },
+    },
+  });
+  assert.equal(sub.status, 200);
+  assert.match(sub.body.result.id, /^hab_sub_/);
+  assert.equal(posts[0].parsed.type, "verification");
+  // Only the agent endpoint and loopback listeners exist; the store is in the host directory.
+  assert.ok(existsSync(join(f.dir, "events.sqlite")));
 });

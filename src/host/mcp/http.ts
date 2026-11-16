@@ -86,6 +86,10 @@ export class McpHttpGateway {
     return new Set();
   }
   /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
+  /** Whether this endpoint answers the MCP events methods (ADR-022). */
+  protected get eventsEnabled(): boolean {
+    return false;
+  }
   protected get toolSchemas(): Record<string, z.ZodType> {
     return deliveryMcpSchemas;
   }
@@ -396,6 +400,7 @@ export class McpHttpGateway {
                 return (outcome) => finish(outcome === "tool_succeeded");
               },
             },
+            this.eventsEnabled,
           ))
         )
           throw new HttpFailure(405, "resource_rejected");
