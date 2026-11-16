@@ -187,15 +187,19 @@ export function createHttpsPost(
 ): WebhookPost {
   return (raw, body, headers) => {
     let cancel: (() => void) | undefined;
+    let expired = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
+        expired = true;
         cancel?.();
         reject(callbackFailed("timeout"));
       }, timeoutMs);
     });
+    // A request created after the deadline (slow name resolution) is destroyed at once.
     const attempt = post(raw, body, headers, (destroy) => {
       cancel = destroy;
+      if (expired) destroy();
     });
     attempt.catch(() => {});
     return Promise.race([attempt, deadline]).finally(() => clearTimeout(timer));
@@ -416,10 +420,13 @@ export class HabEvents {
       .run(this.#id(recipient.agent_id, url), recipient.agent_id);
     return {};
   }
+  /** Whether a live subscription exists: an expired one awaiting cleanup takes a new slot. */
   #has(id: string) {
     return !!this.#db
-      .prepare("SELECT 1 FROM hab_event_subscriptions WHERE id=?")
-      .get(id);
+      .prepare(
+        "SELECT 1 FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
+      )
+      .get(id, this.#now());
   }
   #count(agentId: string) {
     return (

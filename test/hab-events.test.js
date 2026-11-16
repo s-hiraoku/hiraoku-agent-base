@@ -456,3 +456,17 @@ test("concurrent subscribes cannot together pass the per-recipient limit", async
   assert.equal(refused.error.data.reason, "too_many_subscriptions");
   assert.equal(f.events.subscriptions().length, 2);
 });
+
+test("renewing an expired subscription needs a free slot, like a new one", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, { events: { now: () => now, max_per_agent: 1 } });
+  const urlB = "https://hooks.example.com/cb/b";
+  const at = (url) => ({
+    delivery: { mode: "webhook", url, secret: SECRET },
+  });
+  assert.ok((await f.subscribe("a", { ttlMs: 60_000 })).result);
+  now += 60_001; // A expired; its row waits for the next dispatch cleanup
+  assert.ok((await f.subscribe("a", at(urlB))).result);
+  const renewed = await f.subscribe("a");
+  assert.equal(renewed.error.data.reason, "too_many_subscriptions");
+});
