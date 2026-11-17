@@ -139,6 +139,10 @@ function supportedSchema(db: DatabaseSync) {
           "notices_state",
           "notices_insert_revision",
           "notices_state_revision",
+          // ADR-023: automatic 対応する records, copied with the file as they are.
+          "auto_accepts",
+          "auto_accepts_sender",
+          "auto_accepts_thread",
         ].includes(x.name),
     )
   )

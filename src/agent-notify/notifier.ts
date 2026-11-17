@@ -14,6 +14,15 @@ import type {
 } from "./contract.ts";
 import { choicesOf } from "./contract.ts";
 import type { NoticeKey, SQLiteNotices } from "./sqlite-notices.ts";
+import { AUTO_ACCEPT_WINDOW_MS, autoHandoffPrompt } from "./auto-accept.ts";
+import type { AutoAcceptPolicy, AutoAuditEvent } from "./auto-accept.ts";
+import type { PeekedMessage } from "./contract.ts";
+
+/** Automatic 対応する for allowed senders (ADR-023). Absent: every message waits for the user. */
+export interface AutoAccept {
+  policy: AutoAcceptPolicy;
+  audit: { write(event: AutoAuditEvent): void };
+}
 
 export interface DecisionResult {
   /** Whether this call changed the record; false for a repeated or late choice. */
@@ -30,11 +39,13 @@ export class ReceiptNotifier {
   readonly #screen: AgentScreen;
   readonly #store: SQLiteNotices;
   readonly #now: () => number;
+  readonly #auto: AutoAccept | undefined;
   constructor(options: {
     hab: NotifierHab;
     screen: AgentScreen;
     store: SQLiteNotices;
     now?: () => number;
+    autoAccept?: AutoAccept;
   }) {
     // The record and the screen must name the same session; otherwise a choice made for
     // one session could be handed to another.
@@ -44,6 +55,7 @@ export class ReceiptNotifier {
     this.#screen = options.screen;
     this.#store = options.store;
     this.#now = options.now ?? Date.now;
+    this.#auto = options.autoAccept;
   }
   /**
    * One check: expire undecided notices past their deadline, then page through every
@@ -95,7 +107,10 @@ export class ReceiptNotifier {
           shown.push(message.message_id);
         } catch (error) {
           failure ??= error;
+          continue;
         }
+        // Shown first, so the user can see what was handled for them.
+        if (this.#auto) await this.#autoAccept(this.#auto, message);
       }
       if (!messages.length || next_cursor === null) break;
       after = next_cursor;
@@ -203,19 +218,93 @@ export class ReceiptNotifier {
       );
       return "accept_waiting";
     }
+    // ADR-023: an automatic choice tells the session that nobody chose it.
+    const rule = this.#store.autoAcceptRule(record);
+    const prompt =
+      rule === undefined ? undefined : autoHandoffPrompt(record.message, rule);
     let state: NoticeState;
     // HAB no longer offers it to this recipient: hand off nothing.
     if (!offered) state = "unavailable";
+    // Checked before the claim; never hand an automatic choice off as the user's own.
+    else if (rule !== undefined && prompt === undefined) state = "unsupported";
     else
       try {
-        state = await this.#screen.handoff(record.message);
+        state = await this.#screen.handoff(
+          prompt === undefined
+            ? record.message
+            : { ...record.message, handoff_prompt: prompt },
+        );
       } catch {
         // The session may or may not have the request. Never send it again by itself.
         state = "unknown";
       }
     this.#store.transition(record, ["accepting"], state, this.#now());
+    if (rule !== undefined) this.#auditHandoff(record, rule, state);
     await this.#report(record, state);
     return state;
+  }
+  /**
+   * ADR-023: chooses 対応する for the user when a rule allows this message right now. Every
+   * outcome of a matching rule is written to the audit file; a message no rule names is not.
+   * If the audit cannot be written, or the prompt is not in the expected shape, the message
+   * waits for the user.
+   */
+  async #autoAccept(auto: AutoAccept, message: PeekedMessage) {
+    const now = this.#now();
+    const verdict = auto.policy.evaluate(
+      message,
+      this.#store.autoAcceptCounts(),
+      now,
+    );
+    if (!verdict) return;
+    const base = {
+      rule: verdict.rule,
+      sender_id: message.sender_id,
+      from: message.from,
+      message_id: message.message_id,
+      thread_id: message.thread_id,
+      kind: message.kind,
+      reply:
+        typeof message.in_reply_to === "string" &&
+        message.in_reply_to.length > 0,
+    };
+    const skip = (result: string) => {
+      try {
+        auto.audit.write({ event: "auto_skip", ...base, result });
+      } catch {
+        // The card is waiting for the user either way.
+      }
+    };
+    if (!verdict.accept) return skip(verdict.reason);
+    if (!autoHandoffPrompt(message, verdict.rule))
+      return skip("unexpected_prompt");
+    // The caps are checked again inside the claim's transaction: another notifier on the
+    // same store may have spent the last slot since `evaluate`.
+    let claim;
+    try {
+      claim = this.#store.claimAutoAccept({
+        key: message,
+        threadId: message.thread_id,
+        rule: verdict.rule,
+        now,
+        senderSince: now - AUTO_ACCEPT_WINDOW_MS,
+        maxPerSender: auto.policy.config.max_per_sender_per_hour,
+        maxPerThread: auto.policy.config.max_per_thread,
+        beforeCommit: () =>
+          auto.audit.write({
+            event: "auto_accept",
+            ...base,
+            result: "accepting",
+          }),
+      });
+    } catch {
+      // The audit line could not be written: nothing was claimed.
+      return;
+    }
+    if (claim === "sender_rate_limited" || claim === "thread_limited")
+      return skip(claim);
+    if (claim !== "claimed") return;
+    await this.#finishAccept(this.#store.get(message)!);
   }
   #unchanged(key: NoticeKey): DecisionResult {
     return { changed: false, state: this.#store.get(key)!.state };
@@ -238,6 +327,26 @@ export class ReceiptNotifier {
         details: { field: "message_id", expected: "a notice that was shown" },
       });
     return found[0];
+  }
+  #auditHandoff(record: NoticeRecord, rule: string, result: NoticeState) {
+    const message = record.message;
+    try {
+      this.#auto?.audit.write({
+        event: "auto_handoff",
+        rule,
+        sender_id: message.sender_id,
+        from: message.from,
+        message_id: message.message_id,
+        thread_id: message.thread_id,
+        kind: message.kind,
+        reply:
+          typeof message.in_reply_to === "string" &&
+          message.in_reply_to.length > 0,
+        result,
+      });
+    } catch {
+      // The decision record is the source of truth.
+    }
   }
   async #report(record: NoticeRecord, state: NoticeState) {
     try {

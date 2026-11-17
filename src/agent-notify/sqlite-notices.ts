@@ -24,7 +24,17 @@ CREATE TABLE IF NOT EXISTS notices(
   message TEXT NOT NULL,
   PRIMARY KEY(sender_id,message_id)
 );
-CREATE INDEX IF NOT EXISTS notices_state ON notices(state,expires_at);`;
+CREATE INDEX IF NOT EXISTS notices_state ON notices(state,expires_at);
+CREATE TABLE IF NOT EXISTS auto_accepts(
+  sender_id TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  thread_id TEXT NOT NULL,
+  rule TEXT NOT NULL,
+  accepted_at INTEGER NOT NULL,
+  PRIMARY KEY(sender_id,message_id)
+);
+CREATE INDEX IF NOT EXISTS auto_accepts_sender ON auto_accepts(sender_id,accepted_at);
+CREATE INDEX IF NOT EXISTS auto_accepts_thread ON auto_accepts(sender_id,thread_id);`;
 
 /**
  * An `accepting` claim older than this was left by a notifier that stopped mid-handoff (a
@@ -255,6 +265,96 @@ export class SQLiteNotices {
         .all() as unknown as Row[]
     ).map((row) => this.#record(row));
   }
+  /**
+   * Notes an automatic 対応する (ADR-023), so the per-sender and per-thread caps hold across
+   * restarts. Kept as long as the notice row itself.
+   */
+  recordAutoAccept(
+    key: NoticeKey,
+    threadId: string,
+    rule: string,
+    now: number,
+  ): void {
+    this.#db
+      .prepare(
+        "INSERT OR IGNORE INTO auto_accepts(sender_id,message_id,thread_id,rule,accepted_at) VALUES(?,?,?,?,?)",
+      )
+      .run(key.sender_id, key.message_id, threadId, rule, now);
+  }
+  /**
+   * ADR-023: rechecks the caps, claims a `shown` notice as `accepting` and notes the
+   * automatic choice, all in one write transaction, so notifiers sharing this store cannot
+   * both spend the last slot. `beforeCommit` (the audit line) runs inside it; if it throws,
+   * nothing is claimed.
+   */
+  claimAutoAccept(options: {
+    key: NoticeKey;
+    threadId: string;
+    rule: string;
+    now: number;
+    senderSince: number;
+    maxPerSender: number;
+    maxPerThread: number;
+    beforeCommit: () => void;
+  }): "claimed" | "sender_rate_limited" | "thread_limited" | "not_shown" {
+    const { key, threadId, now } = options;
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      const counts = this.autoAcceptCounts();
+      let result:
+        "claimed" | "sender_rate_limited" | "thread_limited" | "not_shown";
+      if (
+        counts.bySenderSince(key.sender_id, options.senderSince) >=
+        options.maxPerSender
+      )
+        result = "sender_rate_limited";
+      else if (counts.byThread(key.sender_id, threadId) >= options.maxPerThread)
+        result = "thread_limited";
+      else if (this.get(key)?.state !== "shown") result = "not_shown";
+      else {
+        options.beforeCommit();
+        this.transition(key, ["shown"], "accepting", now);
+        this.recordAutoAccept(key, threadId, options.rule, now);
+        result = "claimed";
+      }
+      this.#db.exec(result === "claimed" ? "COMMIT" : "ROLLBACK");
+      return result;
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+  /** Whether this message was handed off automatically, and by which rule. */
+  autoAcceptRule(key: NoticeKey): string | undefined {
+    const row = this.#db
+      .prepare(
+        "SELECT rule FROM auto_accepts WHERE sender_id=? AND message_id=?",
+      )
+      .get(key.sender_id, key.message_id) as { rule: string } | undefined;
+    return row?.rule;
+  }
+  /** Automatic handoffs for one sender since a time, and in one of its threads. */
+  autoAcceptCounts() {
+    return {
+      bySenderSince: (senderId: string, since: number) =>
+        (
+          this.#db
+            .prepare(
+              "SELECT COUNT(*) AS n FROM auto_accepts WHERE sender_id=? AND accepted_at>=?",
+            )
+            .get(senderId, since) as { n: number }
+        ).n,
+      // HAB names a thread by the agent pair and thread_id, so two senders' thread-1 differ.
+      byThread: (senderId: string, threadId: string) =>
+        (
+          this.#db
+            .prepare(
+              "SELECT COUNT(*) AS n FROM auto_accepts WHERE sender_id=? AND thread_id=?",
+            )
+            .get(senderId, threadId) as { n: number }
+        ).n,
+    };
+  }
   /** Every record of this target, oldest first: what each shown notice became. */
   all(): NoticeRecord[] {
     return (
@@ -281,6 +381,11 @@ export class SQLiteNotices {
     this.#db
       .prepare("DELETE FROM notices WHERE expires_at<=?")
       .run(now - NOTICE_RETENTION_MS);
+    this.#db
+      .prepare(
+        "DELETE FROM auto_accepts WHERE NOT EXISTS (SELECT 1 FROM notices n WHERE n.sender_id=auto_accepts.sender_id AND n.message_id=auto_accepts.message_id)",
+      )
+      .run();
     return expired;
   }
 }

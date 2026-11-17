@@ -31,7 +31,7 @@
  * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
  */
 import { createNotifyCheckLog } from "./lib/notify-check-log.ts";
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -41,8 +41,11 @@ import {
   HermesDesktopScreen,
   JsonlScreen,
   ProductScreen,
+  AutoAcceptPolicy,
+  AutoAudit,
   ReceiptNotifier,
   SQLiteNotices,
+  autoAcceptConfigSchema,
   chatgptConnectorHandoff,
   choicesOf,
   peekedMessageSchema,
@@ -261,6 +264,11 @@ const configSchema = z.strictObject({
     }),
   ]),
   interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
+  /**
+   * ADR-023: chooses 対応する without a click for the senders and kinds listed here. Absent
+   * (the default): every message waits for the user.
+   */
+  auto_accept: autoAcceptConfigSchema.optional(),
 });
 export type NotifyConfig = z.infer<typeof configSchema>;
 
@@ -551,8 +559,30 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
   );
   const target = screen ?? boundScreen(config);
   const store = new SQLiteNotices(expand(config.store), target.target);
+  const auto = config.auto_accept;
   return {
-    notifier: new ReceiptNotifier({ hab, screen: target, store }),
+    notifier: new ReceiptNotifier({
+      hab,
+      screen: target,
+      store,
+      ...(auto
+        ? {
+            autoAccept: {
+              policy: new AutoAcceptPolicy(auto),
+              audit: new AutoAudit(expand(auto.audit), {
+                rename: renameSync,
+                size: (path) => {
+                  try {
+                    return lstatSync(path).size;
+                  } catch {
+                    return undefined;
+                  }
+                },
+              }),
+            },
+          }
+        : {}),
+    }),
     store,
   };
 }
