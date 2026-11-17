@@ -127,7 +127,7 @@ npm run hab:notify -- --config notify.json login   # 最初に 1 回だけ。表
   </array>
   <key>WorkingDirectory</key><string>/ABSOLUTE/RELEASE/source</string>
   <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>30</integer>
   <key>ProcessType</key><string>Background</string>
   <key>Umask</key><integer>63</integer>
@@ -137,7 +137,7 @@ npm run hab:notify -- --config notify.json login   # 最初に 1 回だけ。表
 ```
 
 - `run` が書くのは、表示した ID、失敗の名前、`resumed` だけです。token も本文も書かないので、ログは所有者だけが読めるファイル（`Umask` 63 で 0600）に残せます。同じ失敗は始まりと終わりの 1 行ずつなので、ログはほとんど増えません。
-- `SIGTERM` を受けると、その回の確認を終えてから終了コード 0 で止まります（長くても `interval_ms` 待ちます）。`SuccessfulExit` が false なので、止めた後に勝手に起動し直すことはありません。異常終了のときだけ 30 秒おいて起動し直します。
+- `SIGTERM` を受けると、その回の確認を終えてから終了コード 0 で止まります（長くても `interval_ms` 待ちます）。`KeepAlive` が true なので、どんな終わり方でも 30 秒おいて起動し直します（[ADR-024](../hab-decisions.md)。黙って止まると新着に誰も気づかないため）。意図して止めるのは、下の `bootout` だけです。
 - `bootout` で止めるのは、このジョブだけです。止めている間に届いたメッセージは未読のまま HAB に残り、次に起動したときにカードになります。選択の記録（`store`）は消しません。
 - ログインしている間だけ動くジョブです。ログアウト中は、エージェント（Hermes Desktop）も動いていないので、カードを出す先もありません。
 

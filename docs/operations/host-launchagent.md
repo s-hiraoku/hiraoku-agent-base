@@ -51,7 +51,7 @@ overwriting other jobs. The following is a template, not a ready-to-load config:
   </array>
   <key>WorkingDirectory</key><string>/ABSOLUTE/RELEASE</string>
   <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>30</integer>
   <key>ProcessType</key><string>Background</string>
   <key>Umask</key><integer>63</integer>
@@ -61,8 +61,11 @@ overwriting other jobs. The following is a template, not a ready-to-load config:
 ```
 
 This user-session job starts when loaded/login occurs. It is not a system daemon
-that promises operation after logout. Failed exits may restart with throttling;
-a clean CLI shutdown does not request an automatic restart. Lifecycle output goes
+that promises operation after logout. launchd restarts the host after any exit,
+clean or not, with throttling ([ADR-024](../hab-decisions.md)): a host that stops
+silently leaves mail unnoticed and lets cloud agents' event subscriptions lapse.
+Stop it on purpose only with `launchctl bootout` (below), which unloads the job;
+a `kill` or SIGTERM alone is followed by a restart. Lifecycle output goes
 to `/dev/null`; the configured bounded private security audit remains enabled.
 Check job status and use the foreground CLI for a sanitized startup failure report.
 No environment dump or full process arguments are needed in a support message.
@@ -90,3 +93,33 @@ bootstrap the same reviewed plist again and verify the same state/config/release
 If installation/start is refused, report that refusal; do not install an alternate
 scheduler or launch route. Remove a newly prepared unloaded plist when abandoning
 installation so it cannot unexpectedly start at a later login.
+
+`launchctl kickstart -k "gui/$(id -u)/local.hab.host"` restarts it in place.
+
+## Keep the Mac awake in a separate job
+
+Do not wrap the host in `caffeinate`: when the host stops, the wrapper goes with it
+and the Mac falls asleep, so cloud agents cannot reach the ingress and their event
+subscriptions cannot be refreshed (2026-11-17). Keep the machine awake with its own
+job that does not depend on the host. It needs no `sudo`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>local.hab.awake</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>-s</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Background</string>
+</dict></plist>
+```
+
+`-i` prevents idle sleep and `-s` system sleep while on AC power; the display may
+still sleep. Check with `pmset -g assertions | grep caffeinate`. The equivalent
+system setting is `sudo pmset -a sleep 0`; `sudo pmset -a autorestart 1` also starts
+the Mac again after a power failure. Both are owner decisions.

@@ -11,6 +11,7 @@ import {
   callbackUrl,
   createHttpsPost,
   isPublicAddress,
+  readDoorbells,
   signWebhook,
 } from "../src/hab/events.ts";
 import { fixture } from "./hab-registry-fixtures.js";
@@ -44,10 +45,12 @@ function hooks(status = () => 200, delayMs = 0, onEvent = async () => {}) {
   };
 }
 
+let lastStore;
 function temp(t) {
   const dir = mkdtempSync(join(tmpdir(), "hab-events-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  return join(dir, "events.sqlite");
+  lastStore = join(dir, "events.sqlite");
+  return lastStore;
 }
 
 async function setup(t, options = {}) {
@@ -98,7 +101,18 @@ async function setup(t, options = {}) {
       cursor: null,
       ...extra,
     });
-  self = { ...f, a, b, h, events, gateway, rpc, send, subscribe };
+  self = {
+    ...f,
+    a,
+    b,
+    h,
+    events,
+    gateway,
+    rpc,
+    send,
+    subscribe,
+    store: lastStore,
+  };
   return self;
 }
 
@@ -364,7 +378,10 @@ test("subscriptions expire at refreshBefore and unsubscribe stops delivery", asy
   const f = await setup(t, { events: { now: () => now } });
   const sub = await f.subscribe("a", { ttlMs: 60_000 });
   assert.equal(Date.parse(sub.result.refreshBefore), now + 60_000);
-  now += 60_001;
+  // The dispatcher keeps ticking, so this is ordinary expiry, not an outage.
+  now += 30_000;
+  await f.events.dispatch();
+  now += 30_001;
   await f.send("b", f.a.address, "late");
   await f.events.dispatch();
   assert.equal(f.h.events().length, 0);
@@ -459,7 +476,9 @@ test("concurrent subscribes cannot together pass the per-recipient limit", async
 
 test("renewing an expired subscription needs a free slot, like a new one", async (t) => {
   let now = Date.now();
-  const f = await setup(t, { events: { now: () => now, max_per_agent: 1 } });
+  const f = await setup(t, {
+    events: { now: () => now, max_per_agent: 1, outage_after_ms: 3_600_000 },
+  });
   const urlB = "https://hooks.example.com/cb/b";
   const at = (url) => ({
     delivery: { mode: "webhook", url, secret: SECRET },
@@ -509,4 +528,125 @@ test("each message gets its own retry budget", async (t) => {
   const second = f.h.events().slice(7);
   assert.equal(second.length, 2);
   assert.equal(second[0].parsed.eventId, second[1].parsed.eventId);
+});
+
+// The host stopping or the Mac sleeping must not cost a subscriber its doorbell: it could
+// not refresh while HAB was unreachable (2026-11-17: an hour of sleep dropped Dots).
+test("time the host was stopped or asleep is not counted against live subscriptions", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, { events: { now: () => now } });
+  const sub = await f.subscribe("a", { ttlMs: 600_000 });
+  const until = Date.parse(sub.result.refreshBefore);
+  now += 3000;
+  await f.events.dispatch(); // a normal tick
+  now += 3_600_000; // an hour asleep, past the subscription's lifetime
+  await f.send("b", f.a.address, "while asleep");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1, "the doorbell still rings");
+  const [row] = f.events.subscriptions();
+  assert.equal(row.expires_at, until + 3_600_000);
+  // The subscriber's next refresh is an ordinary renewal of the same subscription.
+  const renewed = await f.subscribe("a", { ttlMs: 600_000 });
+  assert.equal(renewed.result.id, sub.result.id);
+  assert.equal(readDoorbells(f.store, now).get(f.a.agent_id).live, 1);
+});
+
+test("the outage credit is capped and never revives a subscription that had already ended", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, max_ttl_ms: 120_000 },
+  });
+  await f.subscribe("a", { ttlMs: 60_000 });
+  now += 3000;
+  await f.events.dispatch();
+  now += 36_000_000; // ten hours down: at most max_ttl_ms (2 min) comes back
+  await f.events.dispatch();
+  assert.equal(f.events.subscriptions().length, 0);
+  const lapsed = readDoorbells(f.store, now).get(f.a.agent_id);
+  assert.equal(lapsed.live, 0);
+  assert.equal(lapsed.reason, "expired");
+
+  // Expired while the dispatcher was still ticking: an outage afterwards changes nothing.
+  await f.subscribe("a", { ttlMs: 60_000 });
+  for (let i = 0; i < 3; i++) {
+    now += 30_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.subscriptions().length, 0);
+  now += 3_600_000;
+  await f.events.dispatch();
+  assert.equal(f.events.subscriptions().length, 0);
+});
+
+test("operators can see when and why a recipient's doorbell stopped; subscribing clears it", async (t) => {
+  let now = Date.now();
+  let answer = 200;
+  const f = await setup(t, {
+    status: () => answer,
+    events: { now: () => now },
+  });
+  assert.equal(readDoorbells(f.store, now).size, 0);
+  await f.subscribe("a");
+  assert.deepEqual(
+    { ...readDoorbells(f.store, now).get(f.a.agent_id), until: null },
+    { live: 1, until: null, lapsed_at: null, reason: null },
+  );
+  // The callback is gone (410).
+  answer = 410;
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  let bell = readDoorbells(f.store, now).get(f.a.agent_id);
+  assert.equal(bell.live, 0);
+  assert.equal(bell.reason, "gone");
+  assert.equal(bell.lapsed_at, now);
+  // Subscribing again clears the lapse; an explicit unsubscribe records its own reason.
+  answer = 200;
+  await f.subscribe("a");
+  assert.equal(readDoorbells(f.store, now).get(f.a.agent_id).reason, null);
+  await f.rpc("a", "events/unsubscribe", {
+    name: HAB_EVENT_NAME,
+    arguments: {},
+    delivery: { mode: "webhook", url: URL_A },
+  });
+  bell = readDoorbells(f.store, now).get(f.a.agent_id);
+  assert.equal(bell.reason, "unsubscribed");
+  // A subscription past its lifetime reads as lapsed even before the dispatcher removes it.
+  await f.subscribe("a", { ttlMs: 60_000 });
+  bell = readDoorbells(f.store, now + 60_001).get(f.a.agent_id);
+  assert.equal(bell.live, 0);
+  assert.equal(bell.reason, "expired");
+});
+
+test("a slow delivery pass is not mistaken for an outage", async (t) => {
+  const f = await setup(t, {
+    delayMs: 400,
+    events: { poll_ms: 50, outage_after_ms: 200 },
+  });
+  const sub = await f.subscribe("a", { ttlMs: 600_000 });
+  const until = Date.parse(sub.result.refreshBefore);
+  await f.send("b", f.a.address, "one");
+  await f.send("b", f.a.address, "two");
+  f.events.start();
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.equal(f.h.events().length, 2);
+  assert.equal(f.events.subscriptions()[0].expires_at, until);
+});
+
+test("an outage threshold below the poll interval cannot extend lifetimes on ordinary ticks", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, poll_ms: 3000, outage_after_ms: 1000 },
+  });
+  const sub = await f.subscribe("a", { ttlMs: 60_000 });
+  const until = Date.parse(sub.result.refreshBefore);
+  for (let i = 0; i < 10; i++) {
+    now += 3000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.subscriptions()[0].expires_at, until);
+  for (let i = 0; i < 11; i++) {
+    now += 3000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.subscriptions().length, 0);
 });

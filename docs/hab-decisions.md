@@ -125,6 +125,16 @@
 - **記録を残す。** 規則に合ったメッセージごとに、notifier専用の`audit.jsonl`（0600、1 MiBで`.1`へ回す、本文なし）へ`auto_accept`（受け付ける前）・`auto_handoff`（結果の状態）・`auto_skip`（上限・長さ・文面の形で手動に戻した理由）を書く。`auto_accept`を書けなければ自動では選ばない。カードは今までどおり表示し、結果の状態で履歴に移る。
 - **それ以外はADR-021のまま。** 既読にしてから1回だけ渡す、`unknown`は再送しない、HABに既読を伝えられなければ`accept_waiting`で待つ（後で渡すときも自動の文面を使う）。
 
+## ADR-024 / 採用：HABが止まっていた時間を呼び鈴の寿命に数えず、気づかれていない新着を運用者に見せる
+
+2026-11-17 JST、owner判断（「問題の解決方法を検討して、実装しよう」）。同日23:21にMac miniのHAB hostが正常終了の形で止まり、launchdの`KeepAlive`が異常終了のときだけ再起動する設定だったため戻らなかった。スリープ防止の`caffeinate -i`がhostに付いていたので一緒に消え、Macは約1時間眠った。その間にDots（ChatGPT）のMCPイベント購読（ADR-022、寿命1時間）が期限を過ぎてHABから消え、ChatGPTは購読し直さなかった。メッセージは受信箱に届いていたが、誰も気づかなかった。
+
+- **止まっていた時間は寿命に数えない。** 呼び鈴の配送は数秒ごとに時計を記録する。前の記録から`outage_after_ms`（既定60秒。poll3回分より短い値はpoll3回分として扱い、通常のtickで寿命が延びないようにする）より長く空いたら、hostが止まっていたかMacが眠っていたとみなし、空く前に生きていた購読の寿命にその時間を足す（最長`max_ttl_ms`）。購読者はHABに届かない間は更新できなかったのだから、その分を失わせない。配送中の遅いwebhookは時計を止めない（時計は配送とは別に毎tick記録する）。権限を取り消した接続の購読も同じだけ延びうるが、呼び鈴は中身を持たず、更新はこれまでどおり認可を確かめる。
+- **切れた呼び鈴を記録して見せる。** 購読が期限切れ・410・`events/unsubscribe`で終わると、受信者ごとに最後の終了時刻と理由（`expired`/`gone`/`unsubscribed`）を`events.sqlite`に残し、同じ受信者が購読し直すと消す。`hab:admin status`の`inboxes`に、受信者ごとの未読数・最古の未読時刻・呼び鈴の状態を出し、30分以上の未読を`unread_waiting`、更新されずに切れた呼び鈴を`doorbell_lapsed`として`problems`に載せる。callback URLとwebhookの鍵は出さない。
+- **HABは購読を作り直さない。** 購読するのはエージェント製品自身で、HABが勝手に作り直したり、切れた購読に送り続けたりはしない（ADR-022の認可境界のまま）。切れたら運用者がDotsのタスクを作り直す。
+- **hostとnotifierは必ず起動し直し、スリープ防止はhostから切り離す。** LaunchAgentの`KeepAlive`を常にtrueにし、意図して止めるのは`launchctl bootout`だけにする。スリープ防止はhostに付けず、別の常駐ジョブ（`caffeinate -i -s`）にする。手順は[LaunchAgent](operations/host-launchagent.md)。
+- **Museは変わらない。** HABから押し出す手段がないので、Muse自身の定期実行で`hab_inbox`を見させる（ADR-022）。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。

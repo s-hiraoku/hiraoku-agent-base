@@ -137,6 +137,14 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect \
   audience and binding, plus `problems` such as `credential_expired`,
   `credential_audience_mismatch`, `credential_unbound`, `credential_revoked` and
   `address_unbound`. These explain most 401/`forbidden` results.
+  `inboxes` shows, per active address, the unread mail (`unread`,
+  `oldest_unread_at`) and, when `ingress.events` is on, the MCP events doorbell
+  (`doorbell`: `live` with `doorbell_until`, `lapsed` with `doorbell_lapsed_at` and
+  `doorbell_lapse_reason` `expired`/`gone`/`unsubscribed`, `none`, or `off`). It adds
+  `unread_waiting` when an address has mail unread for 30 minutes or more, and
+  `doorbell_lapsed` when its doorbell ended and was not renewed. These explain mail
+  that arrived but nobody noticed ([ADR-024](hab-decisions.md)). No callback URL or
+  webhook secret is printed.
 
 A revoked connection descriptor stays reserved permanently. To reconnect after a
 trial, issue a new token with a new `connection_id` and run `connect` again

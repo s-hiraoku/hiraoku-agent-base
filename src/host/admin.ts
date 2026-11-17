@@ -12,6 +12,7 @@ import { localCredentialsSchema } from "./local-auth.ts";
 import { parseOAuthConfig, oauthConnectionWindow } from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import { NAME_SCHEMA_VERSION } from "../hab/agent-names.ts";
+import { readDoorbells } from "../hab/events.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
   RegistryError,
@@ -176,7 +177,37 @@ function open(configPath: string) {
     credentials,
     a2aIdentity: config.a2a?.identity,
     a2aRecipient: config.a2a?.recipient,
+    directory: config.directory,
+    eventsEnabled: !!config.ingress?.events,
   };
+}
+
+/** Mail older than this without being read is reported as `unread_waiting`. */
+export const UNREAD_WAITING_MS = 30 * 60_000;
+const iso = (ms: number | null | undefined) =>
+  typeof ms === "number" ? new Date(ms).toISOString() : null;
+
+/** Unread (pending or leased, not expired) mail per recipient, read-only. */
+function unreadByRecipient(directory: string, now: number) {
+  const result = new Map<string, { unread: number; oldest: number }>();
+  const path = join(directory, "delivery.sqlite");
+  if (!existsSync(path)) return result;
+  const db = new DatabaseSync(path, { readOnly: true, timeout: 5000 });
+  try {
+    for (const row of db
+      .prepare(
+        "SELECT recipient_id, count(*) n, min(accepted_at) oldest FROM delivery_messages WHERE state IN ('pending','leased') AND expires_at>? GROUP BY recipient_id",
+      )
+      .all(now) as unknown as {
+      recipient_id: string;
+      n: number;
+      oldest: number;
+    }[])
+      result.set(row.recipient_id, { unread: row.n, oldest: row.oldest });
+  } finally {
+    db.close();
+  }
+  return result;
 }
 
 /** Explicit operator action, with caller-journaled request ID and optimistic concurrency. */
@@ -224,7 +255,15 @@ function summary(agent: Agent, groups: readonly Group[]) {
 export function hostAdminStatus(configPath: string, now = Date.now()) {
   return withRegistry(
     configPath,
-    ({ registry, resources, credentials, a2aIdentity, a2aRecipient }) => {
+    ({
+      registry,
+      resources,
+      credentials,
+      a2aIdentity,
+      a2aRecipient,
+      directory,
+      eventsEnabled,
+    }) => {
       const view = registry.overview(operator);
       const byId = new Map(view.agents.map((agent) => [agent.agent_id, agent]));
       const problems: { code: string; subject: string }[] = [];
@@ -312,6 +351,51 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
       }
       if (view.stopped)
         problems.push({ code: "emergency_stopped", subject: "*" });
+      // Whether recipients notice their mail: the unread backlog and, with MCP events on,
+      // the doorbell (ADR-022). A lapsed doorbell is not renewed by HAB; the agent's own
+      // product has to subscribe again.
+      let unread: ReturnType<typeof unreadByRecipient>;
+      let doorbells: ReturnType<typeof readDoorbells> = new Map();
+      try {
+        unread = unreadByRecipient(directory, now);
+        const store = join(directory, "events.sqlite");
+        if (eventsEnabled && existsSync(store))
+          doorbells = readDoorbells(store, now);
+      } catch {
+        throw new HostAdminError("delivery_store_unreadable");
+      }
+      const inboxes = view.agents
+        .filter((agent) => agent.state === "active")
+        .map((agent) => {
+          const waiting = unread.get(agent.agent_id);
+          const bell = doorbells.get(agent.agent_id);
+          const doorbell = !eventsEnabled
+            ? "off"
+            : bell?.live
+              ? "live"
+              : bell?.lapsed_at
+                ? "lapsed"
+                : "none";
+          if (waiting && now - waiting.oldest >= UNREAD_WAITING_MS)
+            problems.push({ code: "unread_waiting", subject: agent.address });
+          if (doorbell === "lapsed")
+            problems.push({ code: "doorbell_lapsed", subject: agent.address });
+          return {
+            address: agent.address,
+            unread: waiting?.unread ?? 0,
+            oldest_unread_at: iso(waiting?.oldest),
+            doorbell,
+            ...(doorbell === "live"
+              ? { doorbell_until: iso(bell?.until) }
+              : {}),
+            ...(doorbell === "lapsed"
+              ? {
+                  doorbell_lapsed_at: iso(bell?.lapsed_at),
+                  doorbell_lapse_reason: bell?.reason,
+                }
+              : {}),
+          };
+        });
       return {
         resource_urls: resources,
         addresses: view.agents.map((agent) => summary(agent, view.groups)),
@@ -323,6 +407,7 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
           members: group.member_ids.map((id) => byId.get(id)?.address ?? id),
         })),
         credentials: mapped,
+        inboxes,
         previous_names: previous.map((entry) => ({
           address: entry.address,
           agent_id: entry.agent_id,

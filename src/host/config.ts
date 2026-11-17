@@ -54,6 +54,12 @@ const schema = z.strictObject({
           max_ttl_ms: z.number().int().min(60_000).max(86_400_000).optional(),
           max_per_agent: z.number().int().min(1).max(64).optional(),
           poll_ms: z.number().int().min(500).max(60_000).optional(),
+          outage_after_ms: z
+            .number()
+            .int()
+            .min(1000)
+            .max(86_400_000)
+            .optional(),
         })
         .optional(),
     })
