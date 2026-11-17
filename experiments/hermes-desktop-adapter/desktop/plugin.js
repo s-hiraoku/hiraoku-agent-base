@@ -325,6 +325,10 @@ function Receiver({ ctx, owner }) {
     });
 }
 const historyStates = new Set(["queued", "started", "declined", "expired"]);
+/** Handed to the conversation: the newest stay readable above the input (owner, 2026-11-18). */
+const acceptedStates = new Set(["queued", "started"]);
+/** How many of the newest accepted messages stay visible; older ones fold into history. */
+export const RECENT_ACCEPTED = 5;
 const stateLabels = {
     showing: "通知を準備中",
     shown: "未対応",
@@ -344,7 +348,11 @@ const stateLabels = {
 export function ReceivedMessages({ view, visible, onChoose }) {
     if (!visible || (!view.cards.length && !view.error))
         return null;
-    const history = view.cards.filter((card) => historyStates.has(card.decision?.state));
+    // An automatic accept hands the message off within seconds, before anyone looks, so
+    // the arrival and its body stay on screen after the handoff instead of folding away.
+    const accepted = view.cards.filter((card) => acceptedStates.has(card.decision?.state));
+    const recent = new Set(accepted.slice(-RECENT_ACCEPTED));
+    const history = view.cards.filter((card) => historyStates.has(card.decision?.state) && !recent.has(card));
     const pending = view.cards.filter((card) => !historyStates.has(card.decision?.state));
     let pendingList = null;
     const renderCard = (card) => h("article", { key: displayKey(card.notice) }, h("div", null, "送信元: ", card.notice.address || card.notice.sender_id), h("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, card.notice.text), h("div", { role: "status" }, card.unavailable
@@ -382,6 +390,12 @@ export function ReceivedMessages({ view, visible, onChoose }) {
             "aria-label": "要確認のHAB通知",
             style: { maxHeight: "16rem", overflow: "auto" },
         }, ...pending.map(renderCard))
+        : null, recent.size
+        ? h("div", {
+            role: "region",
+            "aria-label": "最近会話に渡したHAB通知",
+            style: { maxHeight: "16rem", overflow: "auto" },
+        }, h("div", { role: "status", "aria-live": "polite" }, "HAB からの受信 · 会話に渡したメッセージ（新しい順に最大 ", RECENT_ACCEPTED, " 件）"), ...[...recent].reverse().map(renderCard))
         : null, history.some((card) => card.unavailable)
         ? h("div", { role: "status" }, "履歴の一部は状態確認待ちです。操作はできません。")
         : null, history.length
