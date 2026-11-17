@@ -165,6 +165,8 @@ test("a message from an allowed sender is shown, then handed off once without a 
   assert.match(prompt, /利用者に確認も求めないでください/);
   assert.match(prompt, /承認を待たずに hab_reply まで終えてください/);
   assert.match(prompt, /確認待ちであることとその理由/);
+  // Hermes held back "18+27" because it could not verify it with a tool (2026-11-18).
+  assert.match(prompt, /検証できないことを理由に控えず/);
   assert.doesNotMatch(prompt, /実行せずに利用者に確認してください/);
   assert.match(prompt, /本文 m1/);
   assert.match(prompt, /hab_reply に message_id "m1"/);
