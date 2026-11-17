@@ -631,3 +631,22 @@ test("a slow delivery pass is not mistaken for an outage", async (t) => {
   assert.equal(f.h.events().length, 2);
   assert.equal(f.events.subscriptions()[0].expires_at, until);
 });
+
+test("an outage threshold below the poll interval cannot extend lifetimes on ordinary ticks", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, poll_ms: 3000, outage_after_ms: 1000 },
+  });
+  const sub = await f.subscribe("a", { ttlMs: 60_000 });
+  const until = Date.parse(sub.result.refreshBefore);
+  for (let i = 0; i < 10; i++) {
+    now += 3000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.subscriptions()[0].expires_at, until);
+  for (let i = 0; i < 11; i++) {
+    now += 3000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.subscriptions().length, 0);
+});

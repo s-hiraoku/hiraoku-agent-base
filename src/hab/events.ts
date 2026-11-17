@@ -312,7 +312,7 @@ export interface HabEventOptions {
   poll_ms?: number;
   /**
    * A gap longer than this between dispatcher ticks means the host was stopped or the
-   * machine slept (default the larger of 60 s and three polls). That time is not counted
+   * machine slept (default 60 s; never less than three polls). That time is not counted
    * against the subscriptions alive when the gap began.
    */
   outage_after_ms?: number;
@@ -344,8 +344,11 @@ export class HabEvents {
     );
     this.#maxPerAgent = options.max_per_agent ?? 8;
     this.#pollMs = options.poll_ms ?? 3000;
-    this.#outageAfter =
-      options.outage_after_ms ?? Math.max(60_000, 3 * this.#pollMs);
+    // Never at or below the ordinary tick spacing, or every tick would extend lifetimes.
+    this.#outageAfter = Math.max(
+      options.outage_after_ms ?? 60_000,
+      3 * this.#pollMs,
+    );
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
