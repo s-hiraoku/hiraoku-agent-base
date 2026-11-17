@@ -24,6 +24,7 @@ import { eventually, pollUntilDelivered } from "./delivery-fixture.js";
 import { oauthFixture } from "./oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
 import { main as runHabAdmin } from "../scripts/hab-admin.ts";
+import { HabEvents } from "../src/hab/events.ts";
 
 const cli = resolve("scripts/hab-admin.ts");
 const tokens = { c: "c".repeat(64), h: "d".repeat(64), x: "e".repeat(64) };
@@ -1016,4 +1017,84 @@ test("admin refuses a registry whose direct bindings the host has not yet moved 
   assert.throws(() => hostAdminStatus(f.configPath), {
     code: "registry_upgrade_pending",
   });
+});
+
+// 2026-11-17: mail sat unread for an hour because Dots' doorbell had lapsed and nobody
+// could tell. Status shows the unread backlog and the doorbell per address.
+test("status reports unread mail waiting and lapsed doorbells per address", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const codex = hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  const fresh = hostAdminStatus(f.configPath);
+  assert.deepEqual(
+    fresh.inboxes.map((i) => [i.address, i.unread, i.doorbell]),
+    [
+      ["codex@codex.hab", 0, "off"],
+      ["hermes@hermes.hab", 0, "off"],
+    ],
+  );
+  const resolved = await f.call(tokens.c, "hab_resolve", {
+    address: "hermes@hermes.hab",
+  });
+  const sent = { ...message(), recipient_id: resolved.recipient_id };
+  await f.call(tokens.c, "hab_submit", sent);
+  const soon = hostAdminStatus(f.configPath);
+  const waiting = soon.inboxes.find((i) => i.address === "hermes@hermes.hab");
+  assert.equal(waiting.unread, 1);
+  assert.ok(waiting.oldest_unread_at);
+  assert.ok(!soon.problems.some((p) => p.code === "unread_waiting"));
+  const later = hostAdminStatus(f.configPath, Date.now() + 31 * 60_000);
+  assert.ok(
+    later.problems.some(
+      (p) => p.code === "unread_waiting" && p.subject === "hermes@hermes.hab",
+    ),
+  );
+
+  // With MCP events on, a doorbell that ended is reported until the agent subscribes again.
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const db = new DatabaseSync(store);
+  db.prepare(
+    "INSERT INTO hab_event_lapses (agent_id,lapsed_at,reason) VALUES (?,?,?)",
+  ).run(hermes.address.agent_id, Date.now() - 1000, "expired");
+  db.prepare(
+    "INSERT INTO hab_event_subscriptions (id,agent_id,url,secret,expires_at,created_at) VALUES (?,?,?,?,?,?)",
+  ).run(
+    "hab_sub_x",
+    codex.address.agent_id,
+    "https://hooks.example.com/x",
+    "whsec_secret",
+    Date.now() + 600_000,
+    Date.now(),
+  );
+  db.close();
+  const bells = hostAdminStatus(f.configPath);
+  const byAddress = Object.fromEntries(
+    bells.inboxes.map((i) => [i.address, i]),
+  );
+  assert.equal(byAddress["codex@codex.hab"].doorbell, "live");
+  assert.ok(byAddress["codex@codex.hab"].doorbell_until);
+  assert.equal(byAddress["hermes@hermes.hab"].doorbell, "lapsed");
+  assert.equal(byAddress["hermes@hermes.hab"].doorbell_lapse_reason, "expired");
+  assert.ok(
+    bells.problems.some(
+      (p) => p.code === "doorbell_lapsed" && p.subject === "hermes@hermes.hab",
+    ),
+  );
+  const text = JSON.stringify(bells);
+  assert.ok(!text.includes("hooks.example.com"));
+  assert.ok(!text.includes("whsec_"));
 });

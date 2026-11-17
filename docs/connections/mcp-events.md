@@ -44,6 +44,7 @@ OpenAI MCP Events（webhook配送）に答え、「受信箱に新着がある�
 | `max_ttl_ms` | 86400000（24時間） | 60000–86400000 | 購読の寿命の上限 |
 | `max_per_agent` | 8 | 1–64 | 1受信者あたりの購読数 |
 | `poll_ms` | 3000 | 500–60000 | 新着を確かめる間隔 |
+| `outage_after_ms` | 60000とpoll3回分の大きい方 | 1000–86400000 | これより長く時計が止まったら、hostの停止かスリープとみなして寿命に足す |
 
 購読はホストの状態ディレクトリの`events.sqlite`（所有者だけが読める0600）に置きます。
 webhookの鍵もここに入るので、バックアップの扱いはOAuth台帳と同じにします。
@@ -62,6 +63,24 @@ webhookの鍵もここに入るので、バックアップの扱いはOAuth台�
 - 届けられなかったイベントは同じ`eventId`で再送します（最大8回、2秒から5分までの指数backoff）。
   413か8回目の失敗で諦めて次へ進み、410なら購読を消します。
 - 権限を取り消した接続は購読を更新できず、遅くとも寿命で止まります。
+- hostが止まっていた時間やMacが眠っていた時間は、寿命に数えません（[ADR-024](../hab-decisions.md)）。
+  配送は数秒ごとに時計を記録し、前の記録から`outage_after_ms`（既定は60秒とpoll3回分の大きい方、
+  1000–86400000）より長く空いていたら、空く前に生きていた購読の寿命にその時間を足します（最長`max_ttl_ms`）。
+  購読者はHABに届かない間は更新できないので、その分で購読を失わないようにするためです。
+
+## 呼び鈴が切れていないか確かめる
+
+HABは購読を自分で作り直しません。購読が更新されずに切れると、`hab:admin status`の`inboxes`で
+その受信者が`doorbell: "lapsed"`になり、`problems`に`doorbell_lapsed`が出ます（理由は
+`doorbell_lapse_reason`：`expired`は期限切れ、`gone`はcallbackが410、`unsubscribed`は購読者が解除）。
+30分以上読まれていないメッセージがある受信者には`unread_waiting`が出ます。callback URLとwebhookの鍵は表示しません。
+
+```sh
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
+```
+
+`doorbell_lapsed`が出たら、下の「Dots（ChatGPT）を設定する」の2と3をやり直します（ChatGPTのHABアプリで
+再読み込みし、イベントで始まるタスクを作り直す）。購読し直すと、まだ読まれていないメッセージの分も呼び鈴が鳴ります。
 
 拒否の理由（JSON-RPC errorの`data.reason`）:
 

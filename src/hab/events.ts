@@ -310,6 +310,12 @@ export interface HabEventOptions {
   max_per_agent?: number;
   /** How often the dispatcher looks for new mail (default 3 s). */
   poll_ms?: number;
+  /**
+   * A gap longer than this between dispatcher ticks means the host was stopped or the
+   * machine slept (default the larger of 60 s and three polls). That time is not counted
+   * against the subscriptions alive when the gap began.
+   */
+  outage_after_ms?: number;
   post?: WebhookPost;
   now?: () => number;
 }
@@ -324,6 +330,7 @@ export class HabEvents {
   readonly #maxTtl: number;
   readonly #maxPerAgent: number;
   readonly #pollMs: number;
+  readonly #outageAfter: number;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -337,6 +344,8 @@ export class HabEvents {
     );
     this.#maxPerAgent = options.max_per_agent ?? 8;
     this.#pollMs = options.poll_ms ?? 3000;
+    this.#outageAfter =
+      options.outage_after_ms ?? Math.max(60_000, 3 * this.#pollMs);
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -347,7 +356,68 @@ export class HabEvents {
         created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_callbacks (
         agent_id TEXT NOT NULL, url TEXT NOT NULL, verified_until INTEGER NOT NULL,
-        PRIMARY KEY(agent_id, url));`);
+        PRIMARY KEY(agent_id, url));
+      CREATE TABLE IF NOT EXISTS hab_event_clock (
+        id INTEGER PRIMARY KEY CHECK(id=1), alive_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_lapses (
+        agent_id TEXT PRIMARY KEY, lapsed_at INTEGER NOT NULL,
+        reason TEXT NOT NULL CHECK(reason IN ('expired','gone','unsubscribed')));`);
+  }
+  /**
+   * Bring the store up to the present. A long gap since the last tick is an outage (the
+   * host was stopped or the Mac slept): the subscriber could not refresh during it, so the
+   * subscriptions alive when it began get the gap back, at most `max_ttl_ms`. Then expired
+   * subscriptions end and are remembered as lapsed for operators.
+   */
+  #settle() {
+    const now = this.#now();
+    const clock = this.#db
+      .prepare("SELECT alive_at FROM hab_event_clock WHERE id=1")
+      .get() as { alive_at: number } | undefined;
+    if (clock && now - clock.alive_at > this.#outageAfter)
+      this.#db
+        .prepare(
+          "UPDATE hab_event_subscriptions SET expires_at=expires_at+? WHERE expires_at>?",
+        )
+        .run(Math.min(now - clock.alive_at, this.#maxTtl), clock.alive_at);
+    this.#db
+      .prepare(
+        `INSERT INTO hab_event_clock (id,alive_at) VALUES (1,?)
+         ON CONFLICT(id) DO UPDATE SET alive_at=max(alive_at,excluded.alive_at)`,
+      )
+      .run(now);
+    const expired = this.#db
+      .prepare(
+        "SELECT id,agent_id,expires_at FROM hab_event_subscriptions WHERE expires_at<=? ORDER BY expires_at",
+      )
+      .all(now) as unknown as {
+      id: string;
+      agent_id: string;
+      expires_at: number;
+    }[];
+    for (const row of expired)
+      this.#end(row.id, row.agent_id, "expired", row.expires_at);
+    this.#db
+      .prepare("DELETE FROM hab_event_callbacks WHERE verified_until<=?")
+      .run(now);
+  }
+  /** Remove a subscription and remember when and why the recipient's doorbell stopped. */
+  #end(
+    id: string,
+    agentId: string,
+    reason: "expired" | "gone" | "unsubscribed",
+    at = this.#now(),
+  ) {
+    const removed = this.#db
+      .prepare("DELETE FROM hab_event_subscriptions WHERE id=? AND agent_id=?")
+      .run(id, agentId);
+    if (!removed.changes) return;
+    this.#db
+      .prepare(
+        `INSERT INTO hab_event_lapses (agent_id,lapsed_at,reason) VALUES (?,?,?)
+         ON CONFLICT(agent_id) DO UPDATE SET lapsed_at=excluded.lapsed_at, reason=excluded.reason`,
+      )
+      .run(agentId, at, reason);
   }
   list(context: unknown) {
     this.#source.eventRecipient(context);
@@ -381,10 +451,14 @@ export class HabEvents {
     const secret = params.delivery.secret;
     webhookKey(secret);
     const id = this.#id(recipient.agent_id, url);
+    this.#settle();
     const now = this.#now();
     if (!this.#has(id) && this.#count(recipient.agent_id) >= this.#maxPerAgent)
       throw invalid("too_many_subscriptions");
     await this.#verify(recipient.agent_id, url, String(secret), id);
+    // Settled again after the network wait and before the write: the new lifetime must
+    // not be mistaken for one that was alive before a gap.
+    this.#settle();
     const requested = params.ttlMs ?? this.#defaultTtl;
     const ttl = Math.max(60_000, Math.min(requested, this.#maxTtl));
     const expires = this.#now() + ttl;
@@ -400,6 +474,9 @@ export class HabEvents {
          ON CONFLICT(id) DO UPDATE SET secret=excluded.secret, expires_at=excluded.expires_at`,
       )
       .run(id, recipient.agent_id, url, String(secret), expires, now);
+    this.#db
+      .prepare("DELETE FROM hab_event_lapses WHERE agent_id=?")
+      .run(recipient.agent_id);
     return {
       id,
       refreshBefore: new Date(expires).toISOString(),
@@ -417,9 +494,11 @@ export class HabEvents {
     } catch {
       return {};
     }
-    this.#db
-      .prepare("DELETE FROM hab_event_subscriptions WHERE id=? AND agent_id=?")
-      .run(this.#id(recipient.agent_id, url), recipient.agent_id);
+    this.#end(
+      this.#id(recipient.agent_id, url),
+      recipient.agent_id,
+      "unsubscribed",
+    );
     return {};
   }
   /** Whether a live subscription exists: an expired one awaiting cleanup takes a new slot. */
@@ -513,13 +592,8 @@ export class HabEvents {
    * message is announced once per subscription. 410 ends the subscription.
    */
   async dispatch() {
+    this.#settle();
     const now = this.#now();
-    this.#db
-      .prepare("DELETE FROM hab_event_subscriptions WHERE expires_at<=?")
-      .run(now);
-    this.#db
-      .prepare("DELETE FROM hab_event_callbacks WHERE verified_until<=?")
-      .run(now);
     const rows = this.#db
       .prepare(
         "SELECT * FROM hab_event_subscriptions WHERE next_at<=? ORDER BY id",
@@ -580,9 +654,7 @@ export class HabEvents {
         status = 0;
       }
       if (status === 410) {
-        this.#db
-          .prepare("DELETE FROM hab_event_subscriptions WHERE id=?")
-          .run(row.id);
+        this.#end(row.id, row.agent_id, "gone");
         return;
       }
       const delivered = status >= 200 && status <= 299;
@@ -625,6 +697,13 @@ export class HabEvents {
   start() {
     if (this.#timer) return;
     this.#timer = setInterval(() => {
+      // Every tick counts as alive, also while a slow pass runs, so only a stopped
+      // process or a sleeping machine looks like an outage.
+      try {
+        this.#settle();
+      } catch {
+        // The next tick tries again.
+      }
       if (this.#running) return;
       this.#running = this.dispatch()
         .catch(() => {})
@@ -644,3 +723,71 @@ export class HabEvents {
 /** Whether a thrown value is the forbidden refusal of an unauthorized caller. */
 export const isForbidden = (error: unknown) =>
   error instanceof MessagingError && error.code === "forbidden";
+
+export interface DoorbellState {
+  /** Live subscriptions and the latest lifetime among them. */
+  live: number;
+  until: number | null;
+  /** When the last subscription ended without a renewal, and why. */
+  lapsed_at: number | null;
+  reason: "expired" | "gone" | "unsubscribed" | null;
+}
+/**
+ * Read-only view of every recipient's doorbell for operators (`hab-admin status`). No
+ * callback URLs or secrets. Subscriptions past their lifetime count as lapsed even before
+ * the dispatcher removes them, since a stopped host cannot ring them either.
+ */
+export function readDoorbells(
+  store: string,
+  now = Date.now(),
+): Map<string, DoorbellState> {
+  const result = new Map<string, DoorbellState>();
+  const db = new DatabaseSync(store, { readOnly: true, timeout: 5000 });
+  try {
+    const tables = new Set(
+      (
+        db
+          .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+          .all() as { name: string }[]
+      ).map((row) => row.name),
+    );
+    const entry = (agentId: string) => {
+      let state = result.get(agentId);
+      if (!state) {
+        state = { live: 0, until: null, lapsed_at: null, reason: null };
+        result.set(agentId, state);
+      }
+      return state;
+    };
+    if (tables.has("hab_event_lapses"))
+      for (const row of db
+        .prepare("SELECT agent_id,lapsed_at,reason FROM hab_event_lapses")
+        .all() as unknown as {
+        agent_id: string;
+        lapsed_at: number;
+        reason: DoorbellState["reason"];
+      }[]) {
+        const state = entry(row.agent_id);
+        state.lapsed_at = row.lapsed_at;
+        state.reason = row.reason;
+      }
+    if (tables.has("hab_event_subscriptions"))
+      for (const row of db
+        .prepare(
+          "SELECT agent_id,expires_at FROM hab_event_subscriptions ORDER BY expires_at",
+        )
+        .all() as unknown as { agent_id: string; expires_at: number }[]) {
+        const state = entry(row.agent_id);
+        if (row.expires_at > now) {
+          state.live += 1;
+          state.until = row.expires_at;
+        } else if ((state.lapsed_at ?? 0) < row.expires_at) {
+          state.lapsed_at = row.expires_at;
+          state.reason = "expired";
+        }
+      }
+  } finally {
+    db.close();
+  }
+  return result;
+}
