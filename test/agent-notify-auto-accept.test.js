@@ -388,6 +388,15 @@ test("the audit file rotates once it is full and refuses a readable existing fil
   assert.ok(statSync(path).size <= 400);
   chmodSync(path, 0o644);
   assert.throws(() => audit.write(event), /insecure_audit_file/);
+  // Also at the size boundary: the unsafe file is not moved aside and replaced.
+  const full = new AutoAudit(path, {
+    maxBytes: 1,
+    rename: renameSync,
+    size: (p) => (existsSync(p) ? lstatSync(p).size : undefined),
+  });
+  const before = readFileSync(path, "utf8");
+  assert.throws(() => full.write(event), /insecure_audit_file/);
+  assert.equal(readFileSync(path, "utf8"), before);
 });
 
 test("autoHandoffPrompt keeps the framed body and replaces only the first line", () => {

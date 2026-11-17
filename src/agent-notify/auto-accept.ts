@@ -11,7 +11,7 @@
  * a cap; past it the message falls back to the card.
  */
 import { z } from "zod";
-import { appendPrivate } from "./private-file.ts";
+import { appendPrivate, ensurePrivateFile } from "./private-file.ts";
 import type { PeekedMessage } from "./contract.ts";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
@@ -181,8 +181,11 @@ export class AutoAudit {
   write(event: AutoAuditEvent) {
     const line = `${JSON.stringify({ time: new Date(this.#now()).toISOString(), ...event })}\n`;
     const size = this.#size(this.#path);
-    if (size !== undefined && size + Buffer.byteLength(line) > this.#maxBytes)
+    if (size !== undefined && size + Buffer.byteLength(line) > this.#maxBytes) {
+      // Refuse an unsafe file before moving it aside, not only the fresh one after.
+      ensurePrivateFile(this.#path, "insecure_audit_file");
       this.#rename(this.#path, `${this.#path}.1`);
+    }
     appendPrivate(this.#path, line, "insecure_audit_file");
   }
 }
