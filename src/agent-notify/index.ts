@@ -1,6 +1,13 @@
 /** The arrival notifier (ADR-021). Importing performs no IO. */
 export { ReceiptNotifier } from "./notifier.ts";
-export type { DecisionResult } from "./notifier.ts";
+export type { AutoAccept, DecisionResult } from "./notifier.ts";
+export {
+  AutoAcceptPolicy,
+  AutoAudit,
+  autoAcceptConfigSchema,
+  autoHandoffPrompt,
+} from "./auto-accept.ts";
+export type { AutoAcceptConfig, AutoAuditEvent } from "./auto-accept.ts";
 export { SQLiteNotices, NOTICE_RETENTION_MS } from "./sqlite-notices.ts";
 export { HabNotifierClient } from "./hab-client.ts";
 export { JsonlScreen } from "./jsonl-screen.ts";
