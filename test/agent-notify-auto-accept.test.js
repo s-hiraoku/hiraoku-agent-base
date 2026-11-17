@@ -313,6 +313,114 @@ test("the per-thread cap stops two auto-answering agents from looping", async (t
   );
 });
 
+test("the caps are rechecked when claiming: another notifier on the same store may take the last slot", async (t) => {
+  const m1 = message("m1");
+  const m2 = message("m2");
+  const f = setup(t, {
+    unread: [m1],
+    auto: { rules: [rule()], max_per_thread: 1 },
+  });
+  // A second notifier process on the same store has m2 shown and is about to claim it.
+  const other = new SQLiteNotices(
+    join(f.dir, "notices.sqlite"),
+    f.screen.target,
+  );
+  t.after(() => other.close());
+  const now = Date.now();
+  other.insertShowing(m2, now);
+  other.transition(m2, ["showing"], "shown", now);
+  const n = f.make();
+  // It commits its claim after this notifier's policy check and before its claim.
+  const config = autoAcceptConfigSchema.parse({
+    audit: f.auditPath,
+    rules: [rule()],
+    max_per_thread: 1,
+  });
+  const policy = new AutoAcceptPolicy(config);
+  const evaluate = policy.evaluate.bind(policy);
+  let raced = false;
+  policy.evaluate = (...args) => {
+    const verdict = evaluate(...args);
+    if (!raced) {
+      raced = true;
+      assert.equal(
+        other.claimAutoAccept({
+          key: m2,
+          threadId: m2.thread_id,
+          rule: "dots",
+          now,
+          senderSince: now - 3600_000,
+          maxPerSender: 10,
+          maxPerThread: 1,
+          beforeCommit: () => {},
+        }),
+        "claimed",
+      );
+    }
+    return verdict;
+  };
+  const racing = new ReceiptNotifier({
+    hab: f.hab,
+    screen: f.screen,
+    store: new SQLiteNotices(join(f.dir, "notices.sqlite"), f.screen.target),
+    autoAccept: {
+      policy,
+      audit: new AutoAudit(f.auditPath, {
+        rename: renameSync,
+        size: (p) => (existsSync(p) ? lstatSync(p).size : undefined),
+      }),
+    },
+  });
+  await racing.check();
+  assert.deepEqual(f.calls.handoff, []);
+  assert.equal(n.get("m1").state, "shown");
+  assert.equal(n.get("m2").state, "accepting");
+  assert.deepEqual(
+    f.auditLines().map((l) => [l.event, l.message_id, l.result]),
+    [["auto_skip", "m1", "thread_limited"]],
+  );
+});
+
+test("a failed audit write inside the claim leaves nothing claimed or counted", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hab-claim-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const store = new SQLiteNotices(join(dir, "n.sqlite"), "synthetic:s");
+  t.after(() => store.close());
+  const m = message("m1");
+  const now = Date.now();
+  store.insertShowing(m, now);
+  store.transition(m, ["showing"], "shown", now);
+  const claim = (beforeCommit) =>
+    store.claimAutoAccept({
+      key: m,
+      threadId: m.thread_id,
+      rule: "dots",
+      now,
+      senderSince: now - 3600_000,
+      maxPerSender: 1,
+      maxPerThread: 1,
+      beforeCommit,
+    });
+  assert.throws(
+    () =>
+      claim(() => {
+        throw new Error("disk full");
+      }),
+    /disk full/,
+  );
+  assert.equal(store.get(m).state, "shown");
+  assert.equal(store.autoAcceptCounts().byThread(m.sender_id, m.thread_id), 0);
+  assert.equal(
+    claim(() => {}),
+    "claimed",
+  );
+  assert.equal(store.get(m).state, "accepting");
+  assert.equal(
+    claim(() => {}),
+    "sender_rate_limited",
+  );
+});
+
 test("an unexpected prompt shape is never rewritten: the message waits", async (t) => {
   const f = setup(t, {
     unread: [message("odd", { handoff_prompt: "something else" })],

@@ -70,7 +70,8 @@ export type AutoAcceptVerdict =
   /** No rule names this message: the card waits for the user, nothing is logged. */
   | undefined;
 
-const HOUR_MS = 60 * 60 * 1000;
+/** The rolling window of `max_per_sender_per_hour`. */
+export const AUTO_ACCEPT_WINDOW_MS = 60 * 60 * 1000;
 
 export class AutoAcceptPolicy {
   readonly #config: AutoAcceptConfig;
@@ -101,7 +102,7 @@ export class AutoAcceptPolicy {
     if (Buffer.byteLength(message.handoff_prompt) > rule.max_text_bytes)
       return { accept: false, rule: rule.name, reason: "too_long" };
     if (
-      counts.bySenderSince(message.sender_id, now - HOUR_MS) >=
+      counts.bySenderSince(message.sender_id, now - AUTO_ACCEPT_WINDOW_MS) >=
       this.#config.max_per_sender_per_hour
     )
       return { accept: false, rule: rule.name, reason: "sender_rate_limited" };

@@ -281,6 +281,49 @@ export class SQLiteNotices {
       )
       .run(key.sender_id, key.message_id, threadId, rule, now);
   }
+  /**
+   * ADR-023: rechecks the caps, claims a `shown` notice as `accepting` and notes the
+   * automatic choice, all in one write transaction, so notifiers sharing this store cannot
+   * both spend the last slot. `beforeCommit` (the audit line) runs inside it; if it throws,
+   * nothing is claimed.
+   */
+  claimAutoAccept(options: {
+    key: NoticeKey;
+    threadId: string;
+    rule: string;
+    now: number;
+    senderSince: number;
+    maxPerSender: number;
+    maxPerThread: number;
+    beforeCommit: () => void;
+  }): "claimed" | "sender_rate_limited" | "thread_limited" | "not_shown" {
+    const { key, threadId, now } = options;
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      const counts = this.autoAcceptCounts();
+      let result:
+        "claimed" | "sender_rate_limited" | "thread_limited" | "not_shown";
+      if (
+        counts.bySenderSince(key.sender_id, options.senderSince) >=
+        options.maxPerSender
+      )
+        result = "sender_rate_limited";
+      else if (counts.byThread(key.sender_id, threadId) >= options.maxPerThread)
+        result = "thread_limited";
+      else if (this.get(key)?.state !== "shown") result = "not_shown";
+      else {
+        options.beforeCommit();
+        this.transition(key, ["shown"], "accepting", now);
+        this.recordAutoAccept(key, threadId, options.rule, now);
+        result = "claimed";
+      }
+      this.#db.exec(result === "claimed" ? "COMMIT" : "ROLLBACK");
+      return result;
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
   /** Whether this message was handed off automatically, and by which rule. */
   autoAcceptRule(key: NoticeKey): string | undefined {
     const row = this.#db

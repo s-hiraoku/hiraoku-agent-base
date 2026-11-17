@@ -14,7 +14,7 @@ import type {
 } from "./contract.ts";
 import { choicesOf } from "./contract.ts";
 import type { NoticeKey, SQLiteNotices } from "./sqlite-notices.ts";
-import { autoHandoffPrompt } from "./auto-accept.ts";
+import { AUTO_ACCEPT_WINDOW_MS, autoHandoffPrompt } from "./auto-accept.ts";
 import type { AutoAcceptPolicy, AutoAuditEvent } from "./auto-accept.ts";
 import type { PeekedMessage } from "./contract.ts";
 
@@ -278,13 +278,32 @@ export class ReceiptNotifier {
     if (!verdict.accept) return skip(verdict.reason);
     if (!autoHandoffPrompt(message, verdict.rule))
       return skip("unexpected_prompt");
+    // The caps are checked again inside the claim's transaction: another notifier on the
+    // same store may have spent the last slot since `evaluate`.
+    let claim;
     try {
-      auto.audit.write({ event: "auto_accept", ...base, result: "accepting" });
+      claim = this.#store.claimAutoAccept({
+        key: message,
+        threadId: message.thread_id,
+        rule: verdict.rule,
+        now,
+        senderSince: now - AUTO_ACCEPT_WINDOW_MS,
+        maxPerSender: auto.policy.config.max_per_sender_per_hour,
+        maxPerThread: auto.policy.config.max_per_thread,
+        beforeCommit: () =>
+          auto.audit.write({
+            event: "auto_accept",
+            ...base,
+            result: "accepting",
+          }),
+      });
     } catch {
+      // The audit line could not be written: nothing was claimed.
       return;
     }
-    if (!this.#store.transition(message, ["shown"], "accepting", now)) return;
-    this.#store.recordAutoAccept(message, message.thread_id, verdict.rule, now);
+    if (claim === "sender_rate_limited" || claim === "thread_limited")
+      return skip(claim);
+    if (claim !== "claimed") return;
     await this.#finishAccept(this.#store.get(message)!);
   }
   #unchanged(key: NoticeKey): DecisionResult {
