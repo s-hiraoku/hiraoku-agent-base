@@ -285,13 +285,22 @@ test("the per-sender hourly cap holds across restarts and frees up after an hour
 test("the per-thread cap stops two auto-answering agents from looping", async (t) => {
   const f = setup(t, {
     unread: [message("r1"), message("r2"), message("r3")],
-    auto: { rules: [rule()], max_per_thread: 2 },
+    auto: {
+      rules: [rule({ from: ["stallone@dot.hab", "two@dot.hab"] })],
+      max_per_thread: 2,
+    },
   });
   const n = f.make();
   await n.check();
   assert.deepEqual(f.calls.handoff, ["r1", "r2"]);
   assert.equal(n.get("r3").state, "shown");
   assert.equal(f.auditLines().at(-1).result, "thread_limited");
+  // Another allowed sender's thread with the same name is its own thread.
+  f.hab.unread.push(
+    message("other", { sender_id: "sender-two", from: "two@dot.hab" }),
+  );
+  await n.check();
+  assert.ok(f.calls.handoff.includes("other"));
   // The user can still choose it.
   assert.deepEqual(await n.decide("r3", "accept"), {
     changed: true,

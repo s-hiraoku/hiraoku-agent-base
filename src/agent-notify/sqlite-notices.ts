@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS auto_accepts(
   PRIMARY KEY(sender_id,message_id)
 );
 CREATE INDEX IF NOT EXISTS auto_accepts_sender ON auto_accepts(sender_id,accepted_at);
-CREATE INDEX IF NOT EXISTS auto_accepts_thread ON auto_accepts(thread_id);`;
+CREATE INDEX IF NOT EXISTS auto_accepts_thread ON auto_accepts(sender_id,thread_id);`;
 
 /**
  * An `accepting` claim older than this was left by a notifier that stopped mid-handoff (a
@@ -290,7 +290,7 @@ export class SQLiteNotices {
       .get(key.sender_id, key.message_id) as { rule: string } | undefined;
     return row?.rule;
   }
-  /** Automatic handoffs for one sender since a time, and in one thread. */
+  /** Automatic handoffs for one sender since a time, and in one of its threads. */
   autoAcceptCounts() {
     return {
       bySenderSince: (senderId: string, since: number) =>
@@ -301,11 +301,14 @@ export class SQLiteNotices {
             )
             .get(senderId, since) as { n: number }
         ).n,
-      byThread: (threadId: string) =>
+      // HAB names a thread by the agent pair and thread_id, so two senders' thread-1 differ.
+      byThread: (senderId: string, threadId: string) =>
         (
           this.#db
-            .prepare("SELECT COUNT(*) AS n FROM auto_accepts WHERE thread_id=?")
-            .get(threadId) as { n: number }
+            .prepare(
+              "SELECT COUNT(*) AS n FROM auto_accepts WHERE sender_id=? AND thread_id=?",
+            )
+            .get(senderId, threadId) as { n: number }
         ).n,
     };
   }

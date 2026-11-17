@@ -46,7 +46,7 @@ export const autoAcceptConfigSchema = z.strictObject({
   rules: z.array(autoAcceptRuleSchema).min(1).max(32),
   /** Automatic handoffs per sender in any rolling hour. */
   max_per_sender_per_hour: z.number().int().min(1).max(1000).default(10),
-  /** Automatic handoffs in one HAB thread, ever (while the records are kept). */
+  /** Automatic handoffs in one sender's HAB thread, ever (while the records are kept). */
   max_per_thread: z.number().int().min(1).max(1000).default(6),
   /** The notifier's own audit file (JSON Lines, 0600, no message text). */
   audit: z.string().min(1),
@@ -56,7 +56,8 @@ export type AutoAcceptConfig = z.infer<typeof autoAcceptConfigSchema>;
 /** What the policy needs to know about earlier automatic handoffs. */
 export interface AutoAcceptCounts {
   bySenderSince(senderId: string, since: number): number;
-  byThread(threadId: string): number;
+  /** In the thread this sender shares with the recipient (HAB scopes thread_id per agent pair). */
+  byThread(senderId: string, threadId: string): number;
 }
 
 export type AutoAcceptVerdict =
@@ -104,7 +105,10 @@ export class AutoAcceptPolicy {
       this.#config.max_per_sender_per_hour
     )
       return { accept: false, rule: rule.name, reason: "sender_rate_limited" };
-    if (counts.byThread(message.thread_id) >= this.#config.max_per_thread)
+    if (
+      counts.byThread(message.sender_id, message.thread_id) >=
+      this.#config.max_per_thread
+    )
       return { accept: false, rule: rule.name, reason: "thread_limited" };
     return { accept: true, rule: rule.name };
   }
