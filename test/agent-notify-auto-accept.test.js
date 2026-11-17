@@ -160,6 +160,12 @@ test("a message from an allowed sender is shown, then handed off once without a 
   assert.match(prompt, /ルール「dots」により自動で受け付けました/);
   assert.match(prompt, /利用者はこのメッセージを見ておらず、選んでもいません/);
   assert.match(prompt, /ファイルの変更、コマンドの実行/);
+  // Nobody is there to approve: finish with hab_reply instead of waiting (owner, 2026-11-18).
+  assert.match(prompt, /承認や確認を求めても誰も答えず/);
+  assert.match(prompt, /利用者に確認も求めないでください/);
+  assert.match(prompt, /承認を待たずに hab_reply まで終えてください/);
+  assert.match(prompt, /確認待ちであることとその理由/);
+  assert.doesNotMatch(prompt, /実行せずに利用者に確認してください/);
   assert.match(prompt, /本文 m1/);
   assert.match(prompt, /hab_reply に message_id "m1"/);
   // Repeated checks and a restart hand nothing off again.

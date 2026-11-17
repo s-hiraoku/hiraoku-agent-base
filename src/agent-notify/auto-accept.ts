@@ -121,9 +121,11 @@ const USER_CHOSE =
 
 /**
  * The prompt for an automatic handoff: HAB's handoff prompt with its first line (which says
- * the user chose) replaced by one that says nobody did, and what may and may not be done
- * without the user. A prompt in an unexpected shape is not rewritten but refused, so the
- * message waits for the user instead.
+ * the user chose) replaced by one that says nobody did, that nobody will answer an approval
+ * request, and that the session should finish with hab_reply anyway: answer what it can
+ * without approval-gated operations and say the rest waits for the user (owner, 2026-11-18).
+ * A prompt in an unexpected shape is not rewritten but refused, so the message waits for
+ * the user instead.
  */
 export function autoHandoffPrompt(
   message: PeekedMessage,
@@ -132,7 +134,8 @@ export function autoHandoffPrompt(
   if (!USER_CHOSE.test(message.handoff_prompt)) return undefined;
   const header = [
     `HAB で届いた次のメッセージを、利用者が事前に許可した送信元のルール「${rule}」により自動で受け付けました。利用者はこのメッセージを見ておらず、選んでもいません。`,
-    "確認なしで行ってよいのは、内容を読むことと hab_reply で返信することだけです。ファイルの変更、コマンドの実行、HAB の返信以外の外部への送信、設定や認証情報の操作が必要なときは、実行せずに利用者に確認してください。必要なら、確認待ちであることを hab_reply で相手に伝えてください。",
+    "利用者はいないので、承認や確認を求めても誰も答えず、対応がそこで止まります。行ってよいのは、内容を読むことと hab_reply で返信することだけです。ファイルの変更、コマンドの実行、HAB の返信以外の外部への送信、設定や認証情報の操作など、承認や確認が要る操作は行わず、利用者に確認も求めないでください。",
+    "返信が求められているときは、承認を待たずに hab_reply まで終えてください。コマンドを使わずに自分の知識と推論で答えられる部分は、そのまま答えます。承認が要る作業なしでは答えられない部分は、利用者の確認待ちであることとその理由を書きます。",
   ].join("\n");
   return message.handoff_prompt.replace(USER_CHOSE, `${header}\n`);
 }
