@@ -184,26 +184,26 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/agent-tools.md",
-      "sha256": "56dbe55a8ef4fccc9953458cb7cc1ce8035ee12831c4e94686c75b6908460ab0",
+      "sha256": "28cd5520e237fe47e798d6393702c1039da32ebe219064faede76babed674a84",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read. PR225 review: existing feature entries/recipe now describe additive bounded reply_watch, unread/read stop semantics, accepted-result preservation and actual optional owner runner regression coverage without native Dots claims. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only.",
+      "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read. PR225 review: existing feature entries/recipe now describe additive bounded reply_watch, unread/read stop semantics, accepted-result preservation and actual optional owner runner regression coverage without native Dots claims. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/arrival-notifier.md",
-      "sha256": "069bd231d6100d65d23849f3cccc7435aeec17bd8f2a3e6e992fd08b4ff19bdf",
+      "sha256": "95e40bc3fd66ca145c38395defa9ce8f0e5c1b8cf0cd460092d2ca90099b4e1d",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Maintained arrival-notifier recipe, rereviewed 2026-11-15: notify-oauth (unit tests only) covers the notifier-owned grant, refresh and its failure codes. synthetic HAB peek/choice/expiry and token recovery with JSONL publication; accept is unsupported and emits no handoff. Static Claude channel refuses; only explicit product-owned atomic same-session delivery can admit work. Hermes events remain immutable and state responses add revision. Real-product reply verification is explicitly separate and must not be simulated using CLI identity. Existing Codex/mock transport tests remain synthetic; file publication is not displayed UI or queued work. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. PR225 review: exact run transition/publication timing fields, unchanged one-shot check, latest failure-code interval meaning and corresponding regression tests; OAuth/native gates unchanged. ADR-023 (2026-11-17): notify-auto covers opt-in auto_accept matching authenticated from/sender_ids, kind, reply vs new and prompt size; matched mail is marked read and handed off once exactly as a click (JSONL unsupported), with per-sender hourly and per-thread caps and a body-free 0600 notifier audit file (auto_accept/auto_handoff/auto_skip). Loopback run verified the allow/deny split and the thread cap on a reply chain; the rewritten prompt text is unit-tested only, and real Hermes approval enforcement is not proven. 2026-11-18: the automatic prompt also says nobody will answer an approval request and to finish with hab_reply (answer what needs no approval, report the rest as waiting for the user); text unit-tested only.",
+      "summary": "Maintained arrival-notifier recipe, rereviewed 2026-11-15: notify-oauth (unit tests only) covers the notifier-owned grant, refresh and its failure codes. synthetic HAB peek/choice/expiry and token recovery with JSONL publication; accept is unsupported and emits no handoff. Static Claude channel refuses; only explicit product-owned atomic same-session delivery can admit work. Hermes events remain immutable and state responses add revision. Real-product reply verification is explicitly separate and must not be simulated using CLI identity. Existing Codex/mock transport tests remain synthetic; file publication is not displayed UI or queued work. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. PR225 review: exact run transition/publication timing fields, unchanged one-shot check, latest failure-code interval meaning and corresponding regression tests; OAuth/native gates unchanged. ADR-023 (2026-11-17): notify-auto covers opt-in auto_accept matching authenticated from/sender_ids, kind, reply vs new and prompt size; matched mail is marked read and handed off once exactly as a click (JSONL unsupported), with per-sender hourly and per-thread caps and a body-free 0600 notifier audit file (auto_accept/auto_handoff/auto_skip). Loopback run verified the allow/deny split and the thread cap on a reply chain; the rewritten prompt text is unit-tested only, and real Hermes approval enforcement is not proven. 2026-11-18: the automatic prompt also says nobody will answer an approval request and to finish with hab_reply (answer what needs no approval, report the rest as waiting for the user); text unit-tested only. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/mcp-events.md",
-      "sha256": "6e6b22e5a3308f0708566ace79eeea1ca52f4894e7a06b812aa68f34d3a0aaa4",
+      "sha256": "2994ba64144e0d690756d363ad84e109a4931f4991a4dee96796e2ed5c4f30dc",
       "role": "normative",
       "review": "reviewed",
-      "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features.",
+      "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
@@ -216,44 +216,44 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-      "sha256": "c736fbec20aa052401388ac36f7816f22bab619f8851fb15b73f10234ac57e71",
+      "sha256": "10947592dbd2526b276c100ffe18dea0c88470063bfcd964fd7930181af7c92d",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, empty reply outbox without an optional Task port in the HTTP fixtures, explicit source-authorized inbox reads, and a gotcha that coordinator working without runtime ID is not model evidence. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity synthetic; no model/approval/UI/deployment proof.",
+      "summary": "Bounded native HTTP receive proof for three message kinds, independent pre-ACK SQLite body/original-request visibility of the agent SDK inbox, preserved untrusted content, empty reply outbox without an optional Task port in the HTTP fixtures, explicit source-authorized inbox reads, and a gotcha that coordinator working without runtime ID is not model evidence. Names src/agent-sdk as the sender/receiver home and notes the generic NATS port is gone. Scheduler is injected, identity synthetic; no model/approval/UI/deployment proof. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "38c453ad94081bf7d3eb38fca7d4e77f95eba2914e010c2431fea5365f9db409",
+      "sha256": "9dce49c185ab0db4491e7222b9959555eb94767afc74bcfbd95c8ea793169fc9",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed.",
+      "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full",
       "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
       "path": ".claude/skills/verify-hab/features/enrollment-terminal.md",
-      "sha256": "c0ae900e69944c98522f39474cd72f194c7f15b9a1fa9f85d8477d6e2ce27621",
+      "sha256": "c32c7837ddf70c8d235748b2b2add5f17cd6c476e74b7169321f58ddd3db35df",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Prompt-gated real TTY/tmux enrollment completion, exact-address abort and scripted durable resume; synthetic authority, temporary DB and transcript/exit-code proof. Scripted UI is not proof of an interactive run.",
+      "summary": "Prompt-gated real TTY/tmux enrollment completion, exact-address abort and scripted durable resume; synthetic authority, temporary DB and transcript/exit-code proof. Scripted UI is not proof of an interactive run. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full",
       "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
     {
       "path": ".claude/skills/verify-hab/features/receive-ack.md",
-      "sha256": "cf632a8fb0e2c4df70ad150d7ecda8ad28b767c90089530d24fd89c41665d966",
+      "sha256": "81d520e8373b2078d53939d597b72721a759412a7c547112838c283b064f757f",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Lease/poll/ACK wire cases, replay/refusal/redelivery, server audit and sender status. Clarifies that a new request_id after the lease is consumed is invalid_ack, while an open lease with a new request_id would ack. Separate recv-durable-save points to receiver commit-before-network-ACK proof; raw poll.json cannot establish durable inbox or processing.",
+      "summary": "Lease/poll/ACK wire cases, replay/refusal/redelivery, server audit and sender status. Clarifies that a new request_id after the lease is consumed is invalid_ack, while an open lease with a new request_id would ack. Separate recv-durable-save points to receiver commit-before-network-ACK proof; raw poll.json cannot establish durable inbox or processing. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
       "path": ".claude/skills/verify-hab/features/resolve-address.md",
-      "sha256": "3ab4636211bb88d931b6ec59f12ad8dd8ec072813eaa9120ad936bed196f1a5e",
+      "sha256": "3482b54ab97dd2e395bb16f0ec3a1eabf244e98e4baf7a38d25a040d3a635b52",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Real hab_resolve success/unknown/malformed recipes on POST /mcp/delivery: immutable recipient ID, canonical lowercase address, unknown_address for unregistered names (including after rename grace), and no delivery rights. Requires operation grant.",
+      "summary": "Real hab_resolve success/unknown/malformed recipes on POST /mcp/delivery: immutable recipient ID, canonical lowercase address, unknown_address for unregistered names (including after rename grace), and no delivery rights. Requires operation grant. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
@@ -266,10 +266,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/send-message.md",
-      "sha256": "7cce228897f4ee8294f980d9e47b5ca7f41e88ecdb4c4f88a902d6be12b5ef96",
+      "sha256": "72cb9d55fa5313c950e85c0156794519ca610499503936ed372419b323f6d843",
       "role": "normative",
       "review": "reviewed",
-      "summary": "hab_submit/status recipes for receipt acceptance, idempotency conflict, kind_not_allowed with allowed_kinds, attachment-part refusal, sender-only status and pair-scoped threads; receipt/ACK describe delivery, not work completion. Documents replay-bound message IDs, deadlines up to seven days, and current self-send behavior.",
+      "summary": "hab_submit/status recipes for receipt acceptance, idempotency conflict, kind_not_allowed with allowed_kinds, attachment-part refusal, sender-only status and pair-scoped threads; receipt/ACK describe delivery, not work completion. Documents replay-bound message IDs, deadlines up to seven days, and current self-send behavior. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
       "read_scope": "full"
     },
     {
@@ -3634,7 +3634,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 3,
           "end": 16,
-          "excerpt_sha256": "29e074a763e10450239a0fa116859f03be9262af438ac01f10633c4eade43b9b"
+          "excerpt_sha256": "4033c6c3934d47c2c9d6b606cb7f50f4cafb8b74cf77d821456e9d5197761ac4"
         }
       ]
     },
@@ -3729,7 +3729,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 27,
           "end": 39,
-          "excerpt_sha256": "32e1dc134adf7c6e5d132526c51a328d501cafd59d33ed43aeb5dd52d30e8b22"
+          "excerpt_sha256": "76ff374974e123784681cb3768b121c6c1f98958d80b323af1dcac84cfe42512"
         }
       ]
     },
