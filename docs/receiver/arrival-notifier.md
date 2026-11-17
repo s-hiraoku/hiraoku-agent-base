@@ -357,7 +357,7 @@ Dots の会話が実は Codex のスレッドとして app-server から見え�
 - この指示は文面によるものです。実際に止められるのは、エージェント製品側の承認設定がかかる操作だけです。Hermes では導入前に、どの操作に承認がかかるかを確かめてください。
 - 記録（`audit`）の 1 行は `{time, event, rule, sender_id, from, message_id, thread_id, kind, reply, result}` です。`event` は `auto_accept`（受け付ける前、`result: "accepting"`）・`auto_handoff`（結果の状態）・`auto_skip`（`too_long`・`sender_rate_limited`・`thread_limited`・`unexpected_prompt`）。`auto_accept` を書けないときは自動では選びません。どの規則にも合わないメッセージは記録しません。
 - 上限の件数は選択の記録（SQLite の `auto_accepts`）から数えるので、再起動しても続きから数えます。上限で手動に戻したメッセージは、カードから普通に選べます。
-- 自動で選ばれたカードも画面に出て、結果の状態（`queued` など）で履歴に移ります。
+- 自動で選ばれたカードも画面に出ます。Hermes Desktop のプラグインでは、会話に渡した（`queued`・`started`）カードのうち新しい 5 件を、入力欄の上に新しい順で出したままにします（ボタンなし）。自動受付は届いて数秒で会話に渡るので、届いたことと内容を見逃さないためです（2026-11-18、owner の要望）。それより古いものと `declined`・`expired` は閉じた履歴に移ります。
 
 ## 限界と未完了
 
