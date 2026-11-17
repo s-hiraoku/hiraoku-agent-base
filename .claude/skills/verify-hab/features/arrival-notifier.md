@@ -6,7 +6,7 @@ When mail arrives, the recipient's agent screen shows who sent it and the body, 
 
 - `peek-unread` `hab_peek {}` returns the recipient's unread messages with `sender_id`, `read_at: null`, no `text` or `notice`, a `display` and a `handoff_prompt`; the sender's `hab_status` stays `pending`, and a later `hab_inbox` still returns the message with `new: true`. Once read, `hab_peek` no longer returns it.
 - `peek-display` `display` is exactly: `<address> からのメッセージです。`, `（質問、返信期限 <expires_at>）`, a blank line, `受信内容`, the body, a blank line, `どうしますか？`, `1. 対応する`, `2. あとで`, `3. 対応しない`.
-- `peek-reply` a reply to the caller's own message (`in_reply_to` set) has `display` `<address> から返事が届きました。`, `（回答、あなたが送ったメッセージ "<id>" への返事）`, the body under `受信内容`, then `1. 会話に渡す`, `2. あとで`; `choices` is `[{choice:"accept",label:"会話に渡す"},{choice:"later",label:"あとで"}]` (other messages: the three choices); its `handoff_prompt` starts `利用者が、HAB で届いた次の返事を会話に渡しました。` and says no reply is needed. `decide <id> decline` on it → `invalid_request` with `allowed: ["accept","later"]`.
+- `peek-reply` a reply to the caller's own message (`in_reply_to` set) has `display` `<address> から返事が届きました。`, `（回答、あなたが送ったメッセージ "<id>" への返事）`, the body under `受信内容`, then `1. 会話に渡す`, `2. あとで`; `choices` is `[{choice:"accept",label:"会話に渡す"},{choice:"later",label:"あとで"}]` (other messages: the three choices); its `handoff_prompt` starts `利用者が、HAB で届いた次の返事を会話に渡しました。` and says no reply is needed. `decide <id> decline` on it → `invalid_request` (the notifier API's error carries `field: "choice"` and `allowed: ["accept","later"]`; the `hab:notify` CLI prints only `{"error":"invalid_request"}`, exit 1).
 - `peek-handoff` `handoff_prompt` starts `利用者が、HAB で届いた次のメッセージに「対応する」を選びました。`, frames the body between two `----- 受信内容 <8 hex>：…` lines and names `hab_reply` with the message_id.
 - `peek-page` `hab_peek {"limit":1}` returns one message and a `next_cursor`; passing it as `after` returns the next one, and an empty page has `next_cursor: null`.
 - `peek-errors` `limit` outside 1–50 or a malformed `after` → `invalid_request`; `hab_peek` is not on `/mcp`.
@@ -48,7 +48,7 @@ export HAB_NOTIFY_TOKEN=$(jq -r .agents.b.token $ST); N="node scripts/hab-notify
 
 - **Send.** `ID=$($S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot.hab","text":"ビルドを確認できますか？"}' | sed 1d | jq -r .result.structuredContent.message_id)`.
 - **Peek.** `$S/mcp.sh "$RUN" b hab_peek '{}' | sed 1d | jq -r '.result.structuredContent.messages[0] | .read_at, .display'`: `null`, then the display above. `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`: `pending`.
-- **Show.** `$N check` prints `{"shown":["<ID>"]}`; run it again: `{"shown":[]}`. `jq -c '{type,target,choices:[.choices[].label]}' $RUN/notify/screen.jsonl`: one `notice` for the canonical binding target with `["対応する","あとで","対応しない"]`.
+- **Show.** `$N check` prints `{"shown":["<ID>"]}`; run it again: `{"shown":[]}`. `jq -c '{type,target,choices:[.choices[].label]}' $RUN/notify/screen.jsonl`: one `notice` whose `target` is the configured `screen.target` (`verify:b-session`), with `["対応する","あとで","対応しない"]`.
 - **Later.** `$N decide $ID later` → `{"changed":true,"state":"later"}`; status still `pending`. `$N show-again $ID` → `state: "shown"`.
 - **Accept once.** `$N decide $ID accept` → `{"changed":true,"state":"unsupported"}`; again → `{"changed":false,"state":"unsupported"}`. Status `acked`; there must be no `handoff` line. JSONL publication is not session admission.
 - **Reply.** This JSONL recipe has no bound product session and must not simulate a reply as proof of handoff. Test real-session replies only in a separately authorized product acceptance run.
@@ -66,9 +66,9 @@ export HAB_NOTIFY_TOKEN=$(jq -r .agents.b.token $ST); N="node scripts/hab-notify
 
 ## Gotchas
 
-- `hab_peek` returns only unread mail. A message an agent already read with `hab_inbox`, or one the SDK receive path leased or ACKed, is not offered; do not run the SDK receive service and the notifier for the same address.
+- `hab_peek` returns only unread mail. A message an agent already read with `hab_inbox` (any `hab_inbox` call, `include_read: true` too, marks every new message it returns read), or one the SDK receive path leased or ACKed, is not offered; do not run the SDK receive service and the notifier for the same address.
 - The JSONL screen cannot confirm session admission. Accept is `unsupported`, writes no handoff, and must not be reported as queued or started.
-- A notices store is bound to the `screen.target` it was created with; a config with another target gets `notices_target_mismatch`. Use a new `store` per session.
+- A notices store is bound to the binding it was created with (screen type, `hab_url` plus `app_server`/`channel_socket`, `agent_id` and `screen.target`); a config that changes any of them gets `notices_target_mismatch`. Use a new `store` per screen and session.
 - The channel socket directory must be owner-only (0700) and owned by the user, or the channel refuses to start (`insecure_channel_dir`); a socket another live channel holds is `channel_socket_in_use`.
 - The bundled Claude channel is unsupported because a startup ID cannot verify the current conversation. Only an atomic product-bound adapter may return queued. Mock tests prove neither actual display nor real-agent execution.
 - `hab:notify` reads the token on every call; with `token.env` the variable must be set in the shell that runs the command. A file token with `expires_at_field` past its expiry is not sent; the command reports `{"error":"token_expired"}` (`token_unavailable` when the field is empty), kept apart from `transport_failed`.
