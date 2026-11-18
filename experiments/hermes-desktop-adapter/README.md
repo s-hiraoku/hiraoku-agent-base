@@ -126,7 +126,9 @@ Notices that still need attention show their bodies above the input. The newest 
 because an automatic accept (ADR-023) hands a message off seconds after it arrives and
 the owner still wants to see that it came and what it said. Older accepted cards and
 `declined` and `expired` cards move into a closed-by-default history foldout, so
-handled messages do not pile up in the input area. Opening that history
+handled messages do not pile up in the input area. Each message is drawn as a bordered
+card with an "HAB" badge and the heading 「HAB からのメッセージ」, so it reads as HAB mail
+rather than chat. Opening that history
 is a local display action, not a retry or a deletion. `queued` means accepted by the
 conversation, not execution or reply completion. `later`, in-flight decisions,
 unknown results, and unavailable states remain visible; unknown results are never

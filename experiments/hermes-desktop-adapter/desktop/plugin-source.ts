@@ -50,6 +50,30 @@ const stateLabels: Record<string, string> = {
   expired: "期限切れ",
 };
 
+/** Each message is a bordered card with an "HAB" badge, so it reads as HAB mail, not chat (owner, 2026-11-18). */
+const cardStyle = {
+  border: "1px solid rgba(127, 127, 127, 0.45)",
+  borderLeft: "4px solid #5b6cff",
+  borderRadius: "8px",
+  padding: "8px 12px",
+  margin: "6px 0",
+};
+const cardHeaderStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  marginBottom: "4px",
+};
+const badgeStyle = {
+  background: "#5b6cff",
+  color: "#ffffff",
+  borderRadius: "4px",
+  padding: "0 6px",
+  fontSize: "0.75em",
+  fontWeight: 700,
+  letterSpacing: "0.05em",
+};
+
 /** Presentation only: retain controller state, cursor, and all HAB decisions. */
 export function ReceivedMessages({ view, visible, onChoose }: any) {
   if (!visible || (!view.cards.length && !view.error)) return null;
@@ -69,7 +93,17 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
   const renderCard = (card: any) =>
     h(
       "article",
-      { key: displayKey(card.notice) },
+      {
+        key: displayKey(card.notice),
+        "aria-label": "HAB からのメッセージ",
+        style: cardStyle,
+      },
+      h(
+        "header",
+        { style: cardHeaderStyle },
+        h("span", { style: badgeStyle }, "HAB"),
+        h("strong", null, "HAB からのメッセージ"),
+      ),
       h("div", null, "送信元: ", card.notice.address || card.notice.sender_id),
       h(
         "p",
