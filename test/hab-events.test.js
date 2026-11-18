@@ -589,7 +589,15 @@ test("operators can see when and why a recipient's doorbell stopped; subscribing
   await f.subscribe("a");
   assert.deepEqual(
     { ...readDoorbells(f.store, now).get(f.a.agent_id), until: null },
-    { live: 1, until: null, lapsed_at: null, reason: null },
+    {
+      live: 1,
+      until: null,
+      lapsed_at: null,
+      reason: null,
+      rang_at: null,
+      status: null,
+      delivered_at: null,
+    },
   );
   // The callback is gone (410).
   answer = 410;
@@ -615,6 +623,52 @@ test("operators can see when and why a recipient's doorbell stopped; subscribing
   bell = readDoorbells(f.store, now + 60_001).get(f.a.agent_id);
   assert.equal(bell.live, 0);
   assert.equal(bell.reason, "expired");
+});
+
+// 2026-11-19: Dots never read a message after its doorbell, and nothing showed whether
+// ChatGPT had taken the ring. Each ring now leaves its time and the callback's answer.
+test("operators can see the latest ring and how the callback answered it", async (t) => {
+  let now = Date.now();
+  let answer = 500;
+  const f = await setup(t, {
+    status: () => answer,
+    events: { now: () => now },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  let bell = readDoorbells(f.store, now).get(f.a.agent_id);
+  assert.equal(bell.rang_at, now);
+  assert.equal(bell.status, 500);
+  assert.equal(bell.delivered_at, null);
+  // The retry is taken: the time of the last 2xx is kept until the next one.
+  now += 5000;
+  answer = 202;
+  await f.events.dispatch();
+  bell = readDoorbells(f.store, now).get(f.a.agent_id);
+  assert.deepEqual(
+    [bell.rang_at, bell.status, bell.delivered_at],
+    [now, 202, now],
+  );
+  const taken = now;
+  // No answer at all is recorded as 0, and the last delivery stays visible.
+  now += 5000;
+  answer = 202;
+  const failing = await setup(t, {
+    status: () => {
+      throw new Error("connection reset");
+    },
+    events: { now: () => now },
+  });
+  await failing.subscribe("a");
+  await failing.send("b", failing.a.address, "y");
+  await failing.events.dispatch();
+  bell = readDoorbells(failing.store, now).get(failing.a.agent_id);
+  assert.deepEqual([bell.status, bell.delivered_at], [0, null]);
+  assert.equal(
+    readDoorbells(f.store, now).get(f.a.agent_id).delivered_at,
+    taken,
+  );
 });
 
 test("a slow delivery pass is not mistaken for an outage", async (t) => {

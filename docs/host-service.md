@@ -142,7 +142,10 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json disconnect \
   (`doorbell`: `live` with `doorbell_until`, `lapsed` with `doorbell_lapsed_at` and
   `doorbell_lapse_reason` `expired`/`gone`/`unsubscribed`, `none`, or `off`). It adds
   `unread_waiting` when an address has mail unread for 30 minutes or more, and
-  `doorbell_lapsed` when its doorbell ended and was not renewed. These explain mail
+  `doorbell_lapsed` when its doorbell ended and was not renewed. Once a recipient has been
+  rung, it also shows `doorbell_last_rang_at`, `doorbell_last_status` (the callback's HTTP
+  status, `0` for no answer) and `doorbell_last_delivered_at` (the last 2xx), and adds
+  `doorbell_failing` when the latest ring was not taken with a 2xx. These explain mail
   that arrived but nobody noticed ([ADR-024](hab-decisions.md)). No callback URL or
   webhook secret is printed.
 
