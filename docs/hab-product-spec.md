@@ -1,6 +1,6 @@
 # HAB製品仕様書
 
-仕様版：0.1。更新日：2026-11-12 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
+仕様版：0.1。更新日：2026-11-19 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
 
 [README](../README.md) · [配送契約](hab-messaging-spec.md) · [認証group](auth-groups.md) · [discovery](connections/mcp-agent-discovery.md) · [Task bridge](history/task-bridge.md)
 
@@ -15,6 +15,25 @@ GUIを人の主要入口、MCPをエージェントや対応製品の入口と�
 HABは各agentの記憶や判断を中央へ移さない。通信を許可することと、仕事を実行する権限は別である。受信や保存ACKを理由にshell、個人データ、外部送信等への権限を増やさない。
 
 HAB専用GUIは通信基盤の登録・接続・状態・設定・復旧を扱う管理画面であり、タスク管理ボードではない。**HAB KanbanはHAB上で動かせる別の任意アプリ**とし、GUIへKanban統合を前提にしない。将来の設定・機能拡張を受け入れられる構成にする。
+
+### 1.1 対象エージェント
+
+HABの対象は、利用者が承認して登録したエージェントである。製品ごとに別の配送方式は作らず、どの製品も共通MCP（または既定無効のA2A入口）で同じアドレス・認証・配送契約を使う。製品ごとに違うのは、接続の入口、届いたことの知らせ方（受信通知）、会話への表示と引渡しだけであり、これらは各製品のアダプタが担う。
+
+| 対象 | `agent_name` の例 | 主な接続の入口 | 状態（2026-11-19 JST） |
+| --- | --- | --- | --- |
+| Dots（ChatGPT） | `dot` | ChatGPTのカスタムコネクタ（公開HTTPS MCP＋OAuth） | 接続済み |
+| Hermes（Hermes Desktop） | `hermes` | Hermes の MCP 設定＋Desktop プラグイン | 接続済み |
+| claude.ai | `claude` | カスタムコネクタ（公開HTTPS MCP＋OAuth） | 接続済み |
+| Muse（Meta Muse） | `muse` | Muse アプリのカスタムコネクタ | 接続済み |
+| Claude Code | `claude-code` | Claude Code の MCP 設定 | 受信通知アダプタ実装済み、実機未接続 |
+| Codex | `codex` | Codex の MCP 設定＋app-server | 受信通知アダプタ実装済み、実機未接続 |
+| Grok Bot | `grok-bot` | 未確定 | 計画 |
+| Cursor | `cursor` | Cursor の MCP 設定 | 計画 |
+| Gemini（Gemini アプリ、Gemini API を使う独自アプリ） | `gemini` | Gemini アプリの Custom Connected Apps（remote MCP） | 計画（2026-11-19 追加） |
+| Antigravity（Antigravity アプリ・IDE・CLI） | `antigravity` | 共通の MCP 設定（`serverUrl`＋OAuth） | 計画（2026-11-19 追加） |
+
+`agent_name` の例は候補であり、正式な対応表はRegistryの登録時に管理する（[配送契約 §4.1](hab-messaging-spec.md)）。表への記載は接続済み・受信対応済みを意味しない。GeminiとAntigravityの接続方式、受信通知・表示の入口、未確認の点は[GeminiとAntigravityの接続](connections/gemini-antigravity-connection.md)に記録する。Gemini CLI は2026年6月に個人向けの提供が Antigravity CLI へ移ったため、新規の接続先としては Antigravity CLI を扱う。
 
 ## 2. 仕様の確度
 

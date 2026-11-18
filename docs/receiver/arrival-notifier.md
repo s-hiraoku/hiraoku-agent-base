@@ -476,6 +476,8 @@ Gemini CLI の ACP はクライアントとエージェント間の stdio 接続
 
 次の実装単位は新しい共通層ではなく、利用する製品ホスト内の薄い `AgentScreen` です。共通の binding・判断永続化・revision 同期を使い、ホストが通知を描画し、明示的な選択後に現在の接続／会話を照合して入力します。ホスト・製品・対象会話が未指定の段階では実接続を有効にしません。
 
+2026-11-19 追記：Gemini CLI は 2026-06-18 に個人向けの提供を終え、Antigravity CLI に移りました。Antigravity（アプリ・IDE・CLI）と Gemini アプリの接続方式・受信通知・表示の入口は [GeminiとAntigravityの接続](../connections/gemini-antigravity-connection.md) にまとめています。
+
 公式確認先：
 - [Gemini CLI ACP mode](https://geminicli.com/docs/cli/acp-mode/)（stdio と session 操作）
 - [Gemini CLI notifications](https://geminicli.com/docs/cli/notifications/)（作業完了・操作待ち通知であり HAB 到着通知ではない）
