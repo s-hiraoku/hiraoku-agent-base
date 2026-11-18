@@ -30,6 +30,10 @@ function Receiver({ ctx, owner }: any) {
 }
 
 const historyStates = new Set(["queued", "started", "declined", "expired"]);
+/** Handed to the conversation: the newest stay readable above the input (owner, 2026-11-18). */
+const acceptedStates = new Set(["queued", "started"]);
+/** How many of the newest accepted messages stay visible; older ones fold into history. */
+export const RECENT_ACCEPTED = 5;
 const stateLabels: Record<string, string> = {
   showing: "通知を準備中",
   shown: "未対応",
@@ -49,8 +53,14 @@ const stateLabels: Record<string, string> = {
 /** Presentation only: retain controller state, cursor, and all HAB decisions. */
 export function ReceivedMessages({ view, visible, onChoose }: any) {
   if (!visible || (!view.cards.length && !view.error)) return null;
-  const history = view.cards.filter((card: any) =>
-    historyStates.has(card.decision?.state),
+  // An automatic accept hands the message off within seconds, before anyone looks, so
+  // the arrival and its body stay on screen after the handoff instead of folding away.
+  const accepted = view.cards.filter((card: any) =>
+    acceptedStates.has(card.decision?.state),
+  );
+  const recent = new Set(accepted.slice(-RECENT_ACCEPTED));
+  const history = view.cards.filter(
+    (card: any) => historyStates.has(card.decision?.state) && !recent.has(card),
   );
   const pending = view.cards.filter(
     (card: any) => !historyStates.has(card.decision?.state),
@@ -146,6 +156,24 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
             style: { maxHeight: "16rem", overflow: "auto" },
           },
           ...pending.map(renderCard),
+        )
+      : null,
+    recent.size
+      ? h(
+          "div",
+          {
+            role: "region",
+            "aria-label": "最近会話に渡したHAB通知",
+            style: { maxHeight: "16rem", overflow: "auto" },
+          },
+          h(
+            "div",
+            { role: "status", "aria-live": "polite" },
+            "HAB からの受信 · 会話に渡したメッセージ（新しい順に最大 ",
+            RECENT_ACCEPTED,
+            " 件）",
+          ),
+          ...[...recent].reverse().map(renderCard),
         )
       : null,
     history.some((card: any) => card.unavailable)

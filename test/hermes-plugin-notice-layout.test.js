@@ -62,22 +62,45 @@ function nodes(node, type) {
   ];
 }
 
-test("queued/started/declined/expired bodies leave the composer, preserved under closed history", () => {
-  const cards = ["queued", "started", "declined", "expired"].map((s) =>
-    card(s),
-  );
+test("declined/expired bodies leave the composer, preserved under closed history", () => {
+  const cards = ["declined", "expired"].map((s) => card(s));
   const original = structuredClone(cards);
   const result = tree(cards);
   assert.doesNotMatch(visibleText(result), /body-/);
-  assert.match(visibleText(result), /履歴（4件）/);
+  assert.match(visibleText(result), /履歴（2件）/);
   const history = nodes(result, "details")[0];
   assert.equal(history.props.open, undefined);
-  assert.equal(nodes(history, "article").length, 4);
+  assert.equal(nodes(history, "article").length, 2);
   assert.equal(nodes(history, "button").length, 0);
-  assert.match(
-    visibleText({ ...history, props: { open: true } }),
-    /実行・返信完了ではありません/,
+  assert.deepEqual(cards, original);
+});
+
+test("messages handed to the conversation stay readable, newest first, up to five", () => {
+  // An automatic accept is queued seconds after it arrives; the owner still wants to see
+  // that it came and what it said (2026-11-18).
+  const accepted = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"].map((id, i) =>
+    card(i % 2 ? "started" : "queued", id),
   );
+  const cards = [card("declined", "d1"), ...accepted];
+  const original = structuredClone(cards);
+  const result = tree(cards);
+  const text = visibleText(result);
+  for (const id of ["a3", "a4", "a5", "a6", "a7"])
+    assert.match(text, new RegExp(`body-${id}`));
+  for (const id of ["a1", "a2", "d1"])
+    assert.doesNotMatch(text, new RegExp(`body-${id}`));
+  assert.match(text, /会話に渡したメッセージ/);
+  assert.match(text, /実行・返信完了ではありません/);
+  const region = nodes(result, "div").find(
+    (n) => n.props?.["aria-label"] === "最近会話に渡したHAB通知",
+  );
+  assert.deepEqual(
+    nodes(region, "article").map((n) => visibleText(n).match(/body-(a\d)/)[1]),
+    ["a7", "a6", "a5", "a4", "a3"],
+  );
+  assert.equal(nodes(region, "button").length, 0);
+  assert.match(text, /履歴（3件）/);
+  assert.equal(nodes(nodes(result, "details")[0], "article").length, 3);
   assert.deepEqual(cards, original);
 });
 
@@ -93,9 +116,9 @@ test("new notifications and deferred or uncertain states stay visible ahead of c
     "unavailable",
     "unsupported",
   ]) {
-    const result = tree([card("queued"), card(state)]);
+    const result = tree([card("declined"), card(state)]);
     assert.match(visibleText(result), new RegExp(`body-${state}`));
-    assert.doesNotMatch(visibleText(result), /body-queued/);
+    assert.doesNotMatch(visibleText(result), /body-declined/);
     assert.equal(
       nodes(result, "button").length,
       ["shown", "later"].includes(state) ? 1 : 0,
@@ -114,7 +137,7 @@ test("undocumented decision states cannot expose inherited object values as labe
 
 test("authoritative decision then polling and remount do not restore handled body; errors stay visible", () => {
   assert.match(visibleText(tree([card("shown", "one")])), /body-one/);
-  const handled = card("queued", "one");
+  const handled = card("declined", "one");
   for (let i = 0; i < 3; i++)
     assert.doesNotMatch(visibleText(tree([handled])), /body-one/);
   const failed = tree([{ ...handled, unavailable: true }], {
