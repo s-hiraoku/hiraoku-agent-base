@@ -1,6 +1,6 @@
 # Receive and acknowledge
 
-A recipient polls for at most one message at a time; the host leases it for 30 seconds with a generation number and a lease token. The recipient must save it before acknowledging with that exact lease, which removes the server body. The raw calls below exercise lease and ACK wire semantics; they do not perform or prove the recipient save. An unacknowledged lease expires and the message is redelivered with a higher generation.
+A recipient polls for at most one message at a time; the host leases it for `delivery.queue.lease_ms` (30 seconds on the verify stack; never past the message's `expires_at`) with a generation number and a lease token. The recipient must save it before acknowledging with that exact lease, which removes the server body. The raw calls below exercise lease and ACK wire semantics; they do not perform or prove the recipient save. An unacknowledged lease expires and the message is redelivered with a higher generation.
 
 ## Sub-features
 
@@ -10,7 +10,7 @@ A recipient polls for at most one message at a time; the host leases it for 30 s
 - `recv-empty` returns `{delivery: null}` when nothing is deliverable (including while the only message is leased).
 - `recv-ack` acknowledges with the exact returned lease; the response and the sender's `hab_status` show `acked`.
 - `recv-ack-replay` repeating the same ack request returns the same receipt. After that ack has consumed the lease, a different `request_id` with the old lease fields is `invalid_ack`. A different `request_id` while the lease is still open would ack successfully; a same `request_id` with other fields changed is `ack_idempotency_conflict`.
-- `recv-ack-refused` a wrong `lease_token` or another agent acking is `invalid_ack`.
+- `recv-ack-refused` a wrong `lease_token` or another agent acking is `invalid_ack` (refusals also carry a fixed `message`). An ack for a pair or kind that is no longer authorized is `forbidden`.
 - `recv-redeliver` after `lease_until` (plus the stack's short `retry_base_ms` backoff) the next poll returns the same message with `generation` + 1. The recipe's ≈31 s wait clears that window on the verify stack.
 
 ## How to get to it (user POV)

@@ -8,7 +8,7 @@ Agents receive through common MCP. Their host polls, saves the message and dedup
 - `boundary-save-before-ack` observes committed message and ACK request records of the agent SDK's receiver inbox (`src/agent-sdk/sqlite-inbox.ts`) through an independent SQLite connection before the server handles ACK.
 - `boundary-no-execution` preserves external content verbatim, calls only receive host operations, and leaves the reply outbox empty. The HTTP fixtures build `AdapterHostCycle` without a Task port.
 - `boundary-inbox-read` exercises explicit source-authorized saved-body reads, ACK-pending inspection, detached copies, missing/released/tampered records, revocation and an explicit recipient reply after native HTTP periodic reception. Reading creates no Task or reply and grants no action permission.
-- The existing supervisor tests also cover restart, lost ACK, finite backoff, owner requirements, and stop/drain behavior. The HAB catalog test keeps the HAB delivery catalog at five tools (`hab_resolve` plus the four standalone delivery tools).
+- The existing supervisor tests also cover restart, lost ACK, finite backoff, owner requirements, and stop/drain behavior. The HAB catalog test keeps the HAB delivery catalog at seven tools (`hab_resolve`, `hab_peek` and `hab_mark_read` plus the four standalone delivery tools `hab_submit`, `hab_status`, `hab_poll`, `hab_ack`), and the standalone catalog at those four.
 
 ## How to get to it (user POV)
 
@@ -24,7 +24,7 @@ mkdir -p "$RUN/evidence"
 NODE_NO_WARNINGS=1 npm run test:communication-boundary > "$RUN/evidence/communication-boundary.tap" 2>&1
 ```
 
-Require exit code zero and no failed, skipped, or canceled tests. The TAP names the three native HTTP message cases (`question`, `notice`, `execution_request`), the five-tool HAB catalog case, the native HTTP inbox-read case, and the durable receive-supervisor cases. The HTTP tests record the sender action and status, inspect committed receiver storage before ACK, and check that the reply outbox stays empty after two scheduled receives. Identity is synthetic. The injected scheduler advances two cycles without a wall-clock delay, so this does not measure real polling cadence.
+Require exit code zero and no failed, skipped, or canceled tests. The TAP names the three native HTTP message cases (`question`, `notice`, `execution_request`), the HAB catalog case (its TAP name still reads `HAB opts into exactly six tools…`, although it asserts seven), the native HTTP inbox-read case, and the durable receive-supervisor cases. The HTTP tests record the sender action and status, inspect committed receiver storage before ACK, and check that the reply outbox stays empty after two scheduled receives. Identity is synthetic. The injected scheduler advances two cycles without a wall-clock delay, so this does not measure real polling cadence.
 
 For the optional explicit recipient handoff and exact-reply seam, run `NODE_NO_WARNINGS=1 node --test --test-reporter=tap test/recipient-messages.test.js` in a fresh evidence file. See [recipient messages](../../../../docs/receiver/recipient-messages.md). It uses a synthetic durable native input/policy store plus real inbox/outbox/budget and one owned loopback MCP roundtrip. Receive/ACK alone still creates no native input or reply. Native product wake/model/approval remains unverified.
 

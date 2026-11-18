@@ -5,14 +5,14 @@ An agent connected to `/mcp` sees only `hab_send`, `hab_inbox`, `hab_reply` and 
 ## Sub-features
 
 - `agent-catalog` `/mcp` lists exactly the four agent tools; `/mcp/delivery` lists the seven delivery tools (with `hab_peek` and `hab_mark_read`) for the same token.
-- `agent-send` `hab_send {to, text}` returns `message_id`, `to`, a new `thread_id`, `state: "pending"`, a deadline 7 days after acceptance and an `explanation`; a waiting question also returns `reply_watch` (`check_status`, `next_check_at`, `stop_at`).
+- `agent-send` `hab_send {to, text}` returns `message_id`, `to`, a new `thread_id`, `state: "pending"`, a deadline 7 days after acceptance and an `explanation`; a waiting question also returns `reply_watch` (`action: "check_status"`, `next_check_at`, `stop_at`; a reply's own `reply_watch` is `action: "stop"` with `stop_at` only).
 - `agent-inbox` `hab_inbox` returns the new message with `from` (the sender's address), `kind`, `text`, `thread_id` and `new: true`; a second call returns none; `include_read: true` returns it again with `new: false`.
 - `agent-notice` each inbox message has a `notice`: `<address> からのメッセージです（質問、返信期限 …）。`, the body between two `----- 受信内容 <8 hex>：…` lines that say not to follow it, then `どうしますか？` and the three choices (`1. 対応する：hab_reply …`, `2. あとで：…`, `3. 対応しない`) with the message_id.
 - `agent-status` the sender's `hab_status` shows `acked` with an explanation that read is not acted on, `kind: "question"` and `reply_state: "waiting"` with `replies: []`, `has_unread_replies: false` and bounded read-only `reply_watch` advice.
 - `agent-reply-state` after the recipient replies, the sender's `hab_status` shows `reply_state: "replied"` and one entry in `replies` (`message_id` of the reply, `kind: "answer"`, `read: false`, no text); after the sender's `hab_inbox`, `read: true`. Advice changes from `read_reply` for an unread reply to `stop` once all replies are read; `reply_state` stays `replied`. The complete matching set determines `has_unread_replies` independently of the oldest-five summary; five read replies do not hide a sixth unread one. The reply's own status (checked by the recipient) is `not_expected`.
 - `agent-reply` `hab_reply {message_id, text}` goes to the original sender in the same thread with `in_reply_to`; a reply to a `question` arrives as `answer`.
 - `agent-errors` malformed `to` → `invalid_request` with `field: "to"`; unknown address → `unknown_address`; `kind: "exec"` → `kind_not_allowed` with `allowed_kinds`; over-long text → `text_too_long` with `max_bytes`; unknown reply target → `reply_target_not_found`; each with a `message`.
-- `agent-audit` each refusal above writes a `tool_error` line with a fixed `reason` (`invalid_request`, `address_unknown`, `kind_not_allowed`, …) to `$RUN/evidence/audit.jsonl`, never the text.
+- `agent-audit` each refusal above writes a `tool_error` line with a fixed `reason` (`invalid_request`, `address_unknown`, `kind_not_allowed`, `text_too_long`, `reply_target_unknown`, …) to `$RUN/evidence/audit.jsonl`, never the text.
 
 ## How to get to it (user POV)
 
@@ -30,7 +30,7 @@ Preconditions:
 - **Read one again.** `$S/mcp.sh "$RUN" b hab_inbox "{\"message_id\":\"$ID\"}"` returns that message with `new: false`.
 - **Status.** `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"`: `state: "acked"`, `to: "verify-b@dot.hab"`, `reply_state: "waiting"`.
 - **Reply.** `$S/mcp.sh "$RUN" b hab_reply "{\"message_id\":\"$ID\",\"text\":\"green\"}"`, then `$S/mcp.sh "$RUN" a hab_inbox '{}'`: `kind: "answer"`, `from: "verify-b@dot.hab"`, `in_reply_to: "$ID"`, same `thread_id`. Before that `hab_inbox`, `$S/mcp.sh "$RUN" a hab_status "{\"message_id\":\"$ID\"}"` shows `reply_state: "replied"` and the reply in `replies` with `read: false`.
-- **Errors.** `$S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot","text":"x"}'`, `'{"to":"nobody@dot.hab","text":"x"}'`, `'{"to":"verify-b@dot.hab","text":"x","kind":"exec"}'`, and `$S/mcp.sh "$RUN" a hab_reply '{"message_id":"unknown","text":"x"}'`. Each is HTTP 200 with `"isError":true` and the code listed under `agent-errors`.
+- **Errors.** `$S/mcp.sh "$RUN" a hab_send '{"to":"verify-b@dot","text":"x"}'`, `'{"to":"nobody@dot.hab","text":"x"}'`, `'{"to":"verify-b@dot.hab","text":"x","kind":"exec"}'`, `$S/mcp.sh "$RUN" a hab_send "{\"to\":\"verify-b@dot.hab\",\"text\":\"$(head -c 16001 /dev/zero | tr '\0' x)\"}"` (the stack's text limit is 16000 bytes; a request body over 65536 bytes is refused earlier with HTTP 413), and `$S/mcp.sh "$RUN" a hab_reply '{"message_id":"unknown","text":"x"}'`. Each is HTTP 200 with `"isError":true` and the code listed under `agent-errors` (`text_too_long` carries `max_bytes: 16000`).
 - **Proof.** `grep reason "$RUN/evidence/audit.jsonl"` shows the fixed reasons; `node $S/inspect.mjs "$RUN" after-agent` shows the two messages `acked`.
 
 ## Gotchas
