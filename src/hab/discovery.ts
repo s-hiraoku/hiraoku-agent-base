@@ -44,12 +44,18 @@ export const habDiscoveryPolicySchema = z.strictObject({
   availability_namespaces: z
     .array(z.string().regex(/^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$(?![\s\S])/))
     .max(100),
+  directory: z.enum(["group", "all_active"]).optional(),
 });
 export interface HabDiscoveryPolicy {
-  /** Explicit permission to reveal only occupancy for exact candidates in these namespaces.
-   * Directory visibility remains restricted to the verified binding/group.
-   */
+  /** Explicit permission to reveal only occupancy for exact candidates in these namespaces. */
   availability_namespaces: readonly string[];
+  /**
+   * Who `directory` lists (ADR-025). `all_active` (default): the caller's own group plus
+   * every active address in other groups, with names and state only (no operations,
+   * bindings or host assignment). Only the operator registers addresses, so every listed
+   * agent is one the owner approved. `group`: only the caller's own authentication group.
+   */
+  directory?: "group" | "all_active";
 }
 export interface HabDiscoveryService {
   readonly discoveryEnabled?: boolean;

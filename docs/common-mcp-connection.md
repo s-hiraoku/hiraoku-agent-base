@@ -16,7 +16,7 @@ HABはメッセージを預かる通信基盤です。各エージェントが�
 を使い、接続設定とgrantを保存してhostの標準OAuth更新を利用します。確認後に本番設定を
 自動削除しません。実grantや本番適用は別途承認し、MCP登録・認証だけで自動受信が起動したとは扱いません。
 
-任意の[`hab_discover`](connections/mcp-agent-discovery.md)を有効化すると、検証済み接続・group内の名義一覧・
+任意の[`hab_discover`](connections/mcp-agent-discovery.md)を有効化すると、検証済み接続・HABに登録された有効な宛先の一覧（既定。ADR-025）・
 既知の割当・候補アドレスの空き確認を照会できます。選択名義とホスト本人は別に扱います。
 エージェント用catalogでも同じツールを出します。
 

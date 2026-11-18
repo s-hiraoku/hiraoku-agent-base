@@ -380,6 +380,13 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
             problems.push({ code: "unread_waiting", subject: agent.address });
           if (doorbell === "lapsed")
             problems.push({ code: "doorbell_lapsed", subject: agent.address });
+          // The callback did not take the latest ring (still retried up to 8 times).
+          const failing =
+            eventsEnabled &&
+            bell?.rang_at != null &&
+            !(bell.status! >= 200 && bell.status! <= 299);
+          if (failing)
+            problems.push({ code: "doorbell_failing", subject: agent.address });
           return {
             address: agent.address,
             unread: waiting?.unread ?? 0,
@@ -392,6 +399,13 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
               ? {
                   doorbell_lapsed_at: iso(bell?.lapsed_at),
                   doorbell_lapse_reason: bell?.reason,
+                }
+              : {}),
+            ...(eventsEnabled && bell?.rang_at != null
+              ? {
+                  doorbell_last_rang_at: iso(bell.rang_at),
+                  doorbell_last_status: bell.status,
+                  doorbell_last_delivered_at: iso(bell.delivered_at),
                 }
               : {}),
           };

@@ -20,7 +20,7 @@ Preconditions:
 - Baseline run, doctor OK.
 
 - **Resolve a peer.** Agent `a` resolves `b`. Run `$S/mcp.sh "$RUN" a hab_resolve '{"address":"verify-b@dot.hab"}'`. HTTP 200, `structuredContent.recipient_id` equals `jq -r .agents.b.agent_id $RUN/instance/state.json`, `address` echoes `verify-b@dot.hab`, `normalization_version` is `1`.
-- **Unknown address.** Run `$S/mcp.sh "$RUN" a hab_resolve '{"address":"nobody@dot.hab"}'`. `isError: true`, `{"error":"unknown_address"}` with the fixed public message (it may mention optional `hab_discover`).
+- **Unknown address.** Run `$S/mcp.sh "$RUN" a hab_resolve '{"address":"nobody@dot.hab"}'`. `isError: true`, `{"error":"unknown_address"}` with the fixed public message (it may mention optional `hab_discover`). Since ADR-025 `hab_discover` `directory` (when discovery is on) lists every active address by default — other groups with `relationship: "other_group"` and names/state only; `registry.discovery.directory: "group"` restores the group-only list. Covered by `node --test test/hab-discovery.test.js`.
 - **Malformed address.** Run `$S/mcp.sh "$RUN" a hab_resolve '{"address":"Not An Address"}'`. `isError: true` with an `Input validation error` naming the address pattern.
 - **Previous name (configured host only; the stack has no `registry` config).** Use a fresh configured run, so the names below are `hermes@hermes.hab` (`b`) and `codex@codex.hab` (`a`).
   1. `$S/configured.sh "$RUN" start`, then `$S/configured.sh "$RUN" stop`, set `registry.agent_rename: true` in `$RUN/instance/service.local.json` (keep it 0600), and `$S/configured.sh "$RUN" restart` (it prints `no host.pid` and starts the host; the Registry gains the names tables when it opens).
