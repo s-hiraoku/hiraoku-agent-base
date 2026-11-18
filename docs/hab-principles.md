@@ -14,7 +14,7 @@ HABは送信名義・宛先・配送権限を検証し、メッセージと配�
 
 質問・回答はTaskなしで送受信できます。既存Task Engineや汎用ジョブは任意の実行連携であり、受信・ACKから自動でTaskを作りません。その連携を明示的に使う場合だけ、実行receiptを照合し、一つのTask状態DBを選びます。Mac側journalを第二のタスクDBにしません。
 
-担当agent、実行tool、実行環境、workspace、完了条件は別の概念です。Claude Code・Codex・Cursorを使う場合も、その名前を指定しただけでは権限や接続を得られません。実際の主体と実行境界の確認が必要です。
+担当agent、実行tool、実行環境、workspace、完了条件は別の概念です。Claude Code・Codex・Cursor・Gemini・Antigravityを使う場合も、その名前を指定しただけでは権限や接続を得られません。実際の主体と実行境界の確認が必要です。
 
 ## 最小権限と承認
 

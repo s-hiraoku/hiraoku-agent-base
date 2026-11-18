@@ -117,9 +117,11 @@ backend@claude-code.hab
 frontend@cursor.hab
 review@codex.hab
 lab@hermes.hab
+assistant@gemini.hab
+ide@antigravity.hab
 ```
 
-例はダミーであり、実登録を示さない。`.hab`はHAB用の論理アドレスであることを識別する表記であり、SMTP配送先や外部DNSの名前解決には使わない。`agent_name`には製品・実行環境の識別しやすい固定名を使う。Grok Botは`grok-bot`とする。他製品の上記slugは候補例であり、正式な対応表は実装時に管理する。Claude Code、Codex、Cursorなども同じ登録・通信契約の対象であり、製品別に別の配送方式を作らない。
+例はダミーであり、実登録を示さない。`.hab`はHAB用の論理アドレスであることを識別する表記であり、SMTP配送先や外部DNSの名前解決には使わない。`agent_name`には製品・実行環境の識別しやすい固定名を使う。Grok Botは`grok-bot`とする。他製品の上記slugは候補例であり、正式な対応表は実装時に管理する。Claude Code、Codex、Cursor、Gemini、Antigravityなども同じ登録・通信契約の対象であり、製品別に別の配送方式を作らない。GeminiとAntigravityは2026-11-19 JSTに対象へ追加した。接続方式と未確認の点は[GeminiとAntigravityの接続](connections/gemini-antigravity-connection.md)に記録する。
 
 登録時にユーザーが自由に指定できるアドレス部分は`bot_name`だけとする。HABは選択した製品・実行環境の登録情報から`agent_name`を設定し、完成したアドレスを半自動で提案する。`bot_name`は識別しやすい個体名として使い、同じ製品内の個体を区別する。実装した正規化version 1は、両要素とも小文字ASCII英数字・内部ハイフンの1〜48文字、先頭・末尾は英数字とする。大文字・Unicode・空白・ドット・underscoreは暗黙変換せず拒否する。完成形は最大101文字で、正規化versionも個体確定時に固定する。
 

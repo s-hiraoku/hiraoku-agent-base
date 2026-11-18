@@ -274,7 +274,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "d09cb7e27bece677c55dce71fec31bbc6bf8bd9090f8630161013f9008720907",
+      "sha256": "7a8732f545507712985fba19015bc89cd30998dad818a2e0746c176cca80f2b4",
       "role": "context",
       "review": "reviewed",
       "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition as revised by ADR-018: the single host (src/host, MCP server in src/host/mcp), the host's single-file SQLite delivery store and the agent SDK; JetStream and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs no broker. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. Reviewed 2026-11-15: Gemini is a planned integration target only; product/session selection, authentication, transport and recipient-owned notice/approval require separate validation. No Gemini implementation or live acceptance is claimed; existing permission and evidence boundaries are unchanged. Reviewed TypeScript 7 CI compatibility: native compiler and TypeScript 6 API are separate development dependencies using the official aliases; ESLint and the existing AST boundary checks remain enabled. No runtime behavior or product acceptance requirement changes."
@@ -491,17 +491,17 @@
     },
     {
       "path": "docs/hab-principles.md",
-      "sha256": "d2c229e3ea37143c569a9c1e06c16bd0c8460d8ab5b877ae13cec300d4e8e738",
+      "sha256": "9af983f97b42507272b494b2be788718bfa5de0de7df96a8e8f3f293753aade7",
       "role": "normative",
       "review": "reviewed",
       "summary": "Root intent: independent agent context/judgment, shared product-independent HTTP MCP, durable outbox/inbox, model-free periodic receive/save-before-ACK. No central agent, ordinary Task requirement or global replacement approval layer. Verified identity/policy governs authority; external body never owner approval. Existing jobs stay owned, notifications do not create work, cost unknown/unknown execution stops for reconciliation."
     },
     {
       "path": "docs/hab-product-spec.md",
-      "sha256": "15fab9f8771a96721fb1d04567714e0c6b60fd14349fcd4c17a20bdf9aa5256c",
+      "sha256": "6bec54d32611e0647580c9f6669f25a369d7dce7a30963935c541f286dbf640e",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. The single-file SQLite delivery store is adopted (ADR-018, superseding the JetStream delivery of ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; restore takes one whole backup generation with an expiry hold and original-ID comparison; the earlier JetStream-era text, now replaced, required for older builds a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list."
+      "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. The single-file SQLite delivery store is adopted (ADR-018, superseding the JetStream delivery of ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; restore takes one whole backup generation with an expiry hold and original-ID comparison; the earlier JetStream-era text, now replaced, required for older builds a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-19: §1.1 lists the target agents (Dots, Hermes, claude.ai, Muse, Claude Code, Codex, Grok Bot, Cursor, Gemini, Antigravity) with entry and status; listing is not connection evidence."
     },
     {
       "path": "docs/history/hab-relay-integration.md",
@@ -513,10 +513,10 @@
     },
     {
       "path": "docs/hab-messaging-spec.md",
-      "sha256": "24180d0a1c6db3d2e667068ece7da346715181f4a095dd1b614bf8da78a75e7d",
+      "sha256": "3d6676f7cfc19d2f2abd5b251ee6459e5ff56ef6aa7a5d2eeafd670071ab23d2",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19: Gemini and Antigravity join the same registration/delivery contract (example addresses only)."
     },
     {
       "path": "docs/history/hab-roadmap.md",
@@ -817,7 +817,7 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "d849c816ce1d6bb416bc81116d0b4a81a3f1f51ebd59b8e99be15b6c873cdfd5",
+      "sha256": "f7f2d9ad650a58ffc708aa1b807ec8eb8a3090c76ebf810e24be4c28093bb221",
       "role": "normative",
       "review": "reviewed",
       "summary": "Arrival notifier (ADR-021), rereviewed 2026-11-15: token.oauth gives the notifier its own grant (one PKCE login, then self-refresh under a lock file; never the agent token file, so a rotating refresh token is not shared). HAB owns delivery authentication, unread lookup, user decision persistence, expiry and at-most-once handoff. Product adapters own publication, user choice and same-existing-session admission. Shared local binding/states/adapter-action commands fence connection, recipient, product and session; immutable notice pages and mutable SQLite revisions are separate, stale responses cannot override newer state, and absent state is unknown. shown is a legacy publication state, not rendered UI proof. JSONL refuses handoff; the static Claude channel refuses without product-owned atomic current-session admission. No fallback session or CLI. Existing stores must be preserved and reconciled rather than silently relabelled or discarded during binding migration. Hermes UI polling/rendering is a separate implementation; prior documented product acceptance is historical evidence, not verification of this change. Gemini CLI/App/API are distinct and not implemented here; synthetic adapter contracts are not native integration. Codex/Claude/ChatGPT actual product acceptance remains separately unverified. Rollback requires stopped owned notifier and consistent offline backup; restoring pre-decision state can duplicate handling, so reconcile decisions first and never run old/new concurrently. Additive schema does not justify reverting the stricter binding identity. Legacy Hermes action now also requires the common binding_id; old events without HAB connection identity are refused, and independent Hermes consumers must migrate before enabling actions. Follow-up: official-reference Gemini product matrix distinguishes existing ACP host, standalone CLI, Gemini Apps and API application without native acceptance. Explicit offline inspect/migrate CLI copies to a new private bundle, keeps original backup and decisions/revisions, requires source fingerprint/target plus operator-verified old identity/offline attestation, refuses WAL/rollback recovery and unsettled states, and never deploys or restarts. Existing destinations are not overwritten. binding returns exact normalized destination_binding so migration does not require guessed tuples. CLI unexpected errors are sanitized; source shutdown/identity remain operator prerequisites. Companion status identifies external unapplied Hermes commit f19527817a251ed37432d1bd87d6c2fd934d7eed on exact base b189f28f7462e1cbb568db6878f096277048c079, not included or installed by HAB. Reported focused Python69/UI42/typecheck/lint/canonical14 evidence is separate; full UI was stopped for host load, full Python/native Desktop were not performed. This maintenance does not independently prove those external results or satisfy the six manual gates. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. Terminal unknown is now copied unchanged, never retried or called successful; in-flight decisions still block. Separate clean-stamped companion production/unsigned mac-arm64 packaging succeeded, with Xcode icon warning and intentional notarization skip; no packaged runtime/native acceptance was performed. Bounded states queries accept up to 50 exact keys, echo requested scope/keys and preserve unrelated card authority; UTF-8 request/response limits reject oversized output explicitly. Generic adapter-action returns only its affected key state/revision and metadata, never the full retained history. Tests with 3000 rows preserve missing versus unrequested distinctions and fail closed on oversized records. Updated companion POST query batches retained/new keys with strict requested-scope echo and per-key checked/error reporting, plus one-key decision preflight. Previous15f2267 production build and unsigned mac-arm64 package both exited0 with dirty:false, superseding the historical f195278 package; no launch, installation, deployment or notarization occurred and native/manual acceptance remains unverified. Latest99dc5e1 compact UTF-8 JSON forwarding preserves the retained-key byte budget; its production build and unsigned mac-arm64 package both exited0 with dirty:false, superseding earlier15f2267 evidence. No runtime launch, installation, deployment or notarization occurred. ADR-023 section (2026-11-17): auto_accept settings table, prompt rewrite, prompt-level limit of the approval instruction, audit line shape and skip reasons, restart-safe caps from the auto_accepts table; cards still shown and moved to history. ADR-024 (2026-11-17): the notifier LaunchAgent restarts after any exit; stop it only with bootout. 2026-11-18: automatic prompt finishes with hab_reply instead of waiting for an absent user's approval.",
@@ -1142,6 +1142,13 @@
       "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB."
     },
     {
+      "path": "docs/connections/gemini-antigravity-connection.md",
+      "sha256": "7853736424d8859a07d98f70a02682954fdf8d6b5e8981304a940eae33d7e4fb",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Gemini and Antigravity onboarding context (added as target agents 2026-11-19): distinguishes Gemini app, Gemini API applications and Antigravity app/IDE/CLI (Gemini CLI succeeded by Antigravity CLI), records the official MCP entry (shared mcp_config.json serverUrl with pasted-code OAuth; Gemini Custom Connected Apps), and finds no public arrival-notification or existing-conversation handoff entry, so reception stays manual hab_inbox. Capability classification only; no product runtime, live authentication or messaging is verified."
+    },
+    {
       "path": "docs/receiver/private-recipient-http.md",
       "sha256": "3457dffeaf644d272a9efb77488365ddc46cbc9d860db24a5a047d2bbd862363",
       "role": "context",
@@ -1379,14 +1386,14 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 259,
-          "end": 263,
+          "start": 261,
+          "end": 265,
           "excerpt_sha256": "52a7c79303b6a85d8c5be8e2639b54acbbc349ee095fb3e789f3b748eb62955f"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 163,
-          "end": 163,
+          "start": 182,
+          "end": 182,
           "excerpt_sha256": "ca7d62c15ba64c0753294c8d43d38d152f1c38ca1b71e2b20e37a90b2646ccdd"
         }
       ]
@@ -1410,8 +1417,8 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 141,
-          "end": 141,
+          "start": 143,
+          "end": 143,
           "excerpt_sha256": "da30105d4705cf656b2db8224c28e591f418c60016de707769980b79c866242d"
         },
         {
@@ -1439,8 +1446,8 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 98,
-          "end": 110,
+          "start": 117,
+          "end": 129,
           "excerpt_sha256": "3ff61784d4b5b8e74c054c88509bff0d7af3e3efb5526382160bb5f5458d9774"
         },
         {
@@ -1616,8 +1623,8 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 147,
-          "end": 153,
+          "start": 149,
+          "end": 155,
           "excerpt_sha256": "222641c7c5078366dba7f682d4c07bfe79a51f2622456f5fad814a239f621e84"
         }
       ]
@@ -1658,14 +1665,14 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 229,
-          "end": 235,
+          "start": 231,
+          "end": 237,
           "excerpt_sha256": "013a8ac94cd957459ffad71ee0eaa1bf505fcc59681008f7482ab60277e63f76"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 287,
-          "end": 302,
+          "start": 289,
+          "end": 304,
           "excerpt_sha256": "ca4d65ac1723072bc2d9dbeb8eb757e1a93fa6a44a602c8021063163c3acbc06"
         }
       ]
@@ -1684,8 +1691,8 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 374,
-          "end": 400,
+          "start": 376,
+          "end": 402,
           "excerpt_sha256": "c4eb4f938e6666220be1b32fe3f177687b8603503c561b441a34e9370ea29110"
         },
         {
@@ -1749,14 +1756,14 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 305,
-          "end": 311,
+          "start": 307,
+          "end": 313,
           "excerpt_sha256": "6fa96be01c0d18adb3702e802a766124c909faae32e57f647002819c0304e41b"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 330,
-          "end": 334,
+          "start": 332,
+          "end": 336,
           "excerpt_sha256": "b3e55b150068c586c8f1a1ea1ad09948721543821c2a94a3961ae9625e0d1c94"
         }
       ]
@@ -1781,8 +1788,8 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 68,
-          "end": 69,
+          "start": 87,
+          "end": 88,
           "excerpt_sha256": "515c810e8cded70e915f4a1b9e63b25d6ff2cb40c53b4bd8962eff5bb8f73231"
         }
       ]
@@ -1814,8 +1821,8 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 198,
-          "end": 204,
+          "start": 217,
+          "end": 223,
           "excerpt_sha256": "2e932fce07132758f0945703172f926d874b2484d966c3b56a6aa28a0249c740"
         }
       ]
@@ -1839,14 +1846,14 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 35,
-          "end": 47,
+          "start": 54,
+          "end": 66,
           "excerpt_sha256": "d22c176471eda1c96a6d2a5ddc7f4f2991e8081b6450e64c0700c9e5bbc363f5"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 90,
-          "end": 94,
+          "start": 109,
+          "end": 113,
           "excerpt_sha256": "8ba250e210b6b70f368c1e05b37a2628d33a9db4a4a475d4d987eb27995e1c4c"
         }
       ]
@@ -1896,14 +1903,14 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 491,
-          "end": 497,
+          "start": 493,
+          "end": 499,
           "excerpt_sha256": "10727196cb3b046d8f85a9fcca947b9bc7b847948cfda99f9a8d88538e608752"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 167,
-          "end": 169,
+          "start": 186,
+          "end": 188,
           "excerpt_sha256": "bfd249194d192632f508ca52d9d06ae0d1255fb429d73322ff91be040cdbadaa"
         },
         {
@@ -1940,14 +1947,14 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 136,
-          "end": 157,
+          "start": 155,
+          "end": 176,
           "excerpt_sha256": "1aa83813c56901f7ba64e9e6a6981386862b939ccda34df541354c11a449affe"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 198,
-          "end": 204,
+          "start": 217,
+          "end": 223,
           "excerpt_sha256": "2e932fce07132758f0945703172f926d874b2484d966c3b56a6aa28a0249c740"
         },
         {
@@ -2007,8 +2014,8 @@
         },
         {
           "path": "docs/receiver/arrival-notifier.md",
-          "start": 486,
-          "end": 561,
+          "start": 488,
+          "end": 563,
           "excerpt_sha256": "fb75a11969bb0872bd012c3504c04b91f0f6dfbc02ab074d3104ee4e3aa19550"
         }
       ]
@@ -2713,8 +2720,8 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 441,
-          "end": 441,
+          "start": 443,
+          "end": 443,
           "excerpt_sha256": "e4436e75367bc01be12abbc73793414a73e3c8ac028dbb62de85374beaf69394"
         }
       ]
@@ -2746,14 +2753,14 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 262,
-          "end": 263,
+          "start": 264,
+          "end": 265,
           "excerpt_sha256": "64b8bcc6106da45977852cbcf80348920e1b8f3089194adf165a4f6329e3c0c3"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 293,
-          "end": 293,
+          "start": 295,
+          "end": 295,
           "excerpt_sha256": "3d06952c98d346a96204ffa3119946005d2291432b6b76be883a4afe6ed95fbe"
         }
       ]
@@ -2771,26 +2778,26 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 185,
-          "end": 196,
+          "start": 187,
+          "end": 198,
           "excerpt_sha256": "ceaeb60f872c05aed161aae12a8e0bcf4ef817e3bcf611daec3fec8efdf2d25d"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 221,
-          "end": 223,
+          "start": 223,
+          "end": 225,
           "excerpt_sha256": "c6b47f7301150a993ff18df4c13e5f8d2fc5baf3808a5eea42e111bfe919f02e"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 229,
-          "end": 233,
+          "start": 231,
+          "end": 235,
           "excerpt_sha256": "278d1c9a53403c86ab41f00034791d80a6bbdb3be0688fb62584395c3b27fb2c"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 374,
-          "end": 374,
+          "start": 376,
+          "end": 376,
           "excerpt_sha256": "7efd6339c650850bf02aeb986be7f01943239d65cac2ca3283d423e71eaead69"
         },
         {
@@ -2814,14 +2821,14 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 287,
-          "end": 289,
+          "start": 289,
+          "end": 291,
           "excerpt_sha256": "c27e4e3daea9a47464a4170f54448f3edee0012a2f506ee600dcea4e1f1b19e8"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 293,
-          "end": 300,
+          "start": 295,
+          "end": 302,
           "excerpt_sha256": "8aeb86a89be551671a4419d232db2eee3b130d7952ae48829a551d83756d622b"
         },
         {
@@ -2869,14 +2876,14 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 259,
-          "end": 260,
+          "start": 261,
+          "end": 262,
           "excerpt_sha256": "430baabf1dd80ebb0283d3dbb00b13b18edee0dc19c39bcdb7675b541dd244e9"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 306,
-          "end": 308,
+          "start": 308,
+          "end": 310,
           "excerpt_sha256": "1486e7300bb2d28e6a1a18aae45b5ce66112ab043c01f2b0287f7e23e1b4d2a5"
         },
         {
@@ -2907,14 +2914,14 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 263,
-          "end": 263,
+          "start": 265,
+          "end": 265,
           "excerpt_sha256": "2d42e4fb2ba0c0e68941be721aa335ffc0795ed81e8dbbb9b551df4a7e676549"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 394,
-          "end": 396,
+          "start": 396,
+          "end": 398,
           "excerpt_sha256": "4c058efca38d14f9f558b5d137929f556517f0afe6c6f85079f877337cc2f193"
         },
         {
@@ -2952,14 +2959,14 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 388,
-          "end": 390,
+          "start": 390,
+          "end": 392,
           "excerpt_sha256": "2389fac7b4731cca84f3c3d0b07117acedf3000f2019d862cd326a23404cb545"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 398,
-          "end": 400,
+          "start": 400,
+          "end": 402,
           "excerpt_sha256": "c2485e07ee4ee468a0c8b542112f851e1320823dbe7fc5ed3314c1dfff576ade"
         },
         {
@@ -2983,8 +2990,8 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 225,
-          "end": 225,
+          "start": 227,
+          "end": 227,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         },
         {
@@ -3008,8 +3015,8 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 225,
-          "end": 225,
+          "start": 227,
+          "end": 227,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
@@ -3027,8 +3034,8 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 225,
-          "end": 225,
+          "start": 227,
+          "end": 227,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
@@ -3047,8 +3054,8 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 225,
-          "end": 225,
+          "start": 227,
+          "end": 227,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         }
       ]
@@ -3202,14 +3209,14 @@
       "citations": [
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 225,
-          "end": 225,
+          "start": 227,
+          "end": 227,
           "excerpt_sha256": "8d94a5f8fa9b99da5985107e4da8bef5b892e778ce225c76a5c785d236b8bd1a"
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 548,
-          "end": 548,
+          "start": 550,
+          "end": 550,
           "excerpt_sha256": "e3ebd5e5f0569550960ffdd5f3c2f69cffbb089d6d01245994b55ebc02a4ae34"
         },
         {
@@ -4248,8 +4255,8 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 23,
-          "end": 30,
+          "start": 42,
+          "end": 49,
           "excerpt_sha256": "e6442ce94c5c68c6058e2d652bd7378b8e7d3a13d6c2d7196e3718624941988e"
         },
         {
@@ -4260,8 +4267,8 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 198,
-          "end": 204,
+          "start": 217,
+          "end": 223,
           "excerpt_sha256": "2e932fce07132758f0945703172f926d874b2484d966c3b56a6aa28a0249c740"
         }
       ]
@@ -4290,8 +4297,8 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 513,
-          "end": 521,
+          "start": 515,
+          "end": 523,
           "excerpt_sha256": "b2b9d12db178026be9050c4f02398db07d9d229c39045a53193b90281a45e2de"
         },
         {
@@ -5062,20 +5069,20 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 28,
-          "end": 28,
+          "start": 47,
+          "end": 47,
           "excerpt_sha256": "ef45c0536407e87e9392a08bbb6878d43a945216a93af75c3c6990799ec45458"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 136,
-          "end": 136,
+          "start": 155,
+          "end": 155,
           "excerpt_sha256": "2fa402329a42f2c320c22a30a6b0d97edb48bac7c69d9d2b2a1e0bb619ce4e40"
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 153,
-          "end": 155,
+          "start": 172,
+          "end": 174,
           "excerpt_sha256": "2f274a7c699b6e825c750ce128a23d62fb71e811de354e154ec3ffefef69c83b"
         },
         {
@@ -5203,8 +5210,8 @@
       "citations": [
         {
           "path": "docs/hab-product-spec.md",
-          "start": 169,
-          "end": 169,
+          "start": 188,
+          "end": 188,
           "excerpt_sha256": "01d25540efc084337c99f3515ea082d8bf6999d6d9f7fdd527d90b089a790b0f"
         },
         {
@@ -5333,8 +5340,8 @@
         },
         {
           "path": "docs/hab-product-spec.md",
-          "start": 30,
-          "end": 30,
+          "start": 49,
+          "end": 49,
           "excerpt_sha256": "ff3d3dc7e1c0e8804017cb79f716b38a0eafef3068bc703c3a7447c03d0050b4"
         }
       ]
@@ -5357,8 +5364,8 @@
         },
         {
           "path": "docs/hab-messaging-spec.md",
-          "start": 135,
-          "end": 135,
+          "start": 137,
+          "end": 137,
           "excerpt_sha256": "f44958b4f0840d04f557904821b2d38ceb4e5972ce3d8372662e0d62599e63fb"
         }
       ]

@@ -1,6 +1,6 @@
 # HAB — Hiraoku Agent Base
 
-HABは、Dots（スタローン）、Grok Bot、Hermes、Claude Code・Codex・Cursorなどのエージェント同士がメッセージをやり取りするための基盤です。メールのように各エージェントへ`<bot_name>@<agent_name>.hab`形式のアドレスを結びつけ、そのアドレスで送受信するセッションを特定します（`agent_name`は製品・実行環境の名前です）。新しいエージェントも、標準のMCPクライアントかA2Aクライアントから接続できることを目指します。受信側のhostがモデルを使わず定期poll・永続保存・ACKを行い、受信エージェントが内容を判断して既存の権限・承認機構で処理します。配送の許可と、開発・業務を実行する権限は別に管理します。
+HABは、Dots（スタローン）、Grok Bot、Hermes、Claude Code・Codex・Cursor・Gemini・Antigravityなどのエージェント同士がメッセージをやり取りするための基盤です。メールのように各エージェントへ`<bot_name>@<agent_name>.hab`形式のアドレスを結びつけ、そのアドレスで送受信するセッションを特定します（`agent_name`は製品・実行環境の名前です）。新しいエージェントも、標準のMCPクライアントかA2Aクライアントから接続できることを目指します。受信側のhostがモデルを使わず定期poll・永続保存・ACKを行い、受信エージェントが内容を判断して既存の権限・承認機構で処理します。配送の許可と、開発・業務を実行する権限は別に管理します。
 
 標準接続は[共通MCP接続](docs/common-mcp-connection.md)と[受信supervisor](docs/receiver/receive-supervisor.md)を基準にします。通常の質問・回答にTaskは不要です。A2A入口は明示的に有効化する入口（既定は無効）です。旧Task Hub（固定Task・汎用テキストTask）は2026-11-12に削除しました。Hermes固有のモデル実行・承認adapterを標準接続の必須段階にはしません。[設計判断 ADR-015](docs/hab-decisions.md)に責務と適用範囲を、ADR-016に現在の構成（単一host、エージェントSDK）を、ADR-018に配送storeをSQLite単独にした判断を記録します。
 
@@ -182,10 +182,10 @@ A2A入口は既定で無効です。サービス設定に[`a2a` section](config/
 
 同じ個体IDを保持するアドレスの改名は採用済みで、[明示opt-inのRegistry v3](docs/agent-address-rename.md)として提供します。旧名は同じIDに永久予約し、猶予期間（既定30日）だけ同じIDへ解決します（転送aliasではありません）。猶予期間の解決と`hab:admin status`の旧名一覧は実装済みで、本番には未適用です。
 
-## Gemini との連携予定
+## Gemini・Antigravity との連携予定
 
-Gemini も HAB の連携対象に追加する方針です。現時点では計画段階であり、Gemini 向けの接続手順・アダプター・実製品での送受信は未検証です。Gemini アプリ、Gemini CLI、API を利用するエージェントは同じ接続先とみなさず、対象とする製品・実行環境と既存セッションを特定してから接続方式を決めます。
+2026-11-19 に Gemini と Antigravity を HAB の対象エージェントに加えました。現時点では計画段階であり、接続手順・アダプター・実製品での送受信は未検証です。Gemini アプリ、Gemini API を利用する独自アプリ、Antigravity のアプリ・IDE・CLI は同じ接続先とみなさず、対象とする製品・実行環境と既存セッションを特定してから接続方式を決めます。Gemini CLI は 2026 年 6 月に個人向けの提供を終えて Antigravity CLI に移ったため、新しい接続先としては Antigravity CLI を扱います。
 
-連携は既存の[共通MCP接続の設計](docs/common-mcp-connection.md)に沿って進めます。対象製品で利用できる認証・MCP/A2A接続・受信通知の仕組みを確認し、HAB の配送と受信側の実行権限を分離します。受信内容をユーザーへ示して「対応しますか？」と確認する流れを目指し、別のCLIや別セッションによる代行を、対象の会話への通知・応答が成功した証拠として扱いません。
+連携は既存の[共通MCP接続の設計](docs/common-mcp-connection.md)に沿って進めます。Antigravity は共通の MCP 設定（`serverUrl`＋OAuth）で、Gemini アプリは Custom Connected Apps の remote MCP で HAB に接続できる見込みです。どちらも、届いたことを既存の会話へ知らせる公開の入口は確認できておらず、当面は会話で `hab_inbox` を呼んで受信します。製品ごとの入口と未確認の点は [GeminiとAntigravityの接続](docs/connections/gemini-antigravity-connection.md) に記録しています。HAB の配送と受信側の実行権限は分離し、別のCLIや別セッションによる代行を、対象の会話への通知・応答が成功した証拠として扱いません。
 
-着手時は、接続と認証、送受信、対象会話での通知と承認、返信の紐付けをそれぞれ検証し、実装済み・未検証・非対応を分けて記録します。この方針の追加だけで Gemini が接続済み、または全製品で同じ連携が可能になったとは扱いません。
+着手時は、接続と認証、送受信、対象会話での通知と承認、返信の紐付けをそれぞれ検証し、実装済み・未検証・非対応を分けて記録します。この方針の追加だけで Gemini や Antigravity が接続済み、または全製品で同じ連携が可能になったとは扱いません。
