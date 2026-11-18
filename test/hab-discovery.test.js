@@ -13,7 +13,8 @@ import {
 import { policy, request, decode } from "./mcp-http-fixtures.js";
 import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 
-const discovery = { availability_namespaces: ["grok-bot"] };
+// Most tests here pin the group-only directory to keep proving group isolation.
+const discovery = { availability_namespaces: ["grok-bot"], directory: "group" };
 async function group(t, patch = {}) {
   return await groupFixture(t, { discovery, ...patch });
 }
@@ -264,6 +265,68 @@ test("directory is group-scoped, keyset paged, filtered and secret-free; cursors
   );
 });
 
+// 2026-11-19 (ADR-025): Dots could not find claude@claude.hab because the directory only
+// listed its own group. By default every active address is listed, while another group's
+// entries carry names and state only.
+test("by default the directory lists every active address, with only names and state outside the group", async (t) => {
+  const f = await group(t, {
+    discovery: { availability_namespaces: ["grok-bot"] },
+  });
+  const pending = f.enroll("pending", false);
+  const fromA = discover(f, { action: "directory" });
+  const byAddress = Object.fromEntries(fromA.agents.map((a) => [a.address, a]));
+  assert.deepEqual(
+    Object.keys(byAddress).sort(),
+    [f.first.address, f.second.address, f.external.address].sort(),
+  );
+  assert.equal(byAddress[pending.address], undefined, "not active, not listed");
+  assert.equal(
+    byAddress[f.first.address].authentication_assignment.kind,
+    "authentication_group",
+  );
+  const other = byAddress[f.external.address];
+  assert.equal(other.relationship, "other_group");
+  assert.equal(other.registration_state, "active");
+  for (const hidden of [
+    "authorized_operations",
+    "authentication_assignment",
+    "host_assignment",
+  ])
+    assert.equal(hidden in other, false, hidden);
+  // The other side sees this group's active addresses the same way.
+  const fromB = f.registry.discover(f.contexts.b, { action: "directory" });
+  const fromBByAddress = Object.fromEntries(
+    fromB.agents.map((a) => [a.address, a]),
+  );
+  assert.equal(fromBByAddress[f.first.address].relationship, "other_group");
+  assert.equal(fromBByAddress[f.external.address].relationship, undefined);
+  // Paging covers both kinds of entries once each.
+  const seen = [];
+  let cursor;
+  do {
+    const page = discover(f, {
+      action: "directory",
+      limit: 1,
+      ...(cursor ? { cursor } : {}),
+    });
+    seen.push(...page.agents.map((a) => a.agent_id));
+    cursor = page.next_cursor;
+  } while (cursor);
+  assert.deepEqual(
+    seen,
+    fromA.agents.map((a) => a.agent_id),
+  );
+  // A listed address is also known to be taken.
+  assert.equal(
+    discover(f, { action: "check_address", address: f.external.address })
+      .availability,
+    "unavailable",
+  );
+  const text = JSON.stringify(fromA);
+  for (const secret of ["verified-b", "fingerprint", "token"])
+    assert.ok(!text.includes(secret), secret);
+});
+
 test("availability is exact and explicitly namespace-scoped, leaks no foreign record and never reserves", async (t) => {
   const f = await group(t),
     before = state(f);
@@ -292,7 +355,9 @@ test("availability is exact and explicitly namespace-scoped, leaks no foreign re
     "unknown",
   );
   assert.equal(state(f), before);
-  const restricted = f.open({ discovery: { availability_namespaces: [] } });
+  const restricted = f.open({
+    discovery: { availability_namespaces: [], directory: "group" },
+  });
   restricted.migrate();
   assert.equal(
     restricted.discover(f.contexts.a, {
