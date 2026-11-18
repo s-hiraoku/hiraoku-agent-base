@@ -200,10 +200,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/mcp-events.md",
-      "sha256": "2994ba64144e0d690756d363ad84e109a4931f4991a4dee96796e2ed5c4f30dc",
+      "sha256": "6d9989a5f573d66d592ccc3ded1761021d74944476996b853c22a24810fbd5a0",
       "role": "normative",
       "review": "reviewed",
-      "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
+      "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change.",
       "read_scope": "full"
     },
     {
@@ -224,10 +224,10 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "9dce49c185ab0db4491e7222b9959555eb94767afc74bcfbd95c8ea793169fc9",
+      "sha256": "b3779fe4ab7eae07c701a693a7c3f0e5cb77ed46eeb49402255484dc2f9795c5",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change.",
+      "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change.",
       "read_scope": "full",
       "maintenance": "TypeScript tools migration: reviewed command-path-only edits against the typed implementations and compatibility aliases. Configuration, native trial approval, synthetic enrollment and feature scope retain their prior meaning."
     },
@@ -712,10 +712,10 @@
     },
     {
       "path": "docs/host-service.md",
-      "sha256": "db6f030d6d0320b13de260aec9641ddb118a64484018a5682f1f26d18eedbf90",
+      "sha256": "0ebecfa660615fdf09e7390217606e1b930817c8e63c5c59337b711b2cfa4a82",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed. ADR-024 (2026-11-17): status adds inboxes (unread, oldest_unread_at, doorbell) with unread_waiting and doorbell_lapsed problems, no callback URLs or secrets."
+      "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed. ADR-024 (2026-11-17): status adds inboxes (unread, oldest_unread_at, doorbell) with unread_waiting and doorbell_lapsed problems, no callback URLs or secrets. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change."
     },
     {
       "path": "docs/history/manual-ping-runner.md",
@@ -736,10 +736,10 @@
     },
     {
       "path": "docs/connections/mcp-events.md",
-      "sha256": "e5380b38b9f681852d1a2b00c0ec1456ba3173aab9ef44c872d14a1afb3922ea",
+      "sha256": "6c051320eb21337f168cbe4a3b6ef27b20f23c1351289fa3791417fef2afdcb4",
       "role": "normative",
       "review": "reviewed",
-      "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified. ADR-024 (2026-11-17): outage_after_ms credit for host downtime/sleep and the operator check for lapsed doorbells with the Dots re-subscribe step.",
+      "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified. ADR-024 (2026-11-17): outage_after_ms credit for host downtime/sleep and the operator check for lapsed doorbells with the Dots re-subscribe step. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change.",
       "read_scope": "full"
     },
     {
@@ -2034,8 +2034,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 158,
-          "end": 172,
+          "start": 161,
+          "end": 175,
           "excerpt_sha256": "b328717f2afbfc80401d10731d5fb119e8ab616495e01783a40e1c9c522d0760"
         },
         {
@@ -2216,8 +2216,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 217,
-          "end": 229,
+          "start": 220,
+          "end": 232,
           "excerpt_sha256": "95b5d36ae9aca720a502a86f0353936194fed97327a419df601b96294fee8f91"
         },
         {
@@ -2669,8 +2669,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 204,
-          "end": 214,
+          "start": 207,
+          "end": 217,
           "excerpt_sha256": "4c5d21d7b33a7e635abb3d40c6b734bca98b0415bb09cdf3372a0384a2477971"
         },
         {
@@ -4560,8 +4560,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 150,
-          "end": 164,
+          "start": 161,
+          "end": 175,
           "excerpt_sha256": "b328717f2afbfc80401d10731d5fb119e8ab616495e01783a40e1c9c522d0760"
         },
         {
