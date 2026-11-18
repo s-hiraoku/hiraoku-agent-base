@@ -672,16 +672,19 @@ test("operators can see the latest ring and how the callback answered it", async
 });
 
 test("a slow delivery pass is not mistaken for an outage", async (t) => {
+  // Each POST takes far longer than the outage threshold, while the threshold stays wide
+  // enough that an ordinary timer stall on a busy CI runner (2026-11-19: about 200 ms) is
+  // not one.
   const f = await setup(t, {
-    delayMs: 400,
-    events: { poll_ms: 50, outage_after_ms: 200 },
+    delayMs: 1200,
+    events: { poll_ms: 100, outage_after_ms: 800 },
   });
   const sub = await f.subscribe("a", { ttlMs: 600_000 });
   const until = Date.parse(sub.result.refreshBefore);
   await f.send("b", f.a.address, "one");
   await f.send("b", f.a.address, "two");
   f.events.start();
-  await new Promise((r) => setTimeout(r, 1200));
+  await new Promise((r) => setTimeout(r, 3200));
   assert.equal(f.h.events().length, 2);
   assert.equal(f.events.subscriptions()[0].expires_at, until);
 });
