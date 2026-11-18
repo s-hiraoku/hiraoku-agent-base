@@ -194,3 +194,14 @@ test("new arrivals expose navigation outside the scroller without moving the rea
     "one card needs no navigation",
   );
 });
+
+test("every message renders as a card labelled as HAB mail", () => {
+  const result = tree([card("shown", "s1"), card("queued", "q1")]);
+  const articles = nodes(result, "article");
+  assert.equal(articles.length, 2);
+  for (const article of articles) {
+    assert.equal(article.props["aria-label"], "HAB からのメッセージ");
+    assert.match(article.props.style.borderLeft, /solid/);
+    assert.match(visibleText(article), /^HABHAB からのメッセージ送信元: /);
+  }
+});
