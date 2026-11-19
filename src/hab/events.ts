@@ -805,17 +805,22 @@ export class HabEvents {
   }
   /**
    * The verified caller's unread mail and whether its doorbell went unanswered, for the
-   * caller's own tool results (ADR-026). Null when nothing waits or the caller may not read
-   * an inbox. `reading` is true for hab_inbox, which is about to read the mail.
+   * caller's own tool results (ADR-026). `unread` is the caller's unread mail as its own
+   * inbox would return it (authorization-filtered, oldest first, at most 50), so mail the
+   * caller may no longer read never keeps a reminder alive. Null when nothing waits or the
+   * caller may not read an inbox. `reading` is true for hab_inbox, which is about to read.
    */
-  reminder(context: unknown, reading: boolean): InboxReminder | null {
+  reminder(
+    context: unknown,
+    unread: readonly Arrival[],
+    reading: boolean,
+  ): InboxReminder | null {
     let agentId: string;
     try {
       agentId = this.#source.eventRecipient(context).agent_id;
     } catch {
       return null;
     }
-    const unread = this.#source.arrivals(agentId, null, 50);
     if (!unread.length) return null;
     // The earliest doorbell accepted for mail that is still unread.
     const first = this.#db.prepare(
@@ -836,7 +841,7 @@ export class HabEvents {
     const rang = delivered === null ? "" : new Date(delivered).toISOString();
     return {
       unread: unread.length,
-      more: unread.length === 50,
+      more: unread.length >= 50,
       oldest_unread_at: new Date(oldest).toISOString(),
       doorbell_delivered_at: delivered === null ? null : rang,
       doorbell_unanswered: unanswered,

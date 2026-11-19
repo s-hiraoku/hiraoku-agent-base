@@ -860,3 +860,41 @@ test("a second ring or newer mail does not hide that an earlier doorbell went un
     true,
   );
 });
+
+test("mail the recipient may no longer read does not keep a reminder alive", async (t) => {
+  let ahead = 0;
+  const f = await setup(t, {
+    events: {
+      now: () => Date.now() + ahead,
+      unanswered_after_ms: 60_000,
+      rering: false,
+    },
+  });
+  await f.subscribe("a");
+  const mine = await f.send("a", f.b.address, "to b");
+  await f.send("b", f.a.address, "from b");
+  await f.events.dispatch();
+  ahead += 60_000;
+  let status = await f.rpc("a", "tools/call", {
+    name: "hab_status",
+    arguments: { message_id: mine.message_id },
+  });
+  assert.equal(
+    status.result.structuredContent.inbox_reminder.doorbell_unanswered,
+    true,
+  );
+  // b is stopped: hab_inbox no longer returns its message, so neither does the reminder.
+  f.registry.setAccess(f.admin, {
+    request_id: "stop-b",
+    agent_id: f.b.agent_id,
+    expected_epoch: f.b.epoch,
+    state: "stopped",
+    operations: [],
+  });
+  status = await f.rpc("a", "tools/call", {
+    name: "hab_status",
+    arguments: { message_id: mine.message_id },
+  });
+  assert.notEqual(status.result.isError, true, JSON.stringify(status));
+  assert.equal(status.result.structuredContent.inbox_reminder, undefined);
+});

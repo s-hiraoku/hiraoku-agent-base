@@ -308,6 +308,7 @@ function createAgentServer(
           // Read before the tool runs: hab_inbox marks the mail read (ADR-026).
           const reminder = inboxReminder(
             events,
+            service,
             prepared.context,
             tool === "hab_inbox",
           );
@@ -333,12 +334,20 @@ function createAgentServer(
  */
 function inboxReminder(
   events: HabEvents | undefined,
+  service: HabMcpService,
   context: unknown,
   reading: boolean,
 ) {
-  if (!events) return null;
+  if (!events || typeof service.peek !== "function") return null;
   try {
-    return events.reminder(context, reading);
+    // The caller's own unread view, filtered by the same authorization as hab_inbox and
+    // left unread.
+    const unread = service.peek(context, { limit: 50 }).map((message) => ({
+      sender_id: message.sender_id,
+      message_id: message.message_id,
+      accepted_at: Date.parse(message.received_at),
+    }));
+    return events.reminder(context, unread, reading);
   } catch {
     return null;
   }
