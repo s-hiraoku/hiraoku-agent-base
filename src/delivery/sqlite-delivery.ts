@@ -639,6 +639,28 @@ export class SqliteDelivery {
       }));
     });
   }
+  /**
+   * Whether one message still waits unread and unexpired for its recipient, by the same rule
+   * as arrivalsInternal. Only the host's event dispatcher calls it, to decide whether a
+   * doorbell went unanswered (ADR-026); it changes nothing.
+   */
+  unreadInternal(
+    recipientId: string,
+    senderId: string,
+    messageId: string,
+  ): boolean {
+    if (!id(recipientId) || !id(senderId) || !id(messageId))
+      throw new MessagingError("invalid_request");
+    return this.#tx(() => {
+      const now = Date.now();
+      this.#refresh(now);
+      return !!this.#db
+        .prepare(
+          `SELECT 1 FROM delivery_messages WHERE recipient_id=? AND sender_id=? AND message_id=? AND state IN ('pending','leased') AND expires_at>?`,
+        )
+        .get(recipientId, senderId, messageId, now);
+    });
+  }
   lookupReceipt(senderId: string, messageId: string): Receipt | null {
     return this.#tx(() => {
       this.#refresh(Date.now());

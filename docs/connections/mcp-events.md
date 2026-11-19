@@ -45,6 +45,8 @@ OpenAI MCP Events（webhook配送）に答え、「受信箱に新着がある�
 | `max_per_agent` | 8 | 1–64 | 1受信者あたりの購読数 |
 | `poll_ms` | 3000 | 500–60000 | 新着を確かめる間隔 |
 | `outage_after_ms` | 60000 | 1000–86400000 | これより長く時計が止まったら、hostの停止かスリープとみなして寿命に足す。poll3回分より小さい値はpoll3回分として扱う |
+| `unanswered_after_ms` | 300000（5分） | 60000–86400000 | 呼び鈴が2xxで受け取られてからこれだけたっても未読なら、受け取られたのに読まれていないとみなす（[ADR-026](../hab-decisions.md)） |
+| `rering` | true | true/false | 読まれていない呼び鈴を1回だけ鳴らし直す |
 
 購読はホストの状態ディレクトリの`events.sqlite`（所有者だけが読める0600）に置きます。
 webhookの鍵もここに入るので、バックアップの扱いはOAuth台帳と同じにします。
@@ -80,6 +82,30 @@ HABは購読を自分で作り直しません。購読が更新されずに切�
 も出ます。最後の呼び鈴が2xxで受け取られていなければ`problems`に`doorbell_failing`が出ます（再送は続きます）。
 `doorbell_last_status`が2xxなのに`unread`が減らないときは、呼び鈴は相手に届いていて、相手側（ChatGPTのタスクなど）が
 受信箱を読みに来ていません。HABの外で、タスクが有効か・まとめ実行の設定・実行履歴を確かめます。
+
+## 受け取られたのに読まれない呼び鈴（ADR-026）
+
+- 呼び鈴が2xxで受け取られてから`unanswered_after_ms`（既定5分）たってもそのメッセージが未読なら、HABは同じ購読に
+  1回だけもう一度鳴らします。`eventId`は最初と別で、中身は同じ`{to, arrived_at}`だけです。再送はしません。
+- 受信側のエージェントが`/mcp`の`hab_send`・`hab_reply`・`hab_status`を呼ぶと、未読があれば結果に`inbox_reminder`が付きます。
+
+  ```json
+  {
+    "inbox_reminder": {
+      "unread": 1,
+      "more": false,
+      "oldest_unread_at": "2026-11-18T23:13:54.627Z",
+      "doorbell_delivered_at": "2026-11-18T23:13:58.741Z",
+      "doorbell_unanswered": true,
+      "explanation": "HAB rang your doorbell (hab.message.received) at … and it was accepted, but the mail is still unread, so the task that should react to the event may not be running. Call hab_inbox now, …"
+    }
+  }
+  ```
+
+  `hab_inbox`では、呼び鈴が無視されていたとき（`doorbell_unanswered: true`）だけ付きます。本文・送信元・メッセージIDは入りません。
+- エージェント向けの`instructions`は「`hab.message.received`で起動されたらすぐ`hab_inbox`を呼ぶ」「`inbox_reminder`があれば説明に従う」と案内します。
+  Dotsは、利用者が次に話しかけてHABのツールを使ったときに、タスクが動いていなかったことを利用者に伝えられます。
+  タスクが止まっている間はDots自身も動いていないので、それより早くは気づけません。
 
 ```sh
 npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status

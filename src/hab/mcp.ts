@@ -229,6 +229,7 @@ export function createHabMcpServer(
           gate,
           security,
           maxResponseBytes,
+          events,
         )
       : createDeliveryServer(
           service,
@@ -266,6 +267,7 @@ function createAgentServer(
   gate: DeliveryMcpGate | undefined,
   security: object,
   maxResponseBytes: number | undefined,
+  events: HabEvents | undefined,
 ) {
   const agent = service as unknown as HabAgentService;
   for (const name of [
@@ -303,17 +305,43 @@ function createAgentServer(
             input,
             "agent",
           );
-          return runHabAgentTool(
+          // Read before the tool runs: hab_inbox marks the mail read (ADR-026).
+          const reminder = inboxReminder(
+            events,
+            prepared.context,
+            tool === "hab_inbox",
+          );
+          const result = runHabAgentTool(
             agent,
             prepared.context,
             tool,
             prepared.input as Record<string, unknown>,
             maxResponseBytes,
           );
+          return reminder
+            ? { ...(result as object), inbox_reminder: reminder }
+            : result;
         }),
     );
   }
   return server;
+}
+/**
+ * Unread mail and an unanswered doorbell, added to the recipient's own tool results so an
+ * agent whose event task did not run learns it the next time it uses HAB (ADR-026). A
+ * reminder that cannot be read never fails the tool.
+ */
+function inboxReminder(
+  events: HabEvents | undefined,
+  context: unknown,
+  reading: boolean,
+) {
+  if (!events) return null;
+  try {
+    return events.reminder(context, reading);
+  } catch {
+    return null;
+  }
 }
 function createDeliveryServer(
   service: HabMcpService,

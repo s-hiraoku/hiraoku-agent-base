@@ -707,3 +707,126 @@ test("an outage threshold below the poll interval cannot extend lifetimes on ord
   }
   assert.equal(f.events.subscriptions().length, 0);
 });
+
+// ADR-026: a doorbell that was accepted but not answered rings once more, and the
+// recipient's own next tool result says so.
+test("an accepted doorbell left unread rings once more with a new event ID", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  now += 59_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  now += 1000;
+  await f.events.dispatch();
+  const [first, again] = f.h.events();
+  assert.ok(again, "rang again");
+  assert.notEqual(again.parsed.eventId, first.parsed.eventId);
+  assert.deepEqual(again.parsed.data, first.parsed.data);
+  assert.equal(
+    again.headers["webhook-id"],
+    again.parsed.eventId,
+    "signed like any event",
+  );
+  // Only once per message.
+  now += 600_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+});
+
+test("mail read in time is not rung again, and rering can be turned off", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  await f.rpc("a", "tools/call", { name: "hab_inbox", arguments: {} });
+  now += 120_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+
+  const off = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000, rering: false },
+  });
+  await off.subscribe("a");
+  await off.send("b", off.a.address, "x");
+  await off.events.dispatch();
+  now += 120_000;
+  await off.events.dispatch();
+  assert.equal(off.h.events().length, 1);
+});
+
+test("a failed doorbell is not counted as unanswered and is not rung again early", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    status: () => 503,
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  now += 61_000;
+  const sent = await f.send("a", f.b.address, "hello");
+  assert.ok(sent.inbox_reminder);
+  assert.equal(sent.inbox_reminder.doorbell_unanswered, false);
+  assert.equal(sent.inbox_reminder.doorbell_delivered_at, null);
+});
+
+test("the recipient's own tool results carry an inbox reminder that names an unanswered doorbell", async (t) => {
+  // Messages are stamped by the real clock; the doorbell's clock runs ahead of it.
+  let ahead = 0;
+  const f = await setup(t, {
+    events: {
+      now: () => Date.now() + ahead,
+      unanswered_after_ms: 60_000,
+      rering: false,
+    },
+  });
+  // No mail: no reminder.
+  let sent = await f.send("a", f.b.address, "hi");
+  assert.equal(sent.inbox_reminder, undefined);
+  await f.subscribe("a");
+  const message = await f.send("b", f.a.address, "secret body");
+  // Unread but not rung yet: a plain reminder on other tools, nothing on hab_inbox.
+  sent = await f.send("a", f.b.address, "hi again");
+  assert.equal(sent.inbox_reminder.unread, 1);
+  assert.equal(sent.inbox_reminder.doorbell_unanswered, false);
+  assert.match(sent.inbox_reminder.explanation, /hab_inbox/);
+  await f.events.dispatch();
+  const rangAt = readDoorbells(f.store).get(f.a.agent_id).delivered_at;
+  ahead += 60_000;
+  sent = await f.send("a", f.b.address, "and again");
+  const reminder = sent.inbox_reminder;
+  assert.equal(reminder.doorbell_unanswered, true);
+  assert.equal(reminder.doorbell_delivered_at, new Date(rangAt).toISOString());
+  assert.match(reminder.explanation, /event task/);
+  for (const secret of ["secret body", message.message_id, f.b.address])
+    assert.ok(!JSON.stringify(reminder).includes(secret), secret);
+  // hab_inbox reads the mail and still says the doorbell went unanswered, once.
+  const inbox = await f.rpc("a", "tools/call", {
+    name: "hab_inbox",
+    arguments: {},
+  });
+  const read = inbox.result.structuredContent;
+  assert.equal(read.messages.length, 1);
+  assert.equal(read.inbox_reminder.doorbell_unanswered, true);
+  assert.match(read.inbox_reminder.explanation, /^HAB rang your doorbell/);
+  const again = await f.rpc("a", "tools/call", {
+    name: "hab_inbox",
+    arguments: {},
+  });
+  assert.equal(again.result.structuredContent.inbox_reminder, undefined);
+  sent = await f.send("a", f.b.address, "done");
+  assert.equal(sent.inbox_reminder, undefined);
+  // b's results speak of b's own mail (a's four messages) and b's doorbell, never a's.
+  const other = await f.send("b", f.a.address, "more");
+  assert.equal(other.inbox_reminder.unread, 4);
+  assert.equal(other.inbox_reminder.doorbell_delivered_at, null);
+});
