@@ -263,6 +263,8 @@ const gatewayFor = (resource_url, catalog) =>
       max_response_bytes: 131072,
       timeout_ms: 2000,
       max_active_requests: 4,
+      // hab_inbox may wait this long for new mail (ADR-028), as the host default.
+      max_wait_ms: 25000,
       requests_per_window: 120,
       window_ms: 60000,
     },
