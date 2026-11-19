@@ -440,6 +440,35 @@ test("configured discovery policy is explicit, bounded, and does not create regi
   }
   assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
 });
+test("ingress events refuse an unanswered threshold outside its bounds (ADR-027)", async (t) => {
+  const f = await fixture(t);
+  for (const events of [
+    { unanswered_after_ms: 59_999 },
+    { unanswered_after_ms: 86_400_001 },
+    { rering: "yes" },
+  ]) {
+    f.write("service.local.json", {
+      ...f.config,
+      ingress: {
+        port: 0,
+        resource_url: "https://hab.example/hab/mcp",
+        oauth_file: join(f.dir, "remote-auth.local.json"),
+        allowed_origins: [],
+        events,
+      },
+    });
+    await assert.rejects(startHost(f.configPath), (error) => {
+      assert.deepEqual(
+        { reason: error.reason, fields: error.fields },
+        {
+          reason: "config_invalid",
+          fields: [`ingress.events.${Object.keys(events)[0]}`],
+        },
+      );
+      return true;
+    });
+  }
+});
 test("ingress events refuse an outage threshold outside its bounds (ADR-024)", async (t) => {
   const f = await fixture(t);
   for (const outage of [999, 86_400_001]) {

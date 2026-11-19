@@ -60,6 +60,13 @@ const schema = z.strictObject({
             .min(1000)
             .max(86_400_000)
             .optional(),
+          unanswered_after_ms: z
+            .number()
+            .int()
+            .min(60_000)
+            .max(86_400_000)
+            .optional(),
+          rering: z.boolean().optional(),
         })
         .optional(),
     })

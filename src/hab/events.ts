@@ -71,6 +71,24 @@ export interface HabEventSource {
   eventRecipient(context: unknown): { agent_id: string; address: string };
   arrivals(agentId: string, after: Arrival | null, limit: number): Arrival[];
   addressOf(agentId: string): string | undefined;
+  /** Whether one message still waits unread; without it the doorbell is never rung again. */
+  unread?(agentId: string, key: Omit<Arrival, "accepted_at">): boolean;
+}
+/**
+ * What the recipient's own MCP results say about mail it has not read (ADR-027). The
+ * recipient sees it the next time it calls any HAB tool, so an agent whose event task did
+ * not run learns that the doorbell rang and nothing read the inbox.
+ */
+export interface InboxReminder {
+  unread: number;
+  /** More than `unread` messages wait. */
+  more: boolean;
+  oldest_unread_at: string;
+  /** The earliest doorbell a callback accepted with a 2xx for mail still unread, if any. */
+  doorbell_delivered_at: string | null;
+  /** A doorbell was accepted for this mail at least `unanswered_after_ms` ago. */
+  doorbell_unanswered: boolean;
+  explanation: string;
 }
 export type WebhookPost = (
   url: string,
@@ -316,6 +334,14 @@ export interface HabEventOptions {
    * against the subscriptions alive when the gap began.
    */
   outage_after_ms?: number;
+  /**
+   * How long a message may stay unread after its doorbell was accepted before HAB counts the
+   * doorbell as unanswered: it rings once more and tells the recipient in its next tool
+   * result (default 5 minutes; ADR-027).
+   */
+  unanswered_after_ms?: number;
+  /** Ring once more for an unanswered doorbell (default true). */
+  rering?: boolean;
   post?: WebhookPost;
   now?: () => number;
 }
@@ -331,6 +357,8 @@ export class HabEvents {
   readonly #maxPerAgent: number;
   readonly #pollMs: number;
   readonly #outageAfter: number;
+  readonly #unansweredAfter: number;
+  readonly #rering: boolean;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -349,6 +377,8 @@ export class HabEvents {
       options.outage_after_ms ?? 60_000,
       3 * this.#pollMs,
     );
+    this.#unansweredAfter = options.unanswered_after_ms ?? 300_000;
+    this.#rering = options.rering ?? true;
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -367,7 +397,15 @@ export class HabEvents {
         reason TEXT NOT NULL CHECK(reason IN ('expired','gone','unsubscribed')));
       CREATE TABLE IF NOT EXISTS hab_event_rings (
         agent_id TEXT PRIMARY KEY, rang_at INTEGER NOT NULL, status INTEGER NOT NULL,
-        delivered_at INTEGER);`);
+        delivered_at INTEGER);
+      CREATE TABLE IF NOT EXISTS hab_event_rerings (
+        subscription_id TEXT NOT NULL, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
+        accepted_at INTEGER NOT NULL, due_at INTEGER NOT NULL,
+        PRIMARY KEY(subscription_id, sender_id, message_id));
+      CREATE TABLE IF NOT EXISTS hab_event_accepted (
+        agent_id TEXT NOT NULL, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
+        accepted_at INTEGER NOT NULL,
+        PRIMARY KEY(agent_id, sender_id, message_id));`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -406,6 +444,10 @@ export class HabEvents {
     this.#db
       .prepare("DELETE FROM hab_event_callbacks WHERE verified_until<=?")
       .run(now);
+    // Mail expires unread after 7 days, so older first acceptances can no longer matter.
+    this.#db
+      .prepare("DELETE FROM hab_event_accepted WHERE accepted_at<=?")
+      .run(now - 8 * 86_400_000);
   }
   /** Remove a subscription and remember when and why the recipient's doorbell stopped. */
   #end(
@@ -606,6 +648,7 @@ export class HabEvents {
       )
       .all(now) as unknown as Row[];
     for (const row of rows) await this.#dispatchOne(row);
+    if (this.#rering) await this.#ringAgain();
   }
   async #dispatchOne(row: Row) {
     const address = this.#source.addressOf(row.agent_id);
@@ -631,40 +674,25 @@ export class HabEvents {
       if (!arrival) break;
       const key = JSON.stringify([arrival.sender_id, arrival.message_id]);
       if (row.failing !== key) failures = 0;
-      const eventId =
-        "evt_" +
-        createHash("sha256")
-          .update(
-            JSON.stringify([row.id, arrival.sender_id, arrival.message_id]),
-          )
-          .digest("hex")
-          .slice(0, 32);
-      const arrived = new Date(arrival.accepted_at).toISOString();
-      const body = JSON.stringify({
-        eventId,
-        name: HAB_EVENT_NAME,
-        timestamp: arrived,
-        data: { to: address, arrived_at: arrived },
-        cursor: null,
-      });
-      let status = 0;
-      try {
-        status = (
-          await this.#post(
-            row.url,
-            body,
-            this.#headers(row.secret, eventId, row.id, body),
-          )
-        ).status;
-      } catch {
-        status = 0;
-      }
-      this.#rang(row.agent_id, status);
+      const status = await this.#ring(row, address, arrival, false);
       if (status === 410) {
         this.#end(row.id, row.agent_id, "gone");
         return;
       }
       const delivered = status >= 200 && status <= 299;
+      if (delivered && this.#rering && this.#source.unread)
+        this.#db
+          .prepare(
+            `INSERT OR IGNORE INTO hab_event_rerings
+               (subscription_id,sender_id,message_id,accepted_at,due_at) VALUES (?,?,?,?,?)`,
+          )
+          .run(
+            row.id,
+            arrival.sender_id,
+            arrival.message_id,
+            arrival.accepted_at,
+            this.#now() + this.#unansweredAfter,
+          );
       if (delivered || status === 413 || failures + 1 >= MAX_ATTEMPTS) {
         cursor = arrival;
         failures = 0;
@@ -683,10 +711,150 @@ export class HabEvents {
     }
   }
   /**
+   * POST one doorbell and remember how it was answered (0: no answer). The second ring for
+   * the same message has its own eventId, so a subscriber that deduplicates still sees it.
+   */
+  async #ring(row: Row, address: string, arrival: Arrival, again: boolean) {
+    const eventId =
+      "evt_" +
+      createHash("sha256")
+        .update(
+          JSON.stringify([
+            row.id,
+            arrival.sender_id,
+            arrival.message_id,
+            ...(again ? ["again"] : []),
+          ]),
+        )
+        .digest("hex")
+        .slice(0, 32);
+    const arrived = new Date(arrival.accepted_at).toISOString();
+    const body = JSON.stringify({
+      eventId,
+      name: HAB_EVENT_NAME,
+      timestamp: arrived,
+      data: { to: address, arrived_at: arrived },
+      cursor: null,
+    });
+    let status = 0;
+    try {
+      status = (
+        await this.#post(
+          row.url,
+          body,
+          this.#headers(row.secret, eventId, row.id, body),
+        )
+      ).status;
+    } catch {
+      status = 0;
+    }
+    const at = this.#rang(row.agent_id, status);
+    // The first doorbell a subscriber accepted for each message: a later ring (again, or
+    // for newer mail) must not hide that this one went unanswered.
+    if (status >= 200 && status <= 299)
+      this.#db
+        .prepare(
+          `INSERT OR IGNORE INTO hab_event_accepted (agent_id,sender_id,message_id,accepted_at)
+           VALUES (?,?,?,?)`,
+        )
+        .run(row.agent_id, arrival.sender_id, arrival.message_id, at);
+    return status;
+  }
+  /**
+   * Ring once more for each message still unread `unanswered_after_ms` after its doorbell was
+   * accepted (ADR-027). One extra ring per message and subscription, never retried: it is a
+   * nudge for a subscriber that accepted the event and did not act, not a delivery guarantee.
+   */
+  async #ringAgain() {
+    const due = this.#db
+      .prepare(
+        "SELECT * FROM hab_event_rerings WHERE due_at<=? ORDER BY due_at LIMIT 10",
+      )
+      .all(this.#now()) as unknown as {
+      subscription_id: string;
+      sender_id: string;
+      message_id: string;
+      accepted_at: number;
+    }[];
+    for (const due_row of due) {
+      this.#db
+        .prepare(
+          "DELETE FROM hab_event_rerings WHERE subscription_id=? AND sender_id=? AND message_id=?",
+        )
+        .run(due_row.subscription_id, due_row.sender_id, due_row.message_id);
+      const row = this.#db
+        .prepare(
+          "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
+        )
+        .get(due_row.subscription_id, this.#now()) as unknown as
+        | Row
+        | undefined;
+      if (!row) continue;
+      const address = this.#source.addressOf(row.agent_id);
+      if (
+        !address ||
+        !this.#source.unread?.(row.agent_id, {
+          sender_id: due_row.sender_id,
+          message_id: due_row.message_id,
+        })
+      )
+        continue;
+      if ((await this.#ring(row, address, due_row, true)) === 410)
+        this.#end(row.id, row.agent_id, "gone");
+    }
+  }
+  /**
+   * The verified caller's unread mail and whether its doorbell went unanswered, for the
+   * caller's own tool results (ADR-027). `unread` is the caller's unread mail as its own
+   * inbox would return it (authorization-filtered, oldest first, at most 50), so mail the
+   * caller may no longer read never keeps a reminder alive. Null when nothing waits or the
+   * caller may not read an inbox. `reading` is true for hab_inbox, which is about to read.
+   */
+  reminder(
+    context: unknown,
+    unread: readonly Arrival[],
+    reading: boolean,
+  ): InboxReminder | null {
+    let agentId: string;
+    try {
+      agentId = this.#source.eventRecipient(context).agent_id;
+    } catch {
+      return null;
+    }
+    if (!unread.length) return null;
+    // The earliest doorbell accepted for mail that is still unread.
+    const first = this.#db.prepare(
+      "SELECT accepted_at FROM hab_event_accepted WHERE agent_id=? AND sender_id=? AND message_id=?",
+    );
+    let delivered: number | null = null;
+    for (const key of unread) {
+      const row = first.get(agentId, key.sender_id, key.message_id) as
+        | { accepted_at: number }
+        | undefined;
+      if (row && (delivered === null || row.accepted_at < delivered))
+        delivered = row.accepted_at;
+    }
+    const oldest = unread[0].accepted_at;
+    const unanswered =
+      delivered !== null && this.#now() - delivered >= this.#unansweredAfter;
+    if (reading && !unanswered) return null;
+    const rang = delivered === null ? "" : new Date(delivered).toISOString();
+    return {
+      unread: unread.length,
+      more: unread.length >= 50,
+      oldest_unread_at: new Date(oldest).toISOString(),
+      doorbell_delivered_at: delivered === null ? null : rang,
+      doorbell_unanswered: unanswered,
+      explanation: unanswered
+        ? `HAB rang your doorbell (${HAB_EVENT_NAME}) at ${rang} and it was accepted, but the mail is still unread, so the task that should react to the event may not be running. ${reading ? "Show each notice to your user" : "Call hab_inbox now, show each notice to your user"} and tell them that the doorbell rang but nothing read the inbox, so they can check that the event task is on.`
+        : "Unread HAB mail is waiting. Call hab_inbox and show each notice to your user.",
+    };
+  }
+  /**
    * Remember the recipient's latest ring and how the callback answered (0: no answer), so
    * an operator can tell a doorbell the subscriber refused from one it accepted and ignored.
    */
-  #rang(agentId: string, status: number) {
+  #rang(agentId: string, status: number): number {
     const now = this.#now();
     this.#db
       .prepare(
@@ -695,6 +863,7 @@ export class HabEvents {
            delivered_at=coalesce(excluded.delivered_at, delivered_at)`,
       )
       .run(agentId, now, status, status >= 200 && status <= 299 ? now : null);
+    return now;
   }
   #save(
     id: string,
