@@ -304,7 +304,8 @@ test("a callback that does not echo the challenge is refused with CallbackEndpoi
 });
 
 test("new mail rings the doorbell once per message, without content, and reading is still hab_inbox", async (t) => {
-  const f = await setup(t);
+  // quiet: false rings every message (ADR-030 holds newer mail by default).
+  const f = await setup(t, { events: { quiet: false } });
   const { result } = await f.subscribe("a");
   await f.events.dispatch();
   assert.equal(f.h.events().length, 0);
@@ -351,7 +352,7 @@ test("failed deliveries retry with backoff and the same event ID; 410 ends the s
   let answer = 500;
   const f = await setup(t, {
     status: () => answer,
-    events: { now: () => now },
+    events: { now: () => now, quiet: false },
   });
   await f.subscribe("a");
   await f.send("b", f.a.address, "hello");
@@ -491,7 +492,7 @@ test("renewing an expired subscription needs a free slot, like a new one", async
 });
 
 test("a message leased to a delivery client is still announced, so an expired lease is not skipped", async (t) => {
-  const f = await setup(t);
+  const f = await setup(t, { events: { quiet: false } });
   await f.subscribe("a");
   const older = await f.send("b", f.a.address, "older");
   await f.send("b", f.a.address, "newer");
@@ -677,7 +678,7 @@ test("a slow delivery pass is not mistaken for an outage", async (t) => {
   // not one.
   const f = await setup(t, {
     delayMs: 1200,
-    events: { poll_ms: 100, outage_after_ms: 800 },
+    events: { poll_ms: 100, outage_after_ms: 800, quiet: false },
   });
   const sub = await f.subscribe("a", { ttlMs: 600_000 });
   const until = Date.parse(sub.result.refreshBefore);
@@ -841,10 +842,11 @@ test("a second ring or newer mail does not hide that an earlier doorbell went un
   await f.events.dispatch();
   const firstRing = readDoorbells(f.store).get(f.a.agent_id).delivered_at;
   ahead += 60_000;
-  // The ring again and a new message both succeed, moving the latest ring forward.
+  // The ring again succeeds, moving the latest ring forward; the new message waits behind
+  // it (ADR-030).
   await f.send("b", f.a.address, "second");
   await f.events.dispatch();
-  assert.equal(f.h.events().length, 3);
+  assert.equal(f.h.events().length, 2);
   const sent = await f.send("a", f.b.address, "hi");
   assert.equal(sent.inbox_reminder.doorbell_unanswered, true);
   assert.equal(
@@ -897,4 +899,119 @@ test("mail the recipient may no longer read does not keep a reminder alive", asy
   });
   assert.notEqual(status.result.isError, true, JSON.stringify(status));
   assert.equal(status.result.structuredContent.inbox_reminder, undefined);
+});
+
+// ADR-030: while an accepted doorbell's mail waits unread, newer mail does not ring; it
+// waits behind the cursor and rings only if it is still unread when the quiet time ends.
+test("newer mail waits quietly behind an unread accepted doorbell, and rings after it", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "first");
+  await f.events.dispatch();
+  await f.send("b", f.a.address, "second");
+  await f.send("b", f.a.address, "third");
+  for (let i = 0; i < 5; i++) {
+    now += 10_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.h.events().length, 1, "held while the first is unread");
+  // The first ring again goes first and starts a new quiet time instead of sounding with
+  // the newer mail.
+  now += 10_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+  assert.equal(
+    f.h.events()[1].parsed.data.arrived_at,
+    f.h.events()[0].parsed.data.arrived_at,
+  );
+  now += 59_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+  // Still unread after the second quiet time: the held mail rings, once for all of it.
+  now += 1000;
+  await f.events.dispatch();
+  const third = f.h.events()[2];
+  assert.ok(third, "the held mail rang");
+  assert.notEqual(
+    third.parsed.data.arrived_at,
+    f.h.events()[0].parsed.data.arrived_at,
+  );
+  assert.equal(f.h.events().length, 3);
+  now += 30_000;
+  await f.events.dispatch();
+  assert.equal(
+    f.h.events().length,
+    3,
+    "the third message is held behind the second",
+  );
+});
+
+test("held mail that is read is never rung, and reading the rung mail ends the quiet", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "first");
+  await f.events.dispatch();
+  await f.send("b", f.a.address, "second");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  // hab_inbox reads everything: nothing is left to ring, now or later.
+  await f.rpc("a", "tools/call", { name: "hab_inbox", arguments: {} });
+  for (let i = 0; i < 4; i++) {
+    now += 60_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.h.events().length, 1);
+
+  // Only the rung message is read (a delivery client ACKed it): the quiet ends at once
+  // and the newer mail rings on the next pass.
+  const g = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await g.subscribe("a");
+  const one = await g.send("b", g.a.address, "one");
+  await g.events.dispatch();
+  await g.send("b", g.a.address, "two");
+  await g.events.dispatch();
+  assert.equal(g.h.events().length, 1);
+  g.raw
+    .prepare("UPDATE delivery_messages SET state='acked' WHERE message_id=?")
+    .run(one.message_id);
+  await g.events.dispatch();
+  assert.equal(g.h.events().length, 2);
+});
+
+test("a refused doorbell does not start a quiet time, and quiet: false rings every message", async (t) => {
+  let now = Date.now();
+  let answer = 503;
+  const f = await setup(t, {
+    status: () => answer,
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "first");
+  for (let i = 0; i < 8; i++) {
+    await f.events.dispatch();
+    now += 400_000;
+  }
+  assert.equal(f.h.events().length, 8, "the first message used its attempts");
+  answer = 202;
+  await f.send("b", f.a.address, "second");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 9, "nothing accepted, so nothing holds it");
+
+  const g = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000, quiet: false },
+  });
+  await g.subscribe("a");
+  await g.send("b", g.a.address, "one");
+  await g.events.dispatch();
+  await g.send("b", g.a.address, "two");
+  await g.events.dispatch();
+  assert.equal(g.h.events().length, 2);
 });

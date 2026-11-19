@@ -67,6 +67,7 @@ const schema = z.strictObject({
             .max(86_400_000)
             .optional(),
           rering: z.boolean().optional(),
+          quiet: z.boolean().optional(),
         })
         .optional(),
     })
