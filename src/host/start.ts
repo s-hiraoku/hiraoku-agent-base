@@ -60,7 +60,8 @@ export function withDoorbellSecrets<
       try {
         const fd = openSync(
           secret_file,
-          constants.O_RDONLY | constants.O_NOFOLLOW,
+          // O_NONBLOCK: a FIFO with no writer must be refused, not hang the start.
+          constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
         );
         try {
           const info = fstatSync(fd);

@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -523,6 +523,13 @@ test("operator doorbell secrets are read from owner-only files only (ADR-029)", 
       withDoorbellSecrets({
         doorbells: [{ ...entry, secret_file: join(f.dir, "missing") }],
       }),
+    /unsafe_doorbell_secret/,
+  );
+  // A FIFO with no writer is refused at once instead of blocking the start.
+  const fifo = join(f.dir, "doorbell.fifo");
+  execFileSync("mkfifo", ["-m", "600", fifo]);
+  assert.throws(
+    () => withDoorbellSecrets({ doorbells: [{ ...entry, secret_file: fifo }] }),
     /unsafe_doorbell_secret/,
   );
   // Without doorbells the events settings pass through unchanged.
