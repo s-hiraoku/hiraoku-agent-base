@@ -95,6 +95,8 @@ const schema = z.strictObject({
     max_active_requests: positive,
     requests_per_window: positive,
     window_ms: positive,
+    /** How long hab_inbox may wait for new mail (ADR-028); 0 turns waiting off. */
+    max_wait_ms: z.number().int().min(0).max(60000).default(25000),
   }),
 });
 function read(path: string) {

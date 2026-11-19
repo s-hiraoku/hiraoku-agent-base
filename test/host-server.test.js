@@ -397,3 +397,40 @@ test("opt-in discovery identifies a host owner over a real socket and keeps the 
     f.agents.b.agent_id,
   );
 });
+
+test("a waiting hab_inbox outlives timeout_ms over the real listener and returns on arrival (ADR-028)", async (t) => {
+  const f = await fixture(t);
+  // timeout_ms is 2000 in the fixture; the wait runs longer than that.
+  const host = await f.start({
+    http: { ...f.options.http, max_wait_ms: 6000 },
+  });
+  const tool = async (who, name, args) => {
+    const response = await globalThis.fetch(host.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        authorization: "Bearer synthetic-" + who,
+        "mcp-method": "tools/call",
+        "mcp-name": name,
+        "mcp-protocol-version": "2026-07-28",
+      },
+      body: JSON.stringify(envelope("tools/call", { name, arguments: args })),
+    });
+    assert.equal(response.status, 200);
+    return (await response.json()).result.structuredContent;
+  };
+  const started = Date.now();
+  const waiting = tool("b", "hab_inbox", { wait_secs: 10 });
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  await tool("a", "hab_send", { to: "b@synthetic.hab", text: "late hello" });
+  const inbox = await waiting;
+  const took = Date.now() - started;
+  assert.equal(inbox.messages.length, 1);
+  assert.equal(inbox.messages[0].text, "late hello");
+  assert.ok(took >= 2400 && took < 5000, `took ${took}ms`);
+  // With nothing arriving, the host answers empty once the granted time is up.
+  const empty = await tool("b", "hab_inbox", { wait_secs: 3 });
+  assert.deepEqual(empty.messages, []);
+  assert.equal(empty.waited_secs, 3);
+});
