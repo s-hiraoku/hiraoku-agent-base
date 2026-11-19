@@ -75,6 +75,12 @@ HABは購読を自分で作り直しません。購読が更新されずに切�
 `doorbell_lapse_reason`：`expired`は期限切れ、`gone`はcallbackが410、`unsubscribed`は購読者が解除）。
 30分以上読まれていないメッセージがある受信者には`unread_waiting`が出ます。callback URLとwebhookの鍵は表示しません。
 
+呼び鈴を一度でも鳴らした受信者には、最後に鳴らした時刻（`doorbell_last_rang_at`）、callbackが返したHTTP
+ステータス（`doorbell_last_status`、応答がなければ`0`）、最後に2xxで受け取られた時刻（`doorbell_last_delivered_at`）
+も出ます。最後の呼び鈴が2xxで受け取られていなければ`problems`に`doorbell_failing`が出ます（再送は続きます）。
+`doorbell_last_status`が2xxなのに`unread`が減らないときは、呼び鈴は相手に届いていて、相手側（ChatGPTのタスクなど）が
+受信箱を読みに来ていません。HABの外で、タスクが有効か・まとめ実行の設定・実行履歴を確かめます。
+
 ```sh
 npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
 ```

@@ -135,6 +135,15 @@
 - **hostとnotifierは必ず起動し直し、スリープ防止はhostから切り離す。** LaunchAgentの`KeepAlive`を常にtrueにし、意図して止めるのは`launchctl bootout`だけにする。スリープ防止はhostに付けず、別の常駐ジョブ（`caffeinate -i -s`）にする。手順は[LaunchAgent](operations/host-launchagent.md)。
 - **Museは変わらない。** HABから押し出す手段がないので、Muse自身の定期実行で`hab_inbox`を見させる（ADR-022）。
 
+## ADR-025 / 採用：宛先一覧には、HABに登録された有効なエージェントを全員出す
+
+2026-11-19 JST、owner判断（「HABに接続しているエージェントを全部見れないと、意味がない」「HABに登録されているということはユーザが承認したエージェントしか入らない設計」）。claude.aiのClaude（claude@claude.hab）をつないだとき、Dotsの`hab_discover`の一覧にはDots自身しか出ず、送り先を見つけられなかった。`hab_discover`（2026-10-31、#112）は、ADR-014の「グループ外の名義・受信箱を漏らさない」に合わせて、自分の認証グループの所属だけを一覧にしていた。しかしHABの目的はエージェント同士が宛先を見つけてやり取りすることで、登録は運用者だけが行う（`hab:admin`）。登録されている相手は利用者が承認したエージェントだけなので、互いの宛先を隠す理由がない。
+
+- **既定で全員を出す。** `registry.discovery.directory`の既定を`all_active`にし、`directory`は自分のgroupの所属に加えて、ほかのgroupの有効なアドレスを全部返す。`group`を指定すれば従来どおり自分のgroupだけにできる。
+- **出すのは宛先として使う情報だけ。** ほかのgroupのentryは不変ID・アドレス・名前・登録状態・`presence`と`relationship: "other_group"`だけ。操作権限・認証の割当・host割当は出さない。待機中・停止・退役のアドレスも出さない。`check_address`は一覧に出るアドレスを`unavailable`と答える。
+- **送受信の境界は変わらない。** 一覧に出ても、ほかのgroupの名義で送ったり、受信箱を読んだりはできない（ADR-014）。送れるのは今までどおり宛先として`hab_send`するだけ。
+- **製品仕様を直す。** F-03（宛先一覧）と「group外の存在を漏らさない」の記述に、この例外を書く（[製品仕様](hab-product-spec.md)）。
+
 ## ADR-026 / 採用：受信メッセージの見せ方は各エージェントのアダプタが描き、HABは共通の表示用データを返す
 
 2026-11-19 JST、owner判断（「エージェントごとのアダプターで読みやすく改善したい」「末端のそれぞれのエージェントのアダプターで処理を実装する」「これで行こう」）。ADR-020・021の`notice`と`display`は、どの製品でも読めるよう改行入りの素朴な文章にしている。カードの仕様は製品ごとに大きく違い（Hermes Desktopはプラグイン、claude.ai・ChatGPT・GeminiアプリはMCP Apps、Claude Codeはstatus lineとchannel、Codex・Grok Bot・Antigravityは文字だけか未確認）、文章を丸ごと入れると送信者や選択肢が二重に出る。モデルが`notice`を読み直して伝える製品では、見せ方が毎回変わり、要約されることもある。基準は[エージェントごとの受信表示](receiver/per-agent-display.md)とする。

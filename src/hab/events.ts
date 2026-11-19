@@ -364,7 +364,10 @@ export class HabEvents {
         id INTEGER PRIMARY KEY CHECK(id=1), alive_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_lapses (
         agent_id TEXT PRIMARY KEY, lapsed_at INTEGER NOT NULL,
-        reason TEXT NOT NULL CHECK(reason IN ('expired','gone','unsubscribed')));`);
+        reason TEXT NOT NULL CHECK(reason IN ('expired','gone','unsubscribed')));
+      CREATE TABLE IF NOT EXISTS hab_event_rings (
+        agent_id TEXT PRIMARY KEY, rang_at INTEGER NOT NULL, status INTEGER NOT NULL,
+        delivered_at INTEGER);`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -656,6 +659,7 @@ export class HabEvents {
       } catch {
         status = 0;
       }
+      this.#rang(row.agent_id, status);
       if (status === 410) {
         this.#end(row.id, row.agent_id, "gone");
         return;
@@ -677,6 +681,20 @@ export class HabEvents {
       );
       return;
     }
+  }
+  /**
+   * Remember the recipient's latest ring and how the callback answered (0: no answer), so
+   * an operator can tell a doorbell the subscriber refused from one it accepted and ignored.
+   */
+  #rang(agentId: string, status: number) {
+    const now = this.#now();
+    this.#db
+      .prepare(
+        `INSERT INTO hab_event_rings (agent_id,rang_at,status,delivered_at) VALUES (?,?,?,?)
+         ON CONFLICT(agent_id) DO UPDATE SET rang_at=excluded.rang_at, status=excluded.status,
+           delivered_at=coalesce(excluded.delivered_at, delivered_at)`,
+      )
+      .run(agentId, now, status, status >= 200 && status <= 299 ? now : null);
   }
   #save(
     id: string,
@@ -734,6 +752,10 @@ export interface DoorbellState {
   /** When the last subscription ended without a renewal, and why. */
   lapsed_at: number | null;
   reason: "expired" | "gone" | "unsubscribed" | null;
+  /** The latest ring, the HTTP status the callback answered (0: no answer) and the last 2xx. */
+  rang_at: number | null;
+  status: number | null;
+  delivered_at: number | null;
 }
 /**
  * Read-only view of every recipient's doorbell for operators (`hab-admin status`). No
@@ -757,7 +779,15 @@ export function readDoorbells(
     const entry = (agentId: string) => {
       let state = result.get(agentId);
       if (!state) {
-        state = { live: 0, until: null, lapsed_at: null, reason: null };
+        state = {
+          live: 0,
+          until: null,
+          lapsed_at: null,
+          reason: null,
+          rang_at: null,
+          status: null,
+          delivered_at: null,
+        };
         result.set(agentId, state);
       }
       return state;
@@ -773,6 +803,22 @@ export function readDoorbells(
         const state = entry(row.agent_id);
         state.lapsed_at = row.lapsed_at;
         state.reason = row.reason;
+      }
+    if (tables.has("hab_event_rings"))
+      for (const row of db
+        .prepare(
+          "SELECT agent_id,rang_at,status,delivered_at FROM hab_event_rings",
+        )
+        .all() as unknown as {
+        agent_id: string;
+        rang_at: number;
+        status: number;
+        delivered_at: number | null;
+      }[]) {
+        const state = entry(row.agent_id);
+        state.rang_at = row.rang_at;
+        state.status = row.status;
+        state.delivered_at = row.delivered_at;
       }
     if (tables.has("hab_event_subscriptions"))
       for (const row of db

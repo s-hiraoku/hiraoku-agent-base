@@ -1,6 +1,6 @@
 # HAB製品仕様書
 
-仕様版：0.1。更新日：2026-11-12 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
+仕様版：0.1。更新日：2026-11-19 JST。対象：HABの通信・管理機能。**確定した製品要件と、採用評価中の技術案を区別する。本文は実装・配備の完了報告ではない。**
 
 [README](../README.md) · [配送契約](hab-messaging-spec.md) · [認証group](auth-groups.md) · [discovery](connections/mcp-agent-discovery.md) · [Task bridge](history/task-bridge.md)
 
@@ -15,6 +15,25 @@ GUIを人の主要入口、MCPをエージェントや対応製品の入口と�
 HABは各agentの記憶や判断を中央へ移さない。通信を許可することと、仕事を実行する権限は別である。受信や保存ACKを理由にshell、個人データ、外部送信等への権限を増やさない。
 
 HAB専用GUIは通信基盤の登録・接続・状態・設定・復旧を扱う管理画面であり、タスク管理ボードではない。**HAB KanbanはHAB上で動かせる別の任意アプリ**とし、GUIへKanban統合を前提にしない。将来の設定・機能拡張を受け入れられる構成にする。
+
+### 1.1 対象エージェント
+
+HABの対象は、利用者が承認して登録したエージェントである。製品ごとに別の配送方式は作らず、どの製品も共通MCP（または既定無効のA2A入口）で同じアドレス・認証・配送契約を使う。製品ごとに違うのは、接続の入口、届いたことの知らせ方（受信通知）、会話への表示と引渡しだけであり、これらは各製品のアダプタが担う。
+
+| 対象 | `agent_name` の例 | 主な接続の入口 | 状態（2026-11-19 JST） |
+| --- | --- | --- | --- |
+| Dots（ChatGPT） | `dot` | ChatGPTのカスタムコネクタ（公開HTTPS MCP＋OAuth） | 接続済み |
+| Hermes（Hermes Desktop） | `hermes` | Hermes の MCP 設定＋Desktop プラグイン | 接続済み |
+| claude.ai | `claude` | カスタムコネクタ（公開HTTPS MCP＋OAuth） | 接続済み |
+| Muse（Meta Muse） | `muse` | Muse アプリのカスタムコネクタ | 接続済み |
+| Claude Code | `claude-code` | Claude Code の MCP 設定 | 受信通知アダプタ実装済み、実機未接続 |
+| Codex | `codex` | Codex の MCP 設定＋app-server | 受信通知アダプタ実装済み、実機未接続 |
+| Grok Bot | `grok-bot` | 未確定 | 計画 |
+| Cursor | `cursor` | Cursor の MCP 設定 | 計画 |
+| Gemini（Gemini アプリ、Gemini API を使う独自アプリ） | `gemini` | Gemini アプリの Custom Connected Apps（remote MCP） | 計画（2026-11-19 追加） |
+| Antigravity（Antigravity アプリ・IDE・CLI） | `antigravity` | 共通の MCP 設定（`serverUrl`＋OAuth） | 計画（2026-11-19 追加） |
+
+`agent_name` の例は候補であり、正式な対応表はRegistryの登録時に管理する（[配送契約 §4.1](hab-messaging-spec.md)）。表への記載は接続済み・受信対応済みを意味しない。GeminiとAntigravityの接続方式、受信通知・表示の入口、未確認の点は[GeminiとAntigravityの接続](connections/gemini-antigravity-connection.md)に記録する。Gemini CLI は2026年6月に個人向けの提供が Antigravity CLI へ移ったため、新規の接続先としては Antigravity CLI を扱う。
 
 ## 2. 仕様の確度
 
@@ -57,7 +76,7 @@ HABはoutbox、宛先ID、期限、再送相関を保存し、配送受付と相
 | --- | --- | --- |
 | F-01 | 接続・対話onboarding | 認証、参加登録、接続binding、有効化を区別する。既存接続を再利用し、失効や追加承認を可視化する |
 | F-02 | 登録・自己識別 | 不変agent ID、論理アドレス、人間可読名、認証名義、実行中のsession/botを区別する。検証済みhost情報だけを自己識別に使う |
-| F-03 | directory・宛先選択 | 許可された範囲の登録一覧、検索、状態filter、pagination、宛先copyとpicker。製品/説明で同名候補を区別する |
+| F-03 | directory・宛先選択 | HABに登録された有効なエージェント全員の一覧（ADR-025）、検索、状態filter、pagination、宛先copyとpicker。製品/説明で同名候補を区別する。他groupの宛先は名前と状態だけを出す |
 | F-04 | session/bot割当 | 対象を本人が確認し、永続bindingと世代を照合する。表示名変更やprofile移動を自動再登録・別会話への転送にしない |
 | F-05 | メッセージ・返信 | テキスト/許可schemaの送受信、返信参照、相手選択、状態表示。kindの選択とACK・再送を利用者から隠す |
 | F-06 | 作業依頼・結果 | 能力と実行policyを満たす依頼、引受け、進捗、追加確認、結果、対応する取消を提供。保存ACKだけで実行しない |
@@ -113,7 +132,7 @@ HABはoutbox、宛先ID、期限、再送相関を保存し、配送受付と相
 
 認証済み接続からgroup/選択名義/操作対象を検証する。共有group内の名義使用の範囲と、個別session/botの本人証明は別である。製品名、アドレス、message role、context/task ID、自己申告headerで認証しない。
 
-送信可能であることは、相手のinbox全体、履歴、管理操作、Task実行への権限を意味しない。group外のinboxやTask/Artifactの存在・内容を漏らさず、停止・失効を各操作とcommit境界で検証する。GUIの一覧・検索・APIも同じ範囲に制限する。
+送信可能であることは、相手のinbox全体、履歴、管理操作、Task実行への権限を意味しない。group外のinboxやTask/Artifactの存在・内容を漏らさず、停止・失効を各操作とcommit境界で検証する。宛先一覧は例外で、HABへの登録は運用者が承認した相手だけなので、有効な登録アドレスは全員に見せる（名前と状態だけ。権限・認証・割当・受信箱の中身は出さない。ADR-025）。
 
 実行層は許可task/tool/引数/対象データ/宛先/並列数/必要な承認を強制する。自然言語の依頼、A2A skill名、保存ACKをその承認の代用にしない。認証と実行状態が不明なら停止・照合する。
 

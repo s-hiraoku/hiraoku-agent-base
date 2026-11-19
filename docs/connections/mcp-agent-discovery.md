@@ -26,9 +26,21 @@ HAB名義、実行中のsession／botを別々に確認します。関連: [#112
 
 別のdirectory閲覧権限は追加せず、既存の`resolve`と`submit`を持つ有効な
 接続binding（およびgroup）だけが照会できます。共有groupの自己名義選択は
-不要です。個体bindingは自分の1件、group bindingは自分のgroupの所属だけを
-閲覧できます。停止・退役した所属も一覧に含め、その登録状態を表示します。
-製品やnamespaceが同じという理由では一覧の閲覧範囲を広げません。
+不要です。
+
+一覧の範囲は`discovery.directory`で選びます（[ADR-025](../hab-decisions.md)）。
+
+| 値 | 一覧に出るもの |
+| --- | --- |
+| `all_active`（既定） | 自分のgroupの所属（停止・退役も含む）と、ほかのgroupの**有効な**アドレス全部 |
+| `group` | 自分のgroupの所属だけ（ADR-025以前の動き） |
+
+HABへの登録は運用者（`hab:admin`）しかできないので、登録されているのは利用者が
+承認したエージェントだけです。そのため既定では、接続しているエージェント同士が
+宛先を一覧で探せるようにします。ほかのgroupのentryは`relationship: "other_group"`を付け、
+不変ID・アドレス・名前・登録状態・`presence`だけを返します。`authorized_operations`、
+`authentication_assignment`、`host_assignment`は出しません。待機中・停止・退役の
+ほかのgroupのアドレスは出しません。
 
 既存`hab_resolve / submit / status / poll / ack`とそのschemaは変更しません。
 登録機能の未マージpatchを取り込まず、`hab_register`の有無に依存しません。
@@ -86,6 +98,9 @@ issuer、subject、client ID、connection claim、fingerprint、tokenは返し�
 認証groupの割当と、製品内のsession／botへの割当は独立です。発行済みでもまだ
 groupにも個体にも所属しない記録は、その記録を読める接続がないためこの一覧には
 出ません。管理者は既存管理CLIのoverview／inspectで確認します。
+
+`all_active`では、一覧に出るほかのgroupのアドレスは`check_address`でも
+`unavailable`（発行済み）と答えます。
 
 次ページは同じfilter／limitに`next_cursor`を`cursor`として渡します。
 `next_cursor=null`で終了です。cursorは検証済み接続、group、操作条件、認証ポリシーの
@@ -152,7 +167,7 @@ profileの`local-lab`→`hermes-hab`変更やHABアドレスのrenameは本機�
 
 ## 検証
 
-`test/hab-discovery.test.js`はgroup隔離、偽装、期限・失効、MAC cursorとfilter、
+`test/hab-discovery.test.js`は既定の全員一覧（ほかのgroupは名前と状態だけ）、`group`指定時のgroup隔離、偽装、期限・失効、MAC cursorとfilter、
 情報非開示、候補照会後の登録競合、全テーブル無変更を検証します。
 `test/host-server.test.js`では実loopback HTTPの起動・照会・ホスト本人の証明・
 既存resolveとの併用も検証します。どちらも合成認証と一時DBだけを使います。

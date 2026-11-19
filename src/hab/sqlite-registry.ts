@@ -286,6 +286,7 @@ export class SQLiteHabRegistry {
               availability_namespaces: Object.freeze([
                 ...options.discovery.availability_namespaces,
               ]),
+              directory: options.discovery.directory ?? "all_active",
             }),
           }
         : {}),
@@ -1777,7 +1778,9 @@ export class SQLiteHabRegistry {
             "SELECT 1 FROM hab_auth_group_members WHERE group_id=? AND agent_id=?",
           )
           .get(scope.scope_id, agentId);
-      // The namespace policy reveals no names or IDs outside this connection's directory.
+      // With directory "all_active", active addresses of other groups are listed too (names
+      // and state only); otherwise nothing outside this connection's group is revealed.
+      const allActive = this.#options.discovery!.directory === "all_active";
       if (input.action === "check_address") {
         const candidate = parseHabAddress(input.address);
         const row = this.#reservedAddress(candidate.address);
@@ -1785,7 +1788,11 @@ export class SQLiteHabRegistry {
           this.#options.discovery!.availability_namespaces.includes(
             candidate.agent_name,
           );
-        const visible = row !== undefined && owns(String(row.agent_id));
+        const visible =
+          row !== undefined &&
+          (owns(String(row.agent_id)) ||
+            (allActive &&
+              this.#agent(String(row.agent_id)).state === "active"));
         return {
           ...base,
           address: candidate.address,
@@ -1883,6 +1890,21 @@ export class SQLiteHabRegistry {
           observed_at: null,
         },
       });
+      // Another group's active address: enough to message it, nothing about its access.
+      const otherEntry = (agent: AgentRecord) => ({
+        agent_id: agent.agent_id,
+        address: agent.address,
+        agent_name: agent.agent_name,
+        bot_name: agent.bot_name,
+        registration_state: agent.state,
+        address_status: "issued_reserved" as const,
+        relationship: "other_group" as const,
+        presence: {
+          state: "unknown" as const,
+          reason: "not_observed" as const,
+          observed_at: null,
+        },
+      });
       const membersSql =
         "SELECT agent_id FROM hab_auth_group_members WHERE group_id=?";
       if (input.action === "whoami") {
@@ -1967,8 +1989,12 @@ export class SQLiteHabRegistry {
       }
       const rows = this.#db
         .prepare(
-          `SELECT a.agent_id FROM hab_auth_group_members m JOIN ${this.#agentTable()} a USING(agent_id)
-        WHERE m.group_id=? AND a.agent_id>? AND substr(a.address,1,?)=? AND (? IS NULL OR a.state=?) ORDER BY a.agent_id LIMIT ?`,
+          `SELECT a.agent_id, EXISTS(SELECT 1 FROM hab_auth_group_members m
+             WHERE m.group_id=? AND m.agent_id=a.agent_id) AS own
+           FROM ${this.#agentTable()} a
+           WHERE a.agent_id>? AND substr(a.address,1,?)=? AND (? IS NULL OR a.state=?)
+             AND (own OR (? AND a.state='active'))
+           ORDER BY a.agent_id LIMIT ?`,
         )
         .all(
           scope.scope_id,
@@ -1977,11 +2003,13 @@ export class SQLiteHabRegistry {
           prefix,
           input.state ?? null,
           input.state ?? null,
+          allActive ? 1 : 0,
           input.limit + 1,
         );
-      const agents = rows
-        .slice(0, input.limit)
-        .map((row) => entry(this.#agent(String(row.agent_id))));
+      const agents = rows.slice(0, input.limit).map((row) => {
+        const agent = this.#agent(String(row.agent_id));
+        return row.own ? entry(agent) : otherEntry(agent);
+      });
       const last = agents.at(-1)?.agent_id;
       return {
         ...base,

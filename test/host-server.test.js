@@ -319,7 +319,7 @@ test("opt-in discovery identifies a host owner over a real socket and keeps the 
   const host = await f.start({
     registry: {
       ...f.options.registry,
-      discovery: { availability_namespaces: ["synthetic"] },
+      discovery: { availability_namespaces: ["synthetic"], directory: "group" },
     },
     authority: { ...f.options.authority, hostIdentity: () => owner },
   });

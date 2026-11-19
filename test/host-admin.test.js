@@ -1080,6 +1080,10 @@ test("status reports unread mail waiting and lapsed doorbells per address", asyn
     Date.now() + 600_000,
     Date.now(),
   );
+  // codex's latest ring was refused; hermes has never been rung.
+  db.prepare(
+    "INSERT INTO hab_event_rings (agent_id,rang_at,status,delivered_at) VALUES (?,?,?,?)",
+  ).run(codex.address.agent_id, Date.now() - 500, 500, Date.now() - 60_000);
   db.close();
   const bells = hostAdminStatus(f.configPath);
   const byAddress = Object.fromEntries(
@@ -1087,6 +1091,15 @@ test("status reports unread mail waiting and lapsed doorbells per address", asyn
   );
   assert.equal(byAddress["codex@codex.hab"].doorbell, "live");
   assert.ok(byAddress["codex@codex.hab"].doorbell_until);
+  assert.equal(byAddress["codex@codex.hab"].doorbell_last_status, 500);
+  assert.ok(byAddress["codex@codex.hab"].doorbell_last_rang_at);
+  assert.ok(byAddress["codex@codex.hab"].doorbell_last_delivered_at);
+  assert.ok(
+    bells.problems.some(
+      (p) => p.code === "doorbell_failing" && p.subject === "codex@codex.hab",
+    ),
+  );
+  assert.equal("doorbell_last_status" in byAddress["hermes@hermes.hab"], false);
   assert.equal(byAddress["hermes@hermes.hab"].doorbell, "lapsed");
   assert.equal(byAddress["hermes@hermes.hab"].doorbell_lapse_reason, "expired");
   assert.ok(
