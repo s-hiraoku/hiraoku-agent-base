@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { HabHttpGateway } from "../src/hab/http.ts";
 import {
   CALLBACK_ENDPOINT_ERROR,
@@ -1129,4 +1130,29 @@ test("operator doorbells refuse private URLs and weak secrets", async (t) => {
       f.events.configureStatic([{ agent_id: f.b.agent_id, url, secret }]),
     );
   assert.deepEqual(f.events.subscriptions(), []);
+});
+
+test("a ring again left over from before rering: false does not hold new mail", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000, rering: false },
+  });
+  const { result } = await f.subscribe("a");
+  await f.send("b", f.a.address, "first");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  // A row scheduled while rering was still on, before the restart.
+  const db = new DatabaseSync(f.store);
+  db.prepare(
+    "INSERT INTO hab_event_rerings (subscription_id,sender_id,message_id,accepted_at,due_at) VALUES (?,?,?,?,?)",
+  ).run(result.id, "s", "m", 0, 0);
+  db.close();
+  now += 60_000;
+  await f.send("b", f.a.address, "second");
+  await f.events.dispatch();
+  assert.equal(
+    f.h.events().length,
+    2,
+    "the quiet ended, so the new mail rings",
+  );
 });

@@ -200,7 +200,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/mcp-events.md",
-      "sha256": "6b478d53dd7edf59566f0939fc91584ca93e3d4169c99d6ad598a3e1d94479e7",
+      "sha256": "271b77ad4ca906664e8ded95ae7b45bdcbb0b53d93553ec1dc62872e6cd550c7",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19: 無視判定をメッセージごとの最初の受け取り時刻で行う。 2026-11-19: 未読は hab_inbox と同じ認可で数える。 2026-11-19 (ADR-029): events-operator sub-feature for operator-registered doorbells (unit/host tests; the stack has no ingress). 2026-11-19 ADR-030: events-quiet（受け取られた呼び鈴のメールが未読の間、新着を鳴らさず待たせる。quiet:false で無効）。",

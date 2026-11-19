@@ -765,7 +765,9 @@ export class HabEvents {
     if (!this.#quiet || !this.#source.unread) return false;
     // A ring again that is already due (one pass rings at most ten) goes first: ringing new
     // mail now would put two accepted doorbells one poll apart.
+    // Only while rings again run: rows left from before `rering: false` must not hold forever.
     if (
+      this.#rering &&
       this.#db
         .prepare(
           "SELECT 1 FROM hab_event_rerings WHERE subscription_id=? AND due_at<=? LIMIT 1",
