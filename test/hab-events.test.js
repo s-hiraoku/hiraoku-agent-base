@@ -830,3 +830,33 @@ test("the recipient's own tool results carry an inbox reminder that names an una
   assert.equal(other.inbox_reminder.unread, 4);
   assert.equal(other.inbox_reminder.doorbell_delivered_at, null);
 });
+
+test("a second ring or newer mail does not hide that an earlier doorbell went unanswered", async (t) => {
+  let ahead = 0;
+  const f = await setup(t, {
+    events: { now: () => Date.now() + ahead, unanswered_after_ms: 60_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "first");
+  await f.events.dispatch();
+  const firstRing = readDoorbells(f.store).get(f.a.agent_id).delivered_at;
+  ahead += 60_000;
+  // The ring again and a new message both succeed, moving the latest ring forward.
+  await f.send("b", f.a.address, "second");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3);
+  const sent = await f.send("a", f.b.address, "hi");
+  assert.equal(sent.inbox_reminder.doorbell_unanswered, true);
+  assert.equal(
+    sent.inbox_reminder.doorbell_delivered_at,
+    new Date(firstRing).toISOString(),
+  );
+  const inbox = await f.rpc("a", "tools/call", {
+    name: "hab_inbox",
+    arguments: {},
+  });
+  assert.equal(
+    inbox.result.structuredContent.inbox_reminder.doorbell_unanswered,
+    true,
+  );
+});

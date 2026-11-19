@@ -84,7 +84,7 @@ export interface InboxReminder {
   /** More than `unread` messages wait. */
   more: boolean;
   oldest_unread_at: string;
-  /** The latest doorbell the subscriber's callback accepted with a 2xx, if any. */
+  /** The earliest doorbell a callback accepted with a 2xx for mail still unread, if any. */
   doorbell_delivered_at: string | null;
   /** A doorbell was accepted for this mail at least `unanswered_after_ms` ago. */
   doorbell_unanswered: boolean;
@@ -401,7 +401,11 @@ export class HabEvents {
       CREATE TABLE IF NOT EXISTS hab_event_rerings (
         subscription_id TEXT NOT NULL, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
         accepted_at INTEGER NOT NULL, due_at INTEGER NOT NULL,
-        PRIMARY KEY(subscription_id, sender_id, message_id));`);
+        PRIMARY KEY(subscription_id, sender_id, message_id));
+      CREATE TABLE IF NOT EXISTS hab_event_accepted (
+        agent_id TEXT NOT NULL, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
+        accepted_at INTEGER NOT NULL,
+        PRIMARY KEY(agent_id, sender_id, message_id));`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -440,6 +444,10 @@ export class HabEvents {
     this.#db
       .prepare("DELETE FROM hab_event_callbacks WHERE verified_until<=?")
       .run(now);
+    // Mail expires unread after 7 days, so older first acceptances can no longer matter.
+    this.#db
+      .prepare("DELETE FROM hab_event_accepted WHERE accepted_at<=?")
+      .run(now - 8 * 86_400_000);
   }
   /** Remove a subscription and remember when and why the recipient's doorbell stopped. */
   #end(
@@ -740,7 +748,16 @@ export class HabEvents {
     } catch {
       status = 0;
     }
-    this.#rang(row.agent_id, status);
+    const at = this.#rang(row.agent_id, status);
+    // The first doorbell a subscriber accepted for each message: a later ring (again, or
+    // for newer mail) must not hide that this one went unanswered.
+    if (status >= 200 && status <= 299)
+      this.#db
+        .prepare(
+          `INSERT OR IGNORE INTO hab_event_accepted (agent_id,sender_id,message_id,accepted_at)
+           VALUES (?,?,?,?)`,
+        )
+        .run(row.agent_id, arrival.sender_id, arrival.message_id, at);
     return status;
   }
   /**
@@ -800,15 +817,21 @@ export class HabEvents {
     }
     const unread = this.#source.arrivals(agentId, null, 50);
     if (!unread.length) return null;
-    const ring = this.#db
-      .prepare("SELECT delivered_at FROM hab_event_rings WHERE agent_id=?")
-      .get(agentId) as { delivered_at: number | null } | undefined;
-    const delivered = ring?.delivered_at ?? null;
+    // The earliest doorbell accepted for mail that is still unread.
+    const first = this.#db.prepare(
+      "SELECT accepted_at FROM hab_event_accepted WHERE agent_id=? AND sender_id=? AND message_id=?",
+    );
+    let delivered: number | null = null;
+    for (const key of unread) {
+      const row = first.get(agentId, key.sender_id, key.message_id) as
+        | { accepted_at: number }
+        | undefined;
+      if (row && (delivered === null || row.accepted_at < delivered))
+        delivered = row.accepted_at;
+    }
     const oldest = unread[0].accepted_at;
     const unanswered =
-      delivered !== null &&
-      delivered >= oldest &&
-      this.#now() - delivered >= this.#unansweredAfter;
+      delivered !== null && this.#now() - delivered >= this.#unansweredAfter;
     if (reading && !unanswered) return null;
     const rang = delivered === null ? "" : new Date(delivered).toISOString();
     return {
@@ -826,7 +849,7 @@ export class HabEvents {
    * Remember the recipient's latest ring and how the callback answered (0: no answer), so
    * an operator can tell a doorbell the subscriber refused from one it accepted and ignored.
    */
-  #rang(agentId: string, status: number) {
+  #rang(agentId: string, status: number): number {
     const now = this.#now();
     this.#db
       .prepare(
@@ -835,6 +858,7 @@ export class HabEvents {
            delivered_at=coalesce(excluded.delivered_at, delivered_at)`,
       )
       .run(agentId, now, status, status >= 200 && status <= 299 ? now : null);
+    return now;
   }
   #save(
     id: string,
