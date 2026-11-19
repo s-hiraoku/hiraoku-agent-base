@@ -221,6 +221,14 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     this.#assertCurrent();
     return this.#backend.arrivalsInternal(agentId, after, limit);
   }
+  /** Whether one message still waits unread, for the unanswered doorbell (ADR-027). */
+  unread(
+    agentId: string,
+    key: { sender_id: string; message_id: string },
+  ): boolean {
+    this.#assertCurrent();
+    return this.#backend.unreadInternal(agentId, key.sender_id, key.message_id);
+  }
   /** The current address of a subscribed recipient, or undefined once it is gone. */
   addressOf(agentId: string): string | undefined {
     this.#assertCurrent();
