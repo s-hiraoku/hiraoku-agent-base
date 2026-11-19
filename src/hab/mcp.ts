@@ -354,7 +354,13 @@ function inboxWait(
           state = "done";
           return false;
         }
-        if (wake === "superseded") break;
+        // A newer wait for this agent took over: end empty, without reading, so the
+        // newer request (not this possibly abandoned one) receives what arrives.
+        if (wake === "superseded") {
+          waitedMs = Date.now() - current.begun;
+          state = "done";
+          return false;
+        }
         // "arrived" or a periodic recheck: read again, and keep waiting if still empty.
         waitedMs = Date.now() - current.begun;
         if (Date.now() < current.until) return true;

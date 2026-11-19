@@ -192,3 +192,16 @@ test("at the hold limit a newer wait for the same agent still replaces the older
   assert.equal(newer.messages.length, 1);
   assert.equal(newer.messages[0].text, "to the newer wait");
 });
+
+test("a superseded wait ends empty without reading mail meant for the newer wait", async (t) => {
+  const f = await setup(t);
+  const older = f.ok("b", "hab_inbox", { wait_secs: 10 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const newer = f.ok("b", "hab_inbox", { wait_secs: 10 });
+  // Mail arrives in the same tick the older wait is superseded.
+  const sending = f.ok("a", "hab_send", { to: f.b.address, text: "race" });
+  const [o, , n] = await Promise.all([older, sending, newer]);
+  assert.deepEqual(o.messages, []);
+  assert.equal(n.messages.length, 1);
+  assert.equal(n.messages[0].text, "race");
+});
