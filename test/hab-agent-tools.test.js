@@ -401,6 +401,84 @@ test("each inbox message carries a notice with sender, kind, deadline, framed bo
     `2. あとで：何もしない（hab_inbox に message_id "${sent.message_id}" を渡すと 7 日間読み直せます）`,
     "3. 対応しない",
   ]);
+  // ADR-026: the same facts as data for an adapter; the body stays only in `text`.
+  assert.equal(message.text, body);
+  assert.equal(
+    message.presentation.heading,
+    `${f.a.address} からのメッセージです`,
+  );
+  assert.deepEqual(message.presentation.sender, {
+    address: f.a.address,
+    label: f.a.address,
+  });
+  assert.equal(message.presentation.kind_label, "質問");
+  assert.equal(message.presentation.reply_by, sent.expires_at);
+  assert.equal(message.presentation.sent_at, message.sent_at);
+  assert.equal(message.presentation.body_untrusted, true);
+  assert.ok(!JSON.stringify(message.presentation).includes("rm -rf"));
+});
+
+test("hab_inbox alone names the inbox card, and the card is a self-contained MCP Apps page (ADR-026)", async (t) => {
+  const f = await setup(t);
+  const listed = await decode(await f.agent.fetch(request()));
+  const inbox = listed.result.tools.find((tool) => tool.name === "hab_inbox");
+  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v1" });
+  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v1");
+  for (const tool of listed.result.tools.filter((x) => x.name !== "hab_inbox"))
+    assert.equal(tool._meta?.ui, undefined, tool.name);
+  const raw = await f.agent.fetch(
+    request(
+      "resources/read",
+      { uri: "ui://hab/inbox-v1" },
+      {
+        headers: {
+          Authorization: "Bearer fixture-b",
+          "Mcp-Name": "ui://hab/inbox-v1",
+        },
+      },
+    ),
+  );
+  const read = await decode(raw);
+  const [page] = read.result.contents;
+  assert.equal(page.mimeType, "text/html;profile=mcp-app");
+  assert.deepEqual(page._meta.ui.csp, {
+    connectDomains: [],
+    resourceDomains: [],
+  });
+  // No network, no outside scripts or styles, no markup built from message text.
+  assert.doesNotMatch(
+    page.text,
+    /https?:\/\/|fetch\(|XMLHttpRequest|innerHTML|insertAdjacentHTML|localStorage/,
+  );
+  assert.match(page.text, /ui\/initialize/);
+  assert.match(page.text, /ui\/notifications\/tool-result/);
+  // The delivery catalog (/mcp/delivery) serves no resources.
+  const delivery = new HabHttpGateway(
+    f.hab,
+    policy,
+    { record() {}, note() {} },
+    f.verifier,
+    undefined,
+    "delivery",
+  );
+  const refused = await delivery.fetch(
+    request(
+      "resources/read",
+      { uri: "ui://hab/inbox-v1" },
+      { headers: { "Mcp-Name": "ui://hab/inbox-v1" } },
+    ),
+  );
+  assert.equal(refused.status, 405);
+  // The body and the sender reach the page only as data in the tool result.
+  const sent = await f.ok("a", "hab_send", {
+    to: f.b.address,
+    text: "<img src=x>",
+  });
+  const result = await f.call("b", "hab_inbox");
+  const [message] = result.structuredContent.messages;
+  assert.equal(message.message_id, sent.message_id);
+  assert.equal(message.text, "<img src=x>");
+  assert.equal(message.presentation.version, 1);
 });
 
 test("tools outside the agent catalog are not callable at /mcp", async (t) => {

@@ -25,6 +25,7 @@ import type {
   HandoffResult,
   NoticeState,
   PeekedMessage,
+  Presentation,
 } from "./contract.ts";
 import { runCommand } from "./command.ts";
 import type { TrustedCommand } from "./command.ts";
@@ -106,6 +107,9 @@ interface NoticeLine {
   sender_id: string;
   from: string | null;
   display: string;
+  /** ADR-026: the facts and the body, for a card drawn in fields. Absent from older lines. */
+  presentation?: Presentation;
+  body?: string;
   at: string;
   /** The binding the notice was shown for; the reader returns it only to that binding. */
   binding?: string;
@@ -169,6 +173,13 @@ export class HermesDesktopScreen implements AgentScreen {
       sender_id: message.sender_id,
       from: message.from,
       display: fitHermesText(message.display),
+      // The plugin draws these in fields (ADR-026); without both it shows `display`.
+      ...(message.presentation && typeof message.text === "string"
+        ? {
+            presentation: message.presentation,
+            body: fitHermesText(message.text),
+          }
+        : {}),
       binding: this.#binding,
     });
     return "published" as const;
@@ -210,7 +221,8 @@ const cursorPattern = /^[0-9]{1,15}$/;
 export function hermesDesktopPage(
   path: string,
   binding: HermesDesktopBinding,
-  options: { after?: string; limit: number },
+  /** `presentation`: add the ADR-026 fields (only the HAB plugin's backend accepts them). */
+  options: { after?: string; limit: number; presentation?: boolean },
 ) {
   if (options.after !== undefined && !cursorPattern.test(options.after))
     throw new Error("invalid_cursor");
@@ -262,6 +274,11 @@ export function hermesDesktopPage(
               logical_target: target,
               stored_session_id: binding.session_id,
               handoff_state: "pending",
+              ...(options.presentation &&
+              notice.presentation &&
+              typeof notice.body === "string"
+                ? { presentation: notice.presentation, body: notice.body }
+                : {}),
             },
           ],
     ),

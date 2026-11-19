@@ -7,6 +7,8 @@ export async function protocolAdmission(
   schemas: Record<string, z.ZodType>,
   security?: SecurityContext,
   events = false,
+  /** The agent catalog's MCP Apps card (ADR-026): read-only static resources. */
+  resources = false,
 ): Promise<boolean> {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     await security?.record("transport_error");
@@ -24,6 +26,9 @@ export async function protocolAdmission(
     "tools/call",
     ...(events
       ? ["events/list", "events/subscribe", "events/unsubscribe"]
+      : []),
+    ...(resources
+      ? ["resources/list", "resources/read", "resources/templates/list"]
       : []),
   ];
   if (

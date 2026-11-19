@@ -86,6 +86,10 @@ export class McpHttpGateway {
     return new Set();
   }
   /** Host-code composition hooks; HTTP callers cannot select or register a catalog. */
+  /** Whether this endpoint serves read-only MCP resources (the ADR-026 inbox card). */
+  protected get resourcesEnabled(): boolean {
+    return false;
+  }
   /** Whether this endpoint answers the MCP events methods (ADR-022). */
   protected get eventsEnabled(): boolean {
     return false;
@@ -401,6 +405,7 @@ export class McpHttpGateway {
               },
             },
             this.eventsEnabled,
+            this.resourcesEnabled,
           ))
         )
           throw new HttpFailure(405, "resource_rejected");
@@ -408,9 +413,13 @@ export class McpHttpGateway {
         const params = (
           envelope.jsonrpc === "2.0" ? envelope.params : envelope
         ) as Record<string, unknown> | undefined;
+        // Mcp-Name repeats the tool name, or the URI for resources/read.
+        const framedMethod =
+          request.headers.get("mcp-method") ?? envelope.method;
         if (
           request.headers.has("mcp-name") &&
-          request.headers.get("mcp-name") !== params?.name
+          request.headers.get("mcp-name") !==
+            (framedMethod === "resources/read" ? params?.uri : params?.name)
         )
           throw new HttpFailure(400, "transport_error");
         check();

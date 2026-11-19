@@ -13,9 +13,9 @@
  *   hab-notify --config <notify.json> show <message_id> [sender_id]
  *       (prints one notice's full display from the local choice record, for a screen that
  *       could show only part of it, such as the Claude Code status line)
- *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+ *   hab-notify --config <notify.json> events [--limit N] [--after CURSOR] [--presentation]
  *       (screen type hermes-desktop: one cursor-v1 page for Hermes Desktop; reads only the
- *       local screen file, never HAB)
+ *       local screen file, never HAB. --presentation adds the ADR-026 fields for the plugin)
  *   hab-notify --config <notify.json> action
  *       (screen type hermes-desktop: Hermes Desktop's actions_command. Reads one request on
  *       stdin: {action: "decide", ...} from a card's button, printing {changed, state}, or
@@ -73,7 +73,7 @@ const usage = `usage:
   hab-notify --config <notify.json> run|check|list
   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
   hab-notify --config <notify.json> show-again <message_id> [sender_id]
-  hab-notify --config <notify.json> events [--limit N] [--after CURSOR]
+  hab-notify --config <notify.json> events [--limit N] [--after CURSOR] [--presentation]
   hab-notify --config <notify.json> action   (one decision as JSON on stdin)
   hab-notify --config <notify.json> statusline
   hab-notify --config <notify.json> binding|states|adapter-action
@@ -506,12 +506,18 @@ async function statusline(
 /** Reads stdin through the injected reader, capped at 1 MiB. */
 const readInput = (input: () => string) => input().slice(0, 1024 * 1024);
 
-/** `events [--limit N] [--after CURSOR]`: the Hermes Desktop reader page, as one JSON line. */
+/**
+ * `events [--limit N] [--after CURSOR] [--presentation]`: the Hermes Desktop reader page, as
+ * one JSON line. `--presentation` (the HAB plugin's backend) adds `presentation` and `body`
+ * to the events that have them (ADR-026); Desktop's own reader refuses unknown fields.
+ */
 function events(config: NotifyConfig, args: string[]) {
   const screen = config.screen;
   if (screen.type !== "hermes-desktop") return null;
   let limit = 100;
   let after: string | undefined;
+  const presentation = args.includes("--presentation");
+  args = args.filter((arg) => arg !== "--presentation");
   for (let i = 0; i < args.length; i += 2) {
     const value = args[i + 1];
     if (value === undefined) return null;
@@ -523,6 +529,7 @@ function events(config: NotifyConfig, args: string[]) {
   return hermesDesktopPage(expand(screen.path), hermesBinding(config, screen), {
     limit,
     ...(after !== undefined ? { after } : {}),
+    presentation,
   });
 }
 

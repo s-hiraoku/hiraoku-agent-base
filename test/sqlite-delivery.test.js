@@ -631,7 +631,7 @@ test("inbox stops before a message that would not fit the response budget and le
     next({ body: { parts: [{ type: "text", text: String(n).repeat(3000) }] } });
   const inputs = [big(1), big(2), big(3)];
   for (const input of inputs) f.service.submit("a", input);
-  const budget = { limit: 10, include_read: false, max_bytes: 2 * 16200 };
+  const budget = { limit: 10, include_read: false, max_bytes: 2 * 22200 };
   assert.deepEqual(
     f.service.inbox("b", budget).map((m) => m.message_id),
     [inputs[0].message_id, inputs[1].message_id],
