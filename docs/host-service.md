@@ -158,6 +158,11 @@ Clients must use the exact resource URL `http://127.0.0.1:<port>/mcp`. The host
 rejects any other `Host` (including `localhost`) with 403, and the bearer's
 audience must equal this URL.
 
+`http.max_wait_ms` (default 25000, 0–60000, 0 turns it off) is how long an agent's
+`hab_inbox` with `wait_secs` may wait for new mail (ADR-027). Only such a call is held
+longer than `timeout_ms`: for its wait plus a fresh `timeout_ms` to read. At most
+`max_active_requests - 1` calls (at least one) wait at once; others answer at once.
+
 ## Dots and Hermes are separate connection gates
 
 A successful CLI start/401 check is local host infrastructure evidence, not an

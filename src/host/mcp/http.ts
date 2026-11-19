@@ -21,6 +21,12 @@ export interface McpHttpPolicy {
   max_active_requests: number;
   requests_per_window: number;
   window_ms: number;
+  /**
+   * Optional (ADR-027): how much longer than `timeout_ms` a waiting hab_inbox may hold its
+   * request, 0 to 60000. Absent or 0: no waiting. Holds count toward
+   * `max_active_requests` and at most `max_active_requests - 1` (at least 1) run at once.
+   */
+  max_wait_ms?: number;
 }
 export type McpHttpVerifier = (input: {
   authorization: string;
@@ -73,6 +79,7 @@ export class McpHttpGateway {
   readonly #audit: AuditSink;
   readonly #verify: McpHttpVerifier;
   readonly #admission: WriterAdmission | undefined;
+  #holding = 0;
   protected get writerOperations(): Readonly<Record<string, WriterOperation>> {
     return {
       hab_submit: "submit",
@@ -147,6 +154,10 @@ export class McpHttpGateway {
         policy.max_request_bytes > 16 * 1024 * 1024 ||
         policy.max_response_bytes > 32 * 1024 * 1024 ||
         policy.timeout_ms > 30000 ||
+        (policy.max_wait_ms !== undefined &&
+          (!Number.isSafeInteger(policy.max_wait_ms) ||
+            policy.max_wait_ms < 0 ||
+            policy.max_wait_ms > 60000)) ||
         policy.max_active_requests > 1000 ||
         policy.requests_per_window > 1000000 ||
         policy.window_ms > 3600000 ||
@@ -224,12 +235,9 @@ export class McpHttpGateway {
         this.#active--;
       }
     };
+    let deadlineAt = start + this.policy.timeout_ms;
     const check = () => {
-      if (
-        closed ||
-        abort.signal.aborted ||
-        Date.now() - start >= this.policy.timeout_ms
-      )
+      if (closed || abort.signal.aborted || Date.now() >= deadlineAt)
         throw new HttpFailure(504, "resource_rejected");
     };
     const record = async (category: AuditCategory, reason?: string) => {
@@ -257,9 +265,33 @@ export class McpHttpGateway {
     };
     const onAbort = () => stop(408);
     request.signal.addEventListener("abort", onAbort, { once: true });
-    const timer = setTimeout(() => stop(504), this.policy.timeout_ms);
+    let timer = setTimeout(() => stop(504), this.policy.timeout_ms);
+    // Extra time granted to a waiting hab_inbox (ADR-027); 0 until hold() grants some.
+    // A hold gives the wait plus a fresh timeout_ms for the read that follows it.
+    let held = 0;
     const gate: DeliveryMcpGate = {
       check,
+      hold: (ms) => {
+        const max = this.policy.max_wait_ms ?? 0;
+        // A writer scheduler serializes every write; a held request would stall them all.
+        if (
+          held > 0 ||
+          closed ||
+          abort.signal.aborted ||
+          this.#admission !== undefined ||
+          this.#holding >= Math.max(1, this.policy.max_active_requests - 1) ||
+          !Number.isFinite(ms) ||
+          ms <= 0 ||
+          max <= 0
+        )
+          return { ms: 0, signal: abort.signal };
+        held = Math.floor(Math.min(ms, max));
+        this.#holding++;
+        clearTimeout(timer);
+        deadlineAt = Date.now() + this.policy.timeout_ms + held;
+        timer = setTimeout(() => stop(504), deadlineAt - Date.now());
+        return { ms: held, signal: abort.signal };
+      },
       begin: async () => {
         pendingTools++;
         try {
@@ -548,6 +580,7 @@ export class McpHttpGateway {
       abort.abort();
       if (!request.bodyUsed) void request.body?.cancel().catch(() => {});
       clearTimeout(timer);
+      if (held > 0) this.#holding--;
       request.signal.removeEventListener("abort", onAbort);
     }
   }

@@ -34,6 +34,7 @@ import {
 } from "./agent-tools.ts";
 import type { HabAgentService, HabAgentTool } from "./agent-tools.ts";
 import type { InboxMessage } from "../messaging/delivery-service.ts";
+import type { InboxArrivals } from "./inbox-wait.ts";
 import {
   formatHandoffPrompt,
   formatIncomingDisplay,
@@ -260,6 +261,95 @@ export function createHabMcpServer(
   }
   return server;
 }
+/** How often a waiting hab_inbox looks again without a wake, for arrivals by other paths. */
+const INBOX_RECHECK_MS = 5000;
+/**
+ * hab_inbox's wait (ADR-027). With wait_secs and no new mail, hold the request (the
+ * transport grants and caps the time), sleep until a message for this agent is accepted,
+ * the time is up, a newer wait for the same agent starts, or the request ends, and read
+ * again. Every read is the normal authorized hab_inbox; the wake is only a hint.
+ */
+function inboxWait(
+  service: HabMcpService,
+  gate: DeliveryMcpGate | undefined,
+  input: unknown,
+) {
+  const requested =
+    input && typeof input === "object"
+      ? (input as { wait_secs?: unknown }).wait_secs
+      : undefined;
+  if (typeof requested !== "number" || !(requested > 0)) return undefined;
+  const hub = (service as { inboxWaits?: InboxArrivals }).inboxWaits;
+  const recipient = (
+    service as {
+      eventRecipient?: (context: unknown) => { agent_id: string };
+    }
+  ).eventRecipient;
+  let waitedMs = 0;
+  let state:
+    | { until: number; agent: string; signal: AbortSignal; begun: number }
+    | "done"
+    | undefined;
+  return {
+    annotate(output: unknown) {
+      return output && typeof output === "object"
+        ? {
+            ...(output as Record<string, unknown>),
+            waited_secs: Math.round(waitedMs / 1000),
+          }
+        : output;
+    },
+    async again(verified: unknown, output: Record<string, unknown>) {
+      if (state === "done") return false;
+      if (Array.isArray(output.messages) && output.messages.length > 0)
+        return false;
+      if (state === undefined) {
+        // Arguments were already checked by the first read; an invalid call never gets here.
+        if (!hub || typeof recipient !== "function" || !gate?.hold) {
+          state = "done";
+          return false;
+        }
+        const prepared = prepareHabInvocation(
+          service,
+          verified,
+          "hab_inbox",
+          input,
+          "agent",
+        );
+        const agent = recipient.call(service, prepared.context).agent_id;
+        const held = gate.hold(Math.min(requested, 60) * 1000);
+        if (held.ms <= 0) {
+          state = "done";
+          return false;
+        }
+        const begun = Date.now();
+        state = { until: begun + held.ms, agent, signal: held.signal, begun };
+      }
+      const current = state;
+      const waits = hub!;
+      for (;;) {
+        const left = current.until - Date.now();
+        if (left <= 0) break;
+        const wake = await waits.wait(
+          current.agent,
+          Math.min(left, INBOX_RECHECK_MS),
+          current.signal,
+        );
+        if (wake === "aborted") {
+          state = "done";
+          return false;
+        }
+        if (wake === "superseded") break;
+        // "arrived" or a periodic recheck: read again, and keep waiting if still empty.
+        waitedMs = Date.now() - current.begun;
+        if (Date.now() < current.until) return true;
+      }
+      waitedMs = Date.now() - current.begun;
+      state = "done";
+      return true;
+    },
+  };
+}
 function createAgentServer(
   service: HabMcpService,
   resolveContext: DeliveryContextResolver,
@@ -294,23 +384,32 @@ function createAgentServer(
           idempotentHint: tool === "hab_status",
         },
       },
-      (input: unknown) =>
-        executeDeliveryMcpOperation(resolveContext, gate, (verified) => {
-          const prepared = prepareHabInvocation(
-            service,
-            verified,
-            tool,
-            input,
-            "agent",
-          );
-          return runHabAgentTool(
-            agent,
-            prepared.context,
-            tool,
-            prepared.input as Record<string, unknown>,
-            maxResponseBytes,
-          );
-        }),
+      (input: unknown) => {
+        const wait =
+          tool === "hab_inbox" ? inboxWait(service, gate, input) : undefined;
+        return executeDeliveryMcpOperation(
+          resolveContext,
+          gate,
+          (verified) => {
+            const prepared = prepareHabInvocation(
+              service,
+              verified,
+              tool,
+              input,
+              "agent",
+            );
+            const output = runHabAgentTool(
+              agent,
+              prepared.context,
+              tool,
+              prepared.input as Record<string, unknown>,
+              maxResponseBytes,
+            );
+            return wait ? wait.annotate(output) : output;
+          },
+          wait?.again,
+        );
+      },
     );
   }
   return server;

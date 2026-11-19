@@ -60,6 +60,12 @@ export interface DeliveryMcpGate {
   check(): void;
   /** The finish callback takes a fixed refusal reason for the audit, never a body or secret. */
   begin(): Promise<(success: boolean, reason?: string) => Promise<void>>;
+  /**
+   * Optional (ADR-027): hold this request open up to `ms` longer than the transport's
+   * timeout, for hab_inbox's wait. Returns the granted milliseconds (0: no hold) and the
+   * request's abort signal. The transport caps and counts holds; at most one per request.
+   */
+  hold?(ms: number): { ms: number; signal: AbortSignal };
 }
 /** The fixed public error: code, explanation and only details the code allows. */
 export function toolError(error: unknown): {
@@ -89,6 +95,14 @@ export async function executeDeliveryMcpOperation(
   resolveContext: DeliveryContextResolver,
   gate: DeliveryMcpGate | undefined,
   operation: (context: unknown) => unknown,
+  /**
+   * Optional (ADR-027): after a successful run, whether to run the operation again. It
+   * may wait first; the run itself stays synchronous. One audit start/finish for all runs.
+   */
+  again?: (
+    context: unknown,
+    output: Record<string, unknown>,
+  ) => Promise<boolean>,
 ) {
   let finish:
     ((success: boolean, reason?: string) => Promise<void>) | undefined;
@@ -103,13 +117,17 @@ export async function executeDeliveryMcpOperation(
     }
     if (context === null || context === undefined || context === false)
       throw new MessagingError("forbidden");
-    gate?.check();
-    const value = operation(context);
-    if (value && typeof value === "object" && "then" in value) {
-      void Promise.resolve(value).catch(() => {});
-      throw new MessagingError("operation_failed");
-    }
-    const output = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    const run = () => {
+      gate?.check();
+      const value = operation(context);
+      if (value && typeof value === "object" && "then" in value) {
+        void Promise.resolve(value).catch(() => {});
+        throw new MessagingError("operation_failed");
+      }
+      return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    };
+    let output = run();
+    while (again && (await again(context, output))) output = run();
     await finish?.(true);
     gate?.check();
     return {

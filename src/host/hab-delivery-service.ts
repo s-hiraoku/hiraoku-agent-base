@@ -6,12 +6,15 @@ import type {
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { HabDirectory } from "../hab/directory.ts";
 import type { SqliteDelivery } from "../delivery/sqlite-delivery.ts";
+import { InboxArrivals } from "../hab/inbox-wait.ts";
 
 /** HAB composition: the Registry authorizes each operation and the SQLite store delivers. Public operations stay synchronous. */
 export class HabDeliveryService implements DeliveryService, HabDirectory {
   readonly #registry: SQLiteHabRegistry;
   readonly #backend: SqliteDelivery;
   readonly #assertCurrent: () => void;
+  /** Wakes a waiting hab_inbox when a message for its agent is accepted (ADR-027). */
+  readonly inboxWaits = new InboxArrivals();
   constructor(
     registry: SQLiteHabRegistry,
     backend: SqliteDelivery,
@@ -40,9 +43,11 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     );
   }
   submit(context: unknown, input: unknown) {
-    return this.#run(context, "submit", (authorization) =>
+    const receipt = this.#run(context, "submit", (authorization) =>
       this.#backend.admitWithAuthorization(context, input, authorization),
     );
+    this.inboxWaits.notify(receipt.recipient_id);
+    return receipt;
   }
   status(context: unknown, messageId: string) {
     return this.#run(context, "status", (authorization) =>
@@ -142,7 +147,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     messageId: string,
     build: (original: ReturnType<HabDeliveryService["received"]>) => unknown,
   ) {
-    return this.#run(context, "submit", (authorization) => {
+    const result = this.#run(context, "submit", (authorization) => {
       const message = this.#backend.receivedWithAuthorization(
         context,
         messageId,
@@ -164,6 +169,8 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
         ),
       };
     });
+    this.inboxWaits.notify(result.receipt.recipient_id);
+    return result;
   }
   /** The sender's receipt with the recipient's current address. Runs under `status`. */
   statusWithAddress(context: unknown, messageId: string) {
