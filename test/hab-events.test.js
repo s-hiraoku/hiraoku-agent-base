@@ -1015,3 +1015,34 @@ test("a refused doorbell does not start a quiet time, and quiet: false rings eve
   await g.events.dispatch();
   assert.equal(g.h.events().length, 2);
 });
+
+test("new mail waits behind a ring again that is due but left for the next pass", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: { now: () => now, unanswered_after_ms: 60_000 },
+  });
+  // Eleven subscriptions; one pass rings at most ten again.
+  for (let i = 0; i < 8; i++)
+    await f.subscribe("a", {
+      delivery: { mode: "webhook", url: `${URL_A}/${i}`, secret: SECRET },
+    });
+  for (let i = 8; i < 11; i++)
+    await f.subscribe("b", {
+      delivery: { mode: "webhook", url: `${URL_A}/${i}`, secret: SECRET },
+    });
+  await f.send("b", f.a.address, "for a");
+  await f.send("a", f.b.address, "for b");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 11);
+  now += 60_000;
+  await f.send("b", f.a.address, "newer for a");
+  await f.send("a", f.b.address, "newer for b");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 21, "ten rings again, no new mail");
+  now += 3000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 22, "the eleventh ring again, no new mail");
+  const urls = f.h.events().map((e) => e.url);
+  for (let i = 0; i < 11; i++)
+    assert.equal(urls.filter((u) => u === `${URL_A}/${i}`).length, 2);
+});

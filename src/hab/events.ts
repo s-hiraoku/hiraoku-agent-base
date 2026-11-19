@@ -674,6 +674,16 @@ export class HabEvents {
    */
   #isQuiet(row: Row): boolean {
     if (!this.#quiet || !this.#source.unread) return false;
+    // A ring again that is already due (one pass rings at most ten) goes first: ringing new
+    // mail now would put two accepted doorbells one poll apart.
+    if (
+      this.#db
+        .prepare(
+          "SELECT 1 FROM hab_event_rerings WHERE subscription_id=? AND due_at<=? LIMIT 1",
+        )
+        .get(row.id, this.#now())
+    )
+      return true;
     const last = this.#db
       .prepare(
         "SELECT sender_id,message_id,rang_at FROM hab_event_quiet WHERE subscription_id=?",
