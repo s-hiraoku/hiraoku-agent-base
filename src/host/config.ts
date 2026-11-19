@@ -67,6 +67,7 @@ const schema = z.strictObject({
             .max(86_400_000)
             .optional(),
           rering: z.boolean().optional(),
+          quiet: z.boolean().optional(),
           /**
            * Operator-registered doorbells (ADR-029): ring this public HTTPS URL when mail
            * arrives for the address. The secret (`whsec_…` signs, anything else is sent as a

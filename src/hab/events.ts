@@ -342,6 +342,11 @@ export interface HabEventOptions {
   unanswered_after_ms?: number;
   /** Ring once more for an unanswered doorbell (default true). */
   rering?: boolean;
+  /**
+   * Hold newer mail's doorbell while the subscription's last accepted doorbell is younger
+   * than `unanswered_after_ms` and its mail is still unread (default true; ADR-030).
+   */
+  quiet?: boolean;
   post?: WebhookPost;
   now?: () => number;
 }
@@ -383,6 +388,7 @@ export class HabEvents {
   readonly #outageAfter: number;
   readonly #unansweredAfter: number;
   readonly #rering: boolean;
+  readonly #quiet: boolean;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -403,6 +409,7 @@ export class HabEvents {
     );
     this.#unansweredAfter = options.unanswered_after_ms ?? 300_000;
     this.#rering = options.rering ?? true;
+    this.#quiet = options.quiet ?? true;
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -429,7 +436,10 @@ export class HabEvents {
       CREATE TABLE IF NOT EXISTS hab_event_accepted (
         agent_id TEXT NOT NULL, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
         accepted_at INTEGER NOT NULL,
-        PRIMARY KEY(agent_id, sender_id, message_id));`);
+        PRIMARY KEY(agent_id, sender_id, message_id));
+      CREATE TABLE IF NOT EXISTS hab_event_quiet (
+        subscription_id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
+        rang_at INTEGER NOT NULL);`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -483,6 +493,9 @@ export class HabEvents {
     const removed = this.#db
       .prepare("DELETE FROM hab_event_subscriptions WHERE id=? AND agent_id=?")
       .run(id, agentId);
+    this.#db
+      .prepare("DELETE FROM hab_event_quiet WHERE subscription_id=?")
+      .run(id);
     if (!removed.changes) return;
     this.#db
       .prepare(
@@ -726,10 +739,14 @@ export class HabEvents {
   /**
    * One pass: for each live subscription, send one event per new unread message, oldest
    * first. The cursor moves only after a 2xx (or a 413, or the last of 8 attempts), so a
-   * message is announced once per subscription. 410 ends the subscription.
+   * message is announced once per subscription. 410 ends the subscription. While the last
+   * accepted doorbell is quiet (ADR-030) newer mail waits behind the cursor without a ring.
+   * Rings again go first, so a ring again starts a new quiet time instead of sounding
+   * together with newer mail.
    */
   async dispatch() {
     this.#settle();
+    if (this.#rering) await this.#ringAgain();
     const now = this.#now();
     const rows = this.#db
       .prepare(
@@ -737,13 +754,48 @@ export class HabEvents {
       )
       .all(now) as unknown as Row[];
     for (const row of rows) await this.#dispatchOne(row);
-    if (this.#rering) await this.#ringAgain();
+  }
+  /**
+   * Whether the subscription's last accepted doorbell still covers newer mail (ADR-030): it
+   * is younger than `unanswered_after_ms` and its message is still unread. Then the
+   * subscriber has been told that mail waits and has not read yet, and one more ring would
+   * only repeat it. Reading ends the quiet, and so does time, after the ring again.
+   */
+  #isQuiet(row: Row): boolean {
+    if (!this.#quiet || !this.#source.unread) return false;
+    // A ring again that is already due (one pass rings at most ten) goes first: ringing new
+    // mail now would put two accepted doorbells one poll apart.
+    // Only while rings again run: rows left from before `rering: false` must not hold forever.
+    if (
+      this.#rering &&
+      this.#db
+        .prepare(
+          "SELECT 1 FROM hab_event_rerings WHERE subscription_id=? AND due_at<=? LIMIT 1",
+        )
+        .get(row.id, this.#now())
+    )
+      return true;
+    const last = this.#db
+      .prepare(
+        "SELECT sender_id,message_id,rang_at FROM hab_event_quiet WHERE subscription_id=?",
+      )
+      .get(row.id) as
+      { sender_id: string; message_id: string; rang_at: number } | undefined;
+    if (!last || this.#now() - last.rang_at >= this.#unansweredAfter)
+      return false;
+    return this.#source.unread(row.agent_id, {
+      sender_id: last.sender_id,
+      message_id: last.message_id,
+    });
   }
   async #dispatchOne(row: Row) {
     const address = this.#source.addressOf(row.agent_id);
     if (!address) {
       this.#db
         .prepare("DELETE FROM hab_event_subscriptions WHERE id=?")
+        .run(row.id);
+      this.#db
+        .prepare("DELETE FROM hab_event_quiet WHERE subscription_id=?")
         .run(row.id);
       return;
     }
@@ -763,6 +815,9 @@ export class HabEvents {
       if (!arrival) break;
       const key = JSON.stringify([arrival.sender_id, arrival.message_id]);
       if (row.failing !== key) failures = 0;
+      // Held, not skipped: the cursor stays, so the mail is rung after the quiet if it is
+      // still unread then, and never if it was read.
+      if (row.failing !== key && this.#isQuiet(row)) return;
       const status = await this.#ring(row, address, arrival, false);
       if (status === 410) {
         this.#end(row.id, row.agent_id, "gone");
@@ -847,6 +902,14 @@ export class HabEvents {
            VALUES (?,?,?,?)`,
         )
         .run(row.agent_id, arrival.sender_id, arrival.message_id, at);
+    if (status >= 200 && status <= 299)
+      this.#db
+        .prepare(
+          `INSERT INTO hab_event_quiet (subscription_id,sender_id,message_id,rang_at)
+           VALUES (?,?,?,?) ON CONFLICT(subscription_id) DO UPDATE SET
+             sender_id=excluded.sender_id, message_id=excluded.message_id, rang_at=excluded.rang_at`,
+        )
+        .run(row.id, arrival.sender_id, arrival.message_id, at);
     return status;
   }
   /**
