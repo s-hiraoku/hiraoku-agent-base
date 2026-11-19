@@ -144,6 +144,16 @@
 - **送受信の境界は変わらない。** 一覧に出ても、ほかのgroupの名義で送ったり、受信箱を読んだりはできない（ADR-014）。送れるのは今までどおり宛先として`hab_send`するだけ。
 - **製品仕様を直す。** F-03（宛先一覧）と「group外の存在を漏らさない」の記述に、この例外を書く（[製品仕様](hab-product-spec.md)）。
 
+## ADR-026 / 採用：受信メッセージの見せ方は各エージェントのアダプタが描き、HABは共通の表示用データを返す
+
+2026-11-19 JST、owner判断（「エージェントごとのアダプターで読みやすく改善したい」「末端のそれぞれのエージェントのアダプターで処理を実装する」「これで行こう」）。ADR-020・021の`notice`と`display`は、どの製品でも読めるよう改行入りの素朴な文章にしている。カードの仕様は製品ごとに大きく違い（Hermes Desktopはプラグイン、claude.ai・ChatGPT・GeminiアプリはMCP Apps、Claude Codeはstatus lineとchannel、Codex・Grok Bot・Antigravityは文字だけか未確認）、文章を丸ごと入れると送信者や選択肢が二重に出る。モデルが`notice`を読み直して伝える製品では、見せ方が毎回変わり、要約されることもある。基準は[エージェントごとの受信表示](receiver/per-agent-display.md)とする。
+
+- **HABは表示用のデータを返す。** `hab_inbox`と`hab_peek`の各メッセージに`presentation`（版1）を足す。中身は今ある値の並べ替えだけで、新しい情報は足さない：見出し、送信者（アドレスと表示名。削除された送信者は「（削除された送信者）」）、種類と表示名（質問・回答・お知らせ）、自分が送ったメッセージへの返事か、送信日時、返信期限、選択肢（`choices`と同じ）、本文が送信者の書いたデータであること（`body_untrusted: true`）と扱いの一文、表示していない構造化データの件数。本文はメッセージの`text`をそのまま使い、`presentation`に写さない（応答の大きさを増やさないため）。`hab_peek`も`text`を返す。表示名は日本語でHABが決め、各アダプタはそれを使う（製品ごとに訳語がずれないように）。
+- **今の文章は残す。** `notice`・`display`・`handoff_prompt`は今までどおり返す。これらも同じ値から作るので、文章と`presentation`は常に一致する。画面を持たない製品や、`presentation`を知らない古いアダプタは文章をそのまま使う。
+- **描くのは各アダプタ。** Hermes Desktopのプラグインは`presentation`から見出し・送信者・種類・期限・本文の枠・ボタンを分けて描き、無ければ今の`display`を出す。Claude Codeのstatus lineは要約1行と本文の先頭を出す。claude.ai・ChatGPT・Geminiアプリ向けには、エージェント用`/mcp`がMCP Appsの部品`ui://hab/inbox-v1`を配り、`hab_inbox`だけに`_meta.ui.resourceUri`（ChatGPTの別名`openai/outputTemplate`も）を付ける。部品はネットワークを使わない1枚のHTMLで、本文は文字としてだけ描く。ボタンはHABの状態を変えない（`hab_inbox`は返した時点で既読にする）：「対応する」「会話に渡す」は会話に利用者の発言として返信の依頼を入れ（`ui/message`）、モデルが返信案を見せてから送る。「あとで」「対応しない」はカードを畳むだけ。`/mcp`は読み取り専用の`resources/list`・`resources/read`・`resources/templates/list`に答える（`/mcp/delivery`は答えない）。部品を描けない製品では、普通のツール結果として文章のまま動く。
+- **本文の扱いは変えない。** モデルへ渡る文章（`notice`・`handoff_prompt`）は今までどおり推測できない印の2行で本文を囲む。`presentation`は構造化データとしてモデルにも渡るので`body_untrusted`と扱いの一文を付ける。アダプタは本文を文字として描き、HTMLやMarkdownとして解釈しない。
+- **限界。** `presentation`は見せ方の材料で、届いた時点で画面に出す入口（ADR-021の受信通知）を新たに作るものではない。claude.ai・ChatGPT・Gemini・Grok Bot・AntigravityでMCP Appsが実際に描けるかは実機で確かめる（2026-11-19時点で未確認）。応答の大きさの見積もり（本文が文章と構造化データに入る回数）は、`hab_peek`が`text`を返す分だけ増える。
+
 ## ADR-027 / 採用：返事をその場で待ちたいエージェントには、hab_inboxで最大数十秒だけ新着を待たせる
 
 2026-11-19 JST、owner判断（agent-mailの記事を参考に「お願いします」）。claude.aiのClaudeやClaude Codeのように、呼び鈴（ADR-022）も受信通知（ADR-021）も受けられないエージェントは、送った後に返事が来ても、利用者が次に話しかけるまで気づけない。agent-mail（自作のMCPメール）は`check_inbox(wait_secs)`で受信箱が空なら最長50秒待ち、「行きはWebhook、帰りはMCPの待ち受け」で往復を成り立たせている。ADR-020の「返事を待つ長時間の呼出し（long-poll）は置かない」を、次の範囲に限って改める。

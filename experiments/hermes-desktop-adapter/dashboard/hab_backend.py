@@ -15,6 +15,9 @@ EVENT_FIELDS = ("event_id", "source", "format", "sender_id", "receiver_id", "mes
                 "address", "backend_namespace", "profile_scope", "owner_kind", "received_at", "text",
                 "binding_id", "binding_generation", "logical_target", "stored_session_id", "handoff_state")
 EVENT_SCOPE = ("backend_namespace", "profile_scope", "receiver_id")
+# ADR-026: optional, passed through only together; the card falls back to `text` without them.
+PRESENTATION_FIELDS = ("presentation", "body")
+PRESENTATION_BYTES = 16000
 MAX_BYTES = 2 * 1024 * 1024
 READ_TIMEOUT = 8
 ACTION_TIMEOUT = 40
@@ -182,14 +185,14 @@ class Adapter:
         suffix = ["--after", after] if after else []
         limit = 50
         try:
-            page = await self.run(config, self.home, "events", args=["--limit", str(limit), *suffix])
+            page = await self.run(config, self.home, "events", args=["--limit", str(limit), *suffix, "--presentation"])
         except Unavailable as error:
             # Only our byte-bound failure permits one smaller read at the SAME cursor.
             # No command/action error is retried, and no cursor is committed on failure.
             if error.args != ("response_too_large",):
                 raise
             limit = 1
-            page = await self.run(config, self.home, "events", args=["--limit", "1", *suffix])
+            page = await self.run(config, self.home, "events", args=["--limit", "1", *suffix, "--presentation"])
         events = page.get("events")
         if (page.get("source") != "external_agent" or not isinstance(events, list) or len(events) > limit
                 or not isinstance(page.get("next_cursor"), str)
@@ -209,6 +212,11 @@ class Adapter:
                     or any(not isinstance(event.get(k), str) or not event[k] or len(event[k]) > 2048
                            for k in EVENT_FIELDS if k not in ("text", "binding_generation"))):
                 raise Unavailable("invalid_event_binding")
+            if any(k in event for k in PRESENTATION_FIELDS) and (
+                    not isinstance(event.get("presentation"), dict) or event["presentation"].get("version") != 1
+                    or len(compact(event["presentation"]).encode()) > PRESENTATION_BYTES
+                    or not isinstance(event.get("body"), str) or len(event["body"].encode()) > 131072):
+                raise Unavailable("invalid_event_presentation")
             keys_checked([{k: event.get(k) for k in ("sender_id", "message_id")}])
             pairs.add((event["sender_id"], event["message_id"]))
         updates, checked, errors = [], [], []
@@ -233,7 +241,7 @@ class Adapter:
                 updates.extend(states.values())
                 checked.extend(scoped)
         self.unchanged(config, stamp)
-        return {"source": "external_agent", "events": [{k: e[k] for k in EVENT_FIELDS} for e in events],
+        return {"source": "external_agent", "events": [{k: e[k] for k in EVENT_FIELDS + PRESENTATION_FIELDS if k in e} for e in events],
                 "next_cursor": page["next_cursor"], "has_more": page["has_more"], "decision_states": updates, "decision_checked_keys": checked,
                 "decision_error_keys": errors, "binding_id": config["binding_id"]}
 

@@ -40,6 +40,13 @@ import {
   formatIncomingDisplay,
   incomingChoices,
 } from "../messaging/incoming-notice.ts";
+import {
+  HAB_INBOX_APP_HTML,
+  HAB_INBOX_APP_URI,
+  MCP_APP_MIME_TYPE,
+  habInboxAppResourceMeta,
+  habInboxAppToolMeta,
+} from "./inbox-app.ts";
 /** Which tools one MCP endpoint offers; host code chooses it, never the caller. */
 export type HabMcpCatalog = "agent" | "delivery";
 export type HabMcpService = DeliveryService &
@@ -379,6 +386,30 @@ function createAgentServer(
     { instructions: HAB_AGENT_INSTRUCTIONS },
   );
   server.server.registerCapabilities({ tools: { listChanged: false } });
+  // ADR-026: the inbox card for MCP Apps hosts. A static page with no data of its own;
+  // hosts without MCP Apps never read it.
+  server.registerResource(
+    "hab-inbox-card",
+    HAB_INBOX_APP_URI,
+    {
+      title: "HAB 受信箱",
+      description: "Draws hab_inbox results as cards.",
+      mimeType: MCP_APP_MIME_TYPE,
+      _meta: habInboxAppResourceMeta,
+    },
+    () => ({
+      contents: [
+        {
+          uri: HAB_INBOX_APP_URI,
+          mimeType: MCP_APP_MIME_TYPE,
+          text: HAB_INBOX_APP_HTML,
+          _meta: habInboxAppResourceMeta,
+        },
+      ],
+    }),
+  );
+  const securityMeta =
+    (security as { _meta?: Record<string, unknown> })._meta ?? {};
   for (const name of Object.keys(habAgentMcpSchemas)) {
     const tool = name as HabAgentTool;
     server.registerTool(
@@ -387,6 +418,10 @@ function createAgentServer(
         description: habAgentDescriptions[tool],
         inputSchema: publishedInputSchema(habAgentMcpSchemas[tool]),
         ...security,
+        // Only hab_inbox draws a card; on every tool it would redraw on each call.
+        ...(tool === "hab_inbox"
+          ? { _meta: { ...securityMeta, ...habInboxAppToolMeta } }
+          : {}),
         annotations: {
           readOnlyHint: false,
           idempotentHint: tool === "hab_status",
@@ -495,7 +530,7 @@ function createDeliveryServer(
           const found = peek(prepared.context, {
             limit,
             ...(after !== undefined ? { after: parsePeekCursor(after) } : {}),
-            // Like hab_inbox, the body appears twice (display and handoff_prompt).
+            // Like hab_inbox, the body appears three times (text, display, handoff_prompt).
             ...(maxResponseBytes !== undefined
               ? { max_bytes: Math.max(1, maxResponseBytes - 4096) }
               : {}),
@@ -512,7 +547,7 @@ function createDeliveryServer(
             };
             const entry: Partial<ReturnType<typeof inboxEntry>> =
               inboxEntry(message);
-            delete entry.text;
+            // `text` stays: an adapter drawing `presentation` (ADR-026) needs the body.
             delete entry.notice;
             return {
               ...entry,

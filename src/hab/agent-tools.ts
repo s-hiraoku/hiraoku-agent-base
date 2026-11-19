@@ -19,7 +19,10 @@ import type {
 } from "../messaging/delivery-service.ts";
 import type { HabResolution } from "./directory.ts";
 import { parseHabAddress } from "./registry.ts";
-import { formatIncomingNotice } from "../messaging/incoming-notice.ts";
+import {
+  formatIncomingNotice,
+  incomingPresentation,
+} from "../messaging/incoming-notice.ts";
 
 /** What the agent catalog needs from the host service (HabDeliveryService). */
 export interface HabAgentService {
@@ -287,6 +290,8 @@ export function inboxEntry(message: InboxMessage & { from: string | null }) {
     text: message.text,
     data_parts: message.data_parts,
     reply_by: message.expires_at,
+    in_reply_to: message.in_reply_to?.message_id ?? null,
+    sent_at: message.sent_at,
   };
   return {
     message_id: message.message_id,
@@ -302,6 +307,8 @@ export function inboxEntry(message: InboxMessage & { from: string | null }) {
     new: message.new,
     // What to show the user: sender, kind, reply deadline, framed body, choices.
     notice: formatIncomingNotice(notice),
+    // The same facts as data, for an adapter that draws its own card (ADR-026).
+    presentation: incomingPresentation(notice),
   };
 }
 

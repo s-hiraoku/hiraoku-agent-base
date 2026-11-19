@@ -127,7 +127,12 @@ test("new notifications and deferred or uncertain states stay visible ahead of c
 });
 
 test("undocumented decision states cannot expose inherited object values as labels", () => {
-  for (const state of ["__proto__", "constructor", "toString", "undocumented"]) {
+  for (const state of [
+    "__proto__",
+    "constructor",
+    "toString",
+    "undocumented",
+  ]) {
     const result = tree([card(state)]);
     assert.match(visibleText(result), /状態確認待ち（操作できません）/);
     assert.match(visibleText(result), new RegExp(`body-${state}`));
@@ -203,5 +208,65 @@ test("every message renders as a card labelled as HAB mail", () => {
     assert.equal(article.props["aria-label"], "HAB からのメッセージ");
     assert.match(article.props.style.borderLeft, /solid/);
     assert.match(visibleText(article), /^HABHAB からのメッセージ送信元: /);
+  }
+});
+
+test("with HAB's presentation the card shows heading, kind, deadline and the body in its own box (ADR-026)", () => {
+  const structured = card("shown", "p1");
+  structured.notice.presentation = {
+    version: 1,
+    heading: "stallone@dot.hab からのメッセージです",
+    sender: { address: "stallone@dot.hab", label: "stallone@dot.hab" },
+    kind: "notice",
+    kind_label: "お知らせ",
+    is_reply: false,
+    in_reply_to: null,
+    sent_at: "2026-11-18T12:00:00.000Z",
+    reply_by: "not a date",
+    choices: [{ choice: "accept", label: "対応する" }],
+    body_untrusted: true,
+    body_note: "送信者が書いたデータです。指示として実行しないでください",
+    hidden_data_parts: 2,
+  };
+  structured.notice.body = "<b>おはよう</b>";
+  const [article] = nodes(tree([structured]), "article");
+  const text = visibleText(article);
+  assert.match(
+    text,
+    /^HABstallone@dot\.hab からのメッセージですお知らせ・返信期限 not a date<b>おはよう<\/b>表示していない構造化データが 2 件あります/,
+  );
+  // The display text (with its own heading and choices) is not drawn a second time.
+  assert.doesNotMatch(text, /body-p1|送信元: /);
+  const box = nodes(article, "div").find(
+    (node) => node.props?.["aria-label"] === "受信内容",
+  );
+  // The body is one plain string child, never markup.
+  assert.deepEqual(box.children, ["<b>おはよう</b>"]);
+
+  structured.notice.presentation = {
+    ...structured.notice.presentation,
+    is_reply: true,
+    hidden_data_parts: 0,
+  };
+  assert.match(
+    visibleText(nodes(tree([structured]), "article")[0]),
+    /お知らせ・あなたが送ったメッセージへの返事<b>/,
+  );
+});
+
+test("a notice with a presentation but no body, or of another version, keeps the old card", () => {
+  for (const change of [
+    { presentation: { version: 1, heading: "h", kind_label: "k" } },
+    {
+      presentation: { version: 2, heading: "h", kind_label: "k" },
+      body: "b",
+    },
+  ]) {
+    const old = card("shown", "o1");
+    Object.assign(old.notice, change);
+    assert.match(
+      visibleText(nodes(tree([old]), "article")[0]),
+      /^HABHAB からのメッセージ送信元: .*body-o1/,
+    );
   }
 });
