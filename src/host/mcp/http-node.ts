@@ -14,6 +14,14 @@ const forwarded = [
   "mcp-name",
   "mcp-protocol-version",
 ];
+/**
+ * The socket-level backstop. The gateway enforces the real deadline; a waiting hab_inbox
+ * (ADR-028) may hold a request for its wait plus a fresh timeout_ms after the first one.
+ */
+function nodeTimeout(policy: McpHttpGateway["policy"]) {
+  const wait = policy.max_wait_ms ?? 0;
+  return wait > 0 ? 2 * policy.timeout_ms + wait : policy.timeout_ms;
+}
 export function createMcpNodeHandler(gateway: McpHttpGateway) {
   let active = 0;
   const resource = new URL(gateway.policy.resource_url);
@@ -41,7 +49,7 @@ export function createMcpNodeHandler(gateway: McpHttpGateway) {
     const timer = setTimeout(() => {
       abort.abort();
       reject(504);
-    }, gateway.policy.timeout_ms);
+    }, nodeTimeout(gateway.policy));
     const release = () => {
       if (released) return;
       released = true;
