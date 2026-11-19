@@ -317,7 +317,15 @@ function inboxWait(
           "agent",
         );
         const agent = recipient.call(service, prepared.context).agent_id;
-        const held = gate.hold(Math.min(requested, 60) * 1000);
+        let held = gate.hold(Math.min(requested, 60) * 1000);
+        // Newest wait wins also at the hold limit: end this agent's older wait and take
+        // the hold it gives back once its request finishes.
+        if (held.ms <= 0 && hub.supersede(agent))
+          for (let i = 0; i < 50 && held.ms <= 0; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            gate.check();
+            held = gate.hold(Math.min(requested, 60) * 1000);
+          }
         if (held.ms <= 0) {
           state = "done";
           return false;

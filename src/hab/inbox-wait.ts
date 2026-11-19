@@ -39,6 +39,12 @@ export class InboxArrivals {
       this.#waiters.set(agentId, waiter);
     });
   }
+  /** Ends the open wait for `agentId`, if any, as superseded. Returns whether there was one. */
+  supersede(agentId: string): boolean {
+    const waiter = this.#waiters.get(agentId);
+    waiter?.finish("superseded");
+    return waiter !== undefined;
+  }
   /** How many waits are open, for tests and operators. */
   get waiting() {
     return this.#waiters.size;

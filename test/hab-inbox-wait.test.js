@@ -178,3 +178,17 @@ test("InboxArrivals wakes one waiter per agent and ignores other agents", async 
   assert.equal(await aborted, "aborted");
   assert.equal(hub.waiting, 0);
 });
+
+test("at the hold limit a newer wait for the same agent still replaces the older one", async (t) => {
+  const f = await setup(t, { max_active_requests: 2 });
+  // One hold fills the limit (max_active_requests - 1).
+  const first = f.ok("b", "hab_inbox", { wait_secs: 10 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const second = f.ok("b", "hab_inbox", { wait_secs: 10 });
+  assert.deepEqual((await first).messages, []);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await f.ok("a", "hab_send", { to: f.b.address, text: "to the newer wait" });
+  const newer = await second;
+  assert.equal(newer.messages.length, 1);
+  assert.equal(newer.messages[0].text, "to the newer wait");
+});
