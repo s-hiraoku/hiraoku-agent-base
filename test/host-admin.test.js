@@ -1110,4 +1110,26 @@ test("status reports unread mail waiting and lapsed doorbells per address", asyn
   const text = JSON.stringify(bells);
   assert.ok(!text.includes("hooks.example.com"));
   assert.ok(!text.includes("whsec_"));
+  // An operator-registered doorbell (ADR-029) is live without a lifetime.
+  const db2 = new DatabaseSync(store);
+  db2
+    .prepare(
+      "INSERT INTO hab_event_subscriptions (id,agent_id,url,secret,expires_at,created_at) VALUES (?,?,?,?,?,?)",
+    )
+    .run(
+      "hab_static_x",
+      hermes.address.agent_id,
+      "https://hooks.example.com/grok",
+      "grok-routine-token-0123456789",
+      8_640_000_000_000_000,
+      Date.now(),
+    );
+  db2.close();
+  const withOperator = Object.fromEntries(
+    hostAdminStatus(f.configPath).inboxes.map((i) => [i.address, i]),
+  )["hermes@hermes.hab"];
+  assert.equal(withOperator.doorbell, "live");
+  assert.equal(withOperator.doorbell_operator, 1);
+  assert.equal("doorbell_until" in withOperator, false);
+  assert.ok(!JSON.stringify(withOperator).includes("grok-routine-token"));
 });

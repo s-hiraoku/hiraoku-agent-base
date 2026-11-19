@@ -592,6 +592,7 @@ test("operators can see when and why a recipient's doorbell stopped; subscribing
     { ...readDoorbells(f.store, now).get(f.a.agent_id), until: null },
     {
       live: 1,
+      operator: 0,
       until: null,
       lapsed_at: null,
       reason: null,
@@ -1045,4 +1046,87 @@ test("new mail waits behind a ring again that is due but left for the next pass"
   const urls = f.h.events().map((e) => e.url);
   for (let i = 0; i < 11; i++)
     assert.equal(urls.filter((u) => u === `${URL_A}/${i}`).length, 2);
+});
+
+// ADR-029: the operator registers a doorbell for an address in the host config, for agents
+// such as Grok Bot whose routines are started by a webhook and cannot subscribe themselves.
+const URL_G = "https://hooks.example.com/grok/routine";
+const BEARER = "grok-routine-token-0123456789";
+
+test("an operator doorbell rings with a Bearer token for new mail only, and never expires", async (t) => {
+  let now = Date.now();
+  // Without the ADR-027 ring-again, so each ring below is one new message.
+  const f = await setup(t, { events: { now: () => now, rering: false } });
+  await f.send("a", f.b.address, "old mail before the doorbell");
+  f.events.configureStatic([
+    { agent_id: f.b.agent_id, url: URL_G, secret: BEARER },
+  ]);
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 0, "mail waiting before setup is not rung");
+  await f.send("a", f.b.address, "new mail");
+  await f.events.dispatch();
+  const [ring] = f.h.events();
+  assert.equal(ring.url, URL_G);
+  assert.equal(ring.headers.Authorization, `Bearer ${BEARER}`);
+  assert.equal(ring.headers["webhook-signature"], undefined);
+  assert.deepEqual(Object.keys(ring.parsed.data).sort(), ["arrived_at", "to"]);
+  assert.equal(ring.parsed.data.to, f.b.address);
+  assert.doesNotMatch(ring.body, /new mail/);
+  // No verification challenge is sent for an operator doorbell.
+  assert.equal(
+    f.h.seen.filter((s) => s.parsed.type === "verification").length,
+    0,
+  );
+  // Far past any subscription lifetime it still rings, and status shows it as operator.
+  now += 30 * 86_400_000;
+  await f.send("a", f.b.address, "a month later");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+  const bell = readDoorbells(f.store, now).get(f.b.agent_id);
+  assert.equal(bell.live, 1);
+  assert.equal(bell.operator, 1);
+  assert.equal(bell.until, null);
+});
+
+test("an operator doorbell with a whsec_ secret is signed, takes no subscriber slot and is removed when unlisted", async (t) => {
+  const f = await setup(t, { events: { max_per_agent: 1 } });
+  f.events.configureStatic([
+    { agent_id: f.b.agent_id, url: URL_G, secret: SECRET },
+  ]);
+  // The recipient's own subscription still fits within max_per_agent: 1.
+  const subscribed = await f.subscribe("b");
+  assert.equal(subscribed.error, undefined, JSON.stringify(subscribed));
+  await f.send("a", f.b.address, "hello");
+  await f.events.dispatch();
+  const rings = f.h.events();
+  assert.equal(rings.length, 2);
+  const operator = rings.find((r) => r.url === URL_G);
+  const ts = Number(operator.headers["webhook-timestamp"]);
+  assert.equal(
+    operator.headers["webhook-signature"],
+    signWebhook(SECRET, operator.headers["webhook-id"], ts, operator.body),
+  );
+  assert.equal(operator.headers.Authorization, undefined);
+  // Applying a config without it removes it; the MCP subscription stays.
+  f.events.configureStatic([]);
+  assert.deepEqual(
+    f.events.subscriptions().map((s) => s.url),
+    [URL_A],
+  );
+});
+
+test("operator doorbells refuse private URLs and weak secrets", async (t) => {
+  const f = await setup(t);
+  for (const [url, secret] of [
+    ["http://hooks.example.com/x", BEARER],
+    ["https://127.0.0.1/x", BEARER],
+    ["https://hooks.local/x", BEARER],
+    [URL_G, "short"],
+    [URL_G, "has space in the token value"],
+    [URL_G, "whsec_tooshort"],
+  ])
+    assert.throws(() =>
+      f.events.configureStatic([{ agent_id: f.b.agent_id, url, secret }]),
+    );
+  assert.deepEqual(f.events.subscriptions(), []);
 });

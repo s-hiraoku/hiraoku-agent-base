@@ -1,4 +1,11 @@
 /** Starts the configured host: local auth, optional OAuth ingress, SQLite delivery and audit. */
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  openSync,
+  readFileSync,
+} from "node:fs";
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedOAuthAuthority } from "./oauth-auth.ts";
@@ -15,6 +22,9 @@ const hostReasons = new Set([
   "insecure_journal_file",
   "invalid_host_options",
   "invalid_host_ingress",
+  "unknown_doorbell_address",
+  "invalid_doorbell",
+  "unsafe_doorbell_secret",
   "invalid_host_a2a",
   "a2a_identity_conflict",
   "a2a_identity_retired",
@@ -32,6 +42,42 @@ const hostReasons = new Set([
   "unsupported_host_owner_schema",
   "unknown_host_owner_schema",
 ]);
+/**
+ * Reads each operator-registered doorbell's secret (ADR-029) from its own file: a regular
+ * file, not a link, owner-only, at most 1 KiB. The secret never lives in the host config.
+ */
+export function withDoorbellSecrets<
+  T extends {
+    doorbells?: { address: string; url: string; secret_file: string }[];
+  },
+>(events: T) {
+  const { doorbells, ...rest } = events;
+  if (!doorbells?.length) return rest;
+  return {
+    ...rest,
+    doorbells: doorbells.map(({ address, url, secret_file }) => {
+      let secret: string;
+      try {
+        const fd = openSync(
+          secret_file,
+          // O_NONBLOCK: a FIFO with no writer must be refused, not hang the start.
+          constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+        );
+        try {
+          const info = fstatSync(fd);
+          if (!info.isFile() || (info.mode & 0o077) !== 0 || info.size > 1024)
+            throw Error();
+          secret = readFileSync(fd, "utf8").trim();
+        } finally {
+          closeSync(fd);
+        }
+      } catch {
+        throw Error("unsafe_doorbell_secret");
+      }
+      return { address, url, secret };
+    }),
+  };
+}
 function hostReason(error: unknown): string {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
   if (code === "EADDRINUSE") return "port_in_use";
@@ -87,7 +133,7 @@ export async function startHost(configPath: string) {
                 authority: remote.authority,
                 verify: remote.verify,
                 ...(config.ingress.events
-                  ? { events: config.ingress.events }
+                  ? { events: withDoorbellSecrets(config.ingress.events) }
                   : {}),
               },
             }

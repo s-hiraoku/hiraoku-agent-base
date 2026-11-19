@@ -50,6 +50,22 @@ command方式でも[専用stdio](../receiver/recipient-stdio.md)のowner・priva
 専用storesは必要である。account-wideのcommand登録だけではBotとの一対一bindingを
 証明しない。既存fixtureや固定allow-allで不足を補わない。
 
+## 新着でroutineを起こす（ADR-029）
+
+Grok BotはHABのMCPイベントを購読できないので、運用者が呼び鈴の宛先を登録します
+（[運用者が登録する呼び鈴](mcp-events.md#運用者が登録する呼び鈴adr-029)）。
+
+1. Grok BotでWebhookから始まるroutineを作り、そのURLと受け付ける鍵（Bearer tokenか`whsec_`）を確かめる。
+   routineの指示は「HABコネクタの`hab_inbox`で受信箱を読み、中身を私に見せる。返信は私が頼むまでしない」
+   （自動で返すなら、返す相手と内容の範囲を指示で絞る）。
+2. 鍵をMac miniの所有者だけが読めるファイルに隠し入力で保存する（例：`read -rs T; printf %s "$T" > …; chmod 600 …`）。
+3. host設定の`ingress.events.doorbells`にGrok BotのHABアドレス・URL・鍵ファイルを書き、hostを再起動する。
+4. ほかのエージェントからGrok Botへ`hab_send`し、`hab:admin status`の`doorbell_last_status`が2xxになり、
+   routineが`hab_inbox`を呼んで`unread`が0になることを確かめる。
+
+Webhookで起きるroutineの正式な入力形式・鍵の種類・実行枠は、2026-11-19時点で実機未確認。
+Grok BotのHABコネクタ（ingressの`/mcp`）接続そのものも未確認のままである。
+
 ## 受入れと停止
 
 最初は無害な有限質問で、実Grok Botのnative MCP、本文の永続保存後ACK、
