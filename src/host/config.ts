@@ -67,6 +67,21 @@ const schema = z.strictObject({
             .max(86_400_000)
             .optional(),
           rering: z.boolean().optional(),
+          /**
+           * Operator-registered doorbells (ADR-029): ring this public HTTPS URL when mail
+           * arrives for the address. The secret (`whsec_…` signs, anything else is sent as a
+           * Bearer token) is read from an owner-only file, never written in this config.
+           */
+          doorbells: z
+            .array(
+              z.strictObject({
+                address: z.string().max(101),
+                url: z.string().max(2048),
+                secret_file: absolute,
+              }),
+            )
+            .max(32)
+            .optional(),
         })
         .optional(),
     })

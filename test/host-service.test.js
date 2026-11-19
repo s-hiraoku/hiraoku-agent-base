@@ -17,7 +17,7 @@ import { once } from "node:events";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { readHostConfig } from "../src/host/config.ts";
-import { startHost } from "../src/host/start.ts";
+import { startHost, withDoorbellSecrets } from "../src/host/start.ts";
 import { envelope } from "./mcp-http-fixtures.js";
 import { fixture, list } from "./host-service-fixtures.js";
 const cli = resolve("scripts/hab-host.ts");
@@ -493,4 +493,64 @@ test("ingress events refuse an outage threshold outside its bounds (ADR-024)", a
       return true;
     });
   }
+});
+test("operator doorbell secrets are read from owner-only files only (ADR-029)", async (t) => {
+  const f = await fixture(t);
+  const secretPath = join(f.dir, "grok-doorbell.secret");
+  writeFileSync(secretPath, "grok-routine-token-0123456789\n", { mode: 0o600 });
+  const entry = {
+    address: "grok@grok.hab",
+    url: "https://hooks.example.com/grok",
+    secret_file: secretPath,
+  };
+  assert.deepEqual(withDoorbellSecrets({ poll_ms: 500, doorbells: [entry] }), {
+    poll_ms: 500,
+    doorbells: [
+      {
+        address: "grok@grok.hab",
+        url: "https://hooks.example.com/grok",
+        secret: "grok-routine-token-0123456789",
+      },
+    ],
+  });
+  chmodSync(secretPath, 0o644);
+  assert.throws(
+    () => withDoorbellSecrets({ doorbells: [entry] }),
+    /unsafe_doorbell_secret/,
+  );
+  assert.throws(
+    () =>
+      withDoorbellSecrets({
+        doorbells: [{ ...entry, secret_file: join(f.dir, "missing") }],
+      }),
+    /unsafe_doorbell_secret/,
+  );
+  // Without doorbells the events settings pass through unchanged.
+  assert.deepEqual(withDoorbellSecrets({ poll_ms: 500 }), { poll_ms: 500 });
+});
+test("a doorbell with a relative secret file is a config error (ADR-029)", async (t) => {
+  const f = await fixture(t);
+  f.write("service.local.json", {
+    ...f.config,
+    ingress: {
+      port: 0,
+      resource_url: "https://hab.example/hab/mcp",
+      oauth_file: join(f.dir, "remote-auth.local.json"),
+      allowed_origins: [],
+      events: {
+        doorbells: [
+          {
+            address: "grok@grok.hab",
+            url: "https://hooks.example.com/grok",
+            secret_file: "grok.secret",
+          },
+        ],
+      },
+    },
+  });
+  await assert.rejects(startHost(f.configPath), (error) => {
+    assert.equal(error.reason, "config_invalid");
+    assert.deepEqual(error.fields, ["ingress.events.doorbells.0.secret_file"]);
+    return true;
+  });
 });

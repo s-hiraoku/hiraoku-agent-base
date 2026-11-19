@@ -1707,6 +1707,16 @@ export class SQLiteHabRegistry {
     }
     return out;
   }
+  /**
+   * The agent ID registered at an address, for operator-configured doorbells (ADR-029).
+   * Host start only; not reachable from any tool.
+   */
+  agentIdOf(address: string): string | undefined {
+    const row = this.#db
+      .prepare(`SELECT agent_id FROM ${this.#agentTable()} WHERE address=?`)
+      .get(address);
+    return row ? String(row.agent_id) : undefined;
+  }
   get discoveryEnabled(): boolean {
     return this.#options.discovery !== undefined;
   }

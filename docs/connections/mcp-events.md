@@ -128,6 +128,33 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
 | `challenge_failed` / `timeout` | -32015 | 確認のchallengeが返らない |
 | `forbidden` | -32600 | その接続に`poll`の権限がない |
 
+## 運用者が登録する呼び鈴（ADR-029）
+
+自分でイベントを購読できないエージェント（Webhookで起きるroutineを持つGrok Botなど）には、
+運用者がhost設定でアドレスごとに呼び鈴の宛先を登録します。
+
+```json
+"ingress": {
+  "events": {
+    "doorbells": [
+      {
+        "address": "grok@grok-bot.hab",
+        "url": "https://<routineのWebhook URL>",
+        "secret_file": "/ABSOLUTE/PRIVATE/grok-doorbell.secret"
+      }
+    ]
+  }
+}
+```
+
+- `secret_file`は所有者だけが読める（`chmod 600`）1KiB以下のファイルで、中身は鍵1行です。
+  `whsec_…`ならStandard Webhooksの署名ヘッダ、それ以外（16〜512文字のtoken）は
+  `Authorization: Bearer <token>`で送ります。鍵をチャットや設定ファイルに貼らないでください。
+- 中身は購読の呼び鈴と同じ`{to, arrived_at}`だけです。失敗時の再送、5分後の鳴らし直し（ADR-027）も同じです。
+- 期限はなく、challengeも送りません。設定から消してhostを再起動すると外れます。
+  登録した時点で待っているメールでは鳴りません。
+- `hab:admin status`では`doorbell: "live"`と`doorbell_operator: 1`のように見えます。
+
 ## Dots（ChatGPT）を設定する
 
 1. Mac miniのホスト設定に`ingress.events`を入れて再起動する（バックアップを取ってから）。

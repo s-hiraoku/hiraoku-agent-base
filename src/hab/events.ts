@@ -346,6 +346,30 @@ export interface HabEventOptions {
   now?: () => number;
 }
 const MAX_ATTEMPTS = 8;
+/**
+ * Operator-registered doorbells (ADR-029) live in the same table under this ID prefix. They
+ * never expire, take no subscriber slot and cannot be unsubscribed through MCP; the host
+ * config is their only source, applied at start.
+ */
+const STATIC_PREFIX = "hab_static_";
+const NEVER = 8_640_000_000_000_000;
+const BEARER = /^[A-Za-z0-9._~+/=-]{16,512}$/;
+/** A doorbell secret: a Standard Webhooks `whsec_` key, or a Bearer token. */
+export function doorbellSecret(secret: unknown): string {
+  if (typeof secret === "string" && secret.startsWith("whsec_")) {
+    webhookKey(secret);
+    return secret;
+  }
+  if (typeof secret !== "string" || !BEARER.test(secret))
+    throw invalid("invalid_secret");
+  return secret;
+}
+/** One doorbell the operator registered for an address (ADR-029). */
+export interface StaticDoorbell {
+  agent_id: string;
+  url: string;
+  secret: string;
+}
 
 export class HabEvents {
   readonly #source: HabEventSource;
@@ -421,7 +445,7 @@ export class HabEvents {
     if (clock && now - clock.alive_at > this.#outageAfter)
       this.#db
         .prepare(
-          "UPDATE hab_event_subscriptions SET expires_at=expires_at+? WHERE expires_at>?",
+          `UPDATE hab_event_subscriptions SET expires_at=expires_at+? WHERE expires_at>? AND id NOT LIKE '${STATIC_PREFIX}%'`,
         )
         .run(Math.min(now - clock.alive_at, this.#maxTtl), clock.alive_at);
     this.#db
@@ -561,7 +585,7 @@ export class HabEvents {
     return (
       this.#db
         .prepare(
-          "SELECT count(*) n FROM hab_event_subscriptions WHERE agent_id=? AND expires_at>?",
+          `SELECT count(*) n FROM hab_event_subscriptions WHERE agent_id=? AND expires_at>? AND id NOT LIKE '${STATIC_PREFIX}%'`,
         )
         .get(agentId, this.#now()) as { n: number }
     ).n;
@@ -614,8 +638,16 @@ export class HabEvents {
     messageId: string,
     subscriptionId: string,
     body: string,
-  ) {
+  ): Record<string, string> {
     const timestamp = Math.floor(this.#now() / 1000);
+    // An operator-registered doorbell may use a Bearer token instead of a signing key.
+    if (!secret.startsWith("whsec_"))
+      return {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${secret}`,
+        "webhook-id": messageId,
+        "webhook-timestamp": String(timestamp),
+      };
     return {
       "Content-Type": "application/json",
       "webhook-id": messageId,
@@ -623,6 +655,63 @@ export class HabEvents {
       "webhook-signature": signWebhook(secret, messageId, timestamp, body),
       "X-MCP-Subscription-Id": subscriptionId,
     };
+  }
+  /**
+   * Apply the operator-registered doorbells (ADR-029): add or update these, remove the
+   * ones no longer listed. A new doorbell starts after the mail already waiting, so a
+   * restart or a new entry does not ring for old messages. No challenge is sent: the
+   * operator vouches for the URL, which must still be public HTTPS.
+   */
+  configureStatic(doorbells: readonly StaticDoorbell[]) {
+    const keep = new Set<string>();
+    const now = this.#now();
+    for (const doorbell of doorbells) {
+      const url = callbackUrl(doorbell.url).href;
+      const secret = doorbellSecret(doorbell.secret);
+      const id =
+        STATIC_PREFIX +
+        createHash("sha256")
+          .update(JSON.stringify([doorbell.agent_id, url]))
+          .digest("hex")
+          .slice(0, 32);
+      keep.add(id);
+      if (this.#has(id)) {
+        this.#db
+          .prepare("UPDATE hab_event_subscriptions SET secret=? WHERE id=?")
+          .run(secret, id);
+        continue;
+      }
+      let cursor: Arrival | null = null;
+      for (;;) {
+        const page = this.#source.arrivals(doorbell.agent_id, cursor, 50);
+        if (!page.length) break;
+        cursor = page[page.length - 1];
+      }
+      this.#db
+        .prepare(
+          `INSERT INTO hab_event_subscriptions (id,agent_id,url,secret,expires_at,cursor,created_at)
+           VALUES (?,?,?,?,?,?,?)`,
+        )
+        .run(
+          id,
+          doorbell.agent_id,
+          url,
+          secret,
+          NEVER,
+          cursor ? JSON.stringify(cursor) : null,
+          now,
+        );
+    }
+    const existing = this.#db
+      .prepare(
+        `SELECT id FROM hab_event_subscriptions WHERE id LIKE '${STATIC_PREFIX}%'`,
+      )
+      .all() as { id: string }[];
+    for (const { id } of existing)
+      if (!keep.has(id))
+        this.#db
+          .prepare("DELETE FROM hab_event_subscriptions WHERE id=?")
+          .run(id);
   }
   /** Active subscriptions, without secrets (for operators and tests). */
   subscriptions() {
@@ -787,8 +876,7 @@ export class HabEvents {
           "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
         )
         .get(due_row.subscription_id, this.#now()) as unknown as
-        | Row
-        | undefined;
+        Row | undefined;
       if (!row) continue;
       const address = this.#source.addressOf(row.agent_id);
       if (
@@ -829,8 +917,7 @@ export class HabEvents {
     let delivered: number | null = null;
     for (const key of unread) {
       const row = first.get(agentId, key.sender_id, key.message_id) as
-        | { accepted_at: number }
-        | undefined;
+        { accepted_at: number } | undefined;
       if (row && (delivered === null || row.accepted_at < delivered))
         delivered = row.accepted_at;
     }
@@ -917,6 +1004,8 @@ export const isForbidden = (error: unknown) =>
 export interface DoorbellState {
   /** Live subscriptions and the latest lifetime among them. */
   live: number;
+  /** How many of the live ones the operator registered (ADR-029); they never expire. */
+  operator: number;
   until: number | null;
   /** When the last subscription ended without a renewal, and why. */
   lapsed_at: number | null;
@@ -950,6 +1039,7 @@ export function readDoorbells(
       if (!state) {
         state = {
           live: 0,
+          operator: 0,
           until: null,
           lapsed_at: null,
           reason: null,
@@ -992,11 +1082,19 @@ export function readDoorbells(
     if (tables.has("hab_event_subscriptions"))
       for (const row of db
         .prepare(
-          "SELECT agent_id,expires_at FROM hab_event_subscriptions ORDER BY expires_at",
+          "SELECT id,agent_id,expires_at FROM hab_event_subscriptions ORDER BY expires_at",
         )
-        .all() as unknown as { agent_id: string; expires_at: number }[]) {
+        .all() as unknown as {
+        id: string;
+        agent_id: string;
+        expires_at: number;
+      }[]) {
         const state = entry(row.agent_id);
-        if (row.expires_at > now) {
+        // Operator-registered doorbells (ADR-029) never expire; they have no lifetime to show.
+        if (row.id.startsWith(STATIC_PREFIX)) {
+          state.live += 1;
+          state.operator += 1;
+        } else if (row.expires_at > now) {
           state.live += 1;
           state.until = row.expires_at;
         } else if ((state.lapsed_at ?? 0) < row.expires_at) {

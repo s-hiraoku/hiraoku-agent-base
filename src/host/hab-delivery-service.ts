@@ -222,6 +222,11 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     this.#assertCurrent();
     return this.#backend.unreadInternal(agentId, key.sender_id, key.message_id);
   }
+  /** The agent registered at an address, for operator-configured doorbells (ADR-029). */
+  agentIdOf(address: string): string | undefined {
+    this.#assertCurrent();
+    return this.#registry.agentIdOf(address);
+  }
   /** The current address of a subscribed recipient, or undefined once it is gone. */
   addressOf(agentId: string): string | undefined {
     this.#assertCurrent();
