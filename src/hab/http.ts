@@ -46,6 +46,10 @@ export class HabHttpGateway extends McpHttpGateway {
   protected override get eventsEnabled() {
     return this.#events !== undefined;
   }
+  /** Only the agent catalog offers the inbox card (ADR-026). */
+  protected override get resourcesEnabled() {
+    return this.catalog === "agent";
+  }
   protected override get writerOperations() {
     return this.catalog === "agent"
       ? habAgentOperations

@@ -163,6 +163,39 @@ def test_query_strips_unrecognized_envelope_fields(harness):
     assert "raw_record" not in result["decision_states"][0]
 
 
+PRESENTATION = {"version": 1, "heading": "sender@example.hab からのメッセージです",
+                "sender": {"address": "sender@example.hab", "label": "sender@example.hab"},
+                "kind": "question", "kind_label": "質問", "is_reply": False, "in_reply_to": None,
+                "sent_at": "2026-01-01T00:00:00Z", "reply_by": "2026-01-08T00:00:00Z",
+                "choices": [{"choice": "accept", "label": "対応する"}], "body_untrusted": True,
+                "body_note": "note", "hidden_data_parts": 0}
+
+
+def test_presentation_and_body_pass_through_together(harness):
+    a, c, _, _, _, event = harness
+    event["presentation"] = PRESENTATION
+    event["body"] = "本文"
+    result = asyncio.run(a.query("session", request(c)))
+    assert result["events"][0]["presentation"] == PRESENTATION
+    assert result["events"][0]["body"] == "本文"
+
+
+def test_older_event_without_presentation_keeps_its_fields(harness):
+    a, c, _, _, _, _ = harness
+    result = asyncio.run(a.query("session", request(c)))
+    assert "presentation" not in result["events"][0] and "body" not in result["events"][0]
+
+
+@pytest.mark.parametrize("bad", [{"presentation": "x", "body": "b"}, {"presentation": PRESENTATION},
+                                 {"body": "b"}, {"presentation": {**PRESENTATION, "version": 2}, "body": "b"},
+                                 {"presentation": {**PRESENTATION, "heading": "x" * 20000}, "body": "b"},
+                                 {"presentation": PRESENTATION, "body": "x" * 131073}])
+def test_malformed_presentation_is_refused(harness, bad):
+    a, c, _, _, _, event = harness
+    event.update(bad)
+    with pytest.raises(mod.Unavailable): asyncio.run(a.query("session", request(c)))
+
+
 def test_runtime_router_redacts_failures(monkeypatch):
     api_spec = importlib.util.spec_from_file_location("hab_test_api", Path(__file__).parents[1] / "dashboard/plugin_api.py")
     api = importlib.util.module_from_spec(api_spec)
@@ -208,8 +241,8 @@ def test_one_maximum_size_notice_fits_bounded_page_and_advances(harness, text):
     result = asyncio.run(a.query("session", request(c, after="previous")))
     assert result["events"][0]["text"] == text
     assert result["next_cursor"] == "next"
-    assert observed == [["--limit", "50", "--after", "previous"],
-                        ["--limit", "1", "--after", "previous"]]
+    assert observed == [["--limit", "50", "--after", "previous", "--presentation"],
+                        ["--limit", "1", "--after", "previous", "--presentation"]]
 
 
 def test_oversized_config_is_refused_before_unbounded_read(harness):
@@ -330,7 +363,7 @@ def test_normal_page_retains_50_notice_throughput(harness):
     result = asyncio.run(a.query("session", request(c)))
     assert len(result["events"]) == len(result["decision_states"]) == 50
     assert result["has_more"] is True
-    assert reads == [["--limit", "50"]]
+    assert reads == [["--limit", "50", "--presentation"]]
 
 
 @pytest.mark.parametrize("error", [mod.Unavailable("command_failed"), ValueError("bad_json"), OSError("io")])
@@ -346,7 +379,7 @@ def test_arbitrary_reader_failure_is_never_retried(harness, error):
     a.run = broken
     with pytest.raises(type(error)):
         asyncio.run(a.query("session", request(c, after="previous")))
-    assert reads == [["--limit", "50", "--after", "previous"]]
+    assert reads == [["--limit", "50", "--after", "previous", "--presentation"]]
 
 
 def test_oversized_single_notice_fallback_has_exactly_two_attempts(harness):
@@ -360,4 +393,4 @@ def test_oversized_single_notice_fallback_has_exactly_two_attempts(harness):
         return await original(config, home, verb, payload, args)
     a.run = oversized
     with pytest.raises(mod.Unavailable): asyncio.run(a.query("session", request(c)))
-    assert reads == [["--limit", "50"], ["--limit", "1"]]
+    assert reads == [["--limit", "50", "--presentation"], ["--limit", "1", "--presentation"]]

@@ -74,6 +74,43 @@ const badgeStyle = {
   letterSpacing: "0.05em",
 };
 
+const metaStyle = { fontSize: "0.85em", opacity: 0.8, marginBottom: "6px" };
+/** The sender's words sit in their own box, drawn as plain text, never as markup. */
+const bodyStyle = {
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+  background: "rgba(127, 127, 127, 0.08)",
+  borderRadius: "6px",
+  padding: "6px 10px",
+  margin: "4px 0",
+};
+
+/** HAB's facts for a card drawn in fields (ADR-026); null for an older notice. */
+export function presentationOf(notice: any) {
+  const p = notice?.presentation;
+  return p &&
+    typeof p === "object" &&
+    p.version === 1 &&
+    typeof p.heading === "string" &&
+    typeof p.kind_label === "string" &&
+    typeof notice.body === "string"
+    ? p
+    : null;
+}
+
+/** A deadline as local month/day and time, or the raw value when it is not a date. */
+export function shortTime(value: unknown) {
+  const time = Date.parse(String(value));
+  return Number.isFinite(time)
+    ? new Date(time).toLocaleString("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : String(value);
+}
+
 /** Presentation only: retain controller state, cursor, and all HAB decisions. */
 export function ReceivedMessages({ view, visible, onChoose }: any) {
   if (!visible || (!view.cards.length && !view.error)) return null;
@@ -90,6 +127,49 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
     (card: any) => !historyStates.has(card.decision?.state),
   );
   let pendingList: HTMLDivElement | null = null;
+  // With HAB's facts the heading, kind, deadline and body each get their own place
+  // (ADR-026); an older notice keeps the whole display text as it was.
+  const renderMessage = (notice: any) => {
+    const p = presentationOf(notice);
+    if (!p)
+      return [
+        h(
+          "header",
+          { style: cardHeaderStyle },
+          h("span", { style: badgeStyle }, "HAB"),
+          h("strong", null, "HAB からのメッセージ"),
+        ),
+        h("div", null, "送信元: ", notice.address || notice.sender_id),
+        h(
+          "p",
+          { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } },
+          notice.text,
+        ),
+      ];
+    const meta = [
+      p.kind_label,
+      p.is_reply
+        ? "あなたが送ったメッセージへの返事"
+        : `返信期限 ${shortTime(p.reply_by)}`,
+    ];
+    return [
+      h(
+        "header",
+        { style: cardHeaderStyle },
+        h("span", { style: badgeStyle }, "HAB"),
+        h("strong", null, p.heading),
+      ),
+      h("div", { style: metaStyle }, meta.join("・")),
+      h("div", { style: bodyStyle, "aria-label": "受信内容" }, notice.body),
+      p.hidden_data_parts > 0
+        ? h(
+            "div",
+            { style: metaStyle },
+            `表示していない構造化データが ${p.hidden_data_parts} 件あります`,
+          )
+        : null,
+    ];
+  };
   const renderCard = (card: any) =>
     h(
       "article",
@@ -98,18 +178,7 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
         "aria-label": "HAB からのメッセージ",
         style: cardStyle,
       },
-      h(
-        "header",
-        { style: cardHeaderStyle },
-        h("span", { style: badgeStyle }, "HAB"),
-        h("strong", null, "HAB からのメッセージ"),
-      ),
-      h("div", null, "送信元: ", card.notice.address || card.notice.sender_id),
-      h(
-        "p",
-        { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } },
-        card.notice.text,
-      ),
+      ...renderMessage(card.notice),
       h(
         "div",
         { role: "status" },

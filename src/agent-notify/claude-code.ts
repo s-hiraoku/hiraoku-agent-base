@@ -119,6 +119,43 @@ export interface StatusLineInput {
 
 const MAX_LINES = 14;
 
+/** A deadline as month/day hour:minute in the machine's time zone, or as given. */
+const shortTime = (value: string) => {
+  const time = Date.parse(value);
+  return Number.isFinite(time)
+    ? new Date(time).toLocaleString("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : value;
+};
+
+/**
+ * The lines for one notice. With HAB's presentation (ADR-026) the status line, which has
+ * only text, puts the gist on the first line (`✉ HAB` mark, heading, kind, deadline) and the
+ * body right under it, without the choice list the hint line repeats. Without it: the display.
+ */
+function statusLines(message: PeekedMessage): string[] {
+  const p = message.presentation;
+  if (!p || typeof message.text !== "string")
+    return message.display.split("\n");
+  const facts = [
+    p.kind_label,
+    p.is_reply
+      ? "あなたが送ったメッセージへの返事"
+      : `返信期限 ${shortTime(p.reply_by)}`,
+  ];
+  return [
+    `✉ HAB ${p.heading}（${facts.join("・")}）`,
+    ...message.text.split("\n"),
+    ...(p.hidden_data_parts > 0
+      ? [`（表示していない構造化データが ${p.hidden_data_parts} 件あります）`]
+      : []),
+  ];
+}
+
 /**
  * The status line for one session: the oldest notice waiting for a choice in full, and a
  * count of the rest. Empty for any other session, and for notices put off with あとで.
@@ -135,7 +172,7 @@ export function claudeCodeStatusLine(
   const waiting = records.filter((record) => record.state === "shown");
   if (!waiting.length) return "";
   const [first, ...rest] = waiting;
-  const lines = first!.message.display.split("\n");
+  const lines = statusLines(first!.message);
   const shown =
     lines.length > MAX_LINES
       ? [
