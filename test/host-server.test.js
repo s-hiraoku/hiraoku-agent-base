@@ -398,7 +398,7 @@ test("opt-in discovery identifies a host owner over a real socket and keeps the 
   );
 });
 
-test("a waiting hab_inbox outlives timeout_ms over the real listener and returns on arrival (ADR-027)", async (t) => {
+test("a waiting hab_inbox outlives timeout_ms over the real listener and returns on arrival (ADR-028)", async (t) => {
   const f = await fixture(t);
   // timeout_ms is 2000 in the fixture; the wait runs longer than that.
   const host = await f.start({

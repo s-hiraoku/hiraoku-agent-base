@@ -172,7 +172,7 @@ function invalid(field: string, details: Record<string, unknown> = {}) {
     details: { field, ...details },
   });
 }
-/** hab_inbox's wait (ADR-027): whole seconds, only for new mail. */
+/** hab_inbox's wait (ADR-028): whole seconds, only for new mail. */
 export function checkWait(
   wait: unknown,
   includeRead: unknown,

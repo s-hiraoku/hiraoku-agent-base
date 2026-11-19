@@ -22,7 +22,7 @@ export interface McpHttpPolicy {
   requests_per_window: number;
   window_ms: number;
   /**
-   * Optional (ADR-027): how much longer than `timeout_ms` a waiting hab_inbox may hold its
+   * Optional (ADR-028): how much longer than `timeout_ms` a waiting hab_inbox may hold its
    * request, 0 to 60000. Absent or 0: no waiting. Holds count toward
    * `max_active_requests` and at most `max_active_requests - 1` (at least 1) run at once.
    */
@@ -270,7 +270,7 @@ export class McpHttpGateway {
     const onAbort = () => stop(408);
     request.signal.addEventListener("abort", onAbort, { once: true });
     let timer = setTimeout(() => stop(504), this.policy.timeout_ms);
-    // Extra time granted to a waiting hab_inbox (ADR-027); 0 until hold() grants some.
+    // Extra time granted to a waiting hab_inbox (ADR-028); 0 until hold() grants some.
     // A hold gives the wait plus a fresh timeout_ms for the read that follows it.
     let held = 0;
     const gate: DeliveryMcpGate = {

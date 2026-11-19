@@ -61,7 +61,7 @@ export interface DeliveryMcpGate {
   /** The finish callback takes a fixed refusal reason for the audit, never a body or secret. */
   begin(): Promise<(success: boolean, reason?: string) => Promise<void>>;
   /**
-   * Optional (ADR-027): hold this request open up to `ms` longer than the transport's
+   * Optional (ADR-028): hold this request open up to `ms` longer than the transport's
    * timeout, for hab_inbox's wait. Returns the granted milliseconds (0: no hold) and the
    * request's abort signal. The transport caps and counts holds; at most one per request.
    */
@@ -96,7 +96,7 @@ export async function executeDeliveryMcpOperation(
   gate: DeliveryMcpGate | undefined,
   operation: (context: unknown) => unknown,
   /**
-   * Optional (ADR-027): after a successful run, whether to run the operation again. It
+   * Optional (ADR-028): after a successful run, whether to run the operation again. It
    * may wait first; the run itself stays synchronous. One audit start/finish for all runs.
    */
   again?: (

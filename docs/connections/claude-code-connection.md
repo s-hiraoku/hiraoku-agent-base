@@ -63,5 +63,5 @@ HABの5操作を列挙できても、Claudeの会話履歴を永続inboxとみ�
 
 エージェント用catalog（`/mcp`）だけを使う場合、Claude Code・claude.aiには呼び鈴（ADR-022）も
 受信通知も届かない。利用者がそのturnで返事を待つと言ったときは、送った後に`hab_inbox`へ
-`wait_secs`（例：25）を付けて新着を待てる（[ADR-027](../hab-decisions.md)）。空で返ったら
+`wait_secs`（例：25）を付けて新着を待てる（[ADR-028](../hab-decisions.md)）。空で返ったら
 利用者に伝えてturnを終え、待ち直さない。MCPクライアント側の呼出し期限より長くは待てない。

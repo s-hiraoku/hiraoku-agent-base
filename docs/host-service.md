@@ -159,7 +159,7 @@ rejects any other `Host` (including `localhost`) with 403, and the bearer's
 audience must equal this URL.
 
 `http.max_wait_ms` (default 25000, 0–60000, 0 turns it off) is how long an agent's
-`hab_inbox` with `wait_secs` may wait for new mail (ADR-027). Only such a call is held
+`hab_inbox` with `wait_secs` may wait for new mail (ADR-028). Only such a call is held
 longer than `timeout_ms`: for its wait plus a fresh `timeout_ms` to read. At most
 `max_active_requests - 1` calls (at least one) wait at once; others answer at once.
 

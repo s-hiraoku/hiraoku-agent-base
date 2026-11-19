@@ -271,7 +271,7 @@ export function createHabMcpServer(
 /** How often a waiting hab_inbox looks again without a wake, for arrivals by other paths. */
 const INBOX_RECHECK_MS = 5000;
 /**
- * hab_inbox's wait (ADR-027). With wait_secs and no new mail, hold the request (the
+ * hab_inbox's wait (ADR-028). With wait_secs and no new mail, hold the request (the
  * transport grants and caps the time), sleep until a message for this agent is accepted,
  * the time is up, a newer wait for the same agent starts, or the request ends, and read
  * again. Every read is the normal authorized hab_inbox; the wake is only a hint.

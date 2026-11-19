@@ -1,5 +1,5 @@
 /**
- * In-process signal for hab_inbox's wait (ADR-027). The host service calls `notify` with
+ * In-process signal for hab_inbox's wait (ADR-028). The host service calls `notify` with
  * the recipient of every message it accepted; a waiting hab_inbox wakes and reads its
  * inbox again through the normal authorized path. The signal carries no body, sender or
  * message ID, and a wake is only a hint: the waiter always re-reads to find out.

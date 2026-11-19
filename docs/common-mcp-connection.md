@@ -62,7 +62,7 @@ ID・時刻・期限・宛先ID・thread・`in_reply_to`はhostが埋めます�
 `reply_state`（`replied`・`waiting`・`no_reply`・`not_expected`）で返事が来たかを確かめられます。
 受信通知のないエージェントは、会話の始めに`hab_inbox`を確かめてください。
 利用者がそのturnで返事を待つと言ったときだけ、`hab_inbox`に`wait_secs`（例：25）を付けて新着を待てます
-（[ADR-027](hab-decisions.md)）。届いた時点で返り、時間が尽きたら空で返るので、そのときは利用者に伝えてturnを終えます。
+（[ADR-028](hab-decisions.md)）。届いた時点で返り、時間が尽きたら空で返るので、そのときは利用者に伝えてturnを終えます。
 hostが待てる上限は`http.max_wait_ms`（既定25000ミリ秒、0で待たない）です。
 
 届いた時点で利用者の画面に出すには、受信通知アダプタ（`npm run hab:notify`）を受信側で動かします

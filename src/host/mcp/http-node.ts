@@ -16,7 +16,7 @@ const forwarded = [
 ];
 /**
  * The socket-level backstop. The gateway enforces the real deadline; a waiting hab_inbox
- * (ADR-027) may hold a request for its wait plus a fresh timeout_ms after the first one.
+ * (ADR-028) may hold a request for its wait plus a fresh timeout_ms after the first one.
  */
 function nodeTimeout(policy: McpHttpGateway["policy"]) {
   const wait = policy.max_wait_ms ?? 0;

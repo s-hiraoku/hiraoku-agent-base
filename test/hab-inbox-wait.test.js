@@ -6,7 +6,7 @@ import { HAB_AGENT_INSTRUCTIONS } from "../src/hab/agent-tools.ts";
 import { fixture } from "./hab-registry-fixtures.js";
 import { policy, request, decode } from "./mcp-http-fixtures.js";
 
-// hab_inbox's wait (ADR-027): with wait_secs and no new mail, the host holds the call until
+// hab_inbox's wait (ADR-028): with wait_secs and no new mail, the host holds the call until
 // mail for that agent is accepted or the granted time is up, then reads as usual.
 async function setup(t, patch = {}) {
   const f = await fixture(t);

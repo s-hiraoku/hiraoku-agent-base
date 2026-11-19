@@ -13,7 +13,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
   readonly #registry: SQLiteHabRegistry;
   readonly #backend: SqliteDelivery;
   readonly #assertCurrent: () => void;
-  /** Wakes a waiting hab_inbox when a message for its agent is accepted (ADR-027). */
+  /** Wakes a waiting hab_inbox when a message for its agent is accepted (ADR-028). */
   readonly inboxWaits = new InboxArrivals();
   constructor(
     registry: SQLiteHabRegistry,
