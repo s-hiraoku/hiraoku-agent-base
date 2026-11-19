@@ -75,7 +75,7 @@ export interface HabEventSource {
   unread?(agentId: string, key: Omit<Arrival, "accepted_at">): boolean;
 }
 /**
- * What the recipient's own MCP results say about mail it has not read (ADR-026). The
+ * What the recipient's own MCP results say about mail it has not read (ADR-027). The
  * recipient sees it the next time it calls any HAB tool, so an agent whose event task did
  * not run learns that the doorbell rang and nothing read the inbox.
  */
@@ -337,7 +337,7 @@ export interface HabEventOptions {
   /**
    * How long a message may stay unread after its doorbell was accepted before HAB counts the
    * doorbell as unanswered: it rings once more and tells the recipient in its next tool
-   * result (default 5 minutes; ADR-026).
+   * result (default 5 minutes; ADR-027).
    */
   unanswered_after_ms?: number;
   /** Ring once more for an unanswered doorbell (default true). */
@@ -762,7 +762,7 @@ export class HabEvents {
   }
   /**
    * Ring once more for each message still unread `unanswered_after_ms` after its doorbell was
-   * accepted (ADR-026). One extra ring per message and subscription, never retried: it is a
+   * accepted (ADR-027). One extra ring per message and subscription, never retried: it is a
    * nudge for a subscriber that accepted the event and did not act, not a delivery guarantee.
    */
   async #ringAgain() {
@@ -805,7 +805,7 @@ export class HabEvents {
   }
   /**
    * The verified caller's unread mail and whether its doorbell went unanswered, for the
-   * caller's own tool results (ADR-026). `unread` is the caller's unread mail as its own
+   * caller's own tool results (ADR-027). `unread` is the caller's unread mail as its own
    * inbox would return it (authorization-filtered, oldest first, at most 50), so mail the
    * caller may no longer read never keeps a reminder alive. Null when nothing waits or the
    * caller may not read an inbox. `reading` is true for hab_inbox, which is about to read.

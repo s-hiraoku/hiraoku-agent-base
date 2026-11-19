@@ -132,8 +132,9 @@ type ResolvedOptions = Required<
 
 /**
  * Upper estimate of one inbox message's share of an MCP tool response: the text appears
- * twice (as `text` and inside the notice), once in structuredContent and once more as an
- * escaped JSON string in `content`, plus fixed fields.
+ * up to three times (hab_inbox: `text` and the notice; hab_peek: `text`, display and
+ * handoff_prompt), once in structuredContent and once more as an escaped JSON string in
+ * `content`, plus fixed fields.
  */
 function inboxResponseCost(message: Submission): number {
   const text = message.body.parts
@@ -141,7 +142,7 @@ function inboxResponseCost(message: Submission): number {
     .join("\n\n");
   const once = Buffer.byteLength(JSON.stringify(text));
   const twice = Buffer.byteLength(JSON.stringify(JSON.stringify(text)));
-  return 2 * once + 2 * twice + 4096;
+  return 3 * once + 3 * twice + 4096;
 }
 export class SqliteDelivery {
   readonly #db: DatabaseSync;
@@ -642,7 +643,7 @@ export class SqliteDelivery {
   /**
    * Whether one message still waits unread and unexpired for its recipient, by the same rule
    * as arrivalsInternal. Only the host's event dispatcher calls it, to decide whether a
-   * doorbell went unanswered (ADR-026); it changes nothing.
+   * doorbell went unanswered (ADR-027); it changes nothing.
    */
   unreadInternal(
     recipientId: string,

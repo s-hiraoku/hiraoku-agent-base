@@ -708,7 +708,7 @@ test("an outage threshold below the poll interval cannot extend lifetimes on ord
   assert.equal(f.events.subscriptions().length, 0);
 });
 
-// ADR-026: a doorbell that was accepted but not answered rings once more, and the
+// ADR-027: a doorbell that was accepted but not answered rings once more, and the
 // recipient's own next tool result says so.
 test("an accepted doorbell left unread rings once more with a new event ID", async (t) => {
   let now = Date.now();

@@ -440,7 +440,7 @@ test("configured discovery policy is explicit, bounded, and does not create regi
   }
   assert.deepEqual(readdirSync(join(f.dir, "state")), ["volume.local.json"]);
 });
-test("ingress events refuse an unanswered threshold outside its bounds (ADR-026)", async (t) => {
+test("ingress events refuse an unanswered threshold outside its bounds (ADR-027)", async (t) => {
   const f = await fixture(t);
   for (const events of [
     { unanswered_after_ms: 59_999 },

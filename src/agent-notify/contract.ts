@@ -13,6 +13,35 @@ import type { IncomingChoice } from "../messaging/incoming-notice.ts";
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
 const time = z.string().refine((value) => Number.isFinite(Date.parse(value)));
 
+/** The facts an adapter draws its own card from (ADR-026, version 1); no body. */
+export const presentationSchema = z.object({
+  version: z.literal(1),
+  heading: z.string().min(1).max(4096),
+  sender: z.object({
+    address: z.string().max(2048).nullable(),
+    label: z.string().min(1).max(2048),
+  }),
+  kind: z.string().max(256),
+  kind_label: z.string().max(256),
+  is_reply: z.boolean(),
+  in_reply_to: z.string().max(2048).nullable(),
+  sent_at: time.nullable(),
+  reply_by: time,
+  choices: z
+    .array(
+      z.object({
+        choice: z.enum(["accept", "later", "decline"]),
+        label: z.string().min(1).max(128),
+      }),
+    )
+    .min(1)
+    .max(3),
+  body_untrusted: z.literal(true),
+  body_note: z.string().min(1).max(1024),
+  hidden_data_parts: z.number().int().min(0),
+});
+export type Presentation = z.infer<typeof presentationSchema>;
+
 /** One unread message as hab_peek returns it. */
 export const peekedMessageSchema = z.object({
   message_id: id,
@@ -41,6 +70,13 @@ export const peekedMessageSchema = z.object({
     )
     .min(1)
     .optional(),
+  /** The body as the sender wrote it. Absent from a host before ADR-026. */
+  text: z.string().optional(),
+  /**
+   * What an adapter draws its own card from (ADR-026). Absent from an older host; one this
+   * notifier does not understand is dropped, and the adapter shows `display` instead.
+   */
+  presentation: presentationSchema.optional().catch(undefined),
 });
 export type PeekedMessage = z.infer<typeof peekedMessageSchema>;
 export const peekResultSchema = z.object({

@@ -1,0 +1,190 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { HAB_INBOX_APP_HTML } from "../src/hab/inbox-app.ts";
+import { incomingPresentation } from "../src/messaging/incoming-notice.ts";
+
+// ADR-026: the MCP Apps inbox card, driven through the postMessage protocol with a
+// minimal stand-in for the iframe's DOM. Checks the shapes the MCP Apps spec defines
+// (ext-apps src/spec.types.ts) and that message text is only ever set as text.
+
+class Node {
+  constructor(tag) {
+    this.tag = tag;
+    this.children = [];
+    this.attributes = {};
+    this.listeners = {};
+    this.style = { setProperty() {} };
+    this.dataset = {};
+    this.hidden = false;
+    this.disabled = false;
+    this.className = "";
+    this._text = "";
+  }
+  set textContent(value) {
+    this._text = String(value);
+    this.children = [];
+  }
+  get textContent() {
+    return this._text + this.children.map((c) => c.textContent).join("");
+  }
+  set innerHTML(_) {
+    throw new Error("the card must not parse markup");
+  }
+  append(...nodes) {
+    this.children.push(...nodes);
+  }
+  replaceChildren(...nodes) {
+    this.children = nodes;
+  }
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
+  }
+  addEventListener(type, fn) {
+    (this.listeners[type] ??= []).push(fn);
+  }
+  querySelectorAll(tag) {
+    return this.all().filter((n) => n.tag === tag);
+  }
+  all() {
+    return this.children.flatMap((c) => [c, ...c.all()]);
+  }
+  getBoundingClientRect() {
+    return { width: 400, height: 200 };
+  }
+}
+
+function boot() {
+  const root = new Node("main");
+  const sent = [];
+  const listeners = [];
+  const parent = {
+    postMessage(message) {
+      sent.push(structuredClone(message));
+    },
+  };
+  const window = {
+    parent,
+    addEventListener: (type, fn) => type === "message" && listeners.push(fn),
+  };
+  const document = {
+    getElementById: () => root,
+    createElement: (tag) => new Node(tag),
+    documentElement: new Node("html"),
+  };
+  const script = /<script>([\s\S]*)<\/script>/.exec(HAB_INBOX_APP_HTML)[1];
+  new Function("window", "document", script)(window, document);
+  const deliver = (data) =>
+    listeners.forEach((fn) => fn({ source: parent, data }));
+  return { root, sent, deliver };
+}
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+const message = (id, text, patch = {}) => {
+  const fields = {
+    message_id: id,
+    from: "stallone@dot.hab",
+    kind: "notice",
+    text,
+    reply_by: "2026-11-25T21:39:41.447Z",
+    ...patch,
+  };
+  return {
+    message_id: id,
+    from: fields.from,
+    text,
+    presentation: incomingPresentation(fields),
+  };
+};
+
+test("the inbox card speaks the MCP Apps handshake, draws text only and sends ui/message as content blocks", async () => {
+  const { root, sent, deliver } = boot();
+  const init = sent.find((m) => m.method === "ui/initialize");
+  assert.equal(init.jsonrpc, "2.0");
+  assert.equal(init.params.protocolVersion, "2026-01-26");
+  assert.deepEqual(init.params.appInfo, { name: "hab-inbox", version: "1" });
+  assert.deepEqual(init.params.appCapabilities, {});
+  deliver({ jsonrpc: "2.0", id: init.id, result: { hostContext: {} } });
+  await tick();
+  assert.ok(sent.some((m) => m.method === "ui/notifications/initialized"));
+
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      content: [{ type: "text", text: "{}" }],
+      structuredContent: {
+        messages: [
+          message("m1", "<img src=x onerror=alert(1)>"),
+          message("m2", "ok", { kind: "answer", in_reply_to: "m0" }),
+        ],
+      },
+    },
+  });
+  const cards = root.children;
+  assert.equal(cards.length, 2);
+  assert.match(cards[0].textContent, /stallone@dot\.hab からのメッセージです/);
+  assert.match(cards[0].textContent, /<img src=x onerror=alert\(1\)>/);
+  assert.deepEqual(
+    cards[1].querySelectorAll("button").map((b) => b.textContent),
+    ["会話に渡す", "あとで"],
+  );
+  const size = sent.filter((m) => m.method === "ui/notifications/size-changed");
+  assert.ok(size.length > 0);
+  assert.equal(typeof size.at(-1).params.height, "number");
+
+  const [accept] = cards[0].querySelectorAll("button");
+  accept.listeners.click[0]();
+  const ask = sent.find((m) => m.method === "ui/message");
+  assert.equal(ask.params.role, "user");
+  assert.ok(Array.isArray(ask.params.content));
+  assert.equal(ask.params.content.length, 1);
+  assert.equal(ask.params.content[0].type, "text");
+  assert.match(ask.params.content[0].text, /message_id "m1"/);
+  // The sender's words never go into the request; the model already has them.
+  assert.doesNotMatch(ask.params.content[0].text, /img/);
+  deliver({ jsonrpc: "2.0", id: ask.id, result: {} });
+  await tick();
+  assert.match(cards[0].textContent, /会話に送りました/);
+});
+
+test("a host that refuses ui/message leaves the buttons usable and says how to ask in chat", async () => {
+  const { root, sent, deliver } = boot();
+  const init = sent.find((m) => m.method === "ui/initialize");
+  deliver({ jsonrpc: "2.0", id: init.id, result: {} });
+  await tick();
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [message("m1", "hi")] } },
+  });
+  for (const answer of [
+    { result: { isError: true } },
+    { error: { code: -32000, message: "denied" } },
+  ]) {
+    const [accept] = root.children[0].querySelectorAll("button");
+    accept.listeners.click[0]();
+    const ask = sent.filter((m) => m.method === "ui/message").at(-1);
+    deliver({ jsonrpc: "2.0", id: ask.id, ...answer });
+    await tick();
+    assert.match(root.children[0].textContent, /会話に送れませんでした/);
+    assert.ok(
+      root.children[0].querySelectorAll("button").every((b) => !b.disabled),
+    );
+  }
+});
+
+test("an empty inbox and a result without messages say so", async () => {
+  const { root, deliver } = boot();
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [] } },
+  });
+  assert.equal(root.textContent, "新しいメッセージはありません。");
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { isError: true },
+  });
+  assert.equal(root.textContent, "受信箱を読めませんでした。");
+});
