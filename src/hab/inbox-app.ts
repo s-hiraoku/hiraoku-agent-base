@@ -94,7 +94,8 @@ function card(message) {
       if (item.choice === "accept") {
         status.textContent = "会話に送っています…";
         try {
-          await request("ui/message", { role: "user", content: { type: "text", text: prompt(message, p) } });
+          const sent = await request("ui/message", { role: "user", content: [{ type: "text", text: prompt(message, p) }] });
+          if (sent && sent.isError) throw new Error("rejected");
           status.textContent = "会話に送りました。返信は送る前に確認できます。";
         } catch {
           status.textContent = "会話に送れませんでした。チャットで「" + message.message_id + " に返信」と伝えてください。";
