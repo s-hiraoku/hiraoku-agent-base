@@ -475,3 +475,56 @@ test("ingress events (ADR-022): the agent endpoint offers new-mail events only w
   // Only the agent endpoint and loopback listeners exist; the store is in the host directory.
   assert.ok(existsSync(join(f.dir, "events.sqlite")));
 });
+
+test("operator doorbells (ADR-029): the host rings a configured URL for an address and refuses unknown addresses", async (t) => {
+  const f = await fixture(t);
+  await assert.rejects(
+    f.start({
+      ingress: {
+        ...f.options.ingress,
+        events: {
+          doorbells: [
+            {
+              address: "nobody@nowhere.hab",
+              url: "https://hooks.example.com/grok",
+              secret: "grok-routine-token-0123456789",
+            },
+          ],
+        },
+      },
+    }),
+    /unknown_doorbell_address/,
+  );
+  const posts = [];
+  const h = await f.start({
+    ingress: {
+      ...f.options.ingress,
+      events: {
+        poll_ms: 500,
+        doorbells: [
+          {
+            address: f.remoteAgent.address,
+            url: "https://hooks.example.com/grok",
+            secret: "grok-routine-token-0123456789",
+          },
+        ],
+        post: async (url, body, headers) => {
+          posts.push({ url, parsed: JSON.parse(body), headers });
+          return { status: 200, body: "" };
+        },
+      },
+    },
+  });
+  const local = f.client(h);
+  await local.submit({
+    ...message("3".repeat(32)),
+    recipient_id: f.remoteAgent.agent_id,
+  });
+  const ring = await eventually(async () => posts[0]);
+  assert.equal(ring.url, "https://hooks.example.com/grok");
+  assert.equal(
+    ring.headers.Authorization,
+    "Bearer grok-routine-token-0123456789",
+  );
+  assert.equal(ring.parsed.data.to, f.remoteAgent.address);
+});

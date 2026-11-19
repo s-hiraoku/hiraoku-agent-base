@@ -392,9 +392,10 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
             unread: waiting?.unread ?? 0,
             oldest_unread_at: iso(waiting?.oldest),
             doorbell,
-            ...(doorbell === "live"
-              ? { doorbell_until: iso(bell?.until) }
+            ...(doorbell === "live" && bell?.until != null
+              ? { doorbell_until: iso(bell.until) }
               : {}),
+            ...(bell?.operator ? { doorbell_operator: bell.operator } : {}),
             ...(doorbell === "lapsed"
               ? {
                   doorbell_lapsed_at: iso(bell?.lapsed_at),

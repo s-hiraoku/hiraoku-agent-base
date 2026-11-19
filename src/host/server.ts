@@ -57,7 +57,10 @@ export interface HostServerOptions {
     authority: RegistryAuthority;
     verify: McpHttpVerifier;
     /** MCP events for new mail on the agent endpoint (ADR-022). Absent means off. */
-    events?: Omit<HabEventOptions, "store">;
+    events?: Omit<HabEventOptions, "store"> & {
+      /** Operator-registered doorbells with their secrets already read (ADR-029). */
+      doorbells?: readonly { address: string; url: string; secret: string }[];
+    };
   };
   /** Independently verified individual mapping; no model-supplied agent name. */
   authority: RegistryAuthority;
@@ -362,10 +365,31 @@ export async function startHostServer(options: HostServerOptions) {
         typeof source.addressOf !== "function"
       )
         throw Error("invalid_host_ingress");
+      const { doorbells = [], ...eventOptions } = ingress.events;
       events = new HabEvents(source as HabEventSource, {
-        ...ingress.events,
+        ...eventOptions,
         store: privateFile("events.sqlite"),
       });
+      const agentIdOf = (service as { agentIdOf?: (a: string) => unknown })
+        .agentIdOf;
+      const resolved = doorbells.map((doorbell) => {
+        const agentId =
+          typeof agentIdOf === "function"
+            ? agentIdOf.call(service, doorbell.address)
+            : undefined;
+        if (typeof agentId !== "string")
+          throw Error("unknown_doorbell_address");
+        return {
+          agent_id: agentId,
+          url: doorbell.url,
+          secret: doorbell.secret,
+        };
+      });
+      try {
+        events.configureStatic(resolved);
+      } catch {
+        throw Error("invalid_doorbell");
+      }
     }
     if (ingress) {
       ingressGateways = catalogs.map(

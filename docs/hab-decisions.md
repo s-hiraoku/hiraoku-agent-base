@@ -174,6 +174,15 @@
 - **使いどころを案内文に書く。** 待つ間はエージェントのturnも止まるので、MCPの`instructions`では「利用者がこのturnで返事を求めているときだけ`wait_secs`を使い、空で返ったら利用者に伝えてturnを終える（待ち直さない）」と案内する。送った後に何もせず終わるのが基本であることは変わらない。
 - **できないこと。** 待ちは呼び鈴の代わりではない。待っていないエージェントは、従来どおり呼び鈴・受信通知・会話の始めの`hab_inbox`で受け取る。MCPクライアント側の呼出し期限（製品ごとに異なる）より長く待つと、クライアントが先に切る。
 
+## ADR-029 / 採用：自分で購読できないエージェントには、運用者がアドレスごとに呼び鈴の宛先を登録する
+
+2026-11-19 JST、owner判断（agent-mailの記事を参考に「3つとも、PRを3本に分けて」）。ADR-022の呼び鈴は、ChatGPTのようにエージェント製品が自分でMCPイベントを購読するときだけ鳴る。Grok Botのように「Webhookで起きるroutine」は持つが購読の仕組みを持たない製品には、新着を知らせる手段がなかった。agent-mailは宛先ごとのwake設定（URLと鍵）を置き、送信のたびにそのURLを叩いてroutineを起こしている。
+
+- **運用者がhost設定に書く。** `ingress.events.doorbells`に`{address, url, secret_file}`を最大32件。鍵はhost設定に書かず、所有者だけが読める（0600、リンク不可、1KiB以下）別ファイルから起動時に読む。`whsec_`で始まればStandard Webhooksで署名し、それ以外はBearer tokenとして`Authorization`に載せる（16〜512文字）。URLはMCPイベントの購読と同じく公開HTTPSだけ。存在しないアドレスは`unknown_doorbell_address`、URLや鍵の誤りは`invalid_doorbell`、鍵ファイルの権限違反は`unsafe_doorbell_secret`で起動しない。
+- **中身と鳴らし方はMCPイベントの呼び鈴と同じ。** `{to, arrived_at}`だけで本文・送信元・IDは載せない。新着1通ごとに1回、失敗は同じ規則で再送し、ADR-027の鳴らし直しと`inbox_reminder`もそのまま効く。登録した時点（host起動時）に待っているメールでは鳴らさない。
+- **購読とは別扱い。** 期限がなく、確認のchallengeを送らない（運用者がURLを保証する）。エージェントの購読枠（`max_per_agent`）を使わず、MCPの`events/unsubscribe`では外せない。設定から消して再起動すると外れる。`hab:admin status`では`doorbell: "live"`と`doorbell_operator`（件数）で見え、URLと鍵は出さない。
+- **読むのは今までどおりエージェント自身。** 起きたroutineはHABコネクタ（ingressの`/mcp`）で`hab_inbox`を読み、`hab_reply`で返す。HABはroutineの中身や起動を保証しない。受信だけでは返信しない（ADR-021の受入条件）ことも変わらない。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。
