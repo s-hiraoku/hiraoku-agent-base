@@ -316,6 +316,7 @@ interface Row {
   /** The message the failures were counted for; another message starts from zero. */
   failing: string | null;
   next_at: number;
+  created_at: number;
 }
 export interface HabEventOptions {
   /** Absolute path of the owner-only subscription store. */
@@ -347,6 +348,17 @@ export interface HabEventOptions {
    * than `unanswered_after_ms` and its mail is still unread (default true; ADR-030).
    */
   quiet?: boolean;
+  /**
+   * Inbox check (ADR-031): while mail waits unread, ring each live doorbell again once
+   * this long after its last accepted ring (or the last check), so an agent that missed or
+   * ignored the doorbell is asked to look at its inbox on a regular interval. 0 turns it
+   * off (default 10 minutes).
+   */
+  inbox_check_ms?: number;
+  /** Per recipient agent ID, overriding `inbox_check_ms` (0 turns it off for that agent). */
+  inbox_check_by_agent?: Readonly<Record<string, number>>;
+  /** Check rings for the same oldest unread message, per doorbell (default 6). */
+  inbox_check_max_rings?: number;
   post?: WebhookPost;
   now?: () => number;
 }
@@ -389,6 +401,9 @@ export class HabEvents {
   readonly #unansweredAfter: number;
   readonly #rering: boolean;
   readonly #quiet: boolean;
+  readonly #checkMs: number;
+  readonly #checkByAgent: ReadonlyMap<string, number>;
+  readonly #checkMaxRings: number;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -410,6 +425,11 @@ export class HabEvents {
     this.#unansweredAfter = options.unanswered_after_ms ?? 300_000;
     this.#rering = options.rering ?? true;
     this.#quiet = options.quiet ?? true;
+    this.#checkMs = options.inbox_check_ms ?? 600_000;
+    this.#checkByAgent = new Map(
+      Object.entries(options.inbox_check_by_agent ?? {}),
+    );
+    this.#checkMaxRings = options.inbox_check_max_rings ?? 6;
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -439,7 +459,10 @@ export class HabEvents {
         PRIMARY KEY(agent_id, sender_id, message_id));
       CREATE TABLE IF NOT EXISTS hab_event_quiet (
         subscription_id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
-        rang_at INTEGER NOT NULL);`);
+        rang_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_checks (
+        subscription_id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
+        rings INTEGER NOT NULL, checked_at INTEGER NOT NULL);`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -495,6 +518,9 @@ export class HabEvents {
       .run(id, agentId);
     this.#db
       .prepare("DELETE FROM hab_event_quiet WHERE subscription_id=?")
+      .run(id);
+    this.#db
+      .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
       .run(id);
     if (!removed.changes) return;
     this.#db
@@ -721,10 +747,14 @@ export class HabEvents {
       )
       .all() as { id: string }[];
     for (const { id } of existing)
-      if (!keep.has(id))
+      if (!keep.has(id)) {
         this.#db
           .prepare("DELETE FROM hab_event_subscriptions WHERE id=?")
           .run(id);
+        this.#db
+          .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
+          .run(id);
+      }
   }
   /** Active subscriptions, without secrets (for operators and tests). */
   subscriptions() {
@@ -742,7 +772,8 @@ export class HabEvents {
    * message is announced once per subscription. 410 ends the subscription. While the last
    * accepted doorbell is quiet (ADR-030) newer mail waits behind the cursor without a ring.
    * Rings again go first, so a ring again starts a new quiet time instead of sounding
-   * together with newer mail.
+   * together with newer mail. Inbox checks (ADR-031) go last and only fill the silence: any
+   * accepted ring restarts their interval.
    */
   async dispatch() {
     this.#settle();
@@ -754,6 +785,94 @@ export class HabEvents {
       )
       .all(now) as unknown as Row[];
     for (const row of rows) await this.#dispatchOne(row);
+    await this.#checkInboxes();
+  }
+  /** The inbox check interval for a recipient (ADR-031); 0 is off. */
+  inboxCheckMs(agentId: string): number {
+    return this.#checkByAgent.get(agentId) ?? this.#checkMs;
+  }
+  /**
+   * The inbox check (ADR-031): polling for agents that only a doorbell can start. While the
+   * recipient has unread mail, each live doorbell rings for the oldest unread message once
+   * the interval has passed since its last accepted ring, its last check or its creation.
+   * The ring is the same content-free doorbell; the agent reads with its own hab_inbox. A
+   * check is not retried (the next interval is the retry), and the same oldest message is
+   * checked at most `inbox_check_max_rings` times per doorbell, so an agent whose task never
+   * runs is not woken all week. Mail that waited before the doorbell existed is checked too:
+   * that is what polling would find. At most ten checks per pass.
+   */
+  async #checkInboxes() {
+    const rows = this.#db
+      .prepare(
+        "SELECT * FROM hab_event_subscriptions WHERE expires_at>? ORDER BY id",
+      )
+      .all(this.#now()) as unknown as Row[];
+    let rung = 0;
+    for (const listed of rows) {
+      if (rung >= 10) return;
+      // Re-read before every check: an unsubscribe, expiry or refreshed secret during an
+      // earlier check's POST must take effect before this one.
+      const row = this.#db
+        .prepare(
+          "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
+        )
+        .get(listed.id, this.#now()) as unknown as Row | undefined;
+      if (!row) continue;
+      const interval = this.inboxCheckMs(row.agent_id);
+      if (!interval) continue;
+      const check = this.#db
+        .prepare(
+          "SELECT sender_id,message_id,rings,checked_at FROM hab_event_checks WHERE subscription_id=?",
+        )
+        .get(row.id) as
+        | {
+            sender_id: string;
+            message_id: string;
+            rings: number;
+            checked_at: number;
+          }
+        | undefined;
+      const [oldest] = this.#source.arrivals(row.agent_id, null, 1);
+      if (!oldest) {
+        // Everything was read: the next unread mail starts a fresh count.
+        if (check)
+          this.#db
+            .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
+            .run(row.id);
+        continue;
+      }
+      const quiet = this.#db
+        .prepare("SELECT rang_at FROM hab_event_quiet WHERE subscription_id=?")
+        .get(row.id) as { rang_at: number } | undefined;
+      const now = this.#now();
+      const last = Math.max(
+        row.created_at,
+        quiet?.rang_at ?? 0,
+        check?.checked_at ?? 0,
+      );
+      if (now - last < interval) continue;
+      const same =
+        check?.sender_id === oldest.sender_id &&
+        check?.message_id === oldest.message_id;
+      const rings = same ? check!.rings : 0;
+      if (rings >= this.#checkMaxRings) continue;
+      const address = this.#source.addressOf(row.agent_id);
+      if (!address) continue;
+      // Recorded before the POST, so a slow or failed check waits a whole interval.
+      this.#db
+        .prepare(
+          `INSERT INTO hab_event_checks (subscription_id,sender_id,message_id,rings,checked_at)
+           VALUES (?,?,?,?,?) ON CONFLICT(subscription_id) DO UPDATE SET
+             sender_id=excluded.sender_id, message_id=excluded.message_id,
+             rings=excluded.rings, checked_at=excluded.checked_at`,
+        )
+        .run(row.id, oldest.sender_id, oldest.message_id, rings + 1, now);
+      rung += 1;
+      if (
+        (await this.#ring(row, address, oldest, `check-${rings + 1}`)) === 410
+      )
+        this.#end(row.id, row.agent_id, "gone");
+    }
   }
   /**
    * Whether the subscription's last accepted doorbell still covers newer mail (ADR-030): it
@@ -797,6 +916,9 @@ export class HabEvents {
       this.#db
         .prepare("DELETE FROM hab_event_quiet WHERE subscription_id=?")
         .run(row.id);
+      this.#db
+        .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
+        .run(row.id);
       return;
     }
     let cursor = row.cursor ? (JSON.parse(row.cursor) as Arrival) : null;
@@ -818,7 +940,7 @@ export class HabEvents {
       // Held, not skipped: the cursor stays, so the mail is rung after the quiet if it is
       // still unread then, and never if it was read.
       if (row.failing !== key && this.#isQuiet(row)) return;
-      const status = await this.#ring(row, address, arrival, false);
+      const status = await this.#ring(row, address, arrival, null);
       if (status === 410) {
         this.#end(row.id, row.agent_id, "gone");
         return;
@@ -855,10 +977,16 @@ export class HabEvents {
     }
   }
   /**
-   * POST one doorbell and remember how it was answered (0: no answer). The second ring for
-   * the same message has its own eventId, so a subscriber that deduplicates still sees it.
+   * POST one doorbell and remember how it was answered (0: no answer). A ring again or an
+   * inbox check for the same message has its own eventId (`variant`), so a subscriber that
+   * deduplicates still sees it.
    */
-  async #ring(row: Row, address: string, arrival: Arrival, again: boolean) {
+  async #ring(
+    row: Row,
+    address: string,
+    arrival: Arrival,
+    variant: "again" | `check-${number}` | null,
+  ) {
     const eventId =
       "evt_" +
       createHash("sha256")
@@ -867,7 +995,7 @@ export class HabEvents {
             row.id,
             arrival.sender_id,
             arrival.message_id,
-            ...(again ? ["again"] : []),
+            ...(variant ? [variant] : []),
           ]),
         )
         .digest("hex")
@@ -950,7 +1078,7 @@ export class HabEvents {
         })
       )
         continue;
-      if ((await this.#ring(row, address, due_row, true)) === 410)
+      if ((await this.#ring(row, address, due_row, "again")) === 410)
         this.#end(row.id, row.agent_id, "gone");
     }
   }

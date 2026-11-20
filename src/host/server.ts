@@ -60,6 +60,12 @@ export interface HostServerOptions {
     events?: Omit<HabEventOptions, "store"> & {
       /** Operator-registered doorbells with their secrets already read (ADR-029). */
       doorbells?: readonly { address: string; url: string; secret: string }[];
+      /** Inbox check by address (ADR-031); resolved to agent IDs at start. */
+      inbox_check?: {
+        interval_ms?: number;
+        max_rings?: number;
+        addresses?: Readonly<Record<string, number>>;
+      };
     };
   };
   /** Independently verified individual mapping; no model-supplied agent name. */
@@ -365,13 +371,36 @@ export async function startHostServer(options: HostServerOptions) {
         typeof source.addressOf !== "function"
       )
         throw Error("invalid_host_ingress");
-      const { doorbells = [], ...eventOptions } = ingress.events;
-      events = new HabEvents(source as HabEventSource, {
-        ...eventOptions,
-        store: privateFile("events.sqlite"),
-      });
+      const {
+        doorbells = [],
+        inbox_check: check,
+        ...eventOptions
+      } = ingress.events;
       const agentIdOf = (service as { agentIdOf?: (a: string) => unknown })
         .agentIdOf;
+      const byAgent: Record<string, number> = {};
+      for (const [address, interval] of Object.entries(
+        check?.addresses ?? {},
+      )) {
+        const agentId =
+          typeof agentIdOf === "function"
+            ? agentIdOf.call(service, address)
+            : undefined;
+        if (typeof agentId !== "string")
+          throw Error("unknown_inbox_check_address");
+        byAgent[agentId] = interval;
+      }
+      events = new HabEvents(source as HabEventSource, {
+        ...eventOptions,
+        ...(check?.interval_ms !== undefined
+          ? { inbox_check_ms: check.interval_ms }
+          : {}),
+        ...(check?.max_rings !== undefined
+          ? { inbox_check_max_rings: check.max_rings }
+          : {}),
+        inbox_check_by_agent: byAgent,
+        store: privateFile("events.sqlite"),
+      });
       const resolved = doorbells.map((doorbell) => {
         const agentId =
           typeof agentIdOf === "function"

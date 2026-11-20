@@ -65,7 +65,11 @@ async function setup(t, options = {}) {
   const events = new HabEvents(f.hab, {
     store: temp(t),
     post: h.post,
-    ...options.events,
+    // The ADR-031 inbox check is off unless a test is about it.
+    inbox_check_ms: 0,
+    ...(typeof options.events === "function"
+      ? options.events({ a, b })
+      : options.events),
   });
   t.after(() => events.close());
   const audit = { record() {}, note() {} };
@@ -1155,4 +1159,202 @@ test("a ring again left over from before rering: false does not hold new mail", 
     2,
     "the quiet ended, so the new mail rings",
   );
+});
+
+// ADR-031: polling for agents only a doorbell can start. While mail waits unread, each live
+// doorbell rings again every inbox_check_ms after its last accepted ring.
+test("unread mail is checked every interval with a new event ID until it is read", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: {
+      now: () => now,
+      unanswered_after_ms: 60_000,
+      rering: false,
+      inbox_check_ms: 600_000,
+    },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  now += 599_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1, "not before the interval");
+  now += 1000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2, "the first check");
+  now += 3000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2, "once per interval");
+  now += 600_000;
+  await f.events.dispatch();
+  const [first, check1, check2] = f.h.events();
+  assert.ok(check2, "the second check");
+  assert.deepEqual(check1.parsed.data, first.parsed.data, "the same doorbell");
+  assert.equal(
+    new Set([first, check1, check2].map((e) => e.parsed.eventId)).size,
+    3,
+  );
+  assert.equal(check2.headers["webhook-id"], check2.parsed.eventId);
+  await f.rpc("a", "tools/call", { name: "hab_inbox", arguments: {} });
+  for (let i = 0; i < 3; i++) {
+    now += 600_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.h.events().length, 3, "read mail is never checked");
+});
+
+test("any accepted ring restarts the check interval, and the ADR-027 ring again comes first", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: {
+      now: () => now,
+      unanswered_after_ms: 300_000,
+      inbox_check_ms: 600_000,
+    },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  now += 300_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2, "the ring again at 5 minutes");
+  now += 300_000;
+  await f.events.dispatch();
+  assert.equal(
+    f.h.events().length,
+    2,
+    "10 minutes after the first, 5 after the last",
+  );
+  now += 300_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3, "10 minutes after the ring again");
+});
+
+test("checks of the same oldest message stop at max_rings, and the next oldest starts again", async (t) => {
+  let now = Date.now();
+  const f = await setup(t, {
+    events: {
+      now: () => now,
+      rering: false,
+      quiet: false,
+      inbox_check_ms: 60_000,
+      inbox_check_max_rings: 2,
+    },
+  });
+  await f.subscribe("a");
+  const one = await f.send("b", f.a.address, "one");
+  await f.send("b", f.a.address, "two");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+  for (let i = 0; i < 5; i++) {
+    now += 60_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.h.events().length, 4, "two checks for the oldest");
+  // A delivery client reads only the oldest: the next oldest gets its own checks.
+  f.raw
+    .prepare("UPDATE delivery_messages SET state='acked' WHERE message_id=?")
+    .run(one.message_id);
+  for (let i = 0; i < 5; i++) {
+    now += 60_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.h.events().length, 6);
+  const checked = f.h
+    .events()
+    .slice(2)
+    .map((e) => e.parsed.data.arrived_at);
+  assert.equal(checked[0], checked[1]);
+  assert.equal(checked[2], checked[3]);
+  assert.notEqual(checked[1], checked[2]);
+});
+
+test("a failed check is not retried before the next interval, and 0 turns checks off for one agent", async (t) => {
+  let now = Date.now();
+  let answer = 200;
+  const f = await setup(t, {
+    status: () => answer,
+    events: { now: () => now, rering: false, inbox_check_ms: 600_000 },
+  });
+  await f.subscribe("a");
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  answer = 503;
+  now += 600_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2, "the check was tried");
+  for (let i = 0; i < 9; i++) {
+    now += 60_000;
+    await f.events.dispatch();
+  }
+  assert.equal(f.h.events().length, 2, "no retry inside the interval");
+  now += 60_000;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3, "the next interval tries again");
+
+  // a has checks off, b keeps the host-wide interval.
+  const g = await setup(t, {
+    events: ({ a }) => ({
+      now: () => now,
+      rering: false,
+      inbox_check_ms: 60_000,
+      inbox_check_by_agent: { [a.agent_id]: 0 },
+    }),
+  });
+  assert.equal(g.events.inboxCheckMs(g.a.agent_id), 0);
+  assert.equal(g.events.inboxCheckMs(g.b.agent_id), 60_000);
+  await g.subscribe("a");
+  await g.subscribe("b");
+  await g.send("b", g.a.address, "for a");
+  await g.send("a", g.b.address, "for b");
+  await g.events.dispatch();
+  assert.equal(g.h.events().length, 2);
+  for (let i = 0; i < 3; i++) {
+    now += 60_000;
+    await g.events.dispatch();
+  }
+  const to = g.h
+    .events()
+    .slice(2)
+    .map((e) => e.parsed.data.to);
+  assert.deepEqual(to, [g.b.address, g.b.address, g.b.address]);
+});
+
+test("the inbox check is on by default every 10 minutes", async (t) => {
+  const f = await fixture(t);
+  const events = new HabEvents(f.hab, { store: temp(t), post: hooks().post });
+  t.after(() => events.close());
+  assert.equal(events.inboxCheckMs("anyone"), 600_000);
+});
+
+test("an unsubscribe during one inbox check stops the check of that subscription", async (t) => {
+  let now = Date.now();
+  let unsubscribeDuringCheck = false;
+  const f = await setup(t, {
+    events: { now: () => now, rering: false, inbox_check_ms: 60_000 },
+    onEvent: async (self, parsed) => {
+      if (!unsubscribeDuringCheck || !parsed.data) return;
+      unsubscribeDuringCheck = false;
+      // Both go while the first check's POST is pending; the second must not be checked.
+      for (const n of [1, 2])
+        await self.rpc("a", "events/unsubscribe", {
+          name: HAB_EVENT_NAME,
+          arguments: {},
+          delivery: { mode: "webhook", url: `${URL_A}/${n}` },
+        });
+    },
+  });
+  for (const n of [1, 2])
+    await f.subscribe("a", {
+      delivery: { mode: "webhook", url: `${URL_A}/${n}`, secret: SECRET },
+    });
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+  now += 60_000;
+  unsubscribeDuringCheck = true;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3, "only the check already being sent");
+  assert.equal(f.events.subscriptions().length, 0);
 });

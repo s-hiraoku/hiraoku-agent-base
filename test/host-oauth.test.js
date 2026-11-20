@@ -495,6 +495,16 @@ test("operator doorbells (ADR-029): the host rings a configured URL for an addre
     }),
     /unknown_doorbell_address/,
   );
+  // The inbox check (ADR-031) names addresses too; an unknown one stops the start.
+  await assert.rejects(
+    f.start({
+      ingress: {
+        ...f.options.ingress,
+        events: { inbox_check: { addresses: { "nobody@nowhere.hab": 0 } } },
+      },
+    }),
+    /unknown_inbox_check_address/,
+  );
   const posts = [];
   const h = await f.start({
     ingress: {
