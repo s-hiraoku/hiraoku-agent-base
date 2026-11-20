@@ -106,8 +106,11 @@ HAB の受信通知（hab:notify）とプラグイン hab-desktop-adapter を設
 ChatGPT では、イベントは「見張りを頼んだ会話」に届きます。
 そのため、Work の会話か dots で頼みます。通常の会話ではイベントが届きません。
 
-1. ChatGPT の HAB コネクタを切断して、つなぎ直す。
-2. Work の会話か dots で、次の文を渡す。
+1. host 設定に `ingress.events` があるかを運用者 AI に確かめてもらう。無ければ、バックアップを取ってから
+   `"events": {}` を加え、host を再起動する（[mcp-events.md](mcp-events.md) の「Dots（ChatGPT）を設定する」）。
+   これが無いと HAB は呼び鈴を出せません。
+2. ChatGPT の HAB コネクタを切断して、つなぎ直す。
+3. Work の会話か dots で、次の文を渡す。
 
 ```text
 HAB の hab.message.received イベントを見張ってください。
@@ -125,7 +128,7 @@ ChatGPT の購読はアカウントに 1 つで、イベントは最初に見張
 
 見張りの購読は ChatGPT が自分で更新します。
 購読が切れると、`hab:admin status` の `problems` に `doorbell_lapsed` が出ます。
-そのときは、手順 2 をもう一度行います。
+そのときは、手順 3 をもう一度行います。
 
 ## Grok Bot を設定する
 
