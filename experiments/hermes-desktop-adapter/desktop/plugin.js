@@ -448,9 +448,12 @@ export function ReceivedMessages({ view, visible, onChoose, dismissed = [], onDi
     // An automatic accept hands the message off within seconds, before anyone looks, so
     // the arrival and its body stay on screen after the handoff instead of folding away,
     // until the owner closes it (2026-11-20).
-    const accepted = view.cards.filter((card) => acceptedStates.has(card.decision?.state) &&
-        !closed.has(displayKey(card.notice)));
-    const recent = new Set(accepted.slice(-RECENT_ACCEPTED));
+    // Take the newest five first, then drop the closed ones, so closing a card never
+    // brings an older one back out of the history.
+    const accepted = view.cards.filter((card) => acceptedStates.has(card.decision?.state));
+    const recent = new Set(accepted
+        .slice(-RECENT_ACCEPTED)
+        .filter((card) => !closed.has(displayKey(card.notice))));
     const history = view.cards.filter((card) => historyStates.has(card.decision?.state) && !recent.has(card));
     const pending = view.cards.filter((card) => !historyStates.has(card.decision?.state));
     let pendingList = null;

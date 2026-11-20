@@ -337,3 +337,38 @@ test("closed cards are remembered once each, newest kept up to the limit", () =>
   assert.equal(kept.at(-1), `k${DISMISSED_LIMIT + 4}`);
   assert.equal(kept[0], "k5");
 });
+
+test("closing the newest cards does not bring older ones back from the history", () => {
+  const cards = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"].map((id) =>
+    card("queued", id),
+  );
+  const render = (dismissed) =>
+    ReceivedMessages({
+      view: { cards, error: "", busy: false },
+      visible: true,
+      onChoose: () => {},
+      dismissed,
+      onDismiss: () => {},
+    });
+  let captured = [];
+  const all = ReceivedMessages({
+    view: { cards, error: "", busy: false },
+    visible: true,
+    onChoose: () => {},
+    dismissed: [],
+    onDismiss: (k) => (captured = k),
+  });
+  nodes(all, "button")
+    .find((b) => visibleText(b) === "すべて閉じる")
+    .props.onClick();
+  assert.equal(captured.length, 5);
+  const closedAll = render(captured);
+  assert.doesNotMatch(visibleText(closedAll), /body-/);
+  assert.match(visibleText(closedAll), /履歴（7件）/);
+  const one = render([captured.at(-1)]);
+  const text = visibleText(one);
+  for (const id of ["a3", "a4", "a5", "a6"])
+    assert.match(text, new RegExp(`body-${id}`));
+  for (const id of ["a1", "a2", "a7"])
+    assert.doesNotMatch(text, new RegExp(`body-${id}`));
+});
