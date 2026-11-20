@@ -446,6 +446,12 @@ test("ingress events refuse an unanswered threshold outside its bounds (ADR-027)
     { unanswered_after_ms: 59_999 },
     { unanswered_after_ms: 86_400_001 },
     { rering: "yes" },
+    // ADR-031: 0 or one minute to one day, per address only for valid addresses.
+    { inbox_check: { interval_ms: 59_999 } },
+    { inbox_check: { interval_ms: 86_400_001 } },
+    { inbox_check: { max_rings: 0 } },
+    { inbox_check: { addresses: { "not an address": 0 } } },
+    { inbox_check: { every: 1 } },
   ]) {
     f.write("service.local.json", {
       ...f.config,
@@ -458,12 +464,13 @@ test("ingress events refuse an unanswered threshold outside its bounds (ADR-027)
       },
     });
     await assert.rejects(startHost(f.configPath), (error) => {
-      assert.deepEqual(
-        { reason: error.reason, fields: error.fields },
-        {
-          reason: "config_invalid",
-          fields: [`ingress.events.${Object.keys(events)[0]}`],
-        },
+      const key = Object.keys(events)[0];
+      assert.equal(error.reason, "config_invalid");
+      // Nested settings name the inner field, e.g. ingress.events.inbox_check.interval_ms.
+      assert.equal(error.fields.length, 1);
+      assert.match(
+        error.fields[0],
+        new RegExp(`^ingress\\.events\\.${key}(\\.|$)`),
       );
       return true;
     });

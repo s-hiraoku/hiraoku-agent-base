@@ -1132,4 +1132,19 @@ test("status reports unread mail waiting and lapsed doorbells per address", asyn
   assert.equal(withOperator.doorbell_operator, 1);
   assert.equal("doorbell_until" in withOperator, false);
   assert.ok(!JSON.stringify(withOperator).includes("grok-routine-token"));
+  // A live doorbell shows its inbox check interval (ADR-031): 10 minutes unless configured.
+  assert.equal(withOperator.inbox_check_ms, 600_000);
+  assert.equal("inbox_check_ms" in byAddress["hermes@hermes.hab"], false);
+  f.config.ingress.events = {
+    inbox_check: {
+      interval_ms: 300_000,
+      addresses: { "hermes@hermes.hab": 0 },
+    },
+  };
+  f.write("service.local.json", f.config);
+  const checks = Object.fromEntries(
+    hostAdminStatus(f.configPath).inboxes.map((i) => [i.address, i]),
+  );
+  assert.equal(checks["hermes@hermes.hab"].inbox_check_ms, 0);
+  assert.equal(checks["codex@codex.hab"].inbox_check_ms, 300_000);
 });
