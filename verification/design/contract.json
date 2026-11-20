@@ -1264,6 +1264,13 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-026 per-agent received-mail display: the version-1 presentation fields (body stays in text), which adapter draws what (Hermes Desktop plugin fields with display fallback, Claude Code status line gist, MCP Apps card ui://hab/inbox-v1 for claude.ai/ChatGPT/Gemini app, text notice for Codex/Antigravity CLI/Gemini CLI, Grok Bot/Antigravity unverified), MCP Apps resource rules and the safety rules (framed model text, body_untrusted, text-only rendering, no free text in channel attributes)."
+    },
+    {
+      "path": "docs/plans/receive-show-act-plan.md",
+      "sha256": "3563cf97a6d471e4010e65d81c77c37756729fba55b5986f6f9d68d0b8825ff4",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Plan (not yet executed) for establishing receive/show/act across agents: PR-1..PR-7 order, dependencies, per-PR build and verification, owner decisions, and 2026-11-20 prototype evidence. A plan, not a decision; ADR-032 would record decisions."
     }
   ],
   "requirements": [
