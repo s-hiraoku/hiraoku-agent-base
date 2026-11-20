@@ -1260,7 +1260,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "0c9cec01b3882b129acf04651d2cae0740bb148f1deada7c476eec8d293d9beb",
+      "sha256": "183440c08bb9c59d63ce5faa2a32d68e7ae722c880142e7c9422d5cc46119a44",
       "role": "context",
       "review": "reviewed",
       "summary": "Per-product setup guide as of 2026-11-20 in three stages (receive, show, act as chosen) with live-check status per product, troubleshooting and paste-ready prompts: operator-AI prompts for Auth0/ledger/hab:admin connect/doorbell/notifier work, always prefixed with no-secrets, backup+ROLLBACK, show-then-wait-for-yes rules; agent prompts for Dots event task, Muse schedule, Grok routine and claude.ai. Status table per product; adds no requirement and defers to the linked normative documents.",
