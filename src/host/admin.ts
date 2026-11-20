@@ -19,7 +19,11 @@ import {
   parseHabAddress,
   deliveryOperations,
 } from "../hab/registry.ts";
-import type { AgentOperation, IndividualPrincipal } from "../hab/registry.ts";
+import type {
+  AgentOperation,
+  IndividualPrincipal,
+  ProductRecord,
+} from "../hab/registry.ts";
 
 export class HostAdminError extends Error {
   readonly code: string;
@@ -73,6 +77,7 @@ function open(configPath: string) {
   let version: unknown;
   let unconverted = false;
   let namesVersion: unknown;
+  let receivePresent = false;
   try {
     const raw = new DatabaseSync(path, { readOnly: true });
     try {
@@ -86,6 +91,9 @@ function open(configPath: string) {
             "SELECT 1 FROM hab_bindings b WHERE NOT EXISTS (SELECT 1 FROM hab_auth_group_bindings g WHERE g.binding_id=b.binding_id)",
           )
           .get();
+      receivePresent = !!raw
+        .prepare("SELECT 1 FROM sqlite_master WHERE name='hab_receive_meta'")
+        .get();
       if (version === 3)
         namesVersion = raw
           .prepare("SELECT version FROM hab_agent_name_meta WHERE id=1")
@@ -99,6 +107,8 @@ function open(configPath: string) {
   if (
     version === 1 ||
     unconverted ||
+    // ADR-032 tables arrive with the next host start, never from admin.
+    !receivePresent ||
     // Previous-name use counts arrive with the next host start, never from admin.
     (version === 3 && namesVersion !== NAME_SCHEMA_VERSION) ||
     (typeof version === "number" &&
@@ -211,6 +221,47 @@ function unreadByRecipient(directory: string, now: number) {
   return result;
 }
 
+/** ADR-032: set how a product receives mail. `interval_ms` only with `poll`. */
+export function hostAdminReceive(
+  configPath: string,
+  input: {
+    agent_name: string;
+    mode: string;
+    interval_ms?: number;
+    request_id: string;
+  },
+) {
+  return withRegistry(configPath, ({ registry }) => {
+    const product = registry.setProductReceive(operator, input);
+    return { agent_name: product.agent_name, receive: product.receive };
+  });
+}
+
+/** ADR-032: name the product session an address stands for. */
+export function hostAdminSession(
+  configPath: string,
+  input: {
+    address: string;
+    session: string;
+    replace?: boolean;
+    request_id: string;
+  },
+) {
+  return withRegistry(configPath, ({ registry }) => {
+    const agent = registry
+      .overview(operator)
+      .agents.find((entry) => entry.address === input.address);
+    if (!agent) throw new HostAdminError("address_not_found");
+    const bound = registry.bindSession(operator, {
+      request_id: input.request_id,
+      agent_id: agent.agent_id,
+      session: input.session,
+      ...(input.replace ? { replace: true } : {}),
+    });
+    return { address: bound.address, session: bound.session };
+  });
+}
+
 /** Explicit operator action, with caller-journaled request ID and optimistic concurrency. */
 export function hostAdminRename(configPath: string, input: RenameInput) {
   const { registry } = open(configPath);
@@ -249,6 +300,8 @@ function summary(agent: Agent, groups: readonly Group[]) {
       groups.find((group) => group.group_id === agent.group_id)
         ?.active_binding_ids.length ?? 0,
     group_id: agent.group_id,
+    // ADR-032: the product session this address stands for (provisional until named).
+    session: agent.session,
   };
 }
 
@@ -424,6 +477,11 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
         });
       return {
         resource_urls: resources,
+        // ADR-032: how each product hears about new mail (null until the operator sets it).
+        products: view.products.map((product) => ({
+          agent_name: product.agent_name,
+          receive: product.receive,
+        })),
         addresses: view.agents.map((agent) => summary(agent, view.groups)),
         groups: view.groups.map((group) => ({
           group_id: group.group_id,
@@ -513,7 +571,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
           .overview(operator)
           .agents.find((agent) => agent.address === address.address);
       let view = registry.overview(operator);
-      let product = view.products.find(
+      let product: ProductRecord | undefined = view.products.find(
         (p) => p.agent_name === address.agent_name,
       );
       if (!product) {

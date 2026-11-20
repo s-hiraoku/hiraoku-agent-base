@@ -5,6 +5,8 @@ import {
   hostAdminConnect,
   hostAdminDisconnect,
   hostAdminRename,
+  hostAdminReceive,
+  hostAdminSession,
   hostAdminErrorCode,
   HostAdminError,
 } from "../src/host/admin.ts";
@@ -13,6 +15,8 @@ const usage = `usage:
   hab-admin --config <service.local.json> status
   hab-admin --config <service.local.json> connect --address <bot@agent.hab> --connection-id <id> [--operations resolve,submit,status,poll,ack]
   hab-admin --config <service.local.json> disconnect --address <bot@agent.hab>
+  hab-admin --config <service.local.json> receive --agent-name <product> --mode hook|poll|on_request [--interval-ms <60000..86400000>] --request-id <journaled-id>
+  hab-admin --config <service.local.json> session --address <bot@agent.hab> --session <name> [--replace true] --request-id <journaled-id>
   hab-admin --config <service.local.json> rename --agent-id <id> --expected-address <old@agent.hab> --bot-name <new> --expected-epoch <epoch> --request-id <journaled-id>`;
 
 function parse(args: string[]) {
@@ -33,6 +37,11 @@ function parse(args: string[]) {
         "--bot-name",
         "--expected-epoch",
         "--request-id",
+        "--agent-name",
+        "--mode",
+        "--interval-ms",
+        "--session",
+        "--replace",
       ].includes(key) ||
       value === undefined ||
       Object.hasOwn(options, key)
@@ -62,6 +71,39 @@ export function main(args = process.argv.slice(2)) {
       bot_name: options["--bot-name"],
       expected_epoch: Number(options["--expected-epoch"]),
       request_id: options["--request-id"],
+    });
+  if (
+    command === "receive" &&
+    options["--agent-name"] &&
+    options["--mode"] &&
+    options["--request-id"] &&
+    Object.keys(options).every((key) =>
+      ["--agent-name", "--mode", "--interval-ms", "--request-id"].includes(key),
+    )
+  )
+    return hostAdminReceive(config, {
+      agent_name: options["--agent-name"],
+      mode: options["--mode"],
+      request_id: options["--request-id"],
+      ...(options["--interval-ms"] !== undefined
+        ? { interval_ms: Number(options["--interval-ms"]) }
+        : {}),
+    });
+  if (
+    command === "session" &&
+    options["--address"] &&
+    options["--session"] &&
+    options["--request-id"] &&
+    (options["--replace"] === undefined || options["--replace"] === "true") &&
+    Object.keys(options).every((key) =>
+      ["--address", "--session", "--replace", "--request-id"].includes(key),
+    )
+  )
+    return hostAdminSession(config, {
+      address: options["--address"],
+      session: options["--session"],
+      request_id: options["--request-id"],
+      ...(options["--replace"] === "true" ? { replace: true } : {}),
     });
   if (
     command === "connect" &&

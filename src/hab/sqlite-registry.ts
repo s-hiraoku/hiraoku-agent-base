@@ -121,6 +121,31 @@ const rights = z
   .transform((v) => v.sort());
 const epoch = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const productInput = z.strictObject({ request_id: id, agent_name: slug });
+/** How a product hears about new mail (ADR-032): a doorbell, its own timer, or only when asked. */
+export const RECEIVE_MODES = ["hook", "poll", "on_request"] as const;
+export type ReceiveMode = (typeof RECEIVE_MODES)[number];
+const receiveInput = z
+  .strictObject({
+    request_id: id,
+    agent_name: slug,
+    mode: z.enum(RECEIVE_MODES),
+    interval_ms: z.number().int().min(60_000).max(86_400_000).optional(),
+  })
+  .refine((v) => (v.mode === "poll") === (v.interval_ms !== undefined), {
+    message: "interval_ms is required for poll and only for poll",
+  });
+/** A product's own name for one session (task, conversation). HAB stores it, never reads it. */
+const sessionName = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[^\u0000-\u001f\u007f]+$/);
+const sessionInput = z.strictObject({
+  request_id: id,
+  agent_id: id,
+  session: sessionName,
+  replace: z.boolean().optional(),
+});
 const enrollInput = z.strictObject({
   request_id: id,
   product_id: id,
@@ -218,14 +243,41 @@ CREATE TRIGGER hab_bindings_revoked BEFORE UPDATE ON hab_bindings WHEN OLD.state
 CREATE TRIGGER hab_bindings_reserved BEFORE DELETE ON hab_bindings BEGIN SELECT RAISE(ABORT,'reserved'); END;
 CREATE TRIGGER hab_stop_monotonic BEFORE UPDATE ON hab_registry_stop WHEN OLD.stopped=1 BEGIN SELECT RAISE(ABORT,'stopped'); END;
 `;
+/**
+ * ADR-032: how each product receives mail, and which product session each address is.
+ * One session per address and one address per session within a product. Rows are never
+ * deleted: a product's mode changes in place and a session is replaced, with who and when.
+ */
+const RECEIVE_SCHEMA = `
+CREATE TABLE hab_receive_meta(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL CHECK(version=1));
+CREATE TABLE hab_product_receive(product_id TEXT PRIMARY KEY REFERENCES hab_products(product_id),mode TEXT NOT NULL CHECK(mode IN ('hook','poll','on_request')),interval_ms INTEGER CHECK(interval_ms IS NULL OR interval_ms BETWEEN 60000 AND 86400000),updated_at TEXT NOT NULL,actor_hash TEXT NOT NULL,CHECK((mode='poll')=(interval_ms IS NOT NULL)));
+CREATE TABLE hab_agent_sessions(agent_id TEXT PRIMARY KEY REFERENCES hab_agents(agent_id),product_id TEXT NOT NULL REFERENCES hab_products(product_id),session TEXT NOT NULL,provisional INTEGER NOT NULL CHECK(provisional IN (0,1)),bound_at TEXT NOT NULL,actor_hash TEXT,UNIQUE(product_id,session));
+CREATE TRIGGER hab_product_receive_reserved BEFORE DELETE ON hab_product_receive BEGIN SELECT RAISE(ABORT,'reserved'); END;
+CREATE TRIGGER hab_agent_sessions_reserved BEFORE DELETE ON hab_agent_sessions BEGIN SELECT RAISE(ABORT,'reserved'); END;
+CREATE TRIGGER hab_agent_sessions_identity BEFORE UPDATE OF agent_id,product_id ON hab_agent_sessions BEGIN SELECT RAISE(ABORT,'immutable'); END;
+`;
+export interface ProductReceive {
+  mode: ReceiveMode;
+  interval_ms: number | null;
+  updated_at: string;
+}
+export interface AgentSession {
+  session: string;
+  /** Filled in by the migration from the address; no operator has named it yet. */
+  provisional: boolean;
+  bound_at: string;
+}
 type AgentRow = Omit<AgentRecord, "operations" | "normalization_version"> & {
   operations: string;
   normalization_version: number;
 };
 export interface RegistryOverview {
   stopped: boolean;
-  products: ProductRecord[];
-  agents: (AgentRecord & { group_id: string | null })[];
+  products: (ProductRecord & { receive: ProductReceive | null })[];
+  agents: (AgentRecord & {
+    group_id: string | null;
+    session: AgentSession | null;
+  })[];
   groups: (AuthenticationGroup & {
     active_binding_ids: string[];
     member_ids: string[];
@@ -508,10 +560,148 @@ export class SQLiteHabRegistry {
             throw new RegistryError("unsupported_registry_name_schema");
         this.#namesPresent = true;
       }
+      this.#migrateReceive();
       return this.#namesPresent ? 3 : 2;
     });
     this.#schemaVersion = version;
     this.#ready = true;
+  }
+  /**
+   * Additive ADR-032 tables. Existing addresses become provisional sessions named after
+   * the address, so delivery and doorbells behave exactly as before the migration.
+   */
+  #migrateReceive() {
+    const present = this.#db
+      .prepare("SELECT 1 FROM sqlite_master WHERE name='hab_receive_meta'")
+      .get();
+    if (!present) {
+      this.#db.exec(RECEIVE_SCHEMA);
+      this.#db.prepare("INSERT INTO hab_receive_meta VALUES(1,1)").run();
+    }
+    const meta = this.#db.prepare("SELECT * FROM hab_receive_meta").all();
+    if (meta.length !== 1 || meta[0].id !== 1 || meta[0].version !== 1)
+      throw new RegistryError("unsupported_registry_receive_schema");
+    for (const name of ["hab_product_receive", "hab_agent_sessions"])
+      if (
+        !this.#db.prepare("SELECT 1 FROM sqlite_master WHERE name=?").get(name)
+      )
+        throw new RegistryError("unsupported_registry_receive_schema");
+    const now = this.#iso();
+    this.#db
+      .prepare(
+        `INSERT INTO hab_agent_sessions(agent_id,product_id,session,provisional,bound_at,actor_hash)
+         SELECT a.agent_id,a.product_id,a.address,1,?,NULL FROM hab_agents a
+         WHERE NOT EXISTS (SELECT 1 FROM hab_agent_sessions s WHERE s.agent_id=a.agent_id)`,
+      )
+      .run(now);
+  }
+  #productReceive(productId: string): ProductReceive | null {
+    const row = this.#db
+      .prepare(
+        "SELECT mode,interval_ms,updated_at FROM hab_product_receive WHERE product_id=?",
+      )
+      .get(productId);
+    if (!row) return null;
+    return {
+      mode: z.enum(RECEIVE_MODES).parse(row.mode),
+      interval_ms: row.interval_ms === null ? null : Number(row.interval_ms),
+      updated_at: String(row.updated_at),
+    };
+  }
+  #agentSession(agentId: string): AgentSession | null {
+    const row = this.#db
+      .prepare(
+        "SELECT session,provisional,bound_at FROM hab_agent_sessions WHERE agent_id=?",
+      )
+      .get(agentId);
+    if (!row) return null;
+    return {
+      session: String(row.session),
+      provisional: row.provisional === 1,
+      bound_at: String(row.bound_at),
+    };
+  }
+  /** Operator: how a product receives mail (hook, poll with an interval, or on request). */
+  setProductReceive(
+    context: unknown,
+    value: unknown,
+  ): ProductRecord & { receive: ProductReceive } {
+    const input = parse(receiveInput, value);
+    return this.#mutate(context, "receive", input, () => {
+      const product = this.#db
+        .prepare(
+          "SELECT product_id,agent_name,created_at FROM hab_products WHERE agent_name=?",
+        )
+        .get(input.agent_name) as unknown as ProductRecord | undefined;
+      if (!product) throw new RegistryError("registry_not_found");
+      const actor = this.#admin(context, "receive");
+      this.#db
+        .prepare(
+          `INSERT INTO hab_product_receive VALUES(?,?,?,?,?)
+           ON CONFLICT(product_id) DO UPDATE SET mode=excluded.mode,interval_ms=excluded.interval_ms,updated_at=excluded.updated_at,actor_hash=excluded.actor_hash`,
+        )
+        .run(
+          product.product_id,
+          input.mode,
+          input.interval_ms ?? null,
+          this.#iso(),
+          actor,
+        );
+      return {
+        result: {
+          ...product,
+          receive: this.#productReceive(product.product_id)!,
+        },
+        object_id: product.product_id,
+      };
+    });
+  }
+  /**
+   * Operator: name the product session an address stands for. A named session is not
+   * silently replaced (`replace: true` says so), and two addresses of one product never
+   * share a session.
+   */
+  bindSession(
+    context: unknown,
+    value: unknown,
+  ): AgentRecord & { session: AgentSession } {
+    const input = parse(sessionInput, value);
+    return this.#mutate(context, "session", input, () => {
+      const agent = this.#agent(input.agent_id);
+      if (agent.state === "retired")
+        throw new RegistryError("registry_retired");
+      const current = this.#agentSession(agent.agent_id);
+      if (
+        current &&
+        !current.provisional &&
+        current.session !== input.session &&
+        input.replace !== true
+      )
+        throw new RegistryError("registry_session_bound");
+      const taken = this.#db
+        .prepare(
+          "SELECT agent_id FROM hab_agent_sessions WHERE product_id=? AND session=? AND agent_id<>?",
+        )
+        .get(agent.product_id, input.session, agent.agent_id);
+      if (taken) throw new RegistryError("registry_session_taken");
+      const actor = this.#admin(context, "session");
+      this.#db
+        .prepare(
+          `INSERT INTO hab_agent_sessions VALUES(?,?,?,0,?,?)
+           ON CONFLICT(agent_id) DO UPDATE SET session=excluded.session,provisional=0,bound_at=excluded.bound_at,actor_hash=excluded.actor_hash`,
+        )
+        .run(
+          agent.agent_id,
+          agent.product_id,
+          input.session,
+          this.#iso(),
+          actor,
+        );
+      return {
+        result: { ...agent, session: this.#agentSession(agent.agent_id)! },
+        object_id: agent.agent_id,
+      };
+    });
   }
   /**
    * Earlier builds could bind a connection to one address directly. Each such address
@@ -848,6 +1038,10 @@ export class SQLiteHabRegistry {
         this.#db
           .prepare("INSERT INTO hab_address_reservations VALUES(?,?,?,?)")
           .run(address, agentId, input.bot_name, this.#iso());
+      // Until an operator names it, the session is provisional and named after the address.
+      this.#db
+        .prepare("INSERT INTO hab_agent_sessions VALUES(?,?,?,1,?,NULL)")
+        .run(agentId, input.product_id, address, this.#iso());
       return { result: this.#agent(agentId), object_id: agentId };
     });
   }
@@ -2042,7 +2236,14 @@ export class SQLiteHabRegistry {
         .prepare(
           "SELECT product_id,agent_name,created_at FROM hab_products ORDER BY agent_name LIMIT 1000",
         )
-        .all() as unknown as ProductRecord[];
+        .all()
+        .map((row) => {
+          const product = row as unknown as ProductRecord;
+          return {
+            ...product,
+            receive: this.#productReceive(product.product_id),
+          };
+        });
       const agentIds = this.#db
         .prepare(
           `SELECT agent_id FROM ${this.#agentTable()} ORDER BY address LIMIT 1000`,
@@ -2057,6 +2258,7 @@ export class SQLiteHabRegistry {
         return {
           ...this.#agent(agentId),
           group_id: group ? String(group.group_id) : null,
+          session: this.#agentSession(agentId),
         };
       });
       const groups = this.#db

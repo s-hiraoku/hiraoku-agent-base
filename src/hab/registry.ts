@@ -63,7 +63,9 @@ export type AdminOperation =
   | "group_member"
   | "group_access"
   | "group_revoke"
-  | "emergency_stop";
+  | "emergency_stop"
+  | "receive"
+  | "session";
 export interface RegistryAuthority {
   /** Separate host-owned management authority. Default is deny. Synchronous/current. */
   administrator?(

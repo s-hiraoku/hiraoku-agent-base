@@ -40,6 +40,7 @@ import type {
   AgentOperation,
   AgentRecord,
   IndividualPrincipal,
+  ProductRecord,
 } from "../hab/registry.ts";
 import { openA2aTaskStore } from "../a2a/store.ts";
 import { habHostAgentCard } from "../a2a/hab-adapter.ts";
@@ -115,7 +116,7 @@ export function provisionHostA2aIdentity(
     target = parseHabAddress(previous.current_address);
   }
   if (!find()) {
-    let product = registry
+    let product: ProductRecord | undefined = registry
       .overview(admin)
       .products.find((p) => p.agent_name === target.agent_name);
     product ??= registry.registerProduct(admin, {
