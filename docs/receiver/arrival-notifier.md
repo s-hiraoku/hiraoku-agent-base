@@ -73,6 +73,8 @@ npm run hab:notify -- --config notify.json decide <message_id> accept|later|decl
 npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 ```
 
+`run` は `interval_ms`（既定 15 秒、1 秒〜1 時間）ごとに `hab_peek` で受信箱を確かめます。これがこのエージェントの定期確認（ポーリング、[ADR-031](../hab-decisions.md)）で、呼び鈴は使いません。間隔は利用者がこの設定で決めます。
+
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
 
 `token.file` と `token.env` では、token の更新はエージェント側の仕事で、アダプタは更新しません。エージェントを使っていない間も通知を出し続けたいときは、次の [notifier 専用のログイン（`token.oauth`）](#notifier-専用のログインtokenoauth) を使います。Hermes は `expires_at`（期限の UNIX 秒）を書き、期限が切れたあと、自分の次の接続（約 3 分ごと）で更新します。`expires_at_field` を指定すると、期限を過ぎた token は HAB に送らず、`{"error":"token_expired"}` を返します。token の欄が空なら `token_unavailable` です。どちらも `transport_failed`（HAB に届かない、応答がおかしい）とは分けて出ます。`run` は期限切れの間もそのまま待ち、エージェントが更新した次の確認から自然に戻ります。

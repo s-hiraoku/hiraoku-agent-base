@@ -23,6 +23,7 @@ const hostReasons = new Set([
   "invalid_host_options",
   "invalid_host_ingress",
   "unknown_doorbell_address",
+  "unknown_inbox_check_address",
   "invalid_doorbell",
   "unsafe_doorbell_secret",
   "invalid_host_a2a",

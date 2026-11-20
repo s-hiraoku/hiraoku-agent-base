@@ -9,6 +9,11 @@ import { HAB_ADDRESS_PATTERN } from "../hab/registry.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const absolute = z.string().refine(isAbsolute);
 const address = z.string().max(101).regex(new RegExp(HAB_ADDRESS_PATTERN));
+/** An inbox check interval (ADR-031): 0 is off, otherwise one minute to one day. */
+const checkInterval = z.union([
+  z.literal(0),
+  z.number().int().min(60_000).max(86_400_000),
+]);
 /** The optional host A2A entry (src/host/a2a.ts). */
 const a2aConfigSchema = z
   .strictObject({
@@ -68,6 +73,20 @@ const schema = z.strictObject({
             .optional(),
           rering: z.boolean().optional(),
           quiet: z.boolean().optional(),
+          /**
+           * Inbox check (ADR-031): while mail waits unread, ring the live doorbell again
+           * every `interval_ms` (default 10 minutes, 0 off), per address if listed.
+           */
+          inbox_check: z
+            .strictObject({
+              interval_ms: checkInterval.optional(),
+              max_rings: z.number().int().min(1).max(1008).optional(),
+              addresses: z
+                .record(address, checkInterval)
+                .refine((value) => Object.keys(value).length <= 64)
+                .optional(),
+            })
+            .optional(),
           /**
            * Operator-registered doorbells (ADR-029): ring this public HTTPS URL when mail
            * arrives for the address. The secret (`whsec_…` signs, anything else is sent as a

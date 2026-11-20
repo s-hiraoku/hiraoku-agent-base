@@ -179,6 +179,7 @@ function open(configPath: string) {
     a2aRecipient: config.a2a?.recipient,
     directory: config.directory,
     eventsEnabled: !!config.ingress?.events,
+    inboxCheck: config.ingress?.events?.inbox_check,
   };
 }
 
@@ -263,6 +264,7 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
       a2aRecipient,
       directory,
       eventsEnabled,
+      inboxCheck,
     }) => {
       const view = registry.overview(operator);
       const byId = new Map(view.agents.map((agent) => [agent.agent_id, agent]));
@@ -396,6 +398,15 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
               ? { doorbell_until: iso(bell.until) }
               : {}),
             ...(bell?.operator ? { doorbell_operator: bell.operator } : {}),
+            // How often a live doorbell is rung again while mail waits (ADR-031; 0 off).
+            ...(doorbell === "live"
+              ? {
+                  inbox_check_ms:
+                    inboxCheck?.addresses?.[agent.address] ??
+                    inboxCheck?.interval_ms ??
+                    600_000,
+                }
+              : {}),
             ...(doorbell === "lapsed"
               ? {
                   doorbell_lapsed_at: iso(bell?.lapsed_at),
