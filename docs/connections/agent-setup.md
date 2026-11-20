@@ -56,8 +56,10 @@ host 設定・接続台帳・Registry・notifier を変える作業は、Mac min
 どの製品でも、最初に次を済ませます。
 
 1. アドレスを決める（例 `muse@muse.hab`）。
-2. Auth0 にその製品専用のアプリ（Regular Web Application）を作り、Refresh Token を許可し、製品が示す callback を登録する。
-   client ID と secret は製品の画面に直接入れる。claude.ai の callback は `https://claude.ai/api/mcp/auth_callback`、Muse はセットアップの始めに Muse が示す。
+2. Auth0 にその製品専用のアプリを作り、Refresh Token を許可し、製品が示す callback を登録する。アプリの種類は製品の作りで分ける。
+   - クラウドの製品（claude.ai、ChatGPT、Muse、Grok Bot）は secret を持てるので Regular Web Application。client ID と secret は製品の画面に直接入れる。
+     claude.ai の callback は `https://claude.ai/api/mcp/auth_callback`、Muse はセットアップの始めに Muse が示す。
+   - 手元で動く製品（Hermes の受信通知、Claude Code）は secret を送らない public client。手順は[受信通知アダプタ](../receiver/arrival-notifier.md)と[Claude Code の接続](claude-code-connection.md)のとおり。
 3. 製品に HAB の MCP をつなぐ。URL は `https://<HAB の公開入口>/hab/mcp`、認証は OAuth、scope は `hab:resolve hab:submit hab:status hab:poll hab:ack offline_access`。
 4. Auth0 の管理画面のログ（Monitoring → Logs）で、そのアプリでのログインの主体（subject）を確かめる。
    HAB の監査記録には主体も client ID も残らない。
