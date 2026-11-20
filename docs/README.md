@@ -30,7 +30,7 @@
 
 | フォルダ | 内容 |
 | --- | --- |
-| [connections](connections/) | 製品ごとの接続手順（Claude Code、Grok Bot）とアドレス照会 |
+| [connections](connections/) | 製品ごとの接続手順（Claude Code、Grok Bot）とアドレス照会。全エージェントの設定手順は[エージェントを HAB につなぐ](connections/agent-setup.md) |
 | [operations](operations/) | host の常駐、OAuth 入口、Auth0 の手順と復旧 |
 | [receiver](receiver/) | 受信 supervisor と受信側の任意部品 |
 | [delivery](delivery/) | 容量、公平な poll、writer 受付 |
