@@ -357,7 +357,7 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "ff65cb59e1b1fc00596a63735159794a8d6f85e9fd5c583da6d5f3bc85337a10",
+      "sha256": "4cf3f263fb5012272e318aa1832594c91089ed9bb8595abbf5312de7f53cd4e3",
       "role": "context",
       "review": "reviewed",
       "summary": "Documentation index by purpose: design, connection/operations, topic folders and history. No requirement.",
@@ -1257,6 +1257,14 @@
       "review": "reviewed",
       "read_scope": "full",
       "summary": "Reviewed full owner adapter/CLI implementation and documented real hab_send to durable SQLite registration to due hab_status path; exact resource/connection/agent/session/address separation, original 30-minute/message deadline, insert-only deduplication, bounded lease/retry and auth stop. Owner schedules cycles and displays local reply IDs; no inbox/ACK/refresh/resend or Dots wake. Main PR224 notifier-owned OAuth grant is reused as separate existing ownership, with actual Auth0/native rollout and the 76-second cause unverified. Regression evidence uses synthetic authority and owned loopback HTTP/SQLite; no production or Dots automation acceptance. Review follow-up preserves accepted sends if additive planning fails and stops advice after all replies are read, with reply_state unchanged. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only."
+    },
+    {
+      "path": "docs/connections/agent-setup.md",
+      "sha256": "209a12be0d59b08451048b770d313a3f4f988d9e5f8b6cdce07d67e31775dc1d",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Per-product setup guide as of 2026-11-20 in three stages (connect, wake, show-and-act) with paste-ready prompts: operator-AI prompts for Auth0/ledger/hab:admin connect/doorbell/notifier work, always prefixed with no-secrets, backup+ROLLBACK, show-then-wait-for-yes rules; agent prompts for Dots event task, Muse schedule, Grok routine and claude.ai. Status table per product; adds no requirement and defers to the linked normative documents.",
+      "read_scope": "full"
     },
     {
       "path": "docs/receiver/per-agent-display.md",
