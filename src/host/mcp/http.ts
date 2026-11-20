@@ -3,7 +3,7 @@ import { WriterAdmission, WriterAdmissionError } from "./writer-admission.ts";
 import type { WriterOperation } from "./writer-admission.ts";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import type { AuditSink, AuditCategory } from "../../security.ts";
-import { protocolAdmission } from "../../protocol.ts";
+import { mcpMethodCode, protocolAdmission } from "../../protocol.ts";
 import { createDeliveryMcpServer, deliveryMcpSchemas } from "./server.ts";
 import type { DeliveryMcpGate } from "./server.ts";
 import type { DeliveryContextResolver } from "./server.ts";
@@ -423,6 +423,11 @@ export class McpHttpGateway {
           throw new HttpFailure(400, "transport_error");
         }
         check();
+        // Which MCP method was asked for, as a fixed code; refused methods are recorded too.
+        await record(
+          "method",
+          mcpMethodCode(parsed, request.headers.get("mcp-method") ?? undefined),
+        );
         if (
           !(await protocolAdmission(
             parsed,

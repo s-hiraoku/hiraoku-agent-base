@@ -15,6 +15,7 @@ export const CATEGORIES = [
   "request",
   "auth_denied",
   "authenticated",
+  "method",
   "access_denied",
   "rate_limited",
   "resource_rejected",
@@ -75,7 +76,9 @@ export class LocalAudit implements Audit {
       (reason !== undefined &&
         (category === "authenticated"
           ? !CONNECTION.test(reason)
-          : (category !== "tool_error" && category !== "auth_denied") ||
+          : (category !== "tool_error" &&
+              category !== "auth_denied" &&
+              category !== "method") ||
             !REASON.test(reason)))
     )
       throw new Error("Invalid audit event");
@@ -178,7 +181,7 @@ export class LocalAudit implements Audit {
           stat.mode & 0o077
         )
           throw new Error("Audit unavailable");
-        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(reason ? (category === "authenticated" ? { connection: reason } : { reason }) : {}), ...(summary ? { summary } : {}) })}\n`;
+        const line = `${JSON.stringify({ time: new Date(time).toISOString(), category, correlation, ...(reason ? (category === "authenticated" ? { connection: reason } : category === "method" ? { method: reason } : { reason }) : {}), ...(summary ? { summary } : {}) })}\n`;
         if (Buffer.byteLength(line) > this.maxBytes)
           throw new Error("Audit unavailable");
         if (stat.size + Buffer.byteLength(line) > this.maxBytes) rotate = true;
