@@ -1271,6 +1271,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
+    },
+    {
+      "path": "docs/plans/receive-show-act-plan.md",
+      "sha256": "501d6b74ac39527476a90e76e755f6c671483a7c100ce0288b04477540a0c642",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Plan (not yet executed) for establishing receive/show/act across agents: PR order, dependencies, per-PR build and verification, owner decisions, and 2026-11-20 prototype evidence. A plan, not a decision; ADR-032 would record decisions."
     }
   ],
   "requirements": [
