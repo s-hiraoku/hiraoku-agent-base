@@ -69,3 +69,25 @@ test("authenticated keeps only a registered connection ID, written as connection
     ],
   );
 });
+
+test("method keeps only a fixed method code, written as method", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "local-audit-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const audit = new LocalAudit(join(dir, "audit"));
+  const id = "33333333-3333-4333-8333-333333333333";
+  audit.record("method", id, "resources_read_ui");
+  for (const value of ["tools/list", "Tools", "has space", "x".repeat(49)])
+    assert.throws(
+      () => audit.record("method", id, value),
+      /Invalid audit event/,
+    );
+  const lines = readFileSync(join(dir, "audit", "audit.jsonl"), "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+    .filter((line) => line.correlation === id);
+  assert.deepEqual(
+    lines.map(({ category, method, reason }) => ({ category, method, reason })),
+    [{ category: "method", method: "resources_read_ui", reason: undefined }],
+  );
+});
