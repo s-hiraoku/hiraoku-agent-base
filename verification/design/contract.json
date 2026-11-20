@@ -1267,6 +1267,14 @@
       "read_scope": "full"
     },
     {
+      "path": "docs/plans/receive-show-act-plan.md",
+      "sha256": "c7b35b1678f250b460da956b670cad514e4cc1e6d7c1f8aa552edfc654131fc8",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Execution plan (poteto multi-phase format) for receive/show/act across agents: PR-1 audit method codes, PR-2 setup guide, PR-3 registry product receive mode and per-address session, PR-4 Hermes hook via loopback operator doorbell, PR-5 remove HAB-side inbox_check with poll_overdue, PR-6 one doorbell subscription per product, PR-7 session_gone retirement, PR-8 ADR-032. Plan only; adds no requirement until the owner says go.",
+      "read_scope": "full"
+    },
+    {
       "path": "docs/receiver/per-agent-display.md",
       "sha256": "f42ea5b865edcef47e4867d16388d80cad0d6d82aeb99fbeabb0b1815f8328ff",
       "role": "normative",
