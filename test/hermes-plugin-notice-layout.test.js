@@ -18,7 +18,7 @@ const hook = registerHooks({
         };
   },
 });
-const { ReceivedMessages } =
+const { ReceivedMessages, rememberDismissed, DISMISSED_LIMIT } =
   await import("../experiments/hermes-desktop-adapter/desktop/plugin.js");
 hook.deregister();
 
@@ -269,4 +269,71 @@ test("a notice with a presentation but no body, or of another version, keeps the
       /^HABHAB からのメッセージ送信元: .*body-o1/,
     );
   }
+});
+
+test("the owner can close cards handed to the conversation; closing changes no decision", () => {
+  // Cards handed to the conversation had no way to leave the screen (owner, 2026-11-20).
+  const cards = ["a1", "a2", "a3"].map((id) => card("queued", id));
+  const original = structuredClone(cards);
+  const closedKeys = [];
+  const render = (dismissed) =>
+    ReceivedMessages({
+      view: { cards, error: "", busy: false },
+      visible: true,
+      onChoose: () => assert.fail("closing must not perform a decision"),
+      dismissed,
+      onDismiss: (keys) => closedKeys.push(keys),
+    });
+  const region = (result) =>
+    nodes(result, "div").find(
+      (n) => n.props?.["aria-label"] === "最近会話に渡したHAB通知",
+    );
+  const first = render([]);
+  const buttons = nodes(region(first), "button");
+  assert.deepEqual(
+    buttons.map((b) => visibleText(b)),
+    ["すべて閉じる", "閉じる", "閉じる", "閉じる"],
+  );
+  buttons[1].props.onClick();
+  buttons[0].props.onClick();
+  assert.equal(closedKeys.length, 2);
+  assert.equal(closedKeys[0].length, 1);
+  assert.equal(closedKeys[1].length, 3);
+  // A closed card folds into the closed history, still readable there.
+  const closedOne = render([closedKeys[0][0]]);
+  assert.equal(nodes(region(closedOne), "article").length, 2);
+  assert.match(visibleText(closedOne), /履歴（1件）/);
+  const closedAll = render(closedKeys[1]);
+  assert.equal(region(closedAll), undefined);
+  assert.doesNotMatch(visibleText(closedAll), /body-/);
+  assert.match(visibleText(closedAll), /履歴（3件）/);
+  assert.equal(nodes(nodes(closedAll, "details")[0], "button").length, 0);
+  assert.deepEqual(cards, original);
+});
+
+test("cards still waiting for a choice cannot be closed, only answered", () => {
+  const result = ReceivedMessages({
+    view: { cards: [card("shown", "s1")], error: "", busy: false },
+    visible: true,
+    onChoose: () => {},
+    dismissed: [],
+    onDismiss: () => assert.fail("no close button on a pending card"),
+  });
+  assert.deepEqual(
+    nodes(result, "button").map((b) => visibleText(b)),
+    ["対応する"],
+  );
+});
+
+test("closed cards are remembered once each, newest kept up to the limit", () => {
+  assert.deepEqual(rememberDismissed(["a", "b"], ["a", "c", "c"]), [
+    "b",
+    "a",
+    "c",
+  ]);
+  const many = Array.from({ length: DISMISSED_LIMIT + 5 }, (_, i) => `k${i}`);
+  const kept = rememberDismissed([], many);
+  assert.equal(kept.length, DISMISSED_LIMIT);
+  assert.equal(kept.at(-1), `k${DISMISSED_LIMIT + 4}`);
+  assert.equal(kept[0], "k5");
 });
