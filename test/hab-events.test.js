@@ -1327,3 +1327,34 @@ test("the inbox check is on by default every 10 minutes", async (t) => {
   t.after(() => events.close());
   assert.equal(events.inboxCheckMs("anyone"), 600_000);
 });
+
+test("an unsubscribe during one inbox check stops the check of that subscription", async (t) => {
+  let now = Date.now();
+  let unsubscribeDuringCheck = false;
+  const f = await setup(t, {
+    events: { now: () => now, rering: false, inbox_check_ms: 60_000 },
+    onEvent: async (self, parsed) => {
+      if (!unsubscribeDuringCheck || !parsed.data) return;
+      unsubscribeDuringCheck = false;
+      // Both go while the first check's POST is pending; the second must not be checked.
+      for (const n of [1, 2])
+        await self.rpc("a", "events/unsubscribe", {
+          name: HAB_EVENT_NAME,
+          arguments: {},
+          delivery: { mode: "webhook", url: `${URL_A}/${n}` },
+        });
+    },
+  });
+  for (const n of [1, 2])
+    await f.subscribe("a", {
+      delivery: { mode: "webhook", url: `${URL_A}/${n}`, secret: SECRET },
+    });
+  await f.send("b", f.a.address, "x");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 2);
+  now += 60_000;
+  unsubscribeDuringCheck = true;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3, "only the check already being sent");
+  assert.equal(f.events.subscriptions().length, 0);
+});

@@ -808,8 +808,16 @@ export class HabEvents {
       )
       .all(this.#now()) as unknown as Row[];
     let rung = 0;
-    for (const row of rows) {
+    for (const listed of rows) {
       if (rung >= 10) return;
+      // Re-read before every check: an unsubscribe, expiry or refreshed secret during an
+      // earlier check's POST must take effect before this one.
+      const row = this.#db
+        .prepare(
+          "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
+        )
+        .get(listed.id, this.#now()) as unknown as Row | undefined;
+      if (!row) continue;
       const interval = this.inboxCheckMs(row.agent_id);
       if (!interval) continue;
       const check = this.#db
