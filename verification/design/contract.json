@@ -1267,7 +1267,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "a6e48316e42e2000a63fae521a6ad898c71ea3cfd036e65b01a4ed7a799a4c45",
+      "sha256": "310e29400fba3bcd45940b36745076937cf2e1922b9c9d5c3d4b029327bfc448",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
@@ -1278,6 +1278,14 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Plan (not yet executed) for establishing receive/show/act across agents: PR order, dependencies, per-PR build and verification, owner decisions, and 2026-11-20 prototype evidence. A plan, not a decision; ADR-032 would record decisions."
+    },
+    {
+      "path": "docs/receiver/wake-model.md",
+      "sha256": "b7a5eed1967e7106933b4bd3024ab77d9899ef09f8a844863797a1764b7d51e1",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Draft (2026-11-20, owner review pending, not adopted): unified receive/wake model. HAB promises storage, notification and visibility; waking is best effort. One inbox state (empty/waiting/notified/unanswered/unreachable), four wake classes (A notifier, B self-subscribed doorbell, C operator doorbell, D product schedule), one re-notify rule replacing ADR-027 rering, ADR-030 quiet and ADR-031 inbox check (interval default 10 min, max_rings 6), auto-reply policy stays on the recipient side (ADR-015/023) with a common record format, optional wake declaration and test operation. ADR-021..031 remain in force until approved.",
+      "read_scope": "full"
     }
   ],
   "requirements": [
