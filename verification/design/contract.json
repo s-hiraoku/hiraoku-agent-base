@@ -1264,6 +1264,14 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-026 per-agent received-mail display: the version-1 presentation fields (body stays in text), which adapter draws what (Hermes Desktop plugin fields with display fallback, Claude Code status line gist, MCP Apps card ui://hab/inbox-v1 for claude.ai/ChatGPT/Gemini app, text notice for Codex/Antigravity CLI/Gemini CLI, Grok Bot/Antigravity unverified), MCP Apps resource rules and the safety rules (framed model text, body_untrusted, text-only rendering, no free text in channel attributes)."
+    },
+    {
+      "path": "docs/receiver/wake-model.md",
+      "sha256": "b7a5eed1967e7106933b4bd3024ab77d9899ef09f8a844863797a1764b7d51e1",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Draft (2026-11-20, owner review pending, not adopted): unified receive/wake model. HAB promises storage, notification and visibility; waking is best effort. One inbox state (empty/waiting/notified/unanswered/unreachable), four wake classes (A notifier, B self-subscribed doorbell, C operator doorbell, D product schedule), one re-notify rule replacing ADR-027 rering, ADR-030 quiet and ADR-031 inbox check (interval default 10 min, max_rings 6), auto-reply policy stays on the recipient side (ADR-015/023) with a common record format, optional wake declaration and test operation. ADR-021..031 remain in force until approved.",
+      "read_scope": "full"
     }
   ],
   "requirements": [
