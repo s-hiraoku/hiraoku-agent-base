@@ -105,6 +105,68 @@ test("private explicit config starts deny-all; digest binding authenticates only
   assert.ok(!audit.includes(token));
   assert.ok(!audit.includes("synthetic-owner"));
 });
+test("the audit names each requested MCP method by a fixed code, refused methods included", async (t) => {
+  const f = await fixture(t),
+    host = await startHost(f.configPath);
+  t.after(() => host.close());
+  const token = "d".repeat(64),
+    now = Date.now();
+  f.write("credentials.local.json", {
+    version: 1,
+    credentials: [
+      {
+        sha256: createHash("sha256").update(token).digest("hex"),
+        principal: {
+          issuer: "urn:synthetic:local",
+          audience: host.url,
+          subject: "synthetic-owner",
+          client_id: "synthetic-client",
+          connection_id: "synthetic-a",
+        },
+        issued_at: new Date(now).toISOString(),
+        expires_at: new Date(now + 900000).toISOString(),
+      },
+    ],
+  });
+  const call = (method, params) =>
+    globalThis.fetch(host.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-method": method,
+        "mcp-protocol-version": "2026-07-28",
+        authorization: "Bearer " + token,
+      },
+      body: JSON.stringify(envelope(method, params)),
+    });
+  assert.equal((await list(host.url, token)).status, 200);
+  assert.equal((await call("prompts/list")).status, 405);
+  assert.equal((await call("x-private/probe")).status, 405);
+  const events = readFileSync(join(f.dir, "audit/audit.jsonl"), "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+  assert.deepEqual(
+    events
+      .filter((event) => event.category === "method")
+      .map((event) => event.method),
+    ["tools_list", "prompts_list", "other"],
+  );
+  const refused = events.find(
+    (event) => event.category === "method" && event.method === "prompts_list",
+  );
+  assert.ok(
+    events.some(
+      (event) =>
+        event.correlation === refused.correlation &&
+        event.category === "resource_rejected",
+    ),
+  );
+  const raw = readFileSync(join(f.dir, "audit/audit.jsonl"), "utf8");
+  assert.ok(!raw.includes("x-private"));
+  assert.ok(!raw.includes("prompts/list"));
+});
 test("missing credentials, malformed config or permissive key file never starts a fallback host", async (t) => {
   const f = await fixture(t);
   f.write("credentials.local.json", { version: 99 });
