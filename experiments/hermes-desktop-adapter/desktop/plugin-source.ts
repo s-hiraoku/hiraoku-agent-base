@@ -10,6 +10,8 @@ function Receiver({ ctx, owner }: any) {
     busy: false,
   } as any);
   const controller = useRef<any>(null);
+  const storageKey = `hab-desktop-adapter:dismissed:${ownerKey(owner)}`;
+  const [dismissed, setDismissed] = useState(() => loadDismissed(storageKey));
   useEffect(() => {
     const instance = createDisplayController(ctx.rest, owner, setView);
     controller.current = instance;
@@ -26,7 +28,48 @@ function Receiver({ ctx, owner }: any) {
     visible: owner.visible,
     onChoose: (key: string, choice: string) =>
       void controller.current?.decide(key, choice),
+    dismissed,
+    onDismiss: (keys: string[]) =>
+      setDismissed((current: string[]) => {
+        const next = rememberDismissed(current, keys);
+        saveDismissed(storageKey, next);
+        return next;
+      }),
   });
+}
+
+/** How many closed cards this screen remembers; the oldest are forgotten first. */
+export const DISMISSED_LIMIT = 200;
+/**
+ * Closing a card is this screen's own choice: it moves the card into the closed history
+ * and never changes HAB's decision, the cursor, or the conversation (owner, 2026-11-20).
+ */
+export function rememberDismissed(
+  current: readonly string[],
+  keys: readonly string[],
+) {
+  const next = current.filter((key) => !keys.includes(key));
+  next.push(...new Set(keys));
+  return next.slice(-DISMISSED_LIMIT);
+}
+function loadDismissed(storageKey: string): string[] {
+  try {
+    const value = JSON.parse(
+      globalThis.localStorage?.getItem(storageKey) ?? "[]",
+    );
+    return Array.isArray(value)
+      ? value.filter((key) => typeof key === "string").slice(-DISMISSED_LIMIT)
+      : [];
+  } catch {
+    return [];
+  }
+}
+function saveDismissed(storageKey: string, keys: readonly string[]) {
+  try {
+    globalThis.localStorage?.setItem(storageKey, JSON.stringify(keys));
+  } catch {
+    // Storage may be unavailable; the card stays closed until the window reloads.
+  }
 }
 
 const historyStates = new Set(["queued", "started", "declined", "expired"]);
@@ -112,14 +155,29 @@ export function shortTime(value: unknown) {
 }
 
 /** Presentation only: retain controller state, cursor, and all HAB decisions. */
-export function ReceivedMessages({ view, visible, onChoose }: any) {
+export function ReceivedMessages({
+  view,
+  visible,
+  onChoose,
+  dismissed = [],
+  onDismiss,
+}: any) {
   if (!visible || (!view.cards.length && !view.error)) return null;
+  const closed = new Set<string>(dismissed);
+  const canDismiss = typeof onDismiss === "function";
   // An automatic accept hands the message off within seconds, before anyone looks, so
-  // the arrival and its body stay on screen after the handoff instead of folding away.
+  // the arrival and its body stay on screen after the handoff instead of folding away,
+  // until the owner closes it (2026-11-20).
+  // Take the newest five first, then drop the closed ones, so closing a card never
+  // brings an older one back out of the history.
   const accepted = view.cards.filter((card: any) =>
     acceptedStates.has(card.decision?.state),
   );
-  const recent = new Set(accepted.slice(-RECENT_ACCEPTED));
+  const recent = new Set(
+    accepted
+      .slice(-RECENT_ACCEPTED)
+      .filter((card: any) => !closed.has(displayKey(card.notice))),
+  );
   const history = view.cards.filter(
     (card: any) => historyStates.has(card.decision?.state) && !recent.has(card),
   );
@@ -170,7 +228,7 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
         : null,
     ];
   };
-  const renderCard = (card: any) =>
+  const renderCard = (card: any, closable = false) =>
     h(
       "article",
       {
@@ -205,6 +263,16 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
                 choice.label,
               ),
             ),
+          )
+        : null,
+      closable && canDismiss
+        ? h(
+            sdk.Button,
+            {
+              "aria-label": "このカードを閉じる",
+              onClick: () => onDismiss([displayKey(card.notice)]),
+            },
+            "閉じる",
           )
         : null,
     );
@@ -258,7 +326,7 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
             "aria-label": "要確認のHAB通知",
             style: { maxHeight: "16rem", overflow: "auto" },
           },
-          ...pending.map(renderCard),
+          ...pending.map((card: any) => renderCard(card)),
         )
       : null,
     recent.size
@@ -276,7 +344,19 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
             RECENT_ACCEPTED,
             " 件）",
           ),
-          ...[...recent].reverse().map(renderCard),
+          recent.size > 1 && canDismiss
+            ? h(
+                sdk.Button,
+                {
+                  onClick: () =>
+                    onDismiss(
+                      [...recent].map((card: any) => displayKey(card.notice)),
+                    ),
+                },
+                "すべて閉じる",
+              )
+            : null,
+          ...[...recent].reverse().map((card: any) => renderCard(card, true)),
         )
       : null,
     history.some((card: any) => card.unavailable)
@@ -300,7 +380,7 @@ export function ReceivedMessages({ view, visible, onChoose }: any) {
           h(
             "div",
             { style: { maxHeight: "16rem", overflow: "auto" } },
-            ...history.map(renderCard),
+            ...history.map((card: any) => renderCard(card)),
           ),
         )
       : null,
