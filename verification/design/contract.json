@@ -357,7 +357,7 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "ff65cb59e1b1fc00596a63735159794a8d6f85e9fd5c583da6d5f3bc85337a10",
+      "sha256": "35836d4589edc6bc91ce6a8d373ac8e0fae0d61e789bccaed499535cf73aa670",
       "role": "context",
       "review": "reviewed",
       "summary": "Documentation index by purpose: design, connection/operations, topic folders and history. No requirement.",
@@ -1264,6 +1264,13 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-026 per-agent received-mail display: the version-1 presentation fields (body stays in text), which adapter draws what (Hermes Desktop plugin fields with display fallback, Claude Code status line gist, MCP Apps card ui://hab/inbox-v1 for claude.ai/ChatGPT/Gemini app, text notice for Codex/Antigravity CLI/Gemini CLI, Grok Bot/Antigravity unverified), MCP Apps resource rules and the safety rules (framed model text, body_untrusted, text-only rendering, no free text in channel attributes)."
+    },
+    {
+      "path": "docs/connections/agent-setup.md",
+      "sha256": "a6e48316e42e2000a63fae521a6ad898c71ea3cfd036e65b01a4ed7a799a4c45",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
     }
   ],
   "requirements": [
