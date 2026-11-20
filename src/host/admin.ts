@@ -189,10 +189,11 @@ function open(configPath: string) {
     a2aRecipient: config.a2a?.recipient,
     directory: config.directory,
     eventsEnabled: !!config.ingress?.events,
-    inboxCheck: config.ingress?.events?.inbox_check,
   };
 }
 
+/** A polling product is late once this many of its intervals pass without a read. */
+export const POLL_OVERDUE_FACTOR = 2;
 /** Mail older than this without being read is reported as `unread_waiting`. */
 export const UNREAD_WAITING_MS = 30 * 60_000;
 const iso = (ms: number | null | undefined) =>
@@ -317,7 +318,6 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
       a2aRecipient,
       directory,
       eventsEnabled,
-      inboxCheck,
     }) => {
       const view = registry.overview(operator);
       const byId = new Map(view.agents.map((agent) => [agent.agent_id, agent]));
@@ -442,6 +442,22 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
             !(bell.status! >= 200 && bell.status! <= 299);
           if (failing)
             problems.push({ code: "doorbell_failing", subject: agent.address });
+          // ADR-032: a polling product that has not read this inbox for two intervals.
+          const receive = view.products.find(
+            (product) => product.product_id === agent.product_id,
+          )?.receive;
+          if (
+            eventsEnabled &&
+            receive?.mode === "poll" &&
+            receive.interval_ms !== null &&
+            now -
+              Math.max(
+                bell?.inbox_read_at ?? 0,
+                Date.parse(receive.updated_at),
+              ) >
+              POLL_OVERDUE_FACTOR * receive.interval_ms
+          )
+            problems.push({ code: "poll_overdue", subject: agent.address });
           return {
             address: agent.address,
             unread: waiting?.unread ?? 0,
@@ -451,14 +467,9 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
               ? { doorbell_until: iso(bell.until) }
               : {}),
             ...(bell?.operator ? { doorbell_operator: bell.operator } : {}),
-            // How often a live doorbell is rung again while mail waits (ADR-031; 0 off).
-            ...(doorbell === "live"
-              ? {
-                  inbox_check_ms:
-                    inboxCheck?.addresses?.[agent.address] ??
-                    inboxCheck?.interval_ms ??
-                    600_000,
-                }
+            // When the address last read its inbox with hab_inbox (ADR-032).
+            ...(eventsEnabled
+              ? { last_inbox_read_at: iso(bell?.inbox_read_at) }
               : {}),
             ...(doorbell === "lapsed"
               ? {

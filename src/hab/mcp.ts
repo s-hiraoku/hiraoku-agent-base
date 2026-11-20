@@ -463,6 +463,7 @@ function createAgentServer(
               prepared.input as Record<string, unknown>,
               maxResponseBytes,
             );
+            if (tool === "hab_inbox") events?.noteInboxRead(prepared.context);
             const output = reminder
               ? { ...(result as object), inbox_reminder: reminder }
               : result;

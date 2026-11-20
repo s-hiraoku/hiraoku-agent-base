@@ -22,6 +22,9 @@ export async function main(args = process.argv.slice(2)) {
             ? { ingress_url: host.ingress_url, ingress_port: host.ingress_port }
             : {}),
           ...(host.a2a_url ? { a2a_url: host.a2a_url } : {}),
+          ...("ignored_config" in host
+            ? { ignored_config: host.ignored_config }
+            : {}),
         }) + "\n",
       );
       await new Promise<void>((resolve) => {
