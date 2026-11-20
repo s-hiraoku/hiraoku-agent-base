@@ -88,12 +88,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [x] `test/protocol-method-code.test.js`、`test/local-audit.test.js`、`test/host-service.test.js` の新しい 6 件。Run `node --test` で 27 件が通った。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Mac mini の実機と verify-hab の検証用スタックで確かめる。
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [x] Lane 1. Regression lane against trunk. trunk には `method` の行がない。head では `tools/list` が `tools_list` になる。
-- [x] Lane 2. 許可していないメソッド `prompts/list` が 405 になり、`prompts_list` のあとに `resource_rejected` が続く。
-- [x] Lane 3. 表にないメソッドは `other` になり、その文字列は記録に出ない。
-- [x] Lane 4. Mac mini（2026-11-20 10:01 UTC から稼働）で、claude.ai の `resources_read_ui` が記録された。
+- [x] Lane 1. Regression lane against trunk. trunk と head で `tools/list` を送る。trunk には `method` の行がなく、head は `tools_list` を書く。Save `pr1-lane1-audit.jsonl`. Pass when head の行が 1 件ある。
+- [x] Lane 2. `tools/call`（`hab_inbox`）を送る。Save `pr1-lane2-audit.jsonl`. Pass when `tools_call` の行が `tool_started` と同じ correlation にある。
+- [x] Lane 3. `prompts/list` を送る。Save `pr1-lane3-audit.jsonl`. Pass when 405 で、`prompts_list` のあとに `resource_rejected` が続く。
+- [x] Lane 4. 表にないメソッド `x-private/probe` を送る。Save `pr1-lane4-audit.jsonl`. Pass when `other` が記録され、その文字列が記録にない。
+- [x] Lane 5. `resources/read` で `ui://hab/inbox-v1` を読む。Save `pr1-lane5-audit.jsonl`. Pass when `resources_read_ui` が記録される。
+- [ ] Lane 6. `resources/read` で `file:///etc/passwd` を読む。Save `pr1-lane6-audit.jsonl`. Pass when `resources_read_other` で、URI が記録にない。
+- [ ] Lane 7. Mcp-Method の見出しと本文のメソッドを食い違わせる。Save `pr1-lane7-audit.jsonl`. Pass when `mismatch` が記録される。
+- [ ] Lane 8. 認証なしの要求を送る。Save `pr1-lane8-audit.jsonl`. Pass when `method` の行が出ず、`auth_denied` だけになる。
+- [ ] Lane 9. 監査ファイルを回転させる大きさまで要求を送る。Save `pr1-lane9-ls.txt`. Pass when `audit.jsonl.1` ができ、権限が 0600 のまま。
+- [x] Lane 10. Mac mini の実機で claude.ai から受信箱を見る。Save `pr1-lane10-audit.jsonl`. Pass when claude の接続に `resources_read_ui` の行がある（2026-11-20 10:04:04 UTC に確認済み）。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -129,11 +135,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] 文書の中のリンク先がすべて存在する。Run `npx prettier --check docs/connections/agent-setup.md`。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [x] Lane 1. Dots の文を stallone の会話で使い、試験 C が 12 秒で既読、29 秒で返信になった。
-- [x] Lane 2. Grok の文で作った routine が、呼び鈴から 24 秒で返信した。
-- [x] Lane 3. Muse の文で作った予定タスクが、受信箱を読んで返信した。
+- [ ] Lane 1. Regression lane against trunk. trunk には `docs/connections/agent-setup.md` がない。head ではリンク先がすべて存在する。Save `pr2-lane1-links.txt`. Pass when 存在しないリンクが 0 件。
+- [ ] Lane 2. Hermes の文を Mac の Claude Code に渡す。Save `pr2-lane2-hermes.txt`. Pass when 試験メールでカードが出る。
+- [x] Lane 3. Dots の文を stallone の会話に渡す。Save `pr2-lane3-dots.png`. Pass when 試験メールに返信が届く（試験 C で 29 秒、確認済み）。
+- [x] Lane 4. Grok の文で routine を作る。Save `pr2-lane4-grok.png`. Pass when 呼び鈴から返信まで進む（24 秒、確認済み）。
+- [x] Lane 5. Muse の文で予定タスクを作る。Save `pr2-lane5-muse.png`. Pass when 予定の時刻に既読と返信が記録される（確認済み）。
+- [x] Lane 6. claude.ai の文を渡す。Save `pr2-lane6-claude.png`. Pass when カードが出る（確認済み）。
+- [ ] Lane 7. Claude Code の `/loop` の文を実行する。Save `pr2-lane7-claude-code.txt`. Pass when 10 分ごとに `tools_call` が記録される。
+- [ ] Lane 8. Codex の文を渡す。Save `pr2-lane8-codex.txt`. Pass when 話しかけたときに受信箱が読める。
+- [ ] Lane 9. 「うまく動かないとき」の呼び鈴の項で `hab:admin status` を実行する。Save `pr2-lane9-status.json`. Pass when 文書の欄の名前と出力が一致する。
+- [ ] Lane 10. 文書に実在のホスト名や鍵がないかを調べる。Save `pr2-lane10-grep.txt`. Pass when `ts.net` と鍵の文字列が 0 件。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -174,12 +187,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] `test/hab-events.test.js` に、loopback の運用者呼び鈴が届く件と、購読の loopback が拒否される件を足す。Run `node --test test/hab-events.test.js`。
 - [ ] `test/agent-notify.test.js` に、署名が正しい呼び鈴で確認が 1 回走る件と、署名違いを拒否する件を足す。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. trunk では、Hermes の表示まで最大で notifier の間隔（15 秒）かかる。head では 2 秒以内。
-- [ ] Lane 2. notifier を止めた状態で鳴らすと、HAB の記録が失敗を数え、再送する。
-- [ ] Lane 3. 署名の違う要求を loopback の受け口に送ると、確認が走らない。
-- [ ] Lane 4. Mac mini の実機で、Hermes Desktop にカードが出て、自動受付の相手には返信が届く。
+- [ ] Lane 1. Regression lane against trunk. 試験メールを送り、受付から notifier の `shown` までを測る。Save `pr3-lane1-runlog.txt`. Pass when head が 2 秒以内（trunk は最大 15 秒）。
+- [ ] Lane 2. notifier を止めて呼び鈴を鳴らす。Save `pr3-lane2-events.txt`. Pass when HAB が失敗を数え、再送する。
+- [ ] Lane 3. 署名の違う要求を受け口に送る。Save `pr3-lane3-runlog.txt`. Pass when 確認が走らない。
+- [ ] Lane 4. 古い timestamp の要求を送る。Save `pr3-lane4-runlog.txt`. Pass when 拒否される。
+- [ ] Lane 5. 購読の宛先に `http://127.0.0.1` を指定する。Save `pr3-lane5-subscribe.res`. Pass when `invalid_callback_url` で拒否される。
+- [ ] Lane 6. 運用者設定に `http://10.0.0.1` を書く。Save `pr3-lane6-start.txt`. Pass when host が起動を拒否する。
+- [ ] Lane 7. 呼び鈴の受け口を止めたまま新着を送る。Save `pr3-lane7-runlog.txt`. Pass when 定期確認でカードが出る。
+- [ ] Lane 8. 自動受付の相手から送る。Save `pr3-lane8-audit.jsonl`. Pass when `auto_handoff` と返信が記録される。
+- [ ] Lane 9. Hermes Desktop を再起動する。Save `pr3-lane9-hermes.png`. Pass when 再起動後もカードが出る。
+- [ ] Lane 10. Mac mini の実機で、Hermes Desktop のカードを開く。Save `pr3-lane10-hermes-card.png`. Pass when カードが出て、「対応する」で返信が届く。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -219,10 +238,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] `test/hab-events.test.js` に、製品の間隔、アドレスの上書き、0 で止まる件を足す。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. trunk は全体の間隔だけ。head では製品の間隔が効く。
-- [ ] Lane 2. 古い設定（`products` なし）でも host が起動する。
+- [ ] Lane 1. Regression lane against trunk. trunk と head で、`products` のない設定で host を起動する。Save `pr4-lane1-status.json`. Pass when どちらも全体の間隔が効く。
+- [ ] Lane 2. `products: {"dot": 1800000}` を設定する。Save `pr4-lane2-status.json`. Pass when stallone の `inbox_check_ms` が 1800000。
+- [ ] Lane 3. 製品とアドレスの両方を指定する。Save `pr4-lane3-status.json`. Pass when アドレスの指定が勝つ。
+- [ ] Lane 4. 製品の間隔を 0 にする。Save `pr4-lane4-events.txt`. Pass when 定期確認が鳴らない。
+- [ ] Lane 5. 範囲外の値を書く。Save `pr4-lane5-start.txt`. Pass when host が起動を拒否する。
+- [ ] Lane 6. 未読のまま間隔を待つ。Save `pr4-lane6-rings.txt`. Pass when 間隔ごとに 1 回だけ鳴る。
+- [ ] Lane 7. `max_rings` に達するまで待つ。Save `pr4-lane7-rings.txt`. Pass when それ以上鳴らない。
+- [ ] Lane 8. 未読を読む。Save `pr4-lane8-rings.txt`. Pass when 数え直しになる。
+- [ ] Lane 9. host を再起動する。Save `pr4-lane9-status.json`. Pass when 間隔が保たれる。
+- [ ] Lane 10. Mac mini の実機で Grok に間隔を設定する。Save `pr4-lane10-status.json`. Pass when grok-bot の `inbox_check_ms` が設定どおり。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -258,10 +285,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] グループ外のアドレスを指定すると `forbidden` で拒否される件を足す。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. 引数なしの購読は trunk と同じに動く。
-- [ ] Lane 2. Dots の会話で、アドレスを指定して見張りを頼み、その会話に届く。
+- [ ] Lane 1. Regression lane against trunk. 引数なしで購読する。Save `pr5-lane1-subscribe.res`. Pass when trunk と同じに動く。
+- [ ] Lane 2. グループ内のアドレスを指定して購読する。Save `pr5-lane2-subs.txt`. Pass when そのアドレスの行ができる。
+- [ ] Lane 3. グループ外のアドレスを指定する。Save `pr5-lane3-subscribe.res`. Pass when `forbidden` で拒否される。
+- [ ] Lane 4. 2 つのアドレスで購読する。Save `pr5-lane4-subs.txt`. Pass when 2 行でき、別々に鳴る。
+- [ ] Lane 5. 片方のアドレスに新着を送る。Save `pr5-lane5-rings.txt`. Pass when そのアドレスの購読だけが鳴る。
+- [ ] Lane 6. 片方を unsubscribe する。Save `pr5-lane6-subs.txt`. Pass when もう片方は残る。
+- [ ] Lane 7. 同じ引数で購読し直す。Save `pr5-lane7-subs.txt`. Pass when 同じ ID で寿命だけが延びる。
+- [ ] Lane 8. `max_per_agent` を超えて購読する。Save `pr5-lane8-subscribe.res`. Pass when `too_many_subscriptions`。
+- [ ] Lane 9. host を再起動する。Save `pr5-lane9-subs.txt`. Pass when 購読が残る。
+- [ ] Lane 10. Mac mini の実機で、Dots の会話からアドレスを指定して見張りを頼む。Save `pr5-lane10-dots.png`. Pass when その会話に結果が出る。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -299,10 +334,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] 410 の回数、5xx を数えない件、戻る件、未読を消す件を足す。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. trunk は 410 で購読を消すだけ。head ではアドレスが「相手がいない」になる。
-- [ ] Lane 2. 受け口を一時的に落としても（5xx）、アドレスは有効のまま。
+- [ ] Lane 1. Regression lane against trunk. 410 を返す受け口に鳴らす。Save `pr6-lane1-status.json`. Pass when trunk は購読を消すだけ、head は回数を数える。
+- [ ] Lane 2. `session_gone` 付きの 410 を 3 回返す。Save `pr6-lane2-status.json`. Pass when `recipient_absent` が `problems` に出る。
+- [ ] Lane 3. そのアドレスへ `hab_send` する。Save `pr6-lane3-send.res`. Pass when `recipient_absent` で断られる。
+- [ ] Lane 4. 5xx を返し続ける。Save `pr6-lane4-status.json`. Pass when アドレスが有効のまま。
+- [ ] Lane 5. 応答しない受け口にする。Save `pr6-lane5-status.json`. Pass when アドレスが有効のまま。
+- [ ] Lane 6. 「相手がいない」のアドレスの未読を見る。Save `pr6-lane6-delivery.txt`. Pass when 送り手に不達が届き、未読が消える。
+- [ ] Lane 7. アドレスの名前を別のセッションで登録しようとする。Save `pr6-lane7-admin.txt`. Pass when 予約済みで拒否される。
+- [ ] Lane 8. 製品が購読し直す。Save `pr6-lane8-status.json`. Pass when 状態が戻り、送信できる。
+- [ ] Lane 9. host を再起動する。Save `pr6-lane9-status.json`. Pass when 状態と回数が保たれる。
+- [ ] Lane 10. Mac mini の実機で、Grok の routine を止めて鳴らす。Save `pr6-lane10-status.json`. Pass when 5xx か応答なしでは数えない。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -342,9 +385,18 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] リンク先がすべて存在する。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. verify-hab の機能マップを、PR-3 から PR-6 の動きで更新し、検証用スタックで 1 回通す。
+- [ ] Lane 1. Regression lane against trunk. trunk に ADR-032 がない。head ではリンク先がすべて存在する。Save `pr7-lane1-links.txt`. Pass when 存在しないリンクが 0 件。
+- [ ] Lane 2. ADR の表を読む。Save `pr7-lane2-table.txt`. Pass when ADR-032 が置き換える ADR と残す ADR が書かれている。
+- [ ] Lane 3. 設計の契約で audit を流す。Save `pr7-lane3-audit.json`. Pass when `status` が `current`。
+- [ ] Lane 4. verify-hab で Hermes の Hook を通す。Save `pr7-lane4-evidence.txt`. Pass when 機能マップの手順どおりに動く。
+- [ ] Lane 5. verify-hab で製品ごとの間隔を通す。Save `pr7-lane5-evidence.txt`. Pass when 機能マップの手順どおりに動く。
+- [ ] Lane 6. verify-hab でアドレス指定の購読を通す。Save `pr7-lane6-evidence.txt`. Pass when 機能マップの手順どおりに動く。
+- [ ] Lane 7. verify-hab で相手がいないエラーを通す。Save `pr7-lane7-evidence.txt`. Pass when 機能マップの手順どおりに動く。
+- [ ] Lane 8. 手順書の表と ADR-032 の表を比べる。Save `pr7-lane8-diff.txt`. Pass when 一致する。
+- [ ] Lane 9. `npm test` を流す。Save `pr7-lane9-test.txt`. Pass when 失敗が 0 件。
+- [ ] Lane 10. 本人が ADR-032 を読む。Save `pr7-lane10-review.txt`. Pass when 本人が承認する。
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -392,5 +444,5 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 ## Appendix C. この計画の型との違い
 
 - 実行はクラウドの下請けではなく、Mac mini の Claude Code 1 体で行う。HAB の実機が Mac mini にあるため。
-- 10 本の swarm レーンの代わりに、verify-hab の検証用スタックと Mac mini の実機確認を使う。レーンの数は PR ごとに必要な分だけにし、画面のないレーンはスクリーンショットの代わりに HAB の記録の行を証拠にする。check-plan の「Ten lanes」と「names no screenshot」の指摘は、この違いによるもので、意図して残す。
+- 10 本の swarm レーンの代わりに、verify-hab の検証用スタックと Mac mini の実機確認を使う。レーンは型どおり 10 本にし、画面のないレーンは `Save` に HAB の記録や応答のファイルを指定する。
 - control-ui と control-cli の代わりに、HTTP の要求と読み取り専用の DB の確認で操作する。
