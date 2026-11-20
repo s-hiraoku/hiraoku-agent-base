@@ -24,17 +24,9 @@ export const CATEGORIES = [
   "transport_error",
   "anomaly",
   "aggregate",
-  "protocol_method",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 const REASON = /^[a-z][a-z0-9_]{0,47}$/;
-/** Categories that may carry a fixed code from REASON, never free text. */
-const REASON_CATEGORIES: readonly Category[] = [
-  "tool_error",
-  "auth_denied",
-  "resource_rejected",
-  "protocol_method",
-];
 const CONNECTION = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 export interface Audit {
   record(
@@ -83,7 +75,8 @@ export class LocalAudit implements Audit {
       (reason !== undefined &&
         (category === "authenticated"
           ? !CONNECTION.test(reason)
-          : !REASON_CATEGORIES.includes(category) || !REASON.test(reason)))
+          : (category !== "tool_error" && category !== "auth_denied") ||
+            !REASON.test(reason)))
     )
       throw new Error("Invalid audit event");
     const time = this.now();

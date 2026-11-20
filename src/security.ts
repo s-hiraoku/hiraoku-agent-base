@@ -11,13 +11,11 @@ export type AuditCategory =
   | "tool_error"
   | "transport_error"
   | "anomaly"
-  | "aggregate"
-  | "protocol_method";
+  | "aggregate";
 export interface AuditSink {
   /**
    * `reason` is a fixed refusal code (`/^[a-z][a-z0-9_]{0,47}$/`), never a body or secret.
-   * It comes with `tool_error`, `auth_denied` (why a credential was refused),
-   * `resource_rejected` and `protocol_method` (a fixed code for the MCP method). With
+   * It comes with `tool_error` and `auth_denied` (why a credential was refused). With
    * `authenticated` it is instead the operator-registered connection ID
    * (`/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/`), never a token, claim, subject or client ID.
    */
@@ -35,5 +33,5 @@ export type ToolFinish = (
 export interface SecurityContext {
   correlation: string;
   beginTool(): Promise<ToolFinish>;
-  record(category: AuditCategory, reason?: string): Promise<void>;
+  record(category: AuditCategory): Promise<void>;
 }
