@@ -32,6 +32,10 @@
  */
 import { createNotifyCheckLog } from "./lib/notify-check-log.ts";
 import { lstatSync, readFileSync, renameSync } from "node:fs";
+import {
+  startWakeListener,
+  wakeableSleep,
+} from "../src/agent-notify/wake-listener.ts";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -265,6 +269,17 @@ const configSchema = z.strictObject({
   ]),
   interval_ms: z.number().int().min(1000).max(3_600_000).default(15_000),
   /**
+   * ADR-032: listen on 127.0.0.1:`port` for HAB's doorbell (an operator-registered
+   * loopback doorbell) and check at once. `interval_ms` stays as the backup. The
+   * `whsec_` key is read from an owner-only file, never written in this config.
+   */
+  wake: z
+    .strictObject({
+      port: z.number().int().min(1024).max(65_535),
+      secret_file: z.string().min(1),
+    })
+    .optional(),
+  /**
    * ADR-023: chooses 対応する without a click for the senders and kinds listed here. Absent
    * (the default): every message waits for the user.
    */
@@ -274,6 +289,18 @@ export type NotifyConfig = z.infer<typeof configSchema>;
 
 const expand = (path: string) =>
   resolve(path.startsWith("~/") ? homedir() + path.slice(1) : path);
+
+/** The doorbell key from an owner-only regular file (ADR-032). */
+export function readWakeSecret(path: string): string {
+  const file = expand(path);
+  const stat = lstatSync(file);
+  if (!stat.isFile() || stat.mode & 0o077)
+    throw new MessagingError("wake_secret_unsafe");
+  const secret = readFileSync(file, "utf8").trim();
+  if (!/^whsec_[A-Za-z0-9+/]+={0,2}$/.test(secret))
+    throw new MessagingError("wake_secret_invalid");
+  return secret;
+}
 
 export function readToken(config: Pick<NotifyConfig, "token">): string {
   let token: unknown;
@@ -932,6 +959,16 @@ export async function main(
         // An error that repeats on every check, such as waiting for the agent to refresh its
         // token, is logged once when it starts and once when it ends.
         const checkLog = createNotifyCheckLog(out);
+        const timer = wakeableSleep();
+        process.once("SIGTERM", () => timer.ring());
+        process.once("SIGINT", () => timer.ring());
+        const listener = config.wake
+          ? await startWakeListener({
+              port: config.wake.port,
+              secret: readWakeSecret(config.wake.secret_file),
+              onWake: () => timer.ring(),
+            })
+          : undefined;
         while (!stopped) {
           try {
             const started = performance.now();
@@ -941,8 +978,9 @@ export async function main(
             const code = errorCode(error, config);
             checkLog.failed(code);
           }
-          await new Promise((done) => setTimeout(done, config.interval_ms));
+          if (!stopped) await timer.sleep(config.interval_ms);
         }
+        await listener?.close();
         return 0;
       }
     }

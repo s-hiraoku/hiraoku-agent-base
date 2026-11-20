@@ -17,6 +17,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import { lookup as dnsLookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
 import { request } from "node:https";
 import { BlockList, isIP } from "node:net";
 import { z } from "zod";
@@ -188,6 +189,100 @@ export function callbackUrl(raw: unknown): URL {
   )
     throw invalid("invalid_callback_url");
   return url;
+}
+/**
+ * An operator-registered doorbell URL (ADR-029). Besides public HTTPS it may be plain HTTP
+ * to the loopback address literal with a port (ADR-032: a notifier on the same machine,
+ * such as Hermes's). Only the operator's config can name it; agent subscriptions still go
+ * through `callbackUrl`.
+ */
+export function operatorCallbackUrl(raw: unknown): URL {
+  try {
+    return callbackUrl(raw);
+  } catch (error) {
+    let url: URL;
+    try {
+      if (typeof raw !== "string" || raw.length > 2048) throw Error();
+      url = new URL(raw);
+    } catch {
+      throw error;
+    }
+    if (!isLoopbackUrl(url)) throw error;
+    return url;
+  }
+}
+function isLoopbackUrl(url: URL): boolean {
+  return (
+    url.protocol === "http:" &&
+    (url.hostname === "127.0.0.1" || url.hostname === "[::1]") &&
+    url.port !== "" &&
+    !url.username &&
+    !url.password &&
+    !url.hash
+  );
+}
+/** POST to an operator loopback doorbell: no name lookup, no redirects, 64 KiB, 10 s. */
+export function createLoopbackPost(timeoutMs = 10_000): WebhookPost {
+  return (raw, body, headers) =>
+    new Promise((resolve, reject) => {
+      const url = new URL(raw);
+      if (!isLoopbackUrl(url)) {
+        reject(callbackFailed("callback_not_public"));
+        return;
+      }
+      const req = httpRequest(
+        {
+          host: url.hostname.replace(/^\[|\]$/g, ""),
+          port: Number(url.port),
+          path: url.pathname + url.search,
+          method: "POST",
+          headers: {
+            ...headers,
+            "Content-Length": String(Buffer.byteLength(body)),
+          },
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          let size = 0;
+          res.on("data", (chunk: Buffer) => {
+            size += chunk.length;
+            if (size > 65_536) req.destroy(Error("response_too_large"));
+            else chunks.push(chunk);
+          });
+          res.on("end", () =>
+            resolve({
+              status: res.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString("utf8"),
+            }),
+          );
+          res.on("error", reject);
+        },
+      );
+      const timer = setTimeout(() => {
+        req.destroy();
+        reject(callbackFailed("timeout"));
+      }, timeoutMs);
+      req.on("close", () => clearTimeout(timer));
+      req.on("error", reject);
+      req.end(body);
+    });
+}
+/** Public HTTPS for every callback, plus loopback HTTP for operator doorbells (ADR-032). */
+export function createWebhookPost(
+  https: WebhookPost = createHttpsPost(),
+  loopback: WebhookPost = createLoopbackPost(),
+): WebhookPost {
+  return (raw, body, headers) => {
+    let url: URL | undefined;
+    try {
+      url = new URL(raw);
+    } catch {
+      url = undefined;
+    }
+    return url && isLoopbackUrl(url)
+      ? loopback(raw, body, headers)
+      : https(raw, body, headers);
+  };
 }
 type Lookup = (
   host: string,
@@ -408,7 +503,7 @@ export class HabEvents {
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
     this.#source = source;
-    this.#post = options.post ?? createHttpsPost();
+    this.#post = options.post ?? createWebhookPost();
     this.#now = options.now ?? Date.now;
     this.#maxTtl = options.max_ttl_ms ?? 86_400_000;
     this.#defaultTtl = Math.min(
@@ -699,13 +794,14 @@ export class HabEvents {
    * Apply the operator-registered doorbells (ADR-029): add or update these, remove the
    * ones no longer listed. A new doorbell starts after the mail already waiting, so a
    * restart or a new entry does not ring for old messages. No challenge is sent: the
-   * operator vouches for the URL, which must still be public HTTPS.
+   * operator vouches for the URL, which must be public HTTPS or a loopback
+   * notifier on this machine (`operatorCallbackUrl`).
    */
   configureStatic(doorbells: readonly StaticDoorbell[]) {
     const keep = new Set<string>();
     const now = this.#now();
     for (const doorbell of doorbells) {
-      const url = callbackUrl(doorbell.url).href;
+      const url = operatorCallbackUrl(doorbell.url).href;
       const secret = doorbellSecret(doorbell.secret);
       const id =
         STATIC_PREFIX +

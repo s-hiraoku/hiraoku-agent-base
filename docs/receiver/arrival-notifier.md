@@ -73,7 +73,15 @@ npm run hab:notify -- --config notify.json decide <message_id> accept|later|decl
 npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 ```
 
-`run` は `interval_ms`（既定 15 秒、1 秒〜1 時間）ごとに `hab_peek` で受信箱を確かめます。これがこのエージェントの定期確認（ポーリング、[ADR-031](../hab-decisions.md)）で、呼び鈴は使いません。間隔は利用者がこの設定で決めます。
+`run` は `interval_ms`（既定 15 秒、1 秒〜1 時間）ごとに `hab_peek` で受信箱を確かめます。これがこのエージェントの定期確認（ポーリング、[ADR-031](../hab-decisions.md)）です。間隔は利用者がこの設定で決めます。
+
+`wake` を書くと、HAB の呼び鈴で起きます（ADR-032）。`run` は `127.0.0.1:<port>` で待ち受け、HAB の運用者登録の呼び鈴（[MCP イベント](../connections/mcp-events.md#運用者が登録する呼び鈴adr-029)の `url` に `http://127.0.0.1:<port>/wake`）が鳴るとすぐに 1 回確かめます。`interval_ms` は取りこぼしの保険として残します（おすすめは 5 分）。
+
+```json
+"wake": { "port": 8795, "secret_file": "~/.hab-notify/local-lab/wake.secret" }
+```
+
+鍵は `whsec_` で始まる 1 行で、所有者だけが読めるファイル（`chmod 600`）に置き、HAB の呼び鈴の `secret_file` と同じものにします。受け口は Standard Webhooks の署名と 5 分以内の時刻を確かめ、合わない要求は 401 で断ります。本文は使わず、確かめるのは HAB の受信箱です。
 
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
 

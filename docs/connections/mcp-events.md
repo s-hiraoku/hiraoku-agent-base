@@ -164,6 +164,11 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
 - 期限はなく、challengeも送りません。設定から消してhostを再起動すると外れます。
   登録した時点で待っているメールでは鳴りません（まだ未読なら、10分後の定期確認では鳴ります。ADR-031）。
 - `hab:admin status`では`doorbell: "live"`と`doorbell_operator: 1`のように見えます。
+- 同じ Mac の notifier（Hermes など）を起こす場合だけ、`url`に`http://127.0.0.1:<port>/…`
+  （または`http://[::1]:<port>/…`）を書けます（ADR-032）。ポートの指定が必要で、`localhost`などの名前、
+  ほかの非公開アドレス、認証情報やフラグメント入りの URL は起動時に拒否します。鍵は`whsec_`にして、
+  notifier の`wake.secret_file`と同じものを使います。エージェントが`events/subscribe`で指定する宛先は
+  今までどおり公開 HTTPS だけです。
 
 ## 受信箱の定期確認（ADR-031）
 
