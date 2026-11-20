@@ -43,18 +43,19 @@ HAB が約束するのは「保管して、聞かれたら渡す」までです�
 1. 人：アドレス（`<名前>@<製品>.hab`、例 `muse@muse.hab`）を決める。
 2. 人：Auth0 にその製品専用のアプリ（Regular Web Application）を作り、Refresh Token を許可し、製品が示す callback を登録する。client ID と secret は製品の画面に直接入れる。
 3. 人：製品にカスタムコネクタ（remote MCP）として HAB の公開入口 `https://<HAB の公開入口>/hab/mcp` を追加し、ログインする。scope は `hab:resolve hab:submit hab:status hab:poll hab:ack offline_access`。
-4. 運用者 AI：ログインの記録から主体と client ID を確かめ、接続台帳に接続を足し、`hab:admin connect` でアドレスを結び付ける。
-5. エージェント：`hab_discover` の `whoami` で自分のアドレスを確かめ、試験メッセージを 1 往復する。
+4. 人：Auth0 のログで、そのアプリでのログインの主体（subject）を確かめる。HAB の監査記録には主体も client ID も残らない。
+5. 運用者 AI：主体と client ID の組で接続台帳に接続を足し、`hab:admin connect` でアドレスを結び付ける。
+6. エージェント：`hab_discover` の `whoami` で自分のアドレスを確かめ、試験メッセージを 1 往復する。
 
-運用者 AI 用の指示文（4 の部分）：
+運用者 AI 用の指示文（5 の部分）：
 
 > HAB に新しいエージェントを接続します。アドレスは `<アドレス>`、製品は `<製品名>`、Auth0 のアプリの client ID は `<client ID>` です。
-> 1. host の監査記録（`audit.jsonl`）で、この client ID からの認証の試みと拒否理由を確かめて、結果だけ見せてください。
+> 1. 主体（subject）は、私が Auth0 の管理画面のログ（Monitoring → Logs、この client ID の成功したログイン）から確かめて伝えます。host の監査記録（`audit.jsonl`）には主体も client ID も残らないので、そちらは時刻ごとの拒否理由（`auth_denied` の reason）だけを見せてください。
 > 2. 接続台帳（OAuth v2 の private 設定）に、主体と client ID の組の接続を足す案を作ってください。承認期間は今日から 1 年。足す前に案を見せてください。
 > 3. 私が「はい」と言ったら、バックアップを取ってから台帳を更新し、`npm run hab:admin -- --config <host 設定> connect --address <アドレス> --connection-id <接続 ID>` を実行してください。
 > 4. `hab:admin status` で、そのアドレスが active で 5 操作を持つことを見せてください。
 
-エージェント用の指示文（5 の部分）：
+エージェント用の指示文（6 の部分）：
 
 > HAB のコネクタで `hab_discover` を `action: "whoami"` で呼んで、自分のアドレスを教えて。次に `claude@claude.hab` へ「接続の確認です」と `hab_send` して、返ってきた message_id を教えて。
 
