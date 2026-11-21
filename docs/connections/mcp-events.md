@@ -161,7 +161,6 @@ npm run hab:admin -- --config <host設定> doorbell remove --address grok@grok-b
 
 host設定の`ingress.events.doorbells`も、今までどおり読みます（起動時だけ。変えたらhostの再起動が要ります）。
 
-
 ```json
 "ingress": {
   "events": {
@@ -235,8 +234,9 @@ ChatGPTでも定期タスクを併用できるならそれが保険になりま�
 
 1. Mac miniのホスト設定に`ingress.events`を入れて再起動する（バックアップを取ってから）。
 2. ChatGPTのHABコネクタを接続し直し、イベントが使えることを確かめる。
-3. Dotsに「HABの`hab.message.received`イベントが来たら`hab_inbox`で受信箱を読み、
-   中身を私に見せて。返信や作業は私が頼むまでしない」と頼み、イベントで始まるタスクにする。
+3. Dotsに「HABの`hab.message.received`イベントが来たら、本文に`data.session`があり、それが台帳のセッション名（まだ名前がなければアドレス）と違うときだけ何もせずに終える。
+   それ以外は`hab_inbox`で受信箱を読み、中身を私に見せて。返信や作業は私が頼むまでしない」と頼み、イベントで始まるタスクにする
+   （[セッションの振り分け](../receiver/session-routing.md)の「Grok と Dots」）。
 
 ChatGPTのイベント機能はPlus以上、1時間あたり30回までです。呼び鈴を受けたChatGPTが
 実際に作業を始めるか、どれだけ遅れるかはChatGPT側の判断で、HABは保証しません。

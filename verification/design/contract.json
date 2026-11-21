@@ -736,7 +736,7 @@
     },
     {
       "path": "docs/connections/mcp-events.md",
-      "sha256": "37f73d2bf1e1bf7e9bfd300b8664aa4dd0720705cfe6e94a48c7b0c565c601b5",
+      "sha256": "a6b17a6f7d96f9ee8ecaea2a2cc8154193c37a93fb3897f60046ac4bfc13c044",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified. ADR-024 (2026-11-17): outage_after_ms credit for host downtime/sleep and the operator check for lapsed doorbells with the Dots re-subscribe step. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19 (ADR-029): operator-registered doorbells config, secret file and Bearer/whsec headers, no lifetime or challenge, admin doorbell_operator. 2026-11-19 ADR-030: quiet 設定と、未読の間は新着で鳴らさない節を追記。 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms. PR #273 review verifies all startup config entries before applying registry precedence, applies registration sets atomically, and pauses callbacks whose secret is temporarily unavailable. A paused callback resumes with its previous cursor and absence; explicit removal clears scheduled repeats. Managed operator callbacks use immutable agent IDs, preserving the subscription and cursor through a live address rename. Admin operations display and use the current address, and a managed callback continues to shadow config for the same agent.",
@@ -1136,7 +1136,7 @@
     },
     {
       "path": "docs/connections/grok-bot-connection.md",
-      "sha256": "8bca05581a30f349e91ab212194f7b2f6eafb06e5816353a0d31a6324f73e231",
+      "sha256": "82809bfa3428f4179a38e37393ef8cf2de8e7fca7092e102a35ec365f4880da0",
       "role": "context",
       "review": "reviewed",
       "summary": "Grok Bot native custom MCP onboarding context: official URL/command capability, remote execution and account-wide app/cloud credential sharing, explicit reachability/auth/client/identity prerequisites, durable receipt and recipient approval. Locked UI and all native messaging/model/residency acceptance remain unverified; no UI-driving third-party MCP substitutes for HAB. 2026-11-19 (ADR-029): wake a Grok Bot webhook routine with an operator-registered doorbell that reads hab_inbox; routine webhook format and Grok HAB connector remain unverified."
@@ -1267,7 +1267,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "8ed98346a03fda26cd15e5d745e6a42c19de7ffd1ff0964fa6208883cedeac81",
+      "sha256": "48f5e001712ae83f2c28285ca9cd913abb626a65672057554cc4881fc91161a6",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
@@ -1319,7 +1319,7 @@
     },
     {
       "path": "docs/receiver/session-routing.md",
-      "sha256": "eec3f98c1dea327a24f78888a95b27e8e51c3225933d9f355d20221068df2e64",
+      "sha256": "90233c5692cdb4f7ed771af4c1b1d56df5321d16bac0f206c1db83bd13e4f480",
       "role": "context",
       "review": "reviewed",
       "summary": "Design proposal (2026-11-21; PR #271 implements the pure routing and presence core): A Hermes/Codex/Claude Code notifier process owns up to 32 per-session units, each with its own address, native conversation ID, store, screen, binding, client and run loop. ADR-032 after PR #264: a signed ring needs both the owned address and its exact session, with a probe result of gone, for 410 session_gone. Unknown addresses, mismatches, inconclusive probes and provisional/legacy labels use 200 session_unconfirmed and preserve HAB absence. A provisional or legacy ring may wake its own unit when no probe is configured or the probe confirms presence, and no routing pause is active. Exact matches clear routing pauses, while configured probes allow reads only after present. One bounded presence observation per unit is shared between simultaneous checks and rings; late results do not overwrite state. The signed listener, product config, per-unit loops and TokenPool are separate follow-up work. Recovery uses an owner inbox read after a positive notifier probe, a new subscription, or a freshly registered operator doorbell. Grok and Dots remain one subscription per address with session checks in the agent's instructions. PR #277 preserves standalone --config run with optional as_address and its existing signed-ring response and logging. Multi-session product configs require canonical addresses, retain exact matching for 410, and stop before initiating a new check after shutdown.",
