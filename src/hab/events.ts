@@ -672,6 +672,9 @@ export class HabEvents {
       .run(id);
     if (!removed.changes) return;
     this.#db
+      .prepare("DELETE FROM hab_event_rerings WHERE subscription_id=?")
+      .run(id);
+    this.#db
       .prepare(
         `INSERT INTO hab_event_lapses (agent_id,lapsed_at,reason) VALUES (?,?,?)
          ON CONFLICT(agent_id) DO UPDATE SET lapsed_at=excluded.lapsed_at, reason=excluded.reason`,
@@ -899,6 +902,11 @@ export class HabEvents {
           .run(secret, id);
         continue;
       }
+      // An older host may have left a pending repeat when ending this callback.
+      // The same URL reuses the subscription ID, but starts a new registration.
+      this.#db
+        .prepare("DELETE FROM hab_event_rerings WHERE subscription_id=?")
+        .run(id);
       // ADR-032: a doorbell the operator newly registers means the product is back for
       // this address. An unchanged one on restart took the branch above and keeps absence.
       this.#notePresent(doorbell.agent_id);

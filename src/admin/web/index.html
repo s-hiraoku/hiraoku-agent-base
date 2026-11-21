@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HAB 管理ダッシュボード</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="page header-content">
+        <h1>HAB <span>管理ダッシュボード</span></h1>
+        <button id="connect" class="button primary" type="button">
+          エージェントをつなぐ
+        </button>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="panel" aria-labelledby="list-title">
+        <div class="panel-header">
+          <h2 id="list-title">登録一覧</h2>
+          <button id="refresh" class="button" type="button" disabled>
+            更新
+          </button>
+        </div>
+
+        <div class="filters">
+          <label>
+            アドレスで検索
+            <input
+              id="search"
+              type="search"
+              placeholder="例 agent@example.hab"
+            />
+          </label>
+          <label>
+            登録状態
+            <select id="registration-filter">
+              <option value="">すべて</option>
+              <option value="waiting_connection">接続待ち</option>
+              <option value="active">有効</option>
+              <option value="stopped">停止</option>
+              <option value="retired">廃止</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="list-meta">
+          <p id="list-status" role="status">診断を読み込んでいます。</p>
+          <time id="last-updated" hidden></time>
+        </div>
+
+        <div
+          id="table-wrap"
+          class="table-wrap"
+          tabindex="0"
+          role="region"
+          aria-label="診断表"
+          hidden
+        >
+          <table aria-label="アドレスと診断">
+            <thead>
+              <tr>
+                <th scope="col">アドレス</th>
+                <th scope="col">登録状態</th>
+                <th scope="col">登録の診断</th>
+                <th scope="col">受け取り方</th>
+                <th scope="col">受信箱</th>
+                <th scope="col">会話</th>
+                <th scope="col">最初の問題</th>
+              </tr>
+            </thead>
+            <tbody id="address-rows"></tbody>
+          </table>
+        </div>
+        <p id="copy-status" class="copy-status" role="status"></p>
+      </section>
+    </main>
+
+    <dialog id="diagnosis" aria-labelledby="diagnosis-title">
+      <div class="dialog-header">
+        <h2 id="diagnosis-title">アドレスの診断</h2>
+        <button id="close-diagnosis" class="button" type="button">
+          閉じる
+        </button>
+      </div>
+      <p id="diagnosis-status" role="status"></p>
+      <div id="diagnosis-checks" class="checks"></div>
+    </dialog>
+
+    <dialog id="setup" aria-labelledby="setup-title">
+      <div class="dialog-header">
+        <h2 id="setup-title">エージェントをつなぐ</h2>
+        <button id="close-setup" class="button" type="button">閉じる</button>
+      </div>
+      <label>
+        製品
+        <select id="product">
+          <option value="">製品を選択</option>
+        </select>
+      </label>
+      <div id="setup-guide" hidden>
+        <p id="product-instructions"></p>
+        <div class="guide-links">
+          <a id="common-guide" class="button" target="_blank" rel="noreferrer">
+            共通の準備を確認
+          </a>
+          <a
+            id="product-guide"
+            class="button primary"
+            target="_blank"
+            rel="noreferrer"
+          >
+            製品の設定手順を開く
+          </a>
+        </div>
+      </div>
+    </dialog>
+  </body>
+</html>

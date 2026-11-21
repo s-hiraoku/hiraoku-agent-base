@@ -1787,3 +1787,36 @@ test("restoring an unchanged operator doorbell does not clear recipient_absent (
   assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
   assert.equal(f.h.events().length, 1);
 });
+
+test("re-adding an ended operator doorbell does not ring for the old registration", async (t) => {
+  let now = Date.now();
+  let revision = 1;
+  let calls = 0;
+  const f = await setup(t, {
+    status: () => (++calls === 2 ? 410 : 200),
+    events: ({ a }) => ({
+      now: () => now,
+      quiet: false,
+      unanswered_after_ms: 60_000,
+      doorbells: () => [
+        { agent_id: a.agent_id, url: URL_A, secret: SECRET, revision },
+      ],
+    }),
+  });
+  await f.events.dispatch();
+  await f.send("b", f.a.address, "first unread");
+  await f.events.dispatch();
+  now += 1000;
+  await f.send("b", f.a.address, "second unread");
+  await f.events.dispatch();
+  assert.equal(f.events.subscriptions().length, 0);
+  revision += 1;
+  await f.events.dispatch();
+
+  now += 60_000;
+  await f.events.dispatch();
+  assert.equal(calls, 2, "the old registration no longer has a repeat");
+  await f.send("b", f.a.address, "new mail");
+  await f.events.dispatch();
+  assert.equal(calls, 3, "the replacement rings for new mail");
+});
