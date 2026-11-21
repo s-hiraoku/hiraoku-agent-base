@@ -256,7 +256,8 @@ CREATE TRIGGER hab_stop_monotonic BEFORE UPDATE ON hab_registry_stop WHEN OLD.st
 const RECEIVE_SCHEMA = `
 CREATE TABLE hab_receive_meta(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL CHECK(version=1));
 CREATE TABLE hab_product_receive(product_id TEXT PRIMARY KEY REFERENCES hab_products(product_id),mode TEXT NOT NULL CHECK(mode IN ('hook','poll','on_request')),interval_ms INTEGER CHECK(interval_ms IS NULL OR interval_ms BETWEEN 60000 AND 86400000),updated_at TEXT NOT NULL,actor_hash TEXT NOT NULL,CHECK((mode='poll')=(interval_ms IS NOT NULL)));
-CREATE TABLE hab_agent_sessions(agent_id TEXT PRIMARY KEY REFERENCES hab_agents(agent_id),product_id TEXT NOT NULL REFERENCES hab_products(product_id),session TEXT NOT NULL,provisional INTEGER NOT NULL CHECK(provisional IN (0,1)),bound_at TEXT NOT NULL,actor_hash TEXT,UNIQUE(product_id,session));
+CREATE TABLE hab_agent_sessions(agent_id TEXT PRIMARY KEY REFERENCES hab_agents(agent_id),product_id TEXT NOT NULL REFERENCES hab_products(product_id),session TEXT NOT NULL,provisional INTEGER NOT NULL CHECK(provisional IN (0,1)),bound_at TEXT NOT NULL,actor_hash TEXT);
+CREATE UNIQUE INDEX hab_agent_sessions_named ON hab_agent_sessions(product_id,session) WHERE provisional=0;
 CREATE TRIGGER hab_product_receive_reserved BEFORE DELETE ON hab_product_receive BEGIN SELECT RAISE(ABORT,'reserved'); END;
 CREATE TRIGGER hab_agent_sessions_reserved BEFORE DELETE ON hab_agent_sessions BEGIN SELECT RAISE(ABORT,'reserved'); END;
 CREATE TRIGGER hab_agent_sessions_identity BEFORE UPDATE OF agent_id,product_id ON hab_agent_sessions BEGIN SELECT RAISE(ABORT,'immutable'); END;
@@ -685,7 +686,7 @@ export class SQLiteHabRegistry {
         throw new RegistryError("registry_session_bound");
       const taken = this.#db
         .prepare(
-          "SELECT agent_id FROM hab_agent_sessions WHERE product_id=? AND session=? AND agent_id<>?",
+          "SELECT agent_id FROM hab_agent_sessions WHERE product_id=? AND session=? AND agent_id<>? AND provisional=0",
         )
         .get(agent.product_id, input.session, agent.agent_id);
       if (taken) throw new RegistryError("registry_session_taken");
@@ -1044,6 +1045,7 @@ export class SQLiteHabRegistry {
           .prepare("INSERT INTO hab_address_reservations VALUES(?,?,?,?)")
           .run(address, agentId, input.bot_name, this.#iso());
       // Until an operator names it, the session is provisional and named after the address.
+      // Only named sessions are unique, so a provisional name never blocks enrollment.
       this.#db
         .prepare("INSERT INTO hab_agent_sessions VALUES(?,?,?,1,?,NULL)")
         .run(agentId, input.product_id, address, this.#iso());
