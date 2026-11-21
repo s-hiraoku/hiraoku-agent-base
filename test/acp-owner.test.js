@@ -157,7 +157,7 @@ test("ACP and external owner bind only after eager discovery plus committed resp
 });
 
 test("ACP finite lifetime aborts an otherwise idle committed channel", async t => {
-  const f = fixture(t, "normal", { lifetimeMs: 500 });
+  const f = fixture(t, "normal", { lifetimeMs: 2500 });
   await f.driver.create(f.launch);
   await f.driver.exited;
   assert.equal(f.driver.ownerSignal.aborted, true);
