@@ -1,6 +1,6 @@
 # 呼び鈴のセッション名で受信を振り分ける（設計案）
 
-状態：**案（本人の確認待ち）**。2026-11-21 JST。前提は [ADR-032](../hab-decisions.md) と PR #259（呼び鈴の `data` を `{to, session, arrived_at}` にする）。
+状態：**案（410 の扱いは本人判断済み）**。2026-11-21 JST。前提は [ADR-032](../hab-decisions.md) と PR #259（呼び鈴の `data` を `{to, session, arrived_at}` にする）。
 
 ## 何を決めるか
 
@@ -100,6 +100,6 @@ Grok と Dots は、1 つの購読で複数のセッションを持てる仕組�
 2. notifier の束ねと振り分け（`scripts/hab-notify.ts`、`src/agent-notify/wake-listener.ts`、テスト、verify-hab）。#259 のマージ後。
 3. Grok と Dots の手順書の指示文（docs だけ）。
 
-## 本人に決めてもらうこと
+## 本人の判断
 
-- 束ねにない名前の呼び鈴に `410 session_gone` を返すか（おすすめ）、`200` で受けてログだけ残すか。`410` は ADR-032 の「セッションがなければ相手がいない」どおりだが、設定の書き漏れでも 3 回で `recipient_absent` になる（束ねに足して次の呼び鈴で戻る）。
+- 2026-11-21 JST：束ねにない名前の呼び鈴には `410 session_gone` を返す（「相手がいない」にする）。設定の書き漏れでも 3 回で `recipient_absent` になるが、束ねに足せば次の呼び鈴で戻る。
