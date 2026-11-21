@@ -281,13 +281,16 @@ test("one doorbell answers each signed ring by its address and conversation", as
   );
 });
 
-test("--config run refuses a session without as_address", async (t) => {
+test("--config units needs an address for the registration command", async (t) => {
   const f = fixture(t);
   const config = f.session("alpha", { as_address: undefined });
   const file = join(f.dir, "single.json");
   writeFileSync(file, JSON.stringify(config));
   const lines = [];
-  assert.equal(await main(["--config", file, "run"], (l) => lines.push(l)), 1);
+  assert.equal(
+    await main(["--config", file, "units"], (l) => lines.push(l)),
+    1,
+  );
   assert.deepEqual(JSON.parse(lines[0]), {
     error: "as_address_required",
     files: ["config"],

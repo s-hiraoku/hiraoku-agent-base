@@ -30,7 +30,7 @@ export type Exclusive = Readonly<
 >;
 
 export interface SessionUnit {
-  readonly address: Address;
+  readonly address: Address | undefined;
   /** The ledger's session name: the product's own conversation ID. */
   readonly label: string;
   readonly exclusive: Exclusive;
@@ -72,17 +72,23 @@ export class SessionTable {
 
   private constructor(units: readonly SessionUnit[]) {
     this.units = Object.freeze([...units]);
-    this.#byAddress = new Map(units.map((unit) => [unit.address, unit]));
+    this.#byAddress = new Map(
+      units.flatMap((unit) =>
+        unit.address === undefined ? [] : [[unit.address, unit]],
+      ),
+    );
   }
 
   /**
-   * Throws MessagingError: no_sessions, too_many_sessions, duplicate_address,
+   * Throws MessagingError: no_sessions, too_many_sessions, as_address_required, duplicate_address,
    * duplicate_session, shared_store, shared_screen, shared_binding.
    */
   static of(units: readonly SessionUnit[]): SessionTable {
     if (units.length === 0) throw new MessagingError("no_sessions");
     if (units.length > MAX_UNITS) throw new MessagingError("too_many_sessions");
-    const unique: Record<string, (unit: SessionUnit) => string> = {
+    if (units.some((unit) => unit.address === undefined))
+      throw new MessagingError("as_address_required");
+    const unique: Record<string, (unit: SessionUnit) => string | undefined> = {
       duplicate_address: (unit) => unit.address,
       duplicate_session: (unit) => unit.label,
       ...Object.fromEntries(
@@ -96,6 +102,11 @@ export class SessionTable {
       if (new Set(units.map(value)).size !== units.length)
         throw new MessagingError(code);
     return new SessionTable(units);
+  }
+
+  /** A standalone legacy notifier may have no address. */
+  static single(unit: SessionUnit): SessionTable {
+    return new SessionTable([unit]);
   }
 
   /**
@@ -224,6 +235,11 @@ export interface ProductRunOptions {
   ) => Promise<{ close(): Promise<void> }>;
   readonly report?: (unit: SessionUnit, event: UnitEvent) => void;
   readonly ringLog?: (event: RingLog) => void;
+  readonly presenceTimeoutMs?: number;
+  readonly answer?: (
+    body: string,
+    wake: (unit: SessionUnit) => void,
+  ) => Promise<RingAnswer>;
 }
 
 /**
@@ -234,30 +250,40 @@ export async function runProduct(
   table: SessionTable,
   options: ProductRunOptions,
 ): Promise<void> {
-  const { stop } = options;
+  const failed = new AbortController();
+  const stop = AbortSignal.any([options.stop, failed.signal]);
   const report = options.report ?? (() => {});
   const sleeps = new Map(table.units.map((unit) => [unit, wakeableSleep()]));
+  const wake = (unit: SessionUnit) => sleeps.get(unit)!.ring();
+  const answer =
+    options.answer ??
+    ((body: string) => answerRing(table, body, wake, options.ringLog));
   try {
-    const listener = await options.listen?.((body) =>
-      answerRing(
-        table,
-        body,
-        (unit) => sleeps.get(unit)!.ring(),
-        options.ringLog,
-      ),
-    );
+    if (stop.aborted) return;
+    const listener = await options.listen?.(async (body) => {
+      if (stop.aborted) return "session_unconfirmed";
+      const result = await answer(body, wake);
+      return stop.aborted ? "session_unconfirmed" : result;
+    });
     const stopped = new Promise<void>((resolve) => {
       if (stop.aborted) resolve();
       else stop.addEventListener("abort", () => resolve(), { once: true });
     }).then(async () => {
-      await listener?.close();
-      for (const sleep of sleeps.values()) sleep.ring();
+      try {
+        await listener?.close();
+      } finally {
+        for (const sleep of sleeps.values()) sleep.ring();
+      }
     });
     const loop = async (unit: SessionUnit) => {
       const sleep = sleeps.get(unit)!;
       while (!stop.aborted) {
         try {
-          const presence = await table.refreshPresence(unit);
+          const presence = await table.refreshPresence(
+            unit,
+            options.presenceTimeoutMs,
+          );
+          if (stop.aborted) break;
           if (presence) report(unit, { presence });
           if (table.mayPeek(unit)) {
             const started = performance.now();
@@ -273,7 +299,19 @@ export async function runProduct(
         if (!stop.aborted) await sleep.sleep(unit.interval_ms);
       }
     };
-    await Promise.all([...table.units.map(loop), stopped]);
+    const outcomes = await Promise.allSettled([
+      ...table.units.map(async (unit) => {
+        try {
+          await loop(unit);
+        } catch (error) {
+          failed.abort();
+          throw error;
+        }
+      }),
+      stopped,
+    ]);
+    const failure = outcomes.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
   } finally {
     for (const unit of table.units) unit.close();
   }

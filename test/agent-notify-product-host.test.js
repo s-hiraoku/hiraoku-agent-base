@@ -7,6 +7,7 @@ import {
   address,
   answerRing,
   parseRing,
+  runProduct,
 } from "../src/agent-notify/product-host.ts";
 
 // docs/receiver/session-routing.md 「呼び鈴の答え方」: one notifier, many sessions, one
@@ -341,6 +342,45 @@ test("SessionTable.of refuses an empty, oversized or overlapping set", () => {
       ],
       `shared_${key}`,
     );
+});
+
+test("an in-flight probe cannot start a read or report 410 after shutdown", async () => {
+  for (const outcome of ["present", "gone"]) {
+    const stop = new AbortController();
+    const reading = Promise.withResolvers();
+    const seen = Promise.withResolvers();
+    const operations = [];
+    const a = unit("a", {
+      presence: () => {
+        reading.resolve();
+        return seen.promise;
+      },
+      check: async () => {
+        operations.push("peek");
+        return [];
+      },
+      close: () => operations.push("store closed"),
+    });
+    let reply;
+    const running = runProduct(SessionTable.of([a]), {
+      stop: stop.signal,
+      listen: async (answer) => {
+        reply = answer;
+        return {
+          close: async () => {
+            operations.push("listener closed");
+          },
+        };
+      },
+    });
+    await reading.promise;
+    const response = reply(ring({ to: a.address, session: a.label }));
+    stop.abort();
+    seen.resolve(outcome);
+    assert.equal(await response, "session_unconfirmed");
+    await running;
+    assert.deepEqual(operations, ["listener closed", "store closed"]);
+  }
 });
 
 test("the table's units cannot be changed after construction", () => {

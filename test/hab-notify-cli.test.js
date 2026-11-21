@@ -182,7 +182,6 @@ test("run logs a repeating error once, not on every check", async (t) => {
       hab_url: "https://hab.example/mcp",
       agent_id: "agent-b",
       token: { env: "HAB_NOTIFY_TEST_TOKEN_RUN" },
-      as_address: "agent-b@agent.hab",
       store: join(dir, "notices.sqlite"),
       screen: {
         type: "jsonl",
@@ -202,8 +201,7 @@ test("run logs a repeating error once, not on every check", async (t) => {
   assert.equal(failure.error, "token_expired");
   assert.equal(new Date(failure.at).toISOString(), failure.at);
   assert.ok(Date.parse(failure.at) <= Date.now());
-  assert.equal(failure.address, "agent-b@agent.hab");
-  assert.deepEqual(Object.keys(failure).sort(), ["address", "at", "error"]);
+  assert.deepEqual(Object.keys(failure).sort(), ["at", "error"]);
 });
 
 test("generic states API is cursor independent and fenced by connection, recipient and session", async (t) => {
@@ -529,7 +527,7 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
   assert.ok(!output.at(-1).includes("private"));
 });
 
-async function runWithProbe(t, result) {
+async function runWithProbe(t, result, { hasAddress = true, body: raw } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "hab-notify-probe-"));
   t.after(() => {
     rmSync(dir, { recursive: true, force: true });
@@ -558,7 +556,7 @@ process.stdin.on("end", () => {
       hab_url: "https://hab.example/mcp",
       agent_id: "agent-b",
       token: { env: "HAB_NOTIFY_TEST_TOKEN_PROBE" },
-      as_address: "hermes@hermes.hab",
+      ...(hasAddress ? { as_address: "hermes@hermes.hab" } : {}),
       store: join(dir, "notices.sqlite"),
       screen: {
         type: "hermes-desktop",
@@ -567,7 +565,9 @@ process.stdin.on("end", () => {
         profile: "profile",
         backend_namespace: "namespace",
         profile_scope: "scope",
-        session_probe: { command: [process.execPath, probe], cwd: dir },
+        ...(result === undefined
+          ? {}
+          : { session_probe: { command: [process.execPath, probe], cwd: dir } }),
       },
       interval_ms: 1000,
       wake: { port, secret_file: secretFile },
@@ -579,7 +579,7 @@ process.stdin.on("end", () => {
   const running = main(["--config", config, "run"], (line) => lines.push(line));
   await new Promise((done) => setTimeout(done, 700));
   const { HAB_EVENT_NAME, signWebhook } = await import("../src/hab/events.ts");
-  const body = JSON.stringify({
+  const body = raw ?? JSON.stringify({
     name: HAB_EVENT_NAME,
     data: { to: "hermes@hermes.hab", session: "bound-session" },
   });
@@ -611,9 +611,31 @@ test("run answers HAB 410 session_gone and checks nothing while the Hermes conve
   assert.equal(answered.status, 410);
   assert.deepEqual(JSON.parse(answered.body), { reason: "session_gone" });
   assert.deepEqual(
-    logged.map((line) => line.session ?? line.error ?? line.ring.reason),
-    ["gone", "conversation_gone"],
+    logged.map((line) => line.session),
+    ["gone"],
   );
+});
+
+test("a standalone config without as_address keeps legacy signed wake and log output", async (t) => {
+  const { answered, once, logged } = await runWithProbe(t, undefined, {
+    hasAddress: false,
+    body: "legacy wake",
+  });
+  assert.deepEqual(once, { error: "token_expired" });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), {});
+  assert.equal(logged.length, 1);
+  assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "error"]);
+  assert.equal(logged[0].error, "token_expired");
+});
+
+test("a standalone config without as_address cannot report session gone", async (t) => {
+  const { answered, logged } = await runWithProbe(t, "gone", { hasAddress: false });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), { reason: "session_unconfirmed" });
+  assert.equal(logged.length, 1);
+  assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "session"]);
+  assert.equal(logged[0].session, "gone");
 });
 
 test("run answers 200 unconfirmed and leaves the inbox alone when the probe cannot tell", async (t) => {

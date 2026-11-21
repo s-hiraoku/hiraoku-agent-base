@@ -14,10 +14,15 @@ import {
   PROBE_MS,
   SessionTable,
   address,
+  parseRing,
   runProduct,
+  type ProductRunOptions,
   type SessionUnit,
 } from "../../src/agent-notify/product-host.ts";
-import { sessionProbe } from "../../src/agent-notify/session-probe.ts";
+import {
+  PROBE_TIMEOUT_MS,
+  sessionProbe,
+} from "../../src/agent-notify/session-probe.ts";
 import { startWakeListener } from "../../src/agent-notify/wake-listener.ts";
 import { MessagingError } from "../../src/messaging/delivery-service.ts";
 import {
@@ -43,15 +48,20 @@ const productSchema = z.strictObject({
   sessions_dir: z.string().min(1),
 });
 
-/** A session that passed the product's rules: it has an address and no doorbell of its own. */
-export type SessionConfig = Omit<NotifyConfig, "wake" | "as_address"> & {
-  as_address: string;
-};
+type StandaloneSession = Omit<NotifyConfig, "wake">;
+type AddressedSession = StandaloneSession & { as_address: string };
 
-export interface Product {
-  readonly wake: Wake | undefined;
-  readonly sessions: readonly SessionConfig[];
-}
+type Product =
+  | {
+      readonly wake: Wake;
+      readonly sessions: readonly AddressedSession[];
+      readonly single?: undefined;
+    }
+  | {
+      readonly wake: Wake | undefined;
+      readonly sessions: readonly [StandaloneSession];
+      readonly single: true;
+    };
 
 const refused = (code: string, file: string) =>
   new MessagingError(code, { details: { files: [file] } });
@@ -64,7 +74,7 @@ function readJson<T>(path: string, schema: z.ZodType<T>, code: string): T {
   }
 }
 
-function sessionConfig(config: NotifyConfig, file: string): SessionConfig {
+function sessionConfig(config: NotifyConfig, file: string): AddressedSession {
   const { wake, as_address, ...rest } = config;
   if (wake) throw refused("session_wake_not_allowed", file);
   if (!as_address) throw refused("as_address_required", file);
@@ -103,11 +113,11 @@ export function readProduct(path: string): Product {
 
 export function productOfOne(config: NotifyConfig): Product {
   const { wake, ...session } = config;
-  return { wake, sessions: [sessionConfig(session, "config")] };
+  return { wake, sessions: [session], single: true };
 }
 
 /** The ledger's session name is the product's own conversation ID, never a new field. */
-export function sessionLabel(config: SessionConfig): string {
+export function sessionLabel(config: StandaloneSession): string {
   const screen = config.screen;
   switch (screen.type) {
     case "hermes-desktop":
@@ -140,8 +150,8 @@ function refreshTokenHash(file: string): string | undefined {
  * spent twice trips reuse detection and revokes the grant, so any second spender is refused.
  */
 export function tokenPool(
-  sessions: readonly SessionConfig[],
-): (config: SessionConfig) => TokenSource {
+  sessions: readonly StandaloneSession[],
+): (config: StandaloneSession) => TokenSource {
   const grants = new Map<string, { key: string; token: OAuthTokenFile }>();
   const agentFiles = new Set<string>();
   for (const config of sessions) {
@@ -175,10 +185,11 @@ export function tokenPool(
 }
 
 /** HAB waits 10 s for a ring, so the probe gets PROBE_MS and every ask runs it afresh. */
-function presenceOf(config: SessionConfig) {
+function presenceOf(config: StandaloneSession, single: boolean) {
   const screen = config.screen;
   if (screen.type !== "hermes-desktop" || !screen.session_probe) return;
   const spec = screen.session_probe;
+  if (single) return sessionProbe(spec, screen.session_id);
   return sessionProbe(
     { ...spec, timeout_ms: Math.min(spec.timeout_ms ?? PROBE_MS, PROBE_MS) },
     screen.session_id,
@@ -186,12 +197,16 @@ function presenceOf(config: SessionConfig) {
   );
 }
 
-function unitOf(config: SessionConfig, token: TokenSource): SessionUnit {
+function unitOf(
+  config: StandaloneSession,
+  token: TokenSource,
+  single: boolean,
+): SessionUnit {
   const screen = boundScreen(config);
   const { notifier, store } = createNotifier(config, screen, token);
-  const presence = presenceOf(config);
+  const presence = presenceOf(config, single);
   return {
-    address: address(config.as_address),
+    address: single ? undefined : address(config.as_address),
     label: sessionLabel(config),
     exclusive: {
       store: expand(config.store),
@@ -208,19 +223,25 @@ function unitOf(config: SessionConfig, token: TokenSource): SessionUnit {
 export interface OpenProduct {
   readonly wake: Wake | undefined;
   readonly table: SessionTable;
-  readonly configs: ReadonlyMap<SessionUnit, SessionConfig>;
+  readonly configs: ReadonlyMap<SessionUnit, StandaloneSession>;
+  readonly single: boolean;
 }
 
 export function openProduct(product: Product): OpenProduct {
   const token = tokenPool(product.sessions);
-  const configs = new Map<SessionUnit, SessionConfig>();
+  const configs = new Map<SessionUnit, StandaloneSession>();
+  const single = product.single === true;
   try {
     for (const config of product.sessions)
-      configs.set(unitOf(config, token(config)), config);
+      configs.set(unitOf(config, token(config), single), config);
+    const members = [...configs.keys()];
     return {
       wake: product.wake,
-      table: SessionTable.of([...configs.keys()]),
+      table: single
+        ? SessionTable.single(members[0]!)
+        : SessionTable.of(members),
       configs,
+      single,
     };
   } catch (error) {
     for (const unit of configs.keys()) unit.close();
@@ -229,29 +250,30 @@ export function openProduct(product: Product): OpenProduct {
 }
 
 /** Same journaled ID for the same address and session, so pasting the line twice is a retry. */
-const requestId = (unit: SessionUnit) =>
+const requestId = (recipient: string, label: string) =>
   "session-" +
   createHash("sha256")
-    .update(`${unit.address}\0${unit.label}`)
+    .update(`${recipient}\0${label}`)
     .digest("hex")
     .slice(0, 16);
 
 async function units(opened: OpenProduct, out: (line: string) => void) {
-  const { table } = opened;
+  const { table, configs } = opened;
   try {
     for (const unit of table.units) {
+      const recipient = unit.address ?? address(configs.get(unit)?.as_address);
       const presence =
         (await table.refreshPresence(unit)) ?? "probe_not_configured";
       out(
         JSON.stringify({
-          address: unit.address,
+          address: recipient,
           session: unit.label,
           presence,
           register: [
             "npm run hab:admin -- --config <host-config> session",
-            `--address ${unit.address}`,
+            `--address ${recipient}`,
             `--session ${shellWord(unit.label)}`,
-            `--request-id ${requestId(unit)}`,
+            `--request-id ${requestId(recipient, unit.label)}`,
           ].join(" "),
         }),
       );
@@ -262,8 +284,34 @@ async function units(opened: OpenProduct, out: (line: string) => void) {
   }
 }
 
+/** Preserve the one-config listener's signed wake behavior and optional address. */
+const standaloneAnswer =
+  (
+    opened: OpenProduct,
+    log: ReturnType<typeof createNotifyCheckLog>,
+  ): NonNullable<ProductRunOptions["answer"]> =>
+  async (body, wake) => {
+    const unit = opened.table.units[0]!;
+    const presence = await opened.table.refreshPresence(unit, PROBE_TIMEOUT_MS);
+    if (presence) log.session(presence);
+    if (presence === undefined || presence === "present") wake(unit);
+    if (presence === undefined) return "accepted";
+    const configAddress = opened.configs.get(unit)?.as_address;
+    const ring = parseRing(body);
+    if (
+      !ring ||
+      configAddress === undefined ||
+      ring.to !== configAddress ||
+      ring.session === ring.to ||
+      ring.session !== unit.label ||
+      presence === "unknown"
+    )
+      return "session_unconfirmed";
+    return presence === "gone" ? "session_gone" : "accepted";
+  };
+
 async function run(opened: OpenProduct, out: (line: string) => void) {
-  const { table, configs, wake } = opened;
+  const { table, configs, wake, single } = opened;
   const stop = new AbortController();
   const abort = () => stop.abort();
   process.once("SIGTERM", abort);
@@ -272,12 +320,30 @@ async function run(opened: OpenProduct, out: (line: string) => void) {
   const logs = new Map(
     table.units.map((unit) => [
       unit,
-      createNotifyCheckLog(out, Date.now, { address: unit.address }),
+      createNotifyCheckLog(
+        out,
+        Date.now,
+        unit.address ? { address: unit.address } : {},
+      ),
     ]),
   );
   try {
     await runProduct(table, {
       stop: stop.signal,
+      ...(single
+        ? {
+            presenceTimeoutMs: PROBE_TIMEOUT_MS,
+            answer: standaloneAnswer(opened, logs.get(table.units[0]!)!),
+          }
+        : {
+            ringLog: ({ reason, ring }) =>
+              out(
+                JSON.stringify({
+                  at: new Date().toISOString(),
+                  ring: { reason, ...ring },
+                }),
+              ),
+          }),
       ...(wake
         ? {
             listen: (answer) =>
@@ -295,13 +361,6 @@ async function run(opened: OpenProduct, out: (line: string) => void) {
           log.failed(errorCode(event.error, configs.get(unit)));
         else log.succeeded(event.shown, event.duration_ms);
       },
-      ringLog: ({ reason, ring }) =>
-        out(
-          JSON.stringify({
-            at: new Date().toISOString(),
-            ring: { reason, ...ring },
-          }),
-        ),
     });
     return 0;
   } catch (error) {
@@ -324,7 +383,11 @@ export async function productCommand(
 ): Promise<number> {
   let opened: OpenProduct;
   try {
-    opened = openProduct(load());
+    const product = load();
+    if (command === "units" && product.single) {
+      sessionConfig(product.sessions[0], "config");
+    }
+    opened = openProduct(product);
   } catch (error) {
     out(
       JSON.stringify({
