@@ -192,8 +192,7 @@ export function hostAdminApprove(
       chmodSync(backup, 0o600);
       replaceAtomically(ledger, text);
     }
-    // An address already in use keeps what it and its group are allowed to do: a
-    // product that comes back with a new client neither gains nor loses operations.
+    // Keep the access state and grants of addresses already in a group.
     const connected = hostAdminConnect(configPath, {
       address: address.address,
       connection_id: connectionId,
@@ -208,7 +207,9 @@ export function hostAdminApprove(
       backup,
       connect: connected,
       next_action:
-        "承認より前に発行された token は token_before_approval で断られる。製品が token を更新するまで（最長 10 分）待つか、製品の画面でコネクタをつなぎ直す。",
+        connected.address.state === "active"
+          ? "承認より前に発行された token は token_before_approval で断られる。製品が token を更新するまで（最長 10 分）待つか、製品の画面でコネクタをつなぎ直す。"
+          : "接続は紐づけ済み。アドレスの利用を再開する場合は、運用者が hab:admin connect で必要な操作を指定する。",
     };
   });
 }

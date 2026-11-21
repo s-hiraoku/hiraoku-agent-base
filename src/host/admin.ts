@@ -39,8 +39,8 @@ export interface ConnectInput {
   connection_id: string;
   operations?: readonly string[];
   /**
-   * Bind the connection and nothing more when the address is already active in a
-   * group: neither the group's nor the address's operations change.
+   * Only bind the connection when the address already belongs to a group.
+   * Preserve the group's and the address's access state and operations.
    */
   preserve_access?: boolean;
 }
@@ -621,10 +621,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
       if (reservation && reservation.state !== "active")
         // Revoked connection descriptors stay reserved forever by design.
         throw new HostAdminError("credential_revoked_use_new_connection_id");
-      const keep =
-        input.preserve_access === true &&
-        agent.state === "active" &&
-        !!agent.group_id;
+      const keep = input.preserve_access === true && !!agent.group_id;
       {
         let groupId = reservation?.group_id ?? agent.group_id;
         if (agent.group_id && groupId !== agent.group_id)

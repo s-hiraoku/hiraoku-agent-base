@@ -756,6 +756,39 @@ test("approve never widens a group narrower than its address (plan 2)", async (t
   assert.deepEqual(view(), before, "neither the group nor the address changed");
 });
 
+test("approve preserves a disconnected group's stopped address and grants (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  hostAdminDisconnect(f.configPath, f.remote.address);
+  const pending = new PendingConnections(f.config.directory);
+  t.after(() => pending.close());
+  pending.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: oauth.record.subject,
+      client_id: "replacement-client",
+    },
+    true,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approved = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: f.remote.address,
+  });
+  assert.deepEqual(approved.connect.steps, ["connection_bound"]);
+  assert.equal(approved.connect.address.state, "stopped");
+  assert.deepEqual(approved.connect.address.operations, []);
+  assert.match(approved.next_action, /hab:admin connect/);
+  const group = hostAdminStatus(f.configPath).groups.find(
+    (entry) => entry.group_id === f.remote.group_id,
+  );
+  assert.equal(group.state, "stopped");
+  assert.deepEqual(group.operations, []);
+});
+
 const cli = resolve("scripts/hab-admin.ts");
 function runCli(args) {
   const child = spawn(process.execPath, ["--no-warnings", cli, ...args], {
