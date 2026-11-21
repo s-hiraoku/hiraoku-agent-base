@@ -30,3 +30,18 @@ test("notifier timestamps failure/recovery and publication without logging each 
   log.failed("token_expired");
   assert.equal(lines.length, 4);
 });
+
+test("the session probe's answer is logged at the first reading and on each change", () => {
+  const lines = [];
+  const log = createNotifyCheckLog(
+    (line) => lines.push(JSON.parse(line)),
+    () => 5000,
+  );
+  for (const presence of ["present", "present", "gone", "gone", "unknown"])
+    log.session(presence);
+  assert.deepEqual(
+    lines.map((line) => line.session),
+    ["present", "gone", "unknown"],
+  );
+  assert.equal(lines[0].at, new Date(5000).toISOString());
+});
