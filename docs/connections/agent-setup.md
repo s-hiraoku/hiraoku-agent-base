@@ -219,6 +219,10 @@ HAB の受信箱を hab_inbox で見て、届いたメールを見せてくだ�
 
 ## うまく動かないときに確かめる
 
+まず `npm run hab:admin -- --config <host 設定> doctor --address <アドレス>` を実行します。
+登録、受け方、既読、会話の 4 項目を ok／problem／unknown で出し、problem には次の操作を添えます。
+アドレスを付けないと、すべてのアドレスを 1 行ずつ出します。読み取りだけで、何も変えません。
+
 - 名義が違う：`hab_discover` の結果と、登録したアドレスを比べる。
 - 呼び鈴が鳴らない：`hab:admin status` の `inboxes` で、そのアドレスの `doorbell` が `live` かを見る。
   `lapsed` なら、製品側で見張りを頼み直す。
