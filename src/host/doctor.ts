@@ -296,6 +296,28 @@ export function diagnose(
   };
 }
 
+export function summarizeDiagnosis({ address, checks }: Diagnosis) {
+  const first = Object.entries(checks).find(([, c]) => c.state === "problem");
+  return {
+    address,
+    registration: checks.registration.state,
+    receive: checks.receive.state,
+    reading: checks.reading.state,
+    session: checks.session.state,
+    first_problem: first ? `${first[0]}:${first[1].reason}` : null,
+  };
+}
+
+export function hostAdminDoctor(
+  configPath: string,
+  address: string,
+  now?: number,
+): Diagnosis;
+export function hostAdminDoctor(
+  configPath: string,
+  address?: string,
+  now?: number,
+): Diagnosis | { addresses: ReturnType<typeof summarizeDiagnosis>[] };
 export function hostAdminDoctor(
   configPath: string,
   address?: string,
@@ -312,19 +334,8 @@ export function hostAdminDoctor(
     return diagnose(status, parsed, now);
   }
   return {
-    addresses: status.addresses.map((entry) => {
-      const { checks } = diagnose(status, entry.address, now);
-      const first = Object.entries(checks).find(
-        ([, c]) => c.state === "problem",
-      );
-      return {
-        address: entry.address,
-        registration: checks.registration.state,
-        receive: checks.receive.state,
-        reading: checks.reading.state,
-        session: checks.session.state,
-        first_problem: first ? `${first[0]}:${first[1].reason}` : null,
-      };
-    }),
+    addresses: status.addresses.map((entry) =>
+      summarizeDiagnosis(diagnose(status, entry.address, now)),
+    ),
   };
 }
