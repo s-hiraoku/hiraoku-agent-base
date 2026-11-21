@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "75e2e05a09b1b07a9b36505c6ef159d14e03c8c99efcd088159b5b3ad3c06b12",
+      "sha256": "87fe3f64faac94484f008afbc3c54b1de2a351027f5d477399b42615817a86b6",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with twelve entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. The arrival-notifier entry also names the Codex, Claude Code and ChatGPT connector (Dots) screens. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation. ADR-022 adds the mcp-events entry (ingress MCP Events doorbell). ADR-023 (2026-11-17): the arrival-notifier entry also names the opt-in automatic accept for allowed senders with its caps and audit file. 2026-11-21 (PR-7/ADR-032): mcp-events index line also names recipient_absent.",
@@ -224,7 +224,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "1742d8055d099be97bea27c126c0996e642a9440290ca81b00e1cb461ad4d152",
+      "sha256": "6340d31eca8e6962ec54266680b5f09d2ddc00e8dc04c161a8b3baa5f4f2f8e6",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-21 (#252/#253): admin-session notes a provisional session follows a rename and is corrected at start; exact address lookup.",
@@ -1267,14 +1267,14 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "f78f0b0e313c6b2eb0b2a1c0a5efdbb4e6b5b3ccac90a6b652a167e06da737b2",
+      "sha256": "a33861d5f40f5d2e26d95a566b870c9fdf06f0a563bb2bf974562820aeb90bc9",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "77c364a90a8f4a960a48dd4df07c1dcce604b5db34facb1190118069c117a708",
+      "sha256": "d5278a7d7b4e0da37f20dc4064e3a5a5c95324e5c42b0b63120ddbbf4429c6a1",
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
@@ -2632,8 +2632,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 14,
-          "end": 14,
+          "start": 15,
+          "end": 15,
           "excerpt_sha256": "53dd1acc4164a66887d09a3569fecbb281a039e05d3b3f289e7af5b69d09846c"
         }
       ]
@@ -2663,8 +2663,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 15,
-          "end": 15,
+          "start": 16,
+          "end": 16,
           "excerpt_sha256": "bc76086a1621b520c87f9cbbbb8a7e48ae2405b5c24ade74a17efcdfb3caebb0"
         }
       ]

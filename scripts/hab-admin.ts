@@ -10,9 +10,11 @@ import {
   hostAdminErrorCode,
   HostAdminError,
 } from "../src/host/admin.ts";
+import { hostAdminDoctor } from "../src/host/doctor.ts";
 
 const usage = `usage:
   hab-admin --config <service.local.json> status
+  hab-admin --config <service.local.json> doctor [--address <bot@agent.hab>]
   hab-admin --config <service.local.json> connect --address <bot@agent.hab> --connection-id <id> [--operations resolve,submit,status,poll,ack]
   hab-admin --config <service.local.json> disconnect --address <bot@agent.hab>
   hab-admin --config <service.local.json> receive --agent-name <product> --mode hook|poll|on_request [--interval-ms <60000..86400000>] --request-id <journaled-id>
@@ -56,6 +58,11 @@ export function main(args = process.argv.slice(2)) {
   const { config, command, options } = parse(args);
   if (command === "status" && !Object.keys(options).length)
     return hostAdminStatus(config);
+  if (
+    command === "doctor" &&
+    Object.keys(options).every((key) => key === "--address")
+  )
+    return hostAdminDoctor(config, options["--address"]);
   if (
     command === "rename" &&
     Object.keys(options).length === 5 &&
