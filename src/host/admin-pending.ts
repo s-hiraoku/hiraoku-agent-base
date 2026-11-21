@@ -86,11 +86,11 @@ export function hostAdminPending(configPath: string, now = Date.now()) {
 export function hostAdminReject(configPath: string, pendingId: string) {
   if (!PENDING_ID.test(pendingId))
     throw new HostAdminError("invalid_pending_id");
-  const { directory } = paths(configPath);
-  return {
+  const { directory, ledger } = paths(configPath);
+  return withLedgerLock(ledger, () => ({
     pending_id: pendingId,
     removed: removePending(directory, pendingId),
-  };
+  }));
 }
 
 /** Write `text` beside `file` and swap it in, so a crash leaves the old or the new file. */

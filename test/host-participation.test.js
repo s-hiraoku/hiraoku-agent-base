@@ -809,7 +809,7 @@ test("two approves at once both stay in the ledger (plan 2)", async (t) => {
   assert.equal(statSync(`${ledgerFile}.approve-lock.sqlite`).mode & 0o777, 0o600);
 });
 
-test("an approval times out behind a live lock and succeeds after process exit (plan 2)", async (t) => {
+test("approval and rejection wait for the same lock and recover after process exit (plan 2)", async (t) => {
   const oauth = await persistentOAuthFixture(true);
   oauth.participation.approved_at = new Date(
     oauth.start - 3600000,
@@ -851,7 +851,17 @@ test("an approval times out behind a live lock and succeeds after process exit (
     once(holder.stdout, "data"),
     exited.then(() => assert.fail("lock holder exited before acquiring the lock")),
   ]);
+  const rejection = runCli([
+    "--config",
+    f.configPath,
+    "reject",
+    "--pending",
+    row.pending_id,
+  ]);
   assert.throws(approve, { code: "ledger_busy" });
+  const rejected = await rejection;
+  assert.notEqual(rejected.code, 0);
+  assert.match(rejected.out, /ledger_busy/);
   assert.equal(hostAdminPending(f.configPath).pending.length, 1);
   assert.equal(holder.kill("SIGKILL"), true);
   await exited;

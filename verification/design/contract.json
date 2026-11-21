@@ -224,7 +224,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "58f594dda5aa6b5d06ce71e1ac889ccad1ffc410efcdad1a3f60118bc27be202",
+      "sha256": "9aaa14018db55ce0a7ad8581fa8767a748bbd40f65243055c16ce1fa5ff2b95e",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-21 (#252/#253): admin-session notes a provisional session follows a rename and is corrected at start; exact address lookup.",
