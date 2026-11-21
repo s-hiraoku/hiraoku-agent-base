@@ -182,6 +182,7 @@ test("run logs a repeating error once, not on every check", async (t) => {
       hab_url: "https://hab.example/mcp",
       agent_id: "agent-b",
       token: { env: "HAB_NOTIFY_TEST_TOKEN_RUN" },
+      as_address: "agent-b@agent.hab",
       store: join(dir, "notices.sqlite"),
       screen: {
         type: "jsonl",
@@ -201,7 +202,8 @@ test("run logs a repeating error once, not on every check", async (t) => {
   assert.equal(failure.error, "token_expired");
   assert.equal(new Date(failure.at).toISOString(), failure.at);
   assert.ok(Date.parse(failure.at) <= Date.now());
-  assert.deepEqual(Object.keys(failure).sort(), ["at", "error"]);
+  assert.equal(failure.address, "agent-b@agent.hab");
+  assert.deepEqual(Object.keys(failure).sort(), ["address", "at", "error"]);
 });
 
 test("generic states API is cursor independent and fenced by connection, recipient and session", async (t) => {
@@ -609,8 +611,8 @@ test("run answers HAB 410 session_gone and checks nothing while the Hermes conve
   assert.equal(answered.status, 410);
   assert.deepEqual(JSON.parse(answered.body), { reason: "session_gone" });
   assert.deepEqual(
-    logged.map((line) => line.session ?? line.error),
-    ["gone"],
+    logged.map((line) => line.session ?? line.error ?? line.ring.reason),
+    ["gone", "conversation_gone"],
   );
 });
 

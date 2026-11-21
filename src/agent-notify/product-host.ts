@@ -8,6 +8,7 @@ import { HAB_EVENT_NAME } from "../hab/events.ts";
 import { parseHabAddress } from "../hab/registry.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
 import type { SessionPresence } from "./session-probe.ts";
+import { wakeableSleep, type WakeAnswer } from "./wake-listener.ts";
 
 /** A HAB address that parseHabAddress accepted; HAB keys absence by it. */
 export type Address = string & { readonly __brand: "HabAddress" };
@@ -17,8 +18,7 @@ export function address(raw: unknown): Address {
   return parseHabAddress(raw).address as Address;
 }
 
-export type RingAnswer =
-  "accepted" | "session_gone" | "session_unconfirmed" | "bad_request";
+export type RingAnswer = WakeAnswer;
 
 type RoutingIssue =
   "unknown_address" | "session_mismatch" | "conversation_gone";
@@ -209,6 +209,74 @@ export async function answerRing(
   if (!table.mayPeek(unit)) return "session_unconfirmed";
   wake(unit);
   return match === "exact" ? "accepted" : "session_unconfirmed";
+}
+
+export type UnitEvent =
+  | { readonly presence: SessionPresence }
+  | { readonly shown: string[]; readonly duration_ms: number }
+  | { readonly error: unknown };
+
+export interface ProductRunOptions {
+  readonly stop: AbortSignal;
+  /** Opens the doorbell. Called only after every unit is built, and closed first on stop. */
+  readonly listen?: (
+    answer: (body: string) => Promise<RingAnswer>,
+  ) => Promise<{ close(): Promise<void> }>;
+  readonly report?: (unit: SessionUnit, event: UnitEvent) => void;
+  readonly ringLog?: (event: RingLog) => void;
+}
+
+/**
+ * One loop and one sleep per unit: a ring wakes only its unit, and a unit whose check is slow
+ * or failing never holds up another. Closes every unit when the last loop ends.
+ */
+export async function runProduct(
+  table: SessionTable,
+  options: ProductRunOptions,
+): Promise<void> {
+  const { stop } = options;
+  const report = options.report ?? (() => {});
+  const sleeps = new Map(table.units.map((unit) => [unit, wakeableSleep()]));
+  try {
+    const listener = await options.listen?.((body) =>
+      answerRing(
+        table,
+        body,
+        (unit) => sleeps.get(unit)!.ring(),
+        options.ringLog,
+      ),
+    );
+    const stopped = new Promise<void>((resolve) => {
+      if (stop.aborted) resolve();
+      else stop.addEventListener("abort", () => resolve(), { once: true });
+    }).then(async () => {
+      await listener?.close();
+      for (const sleep of sleeps.values()) sleep.ring();
+    });
+    const loop = async (unit: SessionUnit) => {
+      const sleep = sleeps.get(unit)!;
+      while (!stop.aborted) {
+        try {
+          const presence = await table.refreshPresence(unit);
+          if (presence) report(unit, { presence });
+          if (table.mayPeek(unit)) {
+            const started = performance.now();
+            const shown = await unit.check();
+            report(unit, {
+              shown,
+              duration_ms: Math.round(performance.now() - started),
+            });
+          }
+        } catch (error) {
+          report(unit, { error });
+        }
+        if (!stop.aborted) await sleep.sleep(unit.interval_ms);
+      }
+    };
+    await Promise.all([...table.units.map(loop), stopped]);
+  } finally {
+    for (const unit of table.units) unit.close();
+  }
 }
 
 /** A slow or failing probe yields no presence decision. Late results are discarded. */
