@@ -378,6 +378,7 @@ export async function startHostServer(options: HostServerOptions) {
         typeof source.addressOf !== "function"
       )
         throw Error("invalid_host_ingress");
+      const eventSource = source as HabEventSource;
       // ADR-032 retired the ADR-031 inbox check; an old config's `inbox_check` is ignored.
       const {
         doorbells = [],
@@ -406,7 +407,7 @@ export async function startHostServer(options: HostServerOptions) {
         };
       });
       // Plan 3: doorbells added with `hab:admin doorbell` live in the events store and
-      // win over a config doorbell for the same address. An unavailable secret pauses
+      // win over a config doorbell for the same agent. An unavailable secret pauses
       // delivery for that registration, without switching to its configured fallback.
       // Every config doorbell is checked at start, also one a registered doorbell
       // replaces, so a bad config never starts and `doorbell remove` never falls back to it.
@@ -422,41 +423,40 @@ export async function startHostServer(options: HostServerOptions) {
       // picked up as soon as it is back.
       const current = () => {
         const registered = events!.registeredDoorbells();
-        const replaced = new Set(registered.map((row) => row.address));
+        const replaced = new Set(registered.map((row) => row.agent_id));
         return [
-          ...fromConfig.filter((d) => !replaced.has(d.address)),
-          ...registered.flatMap((row) => {
-            const agentId = idOf(row.address);
-            if (!agentId) return [];
+          ...fromConfig.filter((d) => !replaced.has(d.agent_id)),
+          ...registered.flatMap(({ agent_id, url: rawUrl, secret_file }) => {
+            if (!eventSource.addressOf(agent_id)) return [];
             let url: string;
             try {
-              url = operatorCallbackUrl(row.url).href;
+              url = operatorCallbackUrl(rawUrl).href;
             } catch {
               return [];
             }
             let secret: string | undefined;
             try {
-              secret = doorbellSecret(readDoorbellSecretFile(row.secret_file));
+              secret = doorbellSecret(readDoorbellSecretFile(secret_file));
             } catch {
               // The valid registration remains authoritative while its file is unavailable.
             }
-            return [{ agent_id: agentId, url, secret }];
+            return [{ agent_id, url, secret }];
           }),
         ];
       };
-      events = new HabEvents(source as HabEventSource, {
+      events = new HabEvents(eventSource, {
         ...eventOptions,
         store: privateFile("events.sqlite"),
         doorbells: current,
       });
       const registeredAtStart = new Set(
-        events.registeredDoorbells().map((row) => row.address),
+        events.registeredDoorbells().map((row) => row.agent_id),
       );
       doorbellsReplaced = [
         ...new Set(
           fromConfig
-            .map((d) => d.address)
-            .filter((address) => registeredAtStart.has(address)),
+            .filter((d) => registeredAtStart.has(d.agent_id))
+            .map((d) => d.address),
         ),
       ];
       try {

@@ -9,7 +9,7 @@ import { isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { readHostConfig } from "./config.ts";
 import { readDoorbellSecretFile } from "./doorbell-secret.ts";
-import { HostAdminError, hostAdminStatus } from "./admin.ts";
+import { HostAdminError, hostAdminAddressDirectory } from "./admin.ts";
 import { doorbellSecret, operatorCallbackUrl } from "../hab/events.ts";
 import { parseHabAddress } from "../hab/registry.ts";
 
@@ -48,6 +48,20 @@ const hostOf = (url: string) => {
 };
 const APPLIES = "host の次の配送の確認で効く。再起動は要らない。";
 
+function addressDirectory(configPath: string) {
+  const { current, previous } = hostAdminAddressDirectory(configPath);
+  const currentByAddress = new Map(current.map((row) => [row.address, row]));
+  const currentById = new Map(
+    current.map((row) => [row.agent_id, row.address]),
+  );
+  const configuredOwner = new Map(
+    previous.map((row) => [row.address, row.agent_id]),
+  );
+  // An already-running host resolves its config at startup, before any later rename.
+  for (const row of current) configuredOwner.set(row.address, row.agent_id);
+  return { currentByAddress, currentById, configuredOwner };
+}
+
 export interface DoorbellAddInput {
   address: string;
   url: string;
@@ -60,9 +74,7 @@ export function hostAdminDoorbellAdd(
   now = Date.now(),
 ) {
   const target = address(input.address);
-  const known = hostAdminStatus(configPath, now).addresses.find(
-    (entry) => entry.address === target,
-  );
+  const known = addressDirectory(configPath).currentByAddress.get(target);
   if (!known) throw new HostAdminError("address_not_found");
   if (known.state !== "active") throw new HostAdminError("address_not_active");
   let url: string;
@@ -82,14 +94,14 @@ export function hostAdminDoorbellAdd(
   try {
     const before = db
       .prepare(
-        "SELECT url,secret_file FROM hab_event_doorbells WHERE address=?",
+        "SELECT url,secret_file FROM hab_event_doorbells WHERE agent_id=?",
       )
-      .get(target) as { url: string; secret_file: string } | undefined;
+      .get(known.agent_id) as { url: string; secret_file: string } | undefined;
     db.prepare(
-      `INSERT INTO hab_event_doorbells (address,url,secret_file,added_at) VALUES (?,?,?,?)
-       ON CONFLICT(address) DO UPDATE SET url=excluded.url, secret_file=excluded.secret_file,
+      `INSERT INTO hab_event_doorbells (agent_id,url,secret_file,added_at) VALUES (?,?,?,?)
+       ON CONFLICT(agent_id) DO UPDATE SET url=excluded.url, secret_file=excluded.secret_file,
          added_at=excluded.added_at`,
-    ).run(target, url, input.secret_file, now);
+    ).run(known.agent_id, url, input.secret_file, now);
     return {
       address: target,
       host: hostOf(url),
@@ -107,13 +119,20 @@ export function hostAdminDoorbellAdd(
 
 export function hostAdminDoorbellRemove(configPath: string, raw: string) {
   const target = address(raw);
+  const { currentByAddress, configuredOwner } = addressDirectory(configPath);
+  const agentId = currentByAddress.get(target)?.agent_id;
   const { db, configured } = store(configPath);
   try {
     const removed =
-      db.prepare("DELETE FROM hab_event_doorbells WHERE address=?").run(target)
-        .changes > 0;
-    // A config doorbell for the address comes back into use; it needs a config edit.
-    const inConfig = configured.some((d) => d.address === target);
+      agentId !== undefined &&
+      db
+        .prepare("DELETE FROM hab_event_doorbells WHERE agent_id=?")
+        .run(agentId).changes > 0;
+    const inConfig = configured.some(
+      (d) =>
+        d.address === target ||
+        (agentId !== undefined && configuredOwner.get(d.address) === agentId),
+    );
     return {
       address: target,
       removed,
@@ -126,29 +145,38 @@ export function hostAdminDoorbellRemove(configPath: string, raw: string) {
 }
 
 export function hostAdminDoorbellList(configPath: string) {
+  const { currentById, configuredOwner } = addressDirectory(configPath);
   const { db, configured } = store(configPath);
   try {
     const registered = db
-      .prepare(
-        "SELECT address,url,added_at FROM hab_event_doorbells ORDER BY address",
-      )
-      .all() as { address: string; url: string; added_at: number }[];
-    const replaced = new Set(registered.map((row) => row.address));
-    return {
-      doorbells: [
-        ...registered.map((row) => ({
-          address: row.address,
+      .prepare("SELECT agent_id,url,added_at FROM hab_event_doorbells")
+      .all() as { agent_id: string; url: string; added_at: number }[];
+    const replaced = new Set(registered.map((row) => row.agent_id));
+    const managed = registered.flatMap((row) => {
+      const address = currentById.get(row.agent_id);
+      if (!address) return [];
+      return [
+        {
+          address,
           host: hostOf(row.url),
           source: "registry" as const,
           added_at: new Date(row.added_at).toISOString(),
-        })),
-        ...configured.map((d) => ({
-          address: d.address,
-          host: hostOf(d.url),
-          source: "config" as const,
-          // The registered doorbell for the same address is the one that rings.
-          in_use: !replaced.has(d.address),
-        })),
+        },
+      ];
+    });
+    managed.sort((a, b) => a.address.localeCompare(b.address));
+    return {
+      doorbells: [
+        ...managed,
+        ...configured.map((d) => {
+          const agentId = configuredOwner.get(d.address);
+          return {
+            address: d.address,
+            host: hostOf(d.url),
+            source: "config" as const,
+            in_use: agentId === undefined || !replaced.has(agentId),
+          };
+        }),
       ],
     };
   } finally {

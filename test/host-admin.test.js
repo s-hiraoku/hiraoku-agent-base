@@ -1593,6 +1593,114 @@ test("a bad config doorbell still stops the start when a registered one replaces
   await assert.rejects(startHost(f.configPath), { reason: "invalid_doorbell" });
 });
 
+test("a live rename preserves the managed doorbell and its delivery position (plan 3)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, { agent_rename: true }, oauth.getConfig());
+  const previous = "old@hermes.hab";
+  const current = "new@hermes.hab";
+  const agent = hostAdminConnect(f.configPath, {
+    address: previous,
+    connection_id: "conn-h",
+  }).address;
+  hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  await f.host.close();
+
+  const secret = "whsec_" + Buffer.alloc(32, 8).toString("base64");
+  const secretFile = join(f.config.directory, "..", "bell.secret");
+  writeFileSync(secretFile, secret, { mode: 0o600 });
+  let wakes = 0;
+  const listener = await startWakeListener({
+    port: 0,
+    secret,
+    onWake: () => wakes++,
+  });
+  t.after(() => listener.close());
+  const gateway = "http://127.0.0.1:" + listener.port;
+  const fallback = gateway + "/config";
+  const managed = gateway + "/managed";
+  f.config.ingress.events = {
+    poll_ms: 500,
+    quiet: false,
+    rering: false,
+    doorbells: [{ address: previous, url: fallback, secret_file: secretFile }],
+  };
+  f.write("service.local.json", f.config);
+  const host = await startHost(f.configPath);
+  t.after(() => host.close());
+  const store = new DatabaseSync(join(f.config.directory, "events.sqlite"), {
+    readOnly: true,
+  });
+  t.after(() => store.close());
+  const subscription = () =>
+    store
+      .prepare(
+        "SELECT id,url,cursor,created_at FROM hab_event_subscriptions WHERE agent_id=?",
+      )
+      .get(agent.agent_id);
+  const registration = { url: managed, secret_file: secretFile };
+  const send = async (target) => {
+    const { recipient_id } = await f.call(tokens.c, "hab_resolve", {
+      address: target,
+    });
+    assert.equal(recipient_id, agent.agent_id);
+    await f.call(tokens.c, "hab_submit", {
+      ...message(randomUUID().replaceAll("-", "")),
+      recipient_id,
+    });
+  };
+
+  hostAdminDoorbellAdd(f.configPath, { address: previous, ...registration });
+  await eventually(async () =>
+    subscription()?.url === managed ? true : undefined,
+  );
+  await send(previous);
+  await eventually(async () =>
+    wakes === 1 && subscription()?.cursor ? true : undefined,
+  );
+  const before = subscription();
+
+  hostAdminRename(f.configPath, {
+    request_id: "doorbell-rename",
+    agent_id: agent.agent_id,
+    expected_epoch: agent.epoch,
+    expected_address: previous,
+    bot_name: "new",
+  });
+  assert.deepEqual(
+    hostAdminDoorbellList(f.configPath).doorbells.map((d) => [
+      d.address,
+      d.source,
+      d.in_use,
+    ]),
+    [
+      [current, "registry", undefined],
+      [previous, "config", false],
+    ],
+  );
+  await send(current);
+  await eventually(async () =>
+    wakes === 2 && subscription()?.cursor !== before.cursor ? true : undefined,
+  );
+  const after = subscription();
+  assert.equal(after.id, before.id);
+  assert.equal(after.created_at, before.created_at);
+  assert.equal(after.url, managed);
+  assert.equal(
+    hostAdminDoorbellAdd(f.configPath, { address: current, ...registration })
+      .unchanged,
+    true,
+  );
+  assert.equal(hostAdminDoorbellRemove(f.configPath, previous).removed, false);
+  const removed = hostAdminDoorbellRemove(f.configPath, current);
+  assert.deepEqual([removed.removed, removed.still_in_config], [true, true]);
+  await eventually(async () =>
+    subscription()?.url === fallback ? true : undefined,
+  );
+});
+
 test("a registered doorbell whose secret file was briefly unusable comes back by itself (plan 3)", async (t) => {
   const oauth = await oauthFixture(true);
   const f = await started(t, {}, oauth.getConfig());

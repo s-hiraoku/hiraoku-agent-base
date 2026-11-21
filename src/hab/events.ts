@@ -509,7 +509,7 @@ export function doorbellSecret(secret: unknown): string {
 }
 /** One doorbell the operator registered for an address (ADR-029). */
 export interface RegisteredDoorbell {
-  address: string;
+  agent_id: string;
   url: string;
   secret_file: string;
   added_at: number;
@@ -600,7 +600,7 @@ export class HabEvents {
       CREATE TABLE IF NOT EXISTS hab_event_gone (
         agent_id TEXT PRIMARY KEY, count INTEGER NOT NULL, last_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_doorbells (
-        address TEXT PRIMARY KEY, url TEXT NOT NULL, secret_file TEXT NOT NULL,
+        agent_id TEXT PRIMARY KEY, url TEXT NOT NULL, secret_file TEXT NOT NULL,
         added_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_absent (
         agent_id TEXT PRIMARY KEY, since INTEGER NOT NULL);
@@ -949,7 +949,7 @@ export class HabEvents {
     return (
       this.#db
         .prepare(
-          "SELECT address,url,secret_file,added_at FROM hab_event_doorbells ORDER BY address",
+          "SELECT agent_id,url,secret_file,added_at FROM hab_event_doorbells ORDER BY agent_id",
         )
         .all() as unknown as RegisteredDoorbell[]
     ).map((row) => ({ ...row }));

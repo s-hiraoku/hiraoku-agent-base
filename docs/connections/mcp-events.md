@@ -154,7 +154,7 @@ npm run hab:admin -- --config <host設定> doorbell list
 npm run hab:admin -- --config <host設定> doorbell remove --address grok@grok-bot.hab
 ```
 
-- 登録は`events.sqlite`に置かれ、動いているhostが次の配送処理で読み直します。1つのアドレスに1つです。
+- 登録は`events.sqlite`に置かれ、動いているhostが次の配送処理で読み直します。登録はエージェント ID ごとに1つです。アドレスを改名しても配送位置を引き継ぎ、`list`・`add`・`remove`では現在のアドレスを使います。
   もう一度`add`すると置き換わります。
 - 登録表には鍵ファイルのパスを置きます。`add`・`list`の出力にはURLのホスト名だけが出ます。鍵ファイルを一時的に読めない間は呼び鈴を止め、元に戻ると前の配送位置と不在判定を引き継ぎます。
 - `add`は、アドレスが登録済みで有効なこと、URL、鍵ファイルを、host設定と同じ規則で確かめます。
@@ -181,7 +181,7 @@ host設定の`ingress.events.doorbells`も、今までどおり読みます（�
   `Authorization: Bearer <token>`で送ります。鍵をチャットや設定ファイルに貼らないでください。
 - 中身は購読の呼び鈴と同じ`{to, session, arrived_at}`だけです。失敗時の再送、5分後の鳴らし直し（ADR-027）も同じです。
 - 期限はなく、challengeも送りません。`doorbell remove`で外れます（host設定のものは、設定から消してhostを再起動すると外れます）。
-- 同じアドレスが`doorbell add`とhost設定の両方にあれば、`doorbell add`のほうが鳴ります。起動時の`ready`の行の
+- 同じエージェントが`doorbell add`とhost設定の両方にあれば、`doorbell add`のほうが鳴ります。起動時の`ready`の行の
   `ignored_config`に`ingress.events.doorbells[<アドレス>]`と1回出ます。
   登録した時点で待っているメールでは鳴りません。
 - `hab:admin status`では`doorbell: "live"`と`doorbell_operator: 1`のように見えます。
