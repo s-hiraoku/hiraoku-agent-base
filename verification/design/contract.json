@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "f38674ec55e598808c367dade788082e18fc1d2cdd7b8ab38de0b3cde56e6f57",
+      "sha256": "252391d2311f5bd119cadfa978d286d99ff6a6733806dded12b7be9be0b3a2ad",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1274,10 +1274,18 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "eaaf8855abe9e04437cb37c296721f0b25fc0fb4af27b72c26274c23d6e1cce5",
+      "sha256": "130e89a9d35c134d8fd178e527f22a4e88d574924f8f39694845c6f38fc2c7a2",
       "role": "context",
       "review": "reviewed",
-      "summary": "Implementation plan for easing agent onboarding in four stages, each its own PR: (1) read-only `hab:admin doctor` per address (registration, receive, reading, session with ok/problem/unknown and a next action); (2) registering from a pending list: fully verified but unregistered OAuth sign-ins are recorded without tokens and approved by `hab:admin approve`, which writes the ledger atomically and binds without a restart, while pre-approval tokens stay refused; (3) operator doorbells moved from host config to the events store; (4) `ping` from a host-owned test address, product recipes and a conditional `onboard`. Hermes one-command setup, Codex handoff, product-side session_gone and Auth0 app creation are deferred. A plan, not a decision; existing ADRs are normative."
+      "summary": "Five-stage agent onboarding plan. The first dashboard release implements read-only diagnosis and product guidance. Management and test delivery are staged on shared CLI operations. Existing ADRs own the requirements."
+    },
+    {
+      "path": "docs/plans/dashboard-onboarding.md",
+      "sha256": "1a473eaadfd704388fe51890d9bb60b4733427047b08fa6c3649dea6c7d8cdf1",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Dashboard onboarding design following the implemented read-only release. Future management requires a separate operator session and approval bound to the confirmed pending generation and destination. Native identity evidence and durable, idempotent test delivery drive the onboarding status. Existing product requirements and ADRs remain authoritative.",
+      "read_scope": "full"
     },
     {
       "path": "docs/plans/auth0-dcr.md",
