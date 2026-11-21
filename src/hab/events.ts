@@ -39,6 +39,11 @@ export const habEventDefinition = Object.freeze({
     type: "object",
     properties: {
       to: { type: "string", description: "Your HAB address." },
+      session: {
+        type: "string",
+        description:
+          "The session this address stands for; the address itself until an operator names it.",
+      },
       arrived_at: { type: "string", format: "date-time" },
     },
     required: ["to", "arrived_at"],
@@ -72,6 +77,8 @@ export interface HabEventSource {
   eventRecipient(context: unknown): { agent_id: string; address: string };
   arrivals(agentId: string, after: Arrival | null, limit: number): Arrival[];
   addressOf(agentId: string): string | undefined;
+  /** The product session behind the address (ADR-032); without it the doorbell names none. */
+  sessionOf?(agentId: string): string | undefined;
   /** Whether one message still waits unread; without it the doorbell is never rung again. */
   unread?(agentId: string, key: Omit<Arrival, "accepted_at">): boolean;
 }
@@ -1077,11 +1084,16 @@ export class HabEvents {
         .digest("hex")
         .slice(0, 32);
     const arrived = new Date(arrival.accepted_at).toISOString();
+    const session = this.#source.sessionOf?.(row.agent_id);
     const body = JSON.stringify({
       eventId,
       name: HAB_EVENT_NAME,
       timestamp: arrived,
-      data: { to: address, arrived_at: arrived },
+      data: {
+        to: address,
+        ...(session === undefined ? {} : { session }),
+        arrived_at: arrived,
+      },
       cursor: null,
     });
     let status = 0;
