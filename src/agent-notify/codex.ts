@@ -231,6 +231,7 @@ export const execArgv: RunArgv = (argv, timeout_ms) =>
 /** What `codex queue` prints when it gave nothing to the thread (openai/codex #39092). */
 const NOTHING_QUEUED = [
   /No active session found matching/,
+  /no rollout found for thread id/,
   /does not support thread\/queue\/add/,
   /cannot queue through an embedded app server/,
 ];

@@ -192,6 +192,7 @@ test("only output that says nothing was queued is unsupported; any other failure
     async () => ({ code, output });
   for (const output of [
     `No active session found matching '${THREAD}'.`,
+    `thread/queue/add failed: no rollout found for thread id ${THREAD}`,
     "the local app-server daemon does not support thread/queue/add; update or restart the local app-server daemon",
     "cannot queue through an embedded app server while a local app-server daemon is running; remove configuration overrides or use --remote",
   ])

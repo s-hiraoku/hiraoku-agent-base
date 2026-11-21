@@ -320,7 +320,7 @@ ChatGPT アプリの Codex の会話は、アプリが stdio で動かす app-se
 | 答え | 記録 |
 | --- | --- |
 | 終了コード 0 | `queued`（会話の入力に積まれた。始まったかは別に見る） |
-| `No active session found matching`、`does not support thread/queue/add`、`cannot queue through an embedded app server` を出して終わった（何も積まれていない） | `unsupported` |
+| `No active session found matching`、`no rollout found for thread id`（存在しない会話。2026-11-21 Mac mini で確認）、`does not support thread/queue/add`、`cannot queue through an embedded app server` を出して終わった（何も積まれていない） | `unsupported` |
 | それ以外の終了、daemon に届かない、20 秒の時間切れ、`codex` が見つからない | `unknown`。自動では再送しない |
 
 通知の記録は、ソケットのパスと会話ごとに分かれます。WebSocket の設定や表示だけの設定から切り替えると、前の記録は使いません。切り替える前に `list` で未処理の通知がないことを確かめ、戻すときは元の設定に戻せば元の記録をそのまま使えます。
