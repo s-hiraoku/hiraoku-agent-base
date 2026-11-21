@@ -34,7 +34,7 @@ HAB は送り先・名義・配送だけを受け持ち、返すかどうかを�
 | Muse                       | 予定タスク 15 分（現行の設定）。作成から 13 分後の実行で受信箱を読んだ。確認済み                     | 文章（カードは取りに来ない）                     | 予定タスクの中で `hab_reply`。確認済み                            |
 | claude.ai                  | 話しかけたときだけ                                                                                   | MCP Apps のカード。確認済み                      | カードの「対応する」から返信案、または文章で返事                  |
 | Claude Code                | `/loop` か予定タスク。channels は開発用フラグが要る                                                  | 会話の中の文章                                   | できる                                                            |
-| Codex                      | 外から会話に入る口が今はない                                                                         | 話しかけたときだけ                               | 文章で返事をすればできる                                          |
+| Codex                      | 外から会話を起こす口はない。受信通知の「対応する」の後に `codex queue` で会話へ渡す                  | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。試し送りで会話が 7 秒後に始まった   |
 | Gemini アプリ・Antigravity | 話しかけたときだけ                                                                                   | 文章                                             | 文章で返事をすればできる                                          |
 
 ## 運用者 AI に頼むときの約束
@@ -210,12 +210,25 @@ channels（届いたら会話に知らせる仕組み）は研究プレビュー
 
 ## Codex を設定する
 
-Codex は ChatGPT アプリの中で動き、外から会話に入る口が今は開いていません。
+Codex は ChatGPT アプリの中で動き、届いただけで会話を起こす口はありません。
 HAB の MCP を Codex の設定に加え、受信箱を見たいときに話しかけます。
 
 ```text
 HAB の受信箱を hab_inbox で見て、届いたメールを見せてください。
 ```
+
+受信通知（[受信通知アダプタ](../receiver/arrival-notifier.md)の Codex の節）を使うと、「対応する」を選んだ依頼をローカルの Codex の会話へ渡せます。
+ChatGPT のプロジェクトの中の会話はクラウドにあるので、この方法では渡せません。
+
+1. 試験用の会話を、プロジェクトの外のローカルの Codex で作り、会話の UUID を控える。
+2. 運用者が、アプリ同梱の `codex` で daemon を起動する。
+   `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex app-server daemon start`
+   初回は `~/.codex/packages/app-server-daemon` に約 440MB を入れるので、ディスクの空きを先に確かめる。
+3. notifier の設定の `screen` に `queue`（`codex_bin` と `daemon_socket` の絶対パス）と `thread_id` を書く。`app_server` は書かない。
+4. 試験メールを送り、通知で「対応する」を選ぶ。`hab-notify list` で `queued` になり、Codex の会話で turn が始まれば完了です。
+
+daemon を止めるときは `codex app-server daemon stop` を実行します。止めている間の「対応する」は `unknown` になり、再送されません。
+WebSocket の設定に戻すときは、`queue` を消して元の `app_server` を書き戻します。
 
 ## Gemini アプリ・Antigravity を設定する
 
