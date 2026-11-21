@@ -339,3 +339,32 @@ test("hab-admin CLI sets receive and session and refuses malformed flags", async
     { code: "address_not_found" },
   );
 });
+
+test("naming a session looks the address up exactly, not through the capped overview", async (t) => {
+  const f = await started(t);
+  assert.throws(
+    () =>
+      hostAdminSession(f.configPath, {
+        address: "nobody@dot.hab",
+        session: "x",
+        request_id: "n1",
+      }),
+    { code: "address_not_found" },
+  );
+  assert.throws(
+    () =>
+      hostAdminSession(f.configPath, {
+        address: "not an address",
+        session: "x",
+        request_id: "n2",
+      }),
+    { code: "invalid_registry_request" },
+  );
+  const bound = hostAdminSession(f.configPath, {
+    address: "grok@grok.hab",
+    session: "main",
+    request_id: "n3",
+  });
+  assert.equal(bound.address, "grok@grok.hab");
+  assert.equal(bound.session.session, "main");
+});
