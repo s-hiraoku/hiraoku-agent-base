@@ -1296,10 +1296,10 @@
     },
     {
       "path": "docs/receiver/session-routing.md",
-      "sha256": "765e83c70463abf1b73b44f3ac79031c8f7edb99b16df5c7aac012fa66249ce2",
+      "sha256": "a7f077516eac0c30d3a8c76ee981cfad369e8dcb7adfce4510ed3ed3c1d758b2",
       "role": "context",
       "review": "reviewed",
-      "summary": "Design proposal (2026-11-21, docs only): products route a doorbell by its ADR-032 data.session. Hermes: one notifier per product via a --bundle config of up to 32 existing per-session notify.json files; the wake listener verifies the signature, reads data.session/to, checks only the matching session (200), answers 410 session_gone for a name not in the bundle (owner decision 2026-11-21), 409 for a to mismatch, 400 for an unreadable body; ended Hermes conversations are probed by the separate sessionProbe work. Grok and Dots stay one subscription per address and only check session in their instructions. Recovery from recipient_absent needs re-registering the operator doorbell today; the implementation PR adds hab:admin present. HAB delivery, subscriptions, registry and hab_inbox are otherwise unchanged.",
+      "summary": "Design proposal (2026-11-21, docs only, arena of two candidates): products route a doorbell by its ADR-032 data.session. Hermes/Codex/Claude Code: one notifier process per product (--product file with wake and sessions_dir; each *.json there is an unchanged per-session notify.json with as_address required) holds an immutable SessionTable of per-session units (own store/screen/target/client/loop, max 32); the session label is derived from the product conversation id; answerRing returns 200 for a matching or provisional (label equals address) session, 410 session_gone for unknown_address, session_mismatch or a sessionProbe-gone conversation (owner decision 2026-11-21), 400 for an unreadable body, 200 on probe timeout; the listener opens only after the full table loads so restarts never 410; TokenPool shares one OAuthTokenFile per file and refuses copied grants. Recovery from recipient_absent: hab:admin present (new, the only HAB change) or re-registering the operator doorbell. Grok and Dots stay one subscription per address and only check session in their instructions. Screen-side commands, hab_inbox and HAB delivery/subscriptions/registry are unchanged.",
       "read_scope": "full"
     }
   ],
