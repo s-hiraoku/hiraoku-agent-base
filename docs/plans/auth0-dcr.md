@@ -11,7 +11,7 @@
 変えたあとは次の 3 手になる。
 
 1. Auth0 で DCR を開き、製品の画面で HAB の MCP（公開 URL）を追加し、本人がログインして同意する。製品が Auth0 にアプリを自分で登録する（DCR、RFC 7591）。終わったら DCR を閉じる。
-2. Mac mini で `hab:admin pending` を見て、いまログインした 1 件を、Auth0 の画面でそのアプリの callback と照らして確かめる（7 章）。
+2. Mac mini で `hab:admin pending` を見て、利用者が製品から始めた接続の client ID と、Auth0 に登録された callback URL の全件を 7 章の手順で照合する。
 3. `hab:admin approve --pending <id> --address <bot@agent.hab>` で登録する。
 
 ## 2. 安全の境界は変わらない
@@ -25,7 +25,7 @@ HAB は Auth0 にアプリがあることを信用の理由にしていない。
 | 製品 | DCR | 再接続のとき | 注意 |
 | --- | --- | --- | --- |
 | claude.ai | 既定で対応。CIMD が広告されていればそちらを優先 | 新しく接続するたびに新しいアプリを登録する | `scopes_supported` に `offline_access` があれば付けて refresh token を取る |
-| ChatGPT（Dots） | 対応。CIMD があれば優先 | 接続 1 つにつき 1 回登録して使い回す | DCR のアプリで `openid` が抜ける報告がある（原因未解決） |
+| ChatGPT（Dots） | 対応。CIMD があれば優先 | 接続 1 つにつき 1 回登録して使い回す | Auth0 の strict mode で `openid` や ID token を使わずに接続できるか確かめる |
 | Grok | 対応 | 再接続のたびに登録する報告がある | Auth0 相手に識別用の scope が「不正」と断られた報告がある |
 | Muse | 不明 | 不明 | 実機で確かめる |
 | Hermes・hab-notify・Claude Code | 手元の public client | — | 今のアプリのままにする（移行しない） |
@@ -38,10 +38,10 @@ HAB は Auth0 にアプリがあることを信用の理由にしていない。
 
 [Auth0 の DCR](https://auth0.com/docs/get-started/applications/dynamic-client-registration) の条件に合わせる。1〜3 は一度だけ、4 はつなぐたびに行う。
 
-1. HAB の API に、外部アプリ（third-party）用の既定の権限として 5 scope（`hab:resolve hab:submit hab:status hab:poll hab:ack`）を付ける。付けないと DCR のアプリはどの API にも入れない。Allow Offline Access は今のまま有効。戻すときは既定の権限を外す。
+1. HAB の API に、外部アプリ（third-party）用の既定の権限として 5 scope（`hab:resolve hab:submit hab:status hab:poll hab:ack`）を付ける。Allow Offline Access を有効のままにする。DCR を開く前に、テナントで新規クライアントに strict mode が適用されることを確かめる。旧テナントの permissive mode では既定の client grant が適用されず、HAB の承認待ちに必要な API scope が欠ける。旧クライアントのモードは登録時に決まるため、strict mode の試験には新しい登録を使う。strict mode で使えない `openid`、`profile`、`email`、ID token に製品が依存する場合は、その製品の手動登録を使う。 [Auth0 の strict mode](https://support.auth0.com/center/s/article/enable-strict-dcr-mode-for-tenant)
 2. 本人がログインに使う接続を domain-level に上げる。DCR のアプリ（client ID が `tpc_` で始まる）は domain-level の接続しか使えない。上げると、テナントの外部アプリはすべてこの接続でログインできるようになる。テナントには HAB の API しかないことを先に確かめる。戻すときは domain-level を外す。
-3. 本人以外が token を取れないようにする。database 接続なら Disable Sign Ups を確かめる。Google などの social 接続には登録を閉じる切り替えがないので、本人以外のログインを断る Post-Login Action を置く。外部アプリの同意画面を省く設定（Allow Skipping User Consent）は切ったままにする。同意画面は、偽のアプリに気づく最後の機会である。
-4. Tenant Settings → Advanced で DCR を開く。製品が登録し、`hab_status` が通ったら閉じる。閉じたことは、Auth0 の `/.well-known/openid-configuration` に `registration_endpoint` が無いことで確かめる。
+3. 外部アプリから利用できるすべての domain-level 接続で、本人として許可した主体だけが HAB 用の token を取れることを先に確かめる。database 接続では Disable Sign Ups に加えて、ログインできる既存ユーザーを確認する。social 接続などで対象の主体を絞る必要があれば、対象を限定した Post-Login Action で許可した主体だけを通す。試験用の外部アプリで所有者の許可とその他の主体の拒否を確認してから DCR を開く。外部アプリの同意画面は表示する。 [Auth0 の domain-level 接続](https://auth0.com/docs/authenticate/identity-providers/promote-connections-to-domain-level)
+4. Tenant Settings → Advanced で DCR を開く。製品が登録したら閉じる。承認と `hab_status` の確認は閉じた状態で行う。試験を中断した場合も閉じる。閉じたことは、Auth0 の `/.well-known/openid-configuration` に `registration_endpoint` が無いことで確かめる。
 
 DCR を閉じても、すでに登録されたアプリのログインと refresh は続く。登録の口（`/oidc/register`）が閉じるだけである。
 
@@ -87,8 +87,8 @@ DCR を閉じても、すでに登録されたアプリのログインと refres
 
 | リスク | 抑え方 |
 | --- | --- |
-| 登録の口は token なしで誰でも使える（Auth0 自身が警告）。開いている時間を短くしても、その間に登録されたアプリは閉じたあとも使える | 開く前に Applications の `tpc_` の一覧を控え、閉じたあとに比べる。承認したもの以外に増えたアプリは消す |
-| 偽のアプリ（名前を「Claude」と名乗るなど）へ本人がログインさせられ、その組が承認待ちに入る。時刻も名前も攻撃側が合わせられる | 承認の前に、その `tpc_` のアプリの callback を Auth0 の画面で見て、製品の決まった callback（claude.ai は `https://claude.ai/api/mcp/auth_callback`）と一致するかを確かめる。callback は攻撃側が自分の受け口にしないと token を受け取れないので、ここは偽れない。合わなければ `reject` してアプリを消す |
+| 登録の口は token なしで誰でも使える（Auth0 自身が警告）。その間に登録されたアプリは閉じたあとも使える | 開く前に Applications の `tpc_` の一覧を控え、閉じたあとに比べる。削除対象は試験で作ったことを client ID で確認できたアプリに限る。由来が不明なアプリがあれば、運用者が確認するまで次の試験を保留する |
+| 表示名や登録 callback だけで承認すると、利用者が意図した製品とは別のクライアントを通すおそれがある。登録者は複数の callback URL を指定できる | 利用者が対象製品から開始した認可要求で、client ID と実際の redirect URI を確認する。client ID は承認待ちの行と照合する。Auth0 に登録された callback URL 全体は、その製品用に確認した URL の集合と完全一致させ、実際の redirect URI がその集合に含まれることも確認する。証拠が得られない製品は承認を保留し、手動登録を使う |
 | 偽のアプリを今のアドレスへ承認すると、ADR-014 によりグループの全アドレスを使われる（同じグループ内のなりすましの許容は、グループの正当な仲間についての判断である） | つなぎ直しと分かっているとき以外は、新しいアドレスに承認する |
 | つなぎ直しのたびに台帳の行（上限 100）と Registry の結び付け（例の設定で `max_bindings` 40）を 1 つずつ使い、止めた行も消さない決まりなので、いずれ上限に当たる | つなぎ直しは製品の画面でコネクタを外して入れ直したときだけ起きる見込みで、件数は少ない。`hab:admin status` の件数を見て、上限の 8 割に近づいたら、止めた行の整理の方針を別に決める |
 | 製品が要る scope を取れない（ChatGPT の `openid`、Grok の識別用 scope） | 試験で 1 製品ずつ確かめる。だめな製品は手作りのアプリのまま（手順書に両方を残す） |
@@ -105,11 +105,10 @@ CIMD（製品の公開 URL を client ID にする）なら、誰でも使える
 3. 本人の了承を得て Auth0 の 1〜3 を設定する。
 4. 試験は、使い捨てのアドレス（例：`dcr-trial@claude.hab`）と新しいグループで行う。今のアドレスと手作りの接続には触らない。
    1. `tpc_` の一覧を控え、DCR を開き、claude.ai に 2 つ目のカスタムコネクタとして HAB を足してログインする。
-   2. `pending` → callback の確認 → `approve`。5 章の問い 1（同じ client ID で通るか）を記録する。
-   3. DCR を閉じ、閉じたことを確かめる。一覧を比べる。
-   4. 10 分以上おいて、問い 2（refresh token）を確かめる。
-   5. 一覧を控えて DCR をもう一度開き、コネクタを外して入れ直す。新しい組を同じ試験用アドレスへ `approve` したら DCR を閉じ、一覧を比べる。古い接続を `revoke --connection` し、古いアプリを消して、問い 3 を確かめる。
+   2. DCR を閉じ、閉じたことを確かめて一覧を比べる。承認前に、試験用 client ID の要求が HAB の 5 scope を満たし、`pending` に現れることを確かめる。見えなければ監査理由と Auth0 の API 設定を確認して試験を止める。7 章の client ID と callback URL の照合が済んだら `approve` し、5 章の問い 1（同じ client ID で通るか）を記録する。
+   3. 10 分以上おいて、問い 2（refresh token）を確かめる。
+   4. 一覧を控えて DCR をもう一度開き、コネクタを外して入れ直す。登録後は DCR を閉じて一覧を比べる。新しい組も手順 4.2 の照合条件を満たしたら、同じ試験用アドレスへ `approve` する。古い試験接続を `revoke --connection` し、記録した client ID のアプリを消して、問い 3 を確かめる。
 5. ChatGPT・Grok・Muse は、claude.ai の結果を見てから、それぞれの試験用アドレスで同じ手順を行う。今の接続のつなぎ直しでは試さない。
 6. 結果を ADR として `hab-decisions.md` に、手順を[設定手順書](../connections/agent-setup.md)に書く。共通の準備 2 を「DCR でつなぐ（既定）」と「手でアプリを作る（DCR が通らない製品）」に分ける。
 
-戻し方：DCR を閉じる。試験で作られた `tpc_` のアプリを Auth0 で消し、試験の接続を `revoke --connection` で止める。必要なら 4 章の 1・2 を戻す。手で作ったアプリと今の接続には触らないので、そのまま動く。
+戻し方：DCR を閉じる。試験で作ったことを client ID で確認できた `tpc_` のアプリを Auth0 で消し、試験の接続を `revoke --connection` で止める。必要なら 4 章の 1・2 を戻す。手で作ったアプリと今の接続には触らないので、そのまま動く。
