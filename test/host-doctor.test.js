@@ -135,6 +135,26 @@ test("registration names the first thing that stops the address", () => {
   assert.match(problem.next_action, /hab:admin connect/);
 });
 
+test("a waiting sign-in turns a missing connection into an approval to make", () => {
+  const unbound = { addresses: { active_bindings: 0 } };
+  assert.equal(
+    reasons(status({ ...unbound, pending_connections: 2 })).registration,
+    "problem:pending_approval",
+  );
+  const { registration } = diagnose(
+    status({ ...unbound, pending_connections: 2 }),
+    ADDRESS,
+    NOW,
+  ).checks;
+  assert.match(registration.next_action, /hab:admin approve --pending/);
+  assert.equal(registration.evidence.pending_connections, 2);
+  // A working address is not held up by someone else's waiting sign-in.
+  assert.equal(
+    reasons(status({ pending_connections: 2 })).registration,
+    "ok:registered",
+  );
+});
+
 test("receive follows the product's mode and the doorbell's state", () => {
   const hook = (inbox, problems = []) =>
     reasons(status({ inboxes: inbox, problems })).receive;

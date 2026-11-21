@@ -15,6 +15,25 @@ import {
 } from "./oauth-fixtures.js";
 import { startHost } from "../src/host/start.ts";
 import {
+  hostAdminPending,
+  hostAdminApprove,
+  hostAdminReject,
+} from "../src/host/admin-pending.ts";
+import { hostAdminDoctor } from "../src/host/doctor.ts";
+import { PendingConnections } from "../src/host/oauth-pending.ts";
+import { parseOAuthConfig } from "../src/host/oauth-auth.ts";
+import { main as runHabAdmin } from "../scripts/hab-admin.ts";
+import {
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { DatabaseSync } from "node:sqlite";
+import { dirname } from "node:path";
+import {
   hostAdminConnect,
   hostAdminDisconnect,
   hostAdminStatus,
@@ -495,4 +514,447 @@ test("participation status uses the same exact expiry boundary as admission", as
       expired,
     );
   }
+});
+
+const NEWCOMER = { sub: "newcomer-subject-0001", azp: "newcomer-client" };
+/** One JSON-RPC call to the public resource with `jwt`, as a product would make it. */
+async function ingress(host, jwt) {
+  return proxyFetch(() => host)(resource, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${jwt}`,
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  });
+}
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+/** Until a token's whole-second `iat` can be on or after the approval. */
+async function afterApproval(approvedAt) {
+  while (nowSeconds() * 1000 < Date.parse(approvedAt))
+    await new Promise((done) => setTimeout(done, 50));
+}
+
+test("an unregistered sign-in becomes pending and approve connects it without a restart (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const early = await oauth.token({
+    ...NEWCOMER,
+    iat: nowSeconds(),
+    exp: nowSeconds() + 300,
+  });
+  assert.equal((await ingress(f.host(), early)).status, 401);
+  const [row] = hostAdminPending(f.configPath).pending;
+  assert.equal(row.client_id, NEWCOMER.azp);
+  assert.notEqual(row.subject, NEWCOMER.sub, "the subject is masked");
+  assert.ok(row.subject.startsWith(NEWCOMER.sub.slice(0, 6)));
+  assert.equal(hostAdminStatus(f.configPath).pending_connections, 1);
+  const raw = readFileSync(join(f.config.directory, "oauth-pending.sqlite"));
+  assert.equal(raw.includes(early.split(".")[2]), false, "no token kept");
+
+  const approved = runHabAdmin([
+    "--config",
+    f.configPath,
+    "approve",
+    "--pending",
+    row.pending_id,
+    "--address",
+    "newcomer@remote.hab",
+    "--days",
+    "30",
+  ]);
+  assert.equal(approved.ledger, "added");
+  assert.match(approved.next_action, /token_before_approval/);
+  assert.equal(statSync(approved.backup).mode & 0o777, 0o600);
+  const ledger = parseOAuthConfig(JSON.parse(readFileSync(ledgerFile, "utf8")));
+  const entry = ledger.connections.find((c) => c.subject === NEWCOMER.sub);
+  assert.equal(entry.connection_id, approved.connection_id);
+  assert.equal(
+    Date.parse(entry.approved_until) - Date.parse(entry.approved_at),
+    30 * 86400000,
+  );
+  assert.ok(Date.parse(entry.approved_at) >= Date.now() - 1000);
+  assert.deepEqual(hostAdminPending(f.configPath).pending, []);
+  assert.equal(
+    readdirSync(dirname(ledgerFile)).some((name) => name.includes(".tmp-")),
+    false,
+  );
+
+  // The token from before approval stays refused; a new one goes through at once.
+  assert.equal((await ingress(f.host(), early)).status, 401);
+  await afterApproval(entry.approved_at);
+  const address = approved.connect.address;
+  const client = f.client(address, true);
+  f.setToken(
+    await oauth.token({
+      ...NEWCOMER,
+      iat: nowSeconds(),
+      exp: nowSeconds() + 300,
+    }),
+  );
+  assert.equal(
+    (await client.resolve(f.local.address)).recipient_id,
+    f.local.agent_id,
+  );
+  assert.equal(
+    hostAdminDoctor(f.configPath, "newcomer@remote.hab").checks.registration
+      .reason,
+    "registered",
+  );
+  assert.throws(
+    () =>
+      hostAdminApprove(f.configPath, {
+        pending_id: row.pending_id,
+        address: "newcomer@remote.hab",
+      }),
+    { code: "pending_not_found" },
+  );
+});
+
+test("approve finishes a half-done approval once and keeps an address's operations (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  // An address that the operator allowed only part of the operations.
+  hostAdminConnect(f.configPath, {
+    address: "narrow@remote.hab",
+    connection_id: oauth.record.connection_id,
+    operations: ["resolve", "status"],
+  });
+  const narrow = () =>
+    hostAdminStatus(f.configPath).addresses.find(
+      (a) => a.address === "narrow@remote.hab",
+    ).operations;
+  const before = narrow();
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  const pair = {
+    issuer: oauth.getConfig().issuer,
+    subject: oauth.record.subject,
+    client_id: "owner-new-client",
+  };
+  seen.record(pair, true);
+  const [row] = hostAdminPending(f.configPath).pending;
+  const first = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: "narrow@remote.hab",
+  });
+  assert.equal(first.ledger, "added");
+  assert.deepEqual(narrow(), before, "operations neither grew nor shrank");
+  // The same sign-in shows up again as if the first approve stopped before its last step.
+  seen.record(pair, true);
+  const again = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: "narrow@remote.hab",
+  });
+  assert.equal(again.ledger, "existing");
+  assert.equal(again.connection_id, first.connection_id);
+  assert.equal(again.backup, null);
+  const ledger = parseOAuthConfig(JSON.parse(readFileSync(ledgerFile, "utf8")));
+  assert.equal(
+    ledger.connections.filter((c) => c.client_id === "owner-new-client").length,
+    1,
+  );
+  assert.deepEqual(narrow(), before);
+  // Reject removes a row; a stranger's malformed ID is refused.
+  seen.record({ ...pair, client_id: "yet-another" }, true);
+  const [other] = hostAdminPending(f.configPath).pending;
+  assert.deepEqual(hostAdminReject(f.configPath, other.pending_id), {
+    pending_id: other.pending_id,
+    removed: true,
+  });
+  assert.throws(() => hostAdminReject(f.configPath, "../x"), {
+    code: "invalid_pending_id",
+  });
+});
+
+test("a ledger write that fails leaves the old ledger whole (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const original = readFileSync(ledgerFile, "utf8");
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: "s-0123456789",
+      client_id: "c",
+    },
+    false,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  // No room for the backup or the temporary file: the write stops before the swap.
+  const folder = dirname(ledgerFile);
+  chmodSync(folder, 0o500);
+  try {
+    assert.throws(() =>
+      hostAdminApprove(f.configPath, {
+        pending_id: row.pending_id,
+        address: "late@remote.hab",
+      }),
+    );
+  } finally {
+    chmodSync(folder, 0o700);
+  }
+  assert.equal(readFileSync(ledgerFile, "utf8"), original);
+  parseOAuthConfig(JSON.parse(original));
+  assert.equal(hostAdminPending(f.configPath).pending.length, 1);
+});
+
+test("approve never widens a group narrower than its address (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  // sender@remote.hab has all five operations; the operator then narrowed its group.
+  const db = new DatabaseSync(join(f.config.directory, "registry.sqlite"));
+  db.prepare(
+    "UPDATE hab_auth_groups SET operations=?, epoch=epoch+1 WHERE group_id=?",
+  ).run(JSON.stringify(["resolve", "status"]), f.remote.group_id);
+  db.close();
+  const view = () => {
+    const status = hostAdminStatus(f.configPath);
+    return {
+      group: status.groups.find((g) => g.group_id === f.remote.group_id)
+        .operations,
+      address: status.addresses.find((a) => a.address === "sender@remote.hab")
+        .operations,
+    };
+  };
+  const before = view();
+  assert.deepEqual([...before.group].sort(), ["resolve", "status"]);
+  assert.equal(before.address.length, 5);
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: oauth.record.subject,
+      client_id: "owner-new-client",
+    },
+    true,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approved = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: "sender@remote.hab",
+  });
+  assert.deepEqual(approved.connect.steps, ["connection_bound"]);
+  assert.deepEqual(view(), before, "neither the group nor the address changed");
+});
+
+test("approve preserves a disconnected group's stopped address and grants (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  hostAdminDisconnect(f.configPath, f.remote.address);
+  const pending = new PendingConnections(f.config.directory);
+  t.after(() => pending.close());
+  pending.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: oauth.record.subject,
+      client_id: "replacement-client",
+    },
+    true,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approved = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: f.remote.address,
+  });
+  assert.deepEqual(approved.connect.steps, ["connection_bound"]);
+  assert.equal(approved.connect.address.state, "stopped");
+  assert.deepEqual(approved.connect.address.operations, []);
+  assert.match(approved.next_action, /hab:admin connect/);
+  const group = hostAdminStatus(f.configPath).groups.find(
+    (entry) => entry.group_id === f.remote.group_id,
+  );
+  assert.equal(group.state, "stopped");
+  assert.deepEqual(group.operations, []);
+});
+
+const cli = resolve("scripts/hab-admin.ts");
+function runCli(args) {
+  const child = spawn(process.execPath, ["--no-warnings", cli, ...args], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let out = "";
+  child.stdout.on("data", (chunk) => (out += chunk));
+  child.stderr.on("data", (chunk) => (out += chunk));
+  return once(child, "close").then(([code]) => ({ code, out }));
+}
+
+test("two approves at once both stay in the ledger (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  for (const n of [1, 2])
+    seen.record(
+      {
+        issuer: oauth.getConfig().issuer,
+        subject: `parallel-subject-${n}`,
+        client_id: `parallel-client-${n}`,
+      },
+      false,
+    );
+  const rows = hostAdminPending(f.configPath).pending;
+  const results = await Promise.all(
+    rows.map((row, i) =>
+      runCli([
+        "--config",
+        f.configPath,
+        "approve",
+        "--pending",
+        row.pending_id,
+        "--address",
+        `parallel${i}@remote.hab`,
+      ]),
+    ),
+  );
+  for (const result of results) assert.equal(result.code, 0, result.out);
+  const ledger = parseOAuthConfig(JSON.parse(readFileSync(ledgerFile, "utf8")));
+  for (const n of [1, 2])
+    assert.ok(
+      ledger.connections.some((c) => c.subject === `parallel-subject-${n}`),
+      `approval ${n} kept`,
+    );
+  assert.equal(statSync(`${ledgerFile}.approve-lock.sqlite`).mode & 0o777, 0o600);
+});
+
+test("approval and rejection wait for the same lock and recover after process exit (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const lock = `${ledgerFile}.approve-lock.sqlite`;
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: "locked-subject-1",
+      client_id: "c1",
+    },
+    false,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approve = () =>
+    hostAdminApprove(f.configPath, {
+      pending_id: row.pending_id,
+      address: "locked@remote.hab",
+    });
+  writeFileSync(lock, "", { mode: 0o600 });
+  const holder = spawn(
+    process.execPath,
+    ["--no-warnings", "--input-type=module", "-e", `
+      import { DatabaseSync } from "node:sqlite";
+      const db = new DatabaseSync(process.argv[1]);
+      db.exec("BEGIN IMMEDIATE");
+      console.log("locked");
+      process.stdin.resume();
+    `, lock],
+    { stdio: ["pipe", "pipe", "inherit"] },
+  );
+  const exited = once(holder, "exit");
+  t.after(() => holder.kill());
+  await Promise.race([
+    once(holder.stdout, "data"),
+    exited.then(() => assert.fail("lock holder exited before acquiring the lock")),
+  ]);
+  const rejection = runCli([
+    "--config",
+    f.configPath,
+    "reject",
+    "--pending",
+    row.pending_id,
+  ]);
+  assert.throws(approve, { code: "ledger_busy" });
+  const rejected = await rejection;
+  assert.notEqual(rejected.code, 0);
+  assert.match(rejected.out, /ledger_busy/);
+  assert.equal(hostAdminPending(f.configPath).pending.length, 1);
+  assert.equal(holder.kill("SIGKILL"), true);
+  await exited;
+  assert.equal(approve().ledger, "added");
+  assert.equal(hostAdminPending(f.configPath).pending.length, 0);
+});
+
+test("approve refuses to write a ledger the host could no longer read (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+  const pad = (n, width) => `${n}`.padStart(width, "x");
+  // Fill the ledger to just under the host's config size limit.
+  for (let n = 0; ; n++) {
+    const row = {
+      subject: pad(`s${n}`, 480),
+      client_id: pad(`c${n}`, 480),
+      connection_id: `filler-${n}`,
+      approved_at: oauth.participation.approved_at,
+      approved_until: oauth.participation.approved_until,
+      state: "revoked",
+    };
+    const next = { ...ledger, connections: [...ledger.connections, row] };
+    if (Buffer.byteLength(JSON.stringify(next, null, 2) + "\n") > 65536 - 600)
+      break;
+    ledger.connections.push(row);
+  }
+  const original = JSON.stringify(ledger, null, 2) + "\n";
+  writeFileSync(ledgerFile, original);
+  parseOAuthConfig(JSON.parse(original));
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: pad("big-subject", 480),
+      client_id: pad("big-client", 480),
+    },
+    false,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  assert.throws(
+    () =>
+      hostAdminApprove(f.configPath, {
+        pending_id: row.pending_id,
+        address: "big@remote.hab",
+      }),
+    { code: "ledger_too_large" },
+  );
+  assert.equal(readFileSync(ledgerFile, "utf8"), original);
+  assert.equal(hostAdminPending(f.configPath).pending.length, 1);
+  assert.equal(
+    readdirSync(dirname(ledgerFile)).some((name) =>
+      /\.bak-|\.tmp-|\.lock$/.test(name),
+    ),
+    false,
+    "no backup, temp file or lock left",
+  );
 });

@@ -81,7 +81,7 @@ npm run hab:notify -- --config notify.json show-again <message_id> [sender_id]
 "wake": { "port": 8795, "secret_file": "~/.hab-notify/local-lab/wake.secret" }
 ```
 
-鍵は `whsec_` で始まる 1 行で、所有者だけが読めるファイル（`chmod 600`）に置き、HAB の呼び鈴の `secret_file` と同じものにします。受け口は Standard Webhooks の署名と 5 分以内の時刻を確かめ、合わない要求は 401 で断ります。本文は使わず、確かめるのは HAB の受信箱です。
+鍵は `whsec_` で始まる 1 行で、所有者だけが読めるファイル（`chmod 600`）に置き、HAB の呼び鈴の `secret_file` と同じものにします。受け口は Standard Webhooks の署名と 5 分以内の時刻を確かめ、合わない要求は 401 で断ります。通常の呼び鈴は本文を使わず HAB の受信箱を確かめます。`session_probe` を設定すると、本文のアドレスとセッションも照合します。
 
 token は呼ぶたびにファイルか環境変数から読みます（エージェント側が更新する token をそのまま使えます）。アダプタは token も本文も表示しません。`token.file` の形式はエージェントごとに確認してください。
 
@@ -227,6 +227,36 @@ Desktop が表示している同じ会話で動くので、別の CLI セッシ�
 | `unknown`、または失敗 | `unknown`。自動では再送しません |
 
 `handoff` を設定しなければ `unsupported` です。
+
+### 会話が終わったことを HAB に知らせる（`session_probe`、ADR-032）
+
+`screen.session_probe` を書くと、notifier は結び付けた会話がまだあるかを Hermes に確かめます。
+
+```json
+"session_probe": {
+  "command": ["/absolute/path/to/hermes-venv/bin/python", "-B", "-m", "hermes_bridge.desktop_session"],
+  "cwd": "/absolute/path/to/hiraoku-agent-base/experiments/source-handoff/hermes-owner-binding",
+  "env": { "HERMES_HOME": "~/.hermes/profiles/local-lab の絶対パス", "HERMES_SOURCE": "~/.hermes/hermes-agent の絶対パス" }
+}
+```
+
+`hermes_bridge.desktop_session` は標準入力の `{session_id}` を受け取り、プロファイルの `state.db` を Hermes 自身の `SessionDB` で読み取り専用で開いて、1 行で答えます。書き込みも Hermes の起動も HAB の呼び出しもしません。Desktop の HAB プラグインと同じく、カードを表示できる現在のセッション ID を確認します。
+
+| 答え | いつ |
+| --- | --- |
+| `present` | その ID の会話にカードを表示できる |
+| `gone` | その ID の会話がない、アーカイブ済み、または圧縮後に新しい ID へ移った |
+| `unknown` | `state.db` がない、開けない、読めない |
+
+notifier は呼び鈴を受けたとき（署名を確かめた後）と、毎回の確認の前（1 回だけの `check` も同じ。`gone` または `unknown` なら `shown: []` と `session` に判定結果を返します）に、このコマンドを実行します。1 回の答えは 5 秒間使い回し、3 秒で打ち切ります。
+
+- 署名済みイベントの `data.to` が `as_address` に、`data.session` が `screen.session_id` に一致し、判定が `gone` のときだけ `410` と `{"reason":"session_gone"}` で答えます。`as_address` を設定し、`hab:admin session` で同じ Hermes のセッション ID を登録してください。判定が `gone` または `unknown` の間は受信箱を確認せず、未読は HAB に残ります。HAB は続けて 3 回のこの答えで、そのアドレスを「相手がいない」（`recipient_absent`）にします（[MCP イベント](../connections/mcp-events.md#相手のセッションが終わったときadr-032)）。
+- 一致した呼び鈴に `present` で答える場合は `200` で受け取り、すぐに受信箱を確かめます。`unknown`（実行失敗や時間切れを含む）や宛先・セッションの照合ができない場合は `200` と `{"reason":"session_unconfirmed"}` を返します。この応答で HAB の「相手がいない」判定は変わりません。
+- `run` のログには、最初の答えと、答えが変わるたびに `{"at":…,"session":"present"|"gone"|"unknown"}` を 1 行出します。ずっと `unknown` なら、コマンドの設定か Hermes の読み込みを見直してください。
+
+会話を戻すには、アーカイブを解除するか、[結び付けの移行](#safe-migration-and-verification-limits)に沿って notifier と HAB 台帳を新しいセッション ID に合わせます。notifier が `present` を確認して `hab_peek` を呼ぶと、HAB は「相手がいない」を外します（本人が自分の受信箱を見たことになるため。`hab_inbox` でも同じ）。「相手がいない」の間は HAB が新しい送信を断るので呼び鈴は鳴りませんが、notifier の定期確認（`interval_ms`）で戻ります。
+
+`session_probe` を書かなければ、これまでどおり確かめずに `200` で答えます。
 
 ## Codex・Claude Code・ChatGPT コネクタ（Dots）
 

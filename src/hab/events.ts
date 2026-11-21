@@ -455,18 +455,24 @@ export interface HabEventOptions {
    * `{"reason":"session_gone"}` before the address counts as absent (default 3).
    */
   absent_after?: number;
+  /**
+   * ADR-032: a session_gone answer within this long of the last counted one is not counted
+   * again (default 60 s). One product reading answered for a pile of unread mail must not
+   * add up to "in a row".
+   */
+  absent_spacing_ms?: number;
   post?: WebhookPost;
   now?: () => number;
 }
 const MAX_ATTEMPTS = 8;
 /** What #ring reports when the product answered 410 with reason session_gone (ADR-032). */
 const SESSION_GONE = -1;
-function sessionGone(body: string): boolean {
+function sessionReason(body: string): unknown {
   try {
     const parsed = JSON.parse(body) as { reason?: unknown };
-    return parsed?.reason === "session_gone";
+    return parsed?.reason;
   } catch {
-    return false;
+    return undefined;
   }
 }
 /**
@@ -507,6 +513,7 @@ export class HabEvents {
   readonly #db: DatabaseSync;
   readonly #post: WebhookPost;
   readonly #absentAfter: number;
+  readonly #absentSpacing: number;
   readonly #now: () => number;
   readonly #defaultTtl: number;
   readonly #maxTtl: number;
@@ -522,6 +529,7 @@ export class HabEvents {
     this.#source = source;
     this.#post = options.post ?? createWebhookPost();
     this.#absentAfter = options.absent_after ?? 3;
+    this.#absentSpacing = options.absent_spacing_ms ?? 60_000;
     this.#now = options.now ?? Date.now;
     this.#maxTtl = options.max_ttl_ms ?? 86_400_000;
     this.#defaultTtl = Math.min(
@@ -981,11 +989,12 @@ export class HabEvents {
         return;
       }
       if (status === SESSION_GONE) {
-        // Not deliverable to that session; move on without retrying this message.
+        // Not deliverable to that session; move on without retrying this message, but
+        // ring the next one on a later pass, not right after the same answer.
         cursor = arrival;
         failures = 0;
         this.#save(row.id, cursor, 0, null, 0);
-        continue;
+        return;
       }
       const delivered = status >= 200 && status <= 299;
       if (delivered && this.#rering && this.#source.unread)
@@ -1020,6 +1029,10 @@ export class HabEvents {
   }
   #noteGone(agentId: string) {
     const now = this.#now();
+    const last = this.#db
+      .prepare("SELECT last_at FROM hab_event_gone WHERE agent_id=?")
+      .get(agentId) as { last_at: number } | undefined;
+    if (last && now - last.last_at < this.#absentSpacing) return;
     this.#db
       .prepare(
         `INSERT INTO hab_event_gone (agent_id,count,last_at) VALUES (?,1,?)
@@ -1050,6 +1063,18 @@ export class HabEvents {
     return !!this.#db
       .prepare("SELECT 1 FROM hab_event_absent WHERE agent_id=?")
       .get(agentId);
+  }
+  /**
+   * ADR-032: the recipient read its own inbox (hab_inbox, or the notifier's hab_peek), so
+   * its session is there again. Owner decision 2026-11-21: this is how an absent address
+   * comes back, since no doorbell rings while sends to it are refused.
+   */
+  noteRecipientRead(context: unknown) {
+    try {
+      this.#notePresent(this.#source.eventRecipient(context).agent_id);
+    } catch {
+      // A read that cannot be recorded is still a read.
+    }
   }
   /** The same, by the address (operators and tests). */
   isAbsent(address: string): boolean {
@@ -1112,21 +1137,24 @@ export class HabEvents {
     const at = this.#rang(row.agent_id, status);
     // ADR-032: the product says the session behind this address has ended. Only this
     // exact answer counts; no answer, 5xx and other refusals never make an address absent.
-    if (status === 410 && sessionGone(answer)) {
+    if (status === 410 && sessionReason(answer) === "session_gone") {
       this.#noteGone(row.agent_id);
       return SESSION_GONE;
     }
-    if (status >= 200 && status <= 299) this.#notePresent(row.agent_id);
+    const accepted = status >= 200 && status <= 299;
+    const unconfirmed = status === 200 && sessionReason(answer) === "session_unconfirmed";
+    if (accepted && !unconfirmed)
+      this.#notePresent(row.agent_id);
     // The first doorbell a subscriber accepted for each message: a later ring (again, or
     // for newer mail) must not hide that this one went unanswered.
-    if (status >= 200 && status <= 299)
+    if (accepted)
       this.#db
         .prepare(
           `INSERT OR IGNORE INTO hab_event_accepted (agent_id,sender_id,message_id,accepted_at)
            VALUES (?,?,?,?)`,
         )
         .run(row.agent_id, arrival.sender_id, arrival.message_id, at);
-    if (status >= 200 && status <= 299)
+    if (accepted)
       this.#db
         .prepare(
           `INSERT INTO hab_event_quiet (subscription_id,sender_id,message_id,rang_at)

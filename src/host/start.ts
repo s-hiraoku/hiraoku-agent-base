@@ -9,6 +9,7 @@ import {
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedOAuthAuthority } from "./oauth-auth.ts";
+import { PendingConnections } from "./oauth-pending.ts";
 import { startHostServer } from "./server.ts";
 import { createSqliteDelivery } from "./delivery.ts";
 import { HostStartError, readHostConfig, stage } from "./config.ts";
@@ -99,9 +100,15 @@ export async function startHost(configPath: string) {
       () => new LocalBearerAuthority(readCredentials),
     );
     let remote: PinnedOAuthAuthority | undefined;
+    // Opened once the host owns its state directory; sign-ins before that are not kept.
+    let pending: PendingConnections | undefined;
     try {
       remote = config.ingress
-        ? await PinnedOAuthAuthority.create(readOAuth)
+        ? await PinnedOAuthAuthority.create(
+            readOAuth,
+            Date.now,
+            (signIn, known) => pending?.record(signIn, known),
+          )
         : undefined;
     } catch {
       throw new HostStartError("oauth_invalid");
@@ -158,11 +165,18 @@ export async function startHost(configPath: string) {
       const ignored = config.ingress?.events?.inbox_check
         ? ["ingress.events.inbox_check"]
         : [];
+      if (config.ingress) pending = new PendingConnections(config.directory);
+      const opened = pending;
       return Object.freeze({
         ...host,
+        close: async () => {
+          await host.close();
+          opened?.close();
+        },
         ...(ignored.length ? { ignored_config: ignored } : {}),
       });
     } catch {
+      pending?.close();
       await host.close();
       throw new HostStartError("audit_unavailable");
     }

@@ -212,6 +212,11 @@ export function prepareHabInvocation(
 /** ADR-032: whether the product reported a recipient's session as ended. */
 export interface RecipientAbsence {
   isAbsentAgent(agentId: string): boolean;
+  /**
+   * The verified caller read its own inbox (hab_inbox or hab_peek): its session is there,
+   * so it is no longer absent. Never fails the read it follows.
+   */
+  noteRecipientRead(context: unknown): void;
 }
 export function createHabMcpServer(
   service: HabMcpService,
@@ -256,6 +261,7 @@ export function createHabMcpServer(
           oauthScopes,
           security,
           maxResponseBytes,
+          absence,
         );
   if (events && catalog === "agent")
     registerHabEvents(server, events, resolveContext, gate);
@@ -494,7 +500,10 @@ function createAgentServer(
               prepared.input as Record<string, unknown>,
               maxResponseBytes,
             );
-            if (tool === "hab_inbox") events?.noteInboxRead(prepared.context);
+            if (tool === "hab_inbox") {
+              events?.noteInboxRead(prepared.context);
+              absence?.noteRecipientRead(prepared.context);
+            }
             const output = reminder
               ? { ...(result as object), inbox_reminder: reminder }
               : result;
@@ -539,6 +548,7 @@ function createDeliveryServer(
   oauthScopes: readonly string[] | undefined,
   security: object,
   maxResponseBytes: number | undefined,
+  absence: RecipientAbsence | undefined,
 ) {
   const server = createDeliveryMcpServer(
     service,
@@ -634,6 +644,8 @@ function createDeliveryServer(
               choices: incomingChoices(fields).map((item) => ({ ...item })),
             };
           });
+          // The arrival notifier peeks only while its session exists (ADR-032).
+          absence?.noteRecipientRead(prepared.context);
           return {
             messages,
             // Pass it as `after` for the next page; null once nothing follows.
