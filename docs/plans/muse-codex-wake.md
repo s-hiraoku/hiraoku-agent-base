@@ -143,14 +143,14 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 - [ ] 新着で通知が表示され、既定では未読のまま待つ。「対応する」を選ぶと、Codex の試験用の会話に依頼が入り、通知記録に `queued` が残る。Codex 側では同じ会話の turn が始まったことを確認できる。
 
-**Verify, unit.**
+**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] 偽の `codex` コマンドで引数と呼び出し回数を確認する。表示と再表示、承認前、既読処理に失敗したときは起動しない。手動承認と、ルールに一致する自動受付では、承認済みの文面と対象の会話を 1 回だけ渡す。ルール外の送信元・種類は手動の選択を待つ。二重操作と再起動でも再実行しない。
 - [ ] キュー受付、明確な会話不在、結果不明の異常終了と時間切れを試し、それぞれ `queued`、`unsupported`、`unknown` になることを確認する。別経路への再送や `410 session_gone` は発生しない。
 - [ ] 既存の `app_server` 設定と保存済みの通知記録で WebSocket 経路を選べる。経路なしでは表示だけ、両方指定では設定エラーになる。キューのソケットや対象会話が異なる設定では、元の通知記録の流用を拒む。Run `node --test test/agent-notify-codex-queue.test.js test/agent-notify-auto-accept.test.js test/hab-notify-cli.test.js`。
 - [ ] 全体の `npm test` と設計台帳の監査を通す。
 
-**Verify, live.** Ten lanes on `Mac mini の Claude Code（swarm なし）` at the PR head, per the boot recipe.
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini の Claude Code（swarm なし）` at the PR head, per the boot recipe.
 
 - [ ] Lane 1. 既存の WebSocket を設定した試験用の会話で、trunk と head の「対応する」後の引き渡し結果を比較する。Save `pr2-lane1-websocket.png`. Pass when 既存の設定と経路が head でも動く。
 - [ ] Lane 2. 作業中のローカル会話向けに「対応する」を選ぶ。Save `pr2-lane2-busy.png`. Pass when 進行中の作業が続き、区切りで同じ会話に引き渡される。
@@ -163,7 +163,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] Lane 9. Codex アプリと notifier を再起動する。Save `pr2-lane9-app-restart.png`. Pass when 以前の承認分を再投入せず、新たに承認した分は同じ会話に届く。
 - [ ] Lane 10. 試験メールを 3 通送り、各 1 回選ぶ。1 通は承認の操作を繰り返す。Save `pr2-lane10-burst.png`. Pass when 各依頼が 1 回ずつ同じ会話に届く。
 
-**Verify, perf.**
+**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
 - [ ] Metric. 待機中の会話で、承認からキュー受付までと、承認から実際の turn 開始までをそれぞれ測る。
 - [ ] Probe. 1 分おきに 5 通を送り、各試験の承認、キュー受付、実際の turn 開始の時刻を記録する。

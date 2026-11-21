@@ -1289,7 +1289,7 @@
     },
     {
       "path": "docs/plans/muse-codex-wake.md",
-      "sha256": "efa051bb3780cc0ee8ab53bc4c4372ca298d8f52d53e8a1418d2f0c0215f83d6",
+      "sha256": "9871637e13ac33b3e82d8ab9e05e8e2963e6b84fb841b11afd565594e91cde24",
       "role": "context",
       "review": "reviewed",
       "summary": "Proposal to document Muse's scheduled polling and add an opt-in Codex queue transport for approved handoffs. Keeps ADR-021 display and consent, ADR-023 auto-accept audit and deduplication, the WebSocket route, and ADR-032 host absence semantics. The local queue prototype was observed; end-to-end HAB verification is planned."
