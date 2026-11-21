@@ -239,6 +239,11 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
     this.#assertCurrent();
     return this.#registry.addressesOf([agentId]).get(agentId);
   }
+  /** The session the doorbell names for the receiving product (ADR-032). */
+  sessionOf(agentId: string): string | undefined {
+    this.#assertCurrent();
+    return this.#registry.sessionOf(agentId);
+  }
   get textLimit() {
     return this.#backend.textLimit;
   }

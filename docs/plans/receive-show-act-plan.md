@@ -10,6 +10,27 @@ HAB はセッションを管理せず、1 セッションに 1 アドレスを�
 PR は順に PR-1（監査のメソッド記録）、PR-2（設定手順書）、PR-3（台帳に製品の受け方とセッション）、PR-4（Hermes の Hook）、
 PR-5（HAB 側の定期確認をやめ、polling の遅れを見せる）、PR-6（製品ごとに 1 つの購読）、PR-7（相手がいないときのエラー）、PR-8（設計書の整理）。
 
+## 進み具合（2026-11-21 JST）
+
+下の箱は計画を書いた時点のまま残し、実際に入ったものはこの表で読む。箱に印のないものでも、表で「マージ済み」なら main に入っている。
+
+| PR                            | 状態                                                                                                                | 計画との違い                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| PR-1 監査のメソッド記録       | #245 でマージ済み                                                                                                   | なし                                                                                                                                |
+| PR-2 設定手順書               | #244・#246 でマージ済み                                                                                             | なし                                                                                                                                |
+| PR-3 台帳                     | #248 でマージ済み。#252（仮のセッション名を今のアドレスにそろえる）、#253（名付けでアドレスを完全一致で引く）が続く | 列は `hab_products` と `hab_agents` に足さず、別の表 `hab_product_receive` と `hab_agent_sessions` にした（ADR-032）                |
+| PR-4 Hermes の Hook           | #249 でマージ済み。Mac mini で呼び鈴 2.5 秒、返信まで約 10 秒                                                       | なし                                                                                                                                |
+| PR-5 HAB 側の定期確認をやめる | #250 でマージ済み                                                                                                   | なし                                                                                                                                |
+| PR-6 製品ごとに 1 つの購読    | 後回し（本人判断、2026-11-21）                                                                                      | 付録 B の ChatGPT の扱いが決まるまで、購読はアドレスごとのまま                                                                      |
+| PR-7 相手がいないときのエラー | #254 でマージ済み（HAB 側だけ）                                                                                     | ADR-032 に合わせ、退役・未読の削除・不達の知らせ・名前の予約はしない（下の PR-7 の Build を直した）。410 を返す製品側の口はまだない |
+| PR-8 設計書の整理             | この表を足した PR                                                                                                   | 呼び鈴に `session` を載せる、`doorbell_missing` を出す、の 2 つの実装も同じ PR に入れた                                             |
+
+残り：
+
+- notifier が `410 session_gone` を返す口。Hermes で、終わった会話に `session.resume` を送ったときの理由を実機で確かめてから作る（ADR-032 の追記）。
+- 付録 B の PR-6 の判断。
+- [接続と導入の計画](agent-connection-and-receive.md) の doctor と ping。
+
 ## How to read this
 
 One box is one unit of work. Every box names the evidence that checks it. A nested box is a sub-step of the box above it. Check a box only when its evidence exists, a file, a log line, a screenshot, a test run, or a SHA.
@@ -389,8 +410,8 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 **Build.**
 
 - [ ] 呼び鈴の受け口が、通知の `to` に当たるセッションについて 410 と理由 `session_gone` を返したときだけ数える。応答なし、5xx、そのほかの 4xx は数えない。
-- [ ] 続けて N 回（既定 3 回）になったら、台帳でそのアドレスを退役（`retired`）にする。行は消さない。`hab_send` は `recipient_absent` で断る。
-- [ ] そのアドレスの未読は、送り手に不達を知らせてから消す。アドレスの名前は予約として残す。
+- [ ] 続けて 3 回になったら、そのアドレスを「相手がいない」にする。台帳の状態は変えず（退役にしない）、行は消さない。`hab_send` は `recipient_absent` で断る。
+- [ ] 未読は消さない。不達の知らせも出さない。どちらも後の判断にする（ADR-032）。
 - [ ] 本人が接続し直すか、製品が購読し直すと、状態を戻す。
 
 **You see.**
@@ -399,7 +420,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] 410 の回数、5xx を数えない件、戻る件、未読を消す件を足す。
+- [ ] 410 の回数、5xx を数えない件、戻る件、未読が残る件を足す。
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini Claude Code` at the PR head, per the boot recipe.
 
@@ -408,8 +429,8 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] Lane 3. そのアドレスへ `hab_send` する。Save `pr7-lane3-send.res`. Pass when `recipient_absent` で断られる。
 - [ ] Lane 4. 5xx を返し続ける。Save `pr7-lane4-status.json`. Pass when アドレスが有効のまま。
 - [ ] Lane 5. 応答しない受け口にする。Save `pr7-lane5-status.json`. Pass when アドレスが有効のまま。
-- [ ] Lane 6. 「相手がいない」のアドレスの未読を見る。Save `pr7-lane6-delivery.txt`. Pass when 送り手に不達が届き、未読が消える。
-- [ ] Lane 7. アドレスの名前を別のセッションで登録しようとする。Save `pr7-lane7-admin.txt`. Pass when 予約済みで拒否される。
+- [ ] Lane 6. 「相手がいない」のアドレスの未読を見る。Save `pr7-lane6-delivery.txt`. Pass when 未読が残り、不達の知らせは出ない。
+- [ ] Lane 7. 「相手がいない」のアドレスの台帳の行を見る。Save `pr7-lane7-admin.txt`. Pass when 状態が `active` のまま。
 - [ ] Lane 8. 製品が購読し直す。Save `pr7-lane8-status.json`. Pass when 状態が戻り、送信できる。
 - [ ] Lane 9. host を再起動する。Save `pr7-lane9-status.json`. Pass when 状態と回数が保たれる。
 - [ ] Lane 10. Mac mini の実機で、Grok の routine を止めて鳴らす。Save `pr7-lane10-status.json`. Pass when 5xx か応答なしでは数えない。

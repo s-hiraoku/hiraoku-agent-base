@@ -25,6 +25,7 @@ import { eventually, pollUntilDelivered } from "./delivery-fixture.js";
 import { oauthFixture } from "./oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
 import { main as runHabAdmin } from "../scripts/hab-admin.ts";
+import { hostAdminDoctor } from "../src/host/doctor.ts";
 import { HabEvents } from "../src/hab/events.ts";
 
 const cli = resolve("scripts/hab-admin.ts");
@@ -1188,6 +1189,53 @@ test("a polling product that has not read for two intervals is poll_overdue (ADR
   );
 });
 
+test("a hook product address with no doorbell is doorbell_missing (ADR-032)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const missing = () =>
+    hostAdminStatus(f.configPath)
+      .problems.filter((p) => p.code === "doorbell_missing")
+      .map((p) => p.subject);
+  // No product has a mode yet, so nothing is judged.
+  assert.deepEqual(missing(), []);
+  hostAdminReceive(f.configPath, {
+    agent_name: "hermes",
+    mode: "hook",
+    request_id: "hook-1",
+  });
+  // Only the hook product's address; codex has no mode.
+  assert.deepEqual(missing(), ["hermes@hermes.hab"]);
+  const db = new DatabaseSync(store);
+  db.prepare(
+    "INSERT INTO hab_event_subscriptions (id,agent_id,url,secret,expires_at,created_at) VALUES (?,?,?,?,?,?)",
+  ).run(
+    "hab_static_h",
+    hermes.address.agent_id,
+    "http://127.0.0.1:47123/wake",
+    "whsec_" + Buffer.alloc(32, 1).toString("base64"),
+    8_640_000_000_000_000,
+    Date.now(),
+  );
+  db.close();
+  assert.deepEqual(missing(), []);
+});
+
 test("an old config's inbox_check still starts the host and is named once as ignored (ADR-032)", async (t) => {
   const oauth = await oauthFixture(true);
   const f = await fixture(t);
@@ -1265,4 +1313,61 @@ test("status reports an address whose product said its session ended (ADR-032)",
   );
   const inbox = status.inboxes.find((i) => i.address === "hermes@hermes.hab");
   assert.ok(Date.parse(inbox.recipient_absent_since) > 0);
+});
+
+/** Every row of every table, so a read that wrote anything shows up. */
+function tableContents(path) {
+  const db = new DatabaseSync(path, { readOnly: true });
+  try {
+    return Object.fromEntries(
+      db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+        )
+        .all()
+        .map(({ name }) => [
+          name,
+          JSON.stringify(db.prepare(`SELECT * FROM "${name}"`).all()),
+        ]),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+test("doctor on a host with events names the missing doorbell and the ended session, and writes nothing", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  hostAdminReceive(f.configPath, {
+    agent_name: "hermes",
+    mode: "hook",
+    request_id: "doctor-hook",
+  });
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const db = new DatabaseSync(store);
+  db.prepare("INSERT INTO hab_event_absent (agent_id,since) VALUES (?,?)").run(
+    hermes.address.agent_id,
+    Date.now(),
+  );
+  db.close();
+  const stores = ["registry", "events", "delivery"].map((name) =>
+    join(f.config.directory, `${name}.sqlite`),
+  );
+  const before = stores.map(tableContents);
+  assert.ok(Object.keys(before[1]).includes("hab_event_absent"));
+  const { checks } = hostAdminDoctor(f.configPath, "hermes@hermes.hab");
+  assert.equal(checks.receive.reason, "doorbell_missing");
+  assert.equal(checks.session.reason, "recipient_absent");
+  assert.deepEqual(stores.map(tableContents), before, "doctor wrote nothing");
 });
