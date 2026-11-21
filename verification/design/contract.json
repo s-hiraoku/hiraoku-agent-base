@@ -357,10 +357,10 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "f14690726995d8e3cc3532f9e958f0a1e86c0ae97e07d190640fcbdaaf51ee8d",
+      "sha256": "785b94dd6c5336b287dce9aa592f6ebb36ac7b9cdb8e4e038cf16654446eceb2",
       "role": "context",
       "review": "reviewed",
-      "summary": "Documentation index by purpose, including the agent connection and receive implementation plan.",
+      "summary": "Documentation index by purpose, including the agent connection and receive implementation plan and the Auth0 DCR plan.",
       "read_scope": "full"
     },
     {
@@ -1278,6 +1278,14 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
+    },
+    {
+      "path": "docs/plans/auth0-dcr.md",
+      "sha256": "1d1ab07766ffbd6f3671dd81229dc0f42f1ffb8fc74009ce516f1121ecc03ad0",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Plan for Auth0 Dynamic Client Registration and operator approval of a pending (subject, client_id) pair. It requires strict registration mode, the HAB API scopes, an owner-only login policy, and matching the client ID from the intended product authorization request plus the registered callback URL set before approval. Trial-only reconnects exercise 401 handling, refresh issuance and revocation, and individual connection cleanup. Approval and revocation share the per-ledger write lock. Tenant and product behavior need live verification.",
+      "read_scope": "full"
     },
     {
       "path": "docs/plans/receive-show-act-plan.md",

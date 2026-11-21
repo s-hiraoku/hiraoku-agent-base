@@ -15,6 +15,7 @@
 | [配送 store](delivery-store.md) | host の SQLite ファイル 1 つによる配送の保存と運用 |
 | [設計判断（ADR）](hab-decisions.md) | 採用・不採用・保留の判断と理由 |
 | [エージェントの接続と導入を簡単にする](plans/agent-connection-and-receive.md) | doctor、承認待ちからの登録、呼び鈴の台帳化、製品レシピと onboard の実装計画 |
+| [製品ごとの Auth0 アプリ作成をなくす](plans/auth0-dcr.md) | DCR で製品が Auth0 にアプリを自分で作り、HAB の承認待ちを関所にする設計と計画 |
 | [セキュリティ](hab-security.md) | 認証、権限、秘密、公開境界 |
 
 ## 接続と運用
