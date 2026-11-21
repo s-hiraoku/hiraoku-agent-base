@@ -357,7 +357,7 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "3368a4e87b3a70933ede1cee8b21da894c2ad979a55f56d1a1786c23e711b307",
+      "sha256": "802c489b4b6543c55222fef638dcdc33ddba03accf7fdfdf7147b3a859ee00f8",
       "role": "context",
       "review": "reviewed",
       "summary": "Documentation index by purpose, including the agent connection and receive implementation plan.",
@@ -1274,10 +1274,10 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "9d72cfb70385dd4358690c382c13dc27ad1c0fc63df25c3bd9ada97d266d3dbd",
+      "sha256": "402fecc807a16e47e083ed70b21fffae7f6b71d2f41cbe8054ba647560b8dc6b",
       "role": "context",
       "review": "reviewed",
-      "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
+      "summary": "Implementation plan for easing agent onboarding, in four independent PRs: A read-only `hab:admin doctor` per address; G pending connections (fully verified but unregistered OAuth sign-ins recorded, approved by `connect --pending` without a restart); C operator doorbells moved from host config to the events store with live reload; B `hab:admin ping` from a host-owned test address. Hermes one-command setup, Codex handoff, onboard and MCP enrolment are deferred with start conditions. A plan, not a decision; existing ADRs are normative."
     },
     {
       "path": "docs/plans/receive-show-act-plan.md",

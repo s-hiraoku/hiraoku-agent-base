@@ -14,7 +14,7 @@
 | [メッセージ配送の正式仕様](hab-messaging-spec.md) | store-and-forward、個体認証、ACK、期限 |
 | [配送 store](delivery-store.md) | host の SQLite ファイル 1 つによる配送の保存と運用 |
 | [設計判断（ADR）](hab-decisions.md) | 採用・不採用・保留の判断と理由 |
-| [接続診断と製品別の受信](plans/agent-connection-and-receive.md) | 診断、Hermes Desktop のセットアップ、既存の会話への引き渡しの実装計画 |
+| [エージェントの接続と導入を楽にする](plans/agent-connection-and-receive.md) | doctor、保留中の接続、呼び鈴の台帳化、ping の実装計画 |
 | [セキュリティ](hab-security.md) | 認証、権限、秘密、公開境界 |
 
 ## 接続と運用
