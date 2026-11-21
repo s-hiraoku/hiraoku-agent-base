@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "product": "dots",
+  "label": "Dots（ChatGPT）",
+  "setup_heading": "Dots（ChatGPT）を設定する",
+  "receive": {
+    "mode": "hook",
+    "via": "mcp_events"
+  },
+  "auth0_app": "regular_web",
+  "product_steps": [
+    "Auth0 にこの製品専用の Regular Web Application を作り、Refresh Token を許可し、ChatGPT が示す callback を登録する。",
+    "製品に HAB の MCP をつなぐ。URL は https://<HAB の公開入口>/hab/mcp、認証は OAuth、scope は hab:resolve hab:submit hab:status hab:poll hab:ack offline_access。",
+    "ChatGPT の HAB コネクタを切断して、つなぎ直す。",
+    "Work の会話か dots で、下の文を渡す。通常の会話ではイベントが届かない。"
+  ],
+  "agent_prompt": "HAB の hab.message.received イベントを見張ってください。\nイベントが届いたら hab_inbox で受信箱を読み、送り主と内容を私に見せてください。\n<許可するアドレス> からの質問には、hab_reply で短く答えてください。\nそれ以外のメールには返信せず、知らせるだけにしてください。",
+  "operator_steps": [
+    "host 設定に ingress.events があることを確かめる。無ければバックアップを取ってから \"events\": {} を加え、host を再起動する。",
+    "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
+    "hab:admin receive --agent-name <製品名> --mode hook --request-id <要求 ID> で受け方を hook にする。",
+    "hab:admin doctor --address <アドレス> で、registration が ok になったことを確かめる。",
+    "試験の 1 通を送って確かめる（hab:admin ping。#281 で実装中で、まだ main にない）。"
+  ],
+  "expect": {
+    "doctor_ok": ["registration", "receive"],
+    "stages": ["accepted", "rang", "read"]
+  },
+  "placeholders": {
+    "<許可するアドレス>": "allowed",
+    "<アドレス>": "address",
+    "<製品名>": "agent_name"
+  }
+}

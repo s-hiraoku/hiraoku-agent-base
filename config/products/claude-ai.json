@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "product": "claude-ai",
+  "label": "claude.ai",
+  "setup_heading": "claude.ai を設定する",
+  "receive": {
+    "mode": "on_request",
+    "via": "when_asked"
+  },
+  "auth0_app": "regular_web",
+  "product_steps": [
+    "Auth0 にこの製品専用の Regular Web Application を作り、Refresh Token を許可し、callback https://claude.ai/api/mcp/auth_callback を登録する。",
+    "Settings の Connectors で HAB を追加する（つないでいる場合は切断して、つなぎ直す）。",
+    "受信箱を見たいときに、下の文を渡す。"
+  ],
+  "agent_prompt": "HAB の受信箱を hab_inbox で見て、届いたメールを見せてください。",
+  "operator_steps": [
+    "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
+    "hab:admin receive --agent-name <製品名> --mode on_request --request-id <要求 ID> で受け方を on_request にする。",
+    "hab:admin doctor --address <アドレス> で、registration が ok になったことを確かめる。"
+  ],
+  "expect": {
+    "doctor_ok": ["registration", "receive"],
+    "stages": ["accepted"]
+  },
+  "placeholders": {
+    "<アドレス>": "address",
+    "<製品名>": "agent_name"
+  }
+}

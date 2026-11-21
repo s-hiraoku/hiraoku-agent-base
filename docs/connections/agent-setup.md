@@ -53,6 +53,11 @@ host 設定・接続台帳・Registry・notifier を変える作業は、Mac min
 
 ## 共通の準備をする
 
+製品ごとの手順は `config/products/<製品>.json` にも同じ内容で置いてあります。
+`npm run hab:admin -- --config <host 設定> recipe --product <製品> --address <アドレス> --allowed <許可するアドレス>` で、
+アドレスを埋めた手順と「渡す文」を出せます（製品は `dots`・`grok`・`muse`・`claude-ai`・`hermes`）。
+この文書の「渡す文」を変えたら、レシピも同じに直します（`test/product-recipes.test.js` が食い違いを見つけます）。
+
 どの製品でも、最初に次を済ませます。
 
 1. アドレスを決める（例 `muse@muse.hab`）。
