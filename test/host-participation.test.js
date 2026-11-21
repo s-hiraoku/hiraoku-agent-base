@@ -28,7 +28,6 @@ import {
   readdirSync,
   statSync,
   writeFileSync,
-  existsSync,
 } from "node:fs";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -807,17 +806,17 @@ test("two approves at once both stay in the ledger (plan 2)", async (t) => {
       ledger.connections.some((c) => c.subject === `parallel-subject-${n}`),
       `approval ${n} kept`,
     );
-  assert.equal(existsSync(`${ledgerFile}.lock`), false);
+  assert.equal(statSync(`${ledgerFile}.approve-lock.sqlite`).mode & 0o777, 0o600);
 });
 
-test("a live approve's lock makes another wait and give up; a dead one's lock is cleared (plan 2)", async (t) => {
+test("an approval times out behind a live lock and succeeds after process exit (plan 2)", async (t) => {
   const oauth = await persistentOAuthFixture(true);
   oauth.participation.approved_at = new Date(
     oauth.start - 3600000,
   ).toISOString();
   const f = await setup(t, oauth);
   const ledgerFile = f.config.ingress.oauth_file;
-  const lock = `${ledgerFile}.lock`;
+  const lock = `${ledgerFile}.approve-lock.sqlite`;
   const seen = new PendingConnections(f.config.directory);
   t.after(() => seen.close());
   seen.record(
@@ -834,14 +833,30 @@ test("a live approve's lock makes another wait and give up; a dead one's lock is
       pending_id: row.pending_id,
       address: "locked@remote.hab",
     });
-  writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }));
+  writeFileSync(lock, "", { mode: 0o600 });
+  const holder = spawn(
+    process.execPath,
+    ["--no-warnings", "--input-type=module", "-e", `
+      import { DatabaseSync } from "node:sqlite";
+      const db = new DatabaseSync(process.argv[1]);
+      db.exec("BEGIN IMMEDIATE");
+      console.log("locked");
+      process.stdin.resume();
+    `, lock],
+    { stdio: ["pipe", "pipe", "inherit"] },
+  );
+  const exited = once(holder, "exit");
+  t.after(() => holder.kill());
+  await Promise.race([
+    once(holder.stdout, "data"),
+    exited.then(() => assert.fail("lock holder exited before acquiring the lock")),
+  ]);
   assert.throws(approve, { code: "ledger_busy" });
   assert.equal(hostAdminPending(f.configPath).pending.length, 1);
-  // A process that is gone cannot finish; its lock no longer blocks anyone.
-  const dead = spawnSync(process.execPath, ["-e", "process.exit(0)"]).pid;
-  writeFileSync(lock, JSON.stringify({ pid: dead, at: Date.now() }));
+  assert.equal(holder.kill("SIGKILL"), true);
+  await exited;
   assert.equal(approve().ledger, "added");
-  assert.equal(existsSync(lock), false);
+  assert.equal(hostAdminPending(f.configPath).pending.length, 0);
 });
 
 test("approve refuses to write a ledger the host could no longer read (plan 2)", async (t) => {

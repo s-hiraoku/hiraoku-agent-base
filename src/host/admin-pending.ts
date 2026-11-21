@@ -14,10 +14,10 @@ import {
   openSync,
   readFileSync,
   renameSync,
-  rmSync,
   statSync,
   writeSync,
 } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { readHostConfig } from "./config.ts";
 import { parseOAuthConfig } from "./oauth-auth.ts";
 import { RUNTIME_CONFIG_MAX_BYTES } from "../runtime-config.ts";
@@ -27,63 +27,33 @@ import { parseHabAddress } from "../hab/registry.ts";
 
 const DAY_MS = 86_400_000;
 /** How long an approve waits for another one to finish with the ledger. */
-export const LEDGER_LOCK_WAIT_MS = 5_000;
-/** A lock older than this belongs to an approve that cannot still be running. */
-const LEDGER_LOCK_STALE_MS = 120_000;
+const LEDGER_LOCK_WAIT_MS = 5_000;
 
-function alive(pid: number) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
-/**
- * One approve at a time edits the ledger: two that both read it would each write back
- * a ledger missing the other's row. The lock file names its process, so a lock left by
- * a process that is gone (or that is very old) is cleared instead of blocking forever.
- */
+/** The sidecar stays in place so every process takes a SQLite write lock on the same file. */
 function withLedgerLock<T>(ledger: string, action: () => T): T {
-  const lock = `${ledger}.lock`;
-  const until = Date.now() + LEDGER_LOCK_WAIT_MS;
-  for (;;) {
-    try {
-      const fd = openSync(lock, "wx", 0o600);
-      try {
-        writeSync(fd, JSON.stringify({ pid: process.pid, at: Date.now() }));
-      } finally {
-        closeSync(fd);
-      }
-      break;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      let holder: { pid?: unknown; at?: unknown } = {};
-      try {
-        holder = JSON.parse(readFileSync(lock, "utf8"));
-      } catch {
-        // Being written right now, or garbage: judged by its age below.
-      }
-      const age =
-        Date.now() -
-        (typeof holder.at === "number" ? holder.at : statSync(lock).mtimeMs);
-      const gone =
-        (typeof holder.pid === "number" && !alive(holder.pid)) ||
-        age > LEDGER_LOCK_STALE_MS;
-      if (gone) {
-        rmSync(lock, { force: true });
-        continue;
-      }
-      if (Date.now() >= until) throw new HostAdminError("ledger_busy");
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
-    }
-  }
+  const path = `${ledger}.approve-lock.sqlite`;
   try {
+    closeSync(openSync(path, "wx", 0o600));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  const db = new DatabaseSync(path, { timeout: LEDGER_LOCK_WAIT_MS });
+  try {
+    try {
+      db.exec("BEGIN IMMEDIATE");
+    } catch (error) {
+      const SQLITE_BUSY = 5;
+      if ((error as { errcode?: number }).errcode === SQLITE_BUSY)
+        throw new HostAdminError("ledger_busy");
+      throw error;
+    }
     return action();
   } finally {
-    rmSync(lock, { force: true });
+    // The transaction only holds a lock. Closing or process exit releases it.
+    db.close();
   }
 }
+
 const PENDING_ID = /^pend_[0-9a-f]{16}$/;
 
 function paths(configPath: string) {
@@ -162,7 +132,8 @@ export function hostAdminApprove(
   }
   const { directory, ledger } = paths(configPath);
   return withLedgerLock(ledger, () => {
-    const row = readPending(directory, now).find(
+    const approvedAt = Math.max(now, Date.now());
+    const row = readPending(directory, approvedAt).find(
       (entry) => entry.pending_id === input.pending_id,
     );
     if (!row) throw new HostAdminError("pending_not_found");
@@ -191,7 +162,6 @@ export function hostAdminApprove(
       connectionId = `hab-${address.agent_name}-${randomUUID()}`;
       // Approval starts now (after any wait for the lock), never earlier: a token
       // issued before it still gets token_before_approval.
-      const approvedAt = Math.max(now, Date.now());
       const next = {
         ...current,
         connections: [
@@ -216,7 +186,8 @@ export function hostAdminApprove(
       // OAuth connection, so such a ledger is never written.
       if (Buffer.byteLength(text) > RUNTIME_CONFIG_MAX_BYTES)
         throw new HostAdminError("ledger_too_large");
-      backup = `${ledger}.bak-${new Date(now).toISOString().replace(/[:.]/g, "-")}`;
+      const timestamp = new Date(approvedAt).toISOString().replace(/[:.]/g, "-");
+      backup = `${ledger}.bak-${timestamp}-${randomUUID()}`;
       copyFileSync(ledger, backup);
       chmodSync(backup, 0o600);
       replaceAtomically(ledger, text);
