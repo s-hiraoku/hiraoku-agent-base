@@ -13,6 +13,7 @@ import {
   hostAdminConnect,
   hostAdminDisconnect,
   hostAdminRename,
+  hostAdminReceive,
 } from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
 import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
@@ -1132,19 +1133,73 @@ test("status reports unread mail waiting and lapsed doorbells per address", asyn
   assert.equal(withOperator.doorbell_operator, 1);
   assert.equal("doorbell_until" in withOperator, false);
   assert.ok(!JSON.stringify(withOperator).includes("grok-routine-token"));
-  // A live doorbell shows its inbox check interval (ADR-031): 10 minutes unless configured.
-  assert.equal(withOperator.inbox_check_ms, 600_000);
-  assert.equal("inbox_check_ms" in byAddress["hermes@hermes.hab"], false);
-  f.config.ingress.events = {
-    inbox_check: {
-      interval_ms: 300_000,
-      addresses: { "hermes@hermes.hab": 0 },
-    },
+  // ADR-032 retired the inbox check interval; the last hab_inbox read is shown instead.
+  assert.equal("inbox_check_ms" in withOperator, false);
+  assert.equal(withOperator.last_inbox_read_at, null);
+});
+
+test("a polling product that has not read for two intervals is poll_overdue (ADR-032)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const set = hostAdminReceive(f.configPath, {
+    agent_name: "hermes",
+    mode: "poll",
+    interval_ms: 60_000,
+    request_id: "poll-1",
+  });
+  const since = Date.parse(set.receive.updated_at);
+  const overdue = (now) =>
+    hostAdminStatus(f.configPath, now)
+      .problems.filter((p) => p.code === "poll_overdue")
+      .map((p) => p.subject);
+  // Counted from the setting until the first read: two intervals is still on time.
+  assert.deepEqual(overdue(since + 120_000), []);
+  assert.deepEqual(overdue(since + 120_001), ["hermes@hermes.hab"]);
+  // A read resets the clock; codex is not a polling product, so it is never judged.
+  const db = new DatabaseSync(store);
+  db.prepare(
+    "INSERT INTO hab_event_inbox_reads (agent_id,read_at) VALUES (?,?)",
+  ).run(hermes.address.agent_id, since + 100_000);
+  db.close();
+  assert.deepEqual(overdue(since + 200_000), []);
+  assert.deepEqual(overdue(since + 220_001), ["hermes@hermes.hab"]);
+  const shown = hostAdminStatus(f.configPath, since + 200_000).inboxes.find(
+    (i) => i.address === "hermes@hermes.hab",
+  );
+  assert.equal(
+    shown.last_inbox_read_at,
+    new Date(since + 100_000).toISOString(),
+  );
+});
+
+test("an old config's inbox_check still starts the host and is named once as ignored (ADR-032)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await fixture(t);
+  f.config.ingress = {
+    port: 0,
+    resource_url: oauth.getConfig().resource,
+    oauth_file: f.write("remote-auth.local.json", oauth.getConfig()),
+    allowed_origins: [],
+    events: { inbox_check: { interval_ms: 600_000 } },
   };
   f.write("service.local.json", f.config);
-  const checks = Object.fromEntries(
-    hostAdminStatus(f.configPath).inboxes.map((i) => [i.address, i]),
-  );
-  assert.equal(checks["hermes@hermes.hab"].inbox_check_ms, 0);
-  assert.equal(checks["codex@codex.hab"].inbox_check_ms, 300_000);
+  const host = await startHost(f.configPath);
+  t.after(() => host.close());
+  assert.deepEqual(host.ignored_config, ["ingress.events.inbox_check"]);
 });

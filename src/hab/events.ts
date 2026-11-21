@@ -443,17 +443,6 @@ export interface HabEventOptions {
    * than `unanswered_after_ms` and its mail is still unread (default true; ADR-030).
    */
   quiet?: boolean;
-  /**
-   * Inbox check (ADR-031): while mail waits unread, ring each live doorbell again once
-   * this long after its last accepted ring (or the last check), so an agent that missed or
-   * ignored the doorbell is asked to look at its inbox on a regular interval. 0 turns it
-   * off (default 10 minutes).
-   */
-  inbox_check_ms?: number;
-  /** Per recipient agent ID, overriding `inbox_check_ms` (0 turns it off for that agent). */
-  inbox_check_by_agent?: Readonly<Record<string, number>>;
-  /** Check rings for the same oldest unread message, per doorbell (default 6). */
-  inbox_check_max_rings?: number;
   post?: WebhookPost;
   now?: () => number;
 }
@@ -496,9 +485,6 @@ export class HabEvents {
   readonly #unansweredAfter: number;
   readonly #rering: boolean;
   readonly #quiet: boolean;
-  readonly #checkMs: number;
-  readonly #checkByAgent: ReadonlyMap<string, number>;
-  readonly #checkMaxRings: number;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -520,11 +506,6 @@ export class HabEvents {
     this.#unansweredAfter = options.unanswered_after_ms ?? 300_000;
     this.#rering = options.rering ?? true;
     this.#quiet = options.quiet ?? true;
-    this.#checkMs = options.inbox_check_ms ?? 600_000;
-    this.#checkByAgent = new Map(
-      Object.entries(options.inbox_check_by_agent ?? {}),
-    );
-    this.#checkMaxRings = options.inbox_check_max_rings ?? 6;
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -557,7 +538,9 @@ export class HabEvents {
         rang_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_checks (
         subscription_id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
-        rings INTEGER NOT NULL, checked_at INTEGER NOT NULL);`);
+        rings INTEGER NOT NULL, checked_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_inbox_reads (
+        agent_id TEXT PRIMARY KEY, read_at INTEGER NOT NULL);`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -881,94 +864,6 @@ export class HabEvents {
       )
       .all(now) as unknown as Row[];
     for (const row of rows) await this.#dispatchOne(row);
-    await this.#checkInboxes();
-  }
-  /** The inbox check interval for a recipient (ADR-031); 0 is off. */
-  inboxCheckMs(agentId: string): number {
-    return this.#checkByAgent.get(agentId) ?? this.#checkMs;
-  }
-  /**
-   * The inbox check (ADR-031): polling for agents that only a doorbell can start. While the
-   * recipient has unread mail, each live doorbell rings for the oldest unread message once
-   * the interval has passed since its last accepted ring, its last check or its creation.
-   * The ring is the same content-free doorbell; the agent reads with its own hab_inbox. A
-   * check is not retried (the next interval is the retry), and the same oldest message is
-   * checked at most `inbox_check_max_rings` times per doorbell, so an agent whose task never
-   * runs is not woken all week. Mail that waited before the doorbell existed is checked too:
-   * that is what polling would find. At most ten checks per pass.
-   */
-  async #checkInboxes() {
-    const rows = this.#db
-      .prepare(
-        "SELECT * FROM hab_event_subscriptions WHERE expires_at>? ORDER BY id",
-      )
-      .all(this.#now()) as unknown as Row[];
-    let rung = 0;
-    for (const listed of rows) {
-      if (rung >= 10) return;
-      // Re-read before every check: an unsubscribe, expiry or refreshed secret during an
-      // earlier check's POST must take effect before this one.
-      const row = this.#db
-        .prepare(
-          "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
-        )
-        .get(listed.id, this.#now()) as unknown as Row | undefined;
-      if (!row) continue;
-      const interval = this.inboxCheckMs(row.agent_id);
-      if (!interval) continue;
-      const check = this.#db
-        .prepare(
-          "SELECT sender_id,message_id,rings,checked_at FROM hab_event_checks WHERE subscription_id=?",
-        )
-        .get(row.id) as
-        | {
-            sender_id: string;
-            message_id: string;
-            rings: number;
-            checked_at: number;
-          }
-        | undefined;
-      const [oldest] = this.#source.arrivals(row.agent_id, null, 1);
-      if (!oldest) {
-        // Everything was read: the next unread mail starts a fresh count.
-        if (check)
-          this.#db
-            .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
-            .run(row.id);
-        continue;
-      }
-      const quiet = this.#db
-        .prepare("SELECT rang_at FROM hab_event_quiet WHERE subscription_id=?")
-        .get(row.id) as { rang_at: number } | undefined;
-      const now = this.#now();
-      const last = Math.max(
-        row.created_at,
-        quiet?.rang_at ?? 0,
-        check?.checked_at ?? 0,
-      );
-      if (now - last < interval) continue;
-      const same =
-        check?.sender_id === oldest.sender_id &&
-        check?.message_id === oldest.message_id;
-      const rings = same ? check!.rings : 0;
-      if (rings >= this.#checkMaxRings) continue;
-      const address = this.#source.addressOf(row.agent_id);
-      if (!address) continue;
-      // Recorded before the POST, so a slow or failed check waits a whole interval.
-      this.#db
-        .prepare(
-          `INSERT INTO hab_event_checks (subscription_id,sender_id,message_id,rings,checked_at)
-           VALUES (?,?,?,?,?) ON CONFLICT(subscription_id) DO UPDATE SET
-             sender_id=excluded.sender_id, message_id=excluded.message_id,
-             rings=excluded.rings, checked_at=excluded.checked_at`,
-        )
-        .run(row.id, oldest.sender_id, oldest.message_id, rings + 1, now);
-      rung += 1;
-      if (
-        (await this.#ring(row, address, oldest, `check-${rings + 1}`)) === 410
-      )
-        this.#end(row.id, row.agent_id, "gone");
-    }
   }
   /**
    * Whether the subscription's last accepted doorbell still covers newer mail (ADR-030): it
@@ -1185,6 +1080,23 @@ export class HabEvents {
    * caller may no longer read never keeps a reminder alive. Null when nothing waits or the
    * caller may not read an inbox. `reading` is true for hab_inbox, which is about to read.
    */
+  /**
+   * ADR-032: the recipient read its own inbox now. `hab:admin status` compares this with
+   * the product's polling interval (`poll_overdue`). Never fails the read it follows.
+   */
+  noteInboxRead(context: unknown) {
+    try {
+      const agentId = this.#source.eventRecipient(context).agent_id;
+      this.#db
+        .prepare(
+          `INSERT INTO hab_event_inbox_reads (agent_id,read_at) VALUES (?,?)
+           ON CONFLICT(agent_id) DO UPDATE SET read_at=excluded.read_at`,
+        )
+        .run(agentId, this.#now());
+    } catch {
+      // A read that cannot be recorded is still a read.
+    }
+  }
   reminder(
     context: unknown,
     unread: readonly Arrival[],
@@ -1301,6 +1213,8 @@ export interface DoorbellState {
   rang_at: number | null;
   status: number | null;
   delivered_at: number | null;
+  /** When the recipient last read its own inbox with hab_inbox (ADR-032). */
+  inbox_read_at: number | null;
 }
 /**
  * Read-only view of every recipient's doorbell for operators (`hab-admin status`). No
@@ -1333,6 +1247,7 @@ export function readDoorbells(
           rang_at: null,
           status: null,
           delivered_at: null,
+          inbox_read_at: null,
         };
         result.set(agentId, state);
       }
@@ -1350,6 +1265,11 @@ export function readDoorbells(
         state.lapsed_at = row.lapsed_at;
         state.reason = row.reason;
       }
+    if (tables.has("hab_event_inbox_reads"))
+      for (const row of db
+        .prepare("SELECT agent_id,read_at FROM hab_event_inbox_reads")
+        .all() as unknown as { agent_id: string; read_at: number }[])
+        entry(row.agent_id).inbox_read_at = row.read_at;
     if (tables.has("hab_event_rings"))
       for (const row of db
         .prepare(

@@ -162,7 +162,7 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
   `Authorization: Bearer <token>`で送ります。鍵をチャットや設定ファイルに貼らないでください。
 - 中身は購読の呼び鈴と同じ`{to, arrived_at}`だけです。失敗時の再送、5分後の鳴らし直し（ADR-027）も同じです。
 - 期限はなく、challengeも送りません。設定から消してhostを再起動すると外れます。
-  登録した時点で待っているメールでは鳴りません（まだ未読なら、10分後の定期確認では鳴ります。ADR-031）。
+  登録した時点で待っているメールでは鳴りません。
 - `hab:admin status`では`doorbell: "live"`と`doorbell_operator: 1`のように見えます。
 - 同じ Mac の notifier（Hermes など）を起こす場合だけ、`url`に`http://127.0.0.1:<port>/…`
   （または`http://[::1]:<port>/…`）を書けます（ADR-032）。ポートの指定が必要で、`localhost`などの名前、
@@ -170,33 +170,24 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
   notifier の`wake.secret_file`と同じものを使います。エージェントが`events/subscribe`で指定する宛先は
   今までどおり公開 HTTPS だけです。
 
-## 受信箱の定期確認（ADR-031）
+## 製品側の定期確認と遅れの表示（ADR-032）
 
-呼び鈴は届いた時点で1回（読まれなければ5分後にもう1回）鳴りますが、受け取った側の
-タスクが動かなければそれきりです。未読がある間は、最後に受け取られた呼び鈴から
-一定間隔ごとに同じ呼び鈴をもう一度鳴らします（ポーリングの代わり）。既定は10分です。
+HAB から時間で呼び鈴を鳴らす定期確認（ADR-031）は、ADR-032 でやめました。呼び鈴は新着で 1 回、
+読まれなければ 5 分後にもう 1 回（ADR-027）だけ鳴ります。古い設定に`ingress.events.inbox_check`が
+残っていても host は起動し、起動時の`ready`の行に`"ignored_config":["ingress.events.inbox_check"]`と
+1 回だけ出します。
 
-```json
-"ingress": {
-  "events": {
-    "inbox_check": {
-      "interval_ms": 600000,
-      "max_rings": 6,
-      "addresses": { "dots@dot.hab": 300000, "grok@grok-bot.hab": 0 }
-    }
-  }
-}
+決まった間隔で受信箱を見るのは製品の側です。運用者は、その製品の受け方を台帳に書きます。
+
+```sh
+npm run hab:admin -- --config <service.local.json> receive --agent-name muse --mode poll --interval-ms 900000 --request-id muse-poll-1
 ```
 
-- `interval_ms`はhost全体の間隔です（0で止める、60000〜86400000）。`addresses`でアドレスごとに
-  変えられます（0でそのアドレスだけ止める）。何も書かなければ10分です。
-- 鳴らすのは未読があるときだけです。中身は普段の呼び鈴と同じ`{to, arrived_at}`
-  （最も古い未読の到着時刻）で、`eventId`は回ごとに変わります。
-- どの呼び鈴（新着・5分後の鳴らし直し・定期確認）でも、受け取られた時点から数え直します。
-  例：10:00に新着で鳴る → 10:05に鳴らし直し → 10:15、10:25 … に定期確認。
-- 失敗しても再送しません（次の間隔で鳴らします）。同じ最も古い未読に鳴らすのは
-  `max_rings`回（既定6回＝約1時間）までで、読まれれば数え直します。
-- `hab:admin status`の`inboxes`に、呼び鈴が生きている受信者の`inbox_check_ms`が出ます。
+- 受け方が`poll`の製品のアドレスが、間隔の 2 倍を過ぎても`hab_inbox`を呼ばないと、
+  `hab:admin status`の`problems`に`poll_overdue`が出ます。数え始めは、最後に`hab_inbox`を呼んだ時刻か、
+  受け方を設定した時刻の新しいほうです。
+- `inboxes[].last_inbox_read_at`に、そのアドレスが最後に`hab_inbox`を呼んだ時刻が出ます
+  （MCP イベントを有効にした host だけ）。
 
 呼び鈴を持たないエージェント（Museなど）は、下の「Museを設定する」のように製品自身の
 定期実行で`hab_inbox`を呼ばせます。購読が切れた（`doorbell_lapsed`）ときも鳴らせないので、
@@ -218,7 +209,8 @@ ChatGPTのイベント機能はPlus以上、1時間あたり30回までです。
 
 Museには同じ仕組みがありません。Muse自身の定期実行で受信箱を見させます。
 
-1. Museのチャットで定期実行を作る。たとえば10分ごと（HABの定期確認と同じ既定）に次の指示を実行させる。
+1. Museのチャットで定期実行を作る。たとえば15分ごとに次の指示を実行させる。運用者は`hab:admin receive`で
+   Muse の受け方を`poll`と同じ間隔にしておくと、止まったときに`poll_overdue`で気づけます。
 
    > HABの`hab_inbox`で新着だけを確認して。新着があれば送り主と内容を私に知らせて。
    > 返信や作業は私が頼むまでしない。新着がなければ何も言わなくていい。

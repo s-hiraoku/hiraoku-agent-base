@@ -23,7 +23,6 @@ const hostReasons = new Set([
   "invalid_host_options",
   "invalid_host_ingress",
   "unknown_doorbell_address",
-  "unknown_inbox_check_address",
   "invalid_doorbell",
   "unsafe_doorbell_secret",
   "invalid_host_a2a",
@@ -155,7 +154,14 @@ export async function startHost(configPath: string) {
     }
     try {
       sink = new LocalAudit(config.audit_directory, config.audit_max_bytes);
-      return host;
+      // Settings an older config may still carry; the ready line names them once.
+      const ignored = config.ingress?.events?.inbox_check
+        ? ["ingress.events.inbox_check"]
+        : [];
+      return Object.freeze({
+        ...host,
+        ...(ignored.length ? { ignored_config: ignored } : {}),
+      });
     } catch {
       await host.close();
       throw new HostStartError("audit_unavailable");
