@@ -47,14 +47,14 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 | 対象の会話 | 台帳上の会話名（`hab:admin session`）と、仮の名前か運用者が付けた名前か。製品が会話を証明する仕組みはまだないので、実際にその会話が動いているかは `unknown` とし、照合の仕組みは作らない。 |
 | 受信方法と動作 | 台帳の `hook`、`poll`、`on_request` と、`status` が観測した呼び鈴の結果や最終既読、`poll_overdue`、`recipient_absent`（と `recipient_absent_since`、PR-7）、呼び鈴の `live`／`lapsed`。`hook` の宛先は、呼び鈴（購読か運用者の登録）があること、最後に鳴らした結果、その後に読まれたかを分けて出す。運用者の呼び鈴が `127.0.0.1` を指す場合は、その製品の notifier の `wake` の待ち受けと鍵が設定されているかを `next_action` で確認させる（診断はホストの外のファイルを読まない）。 |
 
-応答は `address` と `checks` を持つ JSON とする。 `checks` は `registration`、`identity`、`session`、`receive` の4項目（2 章の承認待ちがあれば `registration` に含める）。各項目は `state`、固定の `reason`、確認に使った公開可能な値 `evidence`、次の操作 `next_action` を持つ。 `state` は `ok`、`problem`、`unknown` のいずれか。コマンド自体が成立したら、各項目の結果を出して終了コード0を返す。登録されていないアドレスと DB を読めない場合は管理 CLI のエラー処理に従う。診断には認証情報やメッセージ本文を含まない項目だけを写す。
+応答は `address` と `checks` を持つ JSON とする。 `checks` は `registration`、`receive`、`reading`、`session` の4項目（2 章の承認待ちがあれば `registration` に含める）。名義は台帳から分かる範囲（グループの紐づけと 5 操作の権限）を `registration` に含め、製品側で選んでいる名義は `ping` で確かめる。`reading` は未読と最終既読を受け方から分けて出す。最古の未読より後の呼び鈴が受理され、2 分たっても読まれていなければ `rang_not_read` とする。ただし `hab_inbox` で読む姿が一度も見えていない宛先は対象にしない（notifier は配送用のツールで読むので、利用者の選択を待つカードを取りこぼしと見誤らないため）。受信箱を読んだ時刻は `events.sqlite` にしか残らないので、`ingress.events` がない host の `poll` は `unknown`（`reads_untracked`）とする。理由ごとの `state` と `next_action` は `src/host/doctor.ts` の 1 つの表にまとめる。各項目は `state`、固定の `reason`、確認に使った公開可能な値 `evidence`、次の操作 `next_action` を持つ。 `state` は `ok`、`problem`、`unknown` のいずれか。コマンド自体が成立したら、各項目の結果を出して終了コード0を返す。登録されていないアドレスと DB を読めない場合は管理 CLI のエラー処理に従う。診断には認証情報やメッセージ本文を含まない項目だけを写す。
 
 たとえば呼び鈴が HTTP 2xx で受理され、最終既読が更新されていなければ、受理時刻と最終既読を別々に出す。次の操作として対象製品の実行履歴を確認するよう表示する。会話が観測できない状態は `unknown` とし、宛先の受付可否は台帳の登録状態に従う。
 
 ### 診断の受入条件
 
-- [ ] `test/host-admin.test.js` で、登録されていないアドレス、接続の承認期限切れ、呼び鈴なし、呼び鈴の受理と未読の併存、`poll_overdue`、`recipient_absent`、全アドレスの一覧を検証する。
-- [ ] `doctor` の実行前後で、宛先の登録状態、接続、既読、通知回数が一致する。
+- [ ] `test/host-doctor.test.js` で `hostAdminStatus` の結果を合成し、登録されていないアドレス、接続の承認期限切れ、呼び鈴なし、呼び鈴の受理と未読の併存、`poll_overdue`、`recipient_absent` を検証する。実 host で全アドレスの一覧と CLI を検証する。
+- [ ] events ありの実 host（`test/host-admin.test.js`）で、`doctor` の実行前後の `registry.sqlite`、`events.sqlite`、`delivery.sqlite` の全テーブルの内容が一致する。
 - [ ] 実際の会話への到達は 4 章の `ping` で別に記録する。CLI の診断だけで実機の到達を合格にしない。
 
 ## 2. 承認待ちからの登録
