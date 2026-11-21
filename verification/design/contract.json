@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "4278fd8e75837c6dfb259d793e5f03551f2ccbe94258fdbc14179dcd04bcebb8",
+      "sha256": "252391d2311f5bd119cadfa978d286d99ff6a6733806dded12b7be9be0b3a2ad",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1274,17 +1274,17 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "936c75f2a975cebfba479ca2870d0c01c8ee41079bcb6e58f6b7037deec9def9",
+      "sha256": "130e89a9d35c134d8fd178e527f22a4e88d574924f8f39694845c6f38fc2c7a2",
       "role": "context",
       "review": "reviewed",
-      "summary": "Five-stage agent onboarding plan: read-only doctor, approval of verified pending OAuth sign-ins, operator doorbells in the events store, product recipes with a test ping and conditional onboard, and a private dashboard using the same admin operations. The dashboard starts with diagnosis and product guidance. Existing ADRs own the requirements."
+      "summary": "Five-stage agent onboarding plan. The first dashboard release implements read-only diagnosis and product guidance. Management and test delivery are staged on shared CLI operations. Existing ADRs own the requirements."
     },
     {
       "path": "docs/plans/dashboard-onboarding.md",
-      "sha256": "f59bb6c54a7053f573e25634e45d4cec0d330055961e40e997ddfd516573711c",
+      "sha256": "1a473eaadfd704388fe51890d9bb60b4733427047b08fa6c3649dea6c7d8cdf1",
       "role": "context",
       "review": "reviewed",
-      "summary": "Design for carrying the existing HAB directory into the current SQLite host: read-only loopback dashboard first, product-specific setup guidance, shared doctor results, operator approval and doorbell operations, and explicit test delivery with separately reported evidence. Existing product requirements and ADRs remain authoritative.",
+      "summary": "Dashboard onboarding design following the implemented read-only release. Future management requires a separate operator session and approval bound to the confirmed pending generation and destination. Native identity evidence and durable, idempotent test delivery drive the onboarding status. Existing product requirements and ADRs remain authoritative.",
       "read_scope": "full"
     },
     {
