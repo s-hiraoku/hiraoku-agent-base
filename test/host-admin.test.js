@@ -1203,3 +1203,66 @@ test("an old config's inbox_check still starts the host and is named once as ign
   t.after(() => host.close());
   assert.deepEqual(host.ignored_config, ["ingress.events.inbox_check"]);
 });
+
+test("a provisional session follows a rename, and a start corrects one named after an old address (ADR-032)", async (t) => {
+  const f = await started(t, { agent_rename: true });
+  const before = hostAdminConnect(f.configPath, {
+    address: "old@hermes.hab",
+    connection_id: "conn-h",
+  }).address;
+  const session = () =>
+    hostAdminStatus(f.configPath).addresses.find(
+      (a) => a.agent_id === before.agent_id,
+    ).session;
+  assert.equal(session().session, "old@hermes.hab");
+  hostAdminRename(f.configPath, {
+    request_id: "rename-1",
+    agent_id: before.agent_id,
+    expected_epoch: before.epoch,
+    expected_address: before.address,
+    bot_name: "new",
+  });
+  assert.equal(session().session, "new@hermes.hab");
+  assert.equal(session().provisional, true);
+  // An earlier build named the provisional session after the first address.
+  await f.host.close();
+  const db = new DatabaseSync(join(f.config.directory, "registry.sqlite"));
+  db.prepare(
+    "UPDATE hab_agent_sessions SET session='old@hermes.hab' WHERE agent_id=?",
+  ).run(before.agent_id);
+  db.close();
+  const again = await startHost(f.configPath);
+  t.after(() => again.close());
+  assert.equal(session().session, "new@hermes.hab");
+});
+
+test("status reports an address whose product said its session ended (ADR-032)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const db = new DatabaseSync(store);
+  db.prepare("INSERT INTO hab_event_absent (agent_id,since) VALUES (?,?)").run(
+    hermes.address.agent_id,
+    Date.now(),
+  );
+  db.close();
+  const status = hostAdminStatus(f.configPath);
+  assert.ok(
+    status.problems.some(
+      (p) => p.code === "recipient_absent" && p.subject === "hermes@hermes.hab",
+    ),
+  );
+  const inbox = status.inboxes.find((i) => i.address === "hermes@hermes.hab");
+  assert.ok(Date.parse(inbox.recipient_absent_since) > 0);
+});
