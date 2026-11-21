@@ -1274,7 +1274,7 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "402fecc807a16e47e083ed70b21fffae7f6b71d2f41cbe8054ba647560b8dc6b",
+      "sha256": "fa3f4f8fd0b6c7610f18ba2c3a99dac771d5de3e81c8ecae9cb6b46dc0bcf5bd",
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation plan for easing agent onboarding, in four independent PRs: A read-only `hab:admin doctor` per address; G pending connections (fully verified but unregistered OAuth sign-ins recorded, approved by `connect --pending` without a restart); C operator doorbells moved from host config to the events store with live reload; B `hab:admin ping` from a host-owned test address. Hermes one-command setup, Codex handoff, onboard and MCP enrolment are deferred with start conditions. A plan, not a decision; existing ADRs are normative."

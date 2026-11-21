@@ -31,12 +31,12 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 
 DB は `hostAdminStatus` と同じ経路で開く。移行が必要な DB は、その経路が先に `registry_upgrade_pending` で断る（`src/host/admin.ts` の `withRegistry`）。そのあとの `registry.migrate()` が書き込みをしないことはテストで確かめる。CLI は `scripts/hab-admin.ts`、判定は `src/host/admin.ts` に置き、`hostAdminStatus` の `inboxes` と `problems` の算出を共有する。
 
-| 項目           | 判定に使う情報                                                                                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `registration` | 台帳の登録状態、グループの紐づけ、5 操作の権限、接続台帳での承認期限。期限の 14 日前から `problem`。                                                                                                   |
-| `receive`      | 製品の受け方（`hook`、`poll`、`on_request`、未設定）。`hook` は呼び鈴があること（購読か運用者の登録）、`live` か `lapsed` か、最後に鳴らした結果。`poll` は最後に受信箱を読んだ時刻と `poll_overdue`。 |
-| `reading`      | 未読の数と最古の時刻、最後に受信箱を読んだ時刻。呼び鈴が受理されたのに、その後に読まれていなければ `problem`。                                                                                         |
-| `session`      | 台帳上の会話名と、仮の名前かどうか。`recipient_absent` なら `problem`。製品が会話を報告する仕組みはまだないので、実際の会話との一致は `unknown`。                                                      |
+| 項目           | 判定に使う情報                                                                                                                                                                                                                                                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registration` | 台帳の登録状態、グループの紐づけ、5 操作の権限、接続台帳での承認期限。期限の 14 日前から `problem`。                                                                                                                                                                                                                                    |
+| `receive`      | 製品の受け方（`hook`、`poll`、`on_request`、未設定）。`hook` は呼び鈴があること（購読か運用者の登録）、`live` か `lapsed` か、最後に鳴らした結果。`poll` は最後に受信箱を読んだ時刻と `poll_overdue`。受信箱を読んだ時刻は `events.sqlite` にしか残らないので、`ingress.events` がない host では `unknown`（`reads_untracked`）とする。 |
+| `reading`      | 未読の数と最古の時刻、最後に受信箱を読んだ時刻。最古の未読より後の呼び鈴が受理され、2 分たっても読まれていなければ `problem`（`rang_not_read`）。`hab_inbox` で読む姿が一度も見えていない宛先は対象にしない。notifier は配送用のツールで読むので、利用者の選択を待つカードを取りこぼしと見誤らないため。                                |
+| `session`      | 台帳上の会話名と、仮の名前かどうか。`recipient_absent` なら `problem`。製品が会話を報告する仕組みはまだないので、実際の会話との一致は `unknown`。                                                                                                                                                                                       |
 
 各項目は `state`（`ok`、`problem`、`unknown`）、固定の `reason`、公開できる値だけの `evidence`、次の操作 `next_action` を持つ。`next_action` は製品の受け方に合わせて、手順書の該当する節を示す。コマンドが成立したら終了コード 0 を返す。宛先がない、DB を読めないといった場合は管理 CLI のエラー処理に従う。秘密、URL のクエリ、メッセージ本文は出さない。
 
@@ -44,15 +44,15 @@ DB は `hostAdminStatus` と同じ経路で開く。移行が必要な DB は、
 
 ### A の受入条件
 
-- [ ] `test/host-admin.test.js` で、宛先なし、承認期限切れ間近、受け方の未設定、呼び鈴の `lapsed`、呼び鈴の受理と未読の併存、`poll_overdue`、`recipient_absent` の各場合の `state` と `reason` を確かめる。
-- [ ] `doctor` の前後で、`registry.sqlite`、`events.sqlite`、`delivery.sqlite` の内容が一致する。
+- [ ] `test/host-doctor.test.js` で `hostAdminStatus` の結果を合成し、宛先なし、承認期限切れ間近、受け方の未設定、呼び鈴の `lapsed`、呼び鈴の受理と未読の併存、`poll_overdue`、`recipient_absent` の各場合の `state` と `reason` を確かめる。
+- [ ] events ありの実 host（`test/host-admin.test.js`）で、`doctor` の前後の `registry.sqlite`、`events.sqlite`、`delivery.sqlite` の全テーブルの内容が一致する。
 - [ ] Mac mini の 5 つの宛先で実行し、今わかっている状態（Hermes は Hook で読まれている、Muse は poll、claude は on_request）と一致することを記録する。
 
 ## G. 保留中の接続：Auth0 のログを探さずに接続を承認する
 
 今の OAuth の検証（`src/host/oauth-auth.ts`）は、接続台帳に subject と client ID の組がないトークンを、署名を確かめる前に `client_not_registered` か `subject_not_registered` で断る。値は記録しない。そのため運用者は Auth0 のログで subject を探している。
 
-この段では、台帳にない組のトークンも、登録済みと同じ検査（署名、`iss`、`aud`、scope、有効期限）を最後まで行う。すべて通ったときだけ、その組を「保留中の接続」として記録する。断る理由と応答は今と同じで、保留中の接続には何の権限もない。
+この段では検証器を変え、台帳にない組のトークンも、登録済みと同じ検査（署名、`iss`、`aud`、scope、有効期限）を最後まで行う。すべて通ったときだけ、その組を「保留中の接続」として記録する。断る理由と応答は今と同じで、保留中の接続には何の権限もない。登録済みの組の検査の順番と結果は変えない。
 
 | 保存する値                               | 説明                                        |
 | ---------------------------------------- | ------------------------------------------- |
@@ -62,6 +62,7 @@ DB は `hostAdminStatus` と同じ経路で開く。移行が必要な DB は、
 - 保存先は host の状態ディレクトリの新しい `oauth-pending.sqlite`（0600）。行数は 20 件まで。いっぱいなら最も古い `last_seen_at` の行を置き換える。最後に見てから 7 日たった行は消す。
 - 運用者は `hab:admin status` の `pending_connections` で一覧を見る。subject と client ID はそのまま出す。運用者が Auth0 で見ていた値と同じで、トークンではない。
 - 承認は `hab:admin connect --address <address> --pending <subject>:<client_id>` とする。admin は接続台帳に `connection_id` を作り、`approved_at` を今、`approved_until` を 1 年後、`state` を `active` として足す。そのあと今の `connect` と同じ手順で登録と紐づけを行う。台帳は同じディレクトリの一時ファイルから置き換え、元の権限を保つ。host は検証のたびに台帳を読み直すので（`#current()`）、再起動は要らない。
+- 承認より前に発行されたトークンは、今の検証どおり `token_before_approval` で断る。製品は次のトークンの更新（HAB の上限は 10 分）で承認後のトークンを得る。急ぐときは、製品の画面でコネクタをつなぎ直す。`connect --pending` の出力と手順書にこのことを書く。
 - 承認した組は保留の一覧から消す。同じ組がすでに台帳にあれば、台帳は書き換えずに `connect` へ進む。
 - 台帳の版が 1（`connections` に有効期限の短い資格情報を並べる版）のときは、承認を断って手での登録を案内する。
 
@@ -70,7 +71,7 @@ DB は `hostAdminStatus` と同じ経路で開く。移行が必要な DB は、
 - [ ] 署名が正しくないトークン、`iss`、`aud`、scope のどれかが違うトークン、期限切れのトークンは保留に残らない。
 - [ ] 保留に残ったトークンへの応答は、今と同じ応答と同じ理由になる。
 - [ ] 21 件目で最も古い行が置き換わり、7 日で消える。
-- [ ] `connect --pending` のあと、host を再起動せずに同じトークンで `hab_discover` が通る。再実行しても台帳の行は増えない。
+- [ ] `connect --pending` のあと、host を再起動せずに、承認のあとに発行されたトークンで `hab_discover` が通る。承認より前に発行されたトークンは今と同じ `token_before_approval` で断る（承認の境界は弱めない）。再実行しても台帳の行は増えない。
 - [ ] 手順書の「共通の準備」の 4〜5 番を、製品をつないで `connect --pending` で承認する手順に置き換える。
 
 ## C. 呼び鈴を台帳に移す
