@@ -4,8 +4,10 @@
  * answer to one verified ring. It knows nothing about config files, tokens, stores or screens;
  * a unit is opaque behind check() and presence().
  */
-import { MessagingError } from "../messaging/delivery-service.ts";
+import { HAB_EVENT_NAME } from "../hab/events.ts";
 import { parseHabAddress } from "../hab/registry.ts";
+import { MessagingError } from "../messaging/delivery-service.ts";
+import type { SessionPresence } from "./session-probe.ts";
 
 /** A HAB address that parseHabAddress accepted; HAB keys absence by it. */
 export type Address = string & { readonly __brand: "HabAddress" };
@@ -15,10 +17,10 @@ export function address(raw: unknown): Address {
   return parseHabAddress(raw).address as Address;
 }
 
-export type Presence = "present" | "gone" | "unknown";
-export type RingAnswer = "accepted" | "session_gone" | "bad_request";
-/** Logged locally only; on the wire every refusal is `410 session_gone`. */
-export type GoneReason =
+export type RingAnswer =
+  "accepted" | "session_gone" | "session_unconfirmed" | "bad_request";
+
+type RoutingIssue =
   "unknown_address" | "session_mismatch" | "conversation_gone";
 
 /** Adding a resource here makes SessionTable.of refuse two units sharing it (`shared_<key>`). */
@@ -34,8 +36,8 @@ export interface SessionUnit {
   readonly exclusive: Exclusive;
   readonly interval_ms: number;
   check(): Promise<string[]>;
-  /** Hermes asks sessionProbe; products without one answer "unknown". */
-  presence(): Promise<Presence>;
+  /** Omitted when the product has no session probe. */
+  presence?(): Promise<SessionPresence>;
   close(): void;
 }
 
@@ -46,12 +48,15 @@ export interface Ring {
 }
 
 export type Route =
-  | { readonly unit: SessionUnit; readonly provisional: boolean }
-  | { readonly gone: "unknown_address" }
-  | { readonly gone: "session_mismatch"; readonly unit: SessionUnit };
+  | {
+      readonly unit: SessionUnit;
+      readonly match: "exact" | "provisional" | "legacy";
+    }
+  | { readonly issue: "unknown_address" }
+  | { readonly issue: "session_mismatch"; readonly unit: SessionUnit };
 
 export interface RingLog {
-  readonly reason: GoneReason | "provisional";
+  readonly reason: RoutingIssue | "provisional";
   readonly ring: Ring;
 }
 
@@ -61,10 +66,9 @@ export const PROBE_MS = 1500;
 export class SessionTable {
   readonly units: readonly SessionUnit[];
   readonly #byAddress: ReadonlyMap<Address, SessionUnit>;
-  // Two independent pauses: fixing the session name must not drop an outstanding
-  // conversation_gone, and presence must not lift a session_mismatch.
   readonly #mismatched = new Set<SessionUnit>();
-  readonly #goneUnits = new Set<SessionUnit>();
+  readonly #presence = new Map<SessionUnit, SessionPresence>();
+  readonly #pendingPresence = new Map<SessionUnit, Promise<SessionPresence>>();
 
   private constructor(units: readonly SessionUnit[]) {
     this.units = Object.freeze([...units]);
@@ -100,32 +104,49 @@ export class SessionTable {
    */
   route(ring: Ring): Route {
     const unit = this.#byAddress.get(ring.to);
-    if (!unit) return { gone: "unknown_address" };
-    if (ring.session === undefined || ring.session === unit.label)
-      return { unit, provisional: false };
-    if (ring.session === ring.to) return { unit, provisional: true };
-    return { gone: "session_mismatch", unit };
+    if (!unit) return { issue: "unknown_address" };
+    if (ring.session === undefined) return { unit, match: "legacy" };
+    if (ring.session === ring.to) return { unit, match: "provisional" };
+    if (ring.session === unit.label) return { unit, match: "exact" };
+    return { issue: "session_mismatch", unit };
   }
 
-  /**
-   * Whether the unit may read its inbox (scheduled check or ring). A unit that answered
-   * session_gone must not: with #264, its own hab_inbox or hab_peek clears HAB's absence mark.
-   * session_mismatch holds until a ring names this unit's own session (the ledger was fixed)
-   * or restart; conversation_gone lifts once presence() is present.
-   */
+  /** The recipient's own hab_peek clears absence, so a configured probe must confirm presence. */
   mayPeek(unit: SessionUnit): boolean {
-    return !this.#mismatched.has(unit) && !this.#goneUnits.has(unit);
+    return (
+      !this.hasRoutingPause(unit) &&
+      (unit.presence === undefined ||
+        (!this.#pendingPresence.has(unit) &&
+          this.#presence.get(unit) === "present"))
+    );
   }
 
-  /** Records what was just learned about a unit; the only writer of the peek state. */
-  observe(
+  hasRoutingPause(unit: SessionUnit): boolean {
+    return this.#mismatched.has(unit);
+  }
+
+  noteBinding(unit: SessionUnit, matches: boolean): void {
+    if (matches) this.#mismatched.delete(unit);
+    else this.#mismatched.add(unit);
+  }
+
+  /** Share a bounded observation between a ring and the unit's scheduled check. */
+  async refreshPresence(
     unit: SessionUnit,
-    seen: Presence | "session_mismatch" | "session_matched",
-  ): void {
-    if (seen === "session_matched") this.#mismatched.delete(unit);
-    else if (seen === "session_mismatch") this.#mismatched.add(unit);
-    else if (seen === "gone") this.#goneUnits.add(unit);
-    else if (seen === "present") this.#goneUnits.delete(unit);
+    ms = PROBE_MS,
+  ): Promise<SessionPresence | undefined> {
+    const probe = unit.presence?.bind(unit);
+    if (!probe) return;
+    let pending = this.#pendingPresence.get(unit);
+    if (!pending) {
+      pending = presenceWithin(probe, ms).then((presence) => {
+        this.#presence.set(unit, presence);
+        this.#pendingPresence.delete(unit);
+        return presence;
+      });
+      this.#pendingPresence.set(unit, pending);
+    }
+    return pending;
   }
 }
 
@@ -137,8 +158,7 @@ export function parseRing(body: string): Ring | undefined {
   } catch {
     return undefined;
   }
-  if (!isRecord(value) || value.name !== "hab.message.received")
-    return undefined;
+  if (!isRecord(value) || value.name !== HAB_EVENT_NAME) return undefined;
   const data = value.data;
   if (!isRecord(data)) return undefined;
   const session = data.session;
@@ -168,39 +188,43 @@ export async function answerRing(
   const ring = parseRing(body);
   if (!ring) return "bad_request";
   const route = table.route(ring);
-  if ("gone" in route) {
-    if (route.gone === "session_mismatch")
-      table.observe(route.unit, "session_mismatch");
-    log({ reason: route.gone, ring });
-    return "session_gone";
+  if ("issue" in route) {
+    if (route.issue === "session_mismatch")
+      table.noteBinding(route.unit, false);
+    log({ reason: route.issue, ring });
+    return "session_unconfirmed";
   }
-  if (ring.session !== undefined && !route.provisional)
-    table.observe(route.unit, "session_matched");
-  const presence = await presenceWithin(route.unit, probe_ms);
-  table.observe(route.unit, presence);
-  if (presence === "gone") {
+
+  const { unit, match } = route;
+  if (match === "exact") table.noteBinding(unit, true);
+  if (match === "provisional") log({ reason: "provisional", ring });
+
+  const presence = await table.refreshPresence(unit, probe_ms);
+  if (table.hasRoutingPause(unit)) return "session_unconfirmed";
+  if (match === "exact" && presence === "gone") {
     log({ reason: "conversation_gone", ring });
     return "session_gone";
   }
-  if (route.provisional) log({ reason: "provisional", ring });
-  wake(route.unit);
-  return "accepted";
+
+  if (!table.mayPeek(unit)) return "session_unconfirmed";
+  wake(unit);
+  return match === "exact" ? "accepted" : "session_unconfirmed";
 }
 
-/** HAB gives up after 10 s; a slow or failing probe answers "unknown" and polling covers it. */
+/** A slow or failing probe yields no presence decision. Late results are discarded. */
 async function presenceWithin(
-  unit: SessionUnit,
+  probe: () => Promise<SessionPresence>,
   ms: number,
-): Promise<Presence> {
+): Promise<SessionPresence> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<Presence>((resolve) => {
+  const timeout = new Promise<SessionPresence>((resolve) => {
     timer = setTimeout(() => resolve("unknown"), ms);
   });
   try {
     return await Promise.race([
       Promise.resolve()
-        .then(() => unit.presence())
-        .catch((): Presence => "unknown"),
+        .then(probe)
+        .catch((): SessionPresence => "unknown"),
       timeout,
     ]);
   } finally {
