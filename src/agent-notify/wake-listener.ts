@@ -2,12 +2,14 @@
  * ADR-032: the notifier's doorbell. HAB rings it on new mail (an operator-registered
  * doorbell to a loopback URL, ADR-029), and the notifier checks at once instead of waiting
  * for its interval. The listener only binds 127.0.0.1, accepts only Standard Webhooks
- * requests signed with the shared `whsec_` key and at most five minutes old, and never
- * reads the body for anything but the signature: the check itself reads HAB.
+ * requests signed with the shared `whsec_` key and at most five minutes old.
+ *
+ * A session probe can report presence or absence only for a signed ring for the
+ * configured address and session. Other signed requests still receive HTTP 200.
  */
 import { createServer, type Server } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { signWebhook } from "../hab/events.ts";
+import { HAB_EVENT_NAME, signWebhook } from "../hab/events.ts";
 
 const MAX_BODY = 16_384;
 const MAX_SKEW_S = 300;
@@ -47,11 +49,42 @@ export function verifyWebhook(
   });
 }
 
-/** Listen on 127.0.0.1:`port` and call `onWake` for each valid ring. */
+/** Whether a signed ring can be accepted, or reports on the bound session. */
+export type WakeAnswer = "accepted" | "session_gone" | "session_unconfirmed";
+
+interface WakeBinding {
+  address: string | undefined;
+  session: string;
+}
+
+function matchesWakeBinding(body: string, binding: WakeBinding): boolean {
+  try {
+    const event = JSON.parse(body) as {
+      name?: unknown;
+      data?: { to?: unknown; session?: unknown };
+    } | null;
+    return (
+      binding.address !== undefined &&
+      event?.name === HAB_EVENT_NAME &&
+      event.data?.to === binding.address &&
+      event.data?.session === binding.session
+    );
+  } catch {
+    return false;
+  }
+}
+
+const SESSION_GONE_BODY = JSON.stringify({ reason: "session_gone" });
+const SESSION_UNCONFIRMED_BODY = JSON.stringify({
+  reason: "session_unconfirmed",
+});
+
+/** Listen on loopback and wake on a signed ring. A probe reports on its own binding only. */
 export function startWakeListener(options: {
   port: number;
   secret: string;
-  onWake: () => void;
+  binding?: WakeBinding;
+  onWake: () => WakeAnswer | void | Promise<WakeAnswer | void>;
 }): Promise<WakeListener> {
   if (!options.secret.startsWith("whsec_"))
     throw new Error("wake_secret_invalid");
@@ -73,8 +106,28 @@ export function startWakeListener(options: {
         res.writeHead(401).end();
         return;
       }
-      res.writeHead(200, { "Content-Type": "application/json" }).end("{}");
-      options.onWake();
+      void (async () => {
+        let answer: WakeAnswer | void;
+        try {
+          answer = await options.onWake();
+        } catch {
+          answer = undefined;
+        }
+        const binding = options.binding;
+        const matches =
+          binding !== undefined && matchesWakeBinding(body, binding);
+        if (matches && answer === "session_gone") {
+          res
+            .writeHead(410, { "Content-Type": "application/json" })
+            .end(SESSION_GONE_BODY);
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json" }).end(
+          binding && (!matches || answer !== "accepted")
+            ? SESSION_UNCONFIRMED_BODY
+            : "{}",
+        );
+      })();
     });
   });
   return new Promise((resolve, reject) => {

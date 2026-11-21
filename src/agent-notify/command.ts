@@ -22,7 +22,12 @@ const OUTPUT_BYTES = 64 * 1024;
 export function runCommand(
   spec: TrustedCommand,
   input: string,
-  options: { json?: boolean; failure?: string } = {},
+  options: {
+    json?: boolean;
+    failure?: string;
+    /** Sent on timeout; SIGKILL for a command that must not outlive its deadline. */
+    killSignal?: NodeJS.Signals;
+  } = {},
 ): Promise<unknown> {
   return new Promise((done, fail) => {
     const child = spawn(spec.command[0]!, spec.command.slice(1), {
@@ -35,6 +40,7 @@ export function runCommand(
       },
       stdio: ["pipe", "pipe", "ignore"],
       timeout: spec.timeout_ms ?? 60_000,
+      killSignal: options.killSignal ?? "SIGTERM",
     });
     let out = "";
     child.stdout.setEncoding("utf8");

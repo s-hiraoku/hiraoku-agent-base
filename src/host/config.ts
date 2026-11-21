@@ -75,6 +75,8 @@ const schema = z.strictObject({
           quiet: z.boolean().optional(),
           /** ADR-032: session_gone answers in a row before an address is absent. */
           absent_after: z.number().int().min(1).max(20).optional(),
+          /** ADR-032: a session_gone answer sooner than this after the last counted one is not counted again. */
+          absent_spacing_ms: z.number().int().min(0).max(3_600_000).optional(),
           /**
            * Inbox check (ADR-031): while mail waits unread, ring the live doorbell again
            * every `interval_ms` (default 10 minutes, 0 off), per address if listed.

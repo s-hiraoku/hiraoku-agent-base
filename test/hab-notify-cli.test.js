@@ -526,3 +526,109 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
   assert.deepEqual(JSON.parse(output.at(-1)), { error: "invalid_request" });
   assert.ok(!output.at(-1).includes("private"));
 });
+
+async function runWithProbe(t, result) {
+  const dir = mkdtempSync(join(tmpdir(), "hab-notify-probe-"));
+  t.after(() => {
+    rmSync(dir, { recursive: true, force: true });
+    delete process.env.HAB_NOTIFY_TEST_TOKEN_PROBE;
+  });
+  // A check fails with token_expired, so its log line shows that a check ran.
+  process.env.HAB_NOTIFY_TEST_TOKEN_PROBE = jwt({ exp: 1 });
+  const secret = "whsec_" + Buffer.alloc(32, 5).toString("base64");
+  const secretFile = join(dir, "wake.secret");
+  writeFileSync(secretFile, secret, { mode: 0o600 });
+  const probe = join(dir, "probe.mjs");
+  writeFileSync(
+    probe,
+    `let raw = "";
+process.stdin.on("data", (c) => (raw += c));
+process.stdin.on("end", () => {
+  if (JSON.parse(raw).session_id !== "bound-session") process.exit(9);
+  console.log(JSON.stringify({ result: ${JSON.stringify(result)} }));
+});`,
+  );
+  const port = 20_000 + Math.floor(Math.random() * 20_000);
+  const config = join(dir, "notify.json");
+  writeFileSync(
+    config,
+    JSON.stringify({
+      hab_url: "https://hab.example/mcp",
+      agent_id: "agent-b",
+      token: { env: "HAB_NOTIFY_TEST_TOKEN_PROBE" },
+      as_address: "hermes@hermes.hab",
+      store: join(dir, "notices.sqlite"),
+      screen: {
+        type: "hermes-desktop",
+        path: join(dir, "screen.jsonl"),
+        session_id: "bound-session",
+        profile: "profile",
+        backend_namespace: "namespace",
+        profile_scope: "scope",
+        session_probe: { command: [process.execPath, probe], cwd: dir },
+      },
+      interval_ms: 1000,
+      wake: { port, secret_file: secretFile },
+    }),
+  );
+  const once = [];
+  await main(["--config", config, "check"], (line) => once.push(line));
+  const lines = [];
+  const running = main(["--config", config, "run"], (line) => lines.push(line));
+  await new Promise((done) => setTimeout(done, 700));
+  const { HAB_EVENT_NAME, signWebhook } = await import("../src/hab/events.ts");
+  const body = JSON.stringify({
+    name: HAB_EVENT_NAME,
+    data: { to: "hermes@hermes.hab", session: "bound-session" },
+  });
+  const ts = Math.floor(Date.now() / 1000);
+  const answer = await globalThis.fetch(`http://127.0.0.1:${port}/`, {
+    method: "POST",
+    headers: {
+      "webhook-id": "msg_probe",
+      "webhook-timestamp": String(ts),
+      "webhook-signature": signWebhook(secret, "msg_probe", ts, body),
+    },
+    body,
+  });
+  const answered = { status: answer.status, body: await answer.text() };
+  await new Promise((done) => setTimeout(done, 1500));
+  process.emit("SIGTERM");
+  assert.equal(await running, 0);
+  return {
+    answered,
+    once: JSON.parse(once.at(-1)),
+    logged: lines.map((line) => JSON.parse(line)),
+  };
+}
+
+test("run answers HAB 410 session_gone and checks nothing while the Hermes conversation is gone", async (t) => {
+  const { answered, once, logged } = await runWithProbe(t, "gone");
+  // The one-shot check does not reach HAB either (no token_expired).
+  assert.deepEqual(once, { shown: [], session: "gone" });
+  assert.equal(answered.status, 410);
+  assert.deepEqual(JSON.parse(answered.body), { reason: "session_gone" });
+  assert.deepEqual(
+    logged.map((line) => line.session ?? line.error),
+    ["gone"],
+  );
+});
+
+test("run answers 200 unconfirmed and leaves the inbox alone when the probe cannot tell", async (t) => {
+  const { answered, once, logged } = await runWithProbe(t, "unknown");
+  assert.deepEqual(once, { shown: [], session: "unknown" });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), { reason: "session_unconfirmed" });
+  assert.deepEqual(logged.map((line) => line.session ?? line.error), ["unknown"]);
+});
+
+test("run and one-shot check reach HAB when the bound Hermes session is present", async (t) => {
+  const { answered, once, logged } = await runWithProbe(t, "present");
+  assert.deepEqual(once, { error: "token_expired" });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), {});
+  assert.deepEqual(
+    logged.map((line) => line.session ?? line.error),
+    ["present", "token_expired"],
+  );
+});

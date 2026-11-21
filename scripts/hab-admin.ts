@@ -11,10 +11,18 @@ import {
   HostAdminError,
 } from "../src/host/admin.ts";
 import { hostAdminDoctor } from "../src/host/doctor.ts";
+import {
+  hostAdminPending,
+  hostAdminApprove,
+  hostAdminReject,
+} from "../src/host/admin-pending.ts";
 
 const usage = `usage:
   hab-admin --config <service.local.json> status
   hab-admin --config <service.local.json> doctor [--address <bot@agent.hab>]
+  hab-admin --config <service.local.json> pending
+  hab-admin --config <service.local.json> approve --pending <pending_id> --address <bot@agent.hab> [--days <1..3650>]
+  hab-admin --config <service.local.json> reject --pending <pending_id>
   hab-admin --config <service.local.json> connect --address <bot@agent.hab> --connection-id <id> [--operations resolve,submit,status,poll,ack]
   hab-admin --config <service.local.json> disconnect --address <bot@agent.hab>
   hab-admin --config <service.local.json> receive --agent-name <product> --mode hook|poll|on_request [--interval-ms <60000..86400000>] --request-id <journaled-id>
@@ -44,6 +52,8 @@ function parse(args: string[]) {
         "--interval-ms",
         "--session",
         "--replace",
+        "--pending",
+        "--days",
       ].includes(key) ||
       value === undefined ||
       Object.hasOwn(options, key)
@@ -63,6 +73,28 @@ export function main(args = process.argv.slice(2)) {
     Object.keys(options).every((key) => key === "--address")
   )
     return hostAdminDoctor(config, options["--address"]);
+  if (command === "pending" && !Object.keys(options).length)
+    return hostAdminPending(config);
+  if (
+    command === "approve" &&
+    options["--pending"] &&
+    options["--address"] &&
+    Object.keys(options).every((key) =>
+      ["--pending", "--address", "--days"].includes(key),
+    ) &&
+    (options["--days"] === undefined || /^[0-9]{1,4}$/.test(options["--days"]))
+  )
+    return hostAdminApprove(config, {
+      pending_id: options["--pending"],
+      address: options["--address"],
+      ...(options["--days"] ? { days: Number(options["--days"]) } : {}),
+    });
+  if (
+    command === "reject" &&
+    options["--pending"] &&
+    Object.keys(options).length === 1
+  )
+    return hostAdminReject(config, options["--pending"]);
   if (
     command === "rename" &&
     Object.keys(options).length === 5 &&
