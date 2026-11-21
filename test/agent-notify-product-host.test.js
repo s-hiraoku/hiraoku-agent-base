@@ -92,8 +92,21 @@ test("another session name for a served address is session_gone and stops that u
   assert.equal(table.mayPeek(b), true);
 
   a.setPresence(async () => "present");
-  await answer(ring({ to: "a@agent.hab", session: "conv-a" }));
-  assert.equal(table.mayPeek(a), false, "session_mismatch holds until restart");
+  await answer(ring({ to: "a@agent.hab", session: "conv-other" }));
+  assert.equal(
+    table.mayPeek(a),
+    false,
+    "presence alone does not lift a mismatch",
+  );
+  assert.equal(
+    await answer(ring({ to: "a@agent.hab", session: "conv-a" })),
+    "accepted",
+  );
+  assert.equal(
+    table.mayPeek(a),
+    true,
+    "a ring naming its own session lifts it",
+  );
 });
 
 test("an address the notifier does not serve is session_gone", async () => {

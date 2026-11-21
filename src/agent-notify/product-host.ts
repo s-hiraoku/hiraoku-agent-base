@@ -109,14 +109,23 @@ export class SessionTable {
   /**
    * Whether the unit may read its inbox (scheduled check or ring). A unit that answered
    * session_gone must not: with #264, its own hab_inbox or hab_peek clears HAB's absence mark.
-   * session_mismatch holds until restart; conversation_gone lifts once presence() is present.
+   * session_mismatch holds until a ring names this unit's own session (the ledger was fixed)
+   * or restart; conversation_gone lifts once presence() is present.
    */
   mayPeek(unit: SessionUnit): boolean {
     return !this.#paused.has(unit);
   }
 
   /** Records what was just learned about a unit; the only writer of the peek state. */
-  observe(unit: SessionUnit, seen: Presence | "session_mismatch"): void {
+  observe(
+    unit: SessionUnit,
+    seen: Presence | "session_mismatch" | "session_matched",
+  ): void {
+    if (seen === "session_matched") {
+      if (this.#paused.get(unit) === "session_mismatch")
+        this.#paused.delete(unit);
+      return;
+    }
     if (this.#paused.get(unit) === "session_mismatch") return;
     if (seen === "session_mismatch") this.#paused.set(unit, seen);
     else if (seen === "gone") this.#paused.set(unit, "conversation_gone");
@@ -169,6 +178,8 @@ export async function answerRing(
     log({ reason: route.gone, ring });
     return "session_gone";
   }
+  if (ring.session !== undefined && !route.provisional)
+    table.observe(route.unit, "session_matched");
   const presence = await presenceWithin(route.unit, probe_ms);
   table.observe(route.unit, presence);
   if (presence === "gone") {
