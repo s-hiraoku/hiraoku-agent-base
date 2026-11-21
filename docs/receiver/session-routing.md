@@ -1,6 +1,6 @@
 # 呼び鈴のセッション名で受信を振り分ける（設計案）
 
-状態：**案**。2026-11-21 JST。前提は [ADR-032](../hab-decisions.md) と PR #259（呼び鈴の `data` を `{to, session, arrived_at}` にする）。束ねにない名前に `410` を返すことは本人判断済み（下の「本人の判断」）。
+状態：**案**。2026-11-21 JST。前提は [ADR-032](../hab-decisions.md) と PR #259（呼び鈴の `data` に `{to, session, arrived_at}` を載せる）。不在の判定は #264 で採用した規則に従う。
 
 ## 何を決めるか
 
@@ -17,7 +17,7 @@ PR #259 で、HAB は呼び鈴に台帳のセッション名 `session` を載せ
 | 製品               | 呼び鈴を受けるもの             | 振り分け                                                                               | 今回の作業          |
 | ------------------ | ------------------------------ | -------------------------------------------------------------------------------------- | ------------------- |
 | Hermes Desktop     | notifier の受け口（127.0.0.1） | 1 つの process に、セッションごとの単位を最大 32 持つ。`to` と `session` で 1 つを選ぶ | 実装（下の Hermes） |
-| Codex・Claude Code | 同じ notifier                  | 同じ。会話が終わったかを確かめる口がないので、受け持つセッションに `410` は返さない    | Hermes と同じ実装   |
+| Codex・Claude Code | 同じ notifier                  | 同じ。会話の有無を確認する口がないので、会話の終了は報告しない                         | Hermes と同じ実装   |
 | Grok Bot           | xAI の Webhook（routine）      | routine 1 つがアドレス 1 つ。`session` は自分宛ての確認に使うだけ                      | 手順書の指示文だけ  |
 | Dots（ChatGPT）    | MCP イベント（見張りの会話）   | 接続 1 つがアドレス 1 つ。イベントは見張りを頼んだ 1 つの会話でしか動かない            | 手順書の指示文だけ  |
 
@@ -70,23 +70,23 @@ hab-notify --product ~/.config/hab/hermes.product.json units   # 受け持つセ
 
 ### 呼び鈴の答え方
 
-受け口は署名を確かめたあと、本文を読んでセッションを選ぶ。判定は 1 か所（`answerRing`）にまとめる。
+受け口は運用者が登録した呼び鈴の署名を確かめたあと、本文を `answerRing` に渡す。この受け口では購読の検証チャレンジを使わない。`200 session_unconfirmed` の本文は `{"reason":"session_unconfirmed"}` で、HAB の不在判定も回数も変えない。
 
-| 呼び鈴                                                                          | 答え                              | ログの理由          |
-| ------------------------------------------------------------------------------- | --------------------------------- | ------------------- |
-| `to` が受け持つアドレスで、`session` がその会話の ID                            | `200`。そのセッションだけ確かめる | なし                |
-| `to` は受け持つが、`session` がアドレスと同じ（台帳でまだ仮の名前）             | `200`。そのセッションだけ確かめる | `provisional`       |
-| `to` は受け持つが、`session` が別の名前                                         | `410 session_gone`                | `session_mismatch`  |
-| `to` を受け持たない                                                             | `410 session_gone`                | `unknown_address`   |
-| 受け持つセッションだが、Hermes の会話が終わっている（`sessionProbe` が `gone`） | `410 session_gone`                | `conversation_gone` |
-| `sessionProbe` が 1.5 秒で答えない、`unknown`、失敗                             | `200`（定期確認が保険）           | なし                |
-| `session` がない（#259 より前の host）                                          | `to` だけで選ぶ                   | なし                |
-| 本文が読めない                                                                  | `400`（HAB は数えない）           | なし                |
+| 呼び鈴                                                                   | 答え                                                            | ログの理由          |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------- | ------------------- |
+| `to` と `session` が一致し、会話の存在を確認できたか、probe の設定がない | `200`。そのセッションだけ起こす                                 | なし                |
+| `to` は受け持つが、`session` がアドレスと同じ（仮の名前）                | `200 session_unconfirmed`。確認できればそのセッションだけ起こす | `provisional`       |
+| `to` は受け持つが、`session` が別の名前                                  | `200 session_unconfirmed`。受信箱の確認を止める                 | `session_mismatch`  |
+| `to` を受け持たない                                                      | `200 session_unconfirmed`                                       | `unknown_address`   |
+| `to` と `session` が一致し、probe が `gone`                              | `410 session_gone`                                              | `conversation_gone` |
+| 設定済みの probe が 1.5 秒で答えない、`unknown`、失敗                    | `200 session_unconfirmed`。受信箱の確認は保留                   | なし                |
+| `session` がない（#259 より前の host）                                   | `200 session_unconfirmed`。`to` で選び、確認できれば起こす      | なし                |
+| 本文が読めない                                                           | `400`（HAB は数えない）                                         | なし                |
 
-- **仮の名前は通す。** 台帳のセッション名は、名前を付けるまでアドレスと同じになっている（ADR-032）。これを `410` にすると、展開した直後から、今動いている Hermes が「相手がいない」になる。会話の ID で名前を付けたあとは、別の名前を `410` にする。
+- **仮の名前と旧形式でも、受信先が確かなら起こす。** 受け持つアドレスを選び、probe が `present` を返すか probe の設定がなく、以前の名前違いによる停止がない場合は、その単位を起こす。仮の名前や旧形式で来た呼び鈴からは、会話の終了を報告しない。
 - **起動中や再起動中に `410` は出ない。** 受け口は、全セッションを読み込み終えてから開く。止めるときは最初に閉じる。閉じているあいだ HAB の側は接続できないだけで、HAB はこれを数えない（`#ring` が数えるのは `410` と `session_gone` の組だけ）。
 - **2 重起動はポートで防ぐ。** 同じ製品の `run` は同じポートを取りに行くので、2 つ目は起動に失敗する。
-- **「ない」と答えた単位は受信箱を読まない（#264 に合わせる）。** #264 では、そのアドレス自身が `hab_inbox` か `hab_peek` を呼ぶと「相手がいない」が外れる。`410` を返したまま定期確認で読み続けると、自分で印を外してしまう。`session_mismatch` か `conversation_gone` を返した単位は、定期確認と呼び鈴での確認を止める。`conversation_gone` は、`presence()` が `present` に戻れば再開する。`session_mismatch` は、設定か台帳を直して再起動するまで止まる。`session_gone` を HAB が数えるのは 60 秒（`absent_spacing_ms`）に 1 回までなので、3 回は少なくとも 2 分かかる。
+- **会話の状態と名前違いを別々に確認する。** 本人の `hab_peek` は HAB の不在判定を解除する。probe を設定した単位は、最新の確認が `present` の場合だけ受信箱を読む。名前違いで止まった単位は、台帳を直してその会話 ID の呼び鈴が来るか、設定を直して再起動すると名前違いの停止が解ける。呼び鈴と定期確認は単位ごとに `refreshPresence` の実行中の確認を共有し、時間切れ後に届いた結果は使わない。HAB が `session_gone` を数える既定間隔は 60 秒。
 - **HAB の待ち時間に収める。** HAB は 10 秒で諦める。`sessionProbe` は 1.5 秒で打ち切る。
 
 ### 中の作り
@@ -99,18 +99,18 @@ export interface SessionUnit {
   readonly exclusive: { store: string; screen: string; binding: string };
   readonly interval_ms: number;
   check(): Promise<string[]>; // 今の ReceiptNotifier.check()
-  presence(): Promise<"present" | "gone" | "unknown">; // Hermes は sessionProbe、ほかは unknown
+  presence?(): Promise<"present" | "gone" | "unknown">; // probe を設定した製品だけ
   close(): void;
 }
 export class SessionTable {
   static of(units: readonly SessionUnit[]): SessionTable; // アドレス・名前・store・画面・結び付きの重複を拒む。1〜32
-  route(ring: Ring): SessionUnit | "unknown_address" | "session_mismatch";
+  route(ring: Ring): Route;
 }
 export function answerRing(
   table: SessionTable,
   body: string,
   wake: (u: SessionUnit) => void,
-): Promise<"accepted" | "session_gone" | "bad_request">;
+): Promise<"accepted" | "session_gone" | "session_unconfirmed" | "bad_request">;
 export function runProduct(
   table: SessionTable,
   options: ProductRunOptions,
@@ -125,11 +125,11 @@ export function runProduct(
   - 同じファイルを別の設定で更新しようとしている。
   - 別のファイルに同じ refresh token がある（ハッシュで比べ、表示はしない）。回転する token を 2 回使うと、使い回しの検知で grant ごと取り消される。
   - エージェント自身の token ファイルを指している。
-- **受け口の形は別スレッドに合わせる。** 別スレッドの PR で、`onWake` は `"accepted" | "session_gone"` を返す形になる。この PR では次の 2 つを足す。
+- **受け口への接続は次の PR で行う。** #264 の `onWake` の応答に合わせて、次の 2 つを足す。
   - `onWake` に署名済みの本文を渡す。
   - 答えに `"bad_request"`（`400`）を足す。
 
-  会話が終わったかの判定には、別スレッドの `sessionProbe(command, sessionId)` をそのまま使う。
+  会話の判定は #264 の `sessionProbe` を使う。コマンドの制限時間を 1.5 秒以内にし、`reuseMs: 0` で結果の再利用を止める。呼び鈴と定期確認の間で共有するのは `SessionTable` の実行中の判定だけ。
 
 `src/agent-notify/notifier.ts`・`sqlite-notices.ts`・`binding.ts`・`hermes-desktop.ts`・`oauth-token.ts`・`hab-client.ts` は変えない。セッションごとの囲いは、今ある場所のまま使う。
 
@@ -147,17 +147,11 @@ export function runProduct(
 
 ### 相手がいない状態から戻す
 
-「相手がいない」になると、`hab_send` が `recipient_absent` で断られる。新しいメールが入らないので、呼び鈴も鳴らない。HAB の定期確認もない（ADR-032）。だから、セッションを足して notifier を再起動しても、それだけでは戻らない（Codex レビューの指摘、2026-11-21）。
+「相手がいない」になると、`hab_send` が `recipient_absent` で断られ、新着の呼び鈴は鳴らない。`unknown_address` と `session_mismatch` は設定を見直すためのログで、HAB の不在判定は変えない。
 
-1. `units` で原因を見る。原因は次の 3 つのどれか。
-   - そのアドレスがない（`unknown_address`）。
-   - 台帳の名前が会話の ID と違う（`session_mismatch`）。
-   - 会話が終わっている（`presence: gone`）。
-2. 原因を直す。設定を足すか直して再起動する。新しい会話なら、前節の手順2の `session` に新しい会話の ID と新しい `--request-id` を渡す。台帳で既に名前を付けた会話を置き換える場合は、対象アドレスを確認して `--replace true` を付ける。同じ要求を再試行するときは同じ `--request-id` を使う。
-3. `hab:admin present <address>` を打つ。HAB 側で足すのはこの 1 つだけで、配送と購読は変えない。
-   - 「相手がいない」の印を外し、記録を残す。
-   - 入るまでの代わりは、呼び鈴の登録をし直すこと。呼び鈴の ID はアドレスと URL から作られる（`configureStatic`）ので、同じ登録のまま host を再起動しても印は残る。host の設定から呼び鈴を外して再起動し、戻して再起動する。
-4. 試験の1通を `hab_send` で送り、ツール結果が送信の受理を返すことを確かめる。
+1. 終了済みと判定された会話を復元するか、notifier を現在の会話に結び付け直して再起動する。新しい会話に替える場合は、前節の `session` に新しい会話の ID と新しい `--request-id` を渡す。台帳で既に名前を付けた会話を置き換える場合は、対象アドレスを確認して `--replace true` を付ける。同じ要求を再試行するときは同じ `--request-id` を使う。
+2. notifier の定期確認で状態が `present` に戻り、本人の `hab_peek` が通ると不在判定が外れる。そのアドレス自身の `hab_inbox` でも外れる。運用者が呼び鈴を新しい URL で登録し直すか、購読を新規作成しても外れる。
+3. 試験の 1 通を `hab_send` で送り、ツール結果が送信の受理を返すことを確かめる。
 
 ## Grok と Dots：指示文で自分宛てを確かめる
 
@@ -182,19 +176,18 @@ export function runProduct(
   - 片方のループが止まっても、もう片方が回ること。
   - 読み込みが断る場合（`as_address` なし、単位に `wake`、資格の 3 つの衝突）。
   - `--config … run` が 1 セッションの製品として動くこと。
-- verify-hab：機能マップ `features/mcp-events.md` に、notifier の振り分けと `410` の 3 つの理由を足す（`/maintain-verification-skill`）。
+- verify-hab：機能マップ `features/mcp-events.md` に、署名の照合後の振り分けと `410`・`200 session_unconfirmed` の条件を足す（`/maintain-verification-skill`）。
 - 実機（Mac mini）で確かめること。
   - 仮の名前のまま展開しても、Hermes の往復が今と同じ時間で通る。
   - 2 つの会話を 1 つの notifier で受け、それぞれのカードにだけ出る。
-  - 束ねから外したセッション宛てに 3 回送ると、`hab_send` が `recipient_absent` になる。`hab:admin present` で戻る。
+  - 設定にない宛先や名前違いで不在判定が変わらず、正しく結び付いた終了済みセッションだけが `recipient_absent` になる。
 
 ## PR の分け方
 
 1. この文書（docs だけ）。
 2. `src/agent-notify/product-host.ts` とテスト（偽の単位だけ）。#259 と別スレッドの受け口 PR のマージ後。
 3. `scripts/lib/notify-product.ts`（製品ファイル・ディレクトリ・`TokenPool`・`units`）と、`run` の付け替え、テスト、verify-hab。
-4. `hab:admin present`。
-5. Grok と Dots の手順書の指示文（docs だけ）。
+4. Grok と Dots の手順書の指示文（docs だけ）。
 
 ## 設計の選び方（arena の記録）
 
@@ -207,18 +200,18 @@ export function runProduct(
 | 運用者の手間           | process 1 つ、ポート 1 つ、ディレクトリ 1 つ           | 振り分けの process と notifier N 個、ソケット、残骸の掃除        |
 | 試験                   | 偽の単位で、純粋な関数として試せる                     | ソケット・ファイル・時間が要る                                   |
 
-案 1 を土台にした。別の model の判定役も案 1 を選んだ（23 対 19）。案 2 は、再起動のたびに HAB が「セッションが終わった」と数える。本人の決めた「本当に受け持たないときだけ `410`」に反する。
+案 1 を土台にした。別の model の判定役も案 1 を選んだ（23 対 19）。案 2 では再起動中に HAB が「セッションが終わった」と数えるため、再起動中は受け口を閉じる構成を採った。
 
 案 2 から 1 つだけ移した。受け口で、選んだセッションの `to` と `session` を確かめること。案 1 ではこれを `route` の中で行う。2 重起動の防止はポートの取り合いで足りるので、案 2 のソケットの鍵は持ち込まなかった。
 
-土台の案 1 には 1 点足した。台帳でまだ仮の名前（アドレスと同じ）のときは通す。案 1 のままだと、展開した直後に今の Hermes が `session_mismatch` になり、3 回で「相手がいない」になる。
+台帳でまだ仮の名前（アドレスと同じ）の場合も受信できるようにした。これで、展開時にすぐ台帳へ正式な会話 ID を登録できない場合も、既存のセッションを起こせる。
 
 ## 本人の判断
 
-- 2026-11-21 JST：束ねにない名前の呼び鈴には `410 session_gone` を返す（「相手がいない」にする）。設定を書き漏らしても、3 回で `recipient_absent` になる。戻すには、設定を足したうえで上の「相手がいない状態から戻す」が要る。
+- 2026-11-21 JST：当初は束ねにない名前にも `410 session_gone` を返す方針だった。その後 #264 で採用した ADR-032 では、宛先と会話 ID が一致し、製品が会話の終了を確認した場合に `410` を使う。振り分けもこの条件を使う。
 
 ## 決まっていないこと（既定で進める）
 
 - 台帳のセッション名を Hermes の会話の ID（`20261121_093000_ab12cd` のような文字列）にする。読みやすい名前を別に持つと、値が 3 つに増えて食い違う。読みやすさを優先したいなら、設定に `session` を足し、起動時に重複を確かめる形に戻せる。
 - `--config … run` で `as_address` のない設定は、`as_address_required` で起動しないようにする。Mac mini の設定に 1 行足す手順は、展開のときに書く。
-- 会話が終わったセッションでは、受信箱の確認（`hab_peek`）を止め、会話がまだあるかの確認（`presence()`）だけを定期確認の間隔で続ける。`present` に戻ったら受信箱の確認を再開する（上の「「ない」と答えた単位は受信箱を読まない」）。
+- 会話の存在を確かめる口があるセッションでは、`refreshPresence` を定期確認の間隔で実行する。`mayPeek` で受信箱を確認できることを確かめてから `hab_peek` を呼ぶ。
