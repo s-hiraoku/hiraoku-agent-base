@@ -200,7 +200,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/mcp-events.md",
-      "sha256": "f8806c3dccd45249704f5b2b67a8ba147a8a46195fec71132944ad89cf31a47b",
+      "sha256": "7c2232309137d4f61f7dc883e81f661410387128787d946d45a768a2769e178f",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19: 無視判定をメッセージごとの最初の受け取り時刻で行う。 2026-11-19: 未読は hab_inbox と同じ認可で数える。 2026-11-19 (ADR-029): events-operator sub-feature for operator-registered doorbells (unit/host tests; the stack has no ingress). 2026-11-19 ADR-030: events-quiet（受け取られた呼び鈴のメールが未読の間、新着を鳴らさず待たせる。quiet:false で無効）。 2026-11-21 (PR-7/ADR-032): events-recipient-absent sub-feature (410 session_gone counted absent_after times, hab_send refused with recipient_absent also on loopback, cleared by 2xx or a new subscription, status problem and recipient_absent_since); unit tests only, the stack has no doorbell. 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms. 2026-11-21 (PR #259): the signed doorbell carries a session when available, and events-hook-missing covers hook addresses with no doorbell. 2026-11-21 (PR #267): a Bearer operator doorbell to api.anthropic.com (Claude scheduled task fire) also sends anthropic-version.",
@@ -224,7 +224,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "ed5b729da76dd84de5119070a32760f1831d307da0c841f92e3cfab4b03437c7",
+      "sha256": "960d1328df02d8552b43f8b3c647e5388a8bcb61bb6c230e0ae34c0ed209e15a",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-21 (#252/#253): admin-session notes a provisional session follows a rename and is corrected at start; exact address lookup.",
@@ -736,7 +736,7 @@
     },
     {
       "path": "docs/connections/mcp-events.md",
-      "sha256": "68929d0c273c0323b5f9ed4fb5d4f866106ca464448a3567382861fc9a74b8b6",
+      "sha256": "8e7be2743988007ff79ca2a7f7f44aa96810e6a2d507d8a847a947fcdd9562c5",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified. ADR-024 (2026-11-17): outage_after_ms credit for host downtime/sleep and the operator check for lapsed doorbells with the Dots re-subscribe step. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19 (ADR-029): operator-registered doorbells config, secret file and Bearer/whsec headers, no lifetime or challenge, admin doorbell_operator. 2026-11-19 ADR-030: quiet 設定と、未読の間は新着で鳴らさない節を追記。 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms.",
@@ -1267,7 +1267,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "cb6632cb871ac9b69c6e99a6911c232c57e11f668d0b1e9ca07c24ce0d6ef0e2",
+      "sha256": "8a429dacd23a6ee6e88b816af55c96f83a57bde3feda28432aa5cb4e92558f9e",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."

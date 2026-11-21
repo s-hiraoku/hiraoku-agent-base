@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { request } from "node:http";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { startHost } from "../src/host/start.ts";
 import {
   hostAdminStatus,
@@ -26,6 +26,13 @@ import { oauthFixture } from "./oauth-fixtures.js";
 import { DatabaseSync } from "node:sqlite";
 import { main as runHabAdmin } from "../scripts/hab-admin.ts";
 import { hostAdminDoctor } from "../src/host/doctor.ts";
+import {
+  hostAdminDoorbellAdd,
+  hostAdminDoorbellRemove,
+  hostAdminDoorbellList,
+} from "../src/host/admin-doorbells.ts";
+import { startWakeListener } from "../src/agent-notify/wake-listener.ts";
+import { writeFileSync, chmodSync } from "node:fs";
 import { HabEvents } from "../src/hab/events.ts";
 
 const cli = resolve("scripts/hab-admin.ts");
@@ -1370,4 +1377,186 @@ test("doctor on a host with events names the missing doorbell and the ended sess
   assert.equal(checks.receive.reason, "doorbell_missing");
   assert.equal(checks.session.reason, "recipient_absent");
   assert.deepEqual(stores.map(tableContents), before, "doctor wrote nothing");
+});
+
+test("hab:admin doorbell adds and removes an operator doorbell on a running host (plan 3)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  await f.host.close();
+  f.config.ingress.events = { poll_ms: 500 };
+  f.write("service.local.json", f.config);
+  const host = await startHost(f.configPath);
+  t.after(() => host.close());
+  const secret = "whsec_" + Buffer.alloc(32, 9).toString("base64");
+  const secretFile = join(f.config.directory, "..", "wake.secret");
+  writeFileSync(secretFile, secret + "\n", { mode: 0o600 });
+  let wakes = 0;
+  const listener = await startWakeListener({
+    port: 0,
+    secret,
+    onWake: () => wakes++,
+  });
+  t.after(() => listener.close());
+  const url = `http://127.0.0.1:${listener.port}/wake`;
+  hostAdminReceive(f.configPath, {
+    agent_name: "hermes",
+    mode: "hook",
+    request_id: "doorbell-hook",
+  });
+  const send = async () => {
+    const { recipient_id } = await f.call(tokens.c, "hab_resolve", {
+      address: "hermes@hermes.hab",
+    });
+    await f.call(tokens.c, "hab_submit", {
+      ...message(randomUUID().replaceAll("-", "")),
+      recipient_id,
+    });
+  };
+  const added = hostAdminDoorbellAdd(f.configPath, {
+    address: "hermes@hermes.hab",
+    url,
+    secret_file: secretFile,
+  });
+  assert.equal(added.host, "127.0.0.1");
+  assert.equal(added.replaced, false);
+  assert.equal(JSON.stringify(added).includes(secret), false);
+  assert.equal(JSON.stringify(added).includes(url), false);
+  await eventually(async () => {
+    const inbox = hostAdminStatus(f.configPath).inboxes.find(
+      (i) => i.address === "hermes@hermes.hab",
+    );
+    return inbox.doorbell === "live" && inbox.doorbell_operator
+      ? inbox
+      : undefined;
+  });
+  await send();
+  await eventually(async () => (wakes >= 1 ? wakes : undefined));
+  assert.equal(
+    hostAdminDoctor(f.configPath, "hermes@hermes.hab").checks.receive.evidence
+      .operator_doorbell,
+    true,
+  );
+  const listed = hostAdminDoorbellList(f.configPath);
+  assert.deepEqual(
+    listed.doorbells.map((d) => [d.address, d.host, d.source]),
+    [["hermes@hermes.hab", "127.0.0.1", "registry"]],
+  );
+  assert.equal(JSON.stringify(listed).includes(secretFile), false);
+
+  const removed = hostAdminDoorbellRemove(f.configPath, "hermes@hermes.hab");
+  assert.deepEqual([removed.removed, removed.still_in_config], [true, false]);
+  await eventually(async () =>
+    hostAdminStatus(f.configPath).inboxes.find(
+      (i) => i.address === "hermes@hermes.hab",
+    ).doorbell_operator
+      ? undefined
+      : true,
+  );
+  const before = wakes;
+  await send();
+  await new Promise((done) => setTimeout(done, 1500));
+  assert.equal(wakes, before, "no ring after remove");
+
+  // Refusals: unknown address, a private URL, an unsafe secret file, a relative path.
+  for (const [input, code] of [
+    [
+      { address: "nobody@nowhere.hab", url, secret_file: secretFile },
+      "address_not_found",
+    ],
+    [
+      {
+        address: "hermes@hermes.hab",
+        url: "http://10.0.0.1/wake",
+        secret_file: secretFile,
+      },
+      "invalid_doorbell",
+    ],
+    [
+      { address: "hermes@hermes.hab", url, secret_file: "wake.secret" },
+      "unsafe_doorbell_secret",
+    ],
+  ])
+    assert.throws(() => hostAdminDoorbellAdd(f.configPath, input), { code });
+  chmodSync(secretFile, 0o644);
+  assert.throws(
+    () =>
+      hostAdminDoorbellAdd(f.configPath, {
+        address: "hermes@hermes.hab",
+        url,
+        secret_file: secretFile,
+      }),
+    { code: "unsafe_doorbell_secret" },
+  );
+  chmodSync(secretFile, 0o600);
+  void hermes;
+});
+
+test("a registered doorbell wins over the config one for its address, said once at start (plan 3)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  await f.host.close();
+  const secretFile = join(f.config.directory, "..", "bell.secret");
+  writeFileSync(secretFile, "routine-token-0123456789\n", { mode: 0o600 });
+  f.config.ingress.events = {
+    poll_ms: 500,
+    doorbells: [
+      {
+        address: "hermes@hermes.hab",
+        url: "https://hooks.example.com/config",
+        secret_file: secretFile,
+      },
+    ],
+  };
+  f.write("service.local.json", f.config);
+  // A config with doorbells only (the old layout) still starts.
+  const first = await startHost(f.configPath);
+  assert.equal(first.ignored_config, undefined);
+  hostAdminDoorbellAdd(f.configPath, {
+    address: "hermes@hermes.hab",
+    url: "https://hooks.example.com/registry",
+    secret_file: secretFile,
+  });
+  await first.close();
+  const second = await startHost(f.configPath);
+  t.after(() => second.close());
+  assert.deepEqual(second.ignored_config, [
+    "ingress.events.doorbells[hermes@hermes.hab]",
+  ]);
+  const listed = hostAdminDoorbellList(f.configPath).doorbells;
+  assert.deepEqual(
+    listed.map((d) => [d.source, d.host, d.in_use]),
+    [
+      ["registry", "hooks.example.com", undefined],
+      ["config", "hooks.example.com", false],
+    ],
+  );
+  assert.deepEqual(
+    runHabAdmin(["--config", f.configPath, "doorbell", "list"]),
+    hostAdminDoorbellList(f.configPath),
+  );
+  assert.throws(
+    () => runHabAdmin(["--config", f.configPath, "doorbell", "ring"]),
+    { code: "usage" },
+  );
+  const removed = runHabAdmin([
+    "--config",
+    f.configPath,
+    "doorbell",
+    "remove",
+    "--address",
+    "hermes@hermes.hab",
+  ]);
+  assert.equal(removed.still_in_config, true);
 });

@@ -1686,3 +1686,42 @@ test("gone answers count once per spacing, so one reading for piled-up mail is n
   }
   assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
 });
+
+test("doorbells from the source apply on the next pass and can be taken away (plan 3)", async (t) => {
+  let next;
+  const f = await setup(t, {
+    events: {
+      quiet: false,
+      rering: false,
+      doorbells: () => {
+        const value = next;
+        next = undefined;
+        return value;
+      },
+    },
+  });
+  await f.send("b", f.a.address, "before");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 0, "no doorbell yet");
+  next = [{ agent_id: f.a.agent_id, url: URL_A, secret: SECRET }];
+  await f.events.dispatch();
+  // A new doorbell starts after the mail already waiting.
+  assert.equal(f.h.events().length, 0);
+  await f.send("b", f.a.address, "after");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  assert.equal(f.h.events()[0].url, URL_A);
+  next = [];
+  await f.events.dispatch();
+  assert.equal(f.events.subscriptions().length, 0);
+  await f.send("b", f.a.address, "removed");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1, "no ring once removed");
+  // A set that cannot be applied leaves the doorbells as they were.
+  next = [{ agent_id: f.a.agent_id, url: URL_A, secret: SECRET }];
+  await f.events.dispatch();
+  const kept = f.events.subscriptions().length;
+  next = [{ agent_id: f.a.agent_id, url: "http://10.0.0.1/x", secret: SECRET }];
+  await f.events.dispatch();
+  assert.equal(f.events.subscriptions().length, kept);
+});

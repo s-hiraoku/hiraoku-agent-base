@@ -146,7 +146,21 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
 ## 運用者が登録する呼び鈴（ADR-029）
 
 自分でイベントを購読できないエージェント（Webhookで起きるroutineを持つGrok Botなど）には、
-運用者がhost設定でアドレスごとに呼び鈴の宛先を登録します。
+運用者がアドレスごとに呼び鈴の宛先を登録します。登録は`hab:admin doorbell`で行い、hostの再起動は要りません。
+
+```sh
+npm run hab:admin -- --config <host設定> doorbell add --address grok@grok-bot.hab --url https://<routineのWebhook URL> --secret-file /ABSOLUTE/PRIVATE/grok-doorbell.secret
+npm run hab:admin -- --config <host設定> doorbell list
+npm run hab:admin -- --config <host設定> doorbell remove --address grok@grok-bot.hab
+```
+
+- 登録は`events.sqlite`に置かれ、動いているhostが次の配送の確認（数秒以内）で読み直します。1つのアドレスに1つです。
+  もう一度`add`すると置き換わります。
+- 保存するのはURLと鍵ファイルのパスだけで、鍵は保存しません。`add`・`list`の出力にはURLのホスト名だけが出ます。
+- `add`は、アドレスが登録済みで有効なこと、URL、鍵ファイルを、host設定と同じ規則で確かめます。
+
+host設定の`ingress.events.doorbells`も、今までどおり読みます（起動時だけ。変えたらhostの再起動が要ります）。
+
 
 ```json
 "ingress": {
@@ -166,7 +180,9 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
   `whsec_…`ならStandard Webhooksの署名ヘッダ、それ以外（16〜512文字のtoken）は
   `Authorization: Bearer <token>`で送ります。鍵をチャットや設定ファイルに貼らないでください。
 - 中身は購読の呼び鈴と同じ`{to, session, arrived_at}`だけです。失敗時の再送、5分後の鳴らし直し（ADR-027）も同じです。
-- 期限はなく、challengeも送りません。設定から消してhostを再起動すると外れます。
+- 期限はなく、challengeも送りません。`doorbell remove`で外れます（host設定のものは、設定から消してhostを再起動すると外れます）。
+- 同じアドレスが`doorbell add`とhost設定の両方にあれば、`doorbell add`のほうが鳴ります。起動時の`ready`の行の
+  `ignored_config`に`ingress.events.doorbells[<アドレス>]`と1回出ます。
   登録した時点で待っているメールでは鳴りません。
 - `hab:admin status`では`doorbell: "live"`と`doorbell_operator: 1`のように見えます。
 - 同じ Mac の notifier（Hermes など）を起こす場合だけ、`url`に`http://127.0.0.1:<port>/…`

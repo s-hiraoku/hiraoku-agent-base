@@ -423,6 +423,11 @@ interface Row {
 export interface HabEventOptions {
   /** Absolute path of the owner-only subscription store. */
   store: string;
+  /**
+   * Asked at the start of every pass for the operator doorbells to apply; `undefined`
+   * means nothing changed. Lets the host pick up `hab:admin doorbell` without a restart.
+   */
+  doorbells?: () => readonly StaticDoorbell[] | undefined;
   /** Lifetime granted when the client asks for none (default 1 hour). */
   default_ttl_ms?: number;
   /** Longest lifetime granted; a revoked connection stops at the latest then (default 24 h). */
@@ -502,6 +507,12 @@ export function doorbellSecret(secret: unknown): string {
   return secret;
 }
 /** One doorbell the operator registered for an address (ADR-029). */
+export interface RegisteredDoorbell {
+  address: string;
+  url: string;
+  secret_file: string;
+  added_at: number;
+}
 export interface StaticDoorbell {
   agent_id: string;
   url: string;
@@ -523,6 +534,7 @@ export class HabEvents {
   readonly #unansweredAfter: number;
   readonly #rering: boolean;
   readonly #quiet: boolean;
+  readonly #doorbells: HabEventOptions["doorbells"];
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -546,6 +558,7 @@ export class HabEvents {
     this.#unansweredAfter = options.unanswered_after_ms ?? 300_000;
     this.#rering = options.rering ?? true;
     this.#quiet = options.quiet ?? true;
+    this.#doorbells = options.doorbells;
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -583,6 +596,9 @@ export class HabEvents {
         agent_id TEXT PRIMARY KEY, read_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_gone (
         agent_id TEXT PRIMARY KEY, count INTEGER NOT NULL, last_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_doorbells (
+        address TEXT PRIMARY KEY, url TEXT NOT NULL, secret_file TEXT NOT NULL,
+        added_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_absent (
         agent_id TEXT PRIMARY KEY, since INTEGER NOT NULL);`);
   }
@@ -887,6 +903,16 @@ export class HabEvents {
           .run(id);
       }
   }
+  /** Operator doorbells registered with `hab:admin doorbell add` (ADR-029, plan 3). */
+  registeredDoorbells() {
+    return (
+      this.#db
+        .prepare(
+          "SELECT address,url,secret_file,added_at FROM hab_event_doorbells ORDER BY address",
+        )
+        .all() as unknown as RegisteredDoorbell[]
+    ).map((row) => ({ ...row }));
+  }
   /** Active subscriptions, without secrets (for operators and tests). */
   subscriptions() {
     return (
@@ -907,6 +933,12 @@ export class HabEvents {
    * accepted ring restarts their interval.
    */
   async dispatch() {
+    try {
+      const doorbells = this.#doorbells?.();
+      if (doorbells) this.configureStatic(doorbells);
+    } catch {
+      // A doorbell that cannot be applied now keeps the previous set; the next pass retries.
+    }
     this.#settle();
     if (this.#rering) await this.#ringAgain();
     const now = this.#now();
@@ -1142,9 +1174,9 @@ export class HabEvents {
       return SESSION_GONE;
     }
     const accepted = status >= 200 && status <= 299;
-    const unconfirmed = status === 200 && sessionReason(answer) === "session_unconfirmed";
-    if (accepted && !unconfirmed)
-      this.#notePresent(row.agent_id);
+    const unconfirmed =
+      status === 200 && sessionReason(answer) === "session_unconfirmed";
+    if (accepted && !unconfirmed) this.#notePresent(row.agent_id);
     // The first doorbell a subscriber accepted for each message: a later ring (again, or
     // for newer mail) must not hide that this one went unanswered.
     if (accepted)
