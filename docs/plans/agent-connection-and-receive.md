@@ -66,14 +66,17 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 ### 変えること
 
 1. 検証の順番を入れ替え、署名の検証を台帳の照合より先にする。台帳にない組は、署名・issuer・audience・scope・期限がすべて正しいときだけ「承認待ち」に記録してから、今までどおり断る。偽の token で一覧が埋まらないようにするためである。
-2. 承認待ちは host の状態ディレクトリの SQLite に置く。1 行は `pending_id`、`issuer`、`subject`、`client_id`、`first_seen_at`、`last_seen_at`、`attempts` だけで、token・scope の中身・本文は残さない。同じ組は 1 行にまとめ、上限は 32 行、14 日来なければ消す。
+2. 承認待ちは host の状態ディレクトリの SQLite に置く。1 行は `pending_id`、`issuer`、`subject`、`client_id`、`first_seen_at`、`last_seen_at`、`attempts` だけで、token・scope の中身・本文は残さない。同じ組は 1 行にまとめ、上限は 32 行、14 日来なければ消す。上限に達したときは、接続台帳にまだ主体がない組の中から `last_seen_at` の古いものを消して入れる。台帳に主体がある組（本人の別製品や、DCR でつなぎ直した製品）の行は、主体のない組のために消さない。知らない相手の行で本人の行が締め出されないようにするためである。
 3. `hab:admin pending` で一覧を出す。主体は先頭と末尾だけを見せ、client ID はそのまま見せる（Auth0 の画面で、どの製品のアプリかを照合できる）。
 4. `hab:admin approve --pending <pending_id> --address <bot@agent.hab> [--days 365]` で、次を 1 回で行う。
    - 接続台帳に `subject`・`client_id`・新しい `connection_id`・`approved_at`・`approved_until`・`state: active` の行を足す。台帳ファイルは一時ファイルから置き換え、書く前にバックアップを取る。
    - 今の `hostAdminConnect` と同じ手順で、アドレスを登録して接続に結び付ける。
+   - アドレスがすでに別の接続に結び付いていれば、そのアドレスに今許している操作をそのまま引き継ぐ。既定の 5 操作に戻さない。DCR では claude.ai や Grok がつなぎ直すたびに新しい client ID になるので、つなぎ直しのたびに許可が広がったり狭まったりしないようにする。
+   - 同じ `subject` と `client_id` の行がすでに台帳にあれば、行を足さずにその行を使い、結び付けの手順から続ける。同じ組の行が 2 つあると `parseOAuthConfig` が設定全体を断り、入口全体が止まるためである。途中で止まった `approve` をもう一度打っても、結果は 1 回打ったときと同じになる。
    - 承認待ちの行を消す。
    台帳は要求ごとに読み直されるので、承認後に host の再起動は要らない。ただし今の検証は、承認より前に発行された token を `token_before_approval` で断る。そのためエージェントは、承認後に発行された token で通る。製品の更新（access token は最長 600 秒）を待つか、製品の画面でつなぎ直す。`approve` はそのことを次の操作として表示する。承認の開始時刻を前にずらして古い token を通すことはしない。
 5. `hab:admin reject --pending <pending_id>` で行を消す。断った組がまた来れば、また承認待ちに入る。
+6. 接続を外す操作は、`hab:admin revoke --connection <connection_id>` として別に設ける（DCR の計画、PR #263）。`approve` は承認待ちの行を、`revoke` は台帳の接続を指すので、名前も引数もぶつからない。
 
 承認は今までどおり運用者の操作であり、エージェントが自分で通ることはない。`approve` は Mac mini の安全確認の対象（本人の言葉が要る操作）のままである。
 
@@ -82,6 +85,9 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 - [ ] 署名の正しい未登録の組だけが承認待ちに入り、署名の違う token・期限切れ・scope 不足は入らない。
 - [ ] `approve` のあと、承認後に発行された token で `hab_status` が通る。承認前の token は今までどおり `token_before_approval` で断る。再起動なし。
 - [ ] 台帳の書き換えが途中で止まっても、前の台帳か新しい台帳のどちらかが残る。
+- [ ] すでに接続のあるアドレスに `approve` しても、許している操作が変わらない。
+- [ ] 同じ組に `approve` を 2 回打っても、台帳の行は 1 つで、`parseOAuthConfig` が通る。
+- [ ] 承認待ちが 32 行で埋まっていても、台帳に主体がある組は承認待ちに入る。
 - [ ] 承認待ちの記録に token と本文がない。`hab:admin status` に承認待ちの件数が出る。
 - [ ] 実機：新しい製品を 1 つ、Auth0 のログを見ずに `pending` → `approve` でつなぐ。
 
