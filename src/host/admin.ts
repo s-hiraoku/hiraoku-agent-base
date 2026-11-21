@@ -244,6 +244,14 @@ export function hostAdminReceive(
   });
 }
 
+/** Resolve names for doorbell administration without reading the delivery or event store. */
+export function hostAdminAddressDirectory(configPath: string) {
+  return withRegistry(configPath, ({ registry }) => ({
+    current: registry.overview(operator).agents,
+    previous: registry.previousNames(operator),
+  }));
+}
+
 /** ADR-032: name the product session an address stands for. */
 export function hostAdminSession(
   configPath: string,
