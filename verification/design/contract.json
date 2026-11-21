@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "6539f2619956216080b6c4890c1612836966a355a7645576146e1930642fb58e",
+      "sha256": "3685cc1b130844da6abf237c4658c30d9d6d499d141b8976a25f3e583bac60f6",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1274,7 +1274,7 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "a600e12e6f16d1cd94606095712bebacdf55ba2fc8ba4f7d3053ab87fb7f68d2",
+      "sha256": "9d72cfb70385dd4358690c382c13dc27ad1c0fc63df25c3bd9ada97d266d3dbd",
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
