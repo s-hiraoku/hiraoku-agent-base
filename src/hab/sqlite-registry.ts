@@ -1918,6 +1918,10 @@ export class SQLiteHabRegistry {
     }
     return out;
   }
+  /** The product session an agent's address stands for, for its doorbell (ADR-032). */
+  sessionOf(agentId: string): string | undefined {
+    return this.#agentSession(agentId)?.session;
+  }
   /**
    * The agent ID registered at an address, for operator-configured doorbells (ADR-029).
    * Host start only; not reachable from any tool.

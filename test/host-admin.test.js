@@ -1188,6 +1188,53 @@ test("a polling product that has not read for two intervals is poll_overdue (ADR
   );
 });
 
+test("a hook product address with no doorbell is doorbell_missing (ADR-032)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const missing = () =>
+    hostAdminStatus(f.configPath)
+      .problems.filter((p) => p.code === "doorbell_missing")
+      .map((p) => p.subject);
+  // No product has a mode yet, so nothing is judged.
+  assert.deepEqual(missing(), []);
+  hostAdminReceive(f.configPath, {
+    agent_name: "hermes",
+    mode: "hook",
+    request_id: "hook-1",
+  });
+  // Only the hook product's address; codex has no mode.
+  assert.deepEqual(missing(), ["hermes@hermes.hab"]);
+  const db = new DatabaseSync(store);
+  db.prepare(
+    "INSERT INTO hab_event_subscriptions (id,agent_id,url,secret,expires_at,created_at) VALUES (?,?,?,?,?,?)",
+  ).run(
+    "hab_static_h",
+    hermes.address.agent_id,
+    "http://127.0.0.1:47123/wake",
+    "whsec_" + Buffer.alloc(32, 1).toString("base64"),
+    8_640_000_000_000_000,
+    Date.now(),
+  );
+  db.close();
+  assert.deepEqual(missing(), []);
+});
+
 test("an old config's inbox_check still starts the host and is named once as ignored (ADR-032)", async (t) => {
   const oauth = await oauthFixture(true);
   const f = await fixture(t);

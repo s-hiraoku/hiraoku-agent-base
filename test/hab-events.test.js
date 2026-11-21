@@ -212,6 +212,7 @@ test("the agent endpoint advertises events and lists one doorbell event without 
   assert.deepEqual(event.delivery, ["webhook"]);
   assert.deepEqual(Object.keys(event.payloadSchema.properties).sort(), [
     "arrived_at",
+    "session",
     "to",
   ]);
   // Without a valid credential nothing is listed.
@@ -313,6 +314,21 @@ test("a callback that does not echo the challenge is refused with CallbackEndpoi
   }
 });
 
+test("the doorbell names the session an operator bound to the address (ADR-032)", async (t) => {
+  const f = await setup(t, { events: { quiet: false } });
+  await f.subscribe("a");
+  f.registry.bindSession(f.admin, {
+    request_id: "session-a",
+    agent_id: f.a.agent_id,
+    session: "stallone",
+  });
+  await f.send("b", f.a.address, "for the named session");
+  await f.events.dispatch();
+  const [ring] = f.h.events();
+  assert.equal(ring.parsed.data.to, f.a.address);
+  assert.equal(ring.parsed.data.session, "stallone");
+});
+
 test("new mail rings the doorbell once per message, without content, and reading is still hab_inbox", async (t) => {
   // quiet: false rings every message (ADR-030 holds newer mail by default).
   const f = await setup(t, { events: { quiet: false } });
@@ -327,8 +343,14 @@ test("new mail rings the doorbell once per message, without content, and reading
   assert.equal(delivered.length, 2);
   for (const d of delivered) {
     assert.equal(d.parsed.name, HAB_EVENT_NAME);
-    assert.deepEqual(Object.keys(d.parsed.data).sort(), ["arrived_at", "to"]);
+    assert.deepEqual(Object.keys(d.parsed.data).sort(), [
+      "arrived_at",
+      "session",
+      "to",
+    ]);
     assert.equal(d.parsed.data.to, f.a.address);
+    // A provisional session is named after the address (ADR-032).
+    assert.equal(d.parsed.data.session, f.a.address);
     assert.equal(d.parsed.cursor, null);
     assert.equal(d.headers["webhook-id"], d.parsed.eventId);
     assert.equal(d.headers["X-MCP-Subscription-Id"], result.id);
@@ -1081,7 +1103,11 @@ test("an operator doorbell rings with a Bearer token for new mail only, and neve
   assert.equal(ring.url, URL_G);
   assert.equal(ring.headers.Authorization, `Bearer ${BEARER}`);
   assert.equal(ring.headers["webhook-signature"], undefined);
-  assert.deepEqual(Object.keys(ring.parsed.data).sort(), ["arrived_at", "to"]);
+  assert.deepEqual(Object.keys(ring.parsed.data).sort(), [
+    "arrived_at",
+    "session",
+    "to",
+  ]);
   assert.equal(ring.parsed.data.to, f.b.address);
   assert.doesNotMatch(ring.body, /new mail/);
   // No verification challenge is sent for an operator doorbell.
