@@ -38,16 +38,16 @@ OpenAI MCP Events（webhook配送）に答え、「受信箱に新着がある�
 }
 ```
 
-| 項目 | 既定 | 範囲 | 意味 |
-| --- | --- | --- | --- |
-| `default_ttl_ms` | 3600000（1時間） | 60000–86400000 | `ttlMs`を省いた購読の寿命 |
-| `max_ttl_ms` | 86400000（24時間） | 60000–86400000 | 購読の寿命の上限 |
-| `max_per_agent` | 8 | 1–64 | 1受信者あたりの購読数 |
-| `poll_ms` | 3000 | 500–60000 | 新着を確かめる間隔 |
-| `outage_after_ms` | 60000 | 1000–86400000 | これより長く時計が止まったら、hostの停止かスリープとみなして寿命に足す。poll3回分より小さい値はpoll3回分として扱う |
-| `unanswered_after_ms` | 300000（5分） | 60000–86400000 | 呼び鈴が2xxで受け取られてからこれだけたっても未読なら、受け取られたのに読まれていないとみなす（[ADR-027](../hab-decisions.md)） |
-| `rering` | true | true/false | 読まれていない呼び鈴を1回だけ鳴らし直す |
-| `quiet` | true | true/false | 受け取られた呼び鈴のメールが未読の間（最長`unanswered_after_ms`）、新着で鳴らさない（[ADR-030](../hab-decisions.md)） |
+| 項目                  | 既定               | 範囲           | 意味                                                                                                                            |
+| --------------------- | ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `default_ttl_ms`      | 3600000（1時間）   | 60000–86400000 | `ttlMs`を省いた購読の寿命                                                                                                       |
+| `max_ttl_ms`          | 86400000（24時間） | 60000–86400000 | 購読の寿命の上限                                                                                                                |
+| `max_per_agent`       | 8                  | 1–64           | 1受信者あたりの購読数                                                                                                           |
+| `poll_ms`             | 3000               | 500–60000      | 新着を確かめる間隔                                                                                                              |
+| `outage_after_ms`     | 60000              | 1000–86400000  | これより長く時計が止まったら、hostの停止かスリープとみなして寿命に足す。poll3回分より小さい値はpoll3回分として扱う              |
+| `unanswered_after_ms` | 300000（5分）      | 60000–86400000 | 呼び鈴が2xxで受け取られてからこれだけたっても未読なら、受け取られたのに読まれていないとみなす（[ADR-027](../hab-decisions.md)） |
+| `rering`              | true               | true/false     | 読まれていない呼び鈴を1回だけ鳴らし直す                                                                                         |
+| `quiet`               | true               | true/false     | 受け取られた呼び鈴のメールが未読の間（最長`unanswered_after_ms`）、新着で鳴らさない（[ADR-030](../hab-decisions.md)）           |
 
 購読はホストの状態ディレクトリの`events.sqlite`（所有者だけが読める0600）に置きます。
 webhookの鍵もここに入るので、バックアップの扱いはOAuth台帳と同じにします。
@@ -104,6 +104,7 @@ HABは購読を自分で作り直しません。購読が更新されずに切�
   ```
 
   `hab_inbox`では、呼び鈴が無視されていたとき（`doorbell_unanswered: true`）だけ付きます。本文・送信元・メッセージIDは入りません。
+
 - エージェント向けの`instructions`は「`hab.message.received`で起動されたらすぐ`hab_inbox`を呼ぶ」「`inbox_reminder`があれば説明に従う」と案内します。
   Dotsは、利用者が次に話しかけてHABのツールを使ったときに、タスクが動いていなかったことを利用者に伝えられます。
   タスクが止まっている間はDots自身も動いていないので、それより早くは気づけません。
@@ -126,17 +127,17 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
 
 拒否の理由（JSON-RPC errorの`data.reason`）:
 
-| reason | code | 意味 |
-| --- | --- | --- |
-| `unknown_event` | -32602 | `hab.message.received`以外の名前 |
-| `invalid_arguments` / `invalid_params` | -32602 | 引数や形が違う |
-| `unsupported_delivery` | -32602 | webhook以外の配送方法 |
-| `invalid_secret` | -32602 | `whsec_`で始まる24–64バイトの鍵でない |
-| `invalid_callback_url` | -32602 | HTTPSでない、認証情報やフラグメント入り、`localhost`などの内部名や非公開IP、2048文字超 |
-| `too_many_subscriptions` | -32602 | `max_per_agent`を超えた |
-| `callback_not_public` | -32015 | callbackが非公開アドレスに解決される |
-| `challenge_failed` / `timeout` | -32015 | 確認のchallengeが返らない |
-| `forbidden` | -32600 | その接続に`poll`の権限がない |
+| reason                                 | code   | 意味                                                                                   |
+| -------------------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| `unknown_event`                        | -32602 | `hab.message.received`以外の名前                                                       |
+| `invalid_arguments` / `invalid_params` | -32602 | 引数や形が違う                                                                         |
+| `unsupported_delivery`                 | -32602 | webhook以外の配送方法                                                                  |
+| `invalid_secret`                       | -32602 | `whsec_`で始まる24–64バイトの鍵でない                                                  |
+| `invalid_callback_url`                 | -32602 | HTTPSでない、認証情報やフラグメント入り、`localhost`などの内部名や非公開IP、2048文字超 |
+| `too_many_subscriptions`               | -32602 | `max_per_agent`を超えた                                                                |
+| `callback_not_public`                  | -32015 | callbackが非公開アドレスに解決される                                                   |
+| `challenge_failed` / `timeout`         | -32015 | 確認のchallengeが返らない                                                              |
+| `forbidden`                            | -32600 | その接続に`poll`の権限がない                                                           |
 
 ## 運用者が登録する呼び鈴（ADR-029）
 
@@ -180,6 +181,8 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
   `hab:admin status`の`problems`に`recipient_absent`、`inboxes[].recipient_absent_since`に時刻が出ます。
 - 応答なし、5xx、そのほかの 4xx、理由のない`410`は数えません。理由のない`410`は今までどおり購読の終わりです。
 - 製品がそのアドレスの呼び鈴を 2xx で受け取るか、新しく購読すると（更新ではなく）、元に戻ります。
+  運用者が登録する呼び鈴（ADR-029）を新しい URL で登録し直したときも元に戻ります。同じ呼び鈴のままの再起動では戻りません。
+- 改名後の猶予期間中の旧アドレスも同じ相手として扱い、同じく断ります。
 - 未読のメールはそのまま残り、7 日で期限切れになります（今は消さず、不達の知らせも送りません）。
 
 ## 製品側の定期確認と遅れの表示（ADR-032）

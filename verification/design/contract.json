@@ -736,7 +736,7 @@
     },
     {
       "path": "docs/connections/mcp-events.md",
-      "sha256": "696b055864b054e6b8886f48b0dffb4b44f67d0e175860823b38abb380aeb7d5",
+      "sha256": "af18f96bca4059dbd7db31a55ee5f00be97ed06c7549a979175a087c0b69eb9d",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified. ADR-024 (2026-11-17): outage_after_ms credit for host downtime/sleep and the operator check for lapsed doorbells with the Dots re-subscribe step. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19 (ADR-029): operator-registered doorbells config, secret file and Bearer/whsec headers, no lifetime or challenge, admin doorbell_operator. 2026-11-19 ADR-030: quiet 設定と、未読の間は新着で鳴らさない節を追記。",

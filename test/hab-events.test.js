@@ -60,7 +60,7 @@ function temp(t) {
 }
 
 async function setup(t, options = {}) {
-  const f = await fixture(t);
+  const f = await fixture(t, options.registry);
   const a = f.enroll("a"),
     b = f.enroll("b");
   let self;
@@ -1448,4 +1448,61 @@ test("an agent endpoint without events (loopback) still refuses an absent recipi
     arguments: { to: f.a.address, text: "hello again" },
   });
   assert.notEqual(sent.result.isError, true, JSON.stringify(sent));
+});
+
+test("a previous address in its rename grace period is refused like the current one (ADR-032)", async (t) => {
+  const f = await setup(t, {
+    status: () => GONE,
+    registry: { agent_rename: true },
+  });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two", "three"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  const current = f.registry.renameAgent(f.admin, {
+    request_id: "rename-a",
+    agent_id: f.a.agent_id,
+    expected_epoch: f.a.epoch,
+    expected_address: f.a.address,
+    bot_name: "renamed",
+  });
+  for (const to of [f.a.address, current.address]) {
+    const refused = await f.rpc("b", "tools/call", {
+      name: "hab_send",
+      arguments: { to, text: "still there?" },
+    });
+    assert.equal(
+      refused.result.structuredContent?.error,
+      "recipient_absent",
+      to,
+    );
+  }
+});
+
+test("a newly registered static doorbell clears absence; the same one on restart keeps it (ADR-032)", async (t) => {
+  const f = await setup(t, { status: () => GONE });
+  const doorbell = { agent_id: f.a.agent_id, url: URL_A, secret: SECRET };
+  f.events.configureStatic([doorbell]);
+  for (const text of ["one", "two", "three"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+  f.events.configureStatic([doorbell]);
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    true,
+    "an unchanged doorbell is not a sign of recovery",
+  );
+  f.events.configureStatic([
+    { ...doorbell, url: "http://127.0.0.1:8795/wake" },
+  ]);
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    false,
+    "a replacement doorbell brings it back",
+  );
 });

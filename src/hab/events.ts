@@ -823,6 +823,9 @@ export class HabEvents {
           .run(secret, id);
         continue;
       }
+      // ADR-032: a doorbell the operator newly registers means the product is back for
+      // this address. An unchanged one on restart took the branch above and keeps absence.
+      this.#notePresent(doorbell.agent_id);
       let cursor: Arrival | null = null;
       for (;;) {
         const page = this.#source.arrivals(doorbell.agent_id, cursor, 50);
