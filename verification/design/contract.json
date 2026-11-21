@@ -357,10 +357,10 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "35836d4589edc6bc91ce6a8d373ac8e0fae0d61e789bccaed499535cf73aa670",
+      "sha256": "3368a4e87b3a70933ede1cee8b21da894c2ad979a55f56d1a1786c23e711b307",
       "role": "context",
       "review": "reviewed",
-      "summary": "Documentation index by purpose: design, connection/operations, topic folders and history. No requirement.",
+      "summary": "Documentation index by purpose, including the agent connection and receive implementation plan.",
       "read_scope": "full"
     },
     {
@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "272c283434860f410f85f695ce71eac7c9f65d6daf6f0fc8732e62b11c7495af",
+      "sha256": "3685cc1b130844da6abf237c4658c30d9d6d499d141b8976a25f3e583bac60f6",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1271,6 +1271,13 @@
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
+    },
+    {
+      "path": "docs/plans/agent-connection-and-receive.md",
+      "sha256": "9d72cfb70385dd4358690c382c13dc27ad1c0fc63df25c3bd9ada97d266d3dbd",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
     },
     {
       "path": "docs/plans/receive-show-act-plan.md",
