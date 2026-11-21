@@ -1,6 +1,6 @@
 # Configured host and operator CLI
 
-The shipped host (`npm run hab:host -- --config …`) refuses a bad start with a fixed reason line, and the operator CLI (`npm run hab:admin -- --config … status|doctor|pending|approve|reject|connect|disconnect|rename|receive|session`; `rename` is driven in [resolve-address.md](./resolve-address.md)) registers an address, binds a mapped connection, grants operations and revokes it again — all against the same private config while the host runs. This is the path a real Codex ⇄ Hermes trial uses, unlike the `stack.mjs` scaffolding.
+The shipped host (`npm run hab:host -- --config …`) refuses a bad start with a fixed reason line, and the operator CLI (`npm run hab:admin -- --config … status|doctor|pending|approve|reject|doorbell add/remove/list|connect|disconnect|rename|receive|session`; `rename` is driven in [resolve-address.md](./resolve-address.md)) registers an address, binds a mapped connection, grants operations and revokes it again — all against the same private config while the host runs. This is the path a real Codex ⇄ Hermes trial uses, unlike the `stack.mjs` scaffolding.
 
 ## Sub-features
 

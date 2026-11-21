@@ -423,6 +423,12 @@ interface Row {
 export interface HabEventOptions {
   /** Absolute path of the owner-only subscription store. */
   store: string;
+  /**
+   * Asked at the start of every pass for the operator doorbells that should ring now.
+   * A set different from the last one applied is applied; one that fails to apply is
+   * tried again next pass. Lets the host pick up `hab:admin doorbell` without a restart.
+   */
+  doorbells?: () => readonly StaticDoorbell[];
   /** Lifetime granted when the client asks for none (default 1 hour). */
   default_ttl_ms?: number;
   /** Longest lifetime granted; a revoked connection stops at the latest then (default 24 h). */
@@ -502,10 +508,17 @@ export function doorbellSecret(secret: unknown): string {
   return secret;
 }
 /** One doorbell the operator registered for an address (ADR-029). */
+export interface RegisteredDoorbell {
+  agent_id: string;
+  url: string;
+  secret_file: string;
+  added_at: number;
+}
 export interface StaticDoorbell {
   agent_id: string;
   url: string;
-  secret: string;
+  /** Undefined while an existing managed registration cannot resolve its secret file. */
+  secret: string | undefined;
 }
 
 export class HabEvents {
@@ -523,6 +536,8 @@ export class HabEvents {
   readonly #unansweredAfter: number;
   readonly #rering: boolean;
   readonly #quiet: boolean;
+  readonly #doorbells: HabEventOptions["doorbells"];
+  #doorbellsApplied: string | undefined;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -546,6 +561,7 @@ export class HabEvents {
     this.#unansweredAfter = options.unanswered_after_ms ?? 300_000;
     this.#rering = options.rering ?? true;
     this.#quiet = options.quiet ?? true;
+    this.#doorbells = options.doorbells;
     ensurePrivateFile(options.store, "unsafe_event_store");
     this.#db = new DatabaseSync(options.store, { timeout: 5000 });
     this.#db.exec(`PRAGMA journal_mode=WAL;
@@ -583,8 +599,13 @@ export class HabEvents {
         agent_id TEXT PRIMARY KEY, read_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_gone (
         agent_id TEXT PRIMARY KEY, count INTEGER NOT NULL, last_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_doorbells (
+        agent_id TEXT PRIMARY KEY, url TEXT NOT NULL, secret_file TEXT NOT NULL,
+        added_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_absent (
-        agent_id TEXT PRIMARY KEY, since INTEGER NOT NULL);`);
+        agent_id TEXT PRIMARY KEY, since INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_operator_pauses (
+        subscription_id TEXT PRIMARY KEY);`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -830,11 +851,20 @@ export class HabEvents {
    * notifier on this machine (`operatorCallbackUrl`).
    */
   configureStatic(doorbells: readonly StaticDoorbell[]) {
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      this.#applyStatic(doorbells);
+      this.#db.exec("COMMIT");
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+  #applyStatic(doorbells: readonly StaticDoorbell[]) {
     const keep = new Set<string>();
     const now = this.#now();
     for (const doorbell of doorbells) {
       const url = operatorCallbackUrl(doorbell.url).href;
-      const secret = doorbellSecret(doorbell.secret);
       const id =
         STATIC_PREFIX +
         createHash("sha256")
@@ -842,6 +872,22 @@ export class HabEvents {
           .digest("hex")
           .slice(0, 32);
       keep.add(id);
+      if (doorbell.secret === undefined) {
+        // Keep the callback identity and cursor while its file is unavailable.
+        this.#db
+          .prepare(
+            `INSERT OR IGNORE INTO hab_event_operator_pauses (subscription_id)
+             SELECT id FROM hab_event_subscriptions WHERE id=?`,
+          )
+          .run(id);
+        continue;
+      }
+      const secret = doorbellSecret(doorbell.secret);
+      this.#db
+        .prepare(
+          "DELETE FROM hab_event_operator_pauses WHERE subscription_id=?",
+        )
+        .run(id);
       if (this.#has(id)) {
         this.#db
           .prepare("UPDATE hab_event_subscriptions SET secret=? WHERE id=?")
@@ -883,16 +929,38 @@ export class HabEvents {
           .prepare("DELETE FROM hab_event_subscriptions WHERE id=?")
           .run(id);
         this.#db
+          .prepare(
+            "DELETE FROM hab_event_operator_pauses WHERE subscription_id=?",
+          )
+          .run(id);
+        this.#db
           .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
           .run(id);
+        this.#db
+          .prepare("DELETE FROM hab_event_quiet WHERE subscription_id=?")
+          .run(id);
+        this.#db
+          .prepare("DELETE FROM hab_event_rerings WHERE subscription_id=?")
+          .run(id);
       }
+  }
+  /** Operator doorbells registered with `hab:admin doorbell add` (ADR-029, plan 3). */
+  registeredDoorbells() {
+    return (
+      this.#db
+        .prepare(
+          "SELECT agent_id,url,secret_file,added_at FROM hab_event_doorbells ORDER BY agent_id",
+        )
+        .all() as unknown as RegisteredDoorbell[]
+    ).map((row) => ({ ...row }));
   }
   /** Active subscriptions, without secrets (for operators and tests). */
   subscriptions() {
     return (
       this.#db
         .prepare(
-          "SELECT id,agent_id,url,expires_at,cursor,failures FROM hab_event_subscriptions ORDER BY id",
+          `SELECT id,agent_id,url,expires_at,cursor,failures FROM hab_event_subscriptions
+           WHERE id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses) ORDER BY id`,
         )
         .all() as unknown as Omit<Row, "secret" | "next_at">[]
     ).map((row) => ({ ...row }));
@@ -907,12 +975,28 @@ export class HabEvents {
    * accepted ring restarts their interval.
    */
   async dispatch() {
+    try {
+      const doorbells = this.#doorbells?.();
+      if (doorbells) {
+        const key = createHash("sha256")
+          .update(JSON.stringify(doorbells))
+          .digest("hex");
+        // Remembered only once applied, so a failure is retried on the next pass.
+        if (key !== this.#doorbellsApplied) {
+          this.configureStatic(doorbells);
+          this.#doorbellsApplied = key;
+        }
+      }
+    } catch {
+      // A set that cannot be applied now keeps the previous one; the next pass retries.
+    }
     this.#settle();
     if (this.#rering) await this.#ringAgain();
     const now = this.#now();
     const rows = this.#db
       .prepare(
-        "SELECT * FROM hab_event_subscriptions WHERE next_at<=? ORDER BY id",
+        `SELECT * FROM hab_event_subscriptions WHERE next_at<=?
+         AND id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses) ORDER BY id`,
       )
       .all(now) as unknown as Row[];
     for (const row of rows) await this.#dispatchOne(row);
@@ -971,7 +1055,8 @@ export class HabEvents {
       // earlier await must take effect before the next delivery.
       const current = this.#db
         .prepare(
-          "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
+          `SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?
+           AND id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses)`,
         )
         .get(row.id, this.#now()) as unknown as Row | undefined;
       if (!current) return;
@@ -1142,9 +1227,9 @@ export class HabEvents {
       return SESSION_GONE;
     }
     const accepted = status >= 200 && status <= 299;
-    const unconfirmed = status === 200 && sessionReason(answer) === "session_unconfirmed";
-    if (accepted && !unconfirmed)
-      this.#notePresent(row.agent_id);
+    const unconfirmed =
+      status === 200 && sessionReason(answer) === "session_unconfirmed";
+    if (accepted && !unconfirmed) this.#notePresent(row.agent_id);
     // The first doorbell a subscriber accepted for each message: a later ring (again, or
     // for newer mail) must not hide that this one went unanswered.
     if (accepted)
@@ -1172,7 +1257,9 @@ export class HabEvents {
   async #ringAgain() {
     const due = this.#db
       .prepare(
-        "SELECT * FROM hab_event_rerings WHERE due_at<=? ORDER BY due_at LIMIT 10",
+        `SELECT * FROM hab_event_rerings WHERE due_at<=?
+         AND subscription_id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses)
+         ORDER BY due_at LIMIT 10`,
       )
       .all(this.#now()) as unknown as {
       subscription_id: string;
@@ -1430,7 +1517,9 @@ export function readDoorbells(
     if (tables.has("hab_event_subscriptions"))
       for (const row of db
         .prepare(
-          "SELECT id,agent_id,expires_at FROM hab_event_subscriptions ORDER BY expires_at",
+          `SELECT id,agent_id,expires_at FROM hab_event_subscriptions
+           ${tables.has("hab_event_operator_pauses") ? "WHERE id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses)" : ""}
+           ORDER BY expires_at`,
         )
         .all() as unknown as {
         id: string;

@@ -1,5 +1,10 @@
 /** Explicit local composition. Import performs no IO, authentication or scheduling. */
-import { HabEvents } from "../hab/events.ts";
+import {
+  HabEvents,
+  doorbellSecret,
+  operatorCallbackUrl,
+} from "../hab/events.ts";
+import { readDoorbellSecretFile } from "./doorbell-secret.ts";
 import type { HabEventOptions, HabEventSource } from "../hab/events.ts";
 import type { Server } from "node:http";
 import { createServer } from "node:http";
@@ -176,6 +181,8 @@ export async function startHostServer(options: HostServerOptions) {
     serviceClose: (() => Promise<void>) | undefined,
     a2a: Awaited<ReturnType<typeof startHostA2a>> | undefined,
     events: HabEvents | undefined,
+    // Config doorbell addresses that a registered doorbell replaced at start (plan 3).
+    doorbellsReplaced: string[] = [],
     stopping = false;
   // Only host code holds these. The first is the host A2A identity's verified context;
   // the second answers as administrator only while startup provisions that identity.
@@ -371,6 +378,7 @@ export async function startHostServer(options: HostServerOptions) {
         typeof source.addressOf !== "function"
       )
         throw Error("invalid_host_ingress");
+      const eventSource = source as HabEventSource;
       // ADR-032 retired the ADR-031 inbox check; an old config's `inbox_check` is ignored.
       const {
         doorbells = [],
@@ -380,25 +388,79 @@ export async function startHostServer(options: HostServerOptions) {
       void _retired;
       const agentIdOf = (service as { agentIdOf?: (a: string) => unknown })
         .agentIdOf;
-      events = new HabEvents(source as HabEventSource, {
-        ...eventOptions,
-        store: privateFile("events.sqlite"),
-      });
-      const resolved = doorbells.map((doorbell) => {
+      const idOf = (address: string) => {
         const agentId =
           typeof agentIdOf === "function"
-            ? agentIdOf.call(service, doorbell.address)
+            ? agentIdOf.call(service, address)
             : undefined;
-        if (typeof agentId !== "string")
-          throw Error("unknown_doorbell_address");
+        return typeof agentId === "string" ? agentId : undefined;
+      };
+      // Config doorbells must name a live address, or the host does not start (ADR-029).
+      const fromConfig = doorbells.map((doorbell) => {
+        const agentId = idOf(doorbell.address);
+        if (!agentId) throw Error("unknown_doorbell_address");
         return {
+          address: doorbell.address,
           agent_id: agentId,
           url: doorbell.url,
           secret: doorbell.secret,
         };
       });
+      // Plan 3: doorbells added with `hab:admin doorbell` live in the events store and
+      // win over a config doorbell for the same agent. An unavailable secret pauses
+      // delivery for that registration, without switching to its configured fallback.
+      // Every config doorbell is checked at start, also one a registered doorbell
+      // replaces, so a bad config never starts and `doorbell remove` never falls back to it.
       try {
-        events.configureStatic(resolved);
+        for (const doorbell of fromConfig) {
+          operatorCallbackUrl(doorbell.url);
+          doorbellSecret(doorbell.secret);
+        }
+      } catch {
+        throw Error("invalid_doorbell");
+      }
+      // Resolved afresh every pass: a secret file that was missing for a while is
+      // picked up as soon as it is back.
+      const current = () => {
+        const registered = events!.registeredDoorbells();
+        const replaced = new Set(registered.map((row) => row.agent_id));
+        return [
+          ...fromConfig.filter((d) => !replaced.has(d.agent_id)),
+          ...registered.flatMap(({ agent_id, url: rawUrl, secret_file }) => {
+            if (!eventSource.addressOf(agent_id)) return [];
+            let url: string;
+            try {
+              url = operatorCallbackUrl(rawUrl).href;
+            } catch {
+              return [];
+            }
+            let secret: string | undefined;
+            try {
+              secret = doorbellSecret(readDoorbellSecretFile(secret_file));
+            } catch {
+              // The valid registration remains authoritative while its file is unavailable.
+            }
+            return [{ agent_id, url, secret }];
+          }),
+        ];
+      };
+      events = new HabEvents(eventSource, {
+        ...eventOptions,
+        store: privateFile("events.sqlite"),
+        doorbells: current,
+      });
+      const registeredAtStart = new Set(
+        events.registeredDoorbells().map((row) => row.agent_id),
+      );
+      doorbellsReplaced = [
+        ...new Set(
+          fromConfig
+            .filter((d) => registeredAtStart.has(d.agent_id))
+            .map((d) => d.address),
+        ),
+      ];
+      try {
+        events.configureStatic(current());
       } catch {
         throw Error("invalid_doorbell");
       }
@@ -502,6 +564,9 @@ export async function startHostServer(options: HostServerOptions) {
       delivery_url: policy(address.port, "/delivery").resource_url,
       close,
       ...(a2a ? { a2a_url: a2a.url } : {}),
+      ...(doorbellsReplaced.length
+        ? { doorbells_replaced: doorbellsReplaced }
+        : {}),
       ...(ingressGateways
         ? {
             ingress_url: ingressGateways[0].policy.resource_url,
