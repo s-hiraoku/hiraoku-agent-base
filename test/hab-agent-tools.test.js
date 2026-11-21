@@ -8,6 +8,7 @@ import {
 import {
   MAX_DELIVERY_TTL_MS,
   isReplayBoundMessageId,
+  makeReplayBoundMessageId,
 } from "../src/messaging/contract.ts";
 import { explainToolError } from "../src/messaging/tool-errors.ts";
 import { fixture } from "./hab-registry-fixtures.js";
@@ -234,6 +235,99 @@ test("a question sent to one's own address is not its own reply", async (t) => {
     after.replies.map((r) => r.message_id),
     [reply.message_id],
   );
+});
+
+test("prepared send and reply retries deliver one message per operation", async (t) => {
+  const f = await setup(t);
+  const now = new Date().toISOString();
+  const send = {
+    to: f.b.address,
+    expected_recipient_id: f.b.agent_id,
+    request_id: makeReplayBoundMessageId(now, "a".repeat(32)),
+    text: "Can you confirm the setup?",
+  };
+  const sent = await f.ok("a", "hab_send", send);
+  const retried = await f.ok("a", "hab_send", send);
+  assert.equal(sent.message_id, send.request_id);
+  assert.equal(
+    sent.expires_at,
+    new Date(Date.parse(now) + MAX_DELIVERY_TTL_MS).toISOString(),
+  );
+  assert.equal(retried.message_id, sent.message_id);
+  assert.equal(retried.thread_id, sent.thread_id);
+  assert.equal(retried.accepted_at, sent.accepted_at);
+  assert.equal(
+    (await f.fails("a", "hab_send", { ...send, text: "Changed after sending" }))
+      .error,
+    "idempotency_conflict",
+  );
+  const received = (await f.ok("b", "hab_inbox")).messages;
+  assert.deepEqual(
+    received.map(({ message_id, sent_at, text }) => [
+      message_id,
+      sent_at,
+      text,
+    ]),
+    [[sent.message_id, now, send.text]],
+  );
+
+  const reply = {
+    message_id: sent.message_id,
+    request_id: makeReplayBoundMessageId(
+      new Date().toISOString(),
+      "b".repeat(32),
+    ),
+    text: "Setup confirmed.",
+  };
+  const acknowledged = await f.ok("b", "hab_reply", reply);
+  const retriedReply = await f.ok("b", "hab_reply", reply);
+  assert.equal(acknowledged.message_id, reply.request_id);
+  assert.equal(retriedReply.message_id, acknowledged.message_id);
+  assert.equal(retriedReply.accepted_at, acknowledged.accepted_at);
+  assert.equal(
+    (
+      await f.fails("b", "hab_reply", {
+        ...reply,
+        text: "Changed after replying",
+      })
+    ).error,
+    "idempotency_conflict",
+  );
+  const replies = (await f.ok("a", "hab_inbox")).messages;
+  assert.deepEqual(
+    replies.map(({ message_id, in_reply_to, thread_id, text }) => [
+      message_id,
+      in_reply_to,
+      thread_id,
+      text,
+    ]),
+    [[reply.request_id, sent.message_id, sent.thread_id, reply.text]],
+  );
+});
+
+test("prepared sends refuse a different resolved recipient and invalid request IDs", async (t) => {
+  const f = await setup(t);
+  const send = { to: f.b.address, text: "Setup test" };
+  const wrong = await f.fails("a", "hab_send", {
+    ...send,
+    expected_recipient_id: f.a.agent_id,
+    request_id: makeReplayBoundMessageId(
+      new Date().toISOString(),
+      "a".repeat(32),
+    ),
+  });
+  assert.equal(wrong.error, "invalid_reference");
+  assert.equal(wrong.field, "expected_recipient_id");
+  for (const request_id of [
+    "not-a-replay-bound-id",
+    `rm1.${Date.UTC(10_000, 0, 1) - MAX_DELIVERY_TTL_MS}.${"a".repeat(32)}`,
+    `rm1.9007199254740991.${"a".repeat(32)}`,
+  ]) {
+    const malformed = await f.fails("a", "hab_send", { ...send, request_id });
+    assert.equal(malformed.error, "invalid_request");
+    assert.equal(malformed.field, "request_id");
+  }
+  assert.deepEqual((await f.ok("b", "hab_inbox")).messages, []);
 });
 
 test("an explicit thread and kind are kept, and read messages can be read again", async (t) => {
