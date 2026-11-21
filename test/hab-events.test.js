@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { createServer as createHttpServer } from "node:http";
 import { HabHttpGateway } from "../src/hab/http.ts";
 import {
   CALLBACK_ENDPOINT_ERROR,
@@ -11,11 +12,14 @@ import {
   HabEvents,
   callbackUrl,
   createHttpsPost,
+  createLoopbackPost,
+  createWebhookPost,
   isPublicAddress,
   readDoorbells,
   signWebhook,
 } from "../src/hab/events.ts";
 import { fixture } from "./hab-registry-fixtures.js";
+import { startWakeListener } from "../src/agent-notify/wake-listener.ts";
 import { policy, request, decode } from "./mcp-http-fixtures.js";
 
 // ADR-022: a cloud agent (ChatGPT/Dots) subscribes over its MCP connection and the host
@@ -1134,6 +1138,92 @@ test("operator doorbells refuse private URLs and weak secrets", async (t) => {
       f.events.configureStatic([{ agent_id: f.b.agent_id, url, secret }]),
     );
   assert.deepEqual(f.events.subscriptions(), []);
+});
+
+test("an operator doorbell may ring a loopback notifier; agent subscriptions may not (ADR-032)", async (t) => {
+  const f = await setup(t);
+  const local = "http://127.0.0.1:8795/wake";
+  f.events.configureStatic([
+    { agent_id: f.b.agent_id, url: local, secret: SECRET },
+  ]);
+  await f.send("a", f.b.address, "hello");
+  await f.events.dispatch();
+  const ring = f.h.events().find((r) => r.url === local);
+  assert.ok(ring, "the loopback doorbell rang");
+  const ts = Number(ring.headers["webhook-timestamp"]);
+  assert.equal(
+    ring.headers["webhook-signature"],
+    signWebhook(SECRET, ring.headers["webhook-id"], ts, ring.body),
+  );
+  for (const url of [
+    "http://127.0.0.1/wake",
+    "http://localhost:8795/wake",
+    "http://192.168.1.2:8795/wake",
+    "http://user:pw@127.0.0.1:8795/wake",
+    "http://127.0.0.1:8795/wake#x",
+  ])
+    assert.throws(() =>
+      f.events.configureStatic([
+        { agent_id: f.b.agent_id, url, secret: SECRET },
+      ]),
+    );
+  assert.throws(() => callbackUrl(local), /invalid_callback_url/);
+});
+
+test("new mail wakes a loopback notifier over real HTTP within one dispatch (ADR-032)", async (t) => {
+  let wakes = 0;
+  const listener = await startWakeListener({
+    port: 0,
+    secret: SECRET,
+    onWake: () => wakes++,
+  });
+  t.after(() => listener.close());
+  const f = await setup(t, { events: { post: createWebhookPost() } });
+  f.events.configureStatic([
+    {
+      agent_id: f.b.agent_id,
+      url: `http://127.0.0.1:${listener.port}/wake`,
+      secret: SECRET,
+    },
+  ]);
+  const started = Date.now();
+  await f.send("a", f.b.address, "hello");
+  await f.events.dispatch();
+  assert.equal(wakes, 1);
+  assert.ok(Date.now() - started < 2000, "woken within 2 seconds");
+});
+
+test("the webhook post sends loopback rings over plain HTTP and nothing else", async (t) => {
+  const seen = [];
+  const server = createHttpServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      seen.push({ path: req.url, body, sig: req.headers["webhook-signature"] });
+      res.writeHead(200).end("{}");
+    });
+  });
+  await new Promise((done) => server.listen(0, "127.0.0.1", done));
+  t.after(() => server.close());
+  const { port } = server.address();
+  const https = [];
+  const post = createWebhookPost(async (url) => {
+    https.push(url);
+    return { status: 200, body: "" };
+  });
+  const answer = await post(`http://127.0.0.1:${port}/wake`, '{"to":"x"}', {
+    "webhook-signature": "v1,abc",
+  });
+  assert.equal(answer.status, 200);
+  assert.deepEqual(seen, [
+    { path: "/wake", body: '{"to":"x"}', sig: "v1,abc" },
+  ]);
+  await post("https://hooks.example.com/x", "{}", {});
+  assert.deepEqual(https, ["https://hooks.example.com/x"]);
+  await assert.rejects(
+    createLoopbackPost()("http://192.168.1.2:80/x", "{}", {}),
+    /callback_not_public|callback/,
+  );
 });
 
 test("a ring again left over from before rering: false does not hold new mail", async (t) => {
