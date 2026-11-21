@@ -751,6 +751,48 @@ export function hostAdminDisconnect(configPath: string, addressInput: string) {
   });
 }
 
+/**
+ * Revokes the one Registry binding of `connectionId`, leaving the group's other
+ * connections alone (`disconnect` revokes them all). Safe to rerun. When it was the
+ * group's last live binding, the Registry stops the group, which the result reports.
+ */
+export function hostAdminRevokeBinding(
+  configPath: string,
+  connectionId: string,
+) {
+  return withRegistry(configPath, ({ registry, credentials }) => {
+    const matches = new Map(
+      credentials()
+        .filter((record) => record.principal.connection_id === connectionId)
+        .map((record) => [JSON.stringify(record.principal), record.principal]),
+    );
+    if (matches.size === 0) throw new HostAdminError("credential_not_found");
+    if (matches.size > 1) throw new HostAdminError("credential_ambiguous");
+    const [principal] = matches.values();
+    const reservation = registry.findPrincipal(operator, principal);
+    if (!reservation) return { binding: "none" as const };
+    if (reservation.state === "active")
+      registry.revokeGroupBinding(operator, {
+        request_id: request(),
+        binding_id: reservation.binding_id,
+        expected_epoch: registry.inspectGroup(operator, reservation.group_id)
+          .epoch,
+      });
+    const group = registry
+      .overview(operator)
+      .groups.find((g) => g.group_id === reservation.group_id)!;
+    return {
+      binding:
+        reservation.state === "active"
+          ? ("revoked" as const)
+          : ("already_revoked" as const),
+      group_id: group.group_id,
+      group_state: group.state,
+      remaining_active_bindings: group.active_binding_ids.length,
+    };
+  });
+}
+
 export function hostAdminErrorCode(error: unknown): string {
   if (error instanceof HostAdminError || error instanceof RegistryError)
     return error.code;

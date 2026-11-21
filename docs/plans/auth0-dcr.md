@@ -67,7 +67,7 @@ DCR を閉じても、すでに登録されたアプリのログインと refres
 - [常用 MCP 接続](../operations/persistent-mcp-auth.md)は、止めるときに host 側の `revoked` と Auth0 側の取り消しの両方を求めている。Auth0 でアプリを消すだけでは足りない。
 - `hab:admin disconnect` はグループの全接続を外すので、今つながっている手作りの接続まで止めてしまう。台帳を手で書き換えるのは、承認待ちでなくしたい手作業そのものであり、書き損じると台帳全体が読めなくなる（同じ組の重複や 100 行超えで `parseOAuthConfig` が失敗する）。
 
-**足すもの：`hab:admin revoke --connection <connection_id>`。** 1 つの接続だけを止める。
+**足すもの：`hab:admin revoke --connection <connection_id>`。** 1 つの接続だけを止める。2026-11-21 に実装した（`src/host/admin-pending.ts` の `hostAdminRevoke`、`src/host/admin.ts` の `hostAdminRevokeBinding`、試験は `test/host-participation.test.js` の「DCR plan 6」）。
 
 1. 台帳を読む前に `approve` と同じ台帳単位のプロセス間書き込みロックを取る。その行を `state: revoked` にし、バックアップを取って一時ファイルから置き換えるまで同じロックを持つ。
 2. Registry のその接続の結び付けだけを `revokeGroupBinding` で外し、グループの他の接続は残す。

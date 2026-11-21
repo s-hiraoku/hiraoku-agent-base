@@ -22,7 +22,11 @@ import { readHostConfig } from "./config.ts";
 import { parseOAuthConfig } from "./oauth-auth.ts";
 import { RUNTIME_CONFIG_MAX_BYTES } from "../runtime-config.ts";
 import { readPending, removePending } from "./oauth-pending.ts";
-import { HostAdminError, hostAdminConnect } from "./admin.ts";
+import {
+  HostAdminError,
+  hostAdminConnect,
+  hostAdminRevokeBinding,
+} from "./admin.ts";
 import { parseHabAddress } from "../hab/registry.ts";
 
 const DAY_MS = 86_400_000;
@@ -108,6 +112,41 @@ function replaceAtomically(file: string, text: string) {
   renameSync(temp, file);
 }
 
+type Ledger = Record<string, unknown> & {
+  connections: Record<string, unknown>[];
+};
+/** The v2 ledger as written, checked the way the host reads it. Call under the ledger lock. */
+function readLedger(ledger: string): Ledger {
+  let current: Ledger;
+  try {
+    current = JSON.parse(readFileSync(ledger, "utf8"));
+    parseOAuthConfig(current);
+  } catch {
+    throw new HostAdminError("oauth_invalid");
+  }
+  if (current.version !== 2) throw new HostAdminError("oauth_ledger_not_v2");
+  return current;
+}
+/** Back up the ledger, then swap in `next`. Returns the backup path. Call under the ledger lock. */
+function writeLedger(ledger: string, next: Ledger, at: number) {
+  try {
+    parseOAuthConfig(next);
+  } catch {
+    throw new HostAdminError("oauth_invalid");
+  }
+  const text = JSON.stringify(next, null, 2) + "\n";
+  // The host refuses a ledger over the config size limit, which would stop every
+  // OAuth connection, so such a ledger is never written.
+  if (Buffer.byteLength(text) > RUNTIME_CONFIG_MAX_BYTES)
+    throw new HostAdminError("ledger_too_large");
+  const timestamp = new Date(at).toISOString().replace(/[:.]/g, "-");
+  const backup = `${ledger}.bak-${timestamp}-${randomUUID()}`;
+  copyFileSync(ledger, backup);
+  chmodSync(backup, 0o600);
+  replaceAtomically(ledger, text);
+  return backup;
+}
+
 export interface ApproveInput {
   pending_id: string;
   address: string;
@@ -137,16 +176,7 @@ export function hostAdminApprove(
       (entry) => entry.pending_id === input.pending_id,
     );
     if (!row) throw new HostAdminError("pending_not_found");
-    let current: Record<string, unknown> & {
-      connections: Record<string, unknown>[];
-    };
-    try {
-      current = JSON.parse(readFileSync(ledger, "utf8"));
-      parseOAuthConfig(current);
-    } catch {
-      throw new HostAdminError("oauth_invalid");
-    }
-    if (current.version !== 2) throw new HostAdminError("oauth_ledger_not_v2");
+    const current = readLedger(ledger);
     if (current.issuer !== row.issuer)
       throw new HostAdminError("pending_issuer_mismatch");
     // A pair already in the ledger (an approval that stopped half way) is reused, never
@@ -176,21 +206,7 @@ export function hostAdminApprove(
           },
         ],
       };
-      try {
-        parseOAuthConfig(next);
-      } catch {
-        throw new HostAdminError("oauth_invalid");
-      }
-      const text = JSON.stringify(next, null, 2) + "\n";
-      // The host refuses a ledger over the config size limit, which would stop every
-      // OAuth connection, so such a ledger is never written.
-      if (Buffer.byteLength(text) > RUNTIME_CONFIG_MAX_BYTES)
-        throw new HostAdminError("ledger_too_large");
-      const timestamp = new Date(approvedAt).toISOString().replace(/[:.]/g, "-");
-      backup = `${ledger}.bak-${timestamp}-${randomUUID()}`;
-      copyFileSync(ledger, backup);
-      chmodSync(backup, 0o600);
-      replaceAtomically(ledger, text);
+      backup = writeLedger(ledger, next, approvedAt);
     }
     // Keep the access state and grants of addresses already in a group.
     const connected = hostAdminConnect(configPath, {
@@ -210,6 +226,48 @@ export function hostAdminApprove(
         connected.address.state === "active"
           ? "承認より前に発行された token は token_before_approval で断られる。製品が token を更新するまで（最長 10 分）待つか、製品の画面でコネクタをつなぎ直す。"
           : "接続は紐づけ済み。アドレスの利用を再開する場合は、運用者が hab:admin connect で必要な操作を指定する。",
+    };
+  });
+}
+
+/**
+ * `hab:admin revoke --connection <id>`: stop one OAuth connection without touching the
+ * group's other connections. The ledger row becomes `revoked` first, so its tokens are
+ * refused at once, then its one Registry binding goes. Either step already done is
+ * skipped, so a rerun after a stop half way converges.
+ */
+export function hostAdminRevoke(
+  configPath: string,
+  connectionId: string,
+  now = Date.now(),
+) {
+  if (!/^[\x21-\x7e]{1,256}$/.test(connectionId))
+    throw new HostAdminError("invalid_connection_id");
+  const { ledger } = paths(configPath);
+  return withLedgerLock(ledger, () => {
+    const current = readLedger(ledger);
+    const row = current.connections.find(
+      (c) => c.connection_id === connectionId,
+    );
+    if (!row) throw new HostAdminError("connection_not_found");
+    const wasActive = row.state === "active";
+    const backup = wasActive
+      ? writeLedger(
+          ledger,
+          {
+            ...current,
+            connections: current.connections.map((c) =>
+              c === row ? { ...c, state: "revoked" } : c,
+            ),
+          },
+          Math.max(now, Date.now()),
+        )
+      : null;
+    return {
+      connection_id: connectionId,
+      ledger: wasActive ? ("revoked" as const) : ("already_revoked" as const),
+      backup,
+      registry: hostAdminRevokeBinding(configPath, connectionId),
     };
   });
 }
