@@ -160,7 +160,10 @@ process.stdin.on("end", () => {
     'console.log(JSON.stringify({result:"gone"})); process.exit(3)',
   );
   assert.equal(await sessionProbe(fails, "x")(), "unknown");
-  const slow = script("slow.mjs", "setTimeout(() => {}, 60_000)");
+  const slow = script(
+    "slow.mjs",
+    'process.on("SIGTERM", () => {}); setTimeout(() => console.log(JSON.stringify({result:"gone"})), 60_000)',
+  );
   const started = Date.now();
   assert.equal(
     await sessionProbe({ ...slow, timeout_ms: 300_000 }, "x")(),
