@@ -31,7 +31,7 @@ HAB は送り先・名義・配送だけを受け持ち、返すかどうかを�
 | Hermes Desktop             | Hook（運用者登録の呼び鈴で notifier が起きる。呼び鈴から 2.5 秒）。保険に 5 分ごとの確認。確認済み   | プラグインのカード。確認済み                     | 会話へ引き渡して `hab_reply`。確認済み                            |
 | Dots（ChatGPT）            | MCP Events の Hook。見張りを頼んだセッション（Stallone）で、呼び鈴から 26 秒で既読。確認済み         | セッションに文章。カードは取りに来ない（出ない） | 許可した相手の質問に `hab_reply`。呼び鈴から約 45 秒。確認済み    |
 | Grok Bot                   | Webhook で始まる routine。呼び鈴から 16 秒で既読。確認済み（初回は一時的に失敗し、鳴らし直しで回復） | Bot のチャットに文章                             | 許可した相手に `hab_reply` まで行った。呼び鈴から 24 秒。確認済み |
-| Muse                       | 予定タスク。作成から 13 分後の実行で受信箱を読んだ。確認済み                                         | 文章（カードは取りに来ない）                     | 予定タスクの中で `hab_reply`。確認済み                            |
+| Muse                       | 予定タスク 15 分（現行の設定）。作成から 13 分後の実行で受信箱を読んだ。確認済み                     | 文章（カードは取りに来ない）                     | 予定タスクの中で `hab_reply`。確認済み                            |
 | claude.ai                  | 話しかけたときだけ                                                                                   | MCP Apps のカード。確認済み                      | カードの「対応する」から返信案、または文章で返事                  |
 | Claude Code                | `/loop` か予定タスク。channels は開発用フラグが要る                                                  | 会話の中の文章                                   | できる                                                            |
 | Codex                      | 外から会話に入る口が今はない                                                                         | 話しかけたときだけ                               | 文章で返事をすればできる                                          |
@@ -164,6 +164,12 @@ Grok の Webhook には重複を防ぐ仕組みがありません。同じ呼び
 ## Muse を設定する
 
 Muse には外から起こす入口がないので、Muse 自身の予定タスクで受信箱を見ます。
+
+Muse の自動実行として公開情報で確認できたのは予定タスクだけです（2026-11-21 調べ）。
+Webhook、メールの到着、MCP のイベントで Muse を起こす公開手段は見つかりませんでした。
+第三者の試験では、予定タスクの最短の間隔は 1 分でした（[SmartScope](https://smartscope.blog/en/blog/claude-code-delegate-tasks-meta-muse-using-spreadsheets-2026/)、[dev.to](https://dev.to/ying_liao_0a481102ff971b4/automating-real-work-with-muse-connectors-scheduled-tasks-58co)）。
+調べた内容は [Muse の定期受信と Codex への引き渡しの計画](../plans/muse-codex-wake.md) の付録 A の Q1 にあります。
+HAB の呼び鈴は Muse には鳴らさず、受け方の台帳は `poll`（15 分）にします。
 
 1. Muse に HAB のコネクタをつなぐ。
 2. Muse に、次の文を渡す。

@@ -1267,7 +1267,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "cb6632cb871ac9b69c6e99a6911c232c57e11f668d0b1e9ca07c24ce0d6ef0e2",
+      "sha256": "bf70e58124d31a27551af41f20bf12fb8e62242eef503aff6e4e3cf6d7d1e233",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
