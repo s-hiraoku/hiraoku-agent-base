@@ -1686,3 +1686,104 @@ test("gone answers count once per spacing, so one reading for piled-up mail is n
   }
   assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
 });
+
+test("doorbells from the source apply on the next pass and can be taken away (plan 3)", async (t) => {
+  let next;
+  const f = await setup(t, {
+    events: {
+      quiet: false,
+      rering: false,
+      doorbells: () => {
+        const value = next;
+        next = undefined;
+        return value;
+      },
+    },
+  });
+  await f.send("b", f.a.address, "before");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 0, "no doorbell yet");
+  next = [{ agent_id: f.a.agent_id, url: URL_A, secret: SECRET }];
+  await f.events.dispatch();
+  // A new doorbell starts after the mail already waiting.
+  assert.equal(f.h.events().length, 0);
+  await f.send("b", f.a.address, "after");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  assert.equal(f.h.events()[0].url, URL_A);
+  next = [];
+  await f.events.dispatch();
+  assert.equal(f.events.subscriptions().length, 0);
+  await f.send("b", f.a.address, "removed");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1, "no ring once removed");
+  // A set that cannot be applied leaves the doorbells as they were.
+  next = [{ agent_id: f.a.agent_id, url: URL_A, secret: SECRET }];
+  await f.events.dispatch();
+  const kept = f.events.subscriptions();
+  next = [
+    { agent_id: f.b.agent_id, url: URL_A, secret: SECRET },
+    { agent_id: f.a.agent_id, url: "http://10.0.0.1/x", secret: SECRET },
+  ];
+  await f.events.dispatch();
+  assert.deepEqual(f.events.subscriptions(), kept);
+});
+
+test("a paused operator doorbell resumes pending new and repeat rings (plan 3)", async (t) => {
+  let current = [];
+  let now = Date.now();
+  const f = await setup(t, {
+    events: {
+      now: () => now,
+      quiet: false,
+      unanswered_after_ms: 10,
+      doorbells: () => current,
+    },
+  });
+  const active = { agent_id: f.a.agent_id, url: URL_A, secret: SECRET };
+  current = [active];
+  await f.events.dispatch();
+  await f.send("b", f.a.address, "before pause");
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+
+  current = [{ ...active, secret: undefined }];
+  await f.send("b", f.a.address, "during pause");
+  now += 100;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 1);
+  assert.equal(readDoorbells(f.store).get(f.a.agent_id).operator, 0);
+
+  current = [active];
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3, "one repeat and one new ring");
+  assert.equal(readDoorbells(f.store).get(f.a.agent_id).operator, 1);
+
+  current = [];
+  await f.events.dispatch();
+  current = [active];
+  now += 100;
+  await f.events.dispatch();
+  assert.equal(f.h.events().length, 3, "a new registration has no old repeats");
+});
+
+test("restoring an unchanged operator doorbell does not clear recipient_absent (plan 3)", async (t) => {
+  let current = [];
+  const f = await setup(t, {
+    status: () => GONE,
+    events: { absent_after: 1, doorbells: () => current },
+  });
+  const active = { agent_id: f.a.agent_id, url: URL_A, secret: SECRET };
+  current = [active];
+  await f.events.dispatch();
+  await f.send("b", f.a.address, "session ended");
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+
+  current = [{ ...active, secret: undefined }];
+  await f.events.dispatch();
+  current = [active];
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+  assert.equal(f.h.events().length, 1);
+});

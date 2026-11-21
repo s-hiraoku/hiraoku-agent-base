@@ -1,5 +1,5 @@
 /**
- * `hab:admin pending | approve | reject`: approve a sign-in the host kept as pending,
+ * `hab:admin pending | approve | reject | revoke`: approve a sign-in the host kept as pending,
  * so the operator never looks up a subject in Auth0's logs or edits the ledger by hand.
  * Approval writes one participation row to the OAuth ledger (backup first, then an
  * atomic replace) and binds it with the same steps as `connect`. The host re-reads the
@@ -12,58 +12,35 @@ import {
   copyFileSync,
   fsyncSync,
   openSync,
-  readFileSync,
   renameSync,
   statSync,
   writeSync,
 } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
 import { readHostConfig } from "./config.ts";
-import { parseOAuthConfig } from "./oauth-auth.ts";
+import { isOAuthConnectionId, parseOAuthConfig } from "./oauth-auth.ts";
 import { RUNTIME_CONFIG_MAX_BYTES } from "../runtime-config.ts";
 import { readPending, removePending } from "./oauth-pending.ts";
 import {
   HostAdminError,
   hostAdminConnect,
   hostAdminRevokeBinding,
+  withLedgerLock,
 } from "./admin.ts";
 import { parseHabAddress } from "../hab/registry.ts";
 
 const DAY_MS = 86_400_000;
-/** How long an approve waits for another one to finish with the ledger. */
-const LEDGER_LOCK_WAIT_MS = 5_000;
-
-/** The sidecar stays in place so every process takes a SQLite write lock on the same file. */
-function withLedgerLock<T>(ledger: string, action: () => T): T {
-  const path = `${ledger}.approve-lock.sqlite`;
-  try {
-    closeSync(openSync(path, "wx", 0o600));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-  }
-  const db = new DatabaseSync(path, { timeout: LEDGER_LOCK_WAIT_MS });
-  try {
-    try {
-      db.exec("BEGIN IMMEDIATE");
-    } catch (error) {
-      const SQLITE_BUSY = 5;
-      if ((error as { errcode?: number }).errcode === SQLITE_BUSY)
-        throw new HostAdminError("ledger_busy");
-      throw error;
-    }
-    return action();
-  } finally {
-    // The transaction only holds a lock. Closing or process exit releases it.
-    db.close();
-  }
-}
 
 const PENDING_ID = /^pend_[0-9a-f]{16}$/;
 
 function paths(configPath: string) {
-  const { config } = readHostConfig(configPath);
+  const { config, readOAuth } = readHostConfig(configPath);
   if (!config.ingress) throw new HostAdminError("oauth_not_configured");
-  return { directory: config.directory, ledger: config.ingress.oauth_file };
+  return {
+    directory: config.directory,
+    ledger: config.ingress.oauth_file,
+    resource: config.ingress.resource_url,
+    readOAuth,
+  };
 }
 /** Enough of a subject to match it with Auth0's screen, not the whole value. */
 export function maskSubject(subject: string) {
@@ -112,18 +89,18 @@ function replaceAtomically(file: string, text: string) {
   renameSync(temp, file);
 }
 
-type Ledger = Record<string, unknown> & {
-  connections: Record<string, unknown>[];
-};
-/** The v2 ledger as written, checked the way the host reads it. Call under the ledger lock. */
-function readLedger(ledger: string): Ledger {
-  let current: Ledger;
+type Ledger = Extract<ReturnType<typeof parseOAuthConfig>, { version: 2 }>;
+
+/** Read the host's own private v2 ledger under its write lock. */
+function readLedger({ readOAuth, resource }: ReturnType<typeof paths>): Ledger {
+  let current: ReturnType<typeof parseOAuthConfig>;
   try {
-    current = JSON.parse(readFileSync(ledger, "utf8"));
-    parseOAuthConfig(current);
+    current = parseOAuthConfig(readOAuth());
   } catch {
     throw new HostAdminError("oauth_invalid");
   }
+  if (current.resource !== resource)
+    throw new HostAdminError("oauth_resource_mismatch");
   if (current.version !== 2) throw new HostAdminError("oauth_ledger_not_v2");
   return current;
 }
@@ -169,21 +146,22 @@ export function hostAdminApprove(
   } catch {
     throw new HostAdminError("invalid_address");
   }
-  const { directory, ledger } = paths(configPath);
+  const oauth = paths(configPath);
+  const { directory, ledger } = oauth;
   return withLedgerLock(ledger, () => {
     const approvedAt = Math.max(now, Date.now());
     const row = readPending(directory, approvedAt).find(
       (entry) => entry.pending_id === input.pending_id,
     );
     if (!row) throw new HostAdminError("pending_not_found");
-    const current = readLedger(ledger);
+    const current = readLedger(oauth);
     if (current.issuer !== row.issuer)
       throw new HostAdminError("pending_issuer_mismatch");
     // A pair already in the ledger (an approval that stopped half way) is reused, never
     // added twice: a duplicate pair makes parseOAuthConfig refuse the whole ledger.
     const existing = current.connections.find(
       (c) => c.subject === row.subject && c.client_id === row.client_id,
-    ) as { connection_id: string; state: string } | undefined;
+    );
     if (existing?.state === "revoked")
       throw new HostAdminError("credential_revoked_use_new_connection_id");
     let connectionId = existing?.connection_id;
@@ -192,7 +170,7 @@ export function hostAdminApprove(
       connectionId = `hab-${address.agent_name}-${randomUUID()}`;
       // Approval starts now (after any wait for the lock), never earlier: a token
       // issued before it still gets token_before_approval.
-      const next = {
+      const next: Ledger = {
         ...current,
         connections: [
           ...current.connections,
@@ -241,12 +219,12 @@ export function hostAdminRevoke(
   connectionId: string,
   now = Date.now(),
 ) {
-  if (!/^[\x21-\x7e]{1,256}$/.test(connectionId))
+  if (!isOAuthConnectionId(connectionId))
     throw new HostAdminError("invalid_connection_id");
-  const { ledger } = paths(configPath);
+  const oauth = paths(configPath);
+  const { ledger } = oauth;
   return withLedgerLock(ledger, () => {
-    const current = readLedger(ledger);
-    const oauth = parseOAuthConfig(current);
+    const current = readLedger(oauth);
     const row = current.connections.find(
       (c) => c.connection_id === connectionId,
     );
@@ -271,10 +249,10 @@ export function hostAdminRevoke(
       // From the ledger row, not the host's credential list: that list drops OAuth
       // connections while OAuth is disabled and can hold a local one with this ID.
       registry: hostAdminRevokeBinding(configPath, {
-        issuer: oauth.issuer,
-        audience: oauth.resource,
-        subject: String(row.subject),
-        client_id: String(row.client_id),
+        issuer: current.issuer,
+        audience: current.resource,
+        subject: row.subject,
+        client_id: row.client_id,
         connection_id: connectionId,
       }),
     };

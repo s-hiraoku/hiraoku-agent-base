@@ -3,7 +3,7 @@
  * and keys, opens only the existing registry, and never issues or prints credentials.
  * Every mutation goes through the Registry's own administrator port.
  */
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -34,6 +34,38 @@ export class HostAdminError extends Error {
     this.code = code;
   }
 }
+
+const ledgersHeld = new Set<string>();
+const LEDGER_LOCK_WAIT_MS = 5_000;
+
+/** All actions are synchronous. Approval's nested connect shares the lock it already holds. */
+export function withLedgerLock<T>(ledger: string, action: () => T): T {
+  if (ledgersHeld.has(ledger)) return action();
+  const path = `${ledger}.approve-lock.sqlite`;
+  try {
+    closeSync(openSync(path, "wx", 0o600));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  const db = new DatabaseSync(path, { timeout: LEDGER_LOCK_WAIT_MS });
+  try {
+    try {
+      db.exec("BEGIN IMMEDIATE");
+    } catch (error) {
+      const SQLITE_BUSY = 5;
+      if ((error as { errcode?: number }).errcode === SQLITE_BUSY)
+        throw new HostAdminError("ledger_busy");
+      throw error;
+    }
+    ledgersHeld.add(ledger);
+    return action();
+  } finally {
+    ledgersHeld.delete(ledger);
+    // This transaction only holds a lock. Closing or process exit releases it.
+    db.close();
+  }
+}
+
 export interface ConnectInput {
   address: string;
   connection_id: string;
@@ -195,6 +227,7 @@ function open(configPath: string) {
     a2aRecipient: config.a2a?.recipient,
     directory: config.directory,
     eventsEnabled: !!config.ingress?.events,
+    oauthLedger: config.ingress?.oauth_file,
   };
 }
 
@@ -244,6 +277,14 @@ export function hostAdminReceive(
   });
 }
 
+/** Resolve names for doorbell administration without reading the delivery or event store. */
+export function hostAdminAddressDirectory(configPath: string) {
+  return withRegistry(configPath, ({ registry }) => ({
+    current: registry.overview(operator).agents,
+    previous: registry.previousNames(operator),
+  }));
+}
+
 /** ADR-032: name the product session an address stands for. */
 export function hostAdminSession(
   configPath: string,
@@ -284,9 +325,12 @@ export function hostAdminRename(configPath: string, input: RenameInput) {
 function withRegistry<T>(
   configPath: string,
   action: (opened: ReturnType<typeof open>) => T,
+  lockOAuthLedger = false,
 ): T {
   const opened = open(configPath);
   try {
+    if (lockOAuthLedger && opened.oauthLedger)
+      return withLedgerLock(opened.oauthLedger, () => action(opened));
     return action(opened);
   } finally {
     opened.registry.close();
@@ -708,6 +752,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
           : {}),
       };
     },
+    true,
   );
 }
 
