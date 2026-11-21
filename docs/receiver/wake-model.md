@@ -2,7 +2,18 @@
 
 [ADR](../hab-decisions.md) · [設計思想](../hab-principles.md) · [MCPイベントで新着を知らせる](../connections/mcp-events.md) · [受信通知アダプタ](arrival-notifier.md)
 
-**状態：下書き（2026-11-20 JST、owner レビュー待ち）。** 承認されるまでは ADR-021〜031 がそのまま有効です。この文書は動作を変えません。
+**状態：採用せず、ADR-032 で置き換え（2026-11-21 JST）。** この文書は 2026-11-20 の下書きの記録として残します。今の決まりは [ADR-032](../hab-decisions.md) と [計画](../plans/receive-show-act-plan.md) を読んでください。この文書の提案のうち、どれがどうなったかは次のとおりです。
+
+| この文書の提案 | 今の扱い |
+| --- | --- |
+| §3 受信箱の状態 5 種 | 採用しない。`hab:admin status` の `problems`（`unread_waiting`・`doorbell_lapsed`・`doorbell_failing`・`doorbell_missing`・`poll_overdue`・`recipient_absent`）で見せる。 |
+| §4 起こし方の 4 分類と宣言 | 台帳の受け方 `hook` / `poll` / `on_request`（ADR-032）に置き換えた。分類 A と C は `hook`、D は `poll` か `on_request`。宣言は host 設定ではなく台帳に `hab:admin receive` で書く。 |
+| §5 知らせ直しの規則（`notify.interval_ms`・`max_rings`） | 採用しない。HAB は時間で鳴らさない。新着で 1 回、読まれなければ鳴らし直し 1 回（ADR-027）だけ。ADR-031 の定期確認はやめた。 |
+| §6 自動で対応してよいかの判断 | そのまま有効（ADR-015、ADR-023）。 |
+| §7 試験用の操作 | 未着手。[接続と導入の計画](../plans/agent-connection-and-receive.md) の doctor と ping で扱う。 |
+| §8 既存 ADR の扱い | ADR-031 だけ置き換えた。ADR-027 と ADR-030 は残る。 |
+
+下の §4 の割り当ての表も 2026-11-20 時点のものです。今の受け方は [設定手順書](../connections/agent-setup.md) の表にあります。
 
 ## 1. なぜ書き直すか
 
