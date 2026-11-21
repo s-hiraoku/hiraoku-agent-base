@@ -64,6 +64,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] verify-hab の手順で使い捨ての HAB host と notifier を起動し、`hab:admin status` の `problems` が 0 になるまで待つ。本番の host と notifier には触らない。
 - [ ] 入力は HAB の MCP（`hab_send`）と `codex` のコマンドだけで入れる。読むだけの確認は `hab:admin status`、`audit.jsonl`、`codex app-server daemon version` を使う。
 - [ ] 画面写真は `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` に保存し、報告に道筋を付ける。
+- [ ] PR-1 は文書だけで、head は動く仕組みを変えない。Muse の予定タスクは本番の HAB コネクタを読むので、PR-1 の lanes は使い捨ての host を使わず、本番の観察として行う。本番の Muse に送るのは試験メールだけで、本人の一言を得てから送る。設定は変えない。
 
 ## Record Muse as a scheduled-poll receiver (PR-1)
 
@@ -88,7 +89,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini の Claude Code（swarm なし）` at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. trunk と head で、本番の Muse 宛てに試験メールを 1 通送り、次の予定時刻まで待つ。trunk でも同じ受け方なので結果は同じになる。Save `pr1-lane1-muse-read.png`. Pass when 両方で 15 分以内に既読になる。
+- [ ] Lane 1. Regression lane against trunk. PR-1 は動く仕組みを変えないので、trunk と head の比べ方はない。そのことを記録し、本番の観察として、Muse 宛てに試験メールを 1 通送って次の予定時刻まで待つ。Save `pr1-lane1-muse-read.png`. Pass when 15 分以内に既読になる。
 - [ ] Lane 2. Muse の予定タスクの一覧を Muse のアプリで開く。Save `pr1-lane2-schedule.png`. Pass when HAB の受信箱を見るタスクが 15 分間隔で有効になっている。
 - [ ] Lane 3. Muse への試験メールに返信を求める本文を入れる。Save `pr1-lane3-reply.png`. Pass when 許可した送信元からなら `hab_reply` が記録される。
 - [ ] Lane 4. `hab:admin status` を見る。Save `pr1-lane4-status.png`. Pass when Muse の受け方が `poll` 15 分で、`poll_overdue` が出ていない。
@@ -101,9 +102,9 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 **Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] Metric. 試験メールの送信から Muse の既読までの秒数。trunk と head で同じ仕組みなので、同じ数字が出る。
-- [ ] Probe. 試験メールを trunk と head で交互に 2 通ずつ送り、`audit.jsonl` の送信時刻と既読時刻の差を取る。
-- [ ] Baseline. trunk の値を先に記録する。
+- [ ] Metric. 本番の観察で、試験メールの送信から Muse の既読までの秒数。PR-1 は仕組みを変えないので、trunk と head の差は測らない。
+- [ ] Probe. 試験メールを 1 時間に 2 通送り、本番の `audit.jsonl` の送信時刻と既読時刻の差を取る。
+- [ ] Baseline. 2026-11-20 の実機の値（予定タスクで既読）を基準として記録する。
 - [ ] Rule. どの 1 通も 1,800 秒（間隔の 2 倍）を超えたら不合格。
 
 **Review gate.** None. PR-1 is not review-gated.
