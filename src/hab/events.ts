@@ -477,6 +477,14 @@ function sessionGone(body: string): boolean {
 const STATIC_PREFIX = "hab_static_";
 const NEVER = 8_640_000_000_000_000;
 const BEARER = /^[A-Za-z0-9._~+/=-]{16,512}$/;
+/**
+ * Headers a Bearer doorbell's receiver requires besides the token, by URL host. A Claude
+ * scheduled task's fire endpoint refuses a request without `anthropic-version`.
+ */
+const BEARER_HOST_HEADERS: ReadonlyMap<
+  string,
+  Record<string, string>
+> = new Map([["api.anthropic.com", { "anthropic-version": "2023-06-01" }]]);
 /** A doorbell secret: a Standard Webhooks `whsec_` key, or a Bearer token. */
 export function doorbellSecret(secret: unknown): string {
   if (typeof secret === "string" && secret.startsWith("whsec_")) {
@@ -754,7 +762,7 @@ export class HabEvents {
       answer = await this.#post(
         url,
         body,
-        this.#headers(secret, messageId, id, body),
+        this.#headers(url, secret, messageId, id, body),
       );
     } catch (error) {
       if (error instanceof HabEventError) throw error;
@@ -782,6 +790,7 @@ export class HabEvents {
       .run(agentId, url, now + 86_400_000);
   }
   #headers(
+    url: string,
     secret: string,
     messageId: string,
     subscriptionId: string,
@@ -795,6 +804,7 @@ export class HabEvents {
         Authorization: `Bearer ${secret}`,
         "webhook-id": messageId,
         "webhook-timestamp": String(timestamp),
+        ...BEARER_HOST_HEADERS.get(new URL(url).host),
       };
     return {
       "Content-Type": "application/json",
@@ -1092,7 +1102,7 @@ export class HabEvents {
       const response = await this.#post(
         row.url,
         body,
-        this.#headers(row.secret, eventId, row.id, body),
+        this.#headers(row.url, row.secret, eventId, row.id, body),
       );
       status = response.status;
       answer = response.body;

@@ -1087,6 +1087,32 @@ test("new mail waits behind a ring again that is due but left for the next pass"
 const URL_G = "https://hooks.example.com/grok/routine";
 const BEARER = "grok-routine-token-0123456789";
 
+test("a doorbell to a Claude scheduled task's fire endpoint carries anthropic-version", async (t) => {
+  const f = await setup(t, { events: { rering: false } });
+  const fire =
+    "https://api.anthropic.com/v1/claude_code/routines/trig_0123456789/fire";
+  f.events.configureStatic([
+    {
+      agent_id: f.b.agent_id,
+      url: fire,
+      secret: "sk-ant-oat01-routine-token-0123",
+    },
+    { agent_id: f.a.agent_id, url: URL_G, secret: BEARER },
+  ]);
+  await f.send("a", f.b.address, "for the claude coordinator");
+  await f.send("b", f.a.address, "for grok");
+  await f.events.dispatch();
+  const rings = f.h.events();
+  const claude = rings.find((r) => r.url === fire);
+  const grok = rings.find((r) => r.url === URL_G);
+  assert.equal(
+    claude.headers.Authorization,
+    "Bearer sk-ant-oat01-routine-token-0123",
+  );
+  assert.equal(claude.headers["anthropic-version"], "2023-06-01");
+  assert.equal(grok.headers["anthropic-version"], undefined);
+});
+
 test("an operator doorbell rings with a Bearer token for new mail only, and never expires", async (t) => {
   let now = Date.now();
   // Without the ADR-027 ring-again, so each ring below is one new message.
