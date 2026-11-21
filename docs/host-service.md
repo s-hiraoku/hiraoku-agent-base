@@ -235,3 +235,43 @@ releaseと照合し、不足時に制限を省いて起動しません。
 新規空DBでも、グループや資格情報は自動登録せず全拒否のままです。
 実際の短命tokenの発行・保管と、refresh／継続アクセスの許可は別操作です。
 [共通の名義選択と実装範囲](auth-groups.md)を参照してください。
+
+## CLI の試験送信とダッシュボードの送受信
+
+運用者が既存のローカル認証手順で登録・接続した名義を、host 設定の `operator_mail` に指定します。`mailbox` はダッシュボードで日常の送受信に使う名義です。`ping` には試験だけに使う別の名義を選びます。各 `agent_id` は登録時の不変 ID です。host の MCP は設定した名義と ID を毎回照合します。
+
+```json
+{
+  "operator_mail": {
+    "mailbox": {
+      "address": "operator@demo.hab",
+      "agent_id": "registered-operator-id",
+      "bearer_file": "/ABSOLUTE/PRIVATE/mailbox.local.json"
+    },
+    "ping": {
+      "address": "ping@hab.hab",
+      "agent_id": "registered-ping-id",
+      "bearer_file": "/ABSOLUTE/PRIVATE/ping.local.json"
+    }
+  }
+}
+```
+
+使う機能に応じて `mailbox` と `ping` を指定します。各 `bearer_file` は所有者だけが読める実ファイルです。形式は `{"version":1,"bearer":"発行済みのローカル bearer"}` です。通常の受信には `poll`、送信には `resolve` と `submit`、受付の照合には `status` が必要です。host 設定の `port` は稼働中のローカル MCP のポートを指定します。 [ローカル認証の設定](#individual-verifier) · [登録と接続](#operator-management-cli)
+
+```sh
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json ping --address recipient@demo.hab --wait 10
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json ping --status OPERATION_ID
+npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json ping --address recipient@demo.hab --request-id OPERATION_ID
+```
+
+`ping` は固定の試験文を 1 通送ります。指定しなければ発行した操作 ID を送信前に標準エラーへ出します。`--status` で元の配送を照合し、未確認の送信を再試行する場合は同じ宛先と `--request-id` を指定します。`--wait` は 0〜60 秒です。受付、呼び鈴の HTTP 受理、保存 ACK、host 受信箱での既読、返信の時刻は、その 1 通について取得できた証拠を返します。会話に表示されたことは対象の製品で確認します。
+
+```sh
+npm run hab:dashboard -- --config /ABSOLUTE/PRIVATE/service.local.json
+npm run hab:dashboard -- --config /ABSOLUTE/PRIVATE/service.local.json --operator
+```
+
+表示されたローカルランチャーをブラウザで開きます。通常起動では登録一覧と診断を閲覧できます。`--operator` で設定した名義の送受信や試験送信を使えます。送信と返信は宛先を確認して実行します。「受信箱を開く」を押すと、その名義の受信箱を表示して既読にします。「以前の既読を表示」から、保持期間内のメッセージに戻って返信できます。接続が途切れたらランチャーから開き直し、配送履歴で状況を確認できます。ローカル bearer が期限切れなら、承認済みの同じ接続のものに更新して再試行します。
+
+操作 ID、配送 ID、送信者、宛先、内容は配送を呼ぶ前に host の状態ディレクトリの `operator-mail.sqlite` に記録します。受付を照合できた操作は送信本文を操作記録から除きます。バックアップと復元では、このファイルも配送・Registry と同じ世代に揃えます。 [配送ストアの運用](delivery-store.md#back-up-and-restore)

@@ -9,6 +9,28 @@ import { HAB_ADDRESS_PATTERN } from "../hab/registry.ts";
 const positive = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const absolute = z.string().refine(isAbsolute);
 const address = z.string().max(101).regex(new RegExp(HAB_ADDRESS_PATTERN));
+
+const operatorIdentity = z.strictObject({
+  address,
+  agent_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/),
+  bearer_file: absolute,
+});
+const operatorMail = z
+  .strictObject({
+    mailbox: operatorIdentity.optional(),
+    ping: operatorIdentity.optional(),
+  })
+  .refine(({ mailbox, ping }) => Boolean(mailbox || ping))
+  .refine(
+    ({ mailbox, ping }) =>
+      !mailbox ||
+      !ping ||
+      (mailbox.agent_id !== ping.agent_id && mailbox.address !== ping.address),
+  );
+const operatorBearer = z.strictObject({
+  version: z.literal(1),
+  bearer: z.string().regex(/^[a-f0-9]{64}$(?![\s\S])/i),
+});
 /** An inbox check interval (ADR-031): 0 is off, otherwise one minute to one day. */
 const checkInterval = z.union([
   z.literal(0),
@@ -112,6 +134,7 @@ const schema = z.strictObject({
     .optional(),
   keys_file: absolute,
   credentials_file: absolute,
+  operator_mail: operatorMail.optional(),
   audit_directory: absolute,
   audit_max_bytes: positive,
   limits: z.strictObject({
@@ -180,6 +203,11 @@ export function stage<T>(reason: string, action: () => T): T {
       );
     throw new HostStartError(reason);
   }
+}
+export function readOperatorBearer(path: string): string {
+  return stage("operator_bearer_rejected", () =>
+    operatorBearer.parse(read(path)),
+  ).bearer;
 }
 /** Validates the operator config and returns it with decoded keys; throws HostStartError. */
 export function readHostConfig(configPath: string) {

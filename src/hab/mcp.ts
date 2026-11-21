@@ -486,21 +486,22 @@ function createAgentServer(
                   throw new MessagingError("recipient_absent");
               }
             }
-            // Read before the tool runs: hab_inbox marks the mail read (ADR-027).
-            const reminder = inboxReminder(
-              events,
-              service,
-              prepared.context,
-              tool === "hab_inbox",
-            );
+            const args = prepared.input as Record<string, unknown>;
+            const browsingHistory =
+              tool === "hab_inbox" && args.read_history !== undefined;
+            const readingInbox = tool === "hab_inbox" && !browsingHistory;
+            // Read before the tool runs: a new inbox read marks the mail read (ADR-027).
+            const reminder = browsingHistory
+              ? null
+              : inboxReminder(events, service, prepared.context, readingInbox);
             const result = runHabAgentTool(
               agent,
               prepared.context,
               tool,
-              prepared.input as Record<string, unknown>,
+              args,
               maxResponseBytes,
             );
-            if (tool === "hab_inbox") {
+            if (readingInbox) {
               events?.noteInboxRead(prepared.context);
               absence?.noteRecipientRead(prepared.context);
             }
