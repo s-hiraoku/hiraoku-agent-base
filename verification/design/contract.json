@@ -357,7 +357,7 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "3368a4e87b3a70933ede1cee8b21da894c2ad979a55f56d1a1786c23e711b307",
+      "sha256": "f14690726995d8e3cc3532f9e958f0a1e86c0ae97e07d190640fcbdaaf51ee8d",
       "role": "context",
       "review": "reviewed",
       "summary": "Documentation index by purpose, including the agent connection and receive implementation plan.",
@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "3685cc1b130844da6abf237c4658c30d9d6d499d141b8976a25f3e583bac60f6",
+      "sha256": "f38674ec55e598808c367dade788082e18fc1d2cdd7b8ab38de0b3cde56e6f57",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1274,7 +1274,7 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "9d72cfb70385dd4358690c382c13dc27ad1c0fc63df25c3bd9ada97d266d3dbd",
+      "sha256": "4418abb40b4a45fd1ba1202394e384816b94a55da415fb0f8349f9689dbd4a96",
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
