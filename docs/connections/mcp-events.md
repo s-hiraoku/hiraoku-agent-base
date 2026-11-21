@@ -154,9 +154,9 @@ npm run hab:admin -- --config <host設定> doorbell list
 npm run hab:admin -- --config <host設定> doorbell remove --address grok@grok-bot.hab
 ```
 
-- 登録は`events.sqlite`に置かれ、動いているhostが次の配送の確認（数秒以内）で読み直します。1つのアドレスに1つです。
+- 登録は`events.sqlite`に置かれ、動いているhostが次の配送処理で読み直します。1つのアドレスに1つです。
   もう一度`add`すると置き換わります。
-- 保存するのはURLと鍵ファイルのパスだけで、鍵は保存しません。`add`・`list`の出力にはURLのホスト名だけが出ます。
+- 登録表には鍵ファイルのパスを置きます。`add`・`list`の出力にはURLのホスト名だけが出ます。鍵ファイルを一時的に読めない間は呼び鈴を止め、元に戻ると前の配送位置と不在判定を引き継ぎます。
 - `add`は、アドレスが登録済みで有効なこと、URL、鍵ファイルを、host設定と同じ規則で確かめます。
 
 host設定の`ingress.events.doorbells`も、今までどおり読みます（起動時だけ。変えたらhostの再起動が要ります）。

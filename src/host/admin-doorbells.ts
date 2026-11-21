@@ -1,8 +1,8 @@
 /**
  * `hab:admin doorbell add | remove | list` (plan 3): operator doorbells (ADR-029) kept in
  * the events store, which the running host reads again on its next pass, so adding or
- * removing one needs no restart. One doorbell per address. The store keeps the secret
- * file's path, never the secret, and output names only the URL's host.
+ * removing one needs no restart. The registry row refers to a secret file; command
+ * output names only the URL's host.
  */
 import { existsSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -46,8 +46,7 @@ const hostOf = (url: string) => {
     return null;
   }
 };
-/** When the host applies a change: its next pass, a few seconds at most. */
-const APPLIES = "host の次の配送の確認（数秒以内）で効く。再起動は要らない。";
+const APPLIES = "host の次の配送の確認で効く。再起動は要らない。";
 
 export interface DoorbellAddInput {
   address: string;

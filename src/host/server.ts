@@ -406,8 +406,8 @@ export async function startHostServer(options: HostServerOptions) {
         };
       });
       // Plan 3: doorbells added with `hab:admin doorbell` live in the events store and
-      // win over a config doorbell for the same address. A registered doorbell that
-      // cannot be used now (address gone, unsafe secret file) is left out, never fatal.
+      // win over a config doorbell for the same address. An unavailable secret pauses
+      // delivery for that registration, without switching to its configured fallback.
       // Every config doorbell is checked at start, also one a registered doorbell
       // replaces, so a bad config never starts and `doorbell remove` never falls back to it.
       try {
@@ -426,22 +426,21 @@ export async function startHostServer(options: HostServerOptions) {
         return [
           ...fromConfig.filter((d) => !replaced.has(d.address)),
           ...registered.flatMap((row) => {
+            const agentId = idOf(row.address);
+            if (!agentId) return [];
+            let url: string;
             try {
-              const agentId = idOf(row.address);
-              if (!agentId) return [];
-              const secret = doorbellSecret(
-                readDoorbellSecretFile(row.secret_file),
-              );
-              return [
-                {
-                  agent_id: agentId,
-                  url: operatorCallbackUrl(row.url).href,
-                  secret,
-                },
-              ];
+              url = operatorCallbackUrl(row.url).href;
             } catch {
               return [];
             }
+            let secret: string | undefined;
+            try {
+              secret = doorbellSecret(readDoorbellSecretFile(row.secret_file));
+            } catch {
+              // The valid registration remains authoritative while its file is unavailable.
+            }
+            return [{ agent_id: agentId, url, secret }];
           }),
         ];
       };

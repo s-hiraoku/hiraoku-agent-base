@@ -1603,7 +1603,7 @@ test("a registered doorbell whose secret file was briefly unusable comes back by
   await f.host.close();
   f.config.ingress.events = { poll_ms: 500 };
   f.write("service.local.json", f.config);
-  const host = await startHost(f.configPath);
+  let host = await startHost(f.configPath);
   t.after(() => host.close());
   const secretFile = join(f.config.directory, "..", "bell.secret");
   writeFileSync(secretFile, "routine-token-0123456789\n", { mode: 0o600 });
@@ -1619,6 +1619,13 @@ test("a registered doorbell whose secret file was briefly unusable comes back by
   await eventually(async () => (operator() ? true : undefined));
   chmodSync(secretFile, 0o644);
   await eventually(async () => (operator() ? undefined : true));
+  await host.close();
+  host = await startHost(f.configPath);
+  assert.equal(
+    operator(),
+    false,
+    "the existing callback stays paused across restart",
+  );
   chmodSync(secretFile, 0o600);
   await eventually(async () => (operator() ? true : undefined));
 });

@@ -8,7 +8,7 @@ import {
 
 /**
  * Read an operator doorbell's secret (ADR-029) from its own file: a regular file, not a
- * link, owner-only, at most 1 KiB. The secret never lives in a config or a store.
+ * link, owner-only, at most 1 KiB. The config and registration take the file path.
  */
 export function readDoorbellSecretFile(path: string): string {
   try {
