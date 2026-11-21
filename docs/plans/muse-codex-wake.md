@@ -6,7 +6,7 @@ Muse（`muse@muse.hab`）と Codex に、利用者が話しかけなくても HA
 Muse は外から起こす公開の口がないので、今の予定タスク（15 分ごと）を正式な受け方として残す。Muse にコードの変更はない。
 Codex は受信側の notifier が `codex queue --thread` で決まった一文を会話に入れて起こす。
 PR は順に PR-1（Muse は polling と記録する文書）、PR-2（Codex を `codex queue` で起こす）。
-PR-2 は付録 A の Q2（アプリの会話に届くか）が合格してから着手する。不合格なら PR-2 の代わりに PR-2b（Codex は話しかけたときだけと記録する文書）にする。
+付録 A の Q2（ローカルの Codex 会話に届くか）は 2026-11-21 14:49 JST に合格した。ChatGPT のプロジェクト内の会話（クラウド側）には `codex queue` が届かないので、Dots と同じ MCP イベントの呼び鈴で起こせるかを Q4 として別に調べる。
 
 ## How to read this
 
@@ -186,14 +186,20 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 **Q1. Muse を外から起こす口はあるか。** 公開情報では、ない。自動の実行は予定タスクだけで、第三者の試験では最短 1 分、30 秒は受け付けなかった（[SmartScope](https://smartscope.blog/en/blog/claude-code-delegate-tasks-meta-muse-using-spreadsheets-2026/)、[dev.to](https://dev.to/ying_liao_0a481102ff971b4/automating-real-work-with-muse-connectors-scheduled-tasks-58co)）。Webhook、メールの到着、MCP のイベントで動く記述はない。nenwa も Muse を起こせない相手として扱う（[nenwa DESIGN.md](https://github.com/nogu66/nenwa/blob/b9b87731da65b3f62876c0797e88d53a342eddb3/DESIGN.md)）。2026-11-20 には予定タスクが自動で `hab_inbox` と `hab_reply` まで進んだ。未確認なのは Muse 自身の答え（M-1）だけで、本人が Muse のチャットで 1 問聞く。
 
-**Q2. `codex queue` は Codex アプリの会話に届くか。** 未確認。2026-11-21 14:1x JST に Mac mini で読むだけの調査をした。
+**Q2. `codex queue` は Codex アプリの会話に届くか。** ローカルの会話には届く（2026-11-21 14:49 JST、Mac mini で合格）。調べた順に書く。
 
 - `codex` は 2 つある。`~/.local/bin/codex` が 0.149.0、ChatGPT アプリ同梱の `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex` が 0.171.0-alpha.13。`--resume` は 0.171 だけにある。
 - `codex queue` の接続先は daemon の制御ソケット `~/.codex/app-server-control/app-server-control.sock` で、`thread/queue/add` を送る。存在しないスレッドへの試し送り（`--remote unix://`）は、両方の版でソケットがないと言って exit 1 で終わった。会話には何も入っていない。
 - アプリの app-server は ChatGPT アプリの子プロセスで、`--listen` がなく stdio だけで動いている。TCP の待ち受けも名前付きのソケットもない。daemon は動いていない。
 - アプリと CLI の会話は同じ `~/.codex`（`sessions/`、`queue_1.sqlite`、`state_5.sqlite`）に入っている。バイナリには `queued_items` の表と、変わったことを知らせる revision の仕組みがある。
 - ここから推測できること（未確認）。daemon を起動すれば queue は共有の `queue_1.sqlite` に積まれ、アプリの app-server が revision でそれを拾って会話に流す可能性がある。版の差（daemon 0.149 とアプリ 0.171）で弾かれる可能性もあるので、試すときは同梱の 0.171 を使う。
-- 次の試し（本人の了承待ち）。同梱の 0.171 で daemon を一時起動し、アプリで開いた試験用の会話 1 つに `codex queue` を送り、アプリに出るかを見て、daemon を止める。合格なら PR-2、不合格なら PR-2b。
+- 本人の了承（14:12 JST）のあと試した。同梱の 0.171 で `codex app-server daemon start`（exit 0、`~/.codex/packages/app-server-daemon` に 439MB を導入、制御ソケットができた）、`codex queue --thread 01a1fc9c-… --message "HAB の試験です。『受け取りました』とだけ答えてください。"` を 14:49:05 に送った（exit 0、`Queued message …`）。
+- 結果。アプリの待機中の会話 hab-probe で 14:49:10 に turn が始まり、14:49:12 に Codex が「受け取りました」と答えた。送信から 7 秒で、人の操作はない。`--resume` は要らなかった。会話の記録を開いていたのはアプリの app-server で、daemon ではない。daemon は queue の受け口で、実行はアプリ側がしたと見ている（推測）。
+- 後片付け。`daemon stop` で止め、ソケットが消えたこと、アプリの app-server が動き続けていることを確かめた。導入物 439MB は残っている。
+- 最初の試しは Mac mini の内蔵ディスクの空き不足（約 330MB）で daemon の導入に失敗した。本人が古い HAB リリースを整理してから再試行した。
+- 届かないもの。ChatGPT のプロジェクト内の会話は `~/.codex/sqlite/codex.db` に一覧があるだけで（source_kind=chatgpt）、中身はクラウドにある。`codex queue` の対象外（Q4）。
+
+**Q4. ChatGPT のプロジェクト内の会話を起こせるか。** 未確認。本人の要望（14:38 JST）。ChatGPT のチャットはすでに HAB アプリにつながっていて（`whoami` で `stallone@dot.hab`）、Dots は MCP イベントの呼び鈴とイベントタスクで起きている（2026-11-21 0:22 JST に返信まで確認）。調べることは、イベントタスクを特定のプロジェクトの会話に結び付けられるか、プロジェクト内の Codex（クラウド）にも同じ口があるか。結果で PR-3 を足すか決める。
 
 **Q3. Codex の hooks で起こせるか。** 起こせない。`~/.codex/hooks.json` の `Stop` や `PostToolUse` は会話が動いているときだけ走るので、待機中の会話は起きない（[Codex hooks](https://learn.chatgpt.com/docs/hooks)）。補助として使う余地はあるが、この計画には入れない。
 
@@ -209,7 +215,8 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 ## Appendix C. Risks
 
 - **C-1. daemon とアプリの app-server が同じ `~/.codex` を同時に書く（PR-2）。** `thread-writer-locks/` があるので排他はあると見ているが未確認。持ち主は lane 9 と lane 10 で会話の記録が壊れないかを見る。
-- **C-2. daemon を常駐させる必要がある（PR-2）。** 導入時に launchd で常駐させるか、`codex app-server daemon enable` のような製品の仕組みを使うかを決める。Mac mini の設定変更なので本人の一言が要る。
+- **C-2. daemon の起こし方（PR-2）。** Q2 では送る間だけ daemon を起動して届いた。notifier が送る前に `daemon start`（動いていれば何もしない）を呼ぶか、launchd で常駐させるかを PR-2 で決める。Mac mini の設定変更なので本人の一言が要る。
+- **C-6. 内蔵ディスクの空き（PR-2）。** daemon の導入に 439MB 要り、空き不足で一度失敗した。doctor と `hab:admin status` で空きの少なさを知らせるかを検討する。
 - **C-3. 版の差（PR-2）。** `~/.local/bin/codex` は 0.149 で `--resume` がない。`codex_bin` はアプリ同梱の版を指す。アプリの更新で道筋が変わったら notifier の起動時に知らせる。
 - **C-4. swarm を使わない（全 PR）。** 実機が Mac mini 1 台で、Codex アプリも 1 つなので、10 lanes は持ち主が順に回す。並列の検証はできない。
 - **C-5. 呼び鈴の一文がモデルへの指示になる（PR-2）。** 文は HAB が決めた固定文で、送信者は変えられない。本文は `hab_inbox` の `notice` の枠の中だけに出る。
