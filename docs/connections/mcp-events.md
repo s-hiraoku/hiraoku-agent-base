@@ -170,6 +170,18 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
   notifier の`wake.secret_file`と同じものを使います。エージェントが`events/subscribe`で指定する宛先は
   今までどおり公開 HTTPS だけです。
 
+## 相手のセッションが終わったとき（ADR-032）
+
+呼び鈴を受けた製品は、通知の`to`に当たるセッションがもうないとき、HTTP `410`と本文
+`{"reason":"session_gone"}`で答えます。HAB はこの答えだけを数えます。
+
+- 同じアドレスで続けて 3 回（`ingress.events.absent_after`で変えられる）この答えが返ると、そのアドレスを
+  「相手がいない」にします。`hab_send`はそのアドレスへの送信を`recipient_absent`で断り、
+  `hab:admin status`の`problems`に`recipient_absent`、`inboxes[].recipient_absent_since`に時刻が出ます。
+- 応答なし、5xx、そのほかの 4xx、理由のない`410`は数えません。理由のない`410`は今までどおり購読の終わりです。
+- 製品がそのアドレスの呼び鈴を 2xx で受け取るか、新しく購読すると（更新ではなく）、元に戻ります。
+- 未読のメールはそのまま残り、7 日で期限切れになります（今は消さず、不達の知らせも送りません）。
+
 ## 製品側の定期確認と遅れの表示（ADR-032）
 
 HAB から時間で呼び鈴を鳴らす定期確認（ADR-031）は、ADR-032 でやめました。呼び鈴は新着で 1 回、

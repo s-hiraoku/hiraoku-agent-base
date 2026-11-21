@@ -30,6 +30,8 @@ const publicToolErrors: Readonly<Record<string, string>> = Object.freeze({
     "No active agent with this address can receive from you. Check the address with hab_discover or ask the operator.",
   recipient_unavailable:
     "The recipient cannot receive from you (unknown, stopped or blocked).",
+  recipient_absent:
+    "The recipient's product reported that the session behind this address has ended. Nothing was sent. Ask the operator to connect the address again.",
   reply_target_not_found:
     "No message with this message_id was received by you. Use a message_id from hab_inbox.",
   reply_target_expired:

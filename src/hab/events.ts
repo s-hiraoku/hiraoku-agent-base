@@ -443,10 +443,25 @@ export interface HabEventOptions {
    * than `unanswered_after_ms` and its mail is still unread (default true; ADR-030).
    */
   quiet?: boolean;
+  /**
+   * ADR-032: how many doorbells in a row the product must answer `410` with
+   * `{"reason":"session_gone"}` before the address counts as absent (default 3).
+   */
+  absent_after?: number;
   post?: WebhookPost;
   now?: () => number;
 }
 const MAX_ATTEMPTS = 8;
+/** What #ring reports when the product answered 410 with reason session_gone (ADR-032). */
+const SESSION_GONE = -1;
+function sessionGone(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body) as { reason?: unknown };
+    return parsed?.reason === "session_gone";
+  } catch {
+    return false;
+  }
+}
 /**
  * Operator-registered doorbells (ADR-029) live in the same table under this ID prefix. They
  * never expire, take no subscriber slot and cannot be unsubscribed through MCP; the host
@@ -476,6 +491,7 @@ export class HabEvents {
   readonly #source: HabEventSource;
   readonly #db: DatabaseSync;
   readonly #post: WebhookPost;
+  readonly #absentAfter: number;
   readonly #now: () => number;
   readonly #defaultTtl: number;
   readonly #maxTtl: number;
@@ -490,6 +506,7 @@ export class HabEvents {
   constructor(source: HabEventSource, options: HabEventOptions) {
     this.#source = source;
     this.#post = options.post ?? createWebhookPost();
+    this.#absentAfter = options.absent_after ?? 3;
     this.#now = options.now ?? Date.now;
     this.#maxTtl = options.max_ttl_ms ?? 86_400_000;
     this.#defaultTtl = Math.min(
@@ -540,7 +557,11 @@ export class HabEvents {
         subscription_id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, message_id TEXT NOT NULL,
         rings INTEGER NOT NULL, checked_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS hab_event_inbox_reads (
-        agent_id TEXT PRIMARY KEY, read_at INTEGER NOT NULL);`);
+        agent_id TEXT PRIMARY KEY, read_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_gone (
+        agent_id TEXT PRIMARY KEY, count INTEGER NOT NULL, last_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS hab_event_absent (
+        agent_id TEXT PRIMARY KEY, since INTEGER NOT NULL);`);
   }
   /**
    * Bring the store up to the present. A long gap since the last tick is an outage (the
@@ -655,6 +676,9 @@ export class HabEvents {
     // concurrent subscribes cannot together pass the per-recipient limit.
     if (!this.#has(id) && this.#count(recipient.agent_id) >= this.#maxPerAgent)
       throw invalid("too_many_subscriptions");
+    // ADR-032: a new subscription (not a refresh) means the product is back for this
+    // address, so an earlier "session gone" no longer holds.
+    if (!this.#has(id)) this.#notePresent(recipient.agent_id);
     // A refresh keeps its place in the mail; only the secret and lifetime change.
     this.#db
       .prepare(
@@ -936,6 +960,13 @@ export class HabEvents {
         this.#end(row.id, row.agent_id, "gone");
         return;
       }
+      if (status === SESSION_GONE) {
+        // Not deliverable to that session; move on without retrying this message.
+        cursor = arrival;
+        failures = 0;
+        this.#save(row.id, cursor, 0, null, 0);
+        continue;
+      }
       const delivered = status >= 200 && status <= 299;
       if (delivered && this.#rering && this.#source.unread)
         this.#db
@@ -966,6 +997,41 @@ export class HabEvents {
       );
       return;
     }
+  }
+  #noteGone(agentId: string) {
+    const now = this.#now();
+    this.#db
+      .prepare(
+        `INSERT INTO hab_event_gone (agent_id,count,last_at) VALUES (?,1,?)
+         ON CONFLICT(agent_id) DO UPDATE SET count=count+1, last_at=excluded.last_at`,
+      )
+      .run(agentId, now);
+    const row = this.#db
+      .prepare("SELECT count FROM hab_event_gone WHERE agent_id=?")
+      .get(agentId) as { count: number };
+    if (row.count >= this.#absentAfter)
+      this.#db
+        .prepare(
+          "INSERT OR IGNORE INTO hab_event_absent (agent_id,since) VALUES (?,?)",
+        )
+        .run(agentId, now);
+  }
+  /** A doorbell for the address was taken, or the product subscribed again: it is present. */
+  #notePresent(agentId: string) {
+    this.#db
+      .prepare("DELETE FROM hab_event_gone WHERE agent_id=?")
+      .run(agentId);
+    this.#db
+      .prepare("DELETE FROM hab_event_absent WHERE agent_id=?")
+      .run(agentId);
+  }
+  /** ADR-032: whether the product reported this address's session as ended. */
+  isAbsent(address: string): boolean {
+    for (const row of this.#db
+      .prepare("SELECT agent_id FROM hab_event_absent")
+      .all() as { agent_id: string }[])
+      if (this.#source.addressOf(row.agent_id) === address) return true;
+    return false;
   }
   /**
    * POST one doorbell and remember how it was answered (0: no answer). A ring again or an
@@ -1000,18 +1066,26 @@ export class HabEvents {
       cursor: null,
     });
     let status = 0;
+    let answer = "";
     try {
-      status = (
-        await this.#post(
-          row.url,
-          body,
-          this.#headers(row.secret, eventId, row.id, body),
-        )
-      ).status;
+      const response = await this.#post(
+        row.url,
+        body,
+        this.#headers(row.secret, eventId, row.id, body),
+      );
+      status = response.status;
+      answer = response.body;
     } catch {
       status = 0;
     }
     const at = this.#rang(row.agent_id, status);
+    // ADR-032: the product says the session behind this address has ended. Only this
+    // exact answer counts; no answer, 5xx and other refusals never make an address absent.
+    if (status === 410 && sessionGone(answer)) {
+      this.#noteGone(row.agent_id);
+      return SESSION_GONE;
+    }
+    if (status >= 200 && status <= 299) this.#notePresent(row.agent_id);
     // The first doorbell a subscriber accepted for each message: a later ring (again, or
     // for newer mail) must not hide that this one went unanswered.
     if (status >= 200 && status <= 299)
@@ -1215,6 +1289,8 @@ export interface DoorbellState {
   delivered_at: number | null;
   /** When the recipient last read its own inbox with hab_inbox (ADR-032). */
   inbox_read_at: number | null;
+  /** Since when the product has reported this address's session as ended (ADR-032). */
+  absent_since: number | null;
 }
 /**
  * Read-only view of every recipient's doorbell for operators (`hab-admin status`). No
@@ -1248,6 +1324,7 @@ export function readDoorbells(
           status: null,
           delivered_at: null,
           inbox_read_at: null,
+          absent_since: null,
         };
         result.set(agentId, state);
       }
@@ -1265,6 +1342,11 @@ export function readDoorbells(
         state.lapsed_at = row.lapsed_at;
         state.reason = row.reason;
       }
+    if (tables.has("hab_event_absent"))
+      for (const row of db
+        .prepare("SELECT agent_id,since FROM hab_event_absent")
+        .all() as unknown as { agent_id: string; since: number }[])
+        entry(row.agent_id).absent_since = row.since;
     if (tables.has("hab_event_inbox_reads"))
       for (const row of db
         .prepare("SELECT agent_id,read_at FROM hab_event_inbox_reads")

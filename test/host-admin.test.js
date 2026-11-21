@@ -1234,4 +1234,34 @@ test("a provisional session follows a rename, and a start corrects one named aft
   const again = await startHost(f.configPath);
   t.after(() => again.close());
   assert.equal(session().session, "new@hermes.hab");
+
+test("status reports an address whose product said its session ended (ADR-032)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  const hermes = hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  f.config.ingress.events = {};
+  f.write("service.local.json", f.config);
+  const store = join(f.config.directory, "events.sqlite");
+  const events = new HabEvents(
+    { eventRecipient() {}, arrivals: () => [], addressOf: () => undefined },
+    { store },
+  );
+  await events.close();
+  const db = new DatabaseSync(store);
+  db.prepare("INSERT INTO hab_event_absent (agent_id,since) VALUES (?,?)").run(
+    hermes.address.agent_id,
+    Date.now(),
+  );
+  db.close();
+  const status = hostAdminStatus(f.configPath);
+  assert.ok(
+    status.problems.some(
+      (p) => p.code === "recipient_absent" && p.subject === "hermes@hermes.hab",
+    ),
+  );
+  const inbox = status.inboxes.find((i) => i.address === "hermes@hermes.hab");
+  assert.ok(Date.parse(inbox.recipient_absent_since) > 0);
 });

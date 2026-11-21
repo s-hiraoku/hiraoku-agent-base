@@ -449,6 +449,14 @@ function createAgentServer(
               input,
               "agent",
             );
+            // ADR-032: the product said the recipient's session has ended.
+            if (
+              tool === "hab_send" &&
+              events?.isAbsent(
+                String((prepared.input as { to?: unknown }).to ?? ""),
+              )
+            )
+              throw new MessagingError("recipient_absent");
             // Read before the tool runs: hab_inbox marks the mail read (ADR-027).
             const reminder = inboxReminder(
               events,

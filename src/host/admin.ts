@@ -440,6 +440,8 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
             !(bell.status! >= 200 && bell.status! <= 299);
           if (failing)
             problems.push({ code: "doorbell_failing", subject: agent.address });
+          if (bell?.absent_since != null)
+            problems.push({ code: "recipient_absent", subject: agent.address });
           // ADR-032: a polling product that has not read this inbox for two intervals.
           const receive = view.products.find(
             (product) => product.product_id === agent.product_id,
@@ -465,6 +467,9 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
               ? { doorbell_until: iso(bell.until) }
               : {}),
             ...(bell?.operator ? { doorbell_operator: bell.operator } : {}),
+            ...(bell?.absent_since != null
+              ? { recipient_absent_since: iso(bell.absent_since) }
+              : {}),
             // When the address last read its inbox with hab_inbox (ADR-032).
             ...(eventsEnabled
               ? { last_inbox_read_at: iso(bell?.inbox_read_at) }
