@@ -22,7 +22,7 @@ import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabDirectory } from "./directory.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import type { HabDiscoveryService } from "./discovery.ts";
-import { HAB_ADDRESS_PATTERN } from "./registry.ts";
+import { HAB_ADDRESS_PATTERN, parseHabAddress } from "./registry.ts";
 import { HabEventError, habEventParamSchemas } from "./events.ts";
 import type { HabEvents } from "./events.ts";
 import {
@@ -209,6 +209,10 @@ export function prepareHabInvocation(
     input: payload,
   };
 }
+/** ADR-032: whether the product reported a recipient's session as ended. */
+export interface RecipientAbsence {
+  isAbsentAgent(agentId: string): boolean;
+}
 export function createHabMcpServer(
   service: HabMcpService,
   resolveContext: DeliveryContextResolver = () => null,
@@ -219,6 +223,11 @@ export function createHabMcpServer(
   maxResponseBytes?: number,
   /** MCP events for new mail (ADR-022); only the agent catalog offers them. */
   events?: HabEvents,
+  /**
+   * ADR-032: recipients whose product said the session ended. Every agent endpoint
+   * applies it, also the loopback one that offers no events (defaults to `events`).
+   */
+  absence: RecipientAbsence | undefined = events,
 ) {
   if (typeof service?.resolve !== "function")
     throw new MessagingError("invalid_hab_mcp_service");
@@ -238,6 +247,7 @@ export function createHabMcpServer(
           security,
           maxResponseBytes,
           events,
+          absence,
         )
       : createDeliveryServer(
           service,
@@ -379,6 +389,7 @@ function createAgentServer(
   security: object,
   maxResponseBytes: number | undefined,
   events: HabEvents | undefined,
+  absence: RecipientAbsence | undefined,
 ) {
   const agent = service as unknown as HabAgentService;
   for (const name of [
@@ -449,14 +460,26 @@ function createAgentServer(
               input,
               "agent",
             );
-            // ADR-032: the product said the recipient's session has ended.
-            if (
-              tool === "hab_send" &&
-              events?.isAbsent(
-                String((prepared.input as { to?: unknown }).to ?? ""),
-              )
-            )
-              throw new MessagingError("recipient_absent");
+            // ADR-032: the product said the recipient's session has ended. Checked only
+            // after the caller's own authorized resolution, so an unknown, inactive or
+            // blocked recipient keeps answering unknown_address as before.
+            if (tool === "hab_send" && absence) {
+              const to = (prepared.input as { to?: unknown }).to;
+              let address: string | undefined;
+              try {
+                address = parseHabAddress(String(to)).address;
+              } catch {
+                address = undefined;
+              }
+              if (address !== undefined) {
+                const { recipient_id } = service.resolve(
+                  prepared.context,
+                  address,
+                ) as { recipient_id: string };
+                if (absence.isAbsentAgent(recipient_id))
+                  throw new MessagingError("recipient_absent");
+              }
+            }
             // Read before the tool runs: hab_inbox marks the mail read (ADR-027).
             const reminder = inboxReminder(
               events,

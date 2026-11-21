@@ -1394,3 +1394,58 @@ test("an accepted doorbell or a new subscription clears the count and the absenc
     "a new subscription brings it back",
   );
 });
+
+test("absence is only told to a caller that may resolve the recipient (ADR-032)", async (t) => {
+  const f = await setup(t, { status: () => GONE });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two", "three"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+  // Stopping a's connection makes it unresolvable: the caller learns nothing more.
+  assert.equal(typeof f.revoke, "function", "fixture can stop an address");
+  f.revoke("a");
+  const masked = await f.rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "after stop" },
+  });
+  assert.equal(masked.result.isError, true);
+  assert.notEqual(masked.result.structuredContent.error, "recipient_absent");
+});
+
+test("an agent endpoint without events (loopback) still refuses an absent recipient (ADR-032)", async (t) => {
+  const f = await setup(t);
+  const absent = new Set([f.a.agent_id]);
+  const loopback = new HabHttpGateway(
+    f.hab,
+    policy,
+    { record() {}, note() {} },
+    f.verifier,
+    undefined,
+    "agent",
+    undefined,
+    { isAbsentAgent: (id) => absent.has(id) },
+  );
+  const rpc = async (who, method, params = {}) =>
+    decode(
+      await loopback.fetch(
+        request(method, params, {
+          headers: { Authorization: `Bearer fixture-${who}` },
+        }),
+      ),
+    );
+  const refused = await rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "hello" },
+  });
+  assert.equal(refused.result.structuredContent.error, "recipient_absent");
+  absent.clear();
+  const sent = await rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "hello again" },
+  });
+  assert.notEqual(sent.result.isError, true, JSON.stringify(sent));
+});

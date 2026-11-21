@@ -459,6 +459,9 @@ export async function startHostServer(options: HostServerOptions) {
             },
             undefined,
             catalog,
+            // No MCP events on loopback (ADR-022), but the same absence policy (ADR-032).
+            undefined,
+            events,
           ),
       ),
     );

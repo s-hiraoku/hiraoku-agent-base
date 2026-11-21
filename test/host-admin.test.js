@@ -1234,6 +1234,7 @@ test("a provisional session follows a rename, and a start corrects one named aft
   const again = await startHost(f.configPath);
   t.after(() => again.close());
   assert.equal(session().session, "new@hermes.hab");
+});
 
 test("status reports an address whose product said its session ended (ADR-032)", async (t) => {
   const oauth = await oauthFixture(true);

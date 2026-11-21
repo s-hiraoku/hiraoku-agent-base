@@ -1025,7 +1025,13 @@ export class HabEvents {
       .prepare("DELETE FROM hab_event_absent WHERE agent_id=?")
       .run(agentId);
   }
-  /** ADR-032: whether the product reported this address's session as ended. */
+  /** ADR-032: whether the product reported this agent's session as ended. */
+  isAbsentAgent(agentId: string): boolean {
+    return !!this.#db
+      .prepare("SELECT 1 FROM hab_event_absent WHERE agent_id=?")
+      .get(agentId);
+  }
+  /** The same, by the address (operators and tests). */
   isAbsent(address: string): boolean {
     for (const row of this.#db
       .prepare("SELECT agent_id FROM hab_event_absent")
