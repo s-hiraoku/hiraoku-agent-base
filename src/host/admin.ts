@@ -464,6 +464,9 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
               POLL_OVERDUE_FACTOR * receive.interval_ms
           )
             problems.push({ code: "poll_overdue", subject: agent.address });
+          // ADR-032: the product receives by hook, but nothing would ring this address.
+          if (receive?.mode === "hook" && doorbell === "none")
+            problems.push({ code: "doorbell_missing", subject: agent.address });
           return {
             address: agent.address,
             unread: waiting?.unread ?? 0,
