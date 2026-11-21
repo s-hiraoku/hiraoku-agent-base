@@ -448,6 +448,12 @@ export interface HabEventOptions {
    * `{"reason":"session_gone"}` before the address counts as absent (default 3).
    */
   absent_after?: number;
+  /**
+   * ADR-032: a session_gone answer within this long of the last counted one is not counted
+   * again (default 60 s). One product reading answered for a pile of unread mail must not
+   * add up to "in a row".
+   */
+  absent_spacing_ms?: number;
   post?: WebhookPost;
   now?: () => number;
 }
@@ -492,6 +498,7 @@ export class HabEvents {
   readonly #db: DatabaseSync;
   readonly #post: WebhookPost;
   readonly #absentAfter: number;
+  readonly #absentSpacing: number;
   readonly #now: () => number;
   readonly #defaultTtl: number;
   readonly #maxTtl: number;
@@ -507,6 +514,7 @@ export class HabEvents {
     this.#source = source;
     this.#post = options.post ?? createWebhookPost();
     this.#absentAfter = options.absent_after ?? 3;
+    this.#absentSpacing = options.absent_spacing_ms ?? 60_000;
     this.#now = options.now ?? Date.now;
     this.#maxTtl = options.max_ttl_ms ?? 86_400_000;
     this.#defaultTtl = Math.min(
@@ -964,11 +972,12 @@ export class HabEvents {
         return;
       }
       if (status === SESSION_GONE) {
-        // Not deliverable to that session; move on without retrying this message.
+        // Not deliverable to that session; move on without retrying this message, but
+        // ring the next one on a later pass, not right after the same answer.
         cursor = arrival;
         failures = 0;
         this.#save(row.id, cursor, 0, null, 0);
-        continue;
+        return;
       }
       const delivered = status >= 200 && status <= 299;
       if (delivered && this.#rering && this.#source.unread)
@@ -1003,6 +1012,10 @@ export class HabEvents {
   }
   #noteGone(agentId: string) {
     const now = this.#now();
+    const last = this.#db
+      .prepare("SELECT last_at FROM hab_event_gone WHERE agent_id=?")
+      .get(agentId) as { last_at: number } | undefined;
+    if (last && now - last.last_at < this.#absentSpacing) return;
     this.#db
       .prepare(
         `INSERT INTO hab_event_gone (agent_id,count,last_at) VALUES (?,1,?)
@@ -1033,6 +1046,18 @@ export class HabEvents {
     return !!this.#db
       .prepare("SELECT 1 FROM hab_event_absent WHERE agent_id=?")
       .get(agentId);
+  }
+  /**
+   * ADR-032: the recipient read its own inbox (hab_inbox, or the notifier's hab_peek), so
+   * its session is there again. Owner decision 2026-11-21: this is how an absent address
+   * comes back, since no doorbell rings while sends to it are refused.
+   */
+  noteRecipientRead(context: unknown) {
+    try {
+      this.#notePresent(this.#source.eventRecipient(context).agent_id);
+    } catch {
+      // A read that cannot be recorded is still a read.
+    }
   }
   /** The same, by the address (operators and tests). */
   isAbsent(address: string): boolean {

@@ -527,14 +527,14 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
   assert.ok(!output.at(-1).includes("private"));
 });
 
-test("run answers HAB 410 session_gone and checks nothing while the Hermes conversation is gone", async (t) => {
-  const dir = mkdtempSync(join(tmpdir(), "hab-notify-gone-"));
+async function runWithProbe(t, result) {
+  const dir = mkdtempSync(join(tmpdir(), "hab-notify-probe-"));
   t.after(() => {
     rmSync(dir, { recursive: true, force: true });
-    delete process.env.HAB_NOTIFY_TEST_TOKEN_GONE;
+    delete process.env.HAB_NOTIFY_TEST_TOKEN_PROBE;
   });
-  // A check would fail with token_expired; no such line means no check ran.
-  process.env.HAB_NOTIFY_TEST_TOKEN_GONE = jwt({ exp: 1 });
+  // A check fails with token_expired, so its log line shows that a check ran.
+  process.env.HAB_NOTIFY_TEST_TOKEN_PROBE = jwt({ exp: 1 });
   const secret = "whsec_" + Buffer.alloc(32, 5).toString("base64");
   const secretFile = join(dir, "wake.secret");
   writeFileSync(secretFile, secret, { mode: 0o600 });
@@ -544,8 +544,8 @@ test("run answers HAB 410 session_gone and checks nothing while the Hermes conve
     `let raw = "";
 process.stdin.on("data", (c) => (raw += c));
 process.stdin.on("end", () => {
-  if (JSON.parse(raw).session_id !== "ended-session") process.exit(9);
-  console.log(JSON.stringify({ result: "gone", reason: "not_found" }));
+  if (JSON.parse(raw).session_id !== "bound-session") process.exit(9);
+  console.log(JSON.stringify({ result: ${JSON.stringify(result)} }));
 });`,
   );
   const port = 20_000 + Math.floor(Math.random() * 20_000);
@@ -555,12 +555,12 @@ process.stdin.on("end", () => {
     JSON.stringify({
       hab_url: "https://hab.example/mcp",
       agent_id: "agent-b",
-      token: { env: "HAB_NOTIFY_TEST_TOKEN_GONE" },
+      token: { env: "HAB_NOTIFY_TEST_TOKEN_PROBE" },
       store: join(dir, "notices.sqlite"),
       screen: {
         type: "hermes-desktop",
         path: join(dir, "screen.jsonl"),
-        session_id: "ended-session",
+        session_id: "bound-session",
         profile: "profile",
         backend_namespace: "namespace",
         profile_scope: "scope",
@@ -579,19 +579,34 @@ process.stdin.on("end", () => {
   const answer = await globalThis.fetch(`http://127.0.0.1:${port}/`, {
     method: "POST",
     headers: {
-      "webhook-id": "msg_gone",
+      "webhook-id": "msg_probe",
       "webhook-timestamp": String(ts),
-      "webhook-signature": signWebhook(secret, "msg_gone", ts, body),
+      "webhook-signature": signWebhook(secret, "msg_probe", ts, body),
     },
     body,
   });
-  assert.equal(answer.status, 410);
-  assert.deepEqual(await answer.json(), { reason: "session_gone" });
+  const answered = { status: answer.status, body: await answer.text() };
   await new Promise((done) => setTimeout(done, 1500));
   process.emit("SIGTERM");
   assert.equal(await running, 0);
-  const logged = lines.map((line) => JSON.parse(line));
-  assert.equal(logged.length, 1);
-  assert.equal(logged[0].session_gone, true);
-  assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "session_gone"]);
+  return { answered, logged: lines.map((line) => JSON.parse(line)) };
+}
+
+test("run answers HAB 410 session_gone and checks nothing while the Hermes conversation is gone", async (t) => {
+  const { answered, logged } = await runWithProbe(t, "gone");
+  assert.equal(answered.status, 410);
+  assert.deepEqual(JSON.parse(answered.body), { reason: "session_gone" });
+  assert.deepEqual(
+    logged.map((line) => line.session ?? line.error),
+    ["gone"],
+  );
+});
+
+test("run answers 200 and checks as before when the probe cannot tell", async (t) => {
+  const { answered, logged } = await runWithProbe(t, "unknown");
+  assert.equal(answered.status, 200);
+  assert.deepEqual(
+    logged.map((line) => line.session ?? line.error),
+    ["unknown", "token_expired"],
+  );
 });

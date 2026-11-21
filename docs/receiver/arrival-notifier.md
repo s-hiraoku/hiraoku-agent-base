@@ -240,7 +240,7 @@ Desktop が表示している同じ会話で動くので、別の CLI セッシ�
 }
 ```
 
-`hermes_bridge.desktop_session` は標準入力の `{session_id}` を受け取り、プロファイルの `state.db` を Hermes 自身の `SessionDB` で読み取り専用で開いて、1 行で答えます。書き込みも Hermes の起動も HAB の呼び出しもしません。判定は Desktop の HAB プラグインと同じです。
+`hermes_bridge.desktop_session` は標準入力の `{session_id}` を受け取り、プロファイルの `state.db` を Hermes 自身の `SessionDB` で読み取り専用で開いて、1 行で答えます。書き込みも Hermes の起動も HAB の呼び出しもしません。読み方は Desktop の HAB プラグインと同じですが、プラグインと違い、圧縮で新しい ID に続いた会話は「ある」とします（会話は続いているため）。
 
 | 答え | いつ |
 | --- | --- |
@@ -252,9 +252,9 @@ notifier は呼び鈴を受けたとき（署名を確かめた後）と、毎�
 
 - `gone` のとき、呼び鈴に `410` と `{"reason":"session_gone"}` で答え、受信箱を見ません。カードも出さず、自動の受け付けもしないので、未読は未読のまま HAB に残ります。HAB は続けて 3 回のこの答えで、そのアドレスを「相手がいない」（`recipient_absent`）にします（[MCP イベント](../connections/mcp-events.md#相手のセッションが終わったときadr-032)）。
 - `present`、`unknown`、失敗、時間切れのときは、今までどおり `200` で答えてすぐ確かめます。止まっている・壊れているだけでアドレスが「相手がいない」になることはありません。
-- `run` のログには、`gone` になったときに `{"at":…,"session_gone":true}`、そうでなくなったときに `{"at":…,"session_gone":false}` を 1 回ずつ出します。
+- `run` のログには、最初の答えと、答えが変わるたびに `{"at":…,"session":"present"|"gone"|"unknown"}` を 1 行出します。ずっと `unknown` なら、コマンドの設定か Hermes の読み込みを見直してください。
 
-戻すとき: 会話のアーカイブを解除するか、`session_id` を新しい会話に替えて notifier を再起動すると、notifier はまた確かめ始めます。ただし「相手がいない」の間は HAB がそのアドレスへの送信を断るので、新しい呼び鈴は鳴りません。HAB の印を外すには、今は運用者が呼び鈴を新しい URL で登録し直します（同じ呼び鈴のままの再起動では戻りません）。
+戻すとき: 会話のアーカイブを解除するか、`session_id` を新しい会話に替えて notifier を再起動します。notifier が次に確かめたときに `hab_peek` を呼ぶと、HAB は「相手がいない」を外します（本人が自分の受信箱を見たことになるため。`hab_inbox` でも同じ）。「相手がいない」の間は HAB が新しい送信を断るので呼び鈴は鳴りませんが、notifier の定期確認（`interval_ms`）で戻ります。
 
 `session_probe` を書かなければ、これまでどおり確かめずに `200` で答えます。
 

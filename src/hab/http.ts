@@ -33,7 +33,7 @@ export class HabHttpGateway extends McpHttpGateway {
     catalog: HabMcpCatalog = "delivery",
     /** MCP events for new mail (ADR-022); the agent catalog only. */
     events?: HabEvents,
-    /** ADR-032: recipient absence for an agent endpoint without events (loopback). */
+    /** ADR-032: recipient absence when there are no events (loopback, or the delivery catalog). */
     absence?: RecipientAbsence,
   ) {
     if (
@@ -45,7 +45,8 @@ export class HabHttpGateway extends McpHttpGateway {
     this.#hab = service;
     this.catalog = catalog;
     this.#events = catalog === "agent" ? events : undefined;
-    this.#absence = catalog === "agent" ? (absence ?? events) : undefined;
+    // The delivery catalog never refuses a send, but its hab_peek brings a recipient back.
+    this.#absence = absence ?? events;
   }
   protected override get eventsEnabled() {
     return this.#events !== undefined;

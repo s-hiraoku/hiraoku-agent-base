@@ -1,3 +1,4 @@
+import type { SessionPresence } from "../../src/agent-notify/session-probe.ts";
 /** Safe transition telemetry: callers pass classified codes and already-public notice IDs,
  * never an exception, credential, config or message body. Repeated failures stay quiet.
  */
@@ -6,19 +7,19 @@ export function createNotifyCheckLog(
   now = Date.now,
 ) {
   let failure: { code: string; at: number } | undefined;
-  let gone = false;
+  let presence: SessionPresence | undefined;
   return {
     /**
-     * ADR-032: logged once when the product says the bound session is gone, and once when
-     * it no longer says so (checks run again).
+     * ADR-032: the session probe's answer, logged once at the first reading and once per
+     * change. A probe stuck at `unknown` shows here, not as silence.
      */
-    sessionGone(nowGone: boolean) {
-      if (nowGone === gone) return;
-      gone = nowGone;
+    session(now_presence: SessionPresence) {
+      if (now_presence === presence) return;
+      presence = now_presence;
       out(
         JSON.stringify({
           at: new Date(now()).toISOString(),
-          session_gone: nowGone,
+          session: now_presence,
         }),
       );
     },

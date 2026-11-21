@@ -169,7 +169,7 @@ process.stdin.on("end", () => {
   assert.ok(Date.now() - started < 5000);
 });
 
-test("a ring and the check it starts share one probe answer", async (t) => {
+test("a ring and the check it starts run the probe once; a later check asks again", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "probe-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const counter = join(dir, "count");
@@ -187,11 +187,11 @@ console.log(JSON.stringify({ result: "present" }));`,
     { now: () => now },
   );
   await probe();
-  now = 4999;
+  now = 1000;
   await probe();
   const { readFileSync } = await import("node:fs");
   assert.equal(readFileSync(counter, "utf8"), "x");
-  now = 5000;
+  now = 60_000;
   await probe();
   assert.equal(readFileSync(counter, "utf8"), "xx");
 });

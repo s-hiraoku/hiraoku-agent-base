@@ -31,19 +31,17 @@ test("notifier timestamps failure/recovery and publication without logging each 
   assert.equal(lines.length, 4);
 });
 
-test("a gone session is logged when it starts and when it ends, not on every check", () => {
+test("the session probe's answer is logged at the first reading and on each change", () => {
   const lines = [];
   const log = createNotifyCheckLog(
     (line) => lines.push(JSON.parse(line)),
     () => 5000,
   );
-  log.sessionGone(false);
-  assert.equal(lines.length, 0);
-  log.sessionGone(true);
-  log.sessionGone(true);
-  log.sessionGone(false);
-  assert.deepEqual(lines, [
-    { at: new Date(5000).toISOString(), session_gone: true },
-    { at: new Date(5000).toISOString(), session_gone: false },
-  ]);
+  for (const presence of ["present", "present", "gone", "gone", "unknown"])
+    log.session(presence);
+  assert.deepEqual(
+    lines.map((line) => line.session),
+    ["present", "gone", "unknown"],
+  );
+  assert.equal(lines[0].at, new Date(5000).toISOString());
 });

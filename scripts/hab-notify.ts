@@ -981,10 +981,11 @@ export async function main(
               port: config.wake.port,
               secret: readWakeSecret(config.wake.secret_file),
               onWake: async () => {
-                // ADR-032: HAB counts this answer toward "recipient absent".
-                if (probe && (await probe()) === "gone") {
-                  checkLog.sessionGone(true);
-                  return "session_gone";
+                if (probe) {
+                  const presence = await probe();
+                  checkLog.session(presence);
+                  // ADR-032: HAB counts this answer toward "recipient absent".
+                  if (presence === "gone") return "session_gone";
                 }
                 timer.ring();
                 return "accepted";
@@ -993,9 +994,9 @@ export async function main(
           : undefined;
         while (!stopped) {
           // While the session is gone nothing is shown or accepted: the mail stays unread.
-          const gone = probe ? (await probe()) === "gone" : false;
-          if (probe) checkLog.sessionGone(gone);
-          if (!gone)
+          const presence = probe ? await probe() : undefined;
+          if (presence) checkLog.session(presence);
+          if (presence !== "gone")
             try {
               const started = performance.now();
               const shown = await notifier.check();

@@ -72,6 +72,8 @@ async function setup(t, options = {}) {
     post: h.post,
     // The ADR-031 inbox check is off unless a test is about it.
     inbox_check_ms: 0,
+    // ADR-032 spacing has its own test; elsewhere each gone answer counts.
+    absent_spacing_ms: 0,
     ...(typeof options.events === "function"
       ? options.events({ a, b })
       : options.events),
@@ -1427,7 +1429,7 @@ test("an agent endpoint without events (loopback) still refuses an absent recipi
     undefined,
     "agent",
     undefined,
-    { isAbsentAgent: (id) => absent.has(id) },
+    { isAbsentAgent: (id) => absent.has(id), noteRecipientRead() {} },
   );
   const rpc = async (who, method, params = {}) =>
     decode(
@@ -1505,4 +1507,101 @@ test("a newly registered static doorbell clears absence; the same one on restart
     false,
     "a replacement doorbell brings it back",
   );
+});
+
+test("the absent recipient's own hab_inbox or hab_peek brings it back (ADR-032)", async (t) => {
+  const f = await setup(t, { status: () => GONE });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  const makeAbsent = async () => {
+    for (const text of ["one", "two", "three"]) {
+      if (f.events.isAbsentAgent(f.a.agent_id)) break;
+      await f.send("b", f.a.address, text);
+      await f.events.dispatch();
+    }
+    assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+  };
+  await makeAbsent();
+  const other = await f.rpc("b", "tools/call", {
+    name: "hab_inbox",
+    arguments: {},
+  });
+  assert.notEqual(other.result.isError, true, JSON.stringify(other));
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    true,
+    "another agent reading its own inbox says nothing about a",
+  );
+  const read = await f.rpc("a", "tools/call", {
+    name: "hab_inbox",
+    arguments: {},
+  });
+  assert.notEqual(read.result.isError, true, JSON.stringify(read));
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), false);
+  const sent = await f.rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "back" },
+  });
+  assert.notEqual(sent.result.isError, true, JSON.stringify(sent));
+
+  await makeAbsent();
+  const url = "https://hab.example/mcp/delivery";
+  const delivery = new HabHttpGateway(
+    f.hab,
+    { ...policy, resource_url: url },
+    { record() {}, note() {} },
+    f.verifier,
+    undefined,
+    "delivery",
+    undefined,
+    f.events,
+  );
+  const peeked = await decode(
+    await delivery.fetch(
+      request(
+        "tools/call",
+        { name: "hab_peek", arguments: {} },
+        { url, headers: { Authorization: "Bearer fixture-a" } },
+      ),
+    ),
+  );
+  assert.notEqual(peeked.result?.isError, true, JSON.stringify(peeked));
+  assert.ok(
+    peeked.result?.structuredContent?.messages?.length > 0,
+    JSON.stringify(peeked),
+  );
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    false,
+    "the notifier's peek brings it back",
+  );
+});
+
+test("gone answers count once per spacing, so one reading for piled-up mail is not three (ADR-032)", async (t) => {
+  let now = Date.parse("2026-11-21T00:00:00Z");
+  const f = await setup(t, {
+    status: () => GONE,
+    events: { now: () => now, absent_spacing_ms: 60_000 },
+  });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two", "three", "four"])
+    await f.send("b", f.a.address, text);
+  for (let pass = 0; pass < 3; pass++) {
+    await f.events.dispatch();
+    now += 1000;
+  }
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    false,
+    "three answers within a minute are one observation",
+  );
+  for (let pass = 0; pass < 2; pass++) {
+    now += 60_000;
+    await f.send("b", f.a.address, `later ${pass}`);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
 });
