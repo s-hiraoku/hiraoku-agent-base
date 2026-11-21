@@ -1280,6 +1280,13 @@
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
     },
     {
+      "path": "docs/plans/muse-codex-wake.md",
+      "sha256": "9bae671267081c07148c0f16ed0ea1cadc0839f946eeecb5012527bb1ff55910",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Design (2026-11-21, not executed) for waking Muse and Codex automatically: Muse stays on product-scheduled polling (no public external wake found), Codex uses the recipient-side notifier calling `codex queue --thread` with one fixed line that prompts hab_inbox (no sender body). Real-device checks M-1 and C-1..C-5 decide; ADR-015/021/022 boundaries unchanged."
+    },
+    {
       "path": "docs/plans/receive-show-act-plan.md",
       "sha256": "501d6b74ac39527476a90e76e755f6c671483a7c100ce0288b04477540a0c642",
       "role": "context",
