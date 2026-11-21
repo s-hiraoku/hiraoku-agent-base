@@ -150,6 +150,24 @@ test("the loop's own presence check lifts conversation_gone but not session_mism
   assert.equal(table.mayPeek(b), false);
 });
 
+test("fixing the session name does not lift an outstanding conversation_gone", async () => {
+  const a = unit("a", { presence: async () => "gone" });
+  const { table, answer } = harness([a]);
+  assert.equal(
+    await answer(ring({ to: "a@agent.hab", session: "conv-a" })),
+    "session_gone",
+  );
+  await answer(ring({ to: "a@agent.hab", session: "conv-other" }));
+  a.setPresence(async () => "unknown");
+  assert.equal(
+    await answer(ring({ to: "a@agent.hab", session: "conv-a" })),
+    "accepted",
+  );
+  assert.equal(table.mayPeek(a), false, "still waits for present");
+  table.observe(a, "present");
+  assert.equal(table.mayPeek(a), true);
+});
+
 test("a slow, unknown or failing probe is accepted", async () => {
   const cases = {
     slow: () => new Promise(() => {}),

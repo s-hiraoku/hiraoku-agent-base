@@ -58,12 +58,13 @@ export interface RingLog {
 export const MAX_UNITS = 32;
 export const PROBE_MS = 1500;
 
-type Pause = "session_mismatch" | "conversation_gone";
-
 export class SessionTable {
   readonly units: readonly SessionUnit[];
   readonly #byAddress: ReadonlyMap<Address, SessionUnit>;
-  readonly #paused = new Map<SessionUnit, Pause>();
+  // Two independent pauses: fixing the session name must not drop an outstanding
+  // conversation_gone, and presence must not lift a session_mismatch.
+  readonly #mismatched = new Set<SessionUnit>();
+  readonly #goneUnits = new Set<SessionUnit>();
 
   private constructor(units: readonly SessionUnit[]) {
     this.units = Object.freeze([...units]);
@@ -113,7 +114,7 @@ export class SessionTable {
    * or restart; conversation_gone lifts once presence() is present.
    */
   mayPeek(unit: SessionUnit): boolean {
-    return !this.#paused.has(unit);
+    return !this.#mismatched.has(unit) && !this.#goneUnits.has(unit);
   }
 
   /** Records what was just learned about a unit; the only writer of the peek state. */
@@ -121,15 +122,10 @@ export class SessionTable {
     unit: SessionUnit,
     seen: Presence | "session_mismatch" | "session_matched",
   ): void {
-    if (seen === "session_matched") {
-      if (this.#paused.get(unit) === "session_mismatch")
-        this.#paused.delete(unit);
-      return;
-    }
-    if (this.#paused.get(unit) === "session_mismatch") return;
-    if (seen === "session_mismatch") this.#paused.set(unit, seen);
-    else if (seen === "gone") this.#paused.set(unit, "conversation_gone");
-    else if (seen === "present") this.#paused.delete(unit);
+    if (seen === "session_matched") this.#mismatched.delete(unit);
+    else if (seen === "session_mismatch") this.#mismatched.add(unit);
+    else if (seen === "gone") this.#goneUnits.add(unit);
+    else if (seen === "present") this.#goneUnits.delete(unit);
   }
 }
 
