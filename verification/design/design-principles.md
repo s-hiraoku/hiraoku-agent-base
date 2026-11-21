@@ -630,7 +630,7 @@ Scope: Removed attachment upload/read/admission/delivery/client; no current scop
 
 Checks: js-root.
 
-Sources: [docs/hab-messaging-spec.md:225](../../docs/hab-messaging-spec.md#L225-L225), [README.md:122](../../README.md#L122-L122).
+Sources: [docs/hab-messaging-spec.md:227](../../docs/hab-messaging-spec.md#L227), [README.md:66](../../README.md#L66-L68).
 
 ### HAB-D09 — Verified local attachment bytes gate body save and ACK
 
