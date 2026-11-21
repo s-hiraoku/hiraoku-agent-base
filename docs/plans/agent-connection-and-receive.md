@@ -72,7 +72,7 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
    - 接続台帳に `subject`・`client_id`・新しい `connection_id`・`approved_at`・`approved_until`・`state: active` の行を足す。台帳ファイルは一時ファイルから置き換え、書く前にバックアップを取る。
    - 今の `hostAdminConnect` と同じ手順で、アドレスを登録して接続に結び付ける。
    - 承認待ちの行を消す。
-   台帳は要求ごとに読み直されるので、承認後に host の再起動は要らない。エージェントは次の接続で通る。
+   台帳は要求ごとに読み直されるので、承認後に host の再起動は要らない。ただし今の検証は、承認より前に発行された token を `token_before_approval` で断る。そのためエージェントは、承認後に発行された token で通る。製品の更新（access token は最長 600 秒）を待つか、製品の画面でつなぎ直す。`approve` はそのことを次の操作として表示する。承認の開始時刻を前にずらして古い token を通すことはしない。
 5. `hab:admin reject --pending <pending_id>` で行を消す。断った組がまた来れば、また承認待ちに入る。
 
 承認は今までどおり運用者の操作であり、エージェントが自分で通ることはない。`approve` は Mac mini の安全確認の対象（本人の言葉が要る操作）のままである。
@@ -80,7 +80,7 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 ### 受入条件
 
 - [ ] 署名の正しい未登録の組だけが承認待ちに入り、署名の違う token・期限切れ・scope 不足は入らない。
-- [ ] `approve` のあと、同じ token で `hab_status` が通る。再起動なし。
+- [ ] `approve` のあと、承認後に発行された token で `hab_status` が通る。承認前の token は今までどおり `token_before_approval` で断る。再起動なし。
 - [ ] 台帳の書き換えが途中で止まっても、前の台帳か新しい台帳のどちらかが残る。
 - [ ] 承認待ちの記録に token と本文がない。`hab:admin status` に承認待ちの件数が出る。
 - [ ] 実機：新しい製品を 1 つ、Auth0 のログを見ずに `pending` → `approve` でつなぐ。
@@ -110,8 +110,8 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 
 `hab:admin onboard --address <a> --product <製品>` は次を順に行い、どこまで済んだかを毎回同じ形で出す。
 
-1. 承認待ちを探し、なければ「製品の画面で MCP を追加してログインする」手順を出して止まる。
-2. あれば承認の案を見せる（実行は運用者の `approve`）。
+1. そのアドレスに承認済みの接続がすでにあれば、2 を飛ばして 3 へ進む（`approve` のあとに再実行した場合）。
+2. なければ承認待ちを探す。承認待ちもなければ「製品の画面で MCP を追加してログインする」手順を出して止まる。あれば承認の案を見せる（実行は運用者の `approve`）。
 3. レシピの `receive` と、要るなら呼び鈴を設定する。
 4. レシピの「AI に渡す文」を、アドレスを埋めて出す。
 5. `ping` で試験の 1 通を送り、呼び鈴・既読・返信の時刻と、止まった段を出す。
