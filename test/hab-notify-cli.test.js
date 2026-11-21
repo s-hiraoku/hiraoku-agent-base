@@ -8,6 +8,7 @@ import { test } from "node:test";
 import { HabNotifierClient, SQLiteNotices } from "../src/agent-notify/index.ts";
 import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import { main, tokenProblem } from "../scripts/hab-notify.ts";
+import { freePort } from "./free-port.js";
 
 test("hab-notify prints usage, lists no notices and refuses a decision it never showed", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "hab-notify-cli-"));
@@ -546,7 +547,7 @@ process.stdin.on("end", () => {
   console.log(JSON.stringify({ result: ${JSON.stringify(result)} }));
 });`,
   );
-  const port = 20_000 + Math.floor(Math.random() * 20_000);
+  const port = await freePort();
   const config = join(dir, "notify.json");
   writeFileSync(
     config,
@@ -596,9 +597,19 @@ process.stdin.on("end", () => {
       body,
     });
   // `run` listens only after its setup; a busy machine needs longer than a fixed wait.
-  // A refused connection reached nothing, so trying again cannot ring twice.
+  // A refused connection reached nothing, so trying again cannot ring twice. If `run`
+  // ends first it never listened: fail with what it reported instead of waiting.
+  let ended;
+  running.then(
+    (code) => (ended = { code }),
+    (error) => (ended = { error: String(error) }),
+  );
   let answer;
   for (const deadline = Date.now() + 10_000; ;) {
+    if (ended)
+      assert.fail(
+        `run ended before listening: ${JSON.stringify({ ...ended, lines })}`,
+      );
     try {
       answer = await ring();
       break;
