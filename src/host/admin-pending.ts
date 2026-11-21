@@ -246,6 +246,7 @@ export function hostAdminRevoke(
   const { ledger } = paths(configPath);
   return withLedgerLock(ledger, () => {
     const current = readLedger(ledger);
+    const oauth = parseOAuthConfig(current);
     const row = current.connections.find(
       (c) => c.connection_id === connectionId,
     );
@@ -267,7 +268,15 @@ export function hostAdminRevoke(
       connection_id: connectionId,
       ledger: wasActive ? ("revoked" as const) : ("already_revoked" as const),
       backup,
-      registry: hostAdminRevokeBinding(configPath, connectionId),
+      // From the ledger row, not the host's credential list: that list drops OAuth
+      // connections while OAuth is disabled and can hold a local one with this ID.
+      registry: hostAdminRevokeBinding(configPath, {
+        issuer: oauth.issuer,
+        audience: oauth.resource,
+        subject: String(row.subject),
+        client_id: String(row.client_id),
+        connection_id: connectionId,
+      }),
     };
   });
 }

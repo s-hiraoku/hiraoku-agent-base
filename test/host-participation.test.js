@@ -1071,6 +1071,18 @@ test("revoke --connection finishes from a ledger-only revoke and reports a stopp
   assert.equal(finished.registry.remaining_active_bindings, 0);
 });
 
+test("revoke --connection stops the binding while OAuth sign-in is off (DCR plan 6)", async (t) => {
+  const { f, approved } = await reconnected(t);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+  ledger.enabled = false;
+  writeFileSync(ledgerFile, JSON.stringify(ledger, null, 2));
+  const result = hostAdminRevoke(f.configPath, approved.connection_id);
+  assert.equal(result.ledger, "revoked");
+  assert.equal(result.registry.binding, "revoked");
+  assert.equal(result.registry.remaining_active_bindings, 1);
+});
+
 test("an approve and a revoke at once both stay in the ledger (DCR plan 6)", async (t) => {
   const oauth = await persistentOAuthFixture(true);
   oauth.participation.approved_at = new Date(

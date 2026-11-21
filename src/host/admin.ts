@@ -752,23 +752,15 @@ export function hostAdminDisconnect(configPath: string, addressInput: string) {
 }
 
 /**
- * Revokes the one Registry binding of `connectionId`, leaving the group's other
+ * Revokes the one Registry binding of `principal`, leaving the group's other
  * connections alone (`disconnect` revokes them all). Safe to rerun. When it was the
  * group's last live binding, the Registry stops the group, which the result reports.
  */
 export function hostAdminRevokeBinding(
   configPath: string,
-  connectionId: string,
+  principal: IndividualPrincipal,
 ) {
-  return withRegistry(configPath, ({ registry, credentials }) => {
-    const matches = new Map(
-      credentials()
-        .filter((record) => record.principal.connection_id === connectionId)
-        .map((record) => [JSON.stringify(record.principal), record.principal]),
-    );
-    if (matches.size === 0) throw new HostAdminError("credential_not_found");
-    if (matches.size > 1) throw new HostAdminError("credential_ambiguous");
-    const [principal] = matches.values();
+  return withRegistry(configPath, ({ registry }) => {
     const reservation = registry.findPrincipal(operator, principal);
     if (!reservation) return { binding: "none" as const };
     if (reservation.state === "active")
