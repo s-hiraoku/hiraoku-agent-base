@@ -56,7 +56,7 @@ Grok と Dots の側には、1 つの購読で複数のセッションを持つ�
 - **セッション名は新しい項目にしない。** 製品がもう持っている会話の ID から決める。
   - Hermes と Claude Code は `screen.session_id`、Codex は `thread_id`。
   - 呼び鈴の `session`、画面の結び付き、`sessionProbe` に渡す ID が同じ 1 つの値になる。
-  - 台帳には `hab:admin session <address> <会話の ID>` で登録する。打つ行は `units` が表示する。
+  - 台帳には `npm run hab:admin -- --config <host-config> session --address <address> --session <session-id> --request-id <request-id>` で登録する。打つ行は `units` が表示する。
 - **画面側のコマンドは変えない。** `events`・`action`・`statusline`・`decide`・`show` は今までどおり `--config <1 セッションの設定>` を読む。Hermes のプロファイルの reader・actions_command は、移したファイルを指すように直すだけでよい。
 
 ### 起動と確認
@@ -136,7 +136,7 @@ export function runProduct(
 ### 運用者の手順（Mac mini）
 
 1. `hermes.d/` を作り、今の `notify.json` を移す。`as_address` がなければ足し、`wake` は製品ファイルへ移す。
-2. `units` を実行し、表示された `hab:admin session <address> <会話の ID>` を打つ。打たなくても、仮の名前のあいだは今までどおり届く。
+2. `units` を実行し、表示された `npm run hab:admin -- --config <host-config> session --address <address> --session <session-id> --request-id <request-id>` を打つ。打たなくても、仮の名前のあいだは今までどおり届く。
 3. Hermes のプロファイルの reader・actions_command を、移したファイルに向ける。
 4. LaunchAgent を `--product … run` に替えて再起動する。
 5. 2 つ目の会話をつなぐときの手順。
@@ -153,11 +153,11 @@ export function runProduct(
    - そのアドレスがない（`unknown_address`）。
    - 台帳の名前が会話の ID と違う（`session_mismatch`）。
    - 会話が終わっている（`presence: gone`）。
-2. 原因を直す。設定を足すか直して再起動する。新しい会話なら `hab:admin session <address> <新しい会話の ID>`。
+2. 原因を直す。設定を足すか直して再起動する。新しい会話なら、前節の手順2の `session` に新しい会話の ID と新しい `--request-id` を渡す。台帳で既に名前を付けた会話を置き換える場合は、対象アドレスを確認して `--replace true` を付ける。同じ要求を再試行するときは同じ `--request-id` を使う。
 3. `hab:admin present <address>` を打つ。HAB 側で足すのはこの 1 つだけで、配送と購読は変えない。
    - 「相手がいない」の印を外し、記録を残す。
    - 入るまでの代わりは、呼び鈴の登録をし直すこと。呼び鈴の ID はアドレスと URL から作られる（`configureStatic`）ので、同じ登録のまま host を再起動しても印は残る。host の設定から呼び鈴を外して再起動し、戻して再起動する。
-4. テスト送信し、`200` で受かることを確かめる。
+4. 試験の1通を `hab_send` で送り、ツール結果が送信の受理を返すことを確かめる。
 
 ## Grok と Dots：指示文で自分宛てを確かめる
 
