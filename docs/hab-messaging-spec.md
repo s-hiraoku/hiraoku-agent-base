@@ -440,7 +440,7 @@ ACK確定と、稼働中配送DB上の本文・本文を含む派生データの
 | `hab_status`                 | 受付・配送状態と不達の取得           | 元送信者または明示した受信者・管理者に限定              |
 | `hab_extend`（必要性未決定） | inbox保存中の有限lease延長           | 現token、期限、延長上限。業務処理のために保持し続けない |
 
-MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は、配送の4 tool／HABの5 toolのいずれにも含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/host/mcp/http.ts)と[Node callback](../src/host/mcp/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。HAB adapterも同じ入口制限と共通MCP executorを使う。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
+MCP factoryは毎回、hostにboundされた検証済みcontext resolverとservice認可を通す。resolver未接続・検証失敗・失効・操作拒否はfail-closedとし、引数のagent名を主体に使わない。ローカル本文解放・保守・registry管理・Task実行は、配送用のtool（`/mcp/delivery`）とエージェント用の4 tool（ADR-020）のいずれにも含めない。返却はtext JSONとstructuredContentを一致させ、許可済みの固定error code以外のstorage詳細を隠す。[独立HTTP入口](../src/host/mcp/http.ts)と[Node callback](../src/host/mcp/http-node.ts)で、protocol処理前のBearer検証port、Host/Originとraw target、body/response/time/rate/同時数、audit、未対応listener拒否を実装する。HAB adapterも同じ入口制限と共通MCP executorを使う。期限後の検証・監査完了から新規操作を開始せず、未完了providerがあればslotを保持する。実認証bindingとlistener/proxyのheader/TCP上限・TLS・公開設定は後続の明示配線で必須とし、生のSDK handlerだけを本番入口としない。
 
 HTTPで同等操作を提供する場合も同じserviceとschemaを呼び、MCPより広い認可にしない。registry管理や隔離解除は通常agentのtoolに混ぜない。message ID、thread ID、agent IDが分かるだけでは操作できない。既存Taskのsubmit/claim等、診断ping、discovery-only入口は互換性を維持し、hostを配線するまでは従来どおり拒否する。
 

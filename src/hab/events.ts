@@ -39,6 +39,11 @@ export const habEventDefinition = Object.freeze({
     type: "object",
     properties: {
       to: { type: "string", description: "Your HAB address." },
+      session: {
+        type: "string",
+        description:
+          "The session this address stands for; the address itself until an operator names it.",
+      },
       arrived_at: { type: "string", format: "date-time" },
     },
     required: ["to", "arrived_at"],
@@ -72,6 +77,8 @@ export interface HabEventSource {
   eventRecipient(context: unknown): { agent_id: string; address: string };
   arrivals(agentId: string, after: Arrival | null, limit: number): Arrival[];
   addressOf(agentId: string): string | undefined;
+  /** The product session behind the address (ADR-032); without it the doorbell names none. */
+  sessionOf?(agentId: string): string | undefined;
   /** Whether one message still waits unread; without it the doorbell is never rung again. */
   unread?(agentId: string, key: Omit<Arrival, "accepted_at">): boolean;
 }
@@ -476,6 +483,14 @@ function sessionGone(body: string): boolean {
 const STATIC_PREFIX = "hab_static_";
 const NEVER = 8_640_000_000_000_000;
 const BEARER = /^[A-Za-z0-9._~+/=-]{16,512}$/;
+/**
+ * Headers a Bearer doorbell's receiver requires besides the token, by URL host. A Claude
+ * scheduled task's fire endpoint refuses a request without `anthropic-version`.
+ */
+const BEARER_HOST_HEADERS: ReadonlyMap<
+  string,
+  Record<string, string>
+> = new Map([["api.anthropic.com", { "anthropic-version": "2023-06-01" }]]);
 /** A doorbell secret: a Standard Webhooks `whsec_` key, or a Bearer token. */
 export function doorbellSecret(secret: unknown): string {
   if (typeof secret === "string" && secret.startsWith("whsec_")) {
@@ -755,7 +770,7 @@ export class HabEvents {
       answer = await this.#post(
         url,
         body,
-        this.#headers(secret, messageId, id, body),
+        this.#headers(url, secret, messageId, id, body),
       );
     } catch (error) {
       if (error instanceof HabEventError) throw error;
@@ -783,6 +798,7 @@ export class HabEvents {
       .run(agentId, url, now + 86_400_000);
   }
   #headers(
+    url: string,
     secret: string,
     messageId: string,
     subscriptionId: string,
@@ -796,6 +812,7 @@ export class HabEvents {
         Authorization: `Bearer ${secret}`,
         "webhook-id": messageId,
         "webhook-timestamp": String(timestamp),
+        ...BEARER_HOST_HEADERS.get(new URL(url).host),
       };
     return {
       "Content-Type": "application/json",
@@ -1092,11 +1109,16 @@ export class HabEvents {
         .digest("hex")
         .slice(0, 32);
     const arrived = new Date(arrival.accepted_at).toISOString();
+    const session = this.#source.sessionOf?.(row.agent_id);
     const body = JSON.stringify({
       eventId,
       name: HAB_EVENT_NAME,
       timestamp: arrived,
-      data: { to: address, arrived_at: arrived },
+      data: {
+        to: address,
+        ...(session === undefined ? {} : { session }),
+        arrived_at: arrived,
+      },
       cursor: null,
     });
     let status = 0;
@@ -1105,7 +1127,7 @@ export class HabEvents {
       const response = await this.#post(
         row.url,
         body,
-        this.#headers(row.secret, eventId, row.id, body),
+        this.#headers(row.url, row.secret, eventId, row.id, body),
       );
       status = response.status;
       answer = response.body;

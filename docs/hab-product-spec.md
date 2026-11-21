@@ -20,7 +20,7 @@ HAB専用GUIは通信基盤の登録・接続・状態・設定・復旧を扱�
 
 HABの対象は、利用者が承認して登録したエージェントである。製品ごとに別の配送方式は作らず、どの製品も共通MCP（または既定無効のA2A入口）で同じアドレス・認証・配送契約を使う。製品ごとに違うのは、接続の入口、届いたことの知らせ方（受信通知）、会話への表示と引渡しだけであり、これらは各製品のアダプタが担う。
 
-| 対象 | `agent_name` の例 | 主な接続の入口 | 状態（2026-11-19 JST） |
+| 対象 | `agent_name` の例 | 主な接続の入口 | 状態（2026-11-21 JST） |
 | --- | --- | --- | --- |
 | Dots（ChatGPT） | `dot` | ChatGPTのカスタムコネクタ（公開HTTPS MCP＋OAuth） | 接続済み |
 | Hermes（Hermes Desktop） | `hermes` | Hermes の MCP 設定＋Desktop プラグイン | 接続済み |
@@ -28,7 +28,7 @@ HABの対象は、利用者が承認して登録したエージェントであ�
 | Muse（Meta Muse） | `muse` | Muse アプリのカスタムコネクタ | 接続済み |
 | Claude Code | `claude-code` | Claude Code の MCP 設定 | 受信通知アダプタ実装済み、実機未接続 |
 | Codex | `codex` | Codex の MCP 設定＋app-server | 受信通知アダプタ実装済み、実機未接続 |
-| Grok Bot | `grok-bot` | 未確定 | 計画 |
+| Grok Bot | `grok-bot` | 共通MCP＋運用者が登録する呼び鈴（Webhook、ADR-029） | 接続済み |
 | Cursor | `cursor` | Cursor の MCP 設定 | 計画 |
 | Gemini（Gemini アプリ、Gemini API を使う独自アプリ） | `gemini` | Gemini アプリの Custom Connected Apps（remote MCP） | 計画（2026-11-19 追加） |
 | Antigravity（Antigravity アプリ・IDE・CLI） | `antigravity` | 共通の MCP 設定（`serverUrl`＋OAuth） | 計画（2026-11-19 追加） |
@@ -40,13 +40,13 @@ HABの対象は、利用者が承認して登録したエージェントであ�
 | 区分 | 内容 |
 | --- | --- |
 | 確定した製品要件 | 簡単な異種agent通信、GUIとMCPの共通業務境界、登録/宛先/割当の管理、状態の区別、権限分離、privateなPC/モバイル利用、Kanbanの別アプリ化 |
-| 現行コード基準 | `main` `28dd393`（2026-11-12照合）。Registry、基本MCP5操作、host（`src/host`）のSQLite配送store、任意のhab_discover、既定無効のA2A入口、限定Task bridge。本書の追加だけで配備済みとはしない |
+| 現行コード基準 | `main` `28dd393`（2026-11-12照合）。2026-11-21 に `86dc505` で、エージェント用MCPが4操作（`hab_send`・`hab_inbox`・`hab_reply`・`hab_status`、ADR-020）と任意の`hab_discover`であること、Registryに製品の受け方とセッションの台帳（ADR-032）があることだけを照合した。Registry、host（`src/host`）のSQLite配送store、任意のhab_discover、既定無効のA2A入口、限定Task bridge。本書の追加だけで配備済みとはしない |
 | ローカル候補 | 対話登録、session/bot binding、継続poll、inbox/sidecarと表示consumerの統合。mainへの適用・常用受入れとは別 |
 | GUIの現在の範囲 | 既存のread-only成果は登録一覧、検索、状態filter、pagination、宛先copyに限定。登録・割当変更・テスト送信等のmutationは将来実装。本repoへの同梱・配備状況とは別に追跡する |
 | 新規技術の評価 | SDK/driver/版、通知方式、複数host。A2Aは2026-11-12のowner確認で相互運用の入口として採用済み（既定は無効）。**A2Aの本番配備は未決** |
 | 採用済みの配送 | 2026-11-13 JSTの[ADR-018](hab-decisions.md)で、配送をhostの1つのSQLiteファイル（[配送store](delivery-store.md)）だけにした。2026-11-06のADR-016で採用したNATS JetStreamは外し、JetStream版の旧messageは移行しない。クラウド展開は1台のVMを前提とする。本番配備・実storageの故障挙動の受入れは別に残る |
 
-既存roadmapにある「初期版ではA2A不採用」は、その時点の初期範囲を示す。旧Relayは廃止し、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。配送はhostのSQLite配送storeで行う（[ADR-018](hab-decisions.md)）。既存のMCP 5ツールはA2Aと並ぶ標準入口として残す。
+既存roadmapにある「初期版ではA2A不採用」は、その時点の初期範囲を示す。旧Relayは廃止し、エージェント間の相互運用はA2Aへ置き換えた（[ADR-016](hab-decisions.md)）。配送はhostのSQLite配送storeで行う（[ADR-018](hab-decisions.md)）。エージェント用MCPの4ツール（ADR-020）はA2Aと並ぶ標準入口として残す。
 
 ## 3. 利用者フロー
 

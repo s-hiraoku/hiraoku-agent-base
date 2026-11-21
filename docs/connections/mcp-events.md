@@ -15,7 +15,11 @@ OpenAI MCP Events（webhook配送）に答え、「受信箱に新着がある�
   "eventId": "evt_…",
   "name": "hab.message.received",
   "timestamp": "2026-11-16T12:00:00.000Z",
-  "data": { "to": "dots@dot.hab", "arrived_at": "2026-11-16T12:00:00.000Z" },
+  "data": {
+    "to": "dots@dot.hab",
+    "session": "stallone",
+    "arrived_at": "2026-11-16T12:00:00.000Z"
+  },
   "cursor": null
 }
 ```
@@ -87,7 +91,7 @@ HABは購読を自分で作り直しません。購読が更新されずに切�
 ## 受け取られたのに読まれない呼び鈴（ADR-027）
 
 - 呼び鈴が2xxで受け取られてから`unanswered_after_ms`（既定5分）たってもそのメッセージが未読なら、HABは同じ購読に
-  1回だけもう一度鳴らします。`eventId`は最初と別で、中身は同じ`{to, arrived_at}`だけです。再送はしません。
+  1回だけもう一度鳴らします。`eventId`は最初と別で、中身は同じ`{to, session, arrived_at}`だけです。再送はしません。
 - 受信側のエージェントが`/mcp`の`hab_send`・`hab_reply`・`hab_status`を呼ぶと、未読があれば結果に`inbox_reminder`が付きます。
 
   ```json
@@ -161,7 +165,7 @@ npm run hab:admin -- --config /ABSOLUTE/PRIVATE/service.local.json status
 - `secret_file`は所有者だけが読める（`chmod 600`）1KiB以下のファイルで、中身は鍵1行です。
   `whsec_…`ならStandard Webhooksの署名ヘッダ、それ以外（16〜512文字のtoken）は
   `Authorization: Bearer <token>`で送ります。鍵をチャットや設定ファイルに貼らないでください。
-- 中身は購読の呼び鈴と同じ`{to, arrived_at}`だけです。失敗時の再送、5分後の鳴らし直し（ADR-027）も同じです。
+- 中身は購読の呼び鈴と同じ`{to, session, arrived_at}`だけです。失敗時の再送、5分後の鳴らし直し（ADR-027）も同じです。
 - 期限はなく、challengeも送りません。設定から消してhostを再起動すると外れます。
   登録した時点で待っているメールでは鳴りません。
 - `hab:admin status`では`doorbell: "live"`と`doorbell_operator: 1`のように見えます。
