@@ -297,6 +297,34 @@ Codex には、他のプログラムから使う公開の口として app-server
 
 未確認の点：Codex の画面（デスクトップアプリや VS Code 拡張）が使っている app-server に、外から WebSocket で入れるか。別の接続で始めたターンが、利用者の画面にそのまま流れるか。接続を閉じた後もターンが続くか。
 
+ChatGPT アプリの Codex の会話は、アプリが stdio で動かす app-server の上にあり、WebSocket の待ち受けがありません（2026-11-21 Mac mini で確認）。
+この会話には `app_server` の代わりに `queue` を設定します。両方を書くと設定エラーです。
+
+```json
+"screen": {
+  "type": "codex",
+  "path": "~/.hab-notify/codex.jsonl",
+  "thread_id": "<Codex の会話の UUID>",
+  "queue": {
+    "codex_bin": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+    "daemon_socket": "/Users/<user>/.codex/app-server-control/app-server-control.sock"
+  }
+}
+```
+
+「対応する」か ADR-023 の自動受付の後だけ、既読にしてから `codex queue --thread <thread_id> --message <handoff_prompt> --remote unix://<daemon_socket>` を引数の配列で実行します。シェルは通しません。20 秒で打ち切ります。
+新着を出す・出し直す・あとで、では `codex` を実行せず、未読のままです。
+`codex queue` が依頼を積む先は、運用者が `codex app-server daemon start` で起動しておく daemon です。notifier は daemon を起動しません。
+2026-11-21 の試しでは、積んだ依頼をアプリの待機中の会話が 7 秒後に自分で始めました。
+
+| 答え | 記録 |
+| --- | --- |
+| 終了コード 0 | `queued`（会話の入力に積まれた。始まったかは別に見る） |
+| `No active session found matching`、`does not support thread/queue/add`、`cannot queue through an embedded app server` を出して終わった（何も積まれていない） | `unsupported` |
+| それ以外の終了、daemon に届かない、20 秒の時間切れ、`codex` が見つからない | `unknown`。自動では再送しない |
+
+通知の記録は、ソケットのパスと会話ごとに分かれます。WebSocket の設定や表示だけの設定から切り替えると、前の記録は使いません。切り替える前に `list` で未処理の通知がないことを確かめ、戻すときは元の設定に戻せば元の記録をそのまま使えます。
+
 ### Claude Code
 
 Claude Code では表示に status line を使います。channel の配送部はありますが、同梱 CLI は現在の会話を検証できないため引渡しを拒否します。

@@ -24,7 +24,13 @@ export { ProductScreen } from "./product-screen.ts";
 export type { ProductScreenOptions } from "./product-screen.ts";
 export { runCommand } from "./command.ts";
 export type { TrustedCommand } from "./command.ts";
-export { codexHandoff, codexTarget, websocketConnect } from "./codex.ts";
+export {
+  codexHandoff,
+  codexQueueHandoff,
+  codexTarget,
+  execArgv,
+  websocketConnect,
+} from "./codex.ts";
 export type {
   CodexAppServer,
   CodexBinding,

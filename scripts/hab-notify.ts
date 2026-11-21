@@ -59,6 +59,7 @@ import {
   claudeCodeStatusLine,
   claudeCodeTarget,
   codexHandoff,
+  codexQueueHandoff,
   codexTarget,
   hermesDesktopPage,
 } from "../src/agent-notify/index.ts";
@@ -242,21 +243,35 @@ const configSchema = z.strictObject({
        */
       session_probe: commandSchema.optional(),
     }),
-    z.strictObject({
-      type: z.literal("codex"),
-      path: z.string().min(1),
-      /** The Codex thread the user works in. */
-      thread_id: label,
-      /** Optional: the running app-server that serves the thread; without it, unsupported. */
-      app_server: z
-        .strictObject({
-          url: z.string().regex(/^wss?:\/\/[^\s]+$/),
-          token_file: z.string().min(1).optional(),
-          timeout_ms: z.number().int().min(1000).max(300_000).optional(),
-        })
-        .optional(),
-      display_command: commandSchema.optional(),
-    }),
+    z
+      .strictObject({
+        type: z.literal("codex"),
+        path: z.string().min(1),
+        /** The Codex thread the user works in. */
+        thread_id: label,
+        /** Optional: the running app-server that serves the thread; without it, unsupported. */
+        app_server: z
+          .strictObject({
+            url: z.string().regex(/^wss?:\/\/[^\s]+$/),
+            token_file: z.string().min(1).optional(),
+            timeout_ms: z.number().int().min(1000).max(300_000).optional(),
+          })
+          .optional(),
+        /** Optional: a Codex app conversation, reached by `codex queue` through the daemon. */
+        queue: z
+          .strictObject({
+            codex_bin: z.string().refine(isAbsolute, "absolute codex_bin"),
+            daemon_socket: z
+              .string()
+              .refine(isAbsolute, "absolute daemon_socket"),
+          })
+          .optional(),
+        display_command: commandSchema.optional(),
+      })
+      .refine(
+        (codex) => !(codex.app_server && codex.queue),
+        "set app_server or queue, not both",
+      ),
     z.strictObject({
       type: z.literal("claude-code"),
       path: z.string().min(1),
@@ -440,12 +455,20 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
             }
           : {}),
       };
+      const queue = screen.queue && {
+        codex_bin: resolve(screen.queue.codex_bin),
+        daemon_socket: resolve(screen.queue.daemon_socket),
+      };
       return new ProductScreen({
         path,
         target: codexTarget(binding),
-        handoff_capability: screen.app_server ? "bound-session" : "unsupported",
+        handoff_capability:
+          screen.app_server || queue ? "bound-session" : "unsupported",
         ...display,
-        handoff: (message) => codexHandoff(binding, message),
+        handoff: (message) =>
+          queue
+            ? codexQueueHandoff({ ...binding, queue }, message)
+            : codexHandoff(binding, message),
       });
     }
     case "claude-code": {
@@ -479,7 +502,11 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
   const product = config.screen;
   const connection = JSON.stringify([
     config.hab_url.replace(/\/+$/, ""),
-    product.type === "codex" ? (product.app_server?.url ?? null) : null,
+    product.type === "codex"
+      ? product.queue
+        ? `unix://${resolve(product.queue.daemon_socket)}`
+        : (product.app_server?.url ?? null)
+      : null,
     product.type === "claude-code" ? (product.channel_socket ?? null) : null,
   ]);
   const binding =

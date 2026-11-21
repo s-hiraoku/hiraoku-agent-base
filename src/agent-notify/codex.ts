@@ -15,7 +15,15 @@
  * (no listener, auth or JSON-RPC error on initialize, resume or turn/start) → `unsupported`.
  * A timeout or a closed connection after `turn/start` was sent → throws, and the notifier
  * records `unknown` and never resends.
+ *
+ * A Codex app conversation runs on the app's own stdio app-server, which has no listener.
+ * For it, `queue` hands the approved prompt to `codex queue`, which adds it to the thread's
+ * input through an app-server daemon the operator started (`codex app-server daemon start`).
+ * The notifier never starts the daemon. Exit 0 → `queued`: accepted, not yet started. Output
+ * that says nothing was queued → `unsupported`. Any other exit or the deadline → throws
+ * (`unknown`, never resent).
  */
+import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import type { HandoffResult, PeekedMessage } from "./contract.ts";
 
@@ -27,10 +35,18 @@ export interface CodexAppServer {
   timeout_ms?: number;
 }
 
+export interface CodexQueue {
+  /** Absolute path of the `codex` that has `queue`, such as the one inside ChatGPT.app. */
+  codex_bin: string;
+  /** Absolute path of the daemon's control socket. */
+  daemon_socket: string;
+}
+
 export interface CodexBinding {
   /** The Codex thread the user works in (shown by `thread/list`). */
   thread_id: string;
   app_server?: CodexAppServer;
+  queue?: CodexQueue;
 }
 
 export const codexTarget = (binding: CodexBinding) =>
@@ -180,4 +196,67 @@ export async function codexHandoff(
     clearTimeout(timer);
     connection?.close();
   }
+}
+
+export interface CommandOutcome {
+  code: number | null;
+  output: string;
+}
+
+/** Runs argv without a shell; resolves with the exit code and stdout + stderr. */
+export type RunArgv = (
+  argv: string[],
+  timeout_ms: number,
+) => Promise<CommandOutcome>;
+
+const QUEUE_TIMEOUT_MS = 20_000;
+
+export const execArgv: RunArgv = (argv, timeout_ms) =>
+  new Promise((done, fail) => {
+    execFile(
+      argv[0]!,
+      argv.slice(1),
+      { timeout: timeout_ms, killSignal: "SIGKILL", maxBuffer: 64 * 1024 },
+      (error, stdout, stderr) => {
+        const output = `${stdout}${stderr}`;
+        if (!error) return done({ code: 0, output });
+        if (error.killed) return fail(new Error("codex_timeout"));
+        if (typeof error.code === "number")
+          return done({ code: error.code, output });
+        fail(new Error("codex_unreachable"));
+      },
+    );
+  });
+
+/** What `codex queue` prints when it gave nothing to the thread (openai/codex #39092). */
+const NOTHING_QUEUED = [
+  /No active session found matching/,
+  /does not support thread\/queue\/add/,
+  /cannot queue through an embedded app server/,
+];
+
+/** Gives one approved request to the thread's input through `codex queue`. */
+export async function codexQueueHandoff(
+  binding: CodexBinding & { queue: CodexQueue },
+  message: PeekedMessage,
+  run: RunArgv = execArgv,
+): Promise<HandoffResult> {
+  const { codex_bin, daemon_socket } = binding.queue;
+  const outcome = await run(
+    [
+      codex_bin,
+      "queue",
+      "--thread",
+      binding.thread_id,
+      "--message",
+      message.handoff_prompt,
+      "--remote",
+      `unix://${daemon_socket}`,
+    ],
+    QUEUE_TIMEOUT_MS,
+  );
+  if (outcome.code === 0) return "queued";
+  if (NOTHING_QUEUED.some((pattern) => pattern.test(outcome.output)))
+    return "unsupported";
+  throw new Error("codex_queue_failed");
 }
