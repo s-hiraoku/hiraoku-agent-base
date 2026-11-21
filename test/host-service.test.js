@@ -508,6 +508,9 @@ test("ingress events refuse an unanswered threshold outside its bounds (ADR-027)
     { unanswered_after_ms: 59_999 },
     { unanswered_after_ms: 86_400_001 },
     { rering: "yes" },
+    // ADR-032: 1 to 20 session_gone answers before an address is absent.
+    { absent_after: 0 },
+    { absent_after: 21 },
     // ADR-031: 0 or one minute to one day, per address only for valid addresses.
     { inbox_check: { interval_ms: 59_999 } },
     { inbox_check: { interval_ms: 86_400_001 } },

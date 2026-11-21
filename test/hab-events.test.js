@@ -41,7 +41,8 @@ function hooks(status = () => 200, delayMs = 0, onEvent = async () => {}) {
         body: JSON.stringify({ challenge: parsed.challenge }),
       };
     await onEvent(parsed);
-    return { status: status(parsed), body: "" };
+    const answer = status(parsed);
+    return typeof answer === "object" ? answer : { status: answer, body: "" };
   };
   return {
     seen,
@@ -59,7 +60,7 @@ function temp(t) {
 }
 
 async function setup(t, options = {}) {
-  const f = await fixture(t);
+  const f = await fixture(t, options.registry);
   const a = f.enroll("a"),
     b = f.enroll("b");
   let self;
@@ -609,6 +610,7 @@ test("operators can see when and why a recipient's doorbell stopped; subscribing
       status: null,
       delivered_at: null,
       inbox_read_at: null,
+      absent_since: null,
     },
   );
   // The callback is gone (410).
@@ -1301,4 +1303,206 @@ test("reading the inbox with hab_inbox records when the recipient last looked", 
   );
   // Without events the read is unaffected (noteInboxRead never throws on a bad context).
   f.events.noteInboxRead({ not: "a context" });
+});
+
+// ADR-032: the product says the session behind an address has ended.
+const GONE = { status: 410, body: JSON.stringify({ reason: "session_gone" }) };
+
+test("three session_gone answers make the address absent and hab_send refuses it", async (t) => {
+  let answer = () => GONE;
+  const f = await setup(t, { status: (p) => answer(p) });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsent(f.a.address), false, "two is not enough");
+  await f.send("b", f.a.address, "three");
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsent(f.a.address), true);
+  // The operator doorbell itself stays: the product is alive, only the session ended.
+  assert.equal(f.events.subscriptions().length, 1);
+  const refused = await f.rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "four" },
+  });
+  assert.equal(refused.result.isError, true);
+  assert.equal(refused.result.structuredContent.error, "recipient_absent");
+  assert.equal(
+    readDoorbells(f.store).get(f.a.agent_id).absent_since !== null,
+    true,
+  );
+});
+
+test("no answer, 5xx, other refusals and a plain 410 never make an address absent", async (t) => {
+  for (const answer of [
+    { status: 0, body: "" },
+    { status: 503, body: "" },
+    { status: 404, body: JSON.stringify({ reason: "session_gone" }) },
+    { status: 410, body: "gone" },
+  ]) {
+    const f = await setup(t, { status: () => answer });
+    f.events.configureStatic([
+      { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+    ]);
+    for (const text of ["one", "two", "three", "four"]) {
+      await f.send("b", f.a.address, text);
+      await f.events.dispatch();
+    }
+    assert.equal(f.events.isAbsent(f.a.address), false, JSON.stringify(answer));
+  }
+});
+
+test("an accepted doorbell or a new subscription clears the count and the absence", async (t) => {
+  let answer = () => GONE;
+  // Quiet time (ADR-030) would hold the rings after an accepted one; this test counts rings.
+  const f = await setup(t, {
+    status: (p) => answer(p),
+    events: { quiet: false, rering: false },
+  });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  answer = () => 200;
+  await f.send("b", f.a.address, "taken");
+  await f.events.dispatch();
+  answer = () => GONE;
+  for (const text of ["x", "y"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(
+    f.events.isAbsent(f.a.address),
+    false,
+    "the count started again",
+  );
+  await f.send("b", f.a.address, "z");
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsent(f.a.address), true);
+  answer = () => 200;
+  const sub = await f.subscribe("a");
+  assert.equal(sub.error, undefined, JSON.stringify(sub));
+  assert.equal(
+    f.events.isAbsent(f.a.address),
+    false,
+    "a new subscription brings it back",
+  );
+});
+
+test("absence is only told to a caller that may resolve the recipient (ADR-032)", async (t) => {
+  const f = await setup(t, { status: () => GONE });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two", "three"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+  // Stopping a's connection makes it unresolvable: the caller learns nothing more.
+  assert.equal(typeof f.revoke, "function", "fixture can stop an address");
+  f.revoke("a");
+  const masked = await f.rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "after stop" },
+  });
+  assert.equal(masked.result.isError, true);
+  assert.notEqual(masked.result.structuredContent.error, "recipient_absent");
+});
+
+test("an agent endpoint without events (loopback) still refuses an absent recipient (ADR-032)", async (t) => {
+  const f = await setup(t);
+  const absent = new Set([f.a.agent_id]);
+  const loopback = new HabHttpGateway(
+    f.hab,
+    policy,
+    { record() {}, note() {} },
+    f.verifier,
+    undefined,
+    "agent",
+    undefined,
+    { isAbsentAgent: (id) => absent.has(id) },
+  );
+  const rpc = async (who, method, params = {}) =>
+    decode(
+      await loopback.fetch(
+        request(method, params, {
+          headers: { Authorization: `Bearer fixture-${who}` },
+        }),
+      ),
+    );
+  const refused = await rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "hello" },
+  });
+  assert.equal(refused.result.structuredContent.error, "recipient_absent");
+  absent.clear();
+  const sent = await rpc("b", "tools/call", {
+    name: "hab_send",
+    arguments: { to: f.a.address, text: "hello again" },
+  });
+  assert.notEqual(sent.result.isError, true, JSON.stringify(sent));
+});
+
+test("a previous address in its rename grace period is refused like the current one (ADR-032)", async (t) => {
+  const f = await setup(t, {
+    status: () => GONE,
+    registry: { agent_rename: true },
+  });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  for (const text of ["one", "two", "three"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  const current = f.registry.renameAgent(f.admin, {
+    request_id: "rename-a",
+    agent_id: f.a.agent_id,
+    expected_epoch: f.a.epoch,
+    expected_address: f.a.address,
+    bot_name: "renamed",
+  });
+  for (const to of [f.a.address, current.address]) {
+    const refused = await f.rpc("b", "tools/call", {
+      name: "hab_send",
+      arguments: { to, text: "still there?" },
+    });
+    assert.equal(
+      refused.result.structuredContent?.error,
+      "recipient_absent",
+      to,
+    );
+  }
+});
+
+test("a newly registered static doorbell clears absence; the same one on restart keeps it (ADR-032)", async (t) => {
+  const f = await setup(t, { status: () => GONE });
+  const doorbell = { agent_id: f.a.agent_id, url: URL_A, secret: SECRET };
+  f.events.configureStatic([doorbell]);
+  for (const text of ["one", "two", "three"]) {
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsentAgent(f.a.agent_id), true);
+  f.events.configureStatic([doorbell]);
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    true,
+    "an unchanged doorbell is not a sign of recovery",
+  );
+  f.events.configureStatic([
+    { ...doorbell, url: "http://127.0.0.1:8795/wake" },
+  ]);
+  assert.equal(
+    f.events.isAbsentAgent(f.a.agent_id),
+    false,
+    "a replacement doorbell brings it back",
+  );
 });
