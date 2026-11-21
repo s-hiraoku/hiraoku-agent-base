@@ -1281,10 +1281,10 @@
     },
     {
       "path": "docs/plans/auth0-dcr.md",
-      "sha256": "ac88644445e2e01edcb30f4a7da7a8e887ae10d754f5cf3c3d80e56b4870eefd",
+      "sha256": "13fa36a01ed7ac4ecd5b69ce1d7b712b792a8b58ff21d7af70ef1e356da8a558",
       "role": "context",
       "review": "reviewed",
-      "summary": "Plan (not yet adopted as an ADR) to let products register their own Auth0 clients through Dynamic Client Registration instead of hand-made per-product apps. The HAB boundary is unchanged: a (subject, client_id) pair is usable only after the operator's approve from the pending list. Adds approve --replace for products that register a new client on each reconnect, client_name display marked self-declared, and opening DCR only while connecting. Existing hand-made connections are not migrated. Product DCR behavior is from public docs, not live-verified.",
+      "summary": "Plan (not yet adopted as an ADR) to let products register their own Auth0 clients through Dynamic Client Registration instead of hand-made per-product apps. The HAB boundary is unchanged: a (subject, client_id) pair is usable only after the operator's approve from the pending list. After an adversarial review it adds one command, hab:admin revoke --connection, to stop a single connection without disconnecting the whole group; makes three product behaviors (401 before approval, refresh token issuance, refresh after app deletion) trial pass/fail items instead of speculative code; checks the DCR app's callback before approval; and trials only on a throwaway address. Product DCR behavior is from public docs, not live-verified.",
       "read_scope": "full"
     },
     {
