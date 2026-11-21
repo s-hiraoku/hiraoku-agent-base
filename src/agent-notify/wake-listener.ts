@@ -4,6 +4,10 @@
  * for its interval. The listener only binds 127.0.0.1, accepts only Standard Webhooks
  * requests signed with the shared `whsec_` key and at most five minutes old, and never
  * reads the body for anything but the signature: the check itself reads HAB.
+ *
+ * When the product says the bound session has ended, the listener answers `410` with
+ * `{"reason":"session_gone"}`, the one answer HAB counts toward "recipient absent"
+ * (ADR-032). Any other outcome, including a failed or slow session check, is `200`.
  */
 import { createServer, type Server } from "node:http";
 import { timingSafeEqual } from "node:crypto";
@@ -47,11 +51,19 @@ export function verifyWebhook(
   });
 }
 
-/** Listen on 127.0.0.1:`port` and call `onWake` for each valid ring. */
+/** What `onWake` decided: check now, or tell HAB the bound session has ended. */
+export type WakeAnswer = "accepted" | "session_gone";
+
+const SESSION_GONE_BODY = JSON.stringify({ reason: "session_gone" });
+
+/**
+ * Listen on 127.0.0.1:`port` and call `onWake` for each valid ring. `onWake` may answer
+ * `session_gone`; a throw or any other answer is taken as `accepted`.
+ */
 export function startWakeListener(options: {
   port: number;
   secret: string;
-  onWake: () => void;
+  onWake: () => WakeAnswer | void | Promise<WakeAnswer | void>;
 }): Promise<WakeListener> {
   if (!options.secret.startsWith("whsec_"))
     throw new Error("wake_secret_invalid");
@@ -73,8 +85,20 @@ export function startWakeListener(options: {
         res.writeHead(401).end();
         return;
       }
-      res.writeHead(200, { "Content-Type": "application/json" }).end("{}");
-      options.onWake();
+      void (async () => {
+        let answer: WakeAnswer | void = "accepted";
+        try {
+          answer = await options.onWake();
+        } catch {
+          answer = "accepted";
+        }
+        if (answer === "session_gone")
+          res
+            .writeHead(410, { "Content-Type": "application/json" })
+            .end(SESSION_GONE_BODY);
+        else
+          res.writeHead(200, { "Content-Type": "application/json" }).end("{}");
+      })();
     });
   });
   return new Promise((resolve, reject) => {

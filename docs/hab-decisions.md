@@ -221,6 +221,7 @@
 - **Hook で起こせる notifier は Hook にする。** 運用者が登録した呼び鈴（ADR-029）に限り、宛先に同じ Mac の `http://127.0.0.1:<port>`（ポート指定あり）を許す。notifier はその受け口で Standard Webhooks の署名を確かめ、すぐに受信箱を確かめる。notifier の定期確認は取りこぼしの保険として残す。エージェントの購読の宛先は今までどおり公開 HTTPS だけで、ADR-022 の防御は変えない。
 - **HAB からは時間で鳴らさない。** ADR-031 の定期確認をやめる。呼び鈴は新着で 1 回と、読まれなければ鳴らし直し 1 回（ADR-027）だけ。古い設定の `inbox_check` は無視して起動し、`ready` の行で 1 回だけ知らせる。受け方が `poll` の製品は、`hab_inbox` を最後に呼んだ時刻（`events.sqlite` に記録）が間隔の 2 倍を超えたら `hab:admin status` に `poll_overdue` を出す。
 - **相手のセッションが終わったら送らない。** 製品は、呼び鈴の `to` に当たるセッションがないとき `410` と `{"reason":"session_gone"}` で答える。HAB はこの答えだけを数え、続けて 3 回でそのアドレスを「相手がいない」にし、`hab_send` を `recipient_absent` で断る。応答なし・5xx・ほかの拒否は数えない。2xx の受け取りか新しい購読で戻す。台帳の行と未読は消さない（未読の扱いと不達の知らせは後の判断）。
+- **Hermes の notifier は会話の有無を `state.db` で確かめて答える。** 2026-11-21 JST、owner依頼（「終わったセッションを製品から HAB に知らせる」）。notifier の設定 `screen.session_probe` に `hermes_bridge.desktop_session` を書くと、呼び鈴を受けたときと確認の前に、結び付けた会話を Hermes の `SessionDB` で読み取り専用に確かめる。会話がない・アーカイブ済みのときだけ `410 session_gone` で答え、その間は表示も自動の受け付けもしない（未読を既読にしない）。読めない・遅いときは `200` のまま。Grok の routine と ChatGPT のイベントには答えを返す手段がないので、まだ対象にしない。
 - **運用者が登録する。** 受け方とセッションは `hab:admin receive` と `hab:admin session` で、運用者が決める。エージェントが MCP から申請する形は別の判断にする。`hab:admin status` の `products` と各アドレスの `session` に出す。
 
 ## 次に決める内容

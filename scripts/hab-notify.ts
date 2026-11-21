@@ -36,6 +36,7 @@ import {
   startWakeListener,
   wakeableSleep,
 } from "../src/agent-notify/wake-listener.ts";
+import { sessionProbe } from "../src/agent-notify/session-probe.ts";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -234,6 +235,12 @@ const configSchema = z.strictObject({
       profile_scope: z.string().min(1).max(2048),
       /** Optional: hands the request to the conversation after 対応する (hermes_bridge.desktop_handoff). */
       handoff: commandSchema.optional(),
+      /**
+       * Optional, ADR-032: tells whether the conversation still exists
+       * (hermes_bridge.desktop_session). While it answers `gone`, a doorbell is answered 410
+       * session_gone and nothing is shown or accepted, so unread mail stays unread.
+       */
+      session_probe: commandSchema.optional(),
     }),
     z.strictObject({
       type: z.literal("codex"),
@@ -962,22 +969,44 @@ export async function main(
         const timer = wakeableSleep();
         process.once("SIGTERM", () => timer.ring());
         process.once("SIGINT", () => timer.ring());
+        const probe =
+          config.screen.type === "hermes-desktop" && config.screen.session_probe
+            ? sessionProbe(
+                config.screen.session_probe,
+                config.screen.session_id,
+              )
+            : undefined;
         const listener = config.wake
           ? await startWakeListener({
               port: config.wake.port,
               secret: readWakeSecret(config.wake.secret_file),
-              onWake: () => timer.ring(),
+              onWake: async () => {
+                // ADR-032: HAB counts this answer toward "recipient absent".
+                if (probe && (await probe()) === "gone") {
+                  checkLog.sessionGone(true);
+                  return "session_gone";
+                }
+                timer.ring();
+                return "accepted";
+              },
             })
           : undefined;
         while (!stopped) {
-          try {
-            const started = performance.now();
-            const shown = await notifier.check();
-            checkLog.succeeded(shown, Math.round(performance.now() - started));
-          } catch (error) {
-            const code = errorCode(error, config);
-            checkLog.failed(code);
-          }
+          // While the session is gone nothing is shown or accepted: the mail stays unread.
+          const gone = probe ? (await probe()) === "gone" : false;
+          if (probe) checkLog.sessionGone(gone);
+          if (!gone)
+            try {
+              const started = performance.now();
+              const shown = await notifier.check();
+              checkLog.succeeded(
+                shown,
+                Math.round(performance.now() - started),
+              );
+            } catch (error) {
+              const code = errorCode(error, config);
+              checkLog.failed(code);
+            }
           if (!stopped) await timer.sleep(config.interval_ms);
         }
         await listener?.close();

@@ -30,3 +30,20 @@ test("notifier timestamps failure/recovery and publication without logging each 
   log.failed("token_expired");
   assert.equal(lines.length, 4);
 });
+
+test("a gone session is logged when it starts and when it ends, not on every check", () => {
+  const lines = [];
+  const log = createNotifyCheckLog(
+    (line) => lines.push(JSON.parse(line)),
+    () => 5000,
+  );
+  log.sessionGone(false);
+  assert.equal(lines.length, 0);
+  log.sessionGone(true);
+  log.sessionGone(true);
+  log.sessionGone(false);
+  assert.deepEqual(lines, [
+    { at: new Date(5000).toISOString(), session_gone: true },
+    { at: new Date(5000).toISOString(), session_gone: false },
+  ]);
+});

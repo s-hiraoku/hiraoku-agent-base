@@ -526,3 +526,72 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
   assert.deepEqual(JSON.parse(output.at(-1)), { error: "invalid_request" });
   assert.ok(!output.at(-1).includes("private"));
 });
+
+test("run answers HAB 410 session_gone and checks nothing while the Hermes conversation is gone", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hab-notify-gone-"));
+  t.after(() => {
+    rmSync(dir, { recursive: true, force: true });
+    delete process.env.HAB_NOTIFY_TEST_TOKEN_GONE;
+  });
+  // A check would fail with token_expired; no such line means no check ran.
+  process.env.HAB_NOTIFY_TEST_TOKEN_GONE = jwt({ exp: 1 });
+  const secret = "whsec_" + Buffer.alloc(32, 5).toString("base64");
+  const secretFile = join(dir, "wake.secret");
+  writeFileSync(secretFile, secret, { mode: 0o600 });
+  const probe = join(dir, "probe.mjs");
+  writeFileSync(
+    probe,
+    `let raw = "";
+process.stdin.on("data", (c) => (raw += c));
+process.stdin.on("end", () => {
+  if (JSON.parse(raw).session_id !== "ended-session") process.exit(9);
+  console.log(JSON.stringify({ result: "gone", reason: "not_found" }));
+});`,
+  );
+  const port = 20_000 + Math.floor(Math.random() * 20_000);
+  const config = join(dir, "notify.json");
+  writeFileSync(
+    config,
+    JSON.stringify({
+      hab_url: "https://hab.example/mcp",
+      agent_id: "agent-b",
+      token: { env: "HAB_NOTIFY_TEST_TOKEN_GONE" },
+      store: join(dir, "notices.sqlite"),
+      screen: {
+        type: "hermes-desktop",
+        path: join(dir, "screen.jsonl"),
+        session_id: "ended-session",
+        profile: "profile",
+        backend_namespace: "namespace",
+        profile_scope: "scope",
+        session_probe: { command: [process.execPath, probe], cwd: dir },
+      },
+      interval_ms: 1000,
+      wake: { port, secret_file: secretFile },
+    }),
+  );
+  const lines = [];
+  const running = main(["--config", config, "run"], (line) => lines.push(line));
+  await new Promise((done) => setTimeout(done, 700));
+  const { signWebhook } = await import("../src/hab/events.ts");
+  const body = '{"to":"hermes@hermes.hab"}';
+  const ts = Math.floor(Date.now() / 1000);
+  const answer = await globalThis.fetch(`http://127.0.0.1:${port}/`, {
+    method: "POST",
+    headers: {
+      "webhook-id": "msg_gone",
+      "webhook-timestamp": String(ts),
+      "webhook-signature": signWebhook(secret, "msg_gone", ts, body),
+    },
+    body,
+  });
+  assert.equal(answer.status, 410);
+  assert.deepEqual(await answer.json(), { reason: "session_gone" });
+  await new Promise((done) => setTimeout(done, 1500));
+  process.emit("SIGTERM");
+  assert.equal(await running, 0);
+  const logged = lines.map((line) => JSON.parse(line));
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0].session_gone, true);
+  assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "session_gone"]);
+});
