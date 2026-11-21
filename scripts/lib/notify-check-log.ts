@@ -5,7 +5,11 @@ import type { SessionPresence } from "../../src/agent-notify/session-probe.ts";
 export function createNotifyCheckLog(
   out: (line: string) => void,
   now = Date.now,
+  /** Added to every line, such as the unit's address when one process serves several. */
+  tag: Readonly<Record<string, string>> = {},
 ) {
+  const emit = (line: Record<string, unknown>) =>
+    out(JSON.stringify({ ...line, ...tag }));
   let failure: { code: string; at: number } | undefined;
   let presence: SessionPresence | undefined;
   return {
@@ -16,41 +20,35 @@ export function createNotifyCheckLog(
     session(now_presence: SessionPresence) {
       if (now_presence === presence) return;
       presence = now_presence;
-      out(
-        JSON.stringify({
-          at: new Date(now()).toISOString(),
-          session: now_presence,
-        }),
-      );
+      emit({
+        at: new Date(now()).toISOString(),
+        session: now_presence,
+      });
     },
     failed(code: string) {
       const at = now();
       if (failure?.code !== code) {
-        out(JSON.stringify({ at: new Date(at).toISOString(), error: code }));
+        emit({ at: new Date(at).toISOString(), error: code });
         failure = { code, at };
       }
     },
     succeeded(shown: unknown[], duration_ms: number) {
       const at = now();
       if (failure) {
-        out(
-          JSON.stringify({
-            at: new Date(at).toISOString(),
-            resumed: failure.code,
-            blocked_ms: Math.max(0, at - failure.at),
-            duration_ms,
-          }),
-        );
+        emit({
+          at: new Date(at).toISOString(),
+          resumed: failure.code,
+          blocked_ms: Math.max(0, at - failure.at),
+          duration_ms,
+        });
         failure = undefined;
       }
       if (shown.length)
-        out(
-          JSON.stringify({
-            at: new Date(at).toISOString(),
-            shown,
-            duration_ms,
-          }),
-        );
+        emit({
+          at: new Date(at).toISOString(),
+          shown,
+          duration_ms,
+        });
     },
   };
 }

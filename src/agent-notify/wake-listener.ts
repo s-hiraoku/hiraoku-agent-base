@@ -4,12 +4,12 @@
  * for its interval. The listener only binds 127.0.0.1, accepts only Standard Webhooks
  * requests signed with the shared `whsec_` key and at most five minutes old.
  *
- * A session probe can report presence or absence only for a signed ring for the
- * configured address and session. Other signed requests still receive HTTP 200.
+ * The listener only checks the signature. Which session a ring is for, and whether it may
+ * answer 410, is decided by its owner (product-host.ts answerRing).
  */
 import { createServer, type Server } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { HAB_EVENT_NAME, signWebhook } from "../hab/events.ts";
+import { signWebhook } from "../hab/events.ts";
 
 const MAX_BODY = 16_384;
 const MAX_SKEW_S = 300;
@@ -49,42 +49,23 @@ export function verifyWebhook(
   });
 }
 
-/** Whether a signed ring can be accepted, or reports on the bound session. */
-export type WakeAnswer = "accepted" | "session_gone" | "session_unconfirmed";
-
-interface WakeBinding {
-  address: string | undefined;
-  session: string;
-}
-
-function matchesWakeBinding(body: string, binding: WakeBinding): boolean {
-  try {
-    const event = JSON.parse(body) as {
-      name?: unknown;
-      data?: { to?: unknown; session?: unknown };
-    } | null;
-    return (
-      binding.address !== undefined &&
-      event?.name === HAB_EVENT_NAME &&
-      event.data?.to === binding.address &&
-      event.data?.session === binding.session
-    );
-  } catch {
-    return false;
-  }
-}
+/**
+ * What the owner of the doorbell made of one verified ring. Only `session_gone` (HTTP 410)
+ * counts toward "recipient absent" at HAB; deciding it is the owner's job (answerRing).
+ */
+export type WakeAnswer =
+  "accepted" | "session_gone" | "session_unconfirmed" | "bad_request";
 
 const SESSION_GONE_BODY = JSON.stringify({ reason: "session_gone" });
 const SESSION_UNCONFIRMED_BODY = JSON.stringify({
   reason: "session_unconfirmed",
 });
 
-/** Listen on loopback and wake on a signed ring. A probe reports on its own binding only. */
+/** Listen on loopback and hand each signed ring's body to `onWake`. A failure is unconfirmed. */
 export function startWakeListener(options: {
   port: number;
   secret: string;
-  binding?: WakeBinding;
-  onWake: () => WakeAnswer | void | Promise<WakeAnswer | void>;
+  onWake: (body: string) => WakeAnswer | void | Promise<WakeAnswer | void>;
 }): Promise<WakeListener> {
   if (!options.secret.startsWith("whsec_"))
     throw new Error("wake_secret_invalid");
@@ -109,24 +90,17 @@ export function startWakeListener(options: {
       void (async () => {
         let answer: WakeAnswer | void;
         try {
-          answer = await options.onWake();
+          answer = await options.onWake(body);
         } catch {
-          answer = undefined;
+          answer = "session_unconfirmed";
         }
-        const binding = options.binding;
-        const matches =
-          binding !== undefined && matchesWakeBinding(body, binding);
-        if (matches && answer === "session_gone") {
-          res
-            .writeHead(410, { "Content-Type": "application/json" })
-            .end(SESSION_GONE_BODY);
-          return;
-        }
-        res.writeHead(200, { "Content-Type": "application/json" }).end(
-          binding && (!matches || answer !== "accepted")
-            ? SESSION_UNCONFIRMED_BODY
-            : "{}",
-        );
+        const json = { "Content-Type": "application/json" };
+        if (answer === "bad_request") res.writeHead(400).end();
+        else if (answer === "session_gone")
+          res.writeHead(410, json).end(SESSION_GONE_BODY);
+        else if (answer === "session_unconfirmed")
+          res.writeHead(200, json).end(SESSION_UNCONFIRMED_BODY);
+        else res.writeHead(200, json).end("{}");
       })();
     });
   });
