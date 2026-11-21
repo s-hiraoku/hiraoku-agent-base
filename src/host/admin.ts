@@ -249,13 +249,11 @@ export function hostAdminSession(
   },
 ) {
   return withRegistry(configPath, ({ registry }) => {
-    const agent = registry
-      .overview(operator)
-      .agents.find((entry) => entry.address === input.address);
-    if (!agent) throw new HostAdminError("address_not_found");
+    const agentId = registry.agentIdOf(parseHabAddress(input.address).address);
+    if (!agentId) throw new HostAdminError("address_not_found");
     const bound = registry.bindSession(operator, {
       request_id: input.request_id,
-      agent_id: agent.agent_id,
+      agent_id: agentId,
       session: input.session,
       ...(input.replace ? { replace: true } : {}),
     });
