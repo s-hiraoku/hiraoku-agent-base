@@ -13,6 +13,7 @@ import { parseOAuthConfig, oauthConnectionWindow } from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import { NAME_SCHEMA_VERSION } from "../hab/agent-names.ts";
 import { readDoorbells } from "../hab/events.ts";
+import { readPending } from "./oauth-pending.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
   RegistryError,
@@ -37,6 +38,11 @@ export interface ConnectInput {
   address: string;
   connection_id: string;
   operations?: readonly string[];
+  /**
+   * Only bind the connection when the address already belongs to a group.
+   * Preserve the group's and the address's access state and operations.
+   */
+  preserve_access?: boolean;
 }
 export interface RenameInput {
   request_id: string;
@@ -494,6 +500,8 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
         });
       return {
         resource_urls: resources,
+        // Fully verified sign-ins the ledger does not list yet (`hab:admin pending`).
+        pending_connections: readPending(directory, now).length,
         // ADR-032: how each product hears about new mail (null until the operator sets it).
         products: view.products.map((product) => ({
           agent_name: product.agent_name,
@@ -613,6 +621,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
       if (reservation && reservation.state !== "active")
         // Revoked connection descriptors stay reserved forever by design.
         throw new HostAdminError("credential_revoked_use_new_connection_id");
+      const keep = input.preserve_access === true && !!agent.group_id;
       {
         let groupId = reservation?.group_id ?? agent.group_id;
         if (agent.group_id && groupId !== agent.group_id)
@@ -650,8 +659,9 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
         }
         const group = registry.inspectGroup(operator, groupId);
         if (
-          group.state !== "active" ||
-          operations.some((op) => !group.operations.includes(op))
+          !keep &&
+          (group.state !== "active" ||
+            operations.some((op) => !group.operations.includes(op)))
         ) {
           // Group grants intersect with address grants; keep the union of both.
           const granted = [
@@ -671,7 +681,10 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
         }
       }
       const current = registry.inspect(operator, agent.agent_id);
-      if (current.state !== "active" || !same(current.operations, operations)) {
+      if (
+        !keep &&
+        (current.state !== "active" || !same(current.operations, operations))
+      ) {
         registry.setAccess(operator, {
           request_id: request(),
           agent_id: agent.agent_id,
