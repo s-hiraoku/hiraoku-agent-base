@@ -1293,6 +1293,14 @@
       "review": "reviewed",
       "summary": "Draft (2026-11-20, owner review pending, not adopted): unified receive/wake model. HAB promises storage, notification and visibility; waking is best effort. One inbox state (empty/waiting/notified/unanswered/unreachable), four wake classes (A notifier, B self-subscribed doorbell, C operator doorbell, D product schedule), one re-notify rule replacing ADR-027 rering, ADR-030 quiet and ADR-031 inbox check (interval default 10 min, max_rings 6), auto-reply policy stays on the recipient side (ADR-015/023) with a common record format, optional wake declaration and test operation. ADR-021..031 remain in force until approved.",
       "read_scope": "full"
+    },
+    {
+      "path": "docs/receiver/session-routing.md",
+      "sha256": "68e262f0e5d3daa2cf01a71554ad4b726beef79dc8b15e3cc8447247d0c78088",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Design proposal (2026-11-21, docs only): products route a doorbell by its ADR-032 data.session. Hermes: one notifier per product via a --bundle config of up to 32 existing per-session notify.json files; the wake listener verifies the signature, reads data.session/to, checks only the matching session (200), answers 410 session_gone for a name not in the bundle (owner decision 2026-11-21), 409 for a to mismatch, 400 for an unreadable body; ended Hermes conversations are probed by the separate sessionProbe work. Grok and Dots stay one subscription per address and only check session in their instructions. HAB delivery, subscriptions, registry and hab_inbox are unchanged.",
+      "read_scope": "full"
     }
   ],
   "requirements": [
