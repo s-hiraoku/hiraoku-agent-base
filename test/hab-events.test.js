@@ -1409,6 +1409,35 @@ test("no answer, 5xx, other refusals and a plain 410 never make an address absen
   }
 });
 
+test("a successful HTTP response with unconfirmed presence preserves the gone count", async (t) => {
+  let answer = GONE;
+  const f = await setup(t, {
+    status: () => answer,
+    events: { quiet: false, rering: false },
+  });
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  await f.send("b", f.a.address, "first gone");
+  await f.events.dispatch();
+
+  answer = {
+    status: 200,
+    body: JSON.stringify({ reason: "session_unconfirmed" }),
+  };
+  await f.send("b", f.a.address, "unconfirmed");
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsent(f.a.address), false);
+
+  answer = GONE;
+  await f.send("b", f.a.address, "second gone");
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsent(f.a.address), false);
+  await f.send("b", f.a.address, "third gone");
+  await f.events.dispatch();
+  assert.equal(f.events.isAbsent(f.a.address), true);
+});
+
 test("an accepted doorbell or a new subscription clears the count and the absence", async (t) => {
   let answer = () => GONE;
   // Quiet time (ADR-030) would hold the rings after an accepted one; this test counts rings.

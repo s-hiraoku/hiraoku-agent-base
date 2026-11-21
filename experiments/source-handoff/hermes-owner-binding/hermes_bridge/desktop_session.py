@@ -1,16 +1,15 @@
-"""Tells the arrival notifier whether its saved Hermes Desktop conversation still exists (ADR-032).
+"""Tells the arrival notifier whether its bound Hermes Desktop session can display cards (ADR-032).
 
 ``hab-notify`` (screen type ``hermes-desktop``, ``session_probe``) runs this when HAB rings its
 doorbell and before each check, in the Hermes runtime with the owning profile's ``HERMES_HOME``.
 It reads one JSON object on stdin, ``{"session_id"}``, opens the profile's ``state.db`` read-only
 through Hermes's own ``hermes_state.SessionDB`` and prints one JSON line:
 
-- ``{"result": "present"}``: the conversation is there. One that compression continued under a
-  newer ID is still there.
-- ``{"result": "gone"}``: Hermes has no such conversation, or it is archived. Unarchiving it makes
-  it ``present`` again.
+- ``{"result": "present"}``: the bound session can still display the notice.
+- ``{"result": "gone"}``: the bound session is missing, archived or continued under a
+  new ID. After compression, bind the notifier to the new ID.
 - ``{"result": "unknown"}``: anything else (no ``state.db``, an import or read failure). The
-  notifier then behaves as before, so an outage never makes the address absent.
+  notifier waits for a confirmed result before checking the inbox.
 
 It never writes, never starts Hermes and never calls HAB. Invalid input exits 2.
 """
@@ -56,6 +55,8 @@ def presence(session_id: str, home: Path, *, open_db=None) -> dict:
             return {"result": "gone", "reason": "not_found"}
         if row.get("archived"):
             return {"result": "gone", "reason": "archived"}
+        if (db.get_compression_tip(session_id) or session_id) != session_id:
+            return {"result": "gone", "reason": "compressed"}
         return {"result": "present"}
     except Exception:
         return {"result": "unknown", "reason": "read_failed"}

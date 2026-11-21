@@ -556,6 +556,7 @@ process.stdin.on("end", () => {
       hab_url: "https://hab.example/mcp",
       agent_id: "agent-b",
       token: { env: "HAB_NOTIFY_TEST_TOKEN_PROBE" },
+      as_address: "hermes@hermes.hab",
       store: join(dir, "notices.sqlite"),
       screen: {
         type: "hermes-desktop",
@@ -575,8 +576,11 @@ process.stdin.on("end", () => {
   const lines = [];
   const running = main(["--config", config, "run"], (line) => lines.push(line));
   await new Promise((done) => setTimeout(done, 700));
-  const { signWebhook } = await import("../src/hab/events.ts");
-  const body = '{"to":"hermes@hermes.hab"}';
+  const { HAB_EVENT_NAME, signWebhook } = await import("../src/hab/events.ts");
+  const body = JSON.stringify({
+    name: HAB_EVENT_NAME,
+    data: { to: "hermes@hermes.hab", session: "bound-session" },
+  });
   const ts = Math.floor(Date.now() / 1000);
   const answer = await globalThis.fetch(`http://127.0.0.1:${port}/`, {
     method: "POST",
@@ -610,12 +614,21 @@ test("run answers HAB 410 session_gone and checks nothing while the Hermes conve
   );
 });
 
-test("run answers 200 and checks as before when the probe cannot tell", async (t) => {
+test("run answers 200 unconfirmed and leaves the inbox alone when the probe cannot tell", async (t) => {
   const { answered, once, logged } = await runWithProbe(t, "unknown");
+  assert.deepEqual(once, { shown: [], session: "unknown" });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), { reason: "session_unconfirmed" });
+  assert.deepEqual(logged.map((line) => line.session ?? line.error), ["unknown"]);
+});
+
+test("run and one-shot check reach HAB when the bound Hermes session is present", async (t) => {
+  const { answered, once, logged } = await runWithProbe(t, "present");
   assert.deepEqual(once, { error: "token_expired" });
   assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), {});
   assert.deepEqual(
     logged.map((line) => line.session ?? line.error),
-    ["unknown", "token_expired"],
+    ["present", "token_expired"],
   );
 });

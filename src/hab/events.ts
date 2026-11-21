@@ -467,12 +467,12 @@ export interface HabEventOptions {
 const MAX_ATTEMPTS = 8;
 /** What #ring reports when the product answered 410 with reason session_gone (ADR-032). */
 const SESSION_GONE = -1;
-function sessionGone(body: string): boolean {
+function sessionReason(body: string): unknown {
   try {
     const parsed = JSON.parse(body) as { reason?: unknown };
-    return parsed?.reason === "session_gone";
+    return parsed?.reason;
   } catch {
-    return false;
+    return undefined;
   }
 }
 /**
@@ -1137,21 +1137,24 @@ export class HabEvents {
     const at = this.#rang(row.agent_id, status);
     // ADR-032: the product says the session behind this address has ended. Only this
     // exact answer counts; no answer, 5xx and other refusals never make an address absent.
-    if (status === 410 && sessionGone(answer)) {
+    if (status === 410 && sessionReason(answer) === "session_gone") {
       this.#noteGone(row.agent_id);
       return SESSION_GONE;
     }
-    if (status >= 200 && status <= 299) this.#notePresent(row.agent_id);
+    const accepted = status >= 200 && status <= 299;
+    const unconfirmed = status === 200 && sessionReason(answer) === "session_unconfirmed";
+    if (accepted && !unconfirmed)
+      this.#notePresent(row.agent_id);
     // The first doorbell a subscriber accepted for each message: a later ring (again, or
     // for newer mail) must not hide that this one went unanswered.
-    if (status >= 200 && status <= 299)
+    if (accepted)
       this.#db
         .prepare(
           `INSERT OR IGNORE INTO hab_event_accepted (agent_id,sender_id,message_id,accepted_at)
            VALUES (?,?,?,?)`,
         )
         .run(row.agent_id, arrival.sender_id, arrival.message_id, at);
-    if (status >= 200 && status <= 299)
+    if (accepted)
       this.#db
         .prepare(
           `INSERT INTO hab_event_quiet (subscription_id,sender_id,message_id,rang_at)

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, chmodSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import process from "node:process";
 import { join } from "node:path";
-import { signWebhook } from "../src/hab/events.ts";
+import { HAB_EVENT_NAME, signWebhook } from "../src/hab/events.ts";
 import {
   startWakeListener,
   verifyWebhook,
@@ -57,6 +57,7 @@ test("the listener wakes on a valid ring and refuses everything else", async (t)
     body,
   });
   assert.equal(ok.status, 200);
+  assert.deepEqual(await ok.json(), {});
   assert.equal(wakes, 1);
   const bad = await globalThis.fetch(url, {
     method: "POST",
@@ -100,12 +101,30 @@ test("the wake key must be a whsec_ key in an owner-only file", (t) => {
   );
 });
 
-test("a ring for a session the product says is gone is answered 410 session_gone", async (t) => {
+const BINDING = { address: "hermes@hermes.hab", session: "bound-session" };
+
+function ringBody(overrides = {}) {
+  return JSON.stringify({
+    name: HAB_EVENT_NAME,
+    data: { to: BINDING.address, session: BINDING.session, ...overrides },
+  });
+}
+
+function ring(port, body) {
+  return globalThis.fetch("http://127.0.0.1:" + port + "/wake", {
+    method: "POST",
+    headers: signed(body),
+    body,
+  });
+}
+
+test("only a matching signed ring for a gone session is answered 410", async (t) => {
   const answers = ["session_gone", "accepted", undefined];
   const thrown = [];
   const listener = await startWakeListener({
     port: 0,
     secret: SECRET,
+    binding: BINDING,
     onWake: async () => {
       if (!answers.length) {
         thrown.push(1);
@@ -115,19 +134,49 @@ test("a ring for a session the product says is gone is answered 410 session_gone
     },
   });
   t.after(() => listener.close());
-  const url = `http://127.0.0.1:${listener.port}/wake`;
-  const body = '{"to":"hermes@hermes.hab"}';
-  const ring = () =>
-    globalThis.fetch(url, { method: "POST", headers: signed(body), body });
-  const gone = await ring();
+  const gone = await ring(listener.port, ringBody());
   assert.equal(gone.status, 410);
-  // The exact answer HAB counts toward recipient_absent (src/hab/events.ts sessionGone).
   assert.deepEqual(await gone.json(), { reason: "session_gone" });
-  assert.equal((await ring()).status, 200);
-  assert.equal((await ring()).status, 200);
-  // A failing check never tells HAB the session is gone.
-  assert.equal((await ring()).status, 200);
+  const accepted = await ring(listener.port, ringBody());
+  assert.equal(accepted.status, 200);
+  assert.deepEqual(await accepted.json(), {});
+  for (let index = 0; index < 2; index++) {
+    const unknown = await ring(listener.port, ringBody());
+    assert.equal(unknown.status, 200);
+    assert.deepEqual(await unknown.json(), { reason: "session_unconfirmed" });
+  }
   assert.equal(thrown.length, 1);
+});
+
+test("signed rings without the configured address and session cannot report presence", async (t) => {
+  const listener = await startWakeListener({
+    port: 0,
+    secret: SECRET,
+    binding: BINDING,
+    onWake: () => "session_gone",
+  });
+  t.after(() => listener.close());
+  for (const body of [
+    ringBody({ to: "other@hermes.hab" }),
+    ringBody({ session: "other-session" }),
+    ringBody({ session: undefined }),
+    '{"to":"hermes@hermes.hab"}',
+    '{"type":"verification","challenge":"fixture"}',
+  ]) {
+    const response = await ring(listener.port, body);
+    assert.equal(response.status, 200, body);
+    assert.deepEqual(await response.json(), { reason: "session_unconfirmed" });
+  }
+  const unbound = await startWakeListener({
+    port: 0,
+    secret: SECRET,
+    binding: { address: undefined, session: BINDING.session },
+    onWake: () => "session_gone",
+  });
+  t.after(() => unbound.close());
+  const response = await ring(unbound.port, ringBody());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { reason: "session_unconfirmed" });
 });
 
 test("the session probe trusts only an explicit gone or present", async (t) => {

@@ -237,8 +237,8 @@ const configSchema = z.strictObject({
       handoff: commandSchema.optional(),
       /**
        * Optional, ADR-032: tells whether the conversation still exists
-       * (hermes_bridge.desktop_session). While it answers `gone`, a doorbell is answered 410
-       * session_gone and nothing is shown or accepted, so unread mail stays unread.
+       * (hermes_bridge.desktop_session). Checking mail requires a present session.
+       * A gone session only yields 410 for a signed ring for this address and session.
        */
       session_probe: commandSchema.optional(),
     }),
@@ -884,9 +884,9 @@ export async function main(
   try {
     switch (command) {
       case "check": {
-        // ADR-032: like `run`, a gone session shows and accepts nothing.
-        if ((await configuredProbe(config)?.()) === "gone") {
-          out(JSON.stringify({ shown: [], session: "gone" }));
+        const presence = await configuredProbe(config)?.();
+        if (presence !== undefined && presence !== "present") {
+          out(JSON.stringify({ shown: [], session: presence }));
           return 0;
         }
         out(JSON.stringify({ shown: await notifier.check() }));
@@ -986,12 +986,21 @@ export async function main(
           ? await startWakeListener({
               port: config.wake.port,
               secret: readWakeSecret(config.wake.secret_file),
+              ...(config.screen.type === "hermes-desktop" && probe
+                ? {
+                    binding: {
+                      address: config.as_address,
+                      session: config.screen.session_id,
+                    },
+                  }
+                : {}),
               onWake: async () => {
                 if (probe) {
                   const presence = await probe();
                   checkLog.session(presence);
                   // ADR-032: HAB counts this answer toward "recipient absent".
                   if (presence === "gone") return "session_gone";
+                  if (presence === "unknown") return "session_unconfirmed";
                 }
                 timer.ring();
                 return "accepted";
@@ -999,10 +1008,10 @@ export async function main(
             })
           : undefined;
         while (!stopped) {
-          // While the session is gone nothing is shown or accepted: the mail stays unread.
+          // hab_peek can clear absence, so wait for a positive probe before calling it.
           const presence = probe ? await probe() : undefined;
           if (presence) checkLog.session(presence);
-          if (presence !== "gone")
+          if (presence === undefined || presence === "present")
             try {
               const started = performance.now();
               const shown = await notifier.check();
