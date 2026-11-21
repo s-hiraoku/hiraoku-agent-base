@@ -424,10 +424,11 @@ export interface HabEventOptions {
   /** Absolute path of the owner-only subscription store. */
   store: string;
   /**
-   * Asked at the start of every pass for the operator doorbells to apply; `undefined`
-   * means nothing changed. Lets the host pick up `hab:admin doorbell` without a restart.
+   * Asked at the start of every pass for the operator doorbells that should ring now.
+   * A set different from the last one applied is applied; one that fails to apply is
+   * tried again next pass. Lets the host pick up `hab:admin doorbell` without a restart.
    */
-  doorbells?: () => readonly StaticDoorbell[] | undefined;
+  doorbells?: () => readonly StaticDoorbell[];
   /** Lifetime granted when the client asks for none (default 1 hour). */
   default_ttl_ms?: number;
   /** Longest lifetime granted; a revoked connection stops at the latest then (default 24 h). */
@@ -535,6 +536,7 @@ export class HabEvents {
   readonly #rering: boolean;
   readonly #quiet: boolean;
   readonly #doorbells: HabEventOptions["doorbells"];
+  #doorbellsApplied: string | undefined;
   #timer: ReturnType<typeof setInterval> | undefined;
   #running: Promise<void> | undefined;
   constructor(source: HabEventSource, options: HabEventOptions) {
@@ -935,9 +937,18 @@ export class HabEvents {
   async dispatch() {
     try {
       const doorbells = this.#doorbells?.();
-      if (doorbells) this.configureStatic(doorbells);
+      if (doorbells) {
+        const key = createHash("sha256")
+          .update(JSON.stringify(doorbells))
+          .digest("hex");
+        // Remembered only once applied, so a failure is retried on the next pass.
+        if (key !== this.#doorbellsApplied) {
+          this.configureStatic(doorbells);
+          this.#doorbellsApplied = key;
+        }
+      }
     } catch {
-      // A doorbell that cannot be applied now keeps the previous set; the next pass retries.
+      // A set that cannot be applied now keeps the previous one; the next pass retries.
     }
     this.#settle();
     if (this.#rering) await this.#ringAgain();

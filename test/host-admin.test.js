@@ -1560,3 +1560,65 @@ test("a registered doorbell wins over the config one for its address, said once 
   ]);
   assert.equal(removed.still_in_config, true);
 });
+
+test("a bad config doorbell still stops the start when a registered one replaces it (plan 3)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  await f.host.close();
+  const secretFile = join(f.config.directory, "..", "bell.secret");
+  writeFileSync(secretFile, "routine-token-0123456789\n", { mode: 0o600 });
+  const bell = (url) => ({
+    address: "hermes@hermes.hab",
+    url,
+    secret_file: secretFile,
+  });
+  f.config.ingress.events = {
+    poll_ms: 500,
+    doorbells: [bell("https://hooks.example.com/config")],
+  };
+  f.write("service.local.json", f.config);
+  const first = await startHost(f.configPath);
+  hostAdminDoorbellAdd(
+    f.configPath,
+    bell("https://hooks.example.com/registry"),
+  );
+  await first.close();
+  // The replaced config entry is now one that HAB must never ring.
+  f.config.ingress.events.doorbells = [bell("https://10.0.0.1/private")];
+  f.write("service.local.json", f.config);
+  await assert.rejects(startHost(f.configPath), { reason: "invalid_doorbell" });
+});
+
+test("a registered doorbell whose secret file was briefly unusable comes back by itself (plan 3)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  await f.host.close();
+  f.config.ingress.events = { poll_ms: 500 };
+  f.write("service.local.json", f.config);
+  const host = await startHost(f.configPath);
+  t.after(() => host.close());
+  const secretFile = join(f.config.directory, "..", "bell.secret");
+  writeFileSync(secretFile, "routine-token-0123456789\n", { mode: 0o600 });
+  hostAdminDoorbellAdd(f.configPath, {
+    address: "hermes@hermes.hab",
+    url: "https://hooks.example.com/registry",
+    secret_file: secretFile,
+  });
+  const operator = () =>
+    !!hostAdminStatus(f.configPath).inboxes.find(
+      (i) => i.address === "hermes@hermes.hab",
+    ).doorbell_operator;
+  await eventually(async () => (operator() ? true : undefined));
+  chmodSync(secretFile, 0o644);
+  await eventually(async () => (operator() ? undefined : true));
+  chmodSync(secretFile, 0o600);
+  await eventually(async () => (operator() ? true : undefined));
+});

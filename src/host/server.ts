@@ -405,15 +405,23 @@ export async function startHostServer(options: HostServerOptions) {
           secret: doorbell.secret,
         };
       });
-      let applied: string | undefined;
       // Plan 3: doorbells added with `hab:admin doorbell` live in the events store and
       // win over a config doorbell for the same address. A registered doorbell that
       // cannot be used now (address gone, unsafe secret file) is left out, never fatal.
+      // Every config doorbell is checked at start, also one a registered doorbell
+      // replaces, so a bad config never starts and `doorbell remove` never falls back to it.
+      try {
+        for (const doorbell of fromConfig) {
+          operatorCallbackUrl(doorbell.url);
+          doorbellSecret(doorbell.secret);
+        }
+      } catch {
+        throw Error("invalid_doorbell");
+      }
+      // Resolved afresh every pass: a secret file that was missing for a while is
+      // picked up as soon as it is back.
       const current = () => {
         const registered = events!.registeredDoorbells();
-        const key = JSON.stringify(registered);
-        if (key === applied) return undefined;
-        applied = key;
         const replaced = new Set(registered.map((row) => row.address));
         return [
           ...fromConfig.filter((d) => !replaced.has(d.address)),
@@ -453,7 +461,7 @@ export async function startHostServer(options: HostServerOptions) {
         ),
       ];
       try {
-        events.configureStatic(current() ?? []);
+        events.configureStatic(current());
       } catch {
         throw Error("invalid_doorbell");
       }
