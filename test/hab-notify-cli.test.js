@@ -270,14 +270,12 @@ test("generic states API is cursor independent and fenced by connection, recipie
   assert.ok(acted.states[0].revision > 0);
   assert.equal(await run("states", { binding_id: binding }), 0);
   assert.deepEqual(
-    output
-      .at(-1)
-      .states.map(({ sender_id, message_id, state, revision }) => ({
-        sender_id,
-        message_id,
-        state,
-        revision,
-      })),
+    output.at(-1).states.map(({ sender_id, message_id, state, revision }) => ({
+      sender_id,
+      message_id,
+      state,
+      revision,
+    })),
     acted.states,
   );
   assert.deepEqual(
@@ -567,7 +565,9 @@ process.stdin.on("end", () => {
         profile_scope: "scope",
         ...(result === undefined
           ? {}
-          : { session_probe: { command: [process.execPath, probe], cwd: dir } }),
+          : {
+              session_probe: { command: [process.execPath, probe], cwd: dir },
+            }),
       },
       interval_ms: 1000,
       wake: { port, secret_file: secretFile },
@@ -577,22 +577,37 @@ process.stdin.on("end", () => {
   await main(["--config", config, "check"], (line) => once.push(line));
   const lines = [];
   const running = main(["--config", config, "run"], (line) => lines.push(line));
-  await new Promise((done) => setTimeout(done, 700));
   const { HAB_EVENT_NAME, signWebhook } = await import("../src/hab/events.ts");
-  const body = raw ?? JSON.stringify({
-    name: HAB_EVENT_NAME,
-    data: { to: "hermes@hermes.hab", session: "bound-session" },
-  });
+  const body =
+    raw ??
+    JSON.stringify({
+      name: HAB_EVENT_NAME,
+      data: { to: "hermes@hermes.hab", session: "bound-session" },
+    });
   const ts = Math.floor(Date.now() / 1000);
-  const answer = await globalThis.fetch(`http://127.0.0.1:${port}/`, {
-    method: "POST",
-    headers: {
-      "webhook-id": "msg_probe",
-      "webhook-timestamp": String(ts),
-      "webhook-signature": signWebhook(secret, "msg_probe", ts, body),
-    },
-    body,
-  });
+  const ring = () =>
+    globalThis.fetch(`http://127.0.0.1:${port}/`, {
+      method: "POST",
+      headers: {
+        "webhook-id": "msg_probe",
+        "webhook-timestamp": String(ts),
+        "webhook-signature": signWebhook(secret, "msg_probe", ts, body),
+      },
+      body,
+    });
+  // `run` listens only after its setup; a busy machine needs longer than a fixed wait.
+  // A refused connection reached nothing, so trying again cannot ring twice.
+  let answer;
+  for (const deadline = Date.now() + 10_000; ;) {
+    try {
+      answer = await ring();
+      break;
+    } catch (error) {
+      if (error?.cause?.code !== "ECONNREFUSED" || Date.now() > deadline)
+        throw error;
+      await new Promise((done) => setTimeout(done, 50));
+    }
+  }
   const answered = { status: answer.status, body: await answer.text() };
   await new Promise((done) => setTimeout(done, 1500));
   process.emit("SIGTERM");
@@ -630,9 +645,13 @@ test("a standalone config without as_address keeps legacy signed wake and log ou
 });
 
 test("a standalone config without as_address cannot report session gone", async (t) => {
-  const { answered, logged } = await runWithProbe(t, "gone", { hasAddress: false });
+  const { answered, logged } = await runWithProbe(t, "gone", {
+    hasAddress: false,
+  });
   assert.equal(answered.status, 200);
-  assert.deepEqual(JSON.parse(answered.body), { reason: "session_unconfirmed" });
+  assert.deepEqual(JSON.parse(answered.body), {
+    reason: "session_unconfirmed",
+  });
   assert.equal(logged.length, 1);
   assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "session"]);
   assert.equal(logged[0].session, "gone");
@@ -642,8 +661,13 @@ test("run answers 200 unconfirmed and leaves the inbox alone when the probe cann
   const { answered, once, logged } = await runWithProbe(t, "unknown");
   assert.deepEqual(once, { shown: [], session: "unknown" });
   assert.equal(answered.status, 200);
-  assert.deepEqual(JSON.parse(answered.body), { reason: "session_unconfirmed" });
-  assert.deepEqual(logged.map((line) => line.session ?? line.error), ["unknown"]);
+  assert.deepEqual(JSON.parse(answered.body), {
+    reason: "session_unconfirmed",
+  });
+  assert.deepEqual(
+    logged.map((line) => line.session ?? line.error),
+    ["unknown"],
+  );
 });
 
 test("run and one-shot check reach HAB when the bound Hermes session is present", async (t) => {

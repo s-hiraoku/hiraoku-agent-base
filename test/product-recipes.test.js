@@ -60,6 +60,43 @@ test("a recipe's receive mode, operator steps and expected stages agree", () => 
   }
 });
 
+test("a recipe that adds a doorbell turns MCP events on first, as its guide section does", () => {
+  for (const product of PRODUCTS) {
+    const recipe = loadRecipe(product);
+    const steps = recipe.operator_steps;
+    const doorbell = steps.findIndex((s) =>
+      s.includes("hab:admin doorbell add"),
+    );
+    if (doorbell === -1) continue;
+    // `doorbell add` answers events_not_configured on a host without ingress.events.
+    const events = steps.findIndex((s) =>
+      s.includes("ingress.events があること"),
+    );
+    assert.ok(
+      events !== -1 && events < doorbell,
+      `${product}: events before doorbell`,
+    );
+    assert.doesNotMatch(
+      steps[doorbell],
+      /(^|。)\s*host の再起動は要らない/,
+      `${product}: "no restart" only once events are on`,
+    );
+    assert.match(
+      steps[doorbell],
+      /ingress\.events が有効なら、host の再起動は要らない/,
+    );
+    const section = guide
+      .split(`\n## ${recipe.setup_heading}\n`)[1]
+      .split("\n## ")[0];
+    if (section.includes("hab:admin doorbell add"))
+      assert.ok(
+        section.indexOf("ingress.events") <
+          section.indexOf("hab:admin doorbell add"),
+        `${product}: the guide turns events on before the doorbell`,
+      );
+  }
+});
+
 test("recipes hold no secret, token, Webhook URL or real address", () => {
   const allowedUrls = new Set([
     "https://<HAB の公開入口>/hab/mcp",
