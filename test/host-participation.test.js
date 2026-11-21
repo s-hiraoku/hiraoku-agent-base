@@ -843,3 +843,60 @@ test("a live approve's lock makes another wait and give up; a dead one's lock is
   assert.equal(approve().ledger, "added");
   assert.equal(existsSync(lock), false);
 });
+
+test("approve refuses to write a ledger the host could no longer read (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+  const pad = (n, width) => `${n}`.padStart(width, "x");
+  // Fill the ledger to just under the host's config size limit.
+  for (let n = 0; ; n++) {
+    const row = {
+      subject: pad(`s${n}`, 480),
+      client_id: pad(`c${n}`, 480),
+      connection_id: `filler-${n}`,
+      approved_at: oauth.participation.approved_at,
+      approved_until: oauth.participation.approved_until,
+      state: "revoked",
+    };
+    const next = { ...ledger, connections: [...ledger.connections, row] };
+    if (Buffer.byteLength(JSON.stringify(next, null, 2) + "\n") > 65536 - 600)
+      break;
+    ledger.connections.push(row);
+  }
+  const original = JSON.stringify(ledger, null, 2) + "\n";
+  writeFileSync(ledgerFile, original);
+  parseOAuthConfig(JSON.parse(original));
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: pad("big-subject", 480),
+      client_id: pad("big-client", 480),
+    },
+    false,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  assert.throws(
+    () =>
+      hostAdminApprove(f.configPath, {
+        pending_id: row.pending_id,
+        address: "big@remote.hab",
+      }),
+    { code: "ledger_too_large" },
+  );
+  assert.equal(readFileSync(ledgerFile, "utf8"), original);
+  assert.equal(hostAdminPending(f.configPath).pending.length, 1);
+  assert.equal(
+    readdirSync(dirname(ledgerFile)).some((name) =>
+      /\.bak-|\.tmp-|\.lock$/.test(name),
+    ),
+    false,
+    "no backup, temp file or lock left",
+  );
+});

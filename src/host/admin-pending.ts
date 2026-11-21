@@ -20,6 +20,7 @@ import {
 } from "node:fs";
 import { readHostConfig } from "./config.ts";
 import { parseOAuthConfig } from "./oauth-auth.ts";
+import { RUNTIME_CONFIG_MAX_BYTES } from "../runtime-config.ts";
 import { readPending, removePending } from "./oauth-pending.ts";
 import { HostAdminError, hostAdminConnect } from "./admin.ts";
 import { parseHabAddress } from "../hab/registry.ts";
@@ -210,10 +211,15 @@ export function hostAdminApprove(
       } catch {
         throw new HostAdminError("oauth_invalid");
       }
+      const text = JSON.stringify(next, null, 2) + "\n";
+      // The host refuses a ledger over the config size limit, which would stop every
+      // OAuth connection, so such a ledger is never written.
+      if (Buffer.byteLength(text) > RUNTIME_CONFIG_MAX_BYTES)
+        throw new HostAdminError("ledger_too_large");
       backup = `${ledger}.bak-${new Date(now).toISOString().replace(/[:.]/g, "-")}`;
       copyFileSync(ledger, backup);
       chmodSync(backup, 0o600);
-      replaceAtomically(ledger, JSON.stringify(next, null, 2) + "\n");
+      replaceAtomically(ledger, text);
     }
     // An address already in use keeps what it and its group are allowed to do: a
     // product that comes back with a new client neither gains nor loses operations.
