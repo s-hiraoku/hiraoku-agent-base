@@ -588,13 +588,22 @@ export class SQLiteHabRegistry {
       )
         throw new RegistryError("unsupported_registry_receive_schema");
     const now = this.#iso();
+    // Named after the current address: a renamed agent's provisional session follows its
+    // new name, and an earlier build that used the first address is corrected here.
+    const agents = this.#agentTable();
     this.#db
       .prepare(
         `INSERT INTO hab_agent_sessions(agent_id,product_id,session,provisional,bound_at,actor_hash)
-         SELECT a.agent_id,a.product_id,a.address,1,?,NULL FROM hab_agents a
+         SELECT a.agent_id,a.product_id,a.address,1,?,NULL FROM ${agents} a
          WHERE NOT EXISTS (SELECT 1 FROM hab_agent_sessions s WHERE s.agent_id=a.agent_id)`,
       )
       .run(now);
+    this.#db
+      .prepare(
+        `UPDATE hab_agent_sessions SET session=(SELECT a.address FROM ${agents} a WHERE a.agent_id=hab_agent_sessions.agent_id)
+         WHERE provisional=1 AND session<>(SELECT a.address FROM ${agents} a WHERE a.agent_id=hab_agent_sessions.agent_id)`,
+      )
+      .run();
   }
   #productReceive(productId: string): ProductReceive | null {
     const row = this.#db
@@ -1084,6 +1093,12 @@ export class SQLiteHabRegistry {
           "INSERT INTO hab_agent_name_events(agent_id,address,previous_address,at) VALUES(?,?,?,?)",
         )
         .run(current.agent_id, address, current.address, this.#iso());
+      // A provisional session is named after the address, so it follows the new name.
+      this.#db
+        .prepare(
+          "UPDATE hab_agent_sessions SET session=? WHERE agent_id=? AND provisional=1",
+        )
+        .run(address, current.agent_id);
       this.#bump(current.agent_id);
       if (member) this.#bumpGroup(String(member.group_id));
       return {
