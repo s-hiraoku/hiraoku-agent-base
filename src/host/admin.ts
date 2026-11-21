@@ -13,6 +13,7 @@ import { parseOAuthConfig, oauthConnectionWindow } from "./oauth-auth.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import { NAME_SCHEMA_VERSION } from "../hab/agent-names.ts";
 import { readDoorbells } from "../hab/events.ts";
+import { readPending } from "./oauth-pending.ts";
 import type { RegistryOverview } from "../hab/sqlite-registry.ts";
 import {
   RegistryError,
@@ -491,6 +492,8 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
         });
       return {
         resource_urls: resources,
+        // Fully verified sign-ins the ledger does not list yet (`hab:admin pending`).
+        pending_connections: readPending(directory, now).length,
         // ADR-032: how each product hears about new mail (null until the operator sets it).
         products: view.products.map((product) => ({
           agent_name: product.agent_name,

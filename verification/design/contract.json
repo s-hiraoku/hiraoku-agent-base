@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "87fe3f64faac94484f008afbc3c54b1de2a351027f5d477399b42615817a86b6",
+      "sha256": "f9fbdcf77a5dd951eafaa95bd041f1f458ae0b8a8178d23f74166b76aac3d21f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with twelve entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. The arrival-notifier entry also names the Codex, Claude Code and ChatGPT connector (Dots) screens. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation. ADR-022 adds the mcp-events entry (ingress MCP Events doorbell). ADR-023 (2026-11-17): the arrival-notifier entry also names the opt-in automatic accept for allowed senders with its caps and audit file. 2026-11-21 (PR-7/ADR-032): mcp-events index line also names recipient_absent.",
@@ -224,7 +224,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "6340d31eca8e6962ec54266680b5f09d2ddc00e8dc04c161a8b3baa5f4f2f8e6",
+      "sha256": "7a0ff5ade851dfd0d329120c4e16054104f23d00e76694890096905bcf752f25",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-21 (#252/#253): admin-session notes a provisional session follows a rename and is corrected at start; exact address lookup.",
@@ -1267,7 +1267,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "8d3e7435ecdfddc1ba448f84990e78804031d288b2c74c211a93efeeb878a9b7",
+      "sha256": "9c2ccc6d5bc13ef69aaaa5423340579ec0430eed432c868d121ee42170426270",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
@@ -1277,7 +1277,7 @@
       "sha256": "d5278a7d7b4e0da37f20dc4064e3a5a5c95324e5c42b0b63120ddbbf4429c6a1",
       "role": "context",
       "review": "reviewed",
-      "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
+      "summary": "Implementation plan for easing agent onboarding in four stages, each its own PR: (1) read-only `hab:admin doctor` per address (registration, receive, reading, session with ok/problem/unknown and a next action); (2) registering from a pending list: fully verified but unregistered OAuth sign-ins are recorded without tokens and approved by `hab:admin approve`, which writes the ledger atomically and binds without a restart, while pre-approval tokens stay refused; (3) operator doorbells moved from host config to the events store; (4) `ping` from a host-owned test address, product recipes and a conditional `onboard`. Hermes one-command setup, Codex handoff, product-side session_gone and Auth0 app creation are deferred. A plan, not a decision; existing ADRs are normative."
     },
     {
       "path": "docs/plans/receive-show-act-plan.md",
@@ -2632,8 +2632,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 15,
-          "end": 15,
+          "start": 16,
+          "end": 16,
           "excerpt_sha256": "53dd1acc4164a66887d09a3569fecbb281a039e05d3b3f289e7af5b69d09846c"
         }
       ]
@@ -2663,8 +2663,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 16,
-          "end": 16,
+          "start": 17,
+          "end": 17,
           "excerpt_sha256": "bc76086a1621b520c87f9cbbbb8a7e48ae2405b5c24ade74a17efcdfb3caebb0"
         }
       ]

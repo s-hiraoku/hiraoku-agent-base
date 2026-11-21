@@ -180,9 +180,15 @@ export type OAuthDenyReason =
   | "token_before_approval"
   | "signing_key_unknown"
   | "signature_invalid";
+/** Told about a sign-in that passed every check but the ledger, with whether its subject is known. */
+export type UnregisteredSignIn = (
+  signIn: { issuer: string; subject: string; client_id: string },
+  knownSubject: boolean,
+) => void;
 export class PinnedOAuthAuthority {
   readonly #load: () => unknown;
   readonly #now: () => number;
+  readonly #onUnregistered: UnregisteredSignIn | undefined;
   #last = -Infinity;
   #observedMaterial = "";
   #revision = 0n;
@@ -197,14 +203,23 @@ export class PinnedOAuthAuthority {
       expires: number;
     }
   >();
-  private constructor(load: () => unknown, now: () => number) {
+  private constructor(
+    load: () => unknown,
+    now: () => number,
+    onUnregistered: UnregisteredSignIn | undefined,
+  ) {
     this.#load = load;
     this.#now = now;
+    this.#onUnregistered = onUnregistered;
   }
-  static async create(load: () => unknown, now: () => number = Date.now) {
+  static async create(
+    load: () => unknown,
+    now: () => number = Date.now,
+    onUnregistered?: UnregisteredSignIn,
+  ) {
     if (typeof load !== "function" || typeof now !== "function")
       throw Error("invalid_oauth_config");
-    const auth = new PinnedOAuthAuthority(load, now);
+    const auth = new PinnedOAuthAuthority(load, now, onUnregistered);
     try {
       await auth.#importKeys(auth.#current());
     } catch {
@@ -252,6 +267,28 @@ export class PinnedOAuthAuthority {
     if (this.#current().material !== snapshot.material) throw Error();
     this.#keys = keys;
     this.#keysMaterial = snapshot.material;
+  }
+  async #signed(
+    snapshot: { config: Config; material: string },
+    kid: string,
+    match: RegExpExecArray,
+  ) {
+    try {
+      await this.#importKeys(snapshot);
+      const key = this.#keys.get(kid);
+      return (
+        !!key &&
+        (await crypto.subtle.verify(
+          "RSASSA-PKCS1-v1_5",
+          key,
+          bytes(match[3]),
+          new TextEncoder().encode(match[1] + "." + match[2]),
+        ))
+      );
+    } catch {
+      // A malformed signature keeps the unregistered refusal, never a new reason.
+      return false;
+    }
   }
   get resource() {
     const { config } = this.#current();
@@ -305,12 +342,41 @@ export class PinnedOAuthAuthority {
       const binding = c.connections.find(
         (x) => x.subject === value.sub && x.client_id === clientId,
       );
-      if (!binding)
-        return refuse(
-          c.connections.some((x) => x.client_id === clientId)
-            ? "subject_not_registered"
-            : "client_not_registered",
-        );
+      if (!binding) {
+        const reason = c.connections.some((x) => x.client_id === clientId)
+          ? "subject_not_registered"
+          : "client_not_registered";
+        // Only a sign-in that would pass on approval is kept for the operator, so
+        // forged or stale tokens cannot fill the pending list. The answer is unchanged.
+        if (this.#onUnregistered) {
+          const issued = value.iat * 1000,
+            expires = value.exp * 1000,
+            maxLifetime =
+              c.version === 2
+                ? c.max_access_token_lifetime_seconds * 1000
+                : 900000;
+          if (
+            Number.isSafeInteger(issued) &&
+            Number.isSafeInteger(expires) &&
+            issued < expires &&
+            expires - issued <= maxLifetime &&
+            expires > snapshot.now &&
+            issued <= snapshot.now &&
+            (value.nbf === undefined || value.nbf * 1000 <= snapshot.now) &&
+            (await this.#signed(snapshot, h.kid, match))
+          ) {
+            try {
+              this.#onUnregistered(
+                { issuer: c.issuer, subject: value.sub, client_id: clientId },
+                c.connections.some((x) => x.subject === value.sub),
+              );
+            } catch {
+              // The pending list is a convenience; a failure never changes the answer.
+            }
+          }
+        }
+        return refuse(reason);
+      }
       const window = oauthConnectionWindow(binding),
         approved = Date.parse(window.starts_at),
         approvedUntil = Date.parse(window.ends_at),

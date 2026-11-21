@@ -60,6 +60,10 @@ const REASONS = {
     "problem",
     "接続台帳の approved_until が 14 日以内に切れる。期限を延ばす。",
   ],
+  pending_approval: [
+    "problem",
+    "承認待ちのサインインがある。hab:admin pending で見て、hab:admin approve --pending <id> --address <address> で承認する。",
+  ],
   connection_unlisted: [
     "unknown",
     "このアドレスに紐づく接続が接続台帳に見つからない。hab:admin status の credentials を確かめる。",
@@ -135,13 +139,22 @@ function registration(status: Status, address: string, now: number): Check {
     operations: entry.operations.length,
   };
   if (entry.state !== "active") return check("address_inactive", evidence);
-  if (!entry.active_bindings) return check("address_unbound", evidence);
+  if (status.pending_connections)
+    evidence.pending_connections = status.pending_connections;
+  // An address with no working connection yet, and a sign-in waiting: approve it.
+  const waiting = () =>
+    status.pending_connections
+      ? check("pending_approval", evidence)
+      : undefined;
+  if (!entry.active_bindings)
+    return waiting() ?? check("address_unbound", evidence);
   if (!deliveryOperations.every((op) => entry.operations.includes(op)))
     return check("operations_missing", evidence);
   const connections = status.credentials.filter((c) =>
     c.addresses.includes(address),
   );
-  if (!connections.length) return check("connection_unlisted", evidence);
+  if (!connections.length)
+    return waiting() ?? check("connection_unlisted", evidence);
   // The connection that lasts longest decides: one live connection keeps the address working.
   const best = connections
     .map((c) => {

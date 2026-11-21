@@ -61,20 +61,23 @@ host 設定・接続台帳・Registry・notifier を変える作業は、Mac min
      claude.ai の callback は `https://claude.ai/api/mcp/auth_callback`、Muse はセットアップの始めに Muse が示す。
    - 手元で動く製品（Hermes の受信通知、Claude Code）は secret を送らない public client。手順は[受信通知アダプタ](../receiver/arrival-notifier.md)と[Claude Code の接続](claude-code-connection.md)のとおり。
 3. 製品に HAB の MCP をつなぐ。URL は `https://<HAB の公開入口>/hab/mcp`、認証は OAuth、scope は `hab:resolve hab:submit hab:status hab:poll hab:ack offline_access`。
-4. Auth0 の管理画面のログ（Monitoring → Logs）で、そのアプリでのログインの主体（subject）を確かめる。
-   HAB の監査記録には主体も client ID も残らない。
-5. 運用者 AI に接続の登録を頼む（下の文）。手順の背景は[常用の MCP 認証](../operations/persistent-mcp-auth.md)と[認証グループ](../auth-groups.md)にあります。
+4. 製品でログインまで済ませると、HAB はそのサインインを「承認待ち」に記録して断る（署名と期限が正しいものだけ）。
+   Auth0 のログで主体を探す必要はない。
+5. 運用者 AI に承認を頼む（下の文）。台帳への追記と接続の紐づけを 1 回で行い、host の再起動は要らない。
+   承認より前に発行された token は断られるので、製品が token を更新するまで（最長 10 分）待つか、製品の画面でコネクタをつなぎ直す。
+   手順の背景は[常用の MCP 認証](../operations/persistent-mcp-auth.md)と[認証グループ](../auth-groups.md)にあります。
 6. つないだ会話で、名義を確かめる（下の文）。
 
 運用者 AI に渡す文（先頭に上の約束を付ける）：
 
 ```text
 HAB に新しいエージェントを接続します。アドレスは <アドレス>、製品は <製品名>、
-Auth0 のアプリの client ID は <client ID>、主体は <subject> です。
-1. 接続台帳（OAuth v2 の private 設定）に、この主体と client ID の組の接続を足す案を作ってください。承認期間は今日から 1 年。
-2. 私が「はい」と言ったら、バックアップを取ってから台帳を更新し、
-   npm run hab:admin -- --config <host 設定> connect --address <アドレス> --connection-id <接続 ID> を実行してください。
-3. hab:admin status で、そのアドレスが active で 5 操作を持つことを見せてください。
+Auth0 のアプリの client ID は <client ID> です。
+1. npm run hab:admin -- --config <host 設定> pending で承認待ちを出し、client ID が一致する行を見せてください。
+2. 私が「はい」と言ったら、
+   npm run hab:admin -- --config <host 設定> approve --pending <pending_id> --address <アドレス> を実行してください。
+   台帳のバックアップは approve が取ります。
+3. hab:admin doctor --address <アドレス> で、registration が ok になったことを見せてください。
 ```
 
 エージェントに渡す文：
