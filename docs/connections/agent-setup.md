@@ -53,6 +53,11 @@ host 設定・接続台帳・Registry・notifier を変える作業は、Mac min
 
 ## 共通の準備をする
 
+製品ごとの手順は `config/products/<製品>.json` にも同じ内容で置いてあります。
+`npm run hab:admin -- --config <host 設定> recipe --product <製品> --address <アドレス> --allowed <許可するアドレス>` で、
+アドレスを埋めた手順と「渡す文」を出せます（製品は `dots`・`grok`・`muse`・`claude-ai`・`hermes`）。
+この文書の「渡す文」を変えたら、レシピも同じに直します（`test/product-recipes.test.js` が食い違いを見つけます）。
+
 どの製品でも、最初に次を済ませます。
 
 1. アドレスを決める（例 `muse@muse.hab`）。
@@ -153,8 +158,10 @@ HAB のコネクタを使えるようにしてください。
 2. routine の画面で **Test** を押し、HAB のツールが呼ばれることを確かめる。
 3. routine の Webhook の URL と鍵を確かめる。鍵はチャットに貼らず、Mac mini の所有者だけが読めるファイル
    （権限 0600）に保存する。
-4. 運用者が `hab:admin doorbell add --address <アドレス> --url <URL> --secret-file <鍵ファイル>` で呼び鈴を登録する。
-   host の再起動は要りません。手順は [MCP イベント](mcp-events.md)の「運用者が登録する呼び鈴」にあります。
+4. 運用者が host 設定に `ingress.events` があるかを確かめる。無ければ、バックアップを取ってから `"events": {}` を加え、
+   host を再起動する（呼び鈴は MCP イベントの仕組みで鳴るので、これが無いと登録できません）。
+5. 運用者が `hab:admin doorbell add --address <アドレス> --url <URL> --secret-file <鍵ファイル>` で呼び鈴を登録する。
+   `ingress.events` が有効なら、host の再起動は要りません。手順は [MCP イベント](mcp-events.md)の「運用者が登録する呼び鈴」にあります。
 
 確かめ方：試験メールを 1 通送り、`hab:admin status` の `doorbell_last_status` が 2xx になり、
 Bot のチャットに内容が出れば完了です。

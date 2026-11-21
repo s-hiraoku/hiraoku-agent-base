@@ -22,6 +22,11 @@ import {
   hostAdminDoorbellRemove,
   hostAdminDoorbellList,
 } from "../src/host/admin-doorbells.ts";
+import {
+  fillRecipe,
+  listRecipes,
+  loadRecipe,
+} from "../src/host/product-recipes.ts";
 
 const usage = `usage:
   hab-admin --config <service.local.json> status
@@ -33,6 +38,7 @@ const usage = `usage:
   hab-admin --config <service.local.json> doorbell add --address <bot@agent.hab> --url <url> --secret-file <path>
   hab-admin --config <service.local.json> doorbell remove --address <bot@agent.hab>
   hab-admin --config <service.local.json> doorbell list
+  hab-admin --config <service.local.json> recipe [--product <product> [--address <bot@agent.hab>] [--allowed <bot@agent.hab>] [--conversation <name>]]
   hab-admin --config <service.local.json> connect --address <bot@agent.hab> --connection-id <id> [--operations resolve,submit,status,poll,ack]
   hab-admin --config <service.local.json> disconnect --address <bot@agent.hab>
   hab-admin --config <service.local.json> receive --agent-name <product> --mode hook|poll|on_request [--interval-ms <60000..86400000>] --request-id <journaled-id>
@@ -72,6 +78,9 @@ function parse(args: string[]) {
         "--connection",
         "--url",
         "--secret-file",
+        "--product",
+        "--allowed",
+        "--conversation",
       ].includes(key) ||
       value === undefined ||
       Object.hasOwn(options, key)
@@ -139,6 +148,25 @@ export function main(args = process.argv.slice(2)) {
     return hostAdminDoorbellRemove(config, options["--address"]);
   if (command === "doorbell-list" && !Object.keys(options).length)
     return hostAdminDoorbellList(config);
+  if (command === "recipe" && !Object.keys(options).length)
+    return {
+      products: listRecipes().map((product) => {
+        const recipe = loadRecipe(product);
+        return { product, label: recipe.label, receive: recipe.receive.mode };
+      }),
+    };
+  if (
+    command === "recipe" &&
+    options["--product"] &&
+    Object.keys(options).every((key) =>
+      ["--product", "--address", "--allowed", "--conversation"].includes(key),
+    )
+  )
+    return fillRecipe(loadRecipe(options["--product"]), {
+      address: options["--address"],
+      allowed: options["--allowed"],
+      conversation: options["--conversation"],
+    });
   if (
     command === "rename" &&
     Object.keys(options).length === 5 &&
