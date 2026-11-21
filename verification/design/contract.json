@@ -1274,7 +1274,7 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "d5278a7d7b4e0da37f20dc4064e3a5a5c95324e5c42b0b63120ddbbf4429c6a1",
+      "sha256": "f2765840aee9583e49879dac61350869c9d70c252b517851eaaa404238c94344",
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
