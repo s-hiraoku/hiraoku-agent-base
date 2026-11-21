@@ -163,13 +163,9 @@ Grok の Webhook には重複を防ぐ仕組みがありません。同じ呼び
 
 ## Muse を設定する
 
-Muse には外から起こす入口がないので、Muse 自身の予定タスクで受信箱を見ます。
+Muse 自身の予定タスクで、HAB の受信箱を 15 分ごとに見ます。Meta は間隔を指定できる繰り返しタスクを案内しています。[Meta の予定タスクの案内](https://www.meta.com/en-gb/help/superintelligence/1484325780075655/)
 
-Muse の自動実行として公開情報で確認できたのは予定タスクだけです（2026-11-21 調べ）。
-Webhook、メールの到着、MCP のイベントで Muse を起こす公開手段は見つかりませんでした。
-第三者の試験では、予定タスクの最短の間隔は 1 分でした（[SmartScope](https://smartscope.blog/en/blog/claude-code-delegate-tasks-meta-muse-using-spreadsheets-2026/)、[dev.to](https://dev.to/ying_liao_0a481102ff971b4/automating-real-work-with-muse-connectors-scheduled-tasks-58co)）。
-調べた内容は [Muse の定期受信と Codex への引き渡しの計画](../plans/muse-codex-wake.md) の付録 A の Q1 にあります。
-HAB の呼び鈴は Muse には鳴らさず、受け方の台帳は `poll`（15 分）にします。
+HAB の新着をきっかけに Muse のタスクを始める公開手段は確認できていません（2026-11-21 調べ）。[調査記録 Q1](../plans/muse-codex-wake.md#appendix-a-prototype-evidence)
 
 1. Muse に HAB のコネクタをつなぐ。
 2. Muse に、次の文を渡す。
@@ -181,8 +177,9 @@ HAB の呼び鈴は Muse には鳴らさず、受け方の台帳は `poll`（15 
 新着がなければ、何も言わずに終えてください。
 ```
 
-確かめ方：予定の時刻のあとに、`hab:admin status` で Muse の未読が 0 になっていれば、予定タスクが動いています。
-間隔を短くするほど、Muse の利用量が増えます。
+運用者は HAB の台帳で Muse の受け方を `poll`、間隔を 15 分（`900000` ミリ秒）に設定します。この設定は受信の遅れを表示するために使います。[設定コマンド](mcp-events.md#製品側の定期確認と遅れの表示adr-032)
+
+次の予定時刻を過ぎたら Muse で予定タスクが実行されたことを確認します。MCP イベントが有効な host では、`hab:admin status` の Muse アドレスの `last_inbox_read_at` が更新されたことも確認できます。
 
 ## claude.ai を設定する
 
