@@ -519,6 +519,11 @@ export interface StaticDoorbell {
   url: string;
   /** Undefined while an existing managed registration cannot resolve its secret file. */
   secret: string | undefined;
+  /**
+   * Changes each time the operator registers the doorbell again (`hab:admin doorbell
+   * add`), so a registration repeated after a 410 removed the callback is applied anew.
+   */
+  revision?: number;
 }
 
 export class HabEvents {
