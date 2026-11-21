@@ -484,10 +484,10 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "ac53f74a399c7bcbe6ae074f30be6890121cc248d69900ef65ac2c689f16dbd1",
+      "sha256": "59b01fc0ff3c27a0fd38e011bc4de459640ccb7be7051261d73aef1b9109ef65",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task. ADR-023 (owner, 2026-11-17) adds an explicit opt-in exception to ADR-021: the notifier may choose 対応する for senders/kinds the owner listed in notify.json (default all manual), replacing the first handoff line to say nobody chose it and that only reading and hab_reply are allowed without the user; prompt-level only, product approvals remain the hard limit; per-sender/per-thread caps; body-free notifier audit; ADR-021 once-only handoff, unknown/no-resend and accept_waiting unchanged. ADR-024 (2026-11-17): host downtime or Mac sleep is not counted against MCP event subscriptions (outage credit up to max_ttl_ms); lapsed doorbells and unread backlog are shown by hab:admin status; HAB never re-creates subscriptions; host/notifier LaunchAgents always restart and sleep prevention is a separate job. ADR-023 2026-11-18 addendum (owner): after the first Dots-Hermes trial stalled on a command approval, the automatic prompt forbids approval-gated operations and asks the session to finish with hab_reply anyway, answering what it can and stating what waits for the user; no permission widened. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. ADR-026 (owner, 2026-11-19): each agent product adapter draws received mail; hab_inbox/hab_peek add a body-free presentation (version 1: heading, sender, kind label, reply flag, sent_at, reply_by, choices, body_untrusted note, hidden data count) built from the same labels as notice/display/handoff_prompt, which stay; hab_peek returns text again; the agent /mcp serves the read-only MCP Apps card ui://hab/inbox-v1 (no network, text-only body) on hab_inbox only, whose buttons change no HAB state (accept sends a ui/message asking the model to draft before sending); framing of model-facing text unchanged; real-host rendering unverified. ADR-027 (owner, 2026-11-19): a doorbell accepted with 2xx whose message stays unread unanswered_after_ms (default 5 min) is rung once more with a new eventId (no retry, ingress.events.rering false turns it off); the recipient's own /mcp hab_send/hab_reply/hab_status results carry a body-free inbox_reminder (hab_inbox only when the doorbell went unanswered), counted from the authorization-filtered unread view; agent instructions say to call hab_inbox on the event; HAB still never re-creates subscriptions or tasks. ADR-028 (owner, 2026-11-19, after agent-mail): hab_inbox wait_secs 0-60 waits for new mail only when none is unread, capped by http.max_wait_ms (default 25000, 0 off), at most max_active_requests-1 holds, newest wait per agent wins, no wait under writer admission; the in-host wake carries only the recipient agent ID and every read is the normal authorized hab_inbox; narrows ADR-020's no-long-poll rule, sending without waiting stays the default. ADR-029 (owner, 2026-11-19, after agent-mail): operator-registered doorbells in ingress.events.doorbells {address,url,secret_file} for agents that cannot subscribe (Grok Bot webhook routines); secret from an owner-only file, whsec_ signs and other tokens go as Bearer; public HTTPS only; same body/retry/ring-again as MCP event doorbells; no lifetime, challenge, subscriber slot or MCP unsubscribe; not rung for mail waiting at start; reading stays the agent's own hab_inbox. ADR-030 (owner, 2026-11-19): while a subscription's last 2xx-accepted doorbell is younger than unanswered_after_ms and its message is unread, newer mail is held (cursor not advanced) and rung only if still unread when the quiet ends; the ADR-027 ring again runs first and restarts the quiet; non-2xx never starts it; ingress.events.quiet false rings every message. ADR-031 (owner, 2026-11-20): inbox polling beside the doorbell, interval set by the user, default 10 min: the arrival notifier already polls at its interval_ms; for doorbell-only agents the dispatcher rings each live doorbell again for the oldest unread message once ingress.events.inbox_check.interval_ms (0 off, 60000-86400000, per address in addresses) has passed since its last accepted ring or check, never retried, at most max_rings (default 6) per oldest unread; agents with neither use their own product scheduler and the agent instructions say to call hab_inbox when a schedule starts them; HAB cannot ring a lapsed doorbell or re-create tasks. 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task. ADR-023 (owner, 2026-11-17) adds an explicit opt-in exception to ADR-021: the notifier may choose 対応する for senders/kinds the owner listed in notify.json (default all manual), replacing the first handoff line to say nobody chose it and that only reading and hab_reply are allowed without the user; prompt-level only, product approvals remain the hard limit; per-sender/per-thread caps; body-free notifier audit; ADR-021 once-only handoff, unknown/no-resend and accept_waiting unchanged. ADR-024 (2026-11-17): host downtime or Mac sleep is not counted against MCP event subscriptions (outage credit up to max_ttl_ms); lapsed doorbells and unread backlog are shown by hab:admin status; HAB never re-creates subscriptions; host/notifier LaunchAgents always restart and sleep prevention is a separate job. ADR-023 2026-11-18 addendum (owner): after the first Dots-Hermes trial stalled on a command approval, the automatic prompt forbids approval-gated operations and asks the session to finish with hab_reply anyway, answering what it can and stating what waits for the user; no permission widened. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. ADR-026 (owner, 2026-11-19): each agent product adapter draws received mail; hab_inbox/hab_peek add a body-free presentation (version 1: heading, sender, kind label, reply flag, sent_at, reply_by, choices, body_untrusted note, hidden data count) built from the same labels as notice/display/handoff_prompt, which stay; hab_peek returns text again; the agent /mcp serves the read-only MCP Apps card ui://hab/inbox-v1 (no network, text-only body) on hab_inbox only, whose buttons change no HAB state (accept sends a ui/message asking the model to draft before sending); framing of model-facing text unchanged; real-host rendering unverified. ADR-027 (owner, 2026-11-19): a doorbell accepted with 2xx whose message stays unread unanswered_after_ms (default 5 min) is rung once more with a new eventId (no retry, ingress.events.rering false turns it off); the recipient's own /mcp hab_send/hab_reply/hab_status results carry a body-free inbox_reminder (hab_inbox only when the doorbell went unanswered), counted from the authorization-filtered unread view; agent instructions say to call hab_inbox on the event; HAB still never re-creates subscriptions or tasks. ADR-028 (owner, 2026-11-19, after agent-mail): hab_inbox wait_secs 0-60 waits for new mail only when none is unread, capped by http.max_wait_ms (default 25000, 0 off), at most max_active_requests-1 holds, newest wait per agent wins, no wait under writer admission; the in-host wake carries only the recipient agent ID and every read is the normal authorized hab_inbox; narrows ADR-020's no-long-poll rule, sending without waiting stays the default. ADR-029 (owner, 2026-11-19, after agent-mail): operator-registered doorbells in ingress.events.doorbells {address,url,secret_file} for agents that cannot subscribe (Grok Bot webhook routines); secret from an owner-only file, whsec_ signs and other tokens go as Bearer; public HTTPS only; same body/retry/ring-again as MCP event doorbells; no lifetime, challenge, subscriber slot or MCP unsubscribe; not rung for mail waiting at start; reading stays the agent's own hab_inbox. ADR-030 (owner, 2026-11-19): while a subscription's last 2xx-accepted doorbell is younger than unanswered_after_ms and its message is unread, newer mail is held (cursor not advanced) and rung only if still unread when the quiet ends; the ADR-027 ring again runs first and restarts the quiet; non-2xx never starts it; ingress.events.quiet false rings every message. ADR-031 (owner, 2026-11-20): inbox polling beside the doorbell, interval set by the user, default 10 min: the arrival notifier already polls at its interval_ms; for doorbell-only agents the dispatcher rings each live doorbell again for the oldest unread message once ingress.events.inbox_check.interval_ms (0 off, 60000-86400000, per address in addresses) has passed since its last accepted ring or check, never retried, at most max_rings (default 6) per oldest unread; agents with neither use their own product scheduler and the agent instructions say to call hab_inbox when a schedule starts them; HAB cannot ring a lapsed doorbell or re-create tasks. 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms. ADR-033 (2026-11-21): per-sender and per-recipient capacity counts only unread mail; read or expired messages stop counting at once, the per-agent retained-record budgets (max_records_per_sender, max_records_per_recipient, reservation records) are removed without compatibility, and history is bounded only by the store-wide max_records/max_body_bytes ceilings; record retention for replay/status is unchanged and sender rate limiting remains unimplemented."
     },
     {
       "path": "docs/hab-principles.md",
@@ -513,7 +513,7 @@
     },
     {
       "path": "docs/hab-messaging-spec.md",
-      "sha256": "d24b6514d434d2e6e0f59cd21248f12bc213423eb944fe85a624a2e498c95dcb",
+      "sha256": "6b2f2dae0f9e227fc1fc0c3dd46cf03b56d35055b97b12e276a840364a9542da",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19: Gemini and Antigravity join the same registration/delivery contract (example addresses only)."
@@ -712,7 +712,7 @@
     },
     {
       "path": "docs/host-service.md",
-      "sha256": "e65ad186fdddcfa866ebdee08355ed3ce6df2ebf1b209856fb3ff6c9ed1aaea0",
+      "sha256": "4251dc1bbd0d68690ab34267636c66600c3b3581f1ebf93f8e94233a7679bf74",
       "role": "normative",
       "review": "reviewed",
       "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed. ADR-024 (2026-11-17): status adds inboxes (unread, oldest_unread_at, doorbell) with unread_waiting and doorbell_lapsed problems, no callback URLs or secrets. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19 (ADR-028): http.max_wait_ms holds only a waiting hab_inbox past timeout_ms, bounded by max_active_requests-1."
@@ -847,10 +847,10 @@
     },
     {
       "path": "docs/delivery/agent-capacity.md",
-      "sha256": "f7e6d623976653b43dd19a691b332002a7ba7b1acd6b0e8e5143520ded401d97",
+      "sha256": "01aaf53ac7428b1c8b994402bf57af7503f6e644121f6d772aa591b95bb3f11f",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Required verified-sender and recipient pending/body/retained-record quotas in the SQLite delivery store (`delivery.queue.agent_capacity`), with host-selected minimum sender reservations evaluated in the admission transaction."
+      "summary": "Required verified-sender and recipient quotas in the SQLite delivery store (`delivery.queue.agent_capacity`) that count unread mail only (pending/leased/quarantined messages and their bodies; ADR-033, 2026-11-21), with host-selected minimum sender reservations evaluated in the admission transaction; retained receipts and read bodies are bounded only by the store-wide max_records/max_body_bytes disk ceilings."
     },
     {
       "path": "docs/auth-groups.md",
@@ -1766,7 +1766,7 @@
           "path": "docs/hab-decisions.md",
           "start": 84,
           "end": 85,
-          "excerpt_sha256": "fb64ab205a09fab31ed4c2c69a19bb93db41dce6508f7958b394da44281e853f"
+          "excerpt_sha256": "7a4446afba9e727b7353013b3c42314ce79f7cefdc105cb96232f7a2f80396d3"
         }
       ]
     },
@@ -2108,8 +2108,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 166,
-          "end": 180,
+          "start": 169,
+          "end": 183,
           "excerpt_sha256": "b328717f2afbfc80401d10731d5fb119e8ab616495e01783a40e1c9c522d0760"
         },
         {
@@ -2290,8 +2290,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 225,
-          "end": 237,
+          "start": 228,
+          "end": 240,
           "excerpt_sha256": "95b5d36ae9aca720a502a86f0353936194fed97327a419df601b96294fee8f91"
         },
         {
@@ -2450,13 +2450,13 @@
         {
           "path": "docs/host-service.md",
           "start": 19,
-          "end": 49,
-          "excerpt_sha256": "808d40451780132df5062dcd7096a9d4d1c42c923730a18fd4f6e46528339cab"
+          "end": 52,
+          "excerpt_sha256": "e1d4537da803e77a3c68103a90f5b75286604b8c804dce33a2b75b7b388ea805"
         },
         {
           "path": "docs/host-service.md",
-          "start": 82,
-          "end": 87,
+          "start": 85,
+          "end": 90,
           "excerpt_sha256": "7d98a6e4360a50e1c8f0d6074d9fad0da4bf4e09aa76061135504b2141e89ba6"
         },
         {
@@ -2657,8 +2657,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 127,
-          "end": 132,
+          "start": 130,
+          "end": 135,
           "excerpt_sha256": "0a438b645c0df5a6d82cb127b2ba3e7e4190eb5fb8df290af48c8a046c710be5"
         },
         {
@@ -2688,8 +2688,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 132,
-          "end": 135,
+          "start": 135,
+          "end": 138,
           "excerpt_sha256": "90f2d2ed6541ad241e94bc2361deda8b5ab4563960218ce8b42efc031900c9de"
         },
         {
@@ -2743,8 +2743,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 212,
-          "end": 222,
+          "start": 215,
+          "end": 225,
           "excerpt_sha256": "4c5d21d7b33a7e635abb3d40c6b734bca98b0415bb09cdf3372a0384a2477971"
         },
         {
@@ -2871,7 +2871,7 @@
           "path": "docs/hab-decisions.md",
           "start": 84,
           "end": 85,
-          "excerpt_sha256": "fb64ab205a09fab31ed4c2c69a19bb93db41dce6508f7958b394da44281e853f"
+          "excerpt_sha256": "7a4446afba9e727b7353013b3c42314ce79f7cefdc105cb96232f7a2f80396d3"
         }
       ]
     },
@@ -3142,8 +3142,8 @@
         {
           "path": "docs/delivery/agent-capacity.md",
           "start": 3,
-          "end": 25,
-          "excerpt_sha256": "bff2dec0936b05d076434e294b8f2986b3588620336b9acb19b9402d7dda34e0"
+          "end": 33,
+          "excerpt_sha256": "39e3cc1580bb89e5209780702923a75be20e017e99bb30bf4a8ffb9b07a9f297"
         }
       ]
     },
@@ -3598,8 +3598,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 238,
-          "end": 238,
+          "start": 247,
+          "end": 247,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -4634,8 +4634,8 @@
         },
         {
           "path": "docs/host-service.md",
-          "start": 166,
-          "end": 180,
+          "start": 169,
+          "end": 183,
           "excerpt_sha256": "b328717f2afbfc80401d10731d5fb119e8ab616495e01783a40e1c9c522d0760"
         },
         {
@@ -5256,8 +5256,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 238,
-          "end": 238,
+          "start": 247,
+          "end": 247,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]

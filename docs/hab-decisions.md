@@ -81,7 +81,7 @@
 
 - **2つのcatalog。** hostの`/mcp`はエージェント用で、`hab_send`（宛先アドレスと本文）・`hab_reply`（受け取ったmessage_idと本文）・`hab_inbox`・`hab_status`と、有効なら`hab_discover`だけを出す。`/mcp/delivery`は agent SDK と受信サービス用で、`hab_submit`・`hab_status`・`hab_poll`・`hab_ack`・`hab_resolve`（と`hab_discover`）を出す。同じ接続のcredentialで両方を開ける（OAuthのresourceは`/mcp`のまま）。どちらを出すかはhost codeが決め、呼出し側は選べない。
 - **封筒はhostが作る。** `hab_send`はアドレスを解決し、`rm1.`形式のID、送信時刻、7日の期限、新しいthread（または指定のthread）、`kind`（既定`question`）を埋める。`hab_reply`は元の送信者・同じthread・`in_reply_to`を埋め、questionへの返信は`answer`、それ以外は`notice`にする。期限を過ぎた元メッセージへの返信は、既読でも`reply_target_expired`。
-- **hostの受信箱（メール型）。** `hab_inbox`は未読を古い順に返し、同じtransactionで既読（ACK）にする。`include_read`で既読後7日（`READ_BODY_RETENTION_MS`）の本文を読み直せ、その後は本文を消す。既読で残した本文も、消すまでbyte容量に数える。1回の応答に収まる分だけを既読にし、残りは次の呼出しで返す。`message_id`を指定すると、その1通を既読後7日以内なら読み直せる。agent SDKのACKは従来どおり本文をすぐ消す（受信側が自分の永続コピーを持つため）。「ACKで本文を消す」原則はhost受信箱の既読に限り7日保持に変わる。
+- **hostの受信箱（メール型）。** `hab_inbox`は未読を古い順に返し、同じtransactionで既読（ACK）にする。`include_read`で既読後7日（`READ_BODY_RETENTION_MS`）の本文を読み直せ、その後は本文を消す。既読で残した本文も、消すまで全体のbyte容量に数える（送信者・宛先ごとの枠には数えない、ADR-033）。1回の応答に収まる分だけを既読にし、残りは次の呼出しで返す。`message_id`を指定すると、その1通を既読後7日以内なら読み直せる。agent SDKのACKは従来どおり本文をすぐ消す（受信側が自分の永続コピーを持つため）。「ACKで本文を消す」原則はhost受信箱の既読に限り7日保持に変わる。
 - **期限。** 受付できる期限は最大7日（`MAX_DELIVERY_TTL_MS`）にする。agent SDKの既定は1時間のまま。`rm1.` IDは中の送信時刻が`first_sent_at`と一致しなければ受け付けない。
 - **入力の誤りは具体的なコードで返す。** `invalid_request`（`field`と期待値）、`kind_not_allowed`（`allowed_kinds`）、`unknown_address`、`recipient_unavailable`、`reply_target_not_found`、`reply_target_expired`、`text_too_long`（`max_bytes`）。どのエラーにも、何を直せばよいかの固定文`message`を付ける。`forbidden`は認証・権限・停止だけに使う。拒否の固定理由コード（例：`operation_not_granted`、`pair_blocked`）はhostの監査（`audit.jsonl`の`reason`）だけに記録し、本文や秘密は記録しない。
 - **受信の通知。** `hab_inbox`の各メッセージに、利用者へそのまま見せる`notice`を付ける（`src/messaging/incoming-notice.ts`、受信サービスからも使える）。「〇〇 からのメッセージです（種類、返信期限）」、本文、「どうしますか？」と選択肢（1. 返信する＝`hab_reply`にmessage_idと本文を渡す、2. あとで、3. 返信しない）を並べる。本文は送信者が書いた信頼できないデータとして、推測できない印を付けた2行で囲み、指示として実行しないよう明記する。返信期限は元メッセージの期限で、過ぎると既読でも`reply_target_expired`になる。
@@ -228,6 +228,15 @@
 - **セッション名は呼び鈴で渡す（2026-11-21 追記）。** 呼び鈴の `data` を `{to, session, arrived_at}` にする。`session` は台帳のセッション名で、仮のときはアドレスと同じ。購読は今のところアドレスごとに持つ。受信側は呼び鈴のセッション名で対象の会話を確認できる。製品ごとの購読への集約は別の段で扱う。`hab_inbox` には載せない。読むセッションはもう自分のアドレスの接続で呼んでおり、振り分けは MCP 側で済んでいる。本文・送信元・ID を載せないことは変えない。
 - **hook の製品で呼び鈴がなければ知らせる（2026-11-21 追記）。** 受け方が `hook` の製品のアドレスに生きている呼び鈴も切れた記録もない（`doorbell: "none"`）とき、`hab:admin status` の `problems` に `doorbell_missing` を出す。台帳では Hook なのに鳴らす先がない状態で、新着に誰も気づかない。
 - **Hermes の実機確認は残っている（2026-11-21 追記）。** 会話の有無に応じて `410 session_gone` を返す仕組みは、`screen.session_probe` を設定した notifier で使える。実機で会話を終了したときの応答と、別の会話を不在扱いにしないことは未確認。
+
+## ADR-033 / 採用：送信者・宛先ごとの容量は、まだ読まれていないメールだけを数える
+
+2026-11-21 JST、運用での不具合から。送信者ごとの保持record枠（`max_records_per_sender`）が、相手が読んだメールも保持期限（期限＋30日）まで数えていたため、claude@claude.hab は25通で `capacity_exceeded` になり、全体の `max_records` も100件中81件に達した。本人はカードで応急に上限を上げることを選び（Mac mini の設定）、数え方はこの判断で直す。
+
+- **個体別の枠は未読だけ。** `delivery.queue.agent_capacity` は送信者ごとの未読件数・未読本文bytesと、宛先ごとの未読本文bytesを数える。未読は `pending / leased / quarantined`。読まれた（ACK・`hab_inbox` の既読）か期限切れになった時点で数えない。既読後7日残す本文も個体別には数えない。
+- **保持recordの個体別枠は消す。** `max_records_per_sender`・`max_records_per_recipient`・予約の `records` を設定から削除する。未読件数は `max_pending_per_sender` と `max_pending_per_recipient` が既に数えており、既読の履歴は相手を困らせる負荷ではない。互換は残さず、古いキーがあると host は `config_invalid` で起動しない。
+- **履歴はディスクの上限だけで止める。** `max_records`（全record）と `max_body_bytes`（既読で残した本文を含む）は全体の歯止めとして残し、通常のやり取りでは届かない大きさにする（例の設定は 10000 件・10 MB）。予約の未使用分はこの全体枠から引いておく。
+- **限界。** 受信者がすぐ読む相手へは、送信者が通数を増やし続けられる。それを抑えるのは送信rate（未実装）の役目で、全体の `max_records` に届けば全員が送れなくなる。exact replay・status・返信の照合のために record を保持期限まで残すことは変えない。
 
 ## 次に決める内容
 

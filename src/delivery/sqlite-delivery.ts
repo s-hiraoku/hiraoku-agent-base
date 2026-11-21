@@ -469,26 +469,27 @@ export class SqliteDelivery {
       )
         throw new MessagingError("capacity_exceeded");
       if (this.#options.agent_capacity) {
+        // Only unread mail is an agent's load: once read or expired it stops counting.
         const senders = this.#db
           .prepare(
-            `SELECT sender_id,count(*) records,sum(CASE WHEN state IN ${LIVE} THEN 1 ELSE 0 END) pending,coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages GROUP BY sender_id`,
+            `SELECT sender_id,count(*) pending,coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages WHERE state IN ${LIVE} GROUP BY sender_id`,
           )
           .all() as unknown as SenderCapacityUsage[];
         const recipient = this.#db
           .prepare(
-            "SELECT count(*) records,coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages WHERE recipient_id=?",
+            `SELECT coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages WHERE recipient_id=? AND state IN ${LIVE}`,
           )
-          .get(message.recipient_id) as unknown as {
-          records: number;
-          body_bytes: number;
-        };
+          .get(message.recipient_id)!;
         assertAgentCapacity(
           this.#options.agent_capacity,
           this.#options,
           sender,
           size,
           senders,
-          recipient,
+          {
+            recipient_body_bytes: Number(recipient.body_bytes),
+            held_body_bytes: Number(usage.bytes),
+          },
         );
       }
       const thread = JSON.stringify([
@@ -907,7 +908,8 @@ export class SqliteDelivery {
         const requestId = `inbox-${randomUUID()}`;
         this.#db
           .prepare(
-            // The kept body stays charged to the byte quotas until #refresh releases it.
+            // The kept body stays in the store-wide byte ceiling until #refresh releases it;
+            // the sender's and recipient's unread budgets stop counting it now.
             "UPDATE delivery_messages SET state='acked',token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=? AND state='pending'",
           )
           .run(

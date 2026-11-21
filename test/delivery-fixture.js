@@ -18,9 +18,7 @@ export const queue = Object.freeze({
   agent_capacity: Object.freeze({
     max_pending_per_sender: 10,
     max_body_bytes_per_sender: 50000,
-    max_records_per_sender: 25,
     max_body_bytes_per_recipient: 50000,
-    max_records_per_recipient: 50,
     reservations: Object.freeze([]),
   }),
 });
