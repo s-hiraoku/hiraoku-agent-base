@@ -200,7 +200,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/mcp-events.md",
-      "sha256": "d12d4342ad24703424a67494763a0c6f5c3308387f7d29b0f2f4f1e1e1b2e4e5",
+      "sha256": "204381d42dd9670dc4d9cce7ecac2182cbcb5a9147b66097e3e8e278a97fdac1",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 new-mail events recipe: opt-in ingress.events advertises events on the ingress agent /mcp only (405 elsewhere); events/subscribe with signed callback challenge, idempotent ID and clamped TTL; content-free signed hab.message.received doorbell leaving mail pending; same-eventId retries with backoff, 413/8th-failure skip, 410 delete; owner-only events.sqlite. Live checks need an owner-authorized public callback; the verify-hab loopback stack only proves absence, the rest is unit tests. ADR-024 (2026-11-17): events-outage and events-lapse sub-features. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19: 無視判定をメッセージごとの最初の受け取り時刻で行う。 2026-11-19: 未読は hab_inbox と同じ認可で数える。 2026-11-19 (ADR-029): events-operator sub-feature for operator-registered doorbells (unit/host tests; the stack has no ingress). 2026-11-19 ADR-030: events-quiet（受け取られた呼び鈴のメールが未読の間、新着を鳴らさず待たせる。quiet:false で無効）。",
@@ -484,7 +484,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "8b122ba3f593341611f3b811958dd907c188647e324fd4c2729446b1366e3deb",
+      "sha256": "6f5d8704af47b104b991d208ab41a7ff8683ca0d6e3ba3967c025961834aef2f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task. ADR-023 (owner, 2026-11-17) adds an explicit opt-in exception to ADR-021: the notifier may choose 対応する for senders/kinds the owner listed in notify.json (default all manual), replacing the first handoff line to say nobody chose it and that only reading and hab_reply are allowed without the user; prompt-level only, product approvals remain the hard limit; per-sender/per-thread caps; body-free notifier audit; ADR-021 once-only handoff, unknown/no-resend and accept_waiting unchanged. ADR-024 (2026-11-17): host downtime or Mac sleep is not counted against MCP event subscriptions (outage credit up to max_ttl_ms); lapsed doorbells and unread backlog are shown by hab:admin status; HAB never re-creates subscriptions; host/notifier LaunchAgents always restart and sleep prevention is a separate job. ADR-023 2026-11-18 addendum (owner): after the first Dots-Hermes trial stalled on a command approval, the automatic prompt forbids approval-gated operations and asks the session to finish with hab_reply anyway, answering what it can and stating what waits for the user; no permission widened. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. ADR-026 (owner, 2026-11-19): each agent product adapter draws received mail; hab_inbox/hab_peek add a body-free presentation (version 1: heading, sender, kind label, reply flag, sent_at, reply_by, choices, body_untrusted note, hidden data count) built from the same labels as notice/display/handoff_prompt, which stay; hab_peek returns text again; the agent /mcp serves the read-only MCP Apps card ui://hab/inbox-v1 (no network, text-only body) on hab_inbox only, whose buttons change no HAB state (accept sends a ui/message asking the model to draft before sending); framing of model-facing text unchanged; real-host rendering unverified. ADR-027 (owner, 2026-11-19): a doorbell accepted with 2xx whose message stays unread unanswered_after_ms (default 5 min) is rung once more with a new eventId (no retry, ingress.events.rering false turns it off); the recipient's own /mcp hab_send/hab_reply/hab_status results carry a body-free inbox_reminder (hab_inbox only when the doorbell went unanswered), counted from the authorization-filtered unread view; agent instructions say to call hab_inbox on the event; HAB still never re-creates subscriptions or tasks. ADR-028 (owner, 2026-11-19, after agent-mail): hab_inbox wait_secs 0-60 waits for new mail only when none is unread, capped by http.max_wait_ms (default 25000, 0 off), at most max_active_requests-1 holds, newest wait per agent wins, no wait under writer admission; the in-host wake carries only the recipient agent ID and every read is the normal authorized hab_inbox; narrows ADR-020's no-long-poll rule, sending without waiting stays the default. ADR-029 (owner, 2026-11-19, after agent-mail): operator-registered doorbells in ingress.events.doorbells {address,url,secret_file} for agents that cannot subscribe (Grok Bot webhook routines); secret from an owner-only file, whsec_ signs and other tokens go as Bearer; public HTTPS only; same body/retry/ring-again as MCP event doorbells; no lifetime, challenge, subscriber slot or MCP unsubscribe; not rung for mail waiting at start; reading stays the agent's own hab_inbox. ADR-030 (owner, 2026-11-19): while a subscription's last 2xx-accepted doorbell is younger than unanswered_after_ms and its message is unread, newer mail is held (cursor not advanced) and rung only if still unread when the quiet ends; the ADR-027 ring again runs first and restarts the quiet; non-2xx never starts it; ingress.events.quiet false rings every message. ADR-031 (owner, 2026-11-20): inbox polling beside the doorbell, interval set by the user, default 10 min: the arrival notifier already polls at its interval_ms; for doorbell-only agents the dispatcher rings each live doorbell again for the oldest unread message once ingress.events.inbox_check.interval_ms (0 off, 60000-86400000, per address in addresses) has passed since its last accepted ring or check, never retried, at most max_rings (default 6) per oldest unread; agents with neither use their own product scheduler and the agent instructions say to call hab_inbox when a schedule starts them; HAB cannot ring a lapsed doorbell or re-create tasks."
@@ -498,7 +498,7 @@
     },
     {
       "path": "docs/hab-product-spec.md",
-      "sha256": "6bec54d32611e0647580c9f6669f25a369d7dce7a30963935c541f286dbf640e",
+      "sha256": "d33a5f53fb5d5f8a563c9d9638a114012c7d187c01d39456b498cf7239ad20a5",
       "role": "normative",
       "review": "reviewed",
       "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. The single-file SQLite delivery store is adopted (ADR-018, superseding the JetStream delivery of ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; restore takes one whole backup generation with an expiry hold and original-ID comparison; the earlier JetStream-era text, now replaced, required for older builds a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-19: §1.1 lists the target agents (Dots, Hermes, claude.ai, Muse, Claude Code, Codex, Grok Bot, Cursor, Gemini, Antigravity) with entry and status; listing is not connection evidence."
@@ -513,7 +513,7 @@
     },
     {
       "path": "docs/hab-messaging-spec.md",
-      "sha256": "3d6676f7cfc19d2f2abd5b251ee6459e5ff56ef6aa7a5d2eeafd670071ab23d2",
+      "sha256": "d24b6514d434d2e6e0f59cd21248f12bc213423eb944fe85a624a2e498c95dcb",
       "role": "normative",
       "review": "reviewed",
       "summary": "Adopted draft-v2 store-and-forward design: reusable core independent of HAB names, products, MCP/provider/UI/Task; mandatory current auth/guard through commit, approved-group address scope, opaque IDs. A 2026-11-06 revision note (ADR-016) named the modules, and ADR-018 (2026-11-13) makes the host's single SQLite file the only delivery store, replacing JetStream. Durable sender/Relay/recipient checkpoints, stable dedup/fingerprint/TTL, fenced lease and committed ACK replay versus stale uncommitted ACK, bounded recovery/fairness/loop budgets. ACK atomic body deletion with minimum receipt retention and separate local application handoff. Managed attachments are abolished and attachment parts are refused; the Task bridge has explicit boundaries. Dated implementation tables and proposed numeric/API settings must not masquerade as current coverage; G0/G1/G2/G3 are path-scoped. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19: Gemini and Antigravity join the same registration/delivery contract (example addresses only)."
@@ -736,7 +736,7 @@
     },
     {
       "path": "docs/connections/mcp-events.md",
-      "sha256": "af18f96bca4059dbd7db31a55ee5f00be97ed06c7549a979175a087c0b69eb9d",
+      "sha256": "89f8eac16f14b304cc5d334daf6e8ef43e556384c3abcb29f4c5e6d128b0e9d8",
       "role": "normative",
       "review": "reviewed",
       "summary": "ADR-022 operator/user guide: hab.message.received doorbell payload {to, arrived_at} with Standard Webhooks headers, ingress.events settings and limits, subscription/verification/retry/expiry rules, refusal reasons, Dots event-triggered task setup calling hab_inbox without auto-reply, and Muse scheduled-task prompt; ChatGPT event start and custom-connector support are unverified. ADR-024 (2026-11-17): outage_after_ms credit for host downtime/sleep and the operator check for lapsed doorbells with the Dots re-subscribe step. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19: ADR-026（読まれない呼び鈴の鳴らし直しと inbox_reminder）を追記。 2026-11-19 (ADR-029): operator-registered doorbells config, secret file and Bearer/whsec headers, no lifetime or challenge, admin doorbell_operator. 2026-11-19 ADR-030: quiet 設定と、未読の間は新着で鳴らさない節を追記。",
@@ -817,7 +817,7 @@
     },
     {
       "path": "docs/receiver/arrival-notifier.md",
-      "sha256": "7e186607e3afc9feca9173d29f95ee9d616ce9d9ff25a4195755214ae77c1ed9",
+      "sha256": "f993c9ec0286ff75da6dee4debab48b5164157135251e7cc999451e68613071d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Arrival notifier (ADR-021), rereviewed 2026-11-15: token.oauth gives the notifier its own grant (one PKCE login, then self-refresh under a lock file; never the agent token file, so a rotating refresh token is not shared). HAB owns delivery authentication, unread lookup, user decision persistence, expiry and at-most-once handoff. Product adapters own publication, user choice and same-existing-session admission. Shared local binding/states/adapter-action commands fence connection, recipient, product and session; immutable notice pages and mutable SQLite revisions are separate, stale responses cannot override newer state, and absent state is unknown. shown is a legacy publication state, not rendered UI proof. JSONL refuses handoff; the static Claude channel refuses without product-owned atomic current-session admission. No fallback session or CLI. Existing stores must be preserved and reconciled rather than silently relabelled or discarded during binding migration. Hermes UI polling/rendering is a separate implementation; prior documented product acceptance is historical evidence, not verification of this change. Gemini CLI/App/API are distinct and not implemented here; synthetic adapter contracts are not native integration. Codex/Claude/ChatGPT actual product acceptance remains separately unverified. Rollback requires stopped owned notifier and consistent offline backup; restoring pre-decision state can duplicate handling, so reconcile decisions first and never run old/new concurrently. Additive schema does not justify reverting the stricter binding identity. Legacy Hermes action now also requires the common binding_id; old events without HAB connection identity are refused, and independent Hermes consumers must migrate before enabling actions. Follow-up: official-reference Gemini product matrix distinguishes existing ACP host, standalone CLI, Gemini Apps and API application without native acceptance. Explicit offline inspect/migrate CLI copies to a new private bundle, keeps original backup and decisions/revisions, requires source fingerprint/target plus operator-verified old identity/offline attestation, refuses WAL/rollback recovery and unsettled states, and never deploys or restarts. Existing destinations are not overwritten. binding returns exact normalized destination_binding so migration does not require guessed tuples. CLI unexpected errors are sanitized; source shutdown/identity remain operator prerequisites. Companion status identifies external unapplied Hermes commit f19527817a251ed37432d1bd87d6c2fd934d7eed on exact base b189f28f7462e1cbb568db6878f096277048c079, not included or installed by HAB. Reported focused Python69/UI42/typecheck/lint/canonical14 evidence is separate; full UI was stopped for host load, full Python/native Desktop were not performed. This maintenance does not independently prove those external results or satisfy the six manual gates. Main #219 reply cards retain only accept (会話に渡す) and later, with decline refused; ordinary requests and older hosts retain three choices. Paired offline legacy Hermes DB/JSONL migration is mandatory, preserving notice ordering, cursor indexes, reply choices and decision guards; mixed or unsupported feeds are refused. Desktop cache reset and JSONL writer shutdown are explicit unperformed operator prerequisites, not synthetic proof of native parity. Gemini and Antigravity remain future extension targets. Retention follow-up: missing decision rows do not prove expiration. Validated legacy orphan notices retain the old binding and bytes as quarantined history, omitted from the new UI without deleting backup data or recreating authority. Associated state lines/order/indexes stay intact; state-only orphans, foreign bindings and inconsistent duplicates refuse. Counts/reason are reported without body text, and reviewed fingerprints prevent unnoticed changes. Terminal unknown is now copied unchanged, never retried or called successful; in-flight decisions still block. Separate clean-stamped companion production/unsigned mac-arm64 packaging succeeded, with Xcode icon warning and intentional notarization skip; no packaged runtime/native acceptance was performed. Bounded states queries accept up to 50 exact keys, echo requested scope/keys and preserve unrelated card authority; UTF-8 request/response limits reject oversized output explicitly. Generic adapter-action returns only its affected key state/revision and metadata, never the full retained history. Tests with 3000 rows preserve missing versus unrequested distinctions and fail closed on oversized records. Updated companion POST query batches retained/new keys with strict requested-scope echo and per-key checked/error reporting, plus one-key decision preflight. Previous15f2267 production build and unsigned mac-arm64 package both exited0 with dirty:false, superseding the historical f195278 package; no launch, installation, deployment or notarization occurred and native/manual acceptance remains unverified. Latest99dc5e1 compact UTF-8 JSON forwarding preserves the retained-key byte budget; its production build and unsigned mac-arm64 package both exited0 with dirty:false, superseding earlier15f2267 evidence. No runtime launch, installation, deployment or notarization occurred. ADR-023 section (2026-11-17): auto_accept settings table, prompt rewrite, prompt-level limit of the approval instruction, audit line shape and skip reasons, restart-safe caps from the auto_accepts table; cards still shown and moved to history. ADR-024 (2026-11-17): the notifier LaunchAgent restarts after any exit; stop it only with bootout. 2026-11-18: automatic prompt finishes with hab_reply instead of waiting for an absent user's approval. 2026-11-19: links the ADR-026 per-agent display page. 2026-11-20: Hermes Desktop accepted cards can be closed per card or all at once; closing is screen-only (localStorage, max 200 per conversation), never a HAB decision, read mark, cursor or conversation change; pending cards keep only their choices.",
@@ -1267,7 +1267,7 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "310e29400fba3bcd45940b36745076937cf2e1922b9c9d5c3d4b029327bfc448",
+      "sha256": "f78f0b0e313c6b2eb0b2a1c0a5efdbb4e6b5b3ccac90a6b652a167e06da737b2",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
@@ -1281,14 +1281,14 @@
     },
     {
       "path": "docs/plans/receive-show-act-plan.md",
-      "sha256": "501d6b74ac39527476a90e76e755f6c671483a7c100ce0288b04477540a0c642",
+      "sha256": "1630ac10274613bc8ac8874d6556d16bde36392280adef8812f673fb3d509744",
       "role": "context",
       "review": "reviewed",
       "summary": "Plan (not yet executed) for establishing receive/show/act across agents: PR order, dependencies, per-PR build and verification, owner decisions, and 2026-11-20 prototype evidence. A plan, not a decision; ADR-032 would record decisions."
     },
     {
       "path": "docs/receiver/wake-model.md",
-      "sha256": "b7a5eed1967e7106933b4bd3024ab77d9899ef09f8a844863797a1764b7d51e1",
+      "sha256": "5cf3e32539d1cae8666a481a465db09593561532735fe53bea86874b104e91e2",
       "role": "context",
       "review": "reviewed",
       "summary": "Draft (2026-11-20, owner review pending, not adopted): unified receive/wake model. HAB promises storage, notification and visibility; waking is best effort. One inbox state (empty/waiting/notified/unanswered/unreachable), four wake classes (A notifier, B self-subscribed doorbell, C operator doorbell, D product schedule), one re-notify rule replacing ADR-027 rering, ADR-030 quiet and ADR-031 inbox check (interval default 10 min, max_rings 6), auto-reply policy stays on the recipient side (ADR-015/023) with a common record format, optional wake declaration and test operation. ADR-021..031 remain in force until approved.",
@@ -2758,7 +2758,7 @@
           "path": "docs/hab-messaging-spec.md",
           "start": 443,
           "end": 443,
-          "excerpt_sha256": "e4436e75367bc01be12abbc73793414a73e3c8ac028dbb62de85374beaf69394"
+          "excerpt_sha256": "58f2f21709f8c84a9bf385cfd211d35c3cc6d59b0fd4634aca7068070255c811"
         }
       ]
     },
@@ -3567,8 +3567,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 232,
-          "end": 232,
+          "start": 235,
+          "end": 235,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -4293,7 +4293,7 @@
           "path": "docs/hab-product-spec.md",
           "start": 42,
           "end": 49,
-          "excerpt_sha256": "e6442ce94c5c68c6058e2d652bd7378b8e7d3a13d6c2d7196e3718624941988e"
+          "excerpt_sha256": "ecfd20c6a9703a7c4de5553a4f71401225ea263ef999abf3c40a75a6b64a05ea"
         },
         {
           "path": "README.md",
@@ -5225,8 +5225,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 232,
-          "end": 232,
+          "start": 235,
+          "end": 235,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]
@@ -5365,7 +5365,7 @@
       "requirements": [
         "HAB-F26"
       ],
-      "resolution": "Yes. The owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability. ADR-016 records it; the product spec, roadmap, ADR-003 and README now describe A2A as the adopted entry, off by default, next to the five MCP tools. Production deployment remains a separate gate.",
+      "resolution": "Yes. The owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability. ADR-016 records it; the product spec, roadmap, ADR-003 and README now describe A2A as the adopted entry, off by default, next to the agent MCP tools (four since ADR-020, re-read 2026-11-21). Production deployment remains a separate gate.",
       "classification": "explicit-authority",
       "citations": [
         {
@@ -5378,7 +5378,7 @@
           "path": "docs/hab-product-spec.md",
           "start": 49,
           "end": 49,
-          "excerpt_sha256": "ff3d3dc7e1c0e8804017cb79f716b38a0eafef3068bc703c3a7447c03d0050b4"
+          "excerpt_sha256": "dfe7ca3c1f53a908bfdd97b5c5467ad885a08671be3fcd5d02dab54de37b08aa"
         }
       ]
     },
