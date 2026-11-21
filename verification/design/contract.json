@@ -1274,7 +1274,7 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "f2765840aee9583e49879dac61350869c9d70c252b517851eaaa404238c94344",
+      "sha256": "eaaf8855abe9e04437cb37c296721f0b25fc0fb4af27b72c26274c23d6e1cce5",
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation plan for easing agent onboarding in four stages, each its own PR: (1) read-only `hab:admin doctor` per address (registration, receive, reading, session with ok/problem/unknown and a next action); (2) registering from a pending list: fully verified but unregistered OAuth sign-ins are recorded without tokens and approved by `hab:admin approve`, which writes the ledger atomically and binds without a restart, while pre-approval tokens stay refused; (3) operator doorbells moved from host config to the events store; (4) `ping` from a host-owned test address, product recipes and a conditional `onboard`. Hermes one-command setup, Codex handoff, product-side session_gone and Auth0 app creation are deferred. A plan, not a decision; existing ADRs are normative."
