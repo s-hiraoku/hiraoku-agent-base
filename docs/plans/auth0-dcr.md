@@ -108,7 +108,7 @@ CIMD（製品の公開 URL を client ID にする）なら、誰でも使える
    2. `pending` → callback の確認 → `approve`。5 章の問い 1（同じ client ID で通るか）を記録する。
    3. DCR を閉じ、閉じたことを確かめる。一覧を比べる。
    4. 10 分以上おいて、問い 2（refresh token）を確かめる。
-   5. コネクタを外して入れ直し、新しい組を同じ試験用アドレスへ `approve` する。古い接続を `revoke --connection` し、古いアプリを消して、問い 3 を確かめる。
+   5. 一覧を控えて DCR をもう一度開き、コネクタを外して入れ直す。新しい組を同じ試験用アドレスへ `approve` したら DCR を閉じ、一覧を比べる。古い接続を `revoke --connection` し、古いアプリを消して、問い 3 を確かめる。
 5. ChatGPT・Grok・Muse は、claude.ai の結果を見てから、それぞれの試験用アドレスで同じ手順を行う。今の接続のつなぎ直しでは試さない。
 6. 結果を ADR として `hab-decisions.md` に、手順を[設定手順書](../connections/agent-setup.md)に書く。共通の準備 2 を「DCR でつなぐ（既定）」と「手でアプリを作る（DCR が通らない製品）」に分ける。
 
