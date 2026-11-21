@@ -1,127 +1,221 @@
-# Muse と Codex を自動で受け取れるようにする（設計と実機確認の手順）
+# Muse と Codex を自動で受け取る計画
 
-2026-11-21。状態：設計。実機確認の前で、コードの変更はまだない。
+Muse（`muse@muse.hab`）と Codex に、利用者が話しかけなくても HAB の新着が届くようにする。
+対象の利用者は HAB でエージェント同士をつなぐ本人で、Codex の会話に新着が来たら Codex が自分で受信箱を読む状態を得る。
+守る決まりは 3 つある。HAB は押し出さず呼び鈴を鳴らすだけ（ADR-015、ADR-022）。起こす文に送信者の本文を入れない（ADR-021）。返信を許すのは受け手の設定だけ（ADR-023）。
+Muse は外から起こす公開の口がないので、今の予定タスク（15 分ごと）を正式な受け方として残す。Muse にコードの変更はない。
+Codex は受信側の notifier が `codex queue --thread` で決まった一文を会話に入れて起こす。
+PR は順に PR-1（Muse は polling と記録する文書）、PR-2（Codex を `codex queue` で起こす）。
+PR-2 は付録 A の Q2（アプリの会話に届くか）が合格してから着手する。不合格なら PR-2 の代わりに PR-2b（Codex は話しかけたときだけと記録する文書）にする。
 
-## 1. 目的と結論
+## How to read this
 
-Muse（`muse@muse.hab`）と Codex を、利用者が話しかけなくても新着を受け取れるようにする。
-本人の方針（2026-11-20）は「受信は Hook が主、Hook を実装できない製品は polling（間隔は製品ごと）」。
+One box is one unit of work. Every box names the evidence that checks it. A nested box is a sub-step of the box above it. Check a box only when its evidence exists, a file, a log line, a screenshot, a test run, or a SHA. The body is a how-to. The appendices explain and record.
 
-| 製品  | 結論（案）                                                                                                 | 確定に要る実機確認 |
-| ----- | ---------------------------------------------------------------------------------------------------------- | ------------------ |
-| Muse  | **polling のまま確定する。** 外から Muse を起こす公開の口がない。台帳の `muse=poll 15分` を正式な受け方とする。 | M-1 の 1 問だけ    |
-| Codex | **Hook にする。** 受信側の notifier が呼び鈴を受けたら `codex queue --thread` で決まった一文を会話に入れる。      | C-1〜C-5           |
+この計画は `pstack/skills/poteto-mode/playbooks/autopilot-stack.md` で進める。
+実行するのは Mac mini の Claude Code（Remote Control）1 体で、クラウドの下請けと swarm は使わない（付録 C の C-4）。
+PR のマージと Mac mini での設定変更は本人の操作で、PR-1 と PR-2 は merge-ready で止まる。
 
-HAB の境界（ADR-015「HAB から押し出さない」、ADR-022/029 の中身なしの呼び鈴）は変えない。
-Codex を起こすのは受信側の notifier で、HAB は今の運用者呼び鈴（`127.0.0.1` 宛て）を鳴らすだけ。
+Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-## 2. Muse
+## Program checklist
 
-### 2.1 調べたこと
+### Arm the program
 
-- Muse の自動実行は「予定タスク（繰り返し）」だけ。公式ヘルプは毎日・毎週・任意間隔の繰り返しを案内し、メールやメッセージの到着、Webhook で動く仕組みは書いていない。
-  第三者の試験では最短 1 分の間隔が設定でき、30 秒は受け付けなかった。
-  [SmartScope（2026-10-27）](https://smartscope.blog/en/blog/claude-code-delegate-tasks-meta-muse-using-spreadsheets-2026/) ·
-  [dev.to: Connectors + Scheduled Tasks](https://dev.to/ying_liao_0a481102ff971b4/automating-real-work-with-muse-connectors-scheduled-tasks-58co)
-- SmartScope の「wake-on-change」は Muse の機能ではなく、作者が 60 秒ごとの確認で組んだやり方。中身は polling。
-- WhatsApp は Muse と話す画面の一つで、外から作業を始める入口ではない。MCP の通知やイベント（ChatGPT の MCP Events にあたるもの）を Muse が受ける資料は見つからない。
-- nenwa も Muse を「押し込めない相手」として受信箱に置き、Muse 自身が `check_inbox` を呼ぶ形にしている。
-  [nenwa DESIGN.md](https://github.com/nogu66/nenwa/blob/b9b87731da65b3f62876c0797e88d53a342eddb3/DESIGN.md)
-- 実機では 2026-11-20 に予定タスクが自動で `hab_inbox` を呼び、`hab_reply` まで返した（受信と返信は確認済み）。
+- [ ] この計画を本人に示して止まる。実行は本人の明示の go で始める。
+- [ ] 開始時と各段階で、trunk から次を読み直す。
+  - [ ] `git show origin/main:docs/hab-decisions.md`
+  - [ ] `git show origin/main:docs/receiver/arrival-notifier.md`
+  - [ ] `git show origin/main:docs/connections/agent-setup.md`
+  - [ ] `git show origin/main:.claude/skills/verify-hab/SKILL.md`
+- [ ] 本人の go のあと、進み具合の確認を `/loop 1h` で回す。確認の文は次のとおりにする。
+      「計画書を読み直し、進行中の PR の状態をブランチ、テスト結果、HAB の記録で確かめる。前回の報告から変わったことだけを、短い status message で本人に知らせる。変わっていなければ何も書かない。」
+- [ ] 本人が止めたら、すべての作業を書き込みなしで止める。
 
-### 2.2 決めること
+### Spawn owners
 
-- 受け方は `poll` のまま。Hook の実装はしない。
-- 間隔は今の 15 分を既定とする。短くすると Muse の利用枠を多く使うので、縮めるのは本人の希望があるときだけ（最短 1 分）。
-- 止まったときは PR-5 の `poll_overdue`（間隔の 2 倍で警告）で気づく。
+- [ ] PR ごとに持ち主を 1 つにする。持ち主は Mac mini の Claude Code で、PR-1 と PR-2 を順に持つ。
+- [ ] 依存の順を守る。
+  - [ ] PR-1 は独立で、`main` から切る。
+  - [ ] PR-2 は付録 A の Q2 が合格してから、`main` から切る。PR-1 とは触るファイルが重ならない。
+- [ ] ファイルの境界を守る。PR-1 は `docs/**` だけを触る。PR-2 は `src/agent-notify/codex.ts`、`scripts/hab-notify.ts`、`test/agent-notify-codex*.test.js`、`docs/connections/agent-setup.md`、`.claude/skills/verify-hab/**` だけを触る。
+- [ ] レビューの関門を守る。PR-2 は受け取りの動き方を変えるので、本人がチャットで画面写真と動画を見てからマージする。
 
-### 2.3 実機確認
+### PR mechanics, for every PR
 
-- **M-1（本人が Muse のチャットで 1 問聞くだけ。接続や設定はしない）。**
-  「外部のサービスから、あなたのタスクをすぐ始めさせる方法はありますか。Webhook の URL、メールの宛先、コネクタからのイベントなど。予定タスク以外で」。
-  - 「ない」なら 2.2 で確定。
-  - 「ある」と答えたら、その方式の名前と設定画面を聞いて、この文書に追記してから改めて設計する（その場では作らせない）。
+- [ ] forge は `gh` を使う。`origin` が使えたら記録する。`gt` は要らない。
+- [ ] PR は draft にせず ready で開く。base は `main`。
+- [ ] push の前に `npm run lint` と `npm run check` を 1 回通す。hooks は有効のまま push する。
+- [ ] 各 commit の前に `/deslop`、レビューの前に `/no-comments` を通す。
+- [ ] Codex レビューと CodeRabbit の指摘は `../references/bugbot-triage.md` に沿って直す、退ける、本人に聞くに分ける。
+- [ ] code-ready の報告の前に trunk に追従する。自分のブランチでも rebase ではなく merge で取り込む（force-push は使わない）。
 
-## 3. Codex
+### Verdict and merge, for every PR
 
-### 3.1 調べたこと
+- [ ] 検証は code-ready の head で 1 回通す。gates の 1 段（`npm test`、設計検証 `automated-design-scope`）、Verify, live の 10 lanes、Verify, perf、差分と証拠を読む監査 2 本。
+- [ ] すべて合格のときだけ clean とする。見つかったことは持ち主に戻す。head が変わったら判定し直す。
+- [ ] マージは本人が行う。持ち主は merge-ready で止まり、本人の「マージして」を待つ。
 
-- **`codex queue`。** 既存のセッションに文を入れるコマンドが Codex に入った（openai/codex PR #39092、2026-08-17 マージ）。
-  `codex queue --thread <UUID か正確なセッション名> --message <文>` で、app-server の `thread/queue/add` に渡す。
-  文字だけ（画像は不可）。名前が重なると拒否。v0.166 で、読み込まれていないスレッドを再開させる `--resume` が付いた（実行中のローカル daemon か `--remote` のサーバーが要る）。
-  作業中のスレッドには区切りの良いところで入り、待機中のスレッドがすぐ作業を始めるかは資料に書いていない。
-  [PR #39092](https://github.com/openai/codex/pull/39092) ·
-  [v0.166 の解説](https://dev.to/aicoding-guide/codex-cli-v0166-adds-codex-queue-resume-and-codex-doctor-network-only-5ae0) ·
-  [Developer commands](https://learn.chatgpt.com/docs/developer-commands)
-- nenwa は Codex への配達にこれを使い、20 秒で打ち切る。待機中でも作業中でも会話に入る（待機中ならそこで動き出す）と書いている。失敗したら Codex の hooks で受け渡す。
-  [nenwa daemon.rs](https://github.com/nogu66/nenwa/blob/b9b87731da65b3f62876c0797e88d53a342eddb3/src/daemon.rs#L400-L425)
-- **Codex の hooks。** `~/.codex/hooks.json`（または `config.toml` の `[hooks]`）に `SessionStart`・`PostToolUse`・`Stop` などを書ける。`Stop` で `decision: "block"` を返すと続けて作業する。
-  利用者が信頼するまで動かない。デスクトップアプリにも「Review hooks」「Settings > Hooks」がある。
-  [Codex hooks](https://learn.chatgpt.com/docs/hooks)
-  hooks は会話が動いているときにしか走らないので、待機中の会話を起こす手段にはならない。補助にとどめる。
-- 2026-11-20 の確認では、Codex アプリ内の app-server は stdio だけで外から入れず、`codex app-server daemon version` も失敗した。
-  今の `src/agent-notify/codex.ts` は WebSocket で app-server に入り `thread/resume`→`turn/start` する作りなので、アプリの会話には届かない。
+### Boot recipe, for every live lane
 
-### 3.2 仕組み（案）
+各 lane は Mac mini の上で PR の head を使う。HAB は verify-hab の手順で loopback の host を立て、Codex は ChatGPT アプリ同梱の `codex`（0.171 以降）を使う。
 
-```
-送信者 ─ hab_send ─▶ HAB host ─ 運用者呼び鈴（127.0.0.1, whsec_ 署名）─▶ notifier
-                                                                        │ codex の受信アドレス宛てに未読があれば
-                                                                        ▼
-                                       codex queue --thread <台帳の thread> --message <決まった一文>
-                                                                        │
-                                                                        ▼
-                                       Codex の会話が動き、自分の HAB MCP で hab_inbox → 見せる → hab_reply
-```
+- [ ] `git fetch origin <head-branch> && git checkout <head SHA>`。
+- [ ] verify-hab の手順で使い捨ての HAB host と notifier を起動し、`hab:admin status` の `problems` が 0 になるまで待つ。本番の host と notifier には触らない。
+- [ ] 入力は HAB の MCP（`hab_send`）と `codex` のコマンドだけで入れる。読むだけの確認は `hab:admin status`、`audit.jsonl`、`codex app-server daemon version` を使う。
+- [ ] 画面写真は `/tmp/swarm-<pr-id>/worker-<n>/<slug>.png` に保存し、報告に道筋を付ける。
 
-- 入れる文は**決まった一文だけ**にする。例：「HAB に新着があります。hab_inbox を呼んで、届いたメールを notice のとおり見せてください。」
-  送信者の本文は入れない。本文は Codex が `hab_inbox` で受け取り、`notice` の「送信者が書いたデータ」の枠のまま見せる。
-  これで、承認していない本文がモデルの履歴に入らない（ADR-021 で `thread/inject_items` を退けた理由と同じ）。
-- **起こす道と引き渡しの道は分ける。** 今の notifier では、呼び鈴は `notifier.check()` を動かして画面の `show()` を呼ぶだけで、`codexHandoff` は「対応する」か `auto_accept` のあとにしか走らない。しかも `#finishAccept` は引き渡しの前に既読にする。
-  そのため、起こす一文は **`show()` の側（届いた時点、未読のまま）** で `codex queue` を呼ぶ。メッセージは未読のまま残るので、Codex の既定の `hab_inbox`（未読だけ）で読める。
-  「対応する」後の今の引き渡し（既読にしてから、承認済みの本文を `handoff_prompt` で渡す）はそのまま残し、送り方だけを WebSocket から `codex queue` に替える。
-- 会話の特定は台帳（Registry、ADR の「アドレスとセッションは 1 対 1」）に Codex の thread（UUID）を書く。セッション名は重なると拒否されるので使わない。
-- `codex queue` が失敗した（終了コードが 0 でない、20 秒を超えた）ら、その回は `unknown` とし、再送しない（今の notifier の約束と同じ）。保険は今の確認間隔（5 分）。
-- `codex queue` がスレッドを見つけられない（スレッドがない）と言ったら、PR-7 の `recipient_absent`（相手のセッションがいない）として扱う。
-- hooks は**任意の補助**とする。`Stop` で未読があれば `hab_inbox` を促す。会話が動いている最中に届いた分を取りこぼさないため。C-4 の結果を見てから入れるか決める。
+## Record Muse as a scheduled-poll receiver (PR-1)
 
-### 3.3 実機確認（C-1〜C-5）
+**Depends on.** None.
 
-実機作業は本人がスレッドに直接書いた了承のあとに行う。Codex がある Mac（Mac mini か手元の Mac か）は本人に確認する。
-どの段も Codex の設定ファイルを変えるときは事前にバックアップを取る。
+**Files.**
 
-- **C-1 版と口の確認（読むだけ）。** `codex --version`、`codex queue --help`、`codex app-server daemon --help`。
-  Pass：`queue` があり、`--thread`・`--message` を受ける。`--resume` の有無を記録する。
-- **C-2 アプリの会話に届くか（核心）。** Codex アプリで試験用の会話を 1 つ開き、`/status` で Session UUID を控える。
-  その会話を待機状態にしたまま、ターミナルで `codex queue --thread <UUID> --message "試験です。『受け取りました』とだけ答えてください。"`。
-  Pass：アプリの同じ会話に文が出て、Codex が答える。
-  記録：終了コード、出力、アプリに出るまでの秒数、待機中に自動で動き出したか。
-  - 届かない場合は、`codex app-server daemon start` を起動してからもう一度試す。daemon 経由でアプリの会話に届くかを記録する。
-  - それでも届かない場合は、C-5 へ進んで「アプリの会話には外から入れない」と確定する。
-- **C-3 作業中の会話。** Codex に長めの作業（例：大きめのファイルの要約）をさせている最中に C-2 と同じ queue を送る。
-  Pass：作業を壊さず、区切りで文が処理される。
-- **C-4 HAB を通した往復。** Codex に HAB の MCP をつなぎ、その会話用のアドレス（例：`codex@codex.hab`）を台帳に登録する。
-  手で `codex queue` を打つ代用はしない。4 章の実装を入れた notifier（試験用ブランチ）を使い、別のエージェントから試験メールを送る。
-  Pass：呼び鈴→notifier の `show()`→`codex queue`→メッセージは未読のまま→Codex が `hab_inbox` で読む→`notice` を見せる→`hab_reply`→送信者に届く。所要秒数を記録する。
-  C-4 は実装ブランチの上で行い、合格してからその PR をマージする。
-- **C-5 だめだった場合の確定。** C-2 で daemon 経由でも届かなかったら、Codex の受け方は `on_request`（話しかけたときだけ）で確定し、`docs/connections/agent-setup.md` の Codex の節を「外から起こせない」と理由付きで書く。
-  CLI（`codex` の TUI）で動く会話なら届く、という結果なら、「CLI の会話を受信用にする」案を本人に出す。
+- [ ] Edit `docs/connections/agent-setup.md`。
+- [ ] Edit `docs/receiver/wake-model.md`。
 
-## 4. 実装（実機確認のあと）
+**Build.**
 
-C-2 が合格したら、次の 1 本の PR を作り、C-4 をそのブランチで確かめてからマージする。
+- [ ] `agent-setup.md` の Muse の節に、受け方は予定タスクの polling だけで、外から起こす口がないことと、その根拠（付録 A の Q1）を書く。
 
-1. `src/agent-notify/codex.ts`：起こす道として、画面の `show()`（届いた時点）で `codex queue --thread <id> --message <決まった一文>` を 20 秒で打ち切って呼ぶ。既読にはしない。コマンドは引数の配列で渡し、シェルを通さない。
-   「対応する」後の `codexHandoff` は残し、WebSocket での `thread/resume`→`turn/start` を `codex queue`（承認済みの `handoff_prompt`）に替える。
-2. `scripts/hab-notify.ts`：`codex` の設定から `app_server` を外し、`codex_bin`（既定 `codex`）と `thread_id` だけにする。
-3. 台帳の受け方：Codex を `hook` にする（Muse は `poll` 15 分のまま）。
-4. テスト：`test/` に、成功・失敗・時間切れ・スレッドなし（`recipient_absent`）・起こす一文に本文が入らないこと・起こしたあともメッセージが未読のままのこと・「対応する」後の引き渡しが今どおり動くことの件を足す。`npm test` を通す。
-5. 文書：`docs/connections/agent-setup.md` の Codex の節と、verify-hab の機能マップ。
+**You see.**
 
-hooks の補助（3.2 の最後）は、C-4 で取りこぼしが見えたときだけ別の PR にする。
+- [ ] `agent-setup.md` の表で Muse の行が「予定タスク 15 分（Hook なし、確定）」になっている。
 
-## 5. 本人に聞くこと
+**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-1. Codex を使っているのはどの Mac か（実機確認の場所）。
-2. C-1〜C-4 を実機でやってよいか（Codex の設定に HAB の MCP と試験用アドレスを足す）。
-3. Muse の M-1 を Muse のチャットで聞いてもらえるか。
+- [ ] 文書だけなのでテストは足さない。設計検証の台帳 `verification/design/contract.json` の sha256 を更新し、`python3 -B -m hirastack audit --target . --spec verification/design/contract.json` が `current` を返す。
+
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini の Claude Code（swarm なし）` at the PR head, per the boot recipe.
+
+- [ ] Lane 1. Regression lane against trunk. trunk と head で、本番の Muse 宛てに試験メールを 1 通送り、次の予定時刻まで待つ。trunk でも同じ受け方なので結果は同じになる。Save `pr1-lane1-muse-read.png`. Pass when 両方で 15 分以内に既読になる。
+- [ ] Lane 2. Muse の予定タスクの一覧を Muse のアプリで開く。Save `pr1-lane2-schedule.png`. Pass when HAB の受信箱を見るタスクが 15 分間隔で有効になっている。
+- [ ] Lane 3. Muse への試験メールに返信を求める本文を入れる。Save `pr1-lane3-reply.png`. Pass when 許可した送信元からなら `hab_reply` が記録される。
+- [ ] Lane 4. `hab:admin status` を見る。Save `pr1-lane4-status.png`. Pass when Muse の受け方が `poll` 15 分で、`poll_overdue` が出ていない。
+- [ ] Lane 5. 文書の Muse の節を開く。Save `pr1-lane5-doc.png`. Pass when 根拠の出典が付録 A と同じで、外から起こす口がないと書いてある。
+- [ ] Lane 6. 文書の表を開く。Save `pr1-lane6-table.png`. Pass when Muse の行と本文の記述が食い違わない。
+- [ ] Lane 7. Muse に M-1 の質問をした画面を開く。Save `pr1-lane7-muse-answer.png`. Pass when 予定タスク以外の起こし方がないという答えが写っている。
+- [ ] Lane 8. 設計検証を流す。Save `pr1-lane8-audit.txt`. Pass when `status` が `current`。
+- [ ] Lane 9. `wake-model.md` の Muse の行を開く。Save `pr1-lane9-wake-model.png`. Pass when 分類 D（製品の予定）と書いてある。
+- [ ] Lane 10. 文書内のリンクを開く。Save `pr1-lane10-links.txt`. Pass when 切れたリンクが 0 件。
+
+**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] Metric. 試験メールの送信から Muse の既読までの秒数。trunk と head で同じ仕組みなので、同じ数字が出る。
+- [ ] Probe. 試験メールを trunk と head で交互に 2 通ずつ送り、`audit.jsonl` の送信時刻と既読時刻の差を取る。
+- [ ] Baseline. trunk の値を先に記録する。
+- [ ] Rule. どの 1 通も 1,800 秒（間隔の 2 倍）を超えたら不合格。
+
+**Review gate.** None. PR-1 is not review-gated.
+
+**Merge.**
+
+- [ ] head の SHA で clean の判定がある。
+- [ ] Codex レビューと CodeRabbit の振り分けが済んでいる。
+- [ ] 判定のあと trunk に追従し、patch-id が変わっていない。
+- [ ] 本人がマージする。
+
+## Wake a Codex conversation with codex queue (PR-2)
+
+**Depends on.** 付録 A の Q2 の合格。PR-1 には依存しない。
+
+**Files.**
+
+- [ ] Edit `src/agent-notify/codex.ts`。
+- [ ] Edit `scripts/hab-notify.ts`。
+- [ ] Create `test/agent-notify-codex-queue.test.js`。
+- [ ] Edit `docs/connections/agent-setup.md`。
+- [ ] Edit `.claude/skills/verify-hab/SKILL.md`。
+
+**Build.**
+
+- [ ] `codex.ts` に起こす道を作る。画面の `show()`（届いた時点で、既読にしない）で `codex queue --thread <thread_id> --message <決まった一文> --remote <daemon のソケット>` を引数の配列で呼び、20 秒で打ち切る。決まった一文は「HAB に新着があります。hab_inbox を呼んで、届いたメールを notice のとおり見せてください。」で、送信者の本文は入れない。
+  - [ ] 「対応する」後の `codexHandoff` は残し、WebSocket の `thread/resume` と `turn/start` を、承認済みの `handoff_prompt` を入れた `codex queue` に替える。`websocketConnect` と `CodexAppServer` は消す。
+  - [ ] `codex queue` がスレッドを見つけられないと答えたら、PR-7 の `recipient_absent` として返す。終了コードが 0 以外か時間切れなら `unknown` とし、再送しない。
+- [ ] `hab-notify.ts` の `codex` 設定を `thread_id`、`codex_bin`（既定 `codex`）、`daemon_socket`（既定 `~/.codex/app-server-control/app-server-control.sock`）に替え、`app_server` を消す。古い設定は起動時に理由付きで拒む。
+
+**You see.**
+
+- [ ] 試験メールを送ると、Codex アプリの試験用の会話に決まった一文が出て、Codex が `hab_inbox` を呼び、`notice` を見せる。notifier のログに `codex_queue ok` が 1 行出る。
+
+**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] `test/agent-notify-codex-queue.test.js` に、成功、終了コード 1、時間切れ、スレッドなし（`recipient_absent`）、起こす一文に本文が入らない、起こしたあともメッセージが未読のまま、「対応する」後の引き渡しが承認済みの本文で `codex queue` を呼ぶ、古い `app_server` 設定を拒む、の件を足す。`codex` は偽のコマンドに差し替える。Run `node --test test/agent-notify-codex-queue.test.js`。
+- [ ] 全体を 1 回通す。Run `npm test`。
+
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `Mac mini の Claude Code（swarm なし）` at the PR head, per the boot recipe.
+
+- [ ] Lane 1. Regression lane against trunk. trunk と head で、待機中の Codex の試験用の会話宛てに試験メールを送る。trunk には起こす道がないので、trunk では会話に何も出ないことを記録し、head では会話に一文が出て `hab_inbox` まで進むことを確かめる。Save `pr2-lane1-idle-wake.png`. Pass when head で 30 秒以内に `hab_inbox` が audit に記録される。
+- [ ] Lane 2. 作業中の会話に試験メールを送る。Save `pr2-lane2-busy.png`. Pass when 今の作業が壊れず、区切りで一文が処理される。
+- [ ] Lane 3. 起こしたあと、HAB の状態を見る。Save `pr2-lane3-unread.png`. Pass when Codex が読むまでメッセージが未読のまま。
+- [ ] Lane 4. 会話に出た文を見る。Save `pr2-lane4-no-body.png`. Pass when 送信者の本文が会話に一文として入っていない。
+- [ ] Lane 5. 許可した送信元から返信を求める試験メールを送る。Save `pr2-lane5-reply.png`. Pass when `hab_reply` が送信者に届く。
+- [ ] Lane 6. 「対応する」を選ぶ手動の流れを試す。Save `pr2-lane6-accept.png`. Pass when 承認済みの本文が会話に入り、既読になる。
+- [ ] Lane 7. 試験用の会話を消してから送る。Save `pr2-lane7-absent.png`. Pass when `recipient_absent` が記録され、再送しない。
+- [ ] Lane 8. daemon を止めてから送る。Save `pr2-lane8-no-daemon.png`. Pass when `unknown` が記録され、保険の確認（5 分）で未読が残っていると分かる。
+- [ ] Lane 9. Codex アプリを再起動してから送る。Save `pr2-lane9-app-restart.png`. Pass when 同じ会話に届く。
+- [ ] Lane 10. 試験メールを 1 分に 3 通送る。Save `pr2-lane10-burst.png`. Pass when 一文は重ならずに入り、3 通とも `hab_inbox` で読まれる。
+
+**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
+
+- [ ] Metric. 送信から Codex の `hab_inbox` までの秒数。trunk には起こす道がないので、head の秒数を絶対の予算で測り、trunk は「話しかけるまで読まれない」ことを記録する。
+- [ ] Probe. 試験メールを 5 通、間を 1 分空けて送り、`audit.jsonl` の送信時刻と `hab_inbox` の時刻の差を取る。trunk でも同じ 5 通を交互に送る。
+- [ ] Baseline. trunk で 5 通とも 10 分以内に読まれないことを先に記録する。
+- [ ] Rule. head の中央値が 30 秒、最大が 60 秒を超えたら不合格。`codex queue` 1 回の実行が 20 秒を超えたら不合格。
+
+**Review gate.** The operator reviews before merge.
+
+- [ ] lane 1、lane 3、lane 4 の screenshot（画面写真）を `docs/history/media/pr2-review-<slug>.png` に写す。
+- [ ] lane の Mac mini で、送信から Codex の返信までの 30 秒から 60 秒の video（動画）を撮り、`docs/history/media/pr2-review.mp4` に置く。
+- [ ] screenshot と video をチャットに出す。merge-ready で止まり、operator（本人）のマージを待つ。
+
+**Merge.**
+
+- [ ] head の SHA で clean の判定がある。
+- [ ] Codex レビューと CodeRabbit の振り分けが済んでいる。
+- [ ] 判定のあと trunk に追従し、patch-id が変わっていない。
+- [ ] 本人がマージし、Mac mini への導入は本人の別の一言で行う。
+
+## Close the program
+
+- [ ] 上の箱がすべて証拠付きで埋まっている。
+- [ ] 本人に、PR ごとの判定と、Mac mini に入れる手順（daemon の常駐のさせ方を含む）を報告する。
+
+## Appendix A. Prototype evidence
+
+**Q1. Muse を外から起こす口はあるか。** 公開情報では、ない。自動の実行は予定タスクだけで、第三者の試験では最短 1 分、30 秒は受け付けなかった（[SmartScope](https://smartscope.blog/en/blog/claude-code-delegate-tasks-meta-muse-using-spreadsheets-2026/)、[dev.to](https://dev.to/ying_liao_0a481102ff971b4/automating-real-work-with-muse-connectors-scheduled-tasks-58co)）。Webhook、メールの到着、MCP のイベントで動く記述はない。nenwa も Muse を起こせない相手として扱う（[nenwa DESIGN.md](https://github.com/nogu66/nenwa/blob/b9b87731da65b3f62876c0797e88d53a342eddb3/DESIGN.md)）。2026-11-20 には予定タスクが自動で `hab_inbox` と `hab_reply` まで進んだ。未確認なのは Muse 自身の答え（M-1）だけで、本人が Muse のチャットで 1 問聞く。
+
+**Q2. `codex queue` は Codex アプリの会話に届くか。** 未確認。2026-11-21 14:1x JST に Mac mini で読むだけの調査をした。
+
+- `codex` は 2 つある。`~/.local/bin/codex` が 0.149.0、ChatGPT アプリ同梱の `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex` が 0.171.0-alpha.13。`--resume` は 0.171 だけにある。
+- `codex queue` の接続先は daemon の制御ソケット `~/.codex/app-server-control/app-server-control.sock` で、`thread/queue/add` を送る。存在しないスレッドへの試し送り（`--remote unix://`）は、両方の版でソケットがないと言って exit 1 で終わった。会話には何も入っていない。
+- アプリの app-server は ChatGPT アプリの子プロセスで、`--listen` がなく stdio だけで動いている。TCP の待ち受けも名前付きのソケットもない。daemon は動いていない。
+- アプリと CLI の会話は同じ `~/.codex`（`sessions/`、`queue_1.sqlite`、`state_5.sqlite`）に入っている。バイナリには `queued_items` の表と、変わったことを知らせる revision の仕組みがある。
+- ここから推測できること（未確認）。daemon を起動すれば queue は共有の `queue_1.sqlite` に積まれ、アプリの app-server が revision でそれを拾って会話に流す可能性がある。版の差（daemon 0.149 とアプリ 0.171）で弾かれる可能性もあるので、試すときは同梱の 0.171 を使う。
+- 次の試し（本人の了承待ち）。同梱の 0.171 で daemon を一時起動し、アプリで開いた試験用の会話 1 つに `codex queue` を送り、アプリに出るかを見て、daemon を止める。合格なら PR-2、不合格なら PR-2b。
+
+**Q3. Codex の hooks で起こせるか。** 起こせない。`~/.codex/hooks.json` の `Stop` や `PostToolUse` は会話が動いているときだけ走るので、待機中の会話は起きない（[Codex hooks](https://learn.chatgpt.com/docs/hooks)）。補助として使う余地はあるが、この計画には入れない。
+
+## Appendix B. Alternatives rejected
+
+- **今の WebSocket の引き渡しを残す。** アプリの app-server は stdio だけで外から入れないので、今の `codexHandoff` はアプリの会話に届かない。消して `codex queue` に一本化する。
+- **`thread/inject_items` で本文を入れる。** 承認していない本文がモデルの履歴に入る（ADR-021 で退けた）。
+- **notifier が自分で app-server か `codex exec` を起動する。** 利用者が見ている会話の外で動く。
+- **Codex の hooks を主にする。** 待機中の会話を起こせない（Q3）。
+- **Muse の間隔を 1 分に縮める。** 起こす口がない問題は変わらず、Muse の利用枠を多く使う。本人が望んだときだけ変える。
+- **呼び鈴をアドレスごとでなく製品ごとにまとめる（PR-6）。** 本人の判断で後回し。この計画は今のアドレスごとの呼び鈴のまま進める。
+
+## Appendix C. Risks
+
+- **C-1. daemon とアプリの app-server が同じ `~/.codex` を同時に書く（PR-2）。** `thread-writer-locks/` があるので排他はあると見ているが未確認。持ち主は lane 9 と lane 10 で会話の記録が壊れないかを見る。
+- **C-2. daemon を常駐させる必要がある（PR-2）。** 導入時に launchd で常駐させるか、`codex app-server daemon enable` のような製品の仕組みを使うかを決める。Mac mini の設定変更なので本人の一言が要る。
+- **C-3. 版の差（PR-2）。** `~/.local/bin/codex` は 0.149 で `--resume` がない。`codex_bin` はアプリ同梱の版を指す。アプリの更新で道筋が変わったら notifier の起動時に知らせる。
+- **C-4. swarm を使わない（全 PR）。** 実機が Mac mini 1 台で、Codex アプリも 1 つなので、10 lanes は持ち主が順に回す。並列の検証はできない。
+- **C-5. 呼び鈴の一文がモデルへの指示になる（PR-2）。** 文は HAB が決めた固定文で、送信者は変えられない。本文は `hab_inbox` の `notice` の枠の中だけに出る。
+
+## Appendix D. Links and reading list
+
+- 読むもの。`docs/hab-decisions.md`（ADR-015、ADR-021、ADR-022、ADR-023）、`docs/receiver/arrival-notifier.md`、`src/agent-notify/notifier.ts`（`check()` と `#finishAccept`）、`src/agent-notify/codex.ts`。
+- 外部の資料。[openai/codex PR #39092](https://github.com/openai/codex/pull/39092)、[Developer commands](https://learn.chatgpt.com/docs/developer-commands)、[nenwa daemon.rs](https://github.com/nogu66/nenwa/blob/b9b87731da65b3f62876c0797e88d53a342eddb3/src/daemon.rs#L400-L425)。
+- PR-2 は着手前に `pstack/skills/how/SKILL.md` を通す。`interrogate` は使わない（設計の争点が Q2 の事実だけなので）。
+- 判断の記録はこの付録とスレッドに残す。commit はしない。
