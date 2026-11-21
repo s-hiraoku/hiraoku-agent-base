@@ -11,6 +11,7 @@ import {
   runProduct,
 } from "../src/agent-notify/product-host.ts";
 import { main } from "../scripts/hab-notify.ts";
+import { freePort } from "./free-port.js";
 
 // docs/receiver/session-routing.md 「設定」「呼び鈴の答え方」「検証」: one product file, one
 // notify.json per session in sessions_dir, one doorbell that wakes only the named session.
@@ -22,14 +23,14 @@ const expiredJwt = [
   "sig",
 ].join(".");
 
-function fixture(t) {
+async function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "hab-notify-product-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const sessions = join(dir, "hermes.d");
   mkdirSync(sessions);
   const secretFile = join(dir, "wake.secret");
   writeFileSync(secretFile, SECRET, { mode: 0o600 });
-  const port = 20_000 + Math.floor(Math.random() * 20_000);
+  const port = await freePort();
   const product = join(dir, "hermes.product.json");
   writeFileSync(
     product,
@@ -87,7 +88,7 @@ const oauth = (file, patch = {}) => ({
 });
 
 test("units lists every session file with its address, conversation and ledger line", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.session("alpha", {
     screen: {
       ...f.session("alpha").screen,
@@ -112,7 +113,7 @@ test("units lists every session file with its address, conversation and ledger l
 });
 
 test("the product refuses a session without as_address or with its own doorbell", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   f.session("alpha");
   f.session("beta", { as_address: undefined });
   assert.deepEqual(await f.cli("units"), {
@@ -135,7 +136,7 @@ test("the product refuses a session without as_address or with its own doorbell"
 });
 
 test("TokenPool refuses a second spender of one rotating refresh token", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   const grantA = join(f.dir, "a.oauth.json");
   const grantB = join(f.dir, "b.oauth.json");
   const refresh = "refresh-secret-value";
@@ -195,7 +196,7 @@ function signedRing(port, data) {
 }
 
 test("one doorbell answers each signed ring by its address and conversation", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   process.env[TOKEN_ENV] = expiredJwt;
   t.after(() => delete process.env[TOKEN_ENV]);
   const base = f.session("alpha").screen;
@@ -282,7 +283,7 @@ test("one doorbell answers each signed ring by its address and conversation", as
 });
 
 test("--config units needs an address for the registration command", async (t) => {
-  const f = fixture(t);
+  const f = await fixture(t);
   const config = f.session("alpha", { as_address: undefined });
   const file = join(f.dir, "single.json");
   writeFileSync(file, JSON.stringify(config));

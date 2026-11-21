@@ -224,7 +224,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "9615bb60784e9bc5e41fe245fc4cb0b8318ffc5fb4fab835f0b261bb35280c5f",
+      "sha256": "694495766c14b834a7ce5dc467a376a46d30907d4ad5f46fd42ff157ec011051",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-21 (#252/#253): admin-session notes a provisional session follows a rename and is corrected at start; exact address lookup.",
@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "8c5dc06e5d8be9438aaa906a071d0bd3f56949d6081e1c70d315e8292d456bbd",
+      "sha256": "a51aa4dce280545374cc300542805c8b0a7334e141e47164534e785035e7313d",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1267,17 +1267,17 @@
     },
     {
       "path": "docs/connections/agent-setup.md",
-      "sha256": "3501e91484efede02249a374dbc5283fb63897d1cd97d924752557e210e4ab2e",
+      "sha256": "8ed98346a03fda26cd15e5d745e6a42c19de7ffd1ff0964fa6208883cedeac81",
       "role": "context",
       "review": "reviewed",
       "summary": "How-to for connecting every agent product to HAB: receive/show/act per product with copy-paste prompts for each product's own AI, a 2026-11-20 Mac mini result table (confirmed/unconfirmed), and troubleshooting. Restates ADR-015/021/023 (reply only when the receiver's own settings allow it); adds no requirement."
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "b776a8f633104413268be976f0fe4e195acb63636169c98f67fd9caba6df6be7",
+      "sha256": "e8886f05d92fbc934dd48282ab3c5c13c82ed3f69a037bad8d1d742b61980113",
       "role": "context",
       "review": "reviewed",
-      "summary": "Five-stage agent onboarding plan. The first dashboard release implements read-only diagnosis and product guidance. Existing ADRs own the requirements. CLI and dashboard ping now share the same local operation record. Product recipes and onboard remain conditional on an end-to-end setup trial."
+      "summary": "Five-stage agent onboarding plan. The first dashboard release implements read-only diagnosis and product guidance. Existing ADRs own the requirements. CLI and dashboard ping now share the same local operation record. All five product recipes are available from the CLI. An end-to-end product setup trial informs whether onboard is needed."
     },
     {
       "path": "docs/plans/dashboard-onboarding.md",
@@ -2663,8 +2663,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 16,
-          "end": 16,
+          "start": 17,
+          "end": 17,
           "excerpt_sha256": "53dd1acc4164a66887d09a3569fecbb281a039e05d3b3f289e7af5b69d09846c"
         }
       ]
@@ -2694,8 +2694,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 18,
-          "end": 18,
+          "start": 19,
+          "end": 19,
           "excerpt_sha256": "bc76086a1621b520c87f9cbbbb8a7e48ae2405b5c24ade74a17efcdfb3caebb0"
         }
       ]
