@@ -7,6 +7,7 @@ import type {
   Receipt,
   Delivery,
   AckReceipt,
+  InboxHistoryCursor,
   InboxMessage,
   ReceivedMessage,
 } from "../messaging/delivery-service.ts";
@@ -814,6 +815,8 @@ export class SqliteDelivery {
       max_bytes?: number;
       /** Return unread messages only, leaving them unread. */
       peek?: boolean;
+      /** Browse only retained read mail, with an optional continuation position. */
+      history?: { before?: InboxHistoryCursor };
       /** With peek: only messages after this one in inbox order (accepted_at, sender, ID). */
       after?: { accepted_at: number; sender_id: string; message_id: string };
     },
@@ -842,7 +845,8 @@ export class SqliteDelivery {
       if (this.#identity(context, "poll", authorization) !== recipient)
         throw new MessagingError("forbidden");
       const now = Date.now();
-      this.#refresh(now);
+      const history = options.history;
+      if (!history) this.#refresh(now);
       const out: InboxMessage[] = [];
       const allowed = (row: Row) => {
         try {
@@ -874,17 +878,19 @@ export class SqliteDelivery {
         (only ? " AND message_id=?" : "") + (from ? " AND sender_id=?" : "");
       const args = [...(only ? [only] : []), ...(from ? [from] : [])];
       const after = options.peek ? options.after : undefined;
-      const unread = this.#db
-        .prepare(
-          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
-        )
-        .all(
-          recipient,
-          ...args,
-          ...(after
-            ? [after.accepted_at, after.sender_id, after.message_id]
-            : []),
-        ) as unknown as Row[];
+      const unread = history
+        ? []
+        : (this.#db
+            .prepare(
+              `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
+            )
+            .all(
+              recipient,
+              ...args,
+              ...(after
+                ? [after.accepted_at, after.sender_id, after.message_id]
+                : []),
+            ) as unknown as Row[]);
       let spent = 0;
       // Whether one more message still fits the response; the first always does,
       // since a single message is bounded by the contract's text limit.
@@ -925,19 +931,28 @@ export class SqliteDelivery {
       }
       if (
         !options.peek &&
-        (options.include_read || only) &&
+        (history || options.include_read || only) &&
         out.length < options.limit
       ) {
+        const before = history?.before;
+        const cutoff = history ? "acked_at<=?" : "acked_at<?";
+        const bounds = before
+          ? " AND (acked_at,accepted_at,sender_id,message_id)<(?,?,?,?)"
+          : "";
+        const order = history
+          ? "acked_at DESC,accepted_at DESC,sender_id DESC,message_id DESC"
+          : "acked_at DESC,accepted_at DESC,sender_id,message_id";
         const read = this.#db
           .prepare(
-            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${sql} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
+            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND ${cutoff}${sql}${bounds} ORDER BY ${order}`,
           )
-          .all(
+          .iterate(
             recipient,
             now - READ_BODY_RETENTION_MS,
             now,
             ...args,
-          ) as unknown as Row[];
+            ...(before ?? []),
+          ) as unknown as Iterable<Row>;
         for (const row of read) {
           if (out.length >= options.limit) break;
           if (!allowed(row)) continue;

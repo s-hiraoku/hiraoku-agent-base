@@ -389,10 +389,10 @@
     },
     {
       "path": "docs/common-mcp-connection.md",
-      "sha256": "f1f468f40588c73a48bc94a60027844aa5aa30a10b3be47959074bac4f8962ee",
+      "sha256": "188d11988a5c22594432adbf4a414873bb0fee9fd4a24016d1d78fcae70ebaf7",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it. Reviewed PR #216: send ends the turn without a wait loop or starting the recipient; replies arrive through inbox and status exposes reply_state. Low-level durable send/receive and evidence boundaries remain unchanged. PR225 review: Japanese send/status table includes reply_watch; appended bounded owner-runner integration and external Dots wake/read/ACK boundary. Original cited ranges retain identical bytes and positions. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-19 (ADR-028): hab_inbox wait_secs/waited_secs and when to use it."
+      "summary": "Authoritative standard connection: existing native MCP client, no product-dependent delivery/runner; approved group membership selects own address, five common operations. Resolve and durable outbox precede send, immutable IDs/deadline survive uncertain outcomes; recipient dedups and commits body plus ACK retry before ACK. Content/reply/permissions remain recipient responsibility. Finite bearer cleanup differs from persistent OAuth. Product discovery, actual agency, durable integration and resident operation have distinct evidence. The arrival notifier (ADR-021) uses hab_peek at /mcp/delivery to show new mail without reading it. Reviewed PR #216: send ends the turn without a wait loop or starting the recipient; replies arrive through inbox and status exposes reply_state. Low-level durable send/receive and evidence boundaries remain unchanged. PR225 review: Japanese send/status table includes reply_watch; appended bounded owner-runner integration and external Dots wake/read/ACK boundary. Original cited ranges retain identical bytes and positions. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-19 (ADR-028): hab_inbox wait_secs/waited_secs and when to use it. The agent catalog accepts optional replay-bound request IDs for prepared send and reply operations. A prepared send can pin its recipient ID. Clients reconcile by the same ID before retrying. An authenticated history cursor pages retained read messages without changing unread rows."
     },
     {
       "path": "docs/diagrams/manifest.json",
@@ -498,10 +498,10 @@
     },
     {
       "path": "docs/hab-product-spec.md",
-      "sha256": "d33a5f53fb5d5f8a563c9d9638a114012c7d187c01d39456b498cf7239ad20a5",
+      "sha256": "261c8b9cb2f7bbddab8039da2b6d6386437f304b4a5f5a0eb557ef74451c8e1b",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. UI mutations/background product support are planned. The single-file SQLite delivery store is adopted (ADR-018, superseding the JetStream delivery of ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; restore takes one whole backup generation with an expiry hold and original-ID comparison; the earlier JetStream-era text, now replaced, required for older builds a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-19: §1.1 lists the target agents (Dots, Hermes, claude.ai, Muse, Claude Code, Codex, Grok Bot, Cursor, Gemini, Antigravity) with entry and status; listing is not connection evidence."
+      "summary": "Confirmed product goals: simple connect/register/select/send, GUI/MCP same application and authority, source-verified binding, private PC/mobile, separate optional Kanban. Defines honest delivery/display/read/work status and no authority escalation. The single-file SQLite delivery store is adopted (ADR-018, superseding the JetStream delivery of ADR-016) without dual-send or migration; A2A is evaluated rather than formally production-adopted. Fixed TTL/receipt durability and deletion/restore semantics survive the transport change; restore takes one whole backup generation with an expiry hold and original-ID comparison; the earlier JetStream-era text, now replaced, required for older builds a whole pre-upgrade backup restore with original-ID reconciliation of accepted and incomplete-at-backup messages (kept even when purged from the new journal) and of unreleased restored inbox bodies, using scripts/relay-rollback-reconcile.mjs on copied recipient state, expired/quarantined treated as outcome unknown, the earlier build held stopped until restored IDs expire so the relay does not redeliver them, and restored bodies settled against copied execution records before the recipient restarts; many product/live acceptance conditions remain unverified. Post-backup IDs retained only in inbox/application evidence remain on the list; upgraded-only unreleased bodies need original-key local application recovery, not replay or expiry bypass. Absence proves not_saved only before collection is possible; missing evidence remains unknown. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-19: §1.1 lists the target agents (Dots, Hermes, claude.ai, Muse, Claude Code, Codex, Grok Bot, Cursor, Gemini, Antigravity) with entry and status; listing is not connection evidence. The local operator dashboard uses a configured approved MCP mailbox for sending, inbox, reply and delivery status. Diagnosis is available through the viewer. Test delivery uses a separate configured identity."
     },
     {
       "path": "docs/history/hab-relay-integration.md",
@@ -712,10 +712,10 @@
     },
     {
       "path": "docs/host-service.md",
-      "sha256": "e65ad186fdddcfa866ebdee08355ed3ce6df2ebf1b209856fb3ff6c9ed1aaea0",
+      "sha256": "c975e4b587816c6347ac294c02c57cb897993dd839c14c73370fe84014e4e9f0",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed. ADR-024 (2026-11-17): status adds inboxes (unread, oldest_unread_at, doorbell) with unread_waiting and doorbell_lapsed problems, no callback URLs or secrets. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19 (ADR-028): http.max_wait_ms holds only a waiting hab_inbox past timeout_ms, bounded by max_active_requests-1."
+      "summary": "Configured common Relay reads explicit private files, one `delivery` section (volume, queue, optional maintenance) and finite per-sender/queue capacities over the SQLite delivery store; the retired SQLite `store` section, `delivery.routing` and the JetStream `broker`/`pump` parts are refused, and a leftover jetstream-journal.sqlite blocks startup until drained and removed. ADR-024 (2026-11-17): status adds inboxes (unread, oldest_unread_at, doorbell) with unread_waiting and doorbell_lapsed problems, no callback URLs or secrets. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-19 (ADR-028): http.max_wait_ms holds only a waiting hab_inbox past timeout_ms, bounded by max_active_requests-1. Documents the opt-in CLI ping and dashboard operator mode, private bearer files, bounded status checks, and a durable local journal for outstanding operations."
     },
     {
       "path": "docs/history/manual-ping-runner.md",
@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "252391d2311f5bd119cadfa978d286d99ff6a6733806dded12b7be9be0b3a2ad",
+      "sha256": "a51aa4dce280545374cc300542805c8b0a7334e141e47164534e785035e7313d",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1274,17 +1274,17 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "866d07320a3b382a00e35272ff06a7f011d359e7be5882d33cdc4938bd1771d4",
+      "sha256": "e8886f05d92fbc934dd48282ab3c5c13c82ed3f69a037bad8d1d742b61980113",
       "role": "context",
       "review": "reviewed",
-      "summary": "Five-stage agent onboarding plan. The first dashboard release implements read-only diagnosis and product guidance. Management and test delivery are staged on shared CLI operations. Existing ADRs own the requirements."
+      "summary": "Five-stage agent onboarding plan. The first dashboard release implements read-only diagnosis and product guidance. Existing ADRs own the requirements. CLI and dashboard ping now share the same local operation record. All five product recipes are available from the CLI. An end-to-end product setup trial informs whether onboard is needed."
     },
     {
       "path": "docs/plans/dashboard-onboarding.md",
-      "sha256": "1a473eaadfd704388fe51890d9bb60b4733427047b08fa6c3649dea6c7d8cdf1",
+      "sha256": "4edecc395a08959ab56609b6d3e386fb5b236017487f5e5ce750126951235947",
       "role": "context",
       "review": "reviewed",
-      "summary": "Dashboard onboarding design following the implemented read-only release. Future management requires a separate operator session and approval bound to the confirmed pending generation and destination. Native identity evidence and durable, idempotent test delivery drive the onboarding status. Existing product requirements and ADRs remain authoritative.",
+      "summary": "Dashboard onboarding design following the implemented read-only release. Future management requires a separate operator session and approval bound to the confirmed pending generation and destination. Native identity evidence and durable, idempotent test delivery drive the onboarding status. Existing product requirements and ADRs remain authoritative. The runtime uses a one-use private launcher exchange and a short-lived dashboard session. The optional operator mode uses configured MCP identities for messaging and test delivery.",
       "read_scope": "full"
     },
     {
@@ -4324,7 +4324,7 @@
           "path": "docs/hab-product-spec.md",
           "start": 42,
           "end": 49,
-          "excerpt_sha256": "ecfd20c6a9703a7c4de5553a4f71401225ea263ef999abf3c40a75a6b64a05ea"
+          "excerpt_sha256": "df67f81a2e3843eeeded1e7eae0a6d33c7f0c9036dbe30d4a054bef678c5f2af"
         },
         {
           "path": "README.md",

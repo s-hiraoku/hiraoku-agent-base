@@ -83,6 +83,13 @@ export interface InboxMessage {
   /** Whether this read returned it for the first time. */
   new: boolean;
 }
+/** The last read history record, in descending inbox order. */
+export type InboxHistoryCursor = [
+  readAt: number,
+  acceptedAt: number,
+  senderId: string,
+  messageId: string,
+];
 /** A message the caller received, as hab_reply needs it. Metadata only. */
 export interface ReceivedMessage {
   message_id: string;
