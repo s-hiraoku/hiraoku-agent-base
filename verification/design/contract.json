@@ -1260,10 +1260,10 @@
     },
     {
       "path": "docs/receiver/per-agent-display.md",
-      "sha256": "f42ea5b865edcef47e4867d16388d80cad0d6d82aeb99fbeabb0b1815f8328ff",
+      "sha256": "100cf7824a456031e573fb0e54f1e1e79e5578833c8ec053740eef21aafe614b",
       "role": "normative",
       "review": "reviewed",
-      "summary": "ADR-026 per-agent received-mail display: the version-1 presentation fields (body stays in text), which adapter draws what (Hermes Desktop plugin fields with display fallback, Claude Code status line gist, MCP Apps card ui://hab/inbox-v1 for claude.ai/ChatGPT/Gemini app, text notice for Codex/Antigravity CLI/Gemini CLI, Grok Bot/Antigravity unverified), MCP Apps resource rules and the safety rules (framed model text, body_untrusted, text-only rendering, no free text in channel attributes)."
+      "summary": "ADR-026 per-agent received-mail display: the version-1 presentation fields (body stays in text), which adapter draws what (Hermes Desktop plugin fields with display fallback, Claude Code status line gist, MCP Apps card ui://hab/inbox-v1 for claude.ai/ChatGPT/Gemini app, text notice for Codex/Antigravity CLI/Gemini CLI, Grok Bot/Antigravity unverified), MCP Apps resource rules and the safety rules (framed model text, body_untrusted, text-only rendering, no free text in channel attributes). 2026-11-21: claude.ai での実機結果と、Claude Code 型の会話では描かれないことを追記。"
     },
     {
       "path": "docs/connections/agent-setup.md",
