@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "f38674ec55e598808c367dade788082e18fc1d2cdd7b8ab38de0b3cde56e6f57",
+      "sha256": "4278fd8e75837c6dfb259d793e5f03551f2ccbe94258fdbc14179dcd04bcebb8",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1274,10 +1274,18 @@
     },
     {
       "path": "docs/plans/agent-connection-and-receive.md",
-      "sha256": "eaaf8855abe9e04437cb37c296721f0b25fc0fb4af27b72c26274c23d6e1cce5",
+      "sha256": "936c75f2a975cebfba479ca2870d0c01c8ee41079bcb6e58f6b7037deec9def9",
       "role": "context",
       "review": "reviewed",
-      "summary": "Implementation plan for easing agent onboarding in four stages, each its own PR: (1) read-only `hab:admin doctor` per address (registration, receive, reading, session with ok/problem/unknown and a next action); (2) registering from a pending list: fully verified but unregistered OAuth sign-ins are recorded without tokens and approved by `hab:admin approve`, which writes the ledger atomically and binds without a restart, while pre-approval tokens stay refused; (3) operator doorbells moved from host config to the events store; (4) `ping` from a host-owned test address, product recipes and a conditional `onboard`. Hermes one-command setup, Codex handoff, product-side session_gone and Auth0 app creation are deferred. A plan, not a decision; existing ADRs are normative."
+      "summary": "Five-stage agent onboarding plan: read-only doctor, approval of verified pending OAuth sign-ins, operator doorbells in the events store, product recipes with a test ping and conditional onboard, and a private dashboard using the same admin operations. The dashboard starts with diagnosis and product guidance. Existing ADRs own the requirements."
+    },
+    {
+      "path": "docs/plans/dashboard-onboarding.md",
+      "sha256": "f59bb6c54a7053f573e25634e45d4cec0d330055961e40e997ddfd516573711c",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Design for carrying the existing HAB directory into the current SQLite host: read-only loopback dashboard first, product-specific setup guidance, shared doctor results, operator approval and doorbell operations, and explicit test delivery with separately reported evidence. Existing product requirements and ADRs remain authoritative.",
+      "read_scope": "full"
     },
     {
       "path": "docs/plans/auth0-dcr.md",
