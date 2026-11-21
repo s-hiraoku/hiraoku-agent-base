@@ -570,6 +570,8 @@ process.stdin.on("end", () => {
       wake: { port, secret_file: secretFile },
     }),
   );
+  const once = [];
+  await main(["--config", config, "check"], (line) => once.push(line));
   const lines = [];
   const running = main(["--config", config, "run"], (line) => lines.push(line));
   await new Promise((done) => setTimeout(done, 700));
@@ -589,11 +591,17 @@ process.stdin.on("end", () => {
   await new Promise((done) => setTimeout(done, 1500));
   process.emit("SIGTERM");
   assert.equal(await running, 0);
-  return { answered, logged: lines.map((line) => JSON.parse(line)) };
+  return {
+    answered,
+    once: JSON.parse(once.at(-1)),
+    logged: lines.map((line) => JSON.parse(line)),
+  };
 }
 
 test("run answers HAB 410 session_gone and checks nothing while the Hermes conversation is gone", async (t) => {
-  const { answered, logged } = await runWithProbe(t, "gone");
+  const { answered, once, logged } = await runWithProbe(t, "gone");
+  // The one-shot check does not reach HAB either (no token_expired).
+  assert.deepEqual(once, { shown: [], session: "gone" });
   assert.equal(answered.status, 410);
   assert.deepEqual(JSON.parse(answered.body), { reason: "session_gone" });
   assert.deepEqual(
@@ -603,7 +611,8 @@ test("run answers HAB 410 session_gone and checks nothing while the Hermes conve
 });
 
 test("run answers 200 and checks as before when the probe cannot tell", async (t) => {
-  const { answered, logged } = await runWithProbe(t, "unknown");
+  const { answered, once, logged } = await runWithProbe(t, "unknown");
+  assert.deepEqual(once, { error: "token_expired" });
   assert.equal(answered.status, 200);
   assert.deepEqual(
     logged.map((line) => line.session ?? line.error),

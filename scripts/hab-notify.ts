@@ -467,6 +467,12 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
   }
 }
 
+/** ADR-032: whether the bound conversation still exists, when the config can ask. */
+const configuredProbe = (config: NotifyConfig) =>
+  config.screen.type === "hermes-desktop" && config.screen.session_probe
+    ? sessionProbe(config.screen.session_probe, config.screen.session_id)
+    : undefined;
+
 /** Connection + recipient + product session fence for every configured adapter. */
 export function boundScreen(config: NotifyConfig): AgentScreen {
   const screen = configuredScreen(config);
@@ -877,9 +883,15 @@ export async function main(
   const { notifier, store } = created;
   try {
     switch (command) {
-      case "check":
+      case "check": {
+        // ADR-032: like `run`, a gone session shows and accepts nothing.
+        if ((await configuredProbe(config)?.()) === "gone") {
+          out(JSON.stringify({ shown: [], session: "gone" }));
+          return 0;
+        }
         out(JSON.stringify({ shown: await notifier.check() }));
         return 0;
+      }
       case "list":
         out(
           JSON.stringify(
@@ -969,13 +981,7 @@ export async function main(
         const timer = wakeableSleep();
         process.once("SIGTERM", () => timer.ring());
         process.once("SIGINT", () => timer.ring());
-        const probe =
-          config.screen.type === "hermes-desktop" && config.screen.session_probe
-            ? sessionProbe(
-                config.screen.session_probe,
-                config.screen.session_id,
-              )
-            : undefined;
+        const probe = configuredProbe(config);
         const listener = config.wake
           ? await startWakeListener({
               port: config.wake.port,
