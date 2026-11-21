@@ -357,10 +357,10 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "f14690726995d8e3cc3532f9e958f0a1e86c0ae97e07d190640fcbdaaf51ee8d",
+      "sha256": "785b94dd6c5336b287dce9aa592f6ebb36ac7b9cdb8e4e038cf16654446eceb2",
       "role": "context",
       "review": "reviewed",
-      "summary": "Documentation index by purpose, including the agent connection and receive implementation plan.",
+      "summary": "Documentation index by purpose, including the agent connection and receive implementation plan and the Auth0 DCR plan.",
       "read_scope": "full"
     },
     {
@@ -1278,6 +1278,14 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Implementation proposal for read-only connection diagnostics, recoverable Hermes Desktop setup and proven native handoff. The diagnostic separates operator-provided identity observations from runtime evidence. Setup uses existing OAuth, register and notification contracts with recovery from interrupted configuration writes. Codex Desktop requires actual target-session observation before choosing a delivery route. Existing ADRs are normative."
+    },
+    {
+      "path": "docs/plans/auth0-dcr.md",
+      "sha256": "ac88644445e2e01edcb30f4a7da7a8e887ae10d754f5cf3c3d80e56b4870eefd",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Plan (not yet adopted as an ADR) to let products register their own Auth0 clients through Dynamic Client Registration instead of hand-made per-product apps. The HAB boundary is unchanged: a (subject, client_id) pair is usable only after the operator's approve from the pending list. Adds approve --replace for products that register a new client on each reconnect, client_name display marked self-declared, and opening DCR only while connecting. Existing hand-made connections are not migrated. Product DCR behavior is from public docs, not live-verified.",
+      "read_scope": "full"
     },
     {
       "path": "docs/plans/receive-show-act-plan.md",
