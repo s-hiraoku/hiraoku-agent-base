@@ -77,6 +77,9 @@ Codex を起こすのは受信側の notifier で、HAB は今の運用者呼び
 - 入れる文は**決まった一文だけ**にする。例：「HAB に新着があります。hab_inbox を呼んで、届いたメールを notice のとおり見せてください。」
   送信者の本文は入れない。本文は Codex が `hab_inbox` で受け取り、`notice` の「送信者が書いたデータ」の枠のまま見せる。
   これで、承認していない本文がモデルの履歴に入らない（ADR-021 で `thread/inject_items` を退けた理由と同じ）。
+- **起こす道と引き渡しの道は分ける。** 今の notifier では、呼び鈴は `notifier.check()` を動かして画面の `show()` を呼ぶだけで、`codexHandoff` は「対応する」か `auto_accept` のあとにしか走らない。しかも `#finishAccept` は引き渡しの前に既読にする。
+  そのため、起こす一文は **`show()` の側（届いた時点、未読のまま）** で `codex queue` を呼ぶ。メッセージは未読のまま残るので、Codex の既定の `hab_inbox`（未読だけ）で読める。
+  「対応する」後の今の引き渡し（既読にしてから、承認済みの本文を `handoff_prompt` で渡す）はそのまま残し、送り方だけを WebSocket から `codex queue` に替える。
 - 会話の特定は台帳（Registry、ADR の「アドレスとセッションは 1 対 1」）に Codex の thread（UUID）を書く。セッション名は重なると拒否されるので使わない。
 - `codex queue` が失敗した（終了コードが 0 でない、20 秒を超えた）ら、その回は `unknown` とし、再送しない（今の notifier の約束と同じ）。保険は今の確認間隔（5 分）。
 - `codex queue` がスレッドを見つけられない（スレッドがない）と言ったら、PR-7 の `recipient_absent`（相手のセッションがいない）として扱う。
@@ -98,19 +101,21 @@ Codex を起こすのは受信側の notifier で、HAB は今の運用者呼び
 - **C-3 作業中の会話。** Codex に長めの作業（例：大きめのファイルの要約）をさせている最中に C-2 と同じ queue を送る。
   Pass：作業を壊さず、区切りで文が処理される。
 - **C-4 HAB を通した往復。** Codex に HAB の MCP をつなぎ、その会話用のアドレス（例：`codex@codex.hab`）を台帳に登録する。
-  notifier に一時的に `codex queue` を呼ぶ受け方を足した版（または手で `codex queue` を打つ代用）で、別のエージェントから試験メールを送る。
-  Pass：呼び鈴→`codex queue`→Codex が `hab_inbox`→`notice` を見せる→`hab_reply`→送信者に届く。所要秒数を記録する。
+  手で `codex queue` を打つ代用はしない。4 章の実装を入れた notifier（試験用ブランチ）を使い、別のエージェントから試験メールを送る。
+  Pass：呼び鈴→notifier の `show()`→`codex queue`→メッセージは未読のまま→Codex が `hab_inbox` で読む→`notice` を見せる→`hab_reply`→送信者に届く。所要秒数を記録する。
+  C-4 は実装ブランチの上で行い、合格してからその PR をマージする。
 - **C-5 だめだった場合の確定。** C-2 で daemon 経由でも届かなかったら、Codex の受け方は `on_request`（話しかけたときだけ）で確定し、`docs/connections/agent-setup.md` の Codex の節を「外から起こせない」と理由付きで書く。
   CLI（`codex` の TUI）で動く会話なら届く、という結果なら、「CLI の会話を受信用にする」案を本人に出す。
 
 ## 4. 実装（実機確認のあと）
 
-C-2 と C-4 が合格したら、次の 1 本の PR にする。
+C-2 が合格したら、次の 1 本の PR を作り、C-4 をそのブランチで確かめてからマージする。
 
-1. `src/agent-notify/codex.ts`：WebSocket での `thread/resume`→`turn/start` をやめ、`codex queue --thread <id> --message <決まった一文>` を 20 秒で打ち切って呼ぶ形にする。コマンドは引数の配列で渡し、シェルを通さない。
+1. `src/agent-notify/codex.ts`：起こす道として、画面の `show()`（届いた時点）で `codex queue --thread <id> --message <決まった一文>` を 20 秒で打ち切って呼ぶ。既読にはしない。コマンドは引数の配列で渡し、シェルを通さない。
+   「対応する」後の `codexHandoff` は残し、WebSocket での `thread/resume`→`turn/start` を `codex queue`（承認済みの `handoff_prompt`）に替える。
 2. `scripts/hab-notify.ts`：`codex` の設定から `app_server` を外し、`codex_bin`（既定 `codex`）と `thread_id` だけにする。
 3. 台帳の受け方：Codex を `hook` にする（Muse は `poll` 15 分のまま）。
-4. テスト：`test/` に、成功・失敗・時間切れ・スレッドなし（`recipient_absent`）・本文が引数に入らないことの件を足す。`npm test` を通す。
+4. テスト：`test/` に、成功・失敗・時間切れ・スレッドなし（`recipient_absent`）・起こす一文に本文が入らないこと・起こしたあともメッセージが未読のままのこと・「対応する」後の引き渡しが今どおり動くことの件を足す。`npm test` を通す。
 5. 文書：`docs/connections/agent-setup.md` の Codex の節と、verify-hab の機能マップ。
 
 hooks の補助（3.2 の最後）は、C-4 で取りこぼしが見えたときだけ別の PR にする。

@@ -1281,7 +1281,7 @@
     },
     {
       "path": "docs/plans/muse-codex-wake.md",
-      "sha256": "9bae671267081c07148c0f16ed0ea1cadc0839f946eeecb5012527bb1ff55910",
+      "sha256": "704c6018df538d3651cea9a8d92b09c01796a5b163229b436e5ebf06c3dbfa61",
       "role": "context",
       "review": "reviewed",
       "summary": "Design (2026-11-21, not executed) for waking Muse and Codex automatically: Muse stays on product-scheduled polling (no public external wake found), Codex uses the recipient-side notifier calling `codex queue --thread` with one fixed line that prompts hab_inbox (no sender body). Real-device checks M-1 and C-1..C-5 decide; ADR-015/021/022 boundaries unchanged."
