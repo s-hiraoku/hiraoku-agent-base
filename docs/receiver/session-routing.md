@@ -66,7 +66,7 @@ hab-notify --product ~/.config/hab/hermes.product.json run     # LaunchAgent は
 hab-notify --product ~/.config/hab/hermes.product.json units   # 受け持つセッションの一覧、会話がまだあるか、台帳に登録する行
 ```
 
-今の `hab-notify --config x.json run` は「セッションが 1 つの製品」として、同じ読み込みと同じ実行で動かす。今の実行のループは消し、実行の道は 1 本にする。
+`hab-notify --config x.json run` も同じ実行ループで動かす。既存の単体設定では `as_address` は引き続き省略でき、呼び鈴の応答とログの形式も従来どおり。
 
 ### 呼び鈴の答え方
 
@@ -94,7 +94,7 @@ hab-notify --product ~/.config/hab/hermes.product.json units   # 受け持つセ
 ```ts
 // src/agent-notify/product-host.ts（新規）
 export interface SessionUnit {
-  readonly address: Address; // as_address。HAB が「相手がいない」を数える単位
+  readonly address: Address | undefined; // 製品ファイルの単位では必須
   readonly label: string; // 会話の ID
   readonly exclusive: { store: string; screen: string; binding: string };
   readonly interval_ms: number;
@@ -120,7 +120,7 @@ export function runProduct(
 - **セッションの単位は今の notifier のまま。** store・画面・`target`・HAB の接続を、単位ごとに 1 組ずつ持つ。1 つの store にセッションの列を足す形にはしない。足すと、ある会話の「対応する」が別の会話に渡りうる。
 - **単位ごとにループを持つ。** 待ちも単位ごとに持ち、呼び鈴は自分の単位だけを起こす。1 つの会話の引き渡しが遅くても、資格が切れていても、ほかの会話は止まらない。単位どうしで共有して書き換える状態はないので、鍵は要らない。
 - **重複の確かめは 1 か所。** `SessionTable.of` がアドレス・名前・`exclusive` の各値を確かめる。新しく独占させたい資源は、`exclusive` に 1 項目足すだけでよい。
-- **`as_address` は全セッションで必須。** HAB への問い合わせに必ず `expected_agent_id` が付き、HAB の側で本人かを確かめる。
+- **製品ファイルの各セッションには `as_address` が必須。** HAB への問い合わせに `expected_agent_id` が付き、HAB が本人かを確かめる。単体設定で `as_address` を省くと、呼び鈴を起点に会話の終了を HAB に報告できない。
 - **資格ファイルは process の中で 1 つに束ねる（`TokenPool`）。** 同じ `token.oauth.file` を指すセッションは、1 つの `OAuthTokenFile` で更新する。起動を断るのは次の 3 つ。
   - 同じファイルを別の設定で更新しようとしている。
   - 別のファイルに同じ refresh token がある（ハッシュで比べ、表示はしない）。回転する token を 2 回使うと、使い回しの検知で grant ごと取り消される。
@@ -213,5 +213,5 @@ export function runProduct(
 ## 決まっていないこと（既定で進める）
 
 - 台帳のセッション名を Hermes の会話の ID（`20261121_093000_ab12cd` のような文字列）にする。読みやすい名前を別に持つと、値が 3 つに増えて食い違う。読みやすさを優先したいなら、設定に `session` を足し、起動時に重複を確かめる形に戻せる。
-- `--config … run` で `as_address` のない設定は、`as_address_required` で起動しないようにする。Mac mini の設定に 1 行足す手順は、展開のときに書く。
+- `--config … run` では `as_address` のない既存設定も使える。`--product … run` に移すときは各セッションに `as_address` を設定する。
 - 会話の存在を確かめる口があるセッションでは、`refreshPresence` を定期確認の間隔で実行する。`mayPeek` で受信箱を確認できることを確かめてから `hab_peek` を呼ぶ。

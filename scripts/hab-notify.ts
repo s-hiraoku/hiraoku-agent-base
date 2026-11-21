@@ -4,7 +4,9 @@
  * Hermes Desktop reader), `statusline` (the Claude Code status line) and `show` (one notice
  * for its recipient) print message text, and only to the recipient's own screen.
  *
- *   hab-notify --config <notify.json> run            keep checking every interval_ms
+ *   hab-notify --product <product.json> run|units    every session in sessions_dir, one doorbell
+ *       (docs/receiver/session-routing.md; `units` prints each session and its ledger line)
+ *   hab-notify --config <notify.json> run|units      the same, as a product of one session
  *   hab-notify --config <notify.json> check          check once
  *   hab-notify --config <notify.json> list           notices waiting for a choice
  *   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
@@ -30,12 +32,7 @@
  *
  * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
  */
-import { createNotifyCheckLog } from "./lib/notify-check-log.ts";
 import { lstatSync, readFileSync, renameSync } from "node:fs";
-import {
-  startWakeListener,
-  wakeableSleep,
-} from "../src/agent-notify/wake-listener.ts";
 import { sessionProbe } from "../src/agent-notify/session-probe.ts";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
@@ -75,8 +72,14 @@ import {
   validTokenUrl,
 } from "../src/agent-notify/oauth-token.ts";
 
+/** Commands that build the product's session units (scripts/lib/notify-product.ts). */
+const isProductCommand = (
+  command: string | undefined,
+): command is "run" | "units" => command === "run" || command === "units";
+
 const usage = `usage:
-  hab-notify --config <notify.json> run|check|list
+  hab-notify --product <product.json> run|units
+  hab-notify --config <notify.json> run|units|check|list
   hab-notify --config <notify.json> decide <message_id> accept|later|decline [sender_id]
   hab-notify --config <notify.json> show-again <message_id> [sender_id]
   hab-notify --config <notify.json> events [--limit N] [--after CURSOR] [--presentation]
@@ -171,7 +174,7 @@ const commandSchema = z.strictObject({
 });
 const label = z.string().min(1).max(2048);
 
-const configSchema = z.strictObject({
+export const configSchema = z.strictObject({
   /** The agent endpoint, such as https://host/hab/mcp; the delivery endpoint is <hab_url>/delivery. */
   hab_url: z.url(),
   agent_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
@@ -309,7 +312,7 @@ const configSchema = z.strictObject({
 });
 export type NotifyConfig = z.infer<typeof configSchema>;
 
-const expand = (path: string) =>
+export const expand = (path: string) =>
   resolve(path.startsWith("~/") ? homedir() + path.slice(1) : path);
 
 /** The doorbell key from an owner-only regular file (ADR-032). */
@@ -377,26 +380,33 @@ export function tokenProblem(
 
 type OAuthConfig = Extract<NotifyConfig["token"], { oauth: unknown }>["oauth"];
 
-function oauthToken(config: NotifyConfig, oauth: OAuthConfig) {
-  return new OAuthTokenFile({
-    file: expand(oauth.file),
-    token_endpoint: oauth.token_endpoint,
-    client_id: oauth.client_id,
-    resource: oauth.resource ?? config.hab_url,
-    ...(oauth.audience ? { audience: oauth.audience } : {}),
-    refresh_before_ms: oauth.refresh_before_s * 1000,
-  });
+/** Everything that decides how the notifier's own grant is refreshed. */
+export const oauthOptions = (config: NotifyConfig, oauth: OAuthConfig) => ({
+  file: expand(oauth.file),
+  token_endpoint: oauth.token_endpoint,
+  client_id: oauth.client_id,
+  resource: oauth.resource ?? config.hab_url,
+  ...(oauth.audience ? { audience: oauth.audience } : {}),
+  refresh_before_ms: oauth.refresh_before_s * 1000,
+});
+
+const oauthToken = (config: NotifyConfig, oauth: OAuthConfig) =>
+  new OAuthTokenFile(oauthOptions(config, oauth));
+
+export interface TokenSource {
+  authorization(): string | Promise<string>;
+  ready(): string | undefined | Promise<string | undefined>;
 }
 
+export const oauthSource = (token: OAuthTokenFile): TokenSource => ({
+  authorization: () => token.authorization(),
+  ready: () => token.problem(),
+});
+
 /** The credential and the pre-call check for the configured token source. */
-function tokenSource(config: NotifyConfig) {
-  if ("oauth" in config.token) {
-    const token = oauthToken(config, config.token.oauth);
-    return {
-      authorization: () => token.authorization(),
-      ready: () => token.problem(),
-    };
-  }
+export function tokenSource(config: NotifyConfig): TokenSource {
+  if ("oauth" in config.token)
+    return oauthSource(oauthToken(config, config.token.oauth));
   return {
     authorization: () => readToken(config),
     ready: () => tokenProblem(config),
@@ -531,7 +541,7 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
 
 /** `statusline`: the Claude Code status line for the bound session; never calls HAB. */
 /** Quotes one shell word unless it is plainly safe. */
-const shellWord = (word: string) =>
+export const shellWord = (word: string) =>
   /^[A-Za-z0-9_./:=@+-]+$/.test(word)
     ? word
     : `'${word.replaceAll("'", "'\\''")}'`;
@@ -600,7 +610,11 @@ function events(config: NotifyConfig, args: string[]) {
   });
 }
 
-export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
+export function createNotifier(
+  config: NotifyConfig,
+  screen?: AgentScreen,
+  token = tokenSource(config),
+) {
   const base = {
     agent_id: config.agent_id,
     max_request_bytes: 65536,
@@ -620,7 +634,6 @@ export function createNotifier(config: NotifyConfig, screen?: AgentScreen) {
     json_depth: 32,
     json_nodes: 100_000,
   };
-  const token = tokenSource(config);
   const common = {
     limits,
     authorization: token.authorization,
@@ -707,7 +720,7 @@ async function loginCommand(
  * The MCP transport reports a credential that could not be read as transport_failed. When
  * the token itself is the cause (expired or missing), that is named instead.
  */
-function errorCode(error: unknown, config?: NotifyConfig): string {
+export function errorCode(error: unknown, config?: NotifyConfig): string {
   const code = error instanceof MessagingError ? error.code : "failed";
   if (code !== "transport_failed" || !config || "oauth" in config.token)
     return code;
@@ -724,6 +737,15 @@ export async function main(
   out = console.log,
   input: () => string = () => readFileSync(0, "utf8"),
 ) {
+  const productPath = args[0] === "--product" ? args[1] : undefined;
+  if (productPath && isProductCommand(args[2]) && args.length === 3) {
+    const product = await import("./lib/notify-product.ts");
+    return product.productCommand(
+      () => product.readProduct(productPath),
+      args[2],
+      out,
+    );
+  }
   if (args[0] !== "--config" || !args[1] || !args[2]) {
     out(usage);
     return 2;
@@ -732,6 +754,15 @@ export async function main(
     JSON.parse(readFileSync(expand(args[1]), "utf8")),
   );
   const [command, id, choice, sender] = args.slice(2);
+  if (isProductCommand(command)) {
+    // notify-product builds on this module, so it is loaded only when needed.
+    const product = await import("./lib/notify-product.ts");
+    return product.productCommand(
+      () => product.productOfOne(config),
+      command,
+      out,
+    );
+  }
   if (command === "login") return loginCommand(config, out);
   if (command === "events") {
     // Reads only the local screen file: no token, store or HAB call.
@@ -995,66 +1026,6 @@ export async function main(
         // The optional third argument is the sender_id.
         out(JSON.stringify(await notifier.showAgain(id, choice)));
         return 0;
-      case "run": {
-        let stopped = false;
-        const stop = () => {
-          stopped = true;
-        };
-        process.once("SIGTERM", stop);
-        process.once("SIGINT", stop);
-        // An error that repeats on every check, such as waiting for the agent to refresh its
-        // token, is logged once when it starts and once when it ends.
-        const checkLog = createNotifyCheckLog(out);
-        const timer = wakeableSleep();
-        process.once("SIGTERM", () => timer.ring());
-        process.once("SIGINT", () => timer.ring());
-        const probe = configuredProbe(config);
-        const listener = config.wake
-          ? await startWakeListener({
-              port: config.wake.port,
-              secret: readWakeSecret(config.wake.secret_file),
-              ...(config.screen.type === "hermes-desktop" && probe
-                ? {
-                    binding: {
-                      address: config.as_address,
-                      session: config.screen.session_id,
-                    },
-                  }
-                : {}),
-              onWake: async () => {
-                if (probe) {
-                  const presence = await probe();
-                  checkLog.session(presence);
-                  // ADR-032: HAB counts this answer toward "recipient absent".
-                  if (presence === "gone") return "session_gone";
-                  if (presence === "unknown") return "session_unconfirmed";
-                }
-                timer.ring();
-                return "accepted";
-              },
-            })
-          : undefined;
-        while (!stopped) {
-          // hab_peek can clear absence, so wait for a positive probe before calling it.
-          const presence = probe ? await probe() : undefined;
-          if (presence) checkLog.session(presence);
-          if (presence === undefined || presence === "present")
-            try {
-              const started = performance.now();
-              const shown = await notifier.check();
-              checkLog.succeeded(
-                shown,
-                Math.round(performance.now() - started),
-              );
-            } catch (error) {
-              const code = errorCode(error, config);
-              checkLog.failed(code);
-            }
-          if (!stopped) await timer.sleep(config.interval_ms);
-        }
-        await listener?.close();
-        return 0;
-      }
     }
     out(usage);
     return 2;

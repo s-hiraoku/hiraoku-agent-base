@@ -67,15 +67,15 @@ DCR を閉じても、すでに登録されたアプリのログインと refres
 - [常用 MCP 接続](../operations/persistent-mcp-auth.md)は、止めるときに host 側の `revoked` と Auth0 側の取り消しの両方を求めている。Auth0 でアプリを消すだけでは足りない。
 - `hab:admin disconnect` はグループの全接続を外すので、今つながっている手作りの接続まで止めてしまう。台帳を手で書き換えるのは、承認待ちでなくしたい手作業そのものであり、書き損じると台帳全体が読めなくなる（同じ組の重複や 100 行超えで `parseOAuthConfig` が失敗する）。
 
-**足すもの：`hab:admin revoke --connection <connection_id>`。** 1 つの接続だけを止める。
+**足すもの：`hab:admin revoke --connection <connection_id>`。** 1 つの接続だけを止める。2026-11-21 に実装した（`src/host/admin-pending.ts` の `hostAdminRevoke`、`src/host/admin.ts` の `hostAdminRevokeBinding`、試験は `test/host-participation.test.js` の「DCR plan 6」）。
 
-1. 台帳を読む前に `approve` と同じ台帳単位のプロセス間書き込みロックを取る。その行を `state: revoked` にし、バックアップを取って一時ファイルから置き換えるまで同じロックを持つ。
+1. 台帳を読む前に `approve` と同じ台帳単位のプロセス間書き込みロックを取る。host と同じ規則で台帳を読み、設定された ingress のリソースと照合する。その行を `state: revoked` にし、バックアップを取って一時ファイルから置き換える。Registry の結び付けを外すまで、同じロックを持つ。`connect` も接続を読み直して結び付けるまで同じロックを使う。
 2. Registry のその接続の結び付けだけを `revokeGroupBinding` で外し、グループの他の接続は残す。
 3. どちらかが済んでいれば飛ばすので、途中で止まっても再実行で揃う。
 
 つなぎ直しの片付けにも、試験の戻し方にも、このコマンドを使う。`approve` に付け替え用の引数は足さない（コマンドを 1 つにする）。
 
-テスト（`test/host-admin.test.js`）：古い接続が `active` のまま新しい接続を同じアドレスへ承認できること。`revoke --connection` のあと古い組の token が断られ、新しい組とグループの他の接続は通ること。台帳だけ済んだ状態からの再実行で揃うこと。同じ台帳で新しい組の `approve` と古い接続の `revoke --connection` を並行実行しても、承認と失効の両方が残ること。
+テスト（`test/host-participation.test.js`）：古い接続が `active` のまま新しい接続を同じアドレスへ承認できること。`revoke --connection` のあと古い組の token が断られ、新しい組とグループの他の接続は通ること。台帳だけ済んだ状態からの再実行で揃うこと。同じ台帳で新しい組の `approve` と古い接続の `revoke --connection` を並行実行しても、承認と失効の両方が残ること。
 
 承認待ちを実装するスレッドに伝えること：
 

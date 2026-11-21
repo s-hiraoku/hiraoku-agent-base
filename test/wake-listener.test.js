@@ -101,12 +101,10 @@ test("the wake key must be a whsec_ key in an owner-only file", (t) => {
   );
 });
 
-const BINDING = { address: "hermes@hermes.hab", session: "bound-session" };
-
-function ringBody(overrides = {}) {
+function ringBody(data = {}) {
   return JSON.stringify({
     name: HAB_EVENT_NAME,
-    data: { to: BINDING.address, session: BINDING.session, ...overrides },
+    data: { to: "hermes@hermes.hab", session: "bound-session", ...data },
   });
 }
 
@@ -118,65 +116,38 @@ function ring(port, body) {
   });
 }
 
-test("only a matching signed ring for a gone session is answered 410", async (t) => {
-  const answers = ["session_gone", "accepted", undefined];
-  const thrown = [];
+test("the listener hands each signed body to its owner and answers what the owner decided", async (t) => {
+  const answers = [
+    "session_gone",
+    "accepted",
+    "session_unconfirmed",
+    "bad_request",
+  ];
+  const received = [];
   const listener = await startWakeListener({
     port: 0,
     secret: SECRET,
-    binding: BINDING,
-    onWake: async () => {
-      if (!answers.length) {
-        thrown.push(1);
-        throw new Error("probe crashed");
-      }
+    onWake: async (body) => {
+      received.push(body);
+      if (!answers.length) throw new Error("owner crashed");
       return answers.shift();
     },
   });
   t.after(() => listener.close());
-  const gone = await ring(listener.port, ringBody());
-  assert.equal(gone.status, 410);
-  assert.deepEqual(await gone.json(), { reason: "session_gone" });
-  const accepted = await ring(listener.port, ringBody());
-  assert.equal(accepted.status, 200);
-  assert.deepEqual(await accepted.json(), {});
-  for (let index = 0; index < 2; index++) {
-    const unknown = await ring(listener.port, ringBody());
-    assert.equal(unknown.status, 200);
-    assert.deepEqual(await unknown.json(), { reason: "session_unconfirmed" });
-  }
-  assert.equal(thrown.length, 1);
-});
-
-test("signed rings without the configured address and session cannot report presence", async (t) => {
-  const listener = await startWakeListener({
-    port: 0,
-    secret: SECRET,
-    binding: BINDING,
-    onWake: () => "session_gone",
-  });
-  t.after(() => listener.close());
-  for (const body of [
-    ringBody({ to: "other@hermes.hab" }),
-    ringBody({ session: "other-session" }),
-    ringBody({ session: undefined }),
-    '{"to":"hermes@hermes.hab"}',
-    '{"type":"verification","challenge":"fixture"}',
-  ]) {
+  const bodies = [0, 1, 2, 3, 4].map((n) => ringBody({ n }));
+  const responses = [];
+  for (const body of bodies) {
     const response = await ring(listener.port, body);
-    assert.equal(response.status, 200, body);
-    assert.deepEqual(await response.json(), { reason: "session_unconfirmed" });
+    responses.push([response.status, await response.text()]);
   }
-  const unbound = await startWakeListener({
-    port: 0,
-    secret: SECRET,
-    binding: { address: undefined, session: BINDING.session },
-    onWake: () => "session_gone",
-  });
-  t.after(() => unbound.close());
-  const response = await ring(unbound.port, ringBody());
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { reason: "session_unconfirmed" });
+  assert.deepEqual(received, bodies);
+  assert.deepEqual(responses, [
+    [410, JSON.stringify({ reason: "session_gone" })],
+    [200, "{}"],
+    [200, JSON.stringify({ reason: "session_unconfirmed" })],
+    [400, ""],
+    [200, JSON.stringify({ reason: "session_unconfirmed" })],
+  ]);
 });
 
 test("the session probe trusts only an explicit gone or present", async (t) => {
