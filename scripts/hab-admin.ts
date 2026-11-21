@@ -15,6 +15,7 @@ import {
   hostAdminPending,
   hostAdminApprove,
   hostAdminReject,
+  hostAdminRevoke,
 } from "../src/host/admin-pending.ts";
 import {
   hostAdminDoorbellAdd,
@@ -28,6 +29,7 @@ const usage = `usage:
   hab-admin --config <service.local.json> pending
   hab-admin --config <service.local.json> approve --pending <pending_id> --address <bot@agent.hab> [--days <1..3650>]
   hab-admin --config <service.local.json> reject --pending <pending_id>
+  hab-admin --config <service.local.json> revoke --connection <connection_id>
   hab-admin --config <service.local.json> doorbell add --address <bot@agent.hab> --url <url> --secret-file <path>
   hab-admin --config <service.local.json> doorbell remove --address <bot@agent.hab>
   hab-admin --config <service.local.json> doorbell list
@@ -67,6 +69,7 @@ function parse(args: string[]) {
         "--replace",
         "--pending",
         "--days",
+        "--connection",
         "--url",
         "--secret-file",
       ].includes(key) ||
@@ -110,6 +113,12 @@ export function main(args = process.argv.slice(2)) {
     Object.keys(options).length === 1
   )
     return hostAdminReject(config, options["--pending"]);
+  if (
+    command === "revoke" &&
+    options["--connection"] &&
+    Object.keys(options).length === 1
+  )
+    return hostAdminRevoke(config, options["--connection"]);
   if (
     command === "doorbell-add" &&
     Object.keys(options).length === 3 &&

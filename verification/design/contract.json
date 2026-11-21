@@ -168,7 +168,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/README.md",
-      "sha256": "f9fbdcf77a5dd951eafaa95bd041f1f458ae0b8a8178d23f74166b76aac3d21f",
+      "sha256": "6fe1a98d7085fcc40741932ff949ec03d5f26bf59fc5fab069a21d4a82997c50",
       "role": "normative",
       "review": "reviewed",
       "summary": "Authoritative maintained feature map with twelve entries (ADR-020 adds the agent-tools entry, ADR-021 the arrival-notifier entry) (the ninth is the configured Relay's A2A entry, including the `result_window_expired` failure of a Task whose reply window closed) and feature IDs; requires fresh owned state, protocol actions and independent mutation evidence, prompt-gated terminal driving and honest missing-precondition reporting. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. The arrival-notifier entry also names the Codex, Claude Code and ChatGPT connector (Dots) screens. Reviewed 2026-11-14 maintain pass: boundary index no longer claims optional Task-state TAP observation. ADR-022 adds the mcp-events entry (ingress MCP Events doorbell). ADR-023 (2026-11-17): the arrival-notifier entry also names the opt-in automatic accept for allowed senders with its caps and audit file. 2026-11-21 (PR-7/ADR-032): mcp-events index line also names recipient_absent.",
@@ -224,7 +224,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/configured-host.md",
-      "sha256": "960d1328df02d8552b43f8b3c647e5388a8bcb61bb6c230e0ae34c0ed209e15a",
+      "sha256": "9615bb60784e9bc5e41fe245fc4cb0b8318ffc5fb4fab835f0b261bb35280c5f",
       "role": "normative",
       "review": "reviewed",
       "summary": "Shipped host and operator CLI recipe over the SQLite delivery store: fixed redacted refusal codes including retired-config, legacy JetStream journal and broker/pump sections, unrecognized limits.* keys, out-of-range registry limits, idempotent connect, credential/binding status, disconnect and group stop. ADR-024 (2026-11-17): admin-status inboxes with unread_waiting and doorbell_lapsed. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. 2026-11-19 (PR #235): admin-status inboxes add doorbell_last_rang_at/doorbell_last_status/doorbell_last_delivered_at and doorbell_failing; no other behavior change. 2026-11-21 (#252/#253): admin-session notes a provisional session follows a rename and is corrected at start; exact address lookup.",
@@ -1289,7 +1289,7 @@
     },
     {
       "path": "docs/plans/auth0-dcr.md",
-      "sha256": "1d1ab07766ffbd6f3671dd81229dc0f42f1ffb8fc74009ce516f1121ecc03ad0",
+      "sha256": "0c22dd9acfa21de05fcfa7ecea12c043d9c591ce9532f6b3963f62d6849b4336",
       "role": "context",
       "review": "reviewed",
       "summary": "Plan for Auth0 Dynamic Client Registration and operator approval of a pending (subject, client_id) pair. It requires strict registration mode, the HAB API scopes, an owner-only login policy, and matching the client ID from the intended product authorization request plus the registered callback URL set before approval. Trial-only reconnects exercise 401 handling, refresh issuance and revocation, and individual connection cleanup. Approval and revocation share the per-ledger write lock. Tenant and product behavior need live verification.",
@@ -2694,8 +2694,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 17,
-          "end": 17,
+          "start": 18,
+          "end": 18,
           "excerpt_sha256": "bc76086a1621b520c87f9cbbbb8a7e48ae2405b5c24ade74a17efcdfb3caebb0"
         }
       ]

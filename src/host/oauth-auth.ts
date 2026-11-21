@@ -12,6 +12,9 @@ const claim = z
   .min(1)
   .max(512)
   .regex(/^[^\x00-\x1f\x7f]+$(?![\s\S])/);
+export function isOAuthConnectionId(value: unknown): value is string {
+  return claim.safeParse(value).success;
+}
 const b64 = z
   .string()
   .min(1)

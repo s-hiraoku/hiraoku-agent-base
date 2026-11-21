@@ -3,7 +3,7 @@
  * and keys, opens only the existing registry, and never issues or prints credentials.
  * Every mutation goes through the Registry's own administrator port.
  */
-import { existsSync } from "node:fs";
+import { closeSync, existsSync, openSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -34,6 +34,38 @@ export class HostAdminError extends Error {
     this.code = code;
   }
 }
+
+const ledgersHeld = new Set<string>();
+const LEDGER_LOCK_WAIT_MS = 5_000;
+
+/** All actions are synchronous. Approval's nested connect shares the lock it already holds. */
+export function withLedgerLock<T>(ledger: string, action: () => T): T {
+  if (ledgersHeld.has(ledger)) return action();
+  const path = `${ledger}.approve-lock.sqlite`;
+  try {
+    closeSync(openSync(path, "wx", 0o600));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  const db = new DatabaseSync(path, { timeout: LEDGER_LOCK_WAIT_MS });
+  try {
+    try {
+      db.exec("BEGIN IMMEDIATE");
+    } catch (error) {
+      const SQLITE_BUSY = 5;
+      if ((error as { errcode?: number }).errcode === SQLITE_BUSY)
+        throw new HostAdminError("ledger_busy");
+      throw error;
+    }
+    ledgersHeld.add(ledger);
+    return action();
+  } finally {
+    ledgersHeld.delete(ledger);
+    // This transaction only holds a lock. Closing or process exit releases it.
+    db.close();
+  }
+}
+
 export interface ConnectInput {
   address: string;
   connection_id: string;
@@ -195,6 +227,7 @@ function open(configPath: string) {
     a2aRecipient: config.a2a?.recipient,
     directory: config.directory,
     eventsEnabled: !!config.ingress?.events,
+    oauthLedger: config.ingress?.oauth_file,
   };
 }
 
@@ -292,9 +325,12 @@ export function hostAdminRename(configPath: string, input: RenameInput) {
 function withRegistry<T>(
   configPath: string,
   action: (opened: ReturnType<typeof open>) => T,
+  lockOAuthLedger = false,
 ): T {
   const opened = open(configPath);
   try {
+    if (lockOAuthLedger && opened.oauthLedger)
+      return withLedgerLock(opened.oauthLedger, () => action(opened));
     return action(opened);
   } finally {
     opened.registry.close();
@@ -716,6 +752,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
           : {}),
       };
     },
+    true,
   );
 }
 
@@ -755,6 +792,40 @@ export function hostAdminDisconnect(configPath: string, addressInput: string) {
       already_disconnected: revoked === 0,
       affected_addresses: affected,
       address: summary(after, view.groups),
+    };
+  });
+}
+
+/**
+ * Revokes the one Registry binding of `principal`, leaving the group's other
+ * connections alone (`disconnect` revokes them all). Safe to rerun. When it was the
+ * group's last live binding, the Registry stops the group, which the result reports.
+ */
+export function hostAdminRevokeBinding(
+  configPath: string,
+  principal: IndividualPrincipal,
+) {
+  return withRegistry(configPath, ({ registry }) => {
+    const reservation = registry.findPrincipal(operator, principal);
+    if (!reservation) return { binding: "none" as const };
+    if (reservation.state === "active")
+      registry.revokeGroupBinding(operator, {
+        request_id: request(),
+        binding_id: reservation.binding_id,
+        expected_epoch: registry.inspectGroup(operator, reservation.group_id)
+          .epoch,
+      });
+    const group = registry
+      .overview(operator)
+      .groups.find((g) => g.group_id === reservation.group_id)!;
+    return {
+      binding:
+        reservation.state === "active"
+          ? ("revoked" as const)
+          : ("already_revoked" as const),
+      group_id: group.group_id,
+      group_state: group.state,
+      remaining_active_bindings: group.active_binding_ids.length,
     };
   });
 }
