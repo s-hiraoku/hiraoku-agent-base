@@ -305,3 +305,25 @@ test("hab-admin CLI sets receive and session and refuses malformed flags", async
     { code: "address_not_found" },
   );
 });
+
+test("an operator session name cannot take the form of an address, so a later address still enrolls", async (t) => {
+  const f = await started(t);
+  assert.throws(
+    () =>
+      hostAdminSession(f.configPath, {
+        address: "one@dot.hab",
+        session: "three@dot.hab",
+        request_id: "addr-1",
+      }),
+    { code: "invalid_registry_request" },
+  );
+  hostAdminSession(f.configPath, {
+    address: "one@dot.hab",
+    session: "three",
+    request_id: "addr-2",
+  });
+  // The provisional session of a later address is its address, never an operator name.
+  const status = hostAdminStatus(f.configPath);
+  assert.equal(address(status, "one@dot.hab").session.session, "three");
+  assert.equal(address(status, "two@dot.hab").session.session, "two@dot.hab");
+});

@@ -139,7 +139,12 @@ const sessionName = z
   .string()
   .min(1)
   .max(128)
-  .regex(/^[^\u0000-\u001f\u007f]+$/);
+  .regex(/^[^\u0000-\u001f\u007f]+$/)
+  // HAB address form is reserved for provisional sessions, which are named after their
+  // address: an operator name in that form could take a future address's session name.
+  .refine((value) => !new RegExp(HAB_ADDRESS_PATTERN).test(value), {
+    message: "a session name must not be a HAB address",
+  });
 const sessionInput = z.strictObject({
   request_id: id,
   agent_id: id,
