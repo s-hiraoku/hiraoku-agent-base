@@ -26,36 +26,36 @@
 | 1 | doctor | 4（どこで止まっているかを 1 コマンドで出す） |
 | 2 | 承認待ちからの登録 | 1（Auth0 のログ探し、台帳の手書き） |
 | 3 | 呼び鈴を台帳に移す | 3（host の再起動） |
-| 4 | 製品レシピと onboard（ping を含む） | 2 と 4（製品ごとの手順を 1 か所から出し、最後に合否を出す） |
+| 4 | ping と製品レシピ、onboard | 2 と 4（試験の 1 通で合否を出し、製品ごとの手順を 1 か所から出す） |
 
 各段は独立した PR にし、前の段がマージされてから次に進む。8 PR 計画との関係は付録 A に置く。
 
 ## 1. どこで止まっているかを診断で出す（doctor）
 
-運用者が `doctor` で1つの宛先を指定する。CLI は `scripts/hab-admin.ts`、台帳と受信状態の読み取りは `src/host/admin.ts` に置く。 `hostAdminStatus` の状態の算出方法を再利用する。診断では既存 DB を読み取り専用で開き、移行が必要な場合は既存の `registry_upgrade_pending` を返す。現在の `hostAdminStatus` の DB を開く処理は移行も呼ぶため、診断には移行を呼ばない経路を使う。
+運用者が `doctor` で宛先を指定する。CLI は `scripts/hab-admin.ts`、台帳と受信状態の読み取りは `src/host/admin.ts` に置き、`hostAdminStatus` と同じ開き方と算出を使う（管理 CLI は移行が要る DB を先に `registry_upgrade_pending` で断るので、診断のための別の開き方は要らない。開いたときの移行処理が何も書かないことをテストで確かめる）。`--address` を付けないときは、全アドレスを 1 行ずつ出す。
 
 ```sh
-npm run hab:admin -- --config <host-config> doctor --address <address>
+npm run hab:admin -- --config <host-config> doctor [--address <address>]
 ```
 
-任意の `--whoami-file <path>` には、運用者が対象アプリで実行した `hab_discover` の `{"action":"whoami"}` が返した構造化結果を渡す。ファイルは JSON 1件、最大64 KiBとする。共有グループで名義が未選択なら、対象アドレスを明示して照会し直す。診断はファイルに記録された名義との一致を報告する。現在の接続や会話の稼働は、対象アプリで再度観測する。 [HAB の自己識別](../connections/mcp-agent-discovery.md#自分を確認する)
+最初の版では、製品で実行した `hab_discover` の結果を運用者が渡す入力（`--whoami-file`）は作らない。手作業が 1 つ増えるうえ、4 章の `ping` で実際の 1 通を確かめるほうが確実だからである。名義の項目は、台帳から分かる範囲（接続・グループ・権限）で出す。
 
 | 表示項目 | 判定に使う情報 |
 | --- | --- |
-| アドレスと接続の紐づけ | 台帳の不変 ID、登録状態、紐づけと必要な権限。 |
-| 採取した応答の名義 | `whoami.selected_identity` と台帳の不変 ID を照合する。一致は `ok`、不一致は `problem`、結果がない場合と名義未選択は `unknown`。 |
-| 対象の会話 | 台帳上の会話名と採取した `host_identity` を別々に表示する。実会話は期限内のホスト側の証明があり、製品内で同じ会話だと照合できたときだけ確認済みとする。紐づけのない `owner_reference` は製品のセッション ID と照合できないので `unknown`。 今の接続はどれも `host_identity` が `unknown`（`not_attested`）で、製品がホストの証明を出せるまでは Hermes 以外は常に `unknown` になる。`hab:admin session` で付けた台帳上の会話名とは別物として表示する。 |
-| 受信方法と動作 | 台帳の `hook`、`poll`、`on_request` と、`status` が観測した呼び鈴の結果や最終既読、`poll_overdue`、`recipient_absent`（と `recipient_absent_since`、PR-7）。`hook` の宛先は、呼び鈴（購読か運用者の登録）があること、最後に鳴らした結果、その後に読まれたかを分けて出す。運用者の呼び鈴が `127.0.0.1` を指す場合は、その製品の notifier の `wake` の待ち受けと鍵が設定されているかを `next_action` で確認させる（診断はホストの外のファイルを読まない）。 |
+| アドレスと接続の紐づけ | 台帳の不変 ID、登録状態、紐づけと必要な権限、接続の承認期限（`approved_until`）。 |
+| 名義 | 接続が結び付くグループと、その中でこのアドレスを選べるか。製品側でどの名義を選んでいるかは分からないので、それは `ping` で確かめる。 |
+| 対象の会話 | 台帳上の会話名（`hab:admin session`）と、仮の名前か運用者が付けた名前か。製品が会話を証明する仕組みはまだないので、実際にその会話が動いているかは `unknown` とし、照合の仕組みは作らない。 |
+| 受信方法と動作 | 台帳の `hook`、`poll`、`on_request` と、`status` が観測した呼び鈴の結果や最終既読、`poll_overdue`、`recipient_absent`（と `recipient_absent_since`、PR-7）、呼び鈴の `live`／`lapsed`。`hook` の宛先は、呼び鈴（購読か運用者の登録）があること、最後に鳴らした結果、その後に読まれたかを分けて出す。運用者の呼び鈴が `127.0.0.1` を指す場合は、その製品の notifier の `wake` の待ち受けと鍵が設定されているかを `next_action` で確認させる（診断はホストの外のファイルを読まない）。 |
 
-応答は `address` と `checks` を持つ JSON とする。 `checks` は `registration`、`reported_identity`、`session`、`receive` の4項目（2 章の承認待ちがあれば `registration` に含める）。各項目は `state`、固定の `reason`、確認に使った公開可能な値 `evidence`、次の操作 `next_action` を持つ。 `state` は `ok`、`problem`、`unknown` のいずれか。コマンド自体が成立したら、各項目の結果を出して終了コード0を返す。アドレスの欠落、DB を読めない場合、不正な JSON は管理 CLI のエラー処理に従う。入力ファイル全体の出力は避け、診断には認証情報やメッセージ本文を含まない項目だけを写す。
+応答は `address` と `checks` を持つ JSON とする。 `checks` は `registration`、`identity`、`session`、`receive` の4項目（2 章の承認待ちがあれば `registration` に含める）。各項目は `state`、固定の `reason`、確認に使った公開可能な値 `evidence`、次の操作 `next_action` を持つ。 `state` は `ok`、`problem`、`unknown` のいずれか。コマンド自体が成立したら、各項目の結果を出して終了コード0を返す。登録されていないアドレスと DB を読めない場合は管理 CLI のエラー処理に従う。診断には認証情報やメッセージ本文を含まない項目だけを写す。
 
 たとえば呼び鈴が HTTP 2xx で受理され、最終既読が更新されていなければ、受理時刻と最終既読を別々に出す。次の操作として対象製品の実行履歴を確認するよう表示する。会話が観測できない状態は `unknown` とし、宛先の受付可否は台帳の登録状態に従う。
 
 ### 診断の受入条件
 
-- [ ] `test/host-admin.test.js` で、対象アドレスの欠落、認証情報の期限切れ、名義不一致、会話の未観測、通知の受理と未読の併存を検証する。
+- [ ] `test/host-admin.test.js` で、登録されていないアドレス、接続の承認期限切れ、呼び鈴なし、呼び鈴の受理と未読の併存、`poll_overdue`、`recipient_absent`、全アドレスの一覧を検証する。
 - [ ] `doctor` の実行前後で、宛先の登録状態、接続、既読、通知回数が一致する。
-- [ ] Hermes Desktop の対象会話から取得した `whoami` を照合し、4 章の `ping` で実際の会話への到達を別に記録する。CLI の診断だけで実機の到達を合格にしない。
+- [ ] 実際の会話への到達は 4 章の `ping` で別に記録する。CLI の診断だけで実機の到達を合格にしない。
 
 ## 2. 承認待ちからの登録
 
@@ -116,9 +116,11 @@ npm run hab:admin -- --config <host-config> doctor --address <address>
 4. レシピの「AI に渡す文」を、アドレスを埋めて出す。
 5. `ping` で試験の 1 通を送り、呼び鈴・既読・返信の時刻と、止まった段を出す。
 
-`hab:admin ping --address <a> [--wait <秒>]` は単独でも使える。送信元は host の運用者用アドレスで、本文は固定の短い試験文にする。返信は求めるが、来なくても失敗にはしない（「返信なし」と出す）。
+`hab:admin ping --address <a> [--wait <秒>]` は単独でも使える。送信元は試験専用のアドレス（例 `ping@hab.hab`）を host に 1 つだけ作り、既存のエージェントのアドレスは使わない（受け手に本物のメッセージに見えないように）。本文は固定の短い試験文にし、`kind` は `notice` にする。返信は求めるが、来なくても失敗にはしない（「返信なし」と出す）。
 
 [設定手順書](../connections/agent-setup.md)は、レシピから作る形に寄せていく（最初の PR では手で合わせる）。
+
+4 章は `ping` を先に出し、レシピと `onboard` はそのあとにする。1〜3 章と `ping`、doctor の「次の操作」、手順書で十分に迷わなくなったと分かれば、`onboard` は作らずに止める。
 
 受入条件：Dots・Grok・Muse・Hermes・claude.ai の 5 製品のレシピがある。`onboard` を途中で止めて再実行しても、済んだ段を繰り返さない。`ping` の結果が doctor の表示と食い違わない。
 
