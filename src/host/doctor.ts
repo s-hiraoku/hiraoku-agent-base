@@ -228,9 +228,12 @@ function reading(
   // Mail for a product that only reads when asked is expected to wait.
   if (mode === "on_request") return check("waiting_for_request", evidence);
   // An accepted ring for this mail, no read since, and the product has had time to act.
+  // Only for an address seen reading with hab_inbox: a notifier reads through the
+  // delivery tools, so a card awaiting its user's choice is not a missed ring.
   const rang = inbox.doorbell_last_delivered_at;
   if (
     rang &&
+    inbox.last_inbox_read_at &&
     inbox.oldest_unread_at &&
     Date.parse(rang) >= Date.parse(inbox.oldest_unread_at) &&
     before(rang, inbox.last_inbox_read_at) &&

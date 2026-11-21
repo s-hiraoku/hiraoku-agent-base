@@ -188,6 +188,13 @@ test("reading tells a taken ring that was never read from mail still in time", (
     reasons(status({ inboxes: unread })).reading,
     "problem:rang_not_read",
   );
+  // Never seen reading with hab_inbox (a notifier reads through the delivery tools):
+  // a card awaiting its user's choice is not a missed ring.
+  assert.equal(
+    reasons(status({ inboxes: { ...unread, last_inbox_read_at: null } }))
+      .reading,
+    "ok:unread_recent",
+  );
   // Within the grace after the ring, the product may still be on its way.
   assert.equal(
     reasons(
