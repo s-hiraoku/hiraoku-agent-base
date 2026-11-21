@@ -16,6 +16,11 @@ import {
   hostAdminApprove,
   hostAdminReject,
 } from "../src/host/admin-pending.ts";
+import {
+  hostAdminDoorbellAdd,
+  hostAdminDoorbellRemove,
+  hostAdminDoorbellList,
+} from "../src/host/admin-doorbells.ts";
 
 const usage = `usage:
   hab-admin --config <service.local.json> status
@@ -23,6 +28,9 @@ const usage = `usage:
   hab-admin --config <service.local.json> pending
   hab-admin --config <service.local.json> approve --pending <pending_id> --address <bot@agent.hab> [--days <1..3650>]
   hab-admin --config <service.local.json> reject --pending <pending_id>
+  hab-admin --config <service.local.json> doorbell add --address <bot@agent.hab> --url <url> --secret-file <path>
+  hab-admin --config <service.local.json> doorbell remove --address <bot@agent.hab>
+  hab-admin --config <service.local.json> doorbell list
   hab-admin --config <service.local.json> connect --address <bot@agent.hab> --connection-id <id> [--operations resolve,submit,status,poll,ack]
   hab-admin --config <service.local.json> disconnect --address <bot@agent.hab>
   hab-admin --config <service.local.json> receive --agent-name <product> --mode hook|poll|on_request [--interval-ms <60000..86400000>] --request-id <journaled-id>
@@ -32,7 +40,12 @@ const usage = `usage:
 function parse(args: string[]) {
   if (args[0] !== "--config" || !args[1] || !args[2])
     throw new HostAdminError("usage");
-  const [, config, command, ...rest] = args;
+  const [, config, first, ...rest] = args;
+  // `doorbell add|remove|list` reads as one command.
+  const command =
+    first === "doorbell" && ["add", "remove", "list"].includes(rest[0])
+      ? `doorbell-${rest.shift()}`
+      : first;
   const options: Record<string, string | undefined> = {};
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i],
@@ -54,6 +67,8 @@ function parse(args: string[]) {
         "--replace",
         "--pending",
         "--days",
+        "--url",
+        "--secret-file",
       ].includes(key) ||
       value === undefined ||
       Object.hasOwn(options, key)
@@ -95,6 +110,26 @@ export function main(args = process.argv.slice(2)) {
     Object.keys(options).length === 1
   )
     return hostAdminReject(config, options["--pending"]);
+  if (
+    command === "doorbell-add" &&
+    Object.keys(options).length === 3 &&
+    options["--address"] &&
+    options["--url"] &&
+    options["--secret-file"]
+  )
+    return hostAdminDoorbellAdd(config, {
+      address: options["--address"],
+      url: options["--url"],
+      secret_file: options["--secret-file"],
+    });
+  if (
+    command === "doorbell-remove" &&
+    Object.keys(options).length === 1 &&
+    options["--address"]
+  )
+    return hostAdminDoorbellRemove(config, options["--address"]);
+  if (command === "doorbell-list" && !Object.keys(options).length)
+    return hostAdminDoorbellList(config);
   if (
     command === "rename" &&
     Object.keys(options).length === 5 &&

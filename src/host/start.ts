@@ -1,15 +1,9 @@
 /** Starts the configured host: local auth, optional OAuth ingress, SQLite delivery and audit. */
-import {
-  closeSync,
-  constants,
-  fstatSync,
-  openSync,
-  readFileSync,
-} from "node:fs";
 import { LocalAudit } from "../local-audit.ts";
 import { LocalBearerAuthority } from "./local-auth.ts";
 import { PinnedOAuthAuthority } from "./oauth-auth.ts";
 import { PendingConnections } from "./oauth-pending.ts";
+import { readDoorbellSecretFile } from "./doorbell-secret.ts";
 import { startHostServer } from "./server.ts";
 import { createSqliteDelivery } from "./delivery.ts";
 import { HostStartError, readHostConfig, stage } from "./config.ts";
@@ -57,24 +51,7 @@ export function withDoorbellSecrets<
   return {
     ...rest,
     doorbells: doorbells.map(({ address, url, secret_file }) => {
-      let secret: string;
-      try {
-        const fd = openSync(
-          secret_file,
-          // O_NONBLOCK: a FIFO with no writer must be refused, not hang the start.
-          constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-        );
-        try {
-          const info = fstatSync(fd);
-          if (!info.isFile() || (info.mode & 0o077) !== 0 || info.size > 1024)
-            throw Error();
-          secret = readFileSync(fd, "utf8").trim();
-        } finally {
-          closeSync(fd);
-        }
-      } catch {
-        throw Error("unsafe_doorbell_secret");
-      }
+      const secret = readDoorbellSecretFile(secret_file);
       return { address, url, secret };
     }),
   };
@@ -162,13 +139,21 @@ export async function startHost(configPath: string) {
     try {
       sink = new LocalAudit(config.audit_directory, config.audit_max_bytes);
       // Settings an older config may still carry; the ready line names them once.
-      const ignored = config.ingress?.events?.inbox_check
-        ? ["ingress.events.inbox_check"]
-        : [];
+      const ignored = [
+        ...(config.ingress?.events?.inbox_check
+          ? ["ingress.events.inbox_check"]
+          : []),
+        // A doorbell added with hab:admin wins over the config entry for its address.
+        ...(host.doorbells_replaced ?? []).map(
+          (address) => `ingress.events.doorbells[${address}]`,
+        ),
+      ];
       if (config.ingress) pending = new PendingConnections(config.directory);
       const opened = pending;
+      const { doorbells_replaced: _replaced, ...shown } = host;
+      void _replaced;
       return Object.freeze({
-        ...host,
+        ...shown,
         close: async () => {
           await host.close();
           opened?.close();
