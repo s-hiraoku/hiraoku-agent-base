@@ -519,6 +519,11 @@ export interface StaticDoorbell {
   url: string;
   /** Undefined while an existing managed registration cannot resolve its secret file. */
   secret: string | undefined;
+  /**
+   * Changes each time the operator registers the doorbell again (`hab:admin doorbell
+   * add`), so a registration repeated after a 410 removed the callback is applied anew.
+   */
+  revision?: number;
 }
 
 export class HabEvents {
@@ -666,6 +671,9 @@ export class HabEvents {
       .prepare("DELETE FROM hab_event_checks WHERE subscription_id=?")
       .run(id);
     if (!removed.changes) return;
+    this.#db
+      .prepare("DELETE FROM hab_event_rerings WHERE subscription_id=?")
+      .run(id);
     this.#db
       .prepare(
         `INSERT INTO hab_event_lapses (agent_id,lapsed_at,reason) VALUES (?,?,?)
@@ -894,6 +902,11 @@ export class HabEvents {
           .run(secret, id);
         continue;
       }
+      // An older host may have left a pending repeat when ending this callback.
+      // The same URL reuses the subscription ID, but starts a new registration.
+      this.#db
+        .prepare("DELETE FROM hab_event_rerings WHERE subscription_id=?")
+        .run(id);
       // ADR-032: a doorbell the operator newly registers means the product is back for
       // this address. An unchanged one on restart took the branch above and keeps absence.
       this.#notePresent(doorbell.agent_id);

@@ -426,22 +426,24 @@ export async function startHostServer(options: HostServerOptions) {
         const replaced = new Set(registered.map((row) => row.agent_id));
         return [
           ...fromConfig.filter((d) => !replaced.has(d.agent_id)),
-          ...registered.flatMap(({ agent_id, url: rawUrl, secret_file }) => {
-            if (!eventSource.addressOf(agent_id)) return [];
-            let url: string;
-            try {
-              url = operatorCallbackUrl(rawUrl).href;
-            } catch {
-              return [];
-            }
-            let secret: string | undefined;
-            try {
-              secret = doorbellSecret(readDoorbellSecretFile(secret_file));
-            } catch {
-              // The valid registration remains authoritative while its file is unavailable.
-            }
-            return [{ agent_id, url, secret }];
-          }),
+          ...registered.flatMap(
+            ({ agent_id, url: rawUrl, secret_file, added_at }) => {
+              if (!eventSource.addressOf(agent_id)) return [];
+              let url: string;
+              try {
+                url = operatorCallbackUrl(rawUrl).href;
+              } catch {
+                return [];
+              }
+              let secret: string | undefined;
+              try {
+                secret = doorbellSecret(readDoorbellSecretFile(secret_file));
+              } catch {
+                // The valid registration remains authoritative while its file is unavailable.
+              }
+              return [{ agent_id, url, secret, revision: added_at }];
+            },
+          ),
         ];
       };
       events = new HabEvents(eventSource, {
