@@ -19,7 +19,7 @@ async function started(t) {
   t.after(() => host.close());
   f.config.port = Number(new URL(host.url).port);
   f.write("service.local.json", f.config);
-  const names = ["one", "two", "grok"];
+  const names = ["one", "two", "grok", "three"];
   const now = Date.now();
   f.write("credentials.local.json", {
     version: 1,
@@ -181,6 +181,40 @@ test("a session is named once per address and never shared within a product", as
         }),
       { code: "invalid_registry_request" },
     );
+});
+
+test("a provisional name never blocks enrolling or naming another address", async (t) => {
+  const f = await started(t);
+  // The operator names one address's session after an address not enrolled yet.
+  hostAdminSession(f.configPath, {
+    address: "one@dot.hab",
+    session: "three@dot.hab",
+    request_id: "p1",
+  });
+  // Enrolling that address still works; its provisional name repeats the string.
+  hostAdminConnect(f.configPath, {
+    address: "three@dot.hab",
+    connection_id: "conn-three",
+  });
+  const three = address(hostAdminStatus(f.configPath), "three@dot.hab");
+  assert.equal(three.session.provisional, true);
+  // A named session still cannot be taken by another address of the product.
+  assert.throws(
+    () =>
+      hostAdminSession(f.configPath, {
+        address: "three@dot.hab",
+        session: "three@dot.hab",
+        request_id: "p2",
+      }),
+    { code: "registry_session_taken" },
+  );
+  // Naming over another address's provisional name is fine.
+  hostAdminSession(f.configPath, {
+    address: "one@dot.hab",
+    session: "two@dot.hab",
+    replace: true,
+    request_id: "p3",
+  });
 });
 
 test("settings survive a host restart", async (t) => {
