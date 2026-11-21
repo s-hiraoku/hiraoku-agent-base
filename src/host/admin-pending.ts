@@ -14,17 +14,75 @@ import {
   openSync,
   readFileSync,
   renameSync,
+  rmSync,
   statSync,
   writeSync,
 } from "node:fs";
 import { readHostConfig } from "./config.ts";
 import { parseOAuthConfig } from "./oauth-auth.ts";
 import { readPending, removePending } from "./oauth-pending.ts";
-import { HostAdminError, hostAdminConnect, hostAdminStatus } from "./admin.ts";
+import { HostAdminError, hostAdminConnect } from "./admin.ts";
 import { parseHabAddress } from "../hab/registry.ts";
-import type { AgentOperation } from "../hab/registry.ts";
 
 const DAY_MS = 86_400_000;
+/** How long an approve waits for another one to finish with the ledger. */
+export const LEDGER_LOCK_WAIT_MS = 5_000;
+/** A lock older than this belongs to an approve that cannot still be running. */
+const LEDGER_LOCK_STALE_MS = 120_000;
+
+function alive(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+/**
+ * One approve at a time edits the ledger: two that both read it would each write back
+ * a ledger missing the other's row. The lock file names its process, so a lock left by
+ * a process that is gone (or that is very old) is cleared instead of blocking forever.
+ */
+function withLedgerLock<T>(ledger: string, action: () => T): T {
+  const lock = `${ledger}.lock`;
+  const until = Date.now() + LEDGER_LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      const fd = openSync(lock, "wx", 0o600);
+      try {
+        writeSync(fd, JSON.stringify({ pid: process.pid, at: Date.now() }));
+      } finally {
+        closeSync(fd);
+      }
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      let holder: { pid?: unknown; at?: unknown } = {};
+      try {
+        holder = JSON.parse(readFileSync(lock, "utf8"));
+      } catch {
+        // Being written right now, or garbage: judged by its age below.
+      }
+      const age =
+        Date.now() -
+        (typeof holder.at === "number" ? holder.at : statSync(lock).mtimeMs);
+      const gone =
+        (typeof holder.pid === "number" && !alive(holder.pid)) ||
+        age > LEDGER_LOCK_STALE_MS;
+      if (gone) {
+        rmSync(lock, { force: true });
+        continue;
+      }
+      if (Date.now() >= until) throw new HostAdminError("ledger_busy");
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+    }
+  }
+  try {
+    return action();
+  } finally {
+    rmSync(lock, { force: true });
+  }
+}
 const PENDING_ID = /^pend_[0-9a-f]{16}$/;
 
 function paths(configPath: string) {
@@ -102,83 +160,78 @@ export function hostAdminApprove(
     throw new HostAdminError("invalid_address");
   }
   const { directory, ledger } = paths(configPath);
-  const row = readPending(directory, now).find(
-    (entry) => entry.pending_id === input.pending_id,
-  );
-  if (!row) throw new HostAdminError("pending_not_found");
-  let current: Record<string, unknown> & {
-    connections: Record<string, unknown>[];
-  };
-  try {
-    current = JSON.parse(readFileSync(ledger, "utf8"));
-    parseOAuthConfig(current);
-  } catch {
-    throw new HostAdminError("oauth_invalid");
-  }
-  if (current.version !== 2) throw new HostAdminError("oauth_ledger_not_v2");
-  if (current.issuer !== row.issuer)
-    throw new HostAdminError("pending_issuer_mismatch");
-  // A pair already in the ledger (an approval that stopped half way) is reused, never
-  // added twice: a duplicate pair makes parseOAuthConfig refuse the whole ledger.
-  const existing = current.connections.find(
-    (c) => c.subject === row.subject && c.client_id === row.client_id,
-  ) as { connection_id: string; state: string } | undefined;
-  if (existing?.state === "revoked")
-    throw new HostAdminError("credential_revoked_use_new_connection_id");
-  let connectionId = existing?.connection_id;
-  let backup: string | null = null;
-  if (!connectionId) {
-    connectionId = `hab-${address.agent_name}-${randomUUID()}`;
-    // Approval starts now, never earlier: a token issued before it still gets
-    // token_before_approval.
-    const approvedAt = now;
-    const next = {
-      ...current,
-      connections: [
-        ...current.connections,
-        {
-          subject: row.subject,
-          client_id: row.client_id,
-          connection_id: connectionId,
-          approved_at: new Date(approvedAt).toISOString(),
-          approved_until: new Date(approvedAt + days * DAY_MS).toISOString(),
-          state: "active",
-        },
-      ],
+  return withLedgerLock(ledger, () => {
+    const row = readPending(directory, now).find(
+      (entry) => entry.pending_id === input.pending_id,
+    );
+    if (!row) throw new HostAdminError("pending_not_found");
+    let current: Record<string, unknown> & {
+      connections: Record<string, unknown>[];
     };
     try {
-      parseOAuthConfig(next);
+      current = JSON.parse(readFileSync(ledger, "utf8"));
+      parseOAuthConfig(current);
     } catch {
       throw new HostAdminError("oauth_invalid");
     }
-    backup = `${ledger}.bak-${new Date(now).toISOString().replace(/[:.]/g, "-")}`;
-    copyFileSync(ledger, backup);
-    chmodSync(backup, 0o600);
-    replaceAtomically(ledger, JSON.stringify(next, null, 2) + "\n");
-  }
-  // An address already in use keeps what it is allowed to do: a product that comes
-  // back with a new client neither gains nor loses operations.
-  const known = hostAdminStatus(configPath, now).addresses.find(
-    (entry) => entry.address === address.address,
-  );
-  const operations =
-    known?.state === "active" && known.operations.length
-      ? (known.operations as AgentOperation[])
-      : undefined;
-  const connected = hostAdminConnect(configPath, {
-    address: address.address,
-    connection_id: connectionId,
-    ...(operations ? { operations } : {}),
+    if (current.version !== 2) throw new HostAdminError("oauth_ledger_not_v2");
+    if (current.issuer !== row.issuer)
+      throw new HostAdminError("pending_issuer_mismatch");
+    // A pair already in the ledger (an approval that stopped half way) is reused, never
+    // added twice: a duplicate pair makes parseOAuthConfig refuse the whole ledger.
+    const existing = current.connections.find(
+      (c) => c.subject === row.subject && c.client_id === row.client_id,
+    ) as { connection_id: string; state: string } | undefined;
+    if (existing?.state === "revoked")
+      throw new HostAdminError("credential_revoked_use_new_connection_id");
+    let connectionId = existing?.connection_id;
+    let backup: string | null = null;
+    if (!connectionId) {
+      connectionId = `hab-${address.agent_name}-${randomUUID()}`;
+      // Approval starts now (after any wait for the lock), never earlier: a token
+      // issued before it still gets token_before_approval.
+      const approvedAt = Math.max(now, Date.now());
+      const next = {
+        ...current,
+        connections: [
+          ...current.connections,
+          {
+            subject: row.subject,
+            client_id: row.client_id,
+            connection_id: connectionId,
+            approved_at: new Date(approvedAt).toISOString(),
+            approved_until: new Date(approvedAt + days * DAY_MS).toISOString(),
+            state: "active",
+          },
+        ],
+      };
+      try {
+        parseOAuthConfig(next);
+      } catch {
+        throw new HostAdminError("oauth_invalid");
+      }
+      backup = `${ledger}.bak-${new Date(now).toISOString().replace(/[:.]/g, "-")}`;
+      copyFileSync(ledger, backup);
+      chmodSync(backup, 0o600);
+      replaceAtomically(ledger, JSON.stringify(next, null, 2) + "\n");
+    }
+    // An address already in use keeps what it and its group are allowed to do: a
+    // product that comes back with a new client neither gains nor loses operations.
+    const connected = hostAdminConnect(configPath, {
+      address: address.address,
+      connection_id: connectionId,
+      preserve_access: true,
+    });
+    removePending(directory, row.pending_id);
+    return {
+      pending_id: row.pending_id,
+      address: address.address,
+      connection_id: connectionId,
+      ledger: existing ? "existing" : "added",
+      backup,
+      connect: connected,
+      next_action:
+        "承認より前に発行された token は token_before_approval で断られる。製品が token を更新するまで（最長 10 分）待つか、製品の画面でコネクタをつなぎ直す。",
+    };
   });
-  removePending(directory, row.pending_id);
-  return {
-    pending_id: row.pending_id,
-    address: address.address,
-    connection_id: connectionId,
-    ledger: existing ? "existing" : "added",
-    backup,
-    connect: connected,
-    next_action:
-      "承認より前に発行された token は token_before_approval で断られる。製品が token を更新するまで（最長 10 分）待つか、製品の画面でコネクタをつなぎ直す。",
-  };
 }

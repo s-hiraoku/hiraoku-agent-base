@@ -38,6 +38,11 @@ export interface ConnectInput {
   address: string;
   connection_id: string;
   operations?: readonly string[];
+  /**
+   * Bind the connection and nothing more when the address is already active in a
+   * group: neither the group's nor the address's operations change.
+   */
+  preserve_access?: boolean;
 }
 export interface RenameInput {
   request_id: string;
@@ -613,6 +618,10 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
       if (reservation && reservation.state !== "active")
         // Revoked connection descriptors stay reserved forever by design.
         throw new HostAdminError("credential_revoked_use_new_connection_id");
+      const keep =
+        input.preserve_access === true &&
+        agent.state === "active" &&
+        !!agent.group_id;
       {
         let groupId = reservation?.group_id ?? agent.group_id;
         if (agent.group_id && groupId !== agent.group_id)
@@ -650,8 +659,9 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
         }
         const group = registry.inspectGroup(operator, groupId);
         if (
-          group.state !== "active" ||
-          operations.some((op) => !group.operations.includes(op))
+          !keep &&
+          (group.state !== "active" ||
+            operations.some((op) => !group.operations.includes(op)))
         ) {
           // Group grants intersect with address grants; keep the union of both.
           const granted = [
@@ -671,7 +681,10 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
         }
       }
       const current = registry.inspect(operator, agent.agent_id);
-      if (current.state !== "active" || !same(current.operations, operations)) {
+      if (
+        !keep &&
+        (current.state !== "active" || !same(current.operations, operations))
+      ) {
         registry.setAccess(operator, {
           request_id: request(),
           agent_id: agent.agent_id,

@@ -23,7 +23,16 @@ import { hostAdminDoctor } from "../src/host/doctor.ts";
 import { PendingConnections } from "../src/host/oauth-pending.ts";
 import { parseOAuthConfig } from "../src/host/oauth-auth.ts";
 import { main as runHabAdmin } from "../scripts/hab-admin.ts";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+  existsSync,
+} from "node:fs";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { DatabaseSync } from "node:sqlite";
 import { dirname } from "node:path";
 import {
   hostAdminConnect,
@@ -703,4 +712,134 @@ test("a ledger write that fails leaves the old ledger whole (plan 2)", async (t)
   assert.equal(readFileSync(ledgerFile, "utf8"), original);
   parseOAuthConfig(JSON.parse(original));
   assert.equal(hostAdminPending(f.configPath).pending.length, 1);
+});
+
+test("approve never widens a group narrower than its address (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  // sender@remote.hab has all five operations; the operator then narrowed its group.
+  const db = new DatabaseSync(join(f.config.directory, "registry.sqlite"));
+  db.prepare(
+    "UPDATE hab_auth_groups SET operations=?, epoch=epoch+1 WHERE group_id=?",
+  ).run(JSON.stringify(["resolve", "status"]), f.remote.group_id);
+  db.close();
+  const view = () => {
+    const status = hostAdminStatus(f.configPath);
+    return {
+      group: status.groups.find((g) => g.group_id === f.remote.group_id)
+        .operations,
+      address: status.addresses.find((a) => a.address === "sender@remote.hab")
+        .operations,
+    };
+  };
+  const before = view();
+  assert.deepEqual([...before.group].sort(), ["resolve", "status"]);
+  assert.equal(before.address.length, 5);
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: oauth.record.subject,
+      client_id: "owner-new-client",
+    },
+    true,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approved = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: "sender@remote.hab",
+  });
+  assert.deepEqual(approved.connect.steps, ["connection_bound"]);
+  assert.deepEqual(view(), before, "neither the group nor the address changed");
+});
+
+const cli = resolve("scripts/hab-admin.ts");
+function runCli(args) {
+  const child = spawn(process.execPath, ["--no-warnings", cli, ...args], {
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let out = "";
+  child.stdout.on("data", (chunk) => (out += chunk));
+  child.stderr.on("data", (chunk) => (out += chunk));
+  return once(child, "close").then(([code]) => ({ code, out }));
+}
+
+test("two approves at once both stay in the ledger (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  for (const n of [1, 2])
+    seen.record(
+      {
+        issuer: oauth.getConfig().issuer,
+        subject: `parallel-subject-${n}`,
+        client_id: `parallel-client-${n}`,
+      },
+      false,
+    );
+  const rows = hostAdminPending(f.configPath).pending;
+  const results = await Promise.all(
+    rows.map((row, i) =>
+      runCli([
+        "--config",
+        f.configPath,
+        "approve",
+        "--pending",
+        row.pending_id,
+        "--address",
+        `parallel${i}@remote.hab`,
+      ]),
+    ),
+  );
+  for (const result of results) assert.equal(result.code, 0, result.out);
+  const ledger = parseOAuthConfig(JSON.parse(readFileSync(ledgerFile, "utf8")));
+  for (const n of [1, 2])
+    assert.ok(
+      ledger.connections.some((c) => c.subject === `parallel-subject-${n}`),
+      `approval ${n} kept`,
+    );
+  assert.equal(existsSync(`${ledgerFile}.lock`), false);
+});
+
+test("a live approve's lock makes another wait and give up; a dead one's lock is cleared (plan 2)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const lock = `${ledgerFile}.lock`;
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: "locked-subject-1",
+      client_id: "c1",
+    },
+    false,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approve = () =>
+    hostAdminApprove(f.configPath, {
+      pending_id: row.pending_id,
+      address: "locked@remote.hab",
+    });
+  writeFileSync(lock, JSON.stringify({ pid: process.pid, at: Date.now() }));
+  assert.throws(approve, { code: "ledger_busy" });
+  assert.equal(hostAdminPending(f.configPath).pending.length, 1);
+  // A process that is gone cannot finish; its lock no longer blocks anyone.
+  const dead = spawnSync(process.execPath, ["-e", "process.exit(0)"]).pid;
+  writeFileSync(lock, JSON.stringify({ pid: dead, at: Date.now() }));
+  assert.equal(approve().ledger, "added");
+  assert.equal(existsSync(lock), false);
 });
