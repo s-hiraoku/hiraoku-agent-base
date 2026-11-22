@@ -129,6 +129,8 @@ npm run hab:admin -- --config <host-config> doctor [--address <address>]
 
 4 章は `ping` を先に出し、レシピと `onboard` はそのあとにする。1〜3 章と `ping`、doctor の「次の操作」、手順書で十分に迷わなくなったと分かれば、`onboard` は作らずに止める。
 
+進み具合（2026-11-21）：`ping` は #281 で実装中。5 製品のレシピは `config/products/` に置き、`hab:admin recipe` で表示する。`onboard` はまだ作らない。doctor の「次の操作」、`recipe`、手順書、`ping` で迷わずにつなげるかを、展開後の実機で確かめてから決める。
+
 受入条件：Dots・Grok・Muse・Hermes・claude.ai の 5 製品のレシピがある。`onboard` を途中で止めて再実行しても、済んだ段を繰り返さない。`ping` の結果が doctor の表示と食い違わない。
 
 ## 5. ダッシュボードから見る・操作する

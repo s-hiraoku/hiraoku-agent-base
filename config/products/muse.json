@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "product": "muse",
+  "label": "Muse",
+  "setup_heading": "Muse を設定する",
+  "receive": {
+    "mode": "poll",
+    "interval_ms": 900000,
+    "via": "scheduled_task"
+  },
+  "auth0_app": "regular_web",
+  "product_steps": [
+    "Auth0 にこの製品専用の Regular Web Application を作り、Refresh Token を許可し、Muse がセットアップの始めに示す callback を登録する。",
+    "製品に HAB の MCP をつなぐ。URL は https://<HAB の公開入口>/hab/mcp、認証は OAuth、scope は hab:resolve hab:submit hab:status hab:poll hab:ack offline_access。",
+    "Muse に HAB のコネクタをつなぎ、下の文を渡して予定タスクを作ってもらう。"
+  ],
+  "agent_prompt": "15 分ごとに、HAB の hab_inbox で新着だけを確認する予定タスクを作ってください。\n新着があれば、送り主と内容を私に知らせてください。\n<許可するアドレス> からの質問には hab_reply で短く答え、それ以外には返信しないでください。\n新着がなければ、何も言わずに終えてください。",
+  "operator_steps": [
+    "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
+    "hab:admin receive --agent-name <製品名> --mode poll --interval-ms 900000 --request-id <要求 ID> で受け方を poll（15 分）にする。",
+    "hab:admin doctor --address <アドレス> で、registration が ok になったことを確かめる。",
+    "次の予定時刻を過ぎたら、Muse で予定タスクが実行されたことと、hab:admin status の last_inbox_read_at が更新されたことを確かめる。"
+  ],
+  "expect": {
+    "doctor_ok": ["registration"],
+    "stages": ["accepted", "read"]
+  },
+  "placeholders": {
+    "<許可するアドレス>": "allowed",
+    "<アドレス>": "address",
+    "<製品名>": "agent_name"
+  }
+}
