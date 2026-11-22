@@ -148,14 +148,28 @@ window.addEventListener("message", (event) => {
   else if (data.method === "ui/resource-teardown" && data.id !== undefined) send({ id: data.id, result: {} });
   else if (data.method === "ping" && data.id !== undefined) send({ id: data.id, result: {} });
 });
+// ChatGPT also hands the result to the page as window.openai.toolOutput (the
+// structuredContent alone) and announces later values with openai:set_globals. Read it
+// too, so the card still draws when that is the only way the result arrives.
+function renderOpenAi(output) {
+  if (output && typeof output === "object" && Array.isArray(output.messages)) render({ structuredContent: output });
+}
+window.addEventListener("openai:set_globals", (event) => {
+  const globals = event && event.detail && event.detail.globals;
+  if (globals) renderOpenAi(globals.toolOutput);
+});
+// Never start as an empty, zero-height frame: a host that sizes the frame from the page
+// would otherwise keep it invisible until a result arrives.
+root.replaceChildren(el("p", "empty", "受信箱を読み込んでいます…"));
+reportSize();
+renderOpenAi(window.openai && window.openai.toolOutput);
+// The host sends nothing before initialized, so send it even if ui/initialize fails.
 request("ui/initialize", {
   protocolVersion: "2026-01-26",
   appInfo: { name: "hab-inbox", version: "1" },
   appCapabilities: {},
-}).then((result) => {
-  applyContext(result && result.hostContext);
-  send({ method: "ui/notifications/initialized", params: {} });
-}, () => {});
+}).then((result) => applyContext(result && result.hostContext), () => {})
+  .then(() => send({ method: "ui/notifications/initialized", params: {} }));
 if (window.ResizeObserver) new ResizeObserver(reportSize).observe(document.documentElement);
 `;
 

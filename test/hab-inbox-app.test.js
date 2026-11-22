@@ -53,10 +53,11 @@ class Node {
   }
 }
 
-function boot() {
+function boot({ openai } = {}) {
   const root = new Node("main");
   const sent = [];
   const listeners = [];
+  const globalsListeners = [];
   const parent = {
     postMessage(message) {
       sent.push(structuredClone(message));
@@ -64,7 +65,11 @@ function boot() {
   };
   const window = {
     parent,
-    addEventListener: (type, fn) => type === "message" && listeners.push(fn),
+    openai,
+    addEventListener: (type, fn) =>
+      type === "message"
+        ? listeners.push(fn)
+        : type === "openai:set_globals" && globalsListeners.push(fn),
   };
   const document = {
     getElementById: () => root,
@@ -75,7 +80,9 @@ function boot() {
   new Function("window", "document", script)(window, document);
   const deliver = (data) =>
     listeners.forEach((fn) => fn({ source: parent, data }));
-  return { root, sent, deliver };
+  const setGlobals = (globals) =>
+    globalsListeners.forEach((fn) => fn({ detail: { globals } }));
+  return { root, sent, deliver, setGlobals };
 }
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -187,4 +194,44 @@ test("an empty inbox and a result without messages say so", async () => {
     params: { isError: true },
   });
   assert.equal(root.textContent, "受信箱を読めませんでした。");
+});
+
+test("the card is never an empty frame before the result, and sends initialized even if ui/initialize fails", async () => {
+  const { root, sent, deliver } = boot();
+  assert.match(root.textContent, /読み込んでいます/);
+  assert.ok(sent.some((m) => m.method === "ui/notifications/size-changed"));
+  const init = sent.find((m) => m.method === "ui/initialize");
+  deliver({
+    jsonrpc: "2.0",
+    id: init.id,
+    error: { code: -32602, message: "no" },
+  });
+  await tick();
+  await tick();
+  assert.ok(sent.some((m) => m.method === "ui/notifications/initialized"));
+});
+
+test("ChatGPT's window.openai.toolOutput and openai:set_globals draw the card too", async () => {
+  const first = boot({
+    openai: { toolOutput: { messages: [message("m1", "hi")] } },
+  });
+  assert.equal(first.root.children.length, 1);
+  assert.match(
+    first.root.textContent,
+    /stallone@dot\.hab からのメッセージです/,
+  );
+
+  const later = boot({ openai: { toolOutput: null } });
+  assert.match(later.root.textContent, /読み込んでいます/);
+  later.setGlobals({ theme: "dark" });
+  assert.match(later.root.textContent, /読み込んでいます/);
+  later.setGlobals({ toolOutput: { messages: [message("m2", "hello")] } });
+  assert.match(later.root.textContent, /hello/);
+  // The standard notification still wins when it comes after.
+  later.deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [] } },
+  });
+  assert.match(later.root.textContent, /新しいメッセージはありません/);
 });
