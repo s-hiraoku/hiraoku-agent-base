@@ -274,10 +274,10 @@
     },
     {
       "path": "README.md",
-      "sha256": "7a8732f545507712985fba19015bc89cd30998dad818a2e0746c176cca80f2b4",
+      "sha256": "c3a391fe4ce58b73d769249419148dac258845afbb6da80a511b3674d61ae584",
       "role": "context",
       "review": "reviewed",
-      "summary": "Current entry point: shared MCP and recipient-owned judgment; optional fixed/generic Task/A2A execution cannot gate ordinary messaging. ADR-016 composition as revised by ADR-018: the single host (src/host, MCP server in src/host/mcp), the host's single-file SQLite delivery store and the agent SDK; JetStream and managed attachments are retired and attachment parts are refused. The A2A entry is off by default and, with an `a2a` section, sends Tasks from a host-owned identity with Registry checks of each caller. The local MVP demo needs no broker. Separates code/fixture, reported evidence, finite real Codex/Hermes trial and unaccepted live Dots/resident operation. Catalogs capabilities, isolated commands, remaining production identity/storage/connection gates. Numerical historical test totals are dated evidence, not current acceptance. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. Reviewed 2026-11-15: Gemini is a planned integration target only; product/session selection, authentication, transport and recipient-owned notice/approval require separate validation. No Gemini implementation or live acceptance is claimed; existing permission and evidence boundaries are unchanged. Reviewed TypeScript 7 CI compatibility: native compiler and TypeScript 6 API are separate development dependencies using the official aliases; ESLint and the existing AST boundary checks remain enabled. No runtime behavior or product acceptance requirement changes."
+      "summary": "Project entry point for the local MVP, product setup, host operations and test commands. Links the read-only local diagnostics dashboard. Describes the single host, SQLite delivery, group authentication, the agent and delivery MCP catalogs, optional A2A with a host-owned identity and recipient-owned decisions. Links the November 20–21 product-specific receive/reply results, the October 25 Codex/Hermes trial and the planned Gemini/Antigravity integration. Records the retirement of Relay, Task Hub, JetStream delivery and managed attachments, the public-source boundary and the TypeScript 6 API / TypeScript 7 compiler split."
     },
     {
       "path": "docs/a2a/a2a-host-preview.md",
@@ -1062,7 +1062,7 @@
     },
     {
       "path": "verification/design/conflicts.md",
-      "sha256": "45ad944679c8988b39139194fe9e91f152b7347d44f5e93a5729992e122bc0b3",
+      "sha256": "5c73c98c88a62a3d37247c82ac0c16236390a9a485c29bbad75729b7f37dec78",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1071,7 +1071,7 @@
     },
     {
       "path": "verification/design/design-principles.md",
-      "sha256": "631c3b07b890f97806879a0c525e9c6e2025535e57da819bcfcc5d656208a8d4",
+      "sha256": "ce19c4abf33b7820907a68cb27ec25f7617f1a1eabb5be971fc9d4249aa5400e",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "252391d2311f5bd119cadfa978d286d99ff6a6733806dded12b7be9be0b3a2ad",
+      "sha256": "e45be7de1280dfa234f7feab80dabbb3454bb77e7541dbf8fa8f6d3174d70ad4",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1938,9 +1938,9 @@
       "citations": [
         {
           "path": "README.md",
-          "start": 9,
-          "end": 9,
-          "excerpt_sha256": "0214f670281af6969e6e9523459811aab14fa7a26da9c0e0da97588c20dab04a"
+          "start": 7,
+          "end": 7,
+          "excerpt_sha256": "5d098e9f418b87601aad48f4a0874c3f33be3b89bedf0038bb3317a8c75fb986"
         },
         {
           "path": "docs/hab-principles.md",
@@ -3063,9 +3063,9 @@
         },
         {
           "path": "README.md",
-          "start": 122,
-          "end": 122,
-          "excerpt_sha256": "191704a9f43a004d1b6fd38d44dc44d97e78362dc2ce9af298406c6dda0d3597"
+          "start": 66,
+          "end": 68,
+          "excerpt_sha256": "786bf42a450c3ee495477bd08a52e6b6325686547930d43fe17ccf2beac45758"
         }
       ]
     },
@@ -4286,9 +4286,9 @@
         },
         {
           "path": "README.md",
-          "start": 29,
-          "end": 29,
-          "excerpt_sha256": "fb867159ebfccb9d90033a4088390efb96e418ec3fa8942e370be1d99b64a468"
+          "start": 64,
+          "end": 64,
+          "excerpt_sha256": "b627b7b15ffc1ea7622b00f28badb2b45ca03e3718e1ecd58ed0ecb54caea0ea"
         },
         {
           "path": "docs/operations/persistent-mcp-auth.md",
@@ -4327,10 +4327,16 @@
           "excerpt_sha256": "ecfd20c6a9703a7c4de5553a4f71401225ea263ef999abf3c40a75a6b64a05ea"
         },
         {
+          "path": "docs/history/testing/p7-lab.md",
+          "start": 3,
+          "end": 5,
+          "excerpt_sha256": "1a9c59926efcf7336c63509fbc6f24fbb2b3412fce9bd35cc766653b50029839"
+        },
+        {
           "path": "README.md",
-          "start": 168,
-          "end": 168,
-          "excerpt_sha256": "99164e5c28b40efaa9e261e0aff45e93d5c74d316b013c6ae657a0cf3f2c3d39"
+          "start": 58,
+          "end": 58,
+          "excerpt_sha256": "2638c3083f294f2d60b9f085b2f2dde8a393f53a9719dba601f1e6150f40402b"
         },
         {
           "path": "docs/hab-product-spec.md",
