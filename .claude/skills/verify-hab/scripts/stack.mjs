@@ -144,9 +144,7 @@ const delivery = await createSqliteDelivery(
       agent_capacity: {
         max_pending_per_sender: 10,
         max_body_bytes_per_sender: 50000,
-        max_records_per_sender: 50,
         max_body_bytes_per_recipient: 50000,
-        max_records_per_recipient: 50,
         reservations: [],
       },
     },
