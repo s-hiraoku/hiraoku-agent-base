@@ -8,6 +8,7 @@ import { test } from "node:test";
 import { HabNotifierClient, SQLiteNotices } from "../src/agent-notify/index.ts";
 import { bindingIdentity } from "../src/agent-notify/binding.ts";
 import { main, tokenProblem } from "../scripts/hab-notify.ts";
+import { freePort } from "./free-port.js";
 
 test("hab-notify prints usage, lists no notices and refuses a decision it never showed", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "hab-notify-cli-"));
@@ -270,14 +271,12 @@ test("generic states API is cursor independent and fenced by connection, recipie
   assert.ok(acted.states[0].revision > 0);
   assert.equal(await run("states", { binding_id: binding }), 0);
   assert.deepEqual(
-    output
-      .at(-1)
-      .states.map(({ sender_id, message_id, state, revision }) => ({
-        sender_id,
-        message_id,
-        state,
-        revision,
-      })),
+    output.at(-1).states.map(({ sender_id, message_id, state, revision }) => ({
+      sender_id,
+      message_id,
+      state,
+      revision,
+    })),
     acted.states,
   );
   assert.deepEqual(
@@ -527,7 +526,7 @@ test("requested state keys stay bounded and scoped with 3000 retained records", 
   assert.ok(!output.at(-1).includes("private"));
 });
 
-async function runWithProbe(t, result) {
+async function runWithProbe(t, result, { hasAddress = true, body: raw } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "hab-notify-probe-"));
   t.after(() => {
     rmSync(dir, { recursive: true, force: true });
@@ -548,7 +547,7 @@ process.stdin.on("end", () => {
   console.log(JSON.stringify({ result: ${JSON.stringify(result)} }));
 });`,
   );
-  const port = 20_000 + Math.floor(Math.random() * 20_000);
+  const port = await freePort();
   const config = join(dir, "notify.json");
   writeFileSync(
     config,
@@ -556,7 +555,7 @@ process.stdin.on("end", () => {
       hab_url: "https://hab.example/mcp",
       agent_id: "agent-b",
       token: { env: "HAB_NOTIFY_TEST_TOKEN_PROBE" },
-      as_address: "hermes@hermes.hab",
+      ...(hasAddress ? { as_address: "hermes@hermes.hab" } : {}),
       store: join(dir, "notices.sqlite"),
       screen: {
         type: "hermes-desktop",
@@ -565,7 +564,11 @@ process.stdin.on("end", () => {
         profile: "profile",
         backend_namespace: "namespace",
         profile_scope: "scope",
-        session_probe: { command: [process.execPath, probe], cwd: dir },
+        ...(result === undefined
+          ? {}
+          : {
+              session_probe: { command: [process.execPath, probe], cwd: dir },
+            }),
       },
       interval_ms: 1000,
       wake: { port, secret_file: secretFile },
@@ -575,22 +578,47 @@ process.stdin.on("end", () => {
   await main(["--config", config, "check"], (line) => once.push(line));
   const lines = [];
   const running = main(["--config", config, "run"], (line) => lines.push(line));
-  await new Promise((done) => setTimeout(done, 700));
   const { HAB_EVENT_NAME, signWebhook } = await import("../src/hab/events.ts");
-  const body = JSON.stringify({
-    name: HAB_EVENT_NAME,
-    data: { to: "hermes@hermes.hab", session: "bound-session" },
-  });
+  const body =
+    raw ??
+    JSON.stringify({
+      name: HAB_EVENT_NAME,
+      data: { to: "hermes@hermes.hab", session: "bound-session" },
+    });
   const ts = Math.floor(Date.now() / 1000);
-  const answer = await globalThis.fetch(`http://127.0.0.1:${port}/`, {
-    method: "POST",
-    headers: {
-      "webhook-id": "msg_probe",
-      "webhook-timestamp": String(ts),
-      "webhook-signature": signWebhook(secret, "msg_probe", ts, body),
-    },
-    body,
-  });
+  const ring = () =>
+    globalThis.fetch(`http://127.0.0.1:${port}/`, {
+      method: "POST",
+      headers: {
+        "webhook-id": "msg_probe",
+        "webhook-timestamp": String(ts),
+        "webhook-signature": signWebhook(secret, "msg_probe", ts, body),
+      },
+      body,
+    });
+  // `run` listens only after its setup; a busy machine needs longer than a fixed wait.
+  // A refused connection reached nothing, so trying again cannot ring twice. If `run`
+  // ends first it never listened: fail with what it reported instead of waiting.
+  let ended;
+  running.then(
+    (code) => (ended = { code }),
+    (error) => (ended = { error: String(error) }),
+  );
+  let answer;
+  for (const deadline = Date.now() + 10_000; ;) {
+    if (ended)
+      assert.fail(
+        `run ended before listening: ${JSON.stringify({ ...ended, lines })}`,
+      );
+    try {
+      answer = await ring();
+      break;
+    } catch (error) {
+      if (error?.cause?.code !== "ECONNREFUSED" || Date.now() > deadline)
+        throw error;
+      await new Promise((done) => setTimeout(done, 50));
+    }
+  }
   const answered = { status: answer.status, body: await answer.text() };
   await new Promise((done) => setTimeout(done, 1500));
   process.emit("SIGTERM");
@@ -609,17 +637,48 @@ test("run answers HAB 410 session_gone and checks nothing while the Hermes conve
   assert.equal(answered.status, 410);
   assert.deepEqual(JSON.parse(answered.body), { reason: "session_gone" });
   assert.deepEqual(
-    logged.map((line) => line.session ?? line.error),
+    logged.map((line) => line.session),
     ["gone"],
   );
+});
+
+test("a standalone config without as_address keeps legacy signed wake and log output", async (t) => {
+  const { answered, once, logged } = await runWithProbe(t, undefined, {
+    hasAddress: false,
+    body: "legacy wake",
+  });
+  assert.deepEqual(once, { error: "token_expired" });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), {});
+  assert.equal(logged.length, 1);
+  assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "error"]);
+  assert.equal(logged[0].error, "token_expired");
+});
+
+test("a standalone config without as_address cannot report session gone", async (t) => {
+  const { answered, logged } = await runWithProbe(t, "gone", {
+    hasAddress: false,
+  });
+  assert.equal(answered.status, 200);
+  assert.deepEqual(JSON.parse(answered.body), {
+    reason: "session_unconfirmed",
+  });
+  assert.equal(logged.length, 1);
+  assert.deepEqual(Object.keys(logged[0]).sort(), ["at", "session"]);
+  assert.equal(logged[0].session, "gone");
 });
 
 test("run answers 200 unconfirmed and leaves the inbox alone when the probe cannot tell", async (t) => {
   const { answered, once, logged } = await runWithProbe(t, "unknown");
   assert.deepEqual(once, { shown: [], session: "unknown" });
   assert.equal(answered.status, 200);
-  assert.deepEqual(JSON.parse(answered.body), { reason: "session_unconfirmed" });
-  assert.deepEqual(logged.map((line) => line.session ?? line.error), ["unknown"]);
+  assert.deepEqual(JSON.parse(answered.body), {
+    reason: "session_unconfirmed",
+  });
+  assert.deepEqual(
+    logged.map((line) => line.session ?? line.error),
+    ["unknown"],
+  );
 });
 
 test("run and one-shot check reach HAB when the bound Hermes session is present", async (t) => {

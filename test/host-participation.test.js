@@ -18,6 +18,7 @@ import {
   hostAdminPending,
   hostAdminApprove,
   hostAdminReject,
+  hostAdminRevoke,
 } from "../src/host/admin-pending.ts";
 import { hostAdminDoctor } from "../src/host/doctor.ts";
 import { PendingConnections } from "../src/host/oauth-pending.ts";
@@ -956,5 +957,277 @@ test("approve refuses to write a ledger the host could no longer read (plan 2)",
     ),
     false,
     "no backup, temp file or lock left",
+  );
+});
+
+/** A reconnect from the same owner with a new client, as DCR products make (DCR plan 6). */
+async function reconnected(t) {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  const fresh = { sub: oauth.record.subject, azp: "tpc_reconnected" };
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: fresh.sub,
+      client_id: fresh.azp,
+    },
+    true,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const approved = hostAdminApprove(f.configPath, {
+    pending_id: row.pending_id,
+    address: f.remote.address,
+  });
+  return { f, oauth, fresh, approved };
+}
+
+test("revoke --connection stops one connection and keeps the group's other one (DCR plan 6)", async (t) => {
+  const { f, oauth, fresh, approved } = await reconnected(t);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const old = oauth.record.connection_id;
+  const groupOf = () =>
+    hostAdminStatus(f.configPath).groups.find(
+      (g) => g.group_id === f.remote.group_id,
+    );
+  assert.equal(approved.connect.address.group_id, f.remote.group_id);
+  assert.equal(groupOf().active_bindings, 2);
+  const oldToken = await oauth.token();
+  assert.equal(
+    (await ingress(f.host(), oldToken)).status,
+    200,
+    "old still live",
+  );
+
+  const revoked = runHabAdmin([
+    "--config",
+    f.configPath,
+    "revoke",
+    "--connection",
+    old,
+  ]);
+  assert.equal(revoked.ledger, "revoked");
+  assert.equal(statSync(revoked.backup).mode & 0o777, 0o600);
+  assert.deepEqual(revoked.registry, {
+    binding: "revoked",
+    group_id: f.remote.group_id,
+    group_state: "active",
+    remaining_active_bindings: 1,
+  });
+  const ledger = parseOAuthConfig(JSON.parse(readFileSync(ledgerFile, "utf8")));
+  assert.equal(
+    ledger.connections.find((c) => c.connection_id === old).state,
+    "revoked",
+  );
+  assert.equal(
+    ledger.connections.find((c) => c.connection_id === approved.connection_id)
+      .state,
+    "active",
+  );
+  assert.equal((await ingress(f.host(), oldToken)).status, 401);
+  await afterApproval(
+    ledger.connections.find((c) => c.connection_id === approved.connection_id)
+      .approved_at,
+  );
+  f.setToken(
+    await oauth.token({ ...fresh, iat: nowSeconds(), exp: nowSeconds() + 300 }),
+  );
+  const client = f.client(approved.connect.address, true);
+  assert.equal(
+    (await client.resolve(f.local.address)).recipient_id,
+    f.local.agent_id,
+  );
+
+  const again = hostAdminRevoke(f.configPath, old);
+  assert.equal(again.ledger, "already_revoked");
+  assert.equal(again.backup, null);
+  assert.equal(again.registry.binding, "already_revoked");
+  assert.throws(() => hostAdminRevoke(f.configPath, "no-such-connection"), {
+    code: "connection_not_found",
+  });
+  assert.throws(() => hostAdminRevoke(f.configPath, "bad\tid"), {
+    code: "invalid_connection_id",
+  });
+});
+
+test("revoke --connection finishes from a ledger-only revoke and reports a stopped group (DCR plan 6)", async (t) => {
+  const { f, oauth, approved } = await reconnected(t);
+  const ledgerFile = f.config.ingress.oauth_file;
+  hostAdminRevoke(f.configPath, oauth.record.connection_id);
+  // As if a revoke stopped after the ledger write: the row is revoked, the binding live.
+  const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+  ledger.connections.find(
+    (c) => c.connection_id === approved.connection_id,
+  ).state = "revoked";
+  writeFileSync(ledgerFile, JSON.stringify(ledger, null, 2));
+  const finished = hostAdminRevoke(f.configPath, approved.connection_id);
+  assert.equal(finished.ledger, "already_revoked");
+  assert.equal(finished.registry.binding, "revoked");
+  assert.equal(finished.registry.group_state, "stopped");
+  assert.equal(finished.registry.remaining_active_bindings, 0);
+});
+
+test("revoke --connection stops the binding while OAuth sign-in is off (DCR plan 6)", async (t) => {
+  const { f, approved } = await reconnected(t);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+  ledger.enabled = false;
+  writeFileSync(ledgerFile, JSON.stringify(ledger, null, 2));
+  const result = hostAdminRevoke(f.configPath, approved.connection_id);
+  assert.equal(result.ledger, "revoked");
+  assert.equal(result.registry.binding, "revoked");
+  assert.equal(result.registry.remaining_active_bindings, 1);
+});
+
+test("revoke accepts an existing ledger connection ID (DCR plan 6)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const connectionId = `手動 接続-${"x".repeat(257)}`;
+  oauth.record.connection_id = connectionId;
+  oauth.participation.connection_id = connectionId;
+  const f = await setup(t, oauth);
+  const result = runHabAdmin([
+    "--config",
+    f.configPath,
+    "revoke",
+    "--connection",
+    connectionId,
+  ]);
+  assert.equal(result.connection_id, connectionId);
+  assert.equal(result.ledger, "revoked");
+  assert.equal(result.registry.binding, "revoked");
+});
+
+test("revoke leaves unsafe or mismatched OAuth files untouched (DCR plan 6)", async (t) => {
+  const { f, approved } = await reconnected(t);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const original = readFileSync(ledgerFile, "utf8");
+  const revoke = () => hostAdminRevoke(f.configPath, approved.connection_id);
+  const backups = () =>
+    readdirSync(dirname(ledgerFile)).filter((name) => name.includes(".bak-"));
+  const originalBackups = backups();
+  chmodSync(ledgerFile, 0o644);
+  assert.throws(revoke, { code: "oauth_invalid" });
+  assert.equal(readFileSync(ledgerFile, "utf8"), original);
+  chmodSync(ledgerFile, 0o600);
+
+  const mismatched = JSON.stringify({
+    ...JSON.parse(original),
+    resource: "https://other-host.example/mcp",
+  });
+  writeFileSync(ledgerFile, mismatched);
+  assert.throws(revoke, { code: "oauth_resource_mismatch" });
+  assert.equal(readFileSync(ledgerFile, "utf8"), mismatched);
+  assert.deepEqual(backups(), originalBackups);
+
+  writeFileSync(ledgerFile, original);
+  assert.equal(
+    hostAdminStatus(f.configPath).groups.find(
+      (group) => group.group_id === f.remote.group_id,
+    ).active_bindings,
+    2,
+  );
+});
+
+test("direct connect waits for the revoke lock before binding (DCR plan 6)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const ledger = oauth.getConfig();
+  const connectionId = "approved-not-yet-bound";
+  ledger.connections.push({
+    ...oauth.participation,
+    client_id: "replacement-client",
+    connection_id: connectionId,
+  });
+  writeFileSync(ledgerFile, JSON.stringify(ledger));
+  const args = [
+    "--config",
+    f.configPath,
+    "connect",
+    "--address",
+    f.remote.address,
+    "--connection-id",
+    connectionId,
+  ];
+  const lock = new DatabaseSync(`${ledgerFile}.approve-lock.sqlite`);
+  try {
+    lock.exec("BEGIN IMMEDIATE");
+    const blocked = await runCli(args);
+    assert.notEqual(blocked.code, 0);
+    assert.match(blocked.out, /ledger_busy/);
+  } finally {
+    lock.close();
+  }
+
+  assert.equal(
+    hostAdminRevoke(f.configPath, connectionId).registry.binding,
+    "none",
+  );
+  assert.throws(() => runHabAdmin(args), { code: "participation_revoked" });
+  assert.equal(
+    hostAdminStatus(f.configPath).groups.find(
+      (group) => group.group_id === f.remote.group_id,
+    ).active_bindings,
+    1,
+  );
+});
+
+test("an approve and a revoke at once both stay in the ledger (DCR plan 6)", async (t) => {
+  const oauth = await persistentOAuthFixture(true);
+  oauth.participation.approved_at = new Date(
+    oauth.start - 3600000,
+  ).toISOString();
+  const f = await setup(t, oauth);
+  const ledgerFile = f.config.ingress.oauth_file;
+  const seen = new PendingConnections(f.config.directory);
+  t.after(() => seen.close());
+  seen.record(
+    {
+      issuer: oauth.getConfig().issuer,
+      subject: oauth.record.subject,
+      client_id: "tpc_parallel",
+    },
+    true,
+  );
+  const [row] = hostAdminPending(f.configPath).pending;
+  const results = await Promise.all([
+    runCli([
+      "--config",
+      f.configPath,
+      "approve",
+      "--pending",
+      row.pending_id,
+      "--address",
+      f.remote.address,
+    ]),
+    runCli([
+      "--config",
+      f.configPath,
+      "revoke",
+      "--connection",
+      oauth.record.connection_id,
+    ]),
+  ]);
+  for (const result of results) assert.equal(result.code, 0, result.out);
+  const ledger = parseOAuthConfig(JSON.parse(readFileSync(ledgerFile, "utf8")));
+  assert.equal(
+    ledger.connections.find(
+      (c) => c.connection_id === oauth.record.connection_id,
+    ).state,
+    "revoked",
+  );
+  assert.equal(
+    ledger.connections.find((c) => c.client_id === "tpc_parallel").state,
+    "active",
   );
 });

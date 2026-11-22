@@ -5,7 +5,7 @@ import process from "node:process";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { request } from "node:http";
+import { request, createServer as createHttpServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
 import { startHost } from "../src/host/start.ts";
 import {
@@ -1429,16 +1429,22 @@ test("hab:admin doorbell adds and removes an operator doorbell on a running host
   assert.equal(added.replaced, false);
   assert.equal(JSON.stringify(added).includes(secret), false);
   assert.equal(JSON.stringify(added).includes(url), false);
-  await eventually(async () => {
-    const inbox = hostAdminStatus(f.configPath).inboxes.find(
-      (i) => i.address === "hermes@hermes.hab",
-    );
-    return inbox.doorbell === "live" && inbox.doorbell_operator
-      ? inbox
-      : undefined;
-  });
+  assert.ok(
+    await eventually(async () => {
+      const inbox = hostAdminStatus(f.configPath).inboxes.find(
+        (i) => i.address === "hermes@hermes.hab",
+      );
+      return inbox.doorbell === "live" && inbox.doorbell_operator
+        ? inbox
+        : undefined;
+    }),
+    "eventually",
+  );
   await send();
-  await eventually(async () => (wakes >= 1 ? wakes : undefined));
+  assert.ok(
+    await eventually(async () => (wakes >= 1 ? wakes : undefined)),
+    "eventually",
+  );
   assert.equal(
     hostAdminDoctor(f.configPath, "hermes@hermes.hab").checks.receive.evidence
       .operator_doorbell,
@@ -1453,12 +1459,15 @@ test("hab:admin doorbell adds and removes an operator doorbell on a running host
 
   const removed = hostAdminDoorbellRemove(f.configPath, "hermes@hermes.hab");
   assert.deepEqual([removed.removed, removed.still_in_config], [true, false]);
-  await eventually(async () =>
-    hostAdminStatus(f.configPath).inboxes.find(
-      (i) => i.address === "hermes@hermes.hab",
-    ).doorbell_operator
-      ? undefined
-      : true,
+  assert.ok(
+    await eventually(async () =>
+      hostAdminStatus(f.configPath).inboxes.find(
+        (i) => i.address === "hermes@hermes.hab",
+      ).doorbell_operator
+        ? undefined
+        : true,
+    ),
+    "eventually",
   );
   const before = wakes;
   await send();
@@ -1590,7 +1599,15 @@ test("a bad config doorbell still stops the start when a registered one replaces
   // The replaced config entry is now one that HAB must never ring.
   f.config.ingress.events.doorbells = [bell("https://10.0.0.1/private")];
   f.write("service.local.json", f.config);
-  await assert.rejects(startHost(f.configPath), { reason: "invalid_doorbell" });
+  // A host that starts anyway is closed, so a regression fails instead of hanging.
+  const outcome = await startHost(f.configPath).then(
+    async (host) => {
+      await host.close();
+      return "started";
+    },
+    (error) => error.reason,
+  );
+  assert.equal(outcome, "invalid_doorbell");
 });
 
 test("a live rename preserves the managed doorbell and its delivery position (plan 3)", async (t) => {
@@ -1653,12 +1670,18 @@ test("a live rename preserves the managed doorbell and its delivery position (pl
   };
 
   hostAdminDoorbellAdd(f.configPath, { address: previous, ...registration });
-  await eventually(async () =>
-    subscription()?.url === managed ? true : undefined,
+  assert.ok(
+    await eventually(async () =>
+      subscription()?.url === managed ? true : undefined,
+    ),
+    "eventually",
   );
   await send(previous);
-  await eventually(async () =>
-    wakes === 1 && subscription()?.cursor ? true : undefined,
+  assert.ok(
+    await eventually(async () =>
+      wakes === 1 && subscription()?.cursor ? true : undefined,
+    ),
+    "eventually",
   );
   const before = subscription();
 
@@ -1681,8 +1704,13 @@ test("a live rename preserves the managed doorbell and its delivery position (pl
     ],
   );
   await send(current);
-  await eventually(async () =>
-    wakes === 2 && subscription()?.cursor !== before.cursor ? true : undefined,
+  assert.ok(
+    await eventually(async () =>
+      wakes === 2 && subscription()?.cursor !== before.cursor
+        ? true
+        : undefined,
+    ),
+    "eventually",
   );
   const after = subscription();
   assert.equal(after.id, before.id);
@@ -1696,8 +1724,11 @@ test("a live rename preserves the managed doorbell and its delivery position (pl
   assert.equal(hostAdminDoorbellRemove(f.configPath, previous).removed, false);
   const removed = hostAdminDoorbellRemove(f.configPath, current);
   assert.deepEqual([removed.removed, removed.still_in_config], [true, true]);
-  await eventually(async () =>
-    subscription()?.url === fallback ? true : undefined,
+  assert.ok(
+    await eventually(async () =>
+      subscription()?.url === fallback ? true : undefined,
+    ),
+    "eventually",
   );
 });
 
@@ -1724,9 +1755,15 @@ test("a registered doorbell whose secret file was briefly unusable comes back by
     !!hostAdminStatus(f.configPath).inboxes.find(
       (i) => i.address === "hermes@hermes.hab",
     ).doorbell_operator;
-  await eventually(async () => (operator() ? true : undefined));
+  assert.ok(
+    await eventually(async () => (operator() ? true : undefined)),
+    "eventually",
+  );
   chmodSync(secretFile, 0o644);
-  await eventually(async () => (operator() ? undefined : true));
+  assert.ok(
+    await eventually(async () => (operator() ? undefined : true)),
+    "eventually",
+  );
   await host.close();
   host = await startHost(f.configPath);
   assert.equal(
@@ -1735,5 +1772,86 @@ test("a registered doorbell whose secret file was briefly unusable comes back by
     "the existing callback stays paused across restart",
   );
   chmodSync(secretFile, 0o600);
-  await eventually(async () => (operator() ? true : undefined));
+  assert.ok(
+    await eventually(async () => (operator() ? true : undefined)),
+    "eventually",
+  );
+});
+
+test("a doorbell removed by a plain 410 comes back when the same one is added again (plan 3)", async (t) => {
+  const oauth = await oauthFixture(true);
+  const f = await started(t, {}, oauth.getConfig());
+  hostAdminConnect(f.configPath, {
+    address: "hermes@hermes.hab",
+    connection_id: "conn-h",
+  });
+  hostAdminConnect(f.configPath, {
+    address: "codex@codex.hab",
+    connection_id: "conn-c",
+  });
+  await f.host.close();
+  f.config.ingress.events = { poll_ms: 500, rering: false };
+  f.write("service.local.json", f.config);
+  const host = await startHost(f.configPath);
+  t.after(() => host.close());
+  const answers = [410];
+  let rings = 0;
+  const callback = createHttpServer((req, res) => {
+    req.resume();
+    req.on("end", () => {
+      rings++;
+      res.writeHead(answers.shift() ?? 200).end();
+    });
+  });
+  callback.listen(0, "127.0.0.1");
+  await once(callback, "listening");
+  t.after(() => new Promise((done) => callback.close(() => done())));
+  const secretFile = join(f.config.directory, "..", "gone.secret");
+  writeFileSync(
+    secretFile,
+    "whsec_" + Buffer.alloc(32, 5).toString("base64") + "\n",
+    { mode: 0o600 },
+  );
+  const registration = {
+    address: "hermes@hermes.hab",
+    url: `http://127.0.0.1:${callback.address().port}/bell`,
+    secret_file: secretFile,
+  };
+  const operator = () =>
+    !!hostAdminStatus(f.configPath).inboxes.find(
+      (i) => i.address === "hermes@hermes.hab",
+    ).doorbell_operator;
+  const send = async () => {
+    const { recipient_id } = await f.call(tokens.c, "hab_resolve", {
+      address: "hermes@hermes.hab",
+    });
+    await f.call(tokens.c, "hab_submit", {
+      ...message(randomUUID().replaceAll("-", "")),
+      recipient_id,
+    });
+  };
+  hostAdminDoorbellAdd(f.configPath, registration);
+  assert.ok(
+    await eventually(async () => (operator() ? true : undefined)),
+    "added",
+  );
+  await send();
+  // The callback answers 410 without a reason: the doorbell ends.
+  assert.ok(
+    await eventually(async () =>
+      rings === 1 && !operator() ? true : undefined,
+    ),
+    "ended by 410",
+  );
+  const again = hostAdminDoorbellAdd(f.configPath, registration);
+  assert.equal(again.unchanged, true);
+  assert.ok(
+    await eventually(async () => (operator() ? true : undefined)),
+    "back",
+  );
+  await send();
+  assert.ok(
+    await eventually(async () => (rings === 2 ? true : undefined)),
+    "rings again",
+  );
 });
