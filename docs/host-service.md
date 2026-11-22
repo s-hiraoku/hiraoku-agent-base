@@ -32,10 +32,13 @@ row may still have been saved by its recipient, so the recipient's records decid
 The [example](../config/host-service.example.json) uses dummy paths and supervised
 trial capacity numbers, not approved unattended production sizing. Supply all
 limits explicitly. `delivery.queue.agent_capacity` is required: each verified sender gets
-its own pending/record budget ([details](delivery/agent-capacity.md)), and
-`max_records_per_sender` / `max_pending_per_sender` must be smaller than the
-queue-wide `max_records` / `max_pending`, so one sender cannot fill the retained
-record pool that every other agent relies on. The existing canonical state directory must be 0700. Config,
+its own budget of unread mail, counted in messages and body bytes, and read or expired
+mail stops counting at once ([details](delivery/agent-capacity.md), ADR-033).
+`max_pending_per_sender` / `max_body_bytes_per_sender` must be smaller than the
+queue-wide `max_pending` / `max_body_bytes`, so one sender cannot fill the unread
+pool that every other agent relies on. `max_records` and `max_body_bytes` also bound
+retained receipts and read bodies kept for re-reading; size them as disk ceilings that
+normal traffic never reaches. The existing canonical state directory must be 0700. Config,
 keys and individual mappings must be canonical owner-only 0600 files ending in
 `.local.json`, outside Git. Hardlinked config/keys/mappings are rejected. A missing
 credential file refuses startup. An explicitly empty credential array starts

@@ -14,7 +14,7 @@
     "ChatGPT の HAB コネクタを切断して、つなぎ直す。",
     "Work の会話か dots で、下の文を渡す。通常の会話ではイベントが届かない。"
   ],
-  "agent_prompt": "HAB の hab.message.received イベントを見張ってください。\nイベントが届いたら hab_inbox で受信箱を読み、送り主と内容を私に見せてください。\n<許可するアドレス> からの質問には、hab_reply で短く答えてください。\nそれ以外のメールには返信せず、知らせるだけにしてください。",
+  "agent_prompt": "HAB の hab.message.received イベントを見張ってください。\nイベントに data.session があり、それが <セッション名> と違うときだけ、何もせずに終えてください。\nそれ以外は hab_inbox で受信箱を読み、送り主と内容を私に見せてください。\n<許可するアドレス> からの質問には、hab_reply で短く答えてください。\nそれ以外のメールには返信せず、知らせるだけにしてください。",
   "operator_steps": [
     "host 設定に ingress.events があることを確かめる。無ければバックアップを取ってから \"events\": {} を加え、host を再起動する。",
     "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
@@ -29,6 +29,7 @@
   "placeholders": {
     "<許可するアドレス>": "allowed",
     "<アドレス>": "address",
-    "<製品名>": "agent_name"
+    "<製品名>": "agent_name",
+    "<セッション名>": "conversation"
   }
 }

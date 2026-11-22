@@ -15,7 +15,7 @@
     "routine の画面で Test を押し、HAB のツールが呼ばれることを確かめる。",
     "routine の Webhook の URL と鍵を確かめる。鍵はチャットに貼らず、Mac mini の所有者だけが読めるファイル（権限 0600）に保存する。"
   ],
-  "agent_prompt": "Webhook で始まる routine を 1 つ作ってください。\n指示は「HAB の hab_inbox で受信箱を読み、送り主と内容をこのチャットに書く。\n<許可するアドレス> からの質問には hab_reply で短く答える。それ以外には返信しない」にしてください。\nHAB のコネクタを使えるようにしてください。",
+  "agent_prompt": "Webhook で始まる routine を 1 つ作ってください。\n指示は「Webhook の本文に data.session があり、それが <セッション名> と違うときだけ、何もせずに終える。\nそれ以外は HAB の hab_inbox で受信箱を読み、送り主と内容をこのチャットに書く。\n<許可するアドレス> からの質問には hab_reply で短く答える。それ以外には返信しない」にしてください。\nHAB のコネクタを使えるようにしてください。",
   "operator_steps": [
     "host 設定に ingress.events があることを確かめる。無ければバックアップを取ってから \"events\": {} を加え、host を再起動する。",
     "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
@@ -31,6 +31,7 @@
   "placeholders": {
     "<許可するアドレス>": "allowed",
     "<アドレス>": "address",
-    "<製品名>": "agent_name"
+    "<製品名>": "agent_name",
+    "<セッション名>": "conversation"
   }
 }

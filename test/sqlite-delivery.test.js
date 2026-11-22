@@ -217,25 +217,116 @@ test("capacity refuses new work without evicting accepted work; an exact retry n
     assert.equal(f.service.status("a", input.message_id).state, "pending");
 });
 
-test("a sender's retained records stay within its own budget", async (t) => {
+const budget = (patch = {}) => ({
+  max_pending_per_sender: 2,
+  max_body_bytes_per_sender: 50000,
+  max_body_bytes_per_recipient: 50000,
+  reservations: [],
+  ...patch,
+});
+
+test("a sender's budget counts only mail its recipient has not read yet", async (t) => {
+  const f = await fixture(t, { queue: { agent_capacity: budget() } });
+  f.service.submit("a", next());
+  f.service.submit("a", next());
+  // Two unread messages fill the sender's budget, and another sender is unaffected.
+  assert.throws(() => f.service.submit("a", next()), {
+    code: "capacity_exceeded",
+  });
+  assert.equal(f.service.submit("c", next()).state, "pending");
+  // Reading via poll+ACK and via the mailbox both free the sender's slots at once,
+  // although the records stay for replay and status until retention collects them.
+  f.service.ack("b", ack(f.service.poll("b"), "budget-ack"));
+  assert.equal(f.service.inbox("b", { limit: 10 }).length, 2);
+  for (let n = 0; n < 2; n++)
+    assert.equal(f.service.submit("a", next()).state, "pending");
+  assert.equal(
+    f.raw
+      .prepare("SELECT count(*) n FROM delivery_messages WHERE sender_id='a'")
+      .get().n,
+    4,
+  );
+  assert.throws(() => f.service.submit("a", next()), {
+    code: "capacity_exceeded",
+  });
+});
+
+test("expired and quarantined mail: expired stops counting, quarantined unread still counts", async (t) => {
+  const f = await fixture(t, { queue: { agent_capacity: budget() } });
+  const gone = next();
+  const stuck = next();
+  f.service.submit("a", gone);
+  f.service.submit("a", stuck);
+  f.raw
+    .prepare("UPDATE delivery_messages SET expires_at=? WHERE message_id=?")
+    .run(Date.now() - 1, gone.message_id);
+  f.raw
+    .prepare(
+      "UPDATE delivery_messages SET state='quarantined' WHERE message_id=?",
+    )
+    .run(stuck.message_id);
+  assert.equal(f.service.submit("a", next()).state, "pending");
+  assert.equal(f.row(gone.message_id).state, "expired");
+  assert.throws(() => f.service.submit("a", next()), {
+    code: "capacity_exceeded",
+  });
+});
+
+test("byte budgets count unread bodies; a read body kept for re-reading counts only store-wide", async (t) => {
+  const size = (input) =>
+    Buffer.byteLength(JSON.stringify({ sender_id: "a", message: input }));
+  const first = next();
+  const one = size(first);
   const f = await fixture(t, {
     queue: {
-      agent_capacity: {
-        max_pending_per_sender: 2,
-        max_body_bytes_per_sender: 50000,
-        max_records_per_sender: 2,
-        max_body_bytes_per_recipient: 50000,
-        max_records_per_recipient: 50,
-        reservations: [],
-      },
+      max_body_bytes: one * 4,
+      agent_capacity: budget({
+        max_pending_per_sender: 4,
+        max_body_bytes_per_sender: one * 2,
+        max_body_bytes_per_recipient: one * 2,
+      }),
     },
   });
-  for (let n = 0; n < 2; n++) {
-    f.service.submit("a", next());
-    f.service.ack("b", ack(f.service.poll("b"), "budget-" + n));
-  }
-  // ACKed records still count until retention collects them.
+  f.service.submit("a", first);
+  f.service.submit("c", next());
+  // The recipient's unread bytes are full, whoever sent them.
   assert.throws(() => f.service.submit("a", next()), {
+    code: "capacity_exceeded",
+  });
+  assert.equal(
+    f.service.submit("a", next({ recipient_id: "d" })).state,
+    "pending",
+  );
+  assert.equal(f.service.inbox("b", { limit: 10 }).length, 2);
+  // Read bodies stay for re-reading but no longer fill b's or a's unread budget.
+  assert.ok(f.row(first.message_id).body_bytes > 0);
+  assert.equal(f.service.submit("a", next()).state, "pending");
+  // The store-wide byte ceiling still holds every kept body: 4 bodies fill it.
+  assert.throws(() => f.service.submit("c", next({ recipient_id: "d" })), {
+    code: "capacity_exceeded",
+  });
+});
+
+test("a reservation keeps its unread floor free; read mail does not use it up", async (t) => {
+  const f = await fixture(t, {
+    queue: {
+      max_pending: 3,
+      agent_capacity: budget({
+        reservations: [{ sender_id: "c", pending: 1, body_bytes: 1 }],
+      }),
+    },
+  });
+  f.service.submit("a", next());
+  f.service.submit("a", next({ recipient_id: "d" }));
+  // a's 2 unread + c's unused floor of 1 = the store-wide 3.
+  assert.throws(() => f.service.submit("d", next()), {
+    code: "capacity_exceeded",
+  });
+  assert.equal(f.service.submit("c", next()).state, "pending");
+  assert.equal(f.service.inbox("b", { limit: 10 }).length, 2);
+  // c's read message frees c's floor usage, so the floor is held back again.
+  assert.equal(f.service.submit("d", next()).state, "pending");
+  assert.throws(() => f.service.submit("d", next({ recipient_id: "c" })), {
     code: "capacity_exceeded",
   });
   assert.equal(f.service.submit("c", next()).state, "pending");
@@ -469,7 +560,7 @@ test("inbox read marks messages read once, keeps them re-readable and releases t
       [second.message_id, false],
     ].sort(),
   );
-  // A kept body stays charged to the byte quotas until it is released.
+  // A kept body stays in the store-wide byte ceiling until it is released.
   assert.ok(f.row(first.message_id).body_bytes > 0);
   f.raw
     .prepare("UPDATE delivery_messages SET acked_at=? WHERE message_id=?")

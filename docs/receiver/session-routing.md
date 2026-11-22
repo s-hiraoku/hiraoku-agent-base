@@ -155,7 +155,7 @@ export function runProduct(
 
 ## Grok と Dots：指示文で自分宛てを確かめる
 
-- **Grok routine** の指示に 1 文足す。「Webhook の `data.session` が `<このセッション名>` でなければ、何もせずに終える」。
+- **Grok routine** の指示に 1 文足す。「Webhook の本文に `data.session` があり、それが `<このセッション名>` と違うときだけ、何もせずに終える」。本文が読めないときや `data.session` がないときは、今までどおり受信箱を読む。文は [接続の手順書](../connections/agent-setup.md) と `config/products/grok.json`・`dots.json` に入れた。
   - `hab_inbox` はその接続のアドレスの受信箱しか返さない。違う名前で起きても、読み違いは起きない。
   - 運用者の登録ミス（別のアドレスの呼び鈴を向けた）に気づける。
 - **Dots** の見張りの指示にも、同じ 1 文を足す。ChatGPT がイベントの `data` を見せるかは、実機で確かめる。見えなければこの 1 文は効かず、今と同じ動きになる。

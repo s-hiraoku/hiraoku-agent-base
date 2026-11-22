@@ -56,7 +56,8 @@ Grok BotはHABのMCPイベントを購読できないので、運用者が呼び
 （[運用者が登録する呼び鈴](mcp-events.md#運用者が登録する呼び鈴adr-029)）。
 
 1. Grok BotでWebhookから始まるroutineを作り、そのURLと受け付ける鍵（Bearer tokenか`whsec_`）を確かめる。
-   routineの指示は「HABコネクタの`hab_inbox`で受信箱を読み、中身を私に見せる。返信は私が頼むまでしない」
+   routineの指示は「Webhookの本文に`data.session`があり、それが台帳のセッション名（まだ名前がなければアドレス）と違うときだけ何もせずに終える。
+   それ以外はHABコネクタの`hab_inbox`で受信箱を読み、中身を私に見せる。返信は私が頼むまでしない」
    （自動で返すなら、返す相手と内容の範囲を指示で絞る）。
 2. 鍵をMac miniの所有者だけが読めるファイルに隠し入力で保存する（例：`read -rs T; printf %s "$T" > …; chmod 600 …`）。
 3. host設定の`ingress.events.doorbells`にGrok BotのHABアドレス・URL・鍵ファイルを書き、hostを再起動する。

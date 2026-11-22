@@ -40,7 +40,7 @@ Classification: history/adoption-versus-implementation. Requirements: HAB-F01, H
 
 Separate dated product baseline from optional proof implementation. Existing P7/optional modules do not by themselves resolve formal adoption/production replacement; preserve proposal/manual gate, existing MCP and single delivery authority. Superseded for delivery: the owner approved JetStream-only delivery, recorded as ADR-016 and in the product spec (HAB-C-D06, resolved). Superseded for A2A: the owner confirmed on 2026-11-12 that the retired Relay is replaced by NATS JetStream delivery and A2A interoperability (HAB-C-F10). A2A production deployment remains undecided. Superseded by ADR-018 (owner, 2026-11-13): JetStream, nats-server and packages/relay-nats were removed; the host delivers through one SQLite file (docs/delivery-store.md).
 
-Sources: [docs/hab-product-spec.md:23](../../docs/hab-product-spec.md#L23-L30), [README.md:165](../../README.md#L165-L165), [docs/hab-product-spec.md:198](../../docs/hab-product-spec.md#L198-L204).
+Sources: [docs/hab-product-spec.md:42](../../docs/hab-product-spec.md#L42-L49), [historical README.md:132](https://github.com/s-hiraoku/hiraoku-agent-base/blob/f82efa8396bcffb4f07ef3aafc65d89320dc71a1/README.md#L132), [docs/hab-product-spec.md:217](../../docs/hab-product-spec.md#L217-L223).
 
 ## HAB-C-F05 — resolved
 
