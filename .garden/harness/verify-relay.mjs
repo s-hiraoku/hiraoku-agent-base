@@ -12,6 +12,11 @@ const r = spawnSync("node", ["scripts/hab-mvp-demo.mjs", "--simulate"], {
 writeFileSync(join(evidenceDir, "hab-mvp-stdout.txt"), r.stdout ?? "");
 writeFileSync(join(evidenceDir, "hab-mvp-stderr.txt"), r.stderr ?? "");
 
+if (r.error?.code === "ETIMEDOUT") {
+  // The demo started but did not finish (it has its own 30 s deadline): a hang is a behavior failure.
+  console.error("demo did not finish within 120 s");
+  process.exit(1);
+}
 if (r.error) {
   console.error(`demo could not start: ${r.error.message}`);
   process.exit(75);
