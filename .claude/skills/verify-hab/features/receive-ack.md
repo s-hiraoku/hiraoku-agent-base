@@ -41,6 +41,6 @@ Preconditions:
 ## Gotchas
 
 - `hab_poll` hands out the oldest deliverable message across senders; leftovers from an earlier recipe change what you get. Use a fresh run dir per recipe.
-- The lease is 30 s. An ack built from a poll older than that may be refused; re-poll.
+- The lease is 30 s. An ack built from a poll whose `lease_until` has passed is refused (`invalid_ack`); re-poll.
 - A message is pollable as soon as `hab_submit` returns `pending`; admission and the body commit in one SQLite transaction.
 - On Node 22, `inspect.mjs` may print an `ExperimentalWarning` for `node:sqlite` on stderr; it is not a failure. Node ≥ 26 (required by this skill) stays silent.
