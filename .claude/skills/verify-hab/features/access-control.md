@@ -5,6 +5,7 @@ Every host call must carry a bearer that maps to a verified, active agent connec
 ## Sub-features
 
 - `auth-missing` no `Authorization` header → HTTP 401 with `WWW-Authenticate: Bearer`; `audit.jsonl` gets an `auth_denied` line with `reason` `bearer_missing`.
+- `auth-malformed` an `Authorization` header that is not `Bearer <token>`, or longer than 8192 characters → HTTP 401 with `reason` `bearer_malformed`.
 - `auth-unknown` unknown bearer → HTTP 401; the `auth_denied` line has `reason` `credential_rejected` (an OAuth ingress names why instead, e.g. `client_not_registered`, `scope_missing`, `audience_mismatch`), never the token.
 - `method-code` every authenticated request also writes a `method` line whose code names the MCP method (`tools_list`, `tools_call`, `prompts_list`, `resources_read_ui`, …). A method outside the table is `other`; a refused one is followed by `resource_rejected`. The caller's method string and URI are never written.
 - `auth-scoped` an authenticated agent only sees its own receipts (see `send-status` in [send-message.md](./send-message.md)).
