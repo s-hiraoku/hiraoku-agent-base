@@ -38,7 +38,7 @@ import {
   tokenSource,
   type NotifyConfig,
   type TokenSource,
-} from "../hab-notify.ts";
+} from "./notify-config.ts";
 import { createNotifyCheckLog } from "./notify-check-log.ts";
 
 type Wake = NonNullable<NotifyConfig["wake"]>;

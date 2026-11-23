@@ -69,6 +69,7 @@ export HAB_NOTIFY_TOKEN=$(jq -r .agents.b.token $ST); N="node scripts/hab-notify
 
 ## Gotchas
 
+- Start `scripts/hab-notify.ts` as a program (as launchd does), not only through `main()`: its entry awaits `main()` at the top level, so an import cycle back into it never settles and the process exits 13 with no output. The shared config, token and screen code lives in `scripts/lib/notify-config.ts`, which imports neither the CLI nor `scripts/lib/notify-product.ts`. `test/hab-notify-entry.test.js` starts `run` and `units` as child processes.
 - `hab_peek` returns only unread mail. A message an agent already read with `hab_inbox` (any `hab_inbox` call, `include_read: true` too, marks every new message it returns read), or one the SDK receive path leased or ACKed, is not offered; do not run the SDK receive service and the notifier for the same address.
 - The JSONL screen cannot confirm session admission. Accept is `unsupported`, writes no handoff, and must not be reported as queued or started.
 - A notices store is bound to the binding it was created with (screen type, `hab_url` plus `app_server`/`queue.daemon_socket`/`channel_socket`, `agent_id` and `screen.target`); a config that changes any of them gets `notices_target_mismatch`. Use a new `store` per screen and session.
