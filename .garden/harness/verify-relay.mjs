@@ -16,7 +16,9 @@ if (r.error) {
   console.error(`demo could not start: ${r.error.message}`);
   process.exit(75);
 }
-if (/ERR_MODULE_NOT_FOUND|Cannot find package/.test(r.stderr ?? "")) {
+// Only a missing installed package is an environment problem; a missing repository
+// source module ("Cannot find module '/...'") is a code regression and stays UNSATISFIED.
+if (/Cannot find package '[^']+' imported from/.test(r.stderr ?? "")) {
   console.error("dependencies are not installed");
   process.exit(75);
 }
