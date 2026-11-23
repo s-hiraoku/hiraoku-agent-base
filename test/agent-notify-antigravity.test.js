@@ -462,3 +462,25 @@ test("a configured session_probe asks about the bound conversation", async (t) =
   });
   assert.equal(await ask(), "gone");
 });
+
+test("the older products keep their binding identity (three-entry connection)", async (t) => {
+  const f = setup(t);
+  const { bindingIdentity } = await import("../src/agent-notify/binding.ts");
+  const dots = {
+    ...f.config,
+    screen: {
+      type: "chatgpt-connector",
+      path: join(f.dir, "dots.jsonl"),
+      conversation: "dots",
+    },
+  };
+  assert.equal(
+    boundScreen(dots).target,
+    bindingIdentity({
+      product: "chatgpt-connector",
+      connection_id: JSON.stringify(["https://hab.example/mcp", null, null]),
+      recipient_id: "agent-antigravity",
+      session_id: "chatgpt-connector:dots",
+    }),
+  );
+});

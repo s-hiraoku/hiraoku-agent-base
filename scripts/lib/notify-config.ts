@@ -435,6 +435,8 @@ export const configuredProbe = (config: NotifyConfig) => {
 export function boundScreen(config: NotifyConfig): AgentScreen {
   const screen = configuredScreen(config);
   const product = config.screen;
+  // The tuple keeps its three entries for the older products: their stores were recorded
+  // under this encoding. Only Antigravity adds a fourth, the agy it hands requests to.
   const connection = JSON.stringify([
     config.hab_url.replace(/\/+$/, ""),
     product.type === "codex"
@@ -443,9 +445,9 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
         : (product.app_server?.url ?? null)
       : null,
     product.type === "claude-code" ? (product.channel_socket ?? null) : null,
-    product.type === "antigravity" && product.cli
-      ? resolve(product.cli.agy_bin)
-      : null,
+    ...(product.type === "antigravity"
+      ? [product.cli ? resolve(product.cli.agy_bin) : null]
+      : []),
   ]);
   const binding =
     product.type === "hermes-desktop"
