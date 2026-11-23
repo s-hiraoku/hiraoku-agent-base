@@ -11,7 +11,7 @@ skills = ["create-verification-skill", "maintain-verification-skill"]
 
 [target_harness]
 name = "hab-message-relay-harness"
-version = 1
+version = 2
 
 [spec]
 paths = ["docs/specs/message-relay.md"]
