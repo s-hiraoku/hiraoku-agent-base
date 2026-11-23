@@ -1,4 +1,6 @@
 /** Operator management for the configured HAB host. Prints no secrets. */
+import { randomBytes } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import {
   hostAdminStatus,
@@ -27,10 +29,15 @@ import {
   listRecipes,
   loadRecipe,
 } from "../src/host/product-recipes.ts";
+import { OperatorMail } from "../src/host/operator-mail.ts";
+import type { OperatorMailView } from "../src/host/operator-mail.ts";
+import { makeReplayBoundMessageId } from "../src/messaging/contract.ts";
 
 const usage = `usage:
   hab-admin --config <service.local.json> status
   hab-admin --config <service.local.json> doctor [--address <bot@agent.hab>]
+  hab-admin --config <service.local.json> ping --address <bot@agent.hab> [--wait <0..60>] [--request-id <operation_id>]
+  hab-admin --config <service.local.json> ping --status <operation_id> [--wait <0..60>]
   hab-admin --config <service.local.json> pending
   hab-admin --config <service.local.json> approve --pending <pending_id> --address <bot@agent.hab> [--days <1..3650>]
   hab-admin --config <service.local.json> reject --pending <pending_id>
@@ -78,6 +85,8 @@ function parse(args: string[]) {
         "--connection",
         "--url",
         "--secret-file",
+        "--wait",
+        "--status",
         "--product",
         "--allowed",
         "--conversation",
@@ -91,7 +100,71 @@ function parse(args: string[]) {
   return { config, command, options };
 }
 
-export function main(args = process.argv.slice(2)) {
+async function waitForPing(
+  mail: OperatorMail,
+  result: Promise<OperatorMailView>,
+  wait: number,
+) {
+  let view = await result;
+  const deadline = performance.now() + wait * 1000;
+  while (
+    !view.problem &&
+    view.reply_at === null &&
+    view.state !== "expired" &&
+    view.state !== "quarantined" &&
+    performance.now() < deadline
+  ) {
+    await delay(Math.min(500, deadline - performance.now()));
+    if (performance.now() >= deadline) break;
+    view = await mail.status(view.operation_id);
+  }
+  return view;
+}
+
+function ping(
+  config: string,
+  options: Record<string, string | undefined>,
+  onGeneratedId?: (id: string) => void,
+) {
+  const target = options["--address"];
+  const statusId = options["--status"];
+  const requestId = options["--request-id"];
+  const wait = options["--wait"] ?? "0";
+  const allowed = statusId
+    ? ["--status", "--wait"]
+    : ["--address", "--request-id", "--wait"];
+  if (
+    !/^(?:[0-9]|[1-5][0-9]|60)$(?![\s\S])/.test(wait) ||
+    Object.keys(options).some((key) => !allowed.includes(key))
+  )
+    throw new HostAdminError("usage");
+
+  if (target) {
+    const mail = new OperatorMail(config, "ping");
+    const operationId =
+      requestId ??
+      makeReplayBoundMessageId(
+        new Date().toISOString(),
+        randomBytes(16).toString("hex"),
+      );
+    if (requestId === undefined) onGeneratedId?.(operationId);
+    return waitForPing(
+      mail,
+      mail.submit(operationId, { action: "ping", to: target }),
+      Number(wait),
+    );
+  }
+  if (statusId) {
+    const mail = new OperatorMail(config, "ping");
+    return waitForPing(mail, mail.status(statusId), Number(wait));
+  }
+  throw new HostAdminError("usage");
+}
+
+export function main(
+  args = process.argv.slice(2),
+  onGeneratedPingId?: (id: string) => void,
+) {
   const { config, command, options } = parse(args);
   if (command === "status" && !Object.keys(options).length)
     return hostAdminStatus(config);
@@ -100,6 +173,7 @@ export function main(args = process.argv.slice(2)) {
     Object.keys(options).every((key) => key === "--address")
   )
     return hostAdminDoctor(config, options["--address"]);
+  if (command === "ping") return ping(config, options, onGeneratedPingId);
   if (command === "pending" && !Object.keys(options).length)
     return hostAdminPending(config);
   if (
@@ -240,9 +314,12 @@ export function main(args = process.argv.slice(2)) {
   throw new HostAdminError("usage");
 }
 
-export function runCli() {
+export async function runCli() {
   try {
-    process.stdout.write(JSON.stringify(main(), null, 2) + "\n");
+    const result = await main(undefined, (id) =>
+      process.stderr.write(`ping_request_id ${id}\n`),
+    );
+    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   } catch (error) {
     const code = hostAdminErrorCode(error);
     process.stderr.write(

@@ -18,6 +18,82 @@
     </header>
 
     <main class="page">
+      <section
+        id="mail-workspace"
+        class="panel"
+        aria-labelledby="mail-title"
+        hidden
+      >
+        <div class="panel-header">
+          <h2 id="mail-title">メッセージ</h2>
+          <p id="mail-sender" class="mail-sender"></p>
+        </div>
+        <p id="mail-status" class="mail-status" role="status"></p>
+        <div class="mail-columns">
+          <form id="send-form" class="mail-box" aria-labelledby="send-title">
+            <h3 id="send-title">メッセージを送る</h3>
+            <div class="mail-field">
+              <label for="mail-to">宛先</label>
+              <select id="mail-to" required>
+                <option value="">宛先を選択</option>
+              </select>
+            </div>
+            <div id="compose-body" class="mail-field">
+              <label for="mail-text">本文</label>
+              <textarea id="mail-text" rows="4" required></textarea>
+            </div>
+            <div class="mail-actions">
+              <button
+                id="send-message"
+                class="button primary"
+                type="submit"
+                disabled
+              >
+                送信
+              </button>
+              <button id="new-message" class="button" type="button" hidden>
+                新しい送信を作成
+              </button>
+              <button id="open-ping" class="button" type="button" hidden>
+                試験メッセージを送る
+              </button>
+            </div>
+            <p id="send-status" class="mail-status" role="status"></p>
+          </form>
+
+          <section
+            id="mail-inbox"
+            class="mail-box"
+            aria-labelledby="inbox-title"
+          >
+            <div class="mail-heading">
+              <h3 id="inbox-title">受信箱</h3>
+              <button id="read-inbox" class="button" type="button" disabled>
+                受信箱を開く
+              </button>
+            </div>
+            <p id="inbox-status" class="mail-status" role="status">
+              表示したメッセージは既読になります。
+            </p>
+            <ul id="inbox-items" class="mail-items"></ul>
+            <button id="read-older" class="button" type="button" disabled>
+              以前の既読を表示
+            </button>
+          </section>
+        </div>
+
+        <section class="mail-history" aria-labelledby="delivery-title">
+          <div class="mail-heading">
+            <h3 id="delivery-title">配送状況</h3>
+            <button id="refresh-deliveries" class="button" type="button">
+              履歴を更新
+            </button>
+          </div>
+          <p id="delivery-status" class="mail-status" role="status"></p>
+          <ul id="delivery-items" class="mail-items"></ul>
+        </section>
+      </section>
+
       <section class="panel" aria-labelledby="list-title">
         <div class="panel-header">
           <h2 id="list-title">登録一覧</h2>
@@ -117,6 +193,52 @@
           </a>
         </div>
       </div>
+    </dialog>
+
+    <dialog id="reply-dialog" class="mail-dialog" aria-labelledby="reply-title">
+      <form id="reply-form" class="mail-form">
+        <div class="dialog-header">
+          <h2 id="reply-title">返信</h2>
+          <button id="close-reply" class="button" type="button">閉じる</button>
+        </div>
+        <p id="reply-recipient" class="mail-sender"></p>
+        <div class="mail-field">
+          <label for="reply-text">返信本文</label>
+          <textarea id="reply-text" rows="5" required></textarea>
+        </div>
+        <div class="mail-actions">
+          <button id="send-reply" class="button primary" type="submit">
+            返信を送信
+          </button>
+          <button id="new-reply" class="button" type="button" hidden>
+            新しい返信を作成
+          </button>
+        </div>
+        <p id="reply-status" class="mail-status" role="status"></p>
+      </form>
+    </dialog>
+
+    <dialog id="ping-dialog" class="mail-dialog" aria-labelledby="ping-title">
+      <form id="ping-form" class="mail-form">
+        <div class="dialog-header">
+          <h2 id="ping-title">試験メッセージ</h2>
+          <button id="close-ping" class="button" type="button">閉じる</button>
+        </div>
+        <p id="ping-sender" class="mail-sender"></p>
+        <p id="ping-recipient" class="mail-sender"></p>
+        <p class="message-body">
+          HAB の接続確認です。届いていたら、このメッセージに返信してください。
+        </p>
+        <div class="mail-actions">
+          <button id="send-ping" class="button primary" type="submit">
+            試験送信
+          </button>
+          <button id="new-ping" class="button" type="button" hidden>
+            新しい試験を作成
+          </button>
+        </div>
+        <p id="ping-status" class="mail-status" role="status"></p>
+      </form>
     </dialog>
   </body>
 </html>
