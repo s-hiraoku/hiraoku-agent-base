@@ -2663,8 +2663,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 17,
-          "end": 17,
+          "start": 20,
+          "end": 20,
           "excerpt_sha256": "53dd1acc4164a66887d09a3569fecbb281a039e05d3b3f289e7af5b69d09846c"
         }
       ]
@@ -2694,8 +2694,8 @@
         },
         {
           "path": ".claude/skills/verify-hab/features/configured-host.md",
-          "start": 19,
-          "end": 19,
+          "start": 22,
+          "end": 22,
           "excerpt_sha256": "bc76086a1621b520c87f9cbbbb8a7e48ae2405b5c24ade74a17efcdfb3caebb0"
         }
       ]
@@ -3803,7 +3803,7 @@
           "path": ".claude/skills/verify-hab/features/communication-boundary.md",
           "start": 27,
           "end": 39,
-          "excerpt_sha256": "76ff374974e123784681cb3768b121c6c1f98958d80b323af1dcac84cfe42512"
+          "excerpt_sha256": "b5bbfacf83df3e78683464f6b56477511dd64c2ba76a3de8de8fb42fe91fe4d2"
         }
       ]
     },
