@@ -1,0 +1,79 @@
+schema_version = 1
+
+[template]
+name = "cli"
+version = 1
+
+[common_harness]
+name = "pstack"
+ref = "7a583913eb1b8d1a0ee76753d1a2cf072e7b54f9"
+skills = ["create-verification-skill", "maintain-verification-skill"]
+
+[target_harness]
+name = "hab-message-relay-harness"
+version = 1
+
+[spec]
+paths = ["docs/specs/message-relay.md"]
+approval_branch = "main"
+
+[delegation]
+mode = "observe_only"
+allowed_paths = []
+forbidden_paths = [".garden/**", "docs/specs/**", ".github/workflows/**"]
+max_retries = 0
+max_duration_sec = 600
+max_cost_usd = 0.0
+require_checks = ["toolchain", "relay_e2e"]
+
+[checks.toolchain]
+kind = "check"
+command = ["node", ".garden/harness/check-toolchain.mjs"]
+timeout_sec = 300
+covers = ["AC-001"]
+inconclusive_exit_codes = [75]
+status = "active"
+
+[checks.relay_e2e]
+kind = "check"
+command = ["node", ".garden/harness/verify-relay.mjs"]
+timeout_sec = 180
+covers = ["AC-002"]
+required_evidence = ["hab-mvp-result.json"]
+inconclusive_exit_codes = [75]
+status = "active"
+
+[[triggers]]
+id = "pr-verify"
+event = "pull_request"
+flow = "verify_relay"
+[triggers.conditions]
+actions = ["opened", "synchronize"]
+
+[flows.verify_relay]
+description = "承認済み仕様に基づき、変更を加えずに HAB ローカルMVPの送受信を確認する"
+scope = "all_specs"
+
+[[flows.verify_relay.steps]]
+id = "check_toolchain"
+type = "check"
+check = "toolchain"
+on_fail = "escalate"
+on_inconclusive = "escalate"
+
+[[flows.verify_relay.steps]]
+id = "check_relay"
+type = "check"
+check = "relay_e2e"
+on_fail = "escalate"
+on_inconclusive = "escalate"
+
+[[flows.verify_relay.steps]]
+id = "final_gate"
+type = "gate"
+require_checks = ["toolchain", "relay_e2e"]
+
+[[flows.verify_relay.steps]]
+id = "emit_report"
+type = "report"
+kind = "auto"
