@@ -10,7 +10,7 @@ on:
       flow:
         description: "Flow name to run"
         required: true
-        default: "verify_only"
+        default: "verify_relay"
         type: string
 
 permissions:
@@ -27,6 +27,6 @@ jobs:
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     uses: s-hiraoku/hiraoku-software-garden/.github/workflows/garden-reusable.yml@main
     with:
-      flow: ${{ inputs.flow || (github.event_name == 'pull_request' && 'auto' || 'verify_only') }}
+      flow: ${{ inputs.flow || (github.event_name == 'pull_request' && 'auto' || 'verify_relay') }}
       issue_number: ${{ github.event.pull_request.number || github.event.issue.number || 0 }}
       node_version_file: .node-version
