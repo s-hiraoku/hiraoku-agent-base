@@ -8,7 +8,8 @@
     "stderr.log で必要な Node 26.13.1 と実際の 22.23.5 を確認"
   ],
   "preventive_action": "check-toolchain.mjs が必要な版・実際の版・対処を toolchain-diagnostic.json に証拠として残す",
-  "preventive_check_ref": "",
-  "status": "open",
-  "recorded_at": "2026-11-23T11:42:20Z"
+  "preventive_check_ref": "run:20261123T114237Z-a72b7edf",
+  "status": "verified",
+  "recorded_at": "2026-11-23T11:42:20Z",
+  "updated_at": "2026-11-23T11:42:42Z"
 }
