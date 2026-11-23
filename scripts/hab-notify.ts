@@ -30,7 +30,7 @@
  *       (token.oauth only: one browser sign-in that gives the notifier its own grant; after
  *       it the notifier refreshes its token itself)
  *
- * Screen types: jsonl, hermes-desktop, codex, claude-code, chatgpt-connector (Dots).
+ * Screen types: jsonl, hermes-desktop, codex, antigravity, claude-code, chatgpt-connector (Dots).
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";

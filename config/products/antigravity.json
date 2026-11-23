@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "product": "antigravity",
+  "label": "Antigravity",
+  "setup_heading": "Antigravity を設定する",
+  "receive": {
+    "mode": "hook",
+    "via": "notifier_wake"
+  },
+  "auth0_app": "regular_web",
+  "product_steps": [
+    "Auth0 にこの製品専用の Regular Web Application を作り、Refresh Token を許可し、callback https://antigravity.google/oauth-callback を登録する。",
+    "~/.gemini/config/mcp_config.json の mcpServers に hab を足す。serverUrl は https://<HAB の公開入口>/hab/mcp、oauth に作ったアプリの clientId と clientSecret を書く。",
+    "ターミナルで agy を起動して HAB にサインインし（表示されたコードを貼り付ける）、終える。続けて作業フォルダで agy -p \"hab_discover で自分のアドレスを確かめて\" --output-format json を実行し、出力の conversation_id を控える。",
+    "~/.gemini/antigravity-cli/settings.json の permissions.allow に mcp(hab/*) を足す（頭なしの実行で HAB のツールが拒否されないように）。",
+    "Mac で Claude Code などのコーディングエージェントに、下の文を渡す。"
+  ],
+  "agent_prompt": "hiraoku-agent-base の docs/receiver/arrival-notifier.md の Antigravity の節に沿って、この Mac に\nHAB の受信通知（hab:notify）を Antigravity 用に設定してください。\nアドレスは <antigravity のアドレス>、引き渡し先は Antigravity CLI の会話 <会話> です。\n自動で受け付ける相手は <許可するアドレス> だけにして、notify.json の auto_accept に書いてください。\n設定ファイルを変える前にバックアップを取り、変えたあとに hab-notify check を通してください。",
+  "operator_steps": [
+    "host 設定に ingress.events があることを確かめる。無ければバックアップを取ってから \"events\": {} を加え、host を再起動する。",
+    "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
+    "hab:admin receive --agent-name <製品名> --mode hook --request-id <要求 ID> で受け方を hook にする。",
+    "hab:admin doorbell add --address <アドレス> --url http://127.0.0.1:<wake のポート>/wake --secret-file <wake の鍵ファイル> で、notifier を起こす呼び鈴を登録する。鍵は notify.json の wake.secret_file と同じもの。 ingress.events が有効なら、host の再起動は要らない。",
+    "hab:admin doctor --address <アドレス> で、registration が ok になったことを確かめる。",
+    "許可した相手から試験の 1 通を送り、hab-notify list で started になり、Antigravity の会話から返信が届くことを確かめる。"
+  ],
+  "expect": {
+    "doctor_ok": ["registration", "receive"],
+    "stages": ["accepted", "rang", "read", "replied"]
+  },
+  "placeholders": {
+    "<許可するアドレス>": "allowed",
+    "<アドレス>": "address",
+    "<antigravity のアドレス>": "address",
+    "<製品名>": "agent_name",
+    "<会話>": "conversation"
+  }
+}

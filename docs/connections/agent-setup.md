@@ -26,16 +26,17 @@ HAB は送り先・名義・配送だけを受け持ち、返すかどうかを�
 2026-11-20〜21 に Mac mini の HAB（6a3dd40、acacaff、Hermes の Hook は 3d0c56d）で確かめた結果です。
 「確認済み」は実際に動いたもの、「未確認」はまだ試していないものです。
 
-| 製品                       | 受け取る                                                                                             | 見せる                                           | 選んだとおりに動く                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
-| Hermes Desktop             | Hook（運用者登録の呼び鈴で notifier が起きる。呼び鈴から 2.5 秒）。保険に 5 分ごとの確認。確認済み   | プラグインのカード。確認済み                     | 会話へ引き渡して `hab_reply`。確認済み                            |
-| Dots（ChatGPT）            | MCP Events の Hook。見張りを頼んだセッション（Stallone）で、呼び鈴から 26 秒で既読。確認済み         | セッションに文章。カードは取りに来ない（出ない） | 許可した相手の質問に `hab_reply`。呼び鈴から約 45 秒。確認済み    |
-| Grok Bot                   | Webhook で始まる routine。呼び鈴から 16 秒で既読。確認済み（初回は一時的に失敗し、鳴らし直しで回復） | Bot のチャットに文章                             | 許可した相手に `hab_reply` まで行った。呼び鈴から 24 秒。確認済み |
-| Muse                       | 予定タスク 15 分（現行の設定）。作成から 13 分後の実行で受信箱を読んだ。確認済み                     | 文章（カードは取りに来ない）                     | 予定タスクの中で `hab_reply`。確認済み                            |
-| claude.ai                  | 話しかけたときだけ                                                                                   | MCP Apps のカード。確認済み                      | カードの「対応する」から返信案、または文章で返事                  |
-| Claude Code                | `/loop` か予定タスク。channels は開発用フラグが要る                                                  | 会話の中の文章                                   | できる                                                            |
-| Codex                      | 外から会話を起こす口はない。受信通知の「対応する」の後に `codex queue` で会話へ渡す                  | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。試し送りで会話が 7 秒後に始まった   |
-| Gemini アプリ・Antigravity | 話しかけたときだけ                                                                                   | 文章                                             | 文章で返事をすればできる                                          |
+| 製品            | 受け取る                                                                                                                             | 見せる                                           | 選んだとおりに動く                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------- |
+| Hermes Desktop  | Hook（運用者登録の呼び鈴で notifier が起きる。呼び鈴から 2.5 秒）。保険に 5 分ごとの確認。確認済み                                   | プラグインのカード。確認済み                     | 会話へ引き渡して `hab_reply`。確認済み                            |
+| Dots（ChatGPT） | MCP Events の Hook。見張りを頼んだセッション（Stallone）で、呼び鈴から 26 秒で既読。確認済み                                         | セッションに文章。カードは取りに来ない（出ない） | 許可した相手の質問に `hab_reply`。呼び鈴から約 45 秒。確認済み    |
+| Grok Bot        | Webhook で始まる routine。呼び鈴から 16 秒で既読。確認済み（初回は一時的に失敗し、鳴らし直しで回復）                                 | Bot のチャットに文章                             | 許可した相手に `hab_reply` まで行った。呼び鈴から 24 秒。確認済み |
+| Muse            | 予定タスク 15 分（現行の設定）。作成から 13 分後の実行で受信箱を読んだ。確認済み                                                     | 文章（カードは取りに来ない）                     | 予定タスクの中で `hab_reply`。確認済み                            |
+| claude.ai       | 話しかけたときだけ                                                                                                                   | MCP Apps のカード。確認済み                      | カードの「対応する」から返信案、または文章で返事                  |
+| Claude Code     | `/loop` か予定タスク。channels は開発用フラグが要る                                                                                  | 会話の中の文章                                   | できる                                                            |
+| Codex           | 外から会話を起こす口はない。受信通知の「対応する」の後に `codex queue` で会話へ渡す                                                  | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。試し送りで会話が 7 秒後に始まった   |
+| Antigravity     | Hook（運用者登録の呼び鈴で notifier が起きる）。「対応する」か自動受付の後に `agy -p --conversation` で CLI の会話へ渡す。実機未確認 | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。実機未確認                          |
+| Gemini アプリ   | 話しかけたときだけ                                                                                                                   | 文章                                             | 文章で返事をすればできる                                          |
 
 ## 運用者 AI に頼むときの約束
 
@@ -55,7 +56,7 @@ host 設定・接続台帳・Registry・notifier を変える作業は、Mac min
 
 製品ごとの手順は `config/products/<製品>.json` にも同じ内容で置いてあります。
 `npm run hab:admin -- --config <host 設定> recipe --product <製品> --address <アドレス> --allowed <許可するアドレス>` で、
-アドレスを埋めた手順と「渡す文」を出せます（製品は `dots`・`grok`・`muse`・`claude-ai`・`hermes`）。
+アドレスを埋めた手順と「渡す文」を出せます（製品は `dots`・`grok`・`muse`・`claude-ai`・`hermes`・`antigravity`）。
 この文書の「渡す文」を変えたら、レシピも同じに直します（`test/product-recipes.test.js` が食い違いを見つけます）。
 
 どの製品でも、最初に次を済ませます。
@@ -248,9 +249,33 @@ ChatGPT のプロジェクトの中の会話はクラウドにあるので、こ
 daemon を止めるときは `codex app-server daemon stop` を実行します。止めている間の「対応する」は `unknown` になり、再送されません。
 WebSocket の設定に戻すときは、`queue` を消して元の `app_server` を書き戻します。
 
-## Gemini アプリ・Antigravity を設定する
+## Antigravity を設定する
 
-どちらも、外から会話を起こす公開の入口はありません。話しかけたときに受け取ります。
+Antigravity は、Mac 上の受信通知（notifier）と Antigravity CLI（`agy`）の頭なし実行で動きます。
+届いた時点で会話を起こす口はないので、呼び鈴で notifier が起きて通知を出し、「対応する」か自動受付の後に
+`agy -p … --conversation <会話 ID>` で、アドレスに結び付けた CLI の会話へ依頼を渡します。
+デスクトップアプリや IDE の会話には渡せません（保存場所が別）。
+
+1. Auth0 にこの製品専用の Regular Web Application を作り、Refresh Token を許可し、callback https://antigravity.google/oauth-callback を登録する。
+2. ~/.gemini/config/mcp_config.json の mcpServers に hab を足す。serverUrl は https://<HAB の公開入口>/hab/mcp、oauth に作ったアプリの clientId と clientSecret を書く。
+3. ターミナルで agy を起動して HAB にサインインし（表示されたコードを貼り付ける）、終える。続けて作業フォルダで agy -p "hab_discover で自分のアドレスを確かめて" --output-format json を実行し、出力の conversation_id を控える。
+4. ~/.gemini/antigravity-cli/settings.json の permissions.allow に mcp(hab/*) を足す（頭なしの実行で HAB のツールが拒否されないように）。
+5. Mac で Claude Code などのコーディングエージェントに、次の文を渡す。
+
+```text
+hiraoku-agent-base の docs/receiver/arrival-notifier.md の Antigravity の節に沿って、この Mac に
+HAB の受信通知（hab:notify）を Antigravity 用に設定してください。
+アドレスは <antigravity のアドレス>、引き渡し先は Antigravity CLI の会話 <会話> です。
+自動で受け付ける相手は <許可するアドレス> だけにして、notify.json の auto_accept に書いてください。
+設定ファイルを変える前にバックアップを取り、変えたあとに hab-notify check を通してください。
+```
+
+確かめ方：許可した相手から試験メールを 1 通送り、`hab-notify list` で `started` になり、Antigravity の会話から返信が届けば完了です。
+許可していない相手のメールは、通知が出て「対応する」を選ぶまで未読のままです。
+
+## Gemini アプリを設定する
+
+外から会話を起こす公開の入口はありません。話しかけたときに受け取ります。
 接続の手順は [Gemini と Antigravity の接続](gemini-antigravity-connection.md)にあります。
 受信箱を見るときは、claude.ai と同じ文を渡します。
 
