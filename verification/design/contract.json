@@ -1289,7 +1289,7 @@
     },
     {
       "path": "docs/plans/auth0-dcr.md",
-      "sha256": "0c22dd9acfa21de05fcfa7ecea12c043d9c591ce9532f6b3963f62d6849b4336",
+      "sha256": "0db2e2b3a166de09c841c81fb8038c9e98f29afeed34d44cd149fcf11b1d3d69",
       "role": "context",
       "review": "reviewed",
       "summary": "Plan for Auth0 Dynamic Client Registration and operator approval of a pending (subject, client_id) pair. It requires strict registration mode, the HAB API scopes, an owner-only login policy, and matching the client ID from the intended product authorization request plus the registered callback URL set before approval. Trial-only reconnects exercise 401 handling, refresh issuance and revocation, and individual connection cleanup. Approval and revocation share the per-ledger write lock. Tenant and product behavior need live verification.",

@@ -181,9 +181,16 @@ test("empty disabled config denies all; absent, private, weak or ambiguous keys/
 test("resource metadata owns only its path, declares exact scopes and rejects URL aliases", async () => {
   const r = new McpOAuthResource(issuer, resource);
   const body = await r.response(r.metadataPath, "GET").json();
-  assert.deepEqual(body.scopes_supported, HAB_OAUTH_SCOPES);
+  assert.deepEqual(body.scopes_supported, [
+    ...HAB_OAUTH_SCOPES,
+    "offline_access",
+  ]);
   assert.equal(body.resource, resource);
   assert.match(r.challenge(), /resource_metadata=/);
+  assert.match(
+    r.challenge(),
+    / scope="hab:resolve hab:submit hab:status hab:poll hab:ack offline_access"$/,
+  );
   assert.equal(
     r.response("/.well-known/oauth-protected-resource", "GET"),
     undefined,
