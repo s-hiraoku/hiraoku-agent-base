@@ -45,7 +45,7 @@ notifier と sidecar を分けるのは、`agentapi` がアプリの子プロセ
 
 - 設定は `screen.type: "antigravity-desktop"`、`conversation_id`、`spool_dir`（絶対パス）、任意の `display_command` と `session_probe`。
 - 表示は他の製品と同じ通知ファイルと `display_command`。
-- 引き渡し：既読にする前に依頼文の大きさと引き渡し箱を確かめる（上限 256 KiB、箱は所有者だけのディレクトリ。外れたら既読にせず `unsupported`、本文は残る）。画面に任意の `precheck` を足し、notifier は既読にする前にそれを呼ぶ。既読にしたあと、引き渡し箱に 1 件 1 ファイルで書く（一時ファイルに書いて rename、ディレクトリ 700、ファイル 600）。中身は `message_id`、`conversation_id`、依頼文、書いた時刻。答えは `queued`（会話に入ったことは、この時点では確かめない）。
+- 引き渡し：既読にする前に依頼文の大きさと引き渡し箱を確かめる（上限 96 KiB（実装時に、Linux の引数 1 つの上限 128 KiB と macOS の引数・環境変数の合計の上限に余裕を残して 256 KiB から下げた）、箱は所有者だけのディレクトリ。外れたら既読にせず `unsupported`、本文は残る）。画面に任意の `precheck` を足し、notifier は既読にする前にそれを呼ぶ。既読にしたあと、引き渡し箱に 1 件 1 ファイルで書く（一時ファイルに書いて rename、ディレクトリ 700、ファイル 600）。中身は `message_id`、`conversation_id`、依頼文、書いた時刻。答えは `queued`（会話に入ったことは、この時点では確かめない）。
 - 結び付き（notices store の binding）には `conversation_id` と `spool_dir` の実パスを含める。
 - 会話の有無（ADR-032）：組み込みの判定として、`~/.gemini/antigravity/conversations/<会話 ID>.db` が無ければ `session_gone` とする。`session_probe` を書けばそちらを優先する。notifier の起動時にこのディレクトリが無ければ判定しない（版や置き場所が変わっても確認が止まらないように）。
 
@@ -55,6 +55,7 @@ notifier と sidecar を分けるのは、`agentapi` がアプリの子プロセ
 - 引き渡し箱を見て、古い順に 1 件ずつ `agentapi send-message --title "HAB: <送信元>" <会話 ID> <依頼文>` を引数の配列で実行する（シェルは通さない）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`、なければ `~/.gemini/antigravity/bin/agentapi`。
 - 送る前に、そのファイルを `sending/` に rename して印を付ける（同じディレクトリ内の rename なので一度に決まる）。`sending/` に移せたものだけを送る。
 - 終了コード 0 なら `done/` に、失敗したら `failed/` に移し、ログに 1 行残す。どちらも再送しない（同じ依頼を 2 回渡さないため）。
+- 1 つの箱を受け持つ relay は 1 つだけにする（箱の `.relay.lock`。持ち主のプロセスがいなければ引き継ぐ）。
 - 起動したとき `sending/` に残っているものは、送ったかどうか分からない依頼なので、送らずに `unknown/` に移してログに残す（送る途中で sidecar が止まり、`restart_policy` で起動し直した場合に、同じ依頼を 2 回渡さない）。
 - ログに残すのは時刻・`message_id`・`conversation_id`・終了コードだけ。依頼文、環境変数、CSRF token は残さない。
 - 24 時間より古い依頼は送らずに `expired/` に移す（アプリを長く閉じていた場合、古い依頼で会話を突然動かさない）。
@@ -76,7 +77,7 @@ notifier は依頼を渡す前に既読にするので、会話が `hab_inbox` �
 
 | PR           | 中身                                                                                                                                                                                                                                                                                          | 確かめ方                                                                                                                                                               |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PR-A（実装済み、PR #292） | `antigravity-desktop` 画面と引き渡し箱（notifier 側）、`antigravity-relay` コマンド（sidecar 側）、設定の検証、大きさの上限、結び付き、会話ファイルによる `session_gone`、文書（`docs/receiver/arrival-notifier.md`、`docs/connections/agent-setup.md`、製品レシピ）、verify-hab の機能マップ | 偽の `agentapi` で単体テスト：対応する→箱に 1 件→relay が 1 回だけ送る、失敗・期限切れは再送しない、大きすぎる依頼は既読にしない、表示と「あとで」は送らない、自動受付 |
+| PR-A（PR #293） | `antigravity-desktop` 画面と引き渡し箱（notifier 側）、`antigravity-relay` コマンド（sidecar 側）、設定の検証、大きさの上限、結び付き、会話ファイルによる `session_gone`、文書（`docs/receiver/arrival-notifier.md`、`docs/connections/agent-setup.md`、製品レシピ）、verify-hab の機能マップ | 偽の `agentapi` で単体テスト：対応する→箱に 1 件→relay が 1 回だけ送る、失敗・期限切れは再送しない、大きすぎる依頼は既読にしない、表示と「あとで」は送らない、自動受付 |
 | PR-B（任意） | PR #287 の CLI 画面の扱い（残すなら、レビュー 2 件：one-shot 呼び出しの待ち、別会話 `init` の kill の書き方）                                                                                                                                                                                 | 単体テスト                                                                                                                                                             |
 
 Mac mini での導入（本人の言葉が要る）：

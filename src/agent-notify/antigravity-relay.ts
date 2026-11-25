@@ -14,13 +14,18 @@
  */
 import { spawn } from "node:child_process";
 import {
+  closeSync,
+  constants,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
   renameSync,
   rmSync,
+  unlinkSync,
   watch,
+  writeSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -84,6 +89,16 @@ export const agentapiPath = (env: NodeJS.ProcessEnv = process.env) =>
   env.ANTIGRAVITY_AGENTAPI_EXE ||
   join(homedir(), ".gemini", "antigravity", "bin", "agentapi");
 
+/** Whether a process with this pid is running (EPERM: running under another user). */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
 const isRequest = (name: string) =>
   !name.startsWith(".") && name.endsWith(".json");
 
@@ -106,10 +121,16 @@ export class AntigravityRelay {
     this.#keep = options.keep_ms ?? RELAY_KEEP_MS;
     this.#timeout = options.send_timeout_ms ?? RELAY_SEND_TIMEOUT_MS;
   }
-  /** Checks the spool and moves what an earlier run left in `sending/` to `unknown/`. */
+  #locked = false;
+  /**
+   * Takes the spool for this relay, then moves what an earlier run left in `sending/` to
+   * `unknown/`. Only one relay may own a spool: a second one would take a live send for an
+   * abandoned one. A lock whose process is gone (a crash) is taken over.
+   */
   start(): void {
     const problem = spoolProblem(this.#spool);
     if (problem) throw new Error(problem);
+    this.#lock();
     for (const dir of RELAY_DIRS)
       mkdirSync(join(this.#spool, dir), { recursive: true, mode: 0o700 });
     for (const name of readdirSync(join(this.#spool, "sending")).filter(
@@ -117,8 +138,62 @@ export class AntigravityRelay {
     ))
       this.#finish("sending", name, "unknown", { reason: "interrupted" });
   }
+  /** Gives the spool up; the next relay can start. */
+  stop(): void {
+    if (!this.#locked) return;
+    this.#locked = false;
+    try {
+      if (readFileSync(this.#lockPath(), "utf8").trim() === String(process.pid))
+        unlinkSync(this.#lockPath());
+    } catch {
+      // Already gone.
+    }
+  }
+  #lockPath() {
+    return join(this.#spool, ".relay.lock");
+  }
+  #lock() {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let fd: number;
+      try {
+        fd = openSync(
+          this.#lockPath(),
+          constants.O_WRONLY |
+            constants.O_CREAT |
+            constants.O_EXCL |
+            constants.O_NOFOLLOW,
+          0o600,
+        );
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        let owner = NaN;
+        try {
+          owner = Number(readFileSync(this.#lockPath(), "utf8").trim());
+        } catch {
+          // Unreadable: treated as held.
+        }
+        if (!Number.isInteger(owner) || owner <= 0 || alive(owner))
+          throw new Error("relay_running");
+        try {
+          unlinkSync(this.#lockPath());
+        } catch {
+          // Another relay took it over first; the next open decides.
+        }
+        continue;
+      }
+      try {
+        writeSync(fd, `${process.pid}\n`);
+      } finally {
+        closeSync(fd);
+      }
+      this.#locked = true;
+      return;
+    }
+    throw new Error("relay_running");
+  }
   /** Sends every waiting request once, oldest first. Returns how many were taken. */
   async drain(): Promise<number> {
+    if (!this.#locked) throw new Error("relay_not_started");
     const names = readdirSync(this.#spool).filter(isRequest).sort();
     let taken = 0;
     for (const name of names) {
@@ -255,5 +330,6 @@ export async function runRelay(
     }
   } finally {
     watcher?.close();
+    relay.stop();
   }
 }

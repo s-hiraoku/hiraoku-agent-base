@@ -365,6 +365,7 @@ test("the relay never resends: failed, timed out, interrupted, expired and inval
   writeFileSync(join(f.spool, ".000000000000005-tmp.json.abc.tmp"), "{", {
     mode: 0o600,
   });
+  relay.stop();
   const restarted = f.relay();
   restarted.start();
   assert.deepEqual(f.inDir("sending"), []);
@@ -391,18 +392,41 @@ test("the relay never resends: failed, timed out, interrupted, expired and inval
   ]);
 });
 
-test("two relays on one spool send a request once", async (t) => {
+test("one relay owns a spool: a second cannot start, so a live send is never taken for abandoned", async (t) => {
   const f = setup(t, { unread: [message("m1")] });
   const n = f.make();
   await n.check();
   await n.decide("m1", "accept");
-  f.agentapi.answer({ wait_ms: 200 });
+  f.agentapi.answer({ wait_ms: 300 });
   const a = f.relay();
-  const b = f.relay();
   a.start();
-  const counts = await Promise.all([a.drain(), b.drain()]);
-  assert.equal(counts[0] + counts[1], 1);
+  const sending = a.drain();
+  for (let i = 0; i < 50 && !f.inDir("sending").length; i++) await delay(10);
+  const b = f.relay();
+  assert.throws(() => b.start(), /relay_running/);
+  await assert.rejects(b.drain(), /relay_not_started/);
+  assert.equal(await sending, 1);
+  assert.equal(f.inDir("done").length, 1);
+  assert.deepEqual(f.inDir("unknown"), []);
   assert.equal(f.agentapi.calls().length, 1);
+  a.stop();
+  b.start();
+  b.stop();
+});
+
+test("a lock left by a relay that is gone is taken over", async (t) => {
+  const f = setup(t);
+  mkdirSync(f.spool, { recursive: true, mode: 0o700 });
+  // A pid far above any real one: no such process.
+  writeFileSync(join(f.spool, ".relay.lock"), "2147483646\n", { mode: 0o600 });
+  const relay = f.relay();
+  relay.start();
+  assert.equal(
+    readFileSync(join(f.spool, ".relay.lock"), "utf8").trim(),
+    String(process.pid),
+  );
+  relay.stop();
+  assert.equal(existsSync(join(f.spool, ".relay.lock")), false);
 });
 
 test("finished requests are removed after the keep time", async (t) => {

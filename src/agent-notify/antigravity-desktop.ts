@@ -35,8 +35,12 @@ import { z } from "zod";
 import type { HandoffResult, PeekedMessage } from "./contract.ts";
 import type { SessionPresence } from "./session-probe.ts";
 
-/** The largest request handed to a conversation, in UTF-8 bytes (one argv entry). */
-export const ANTIGRAVITY_REQUEST_BYTES = 256 * 1024;
+/**
+ * The largest request handed to a conversation, in UTF-8 bytes. It goes to agentapi as one
+ * argv entry: Linux refuses a single argument of 128 KiB or more, and macOS counts the whole
+ * argv and environment against one limit, so the cap keeps a wide margin for both.
+ */
+export const ANTIGRAVITY_REQUEST_BYTES = 96 * 1024;
 
 /** An Antigravity conversation ID (a UUID today): never a path or an option. */
 export const conversationIdSchema = z
