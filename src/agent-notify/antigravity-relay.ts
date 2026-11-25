@@ -23,6 +23,7 @@ import {
   readdirSync,
   renameSync,
   rmSync,
+  rmdirSync,
   unlinkSync,
   watch,
   writeSync,
@@ -174,11 +175,7 @@ export class AntigravityRelay {
         }
         if (!Number.isInteger(owner) || owner <= 0 || alive(owner))
           throw new Error("relay_running");
-        try {
-          unlinkSync(this.#lockPath());
-        } catch {
-          // Another relay took it over first; the next open decides.
-        }
+        this.#takeOver(owner);
         continue;
       }
       try {
@@ -190,6 +187,35 @@ export class AntigravityRelay {
       return;
     }
     throw new Error("relay_running");
+  }
+  /**
+   * Removes a lock left by `owner`, a process that is gone. Two relays starting together
+   * could both see the dead owner, and the slower one would then delete the lock the faster
+   * one had just made. So the removal happens only while holding `.relay.takeover` (one
+   * mkdir, which only one process can win), and only if the lock still names `owner`.
+   * Whoever loses the mkdir stops with `relay_running`; the app restarts it later. A
+   * takeover directory left by a crash in this short step must be removed by hand.
+   */
+  #takeOver(owner: number) {
+    const mutex = join(this.#spool, ".relay.takeover");
+    try {
+      mkdirSync(mutex, { mode: 0o700 });
+    } catch {
+      throw new Error("relay_running");
+    }
+    try {
+      let current = NaN;
+      try {
+        current = Number(readFileSync(this.#lockPath(), "utf8").trim());
+      } catch {
+        // Gone already: the next open decides.
+        return;
+      }
+      if (current !== owner) throw new Error("relay_running");
+      unlinkSync(this.#lockPath());
+    } finally {
+      rmdirSync(mutex);
+    }
   }
   /** Sends every waiting request once, oldest first. Returns how many were taken. */
   async drain(): Promise<number> {

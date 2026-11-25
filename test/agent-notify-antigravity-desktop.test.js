@@ -423,6 +423,24 @@ test("one relay owns a spool: a second cannot start, so a live send is never tak
   b.stop();
 });
 
+test("a stale lock is taken over by one relay only: a takeover in progress stops the other", async (t) => {
+  const f = setup(t);
+  mkdirSync(f.spool, { recursive: true, mode: 0o700 });
+  writeFileSync(join(f.spool, ".relay.lock"), "2147483646\n", { mode: 0o600 });
+  // Another relay is in the middle of taking the stale lock over.
+  mkdirSync(join(f.spool, ".relay.takeover"));
+  assert.throws(() => f.relay().start(), /relay_running/);
+  assert.equal(
+    readFileSync(join(f.spool, ".relay.lock"), "utf8").trim(),
+    "2147483646",
+  );
+  rmSync(join(f.spool, ".relay.takeover"), { recursive: true });
+  const relay = f.relay();
+  relay.start();
+  assert.equal(existsSync(join(f.spool, ".relay.takeover")), false);
+  relay.stop();
+});
+
 test("a lock left by a relay that is gone is taken over", async (t) => {
   const f = setup(t);
   mkdirSync(f.spool, { recursive: true, mode: 0o700 });
