@@ -49,6 +49,32 @@ export type {
   SpawnAgy,
 } from "./antigravity.ts";
 export {
+  ANTIGRAVITY_REQUEST_BYTES,
+  antigravityDesktopHandoff,
+  antigravityDesktopPrecheck,
+  antigravityDesktopTarget,
+  conversationFileProbe,
+  conversationIdSchema,
+  defaultConversationsDir,
+  spoolPath,
+  spoolProblem,
+  spoolRequestSchema,
+} from "./antigravity-desktop.ts";
+export type {
+  AntigravityDesktopBinding,
+  SpoolRequest,
+} from "./antigravity-desktop.ts";
+export {
+  AntigravityRelay,
+  RELAY_DIRS,
+  RELAY_KEEP_MS,
+  RELAY_MAX_AGE_MS,
+  agentapiPath,
+  runAgentapi,
+  runRelay,
+} from "./antigravity-relay.ts";
+export type { RelayOptions, RunAgentapi } from "./antigravity-relay.ts";
+export {
   CHANNEL_REQUEST_BYTES,
   claudeCodeHandoff,
   claudeCodeStatusLine,

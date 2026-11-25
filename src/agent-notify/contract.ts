@@ -128,6 +128,12 @@ export interface AgentScreen {
   readonly binding?: AgentBinding;
   /** Publishes without model work. Legacy void means no display evidence, not displayed. */
   show(message: PeekedMessage): Promise<PublicationResult | void>;
+  /**
+   * Optional: checked after 対応する but before HAB is told the message was read.
+   * `unsupported` means `handoff` could never take this request (for example it is too
+   * large): nothing is handed off and the message stays unread, so hab_inbox can still read it.
+   */
+  precheck?(message: PeekedMessage): "unsupported" | undefined;
   /** Gives the user-approved request to that session. */
   handoff(message: PeekedMessage): Promise<HandoffResult>;
   /** Optional: tells the user what happened after a decision (for example `unsupported`). */
@@ -146,7 +152,8 @@ export interface AgentScreen {
  * - `accept_waiting`: the user chose 対応する, but HAB could not be told yet (for example
  *   while the agent's token waits to be refreshed). The choice is kept: every check tries
  *   again and then hands off, until the reply deadline.
- * - `started` / `queued` / `unsupported`: the handoff result (marked read).
+ * - `started` / `queued` / `unsupported`: the handoff result (marked read). An
+ *   `unsupported` from the screen's `precheck` is not marked read.
  * - `unknown`: the handoff failed or timed out and may or may not have reached the session.
  *   It is never retried automatically, so the request cannot run twice.
  * - `expired`: the reply deadline passed before a decision.

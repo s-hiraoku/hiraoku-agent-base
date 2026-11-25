@@ -206,6 +206,29 @@ export class ReceiptNotifier {
    * claim becomes `accept_waiting`, which every later check tries again.
    */
   async #finishAccept(record: NoticeRecord): Promise<NoticeState> {
+    // ADR-023: an automatic choice tells the session that nobody chose it.
+    const rule = this.#store.autoAcceptRule(record);
+    const prompt =
+      rule === undefined ? undefined : autoHandoffPrompt(record.message, rule);
+    const request =
+      prompt === undefined
+        ? record.message
+        : { ...record.message, handoff_prompt: prompt };
+    // A request the session could never take is refused before HAB is told: the message
+    // stays unread, so its body can still be read with hab_inbox.
+    let refused = false;
+    if (this.#screen.precheck && (rule === undefined || prompt !== undefined))
+      try {
+        refused = this.#screen.precheck(request) === "unsupported";
+      } catch {
+        refused = true;
+      }
+    if (refused) {
+      this.#store.transition(record, ["accepting"], "unsupported", this.#now());
+      if (rule !== undefined) this.#auditHandoff(record, rule, "unsupported");
+      await this.#report(record, "unsupported");
+      return "unsupported";
+    }
     let offered: boolean;
     try {
       offered = await this.#hab.markRead(record.message_id, record.sender_id);
@@ -218,10 +241,6 @@ export class ReceiptNotifier {
       );
       return "accept_waiting";
     }
-    // ADR-023: an automatic choice tells the session that nobody chose it.
-    const rule = this.#store.autoAcceptRule(record);
-    const prompt =
-      rule === undefined ? undefined : autoHandoffPrompt(record.message, rule);
     let state: NoticeState;
     // HAB no longer offers it to this recipient: hand off nothing.
     if (!offered) state = "unavailable";
@@ -229,11 +248,7 @@ export class ReceiptNotifier {
     else if (rule !== undefined && prompt === undefined) state = "unsupported";
     else
       try {
-        state = await this.#screen.handoff(
-          prompt === undefined
-            ? record.message
-            : { ...record.message, handoff_prompt: prompt },
-        );
+        state = await this.#screen.handoff(request);
       } catch {
         // The session may or may not have the request. Never send it again by itself.
         state = "unknown";
