@@ -13,9 +13,11 @@
  * the outcome and agentapi's exit code. Never the request text, the environment or a token.
  */
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   closeSync,
   constants,
+  linkSync,
   lstatSync,
   mkdirSync,
   openSync,
@@ -153,18 +155,44 @@ export class AntigravityRelay {
   #lockPath() {
     return join(this.#spool, ".relay.lock");
   }
+  /**
+   * The lock appears with its pid already in it: the pid is written to a private temporary
+   * file, which is then hard-linked to `.relay.lock` (a link fails if the lock exists). A
+   * relay that dies at any point leaves either no lock or one naming its dead pid, never an
+   * empty one that would block every restart.
+   */
   #lock() {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      let fd: number;
+    const temporary = join(
+      this.#spool,
+      `.relay.lock.${process.pid}.${randomBytes(6).toString("hex")}.tmp`,
+    );
+    const fd = openSync(
+      temporary,
+      constants.O_WRONLY |
+        constants.O_CREAT |
+        constants.O_EXCL |
+        constants.O_NOFOLLOW,
+      0o600,
+    );
+    try {
+      writeSync(fd, `${process.pid}\n`);
+    } finally {
+      closeSync(fd);
+    }
+    try {
+      this.#linkLock(temporary);
+    } finally {
       try {
-        fd = openSync(
-          this.#lockPath(),
-          constants.O_WRONLY |
-            constants.O_CREAT |
-            constants.O_EXCL |
-            constants.O_NOFOLLOW,
-          0o600,
-        );
+        unlinkSync(temporary);
+      } catch {
+        // Already gone.
+      }
+    }
+  }
+  #linkLock(temporary: string) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        linkSync(temporary, this.#lockPath());
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
         let owner = NaN;
@@ -177,11 +205,6 @@ export class AntigravityRelay {
           throw new Error("relay_running");
         this.#takeOver(owner);
         continue;
-      }
-      try {
-        writeSync(fd, `${process.pid}\n`);
-      } finally {
-        closeSync(fd);
       }
       this.#locked = true;
       return;
@@ -217,12 +240,16 @@ export class AntigravityRelay {
       rmdirSync(mutex);
     }
   }
-  /** Sends every waiting request once, oldest first. Returns how many were taken. */
-  async drain(): Promise<number> {
+  /**
+   * Sends every waiting request once, oldest first. Returns how many were taken. Once
+   * `signal` aborts, no further request is claimed: the rest stay queued for the next start.
+   */
+  async drain(signal?: AbortSignal): Promise<number> {
     if (!this.#locked) throw new Error("relay_not_started");
     const names = readdirSync(this.#spool).filter(isRequest).sort();
     let taken = 0;
     for (const name of names) {
+      if (signal?.aborted) break;
       try {
         // The claim: whoever renames it sends it; a second relay finds it gone.
         renameSync(join(this.#spool, name), join(this.#spool, "sending", name));
@@ -252,7 +279,12 @@ export class AntigravityRelay {
       message_id: request.message_id,
       conversation_id: request.conversation_id,
     };
-    if (this.#now() - Date.parse(request.written_at) > this.#maxAge) {
+    const now = this.#now();
+    // Past HAB's reply deadline hab_reply is refused; past max_age the mail is stale.
+    if (
+      now - Date.parse(request.written_at) > this.#maxAge ||
+      now >= Date.parse(request.expires_at)
+    ) {
       this.#finish("sending", name, "expired", ids);
       return;
     }
@@ -336,12 +368,18 @@ export async function runRelay(
   let watcher: ReturnType<typeof watch> | undefined;
   try {
     watcher = watch(options.spool, () => wake?.());
+    // A watcher can fail later (EMFILE and the like): drop it and keep polling.
+    watcher.on("error", () => {
+      watcher?.close();
+      watcher = undefined;
+    });
   } catch {
     // Polling alone still works.
   }
   try {
     while (!signal.aborted) {
-      await relay.drain();
+      await relay.drain(signal);
+      if (signal.aborted) break;
       await new Promise<void>((done) => {
         const timer = setTimeout(finish, POLL_MS);
         function finish() {

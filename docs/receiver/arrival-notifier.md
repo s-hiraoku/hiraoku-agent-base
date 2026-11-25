@@ -428,17 +428,17 @@ notifier の設定：
 
 - `conversation_id` は HAB のアドレスと 1 対 1 に結び付けるアプリの会話です。台帳のセッション名にもこの値を使います。英数字・`-`・`_` だけを受け付けます。
 - `spool_dir` は絶対パスです。なければ所有者だけのディレクトリ（700）として作ります。結び付き（notices store の binding）には `conversation_id` と `spool_dir` の実パスが入るので、どちらかを変えたら[結び付けの移行](#safe-migration-and-verification-limits)が要ります。
-- 会話の有無（ADR-032）：`session_probe` を書けばそれを使います。書かなければ、`~/.gemini/antigravity/conversations/<会話 ID>.db`（`conversations_dir` で場所を変えられる）が無いときに `gone` とします。notifier の起動時にそのディレクトリが無ければ、判定はしません（版や置き場所が変わっても確認が止まらないように）。
+- 会話の有無（ADR-032）：`session_probe` を書けばそれを使います。書かなければ、`~/.gemini/antigravity/conversations/<会話 ID>.db`（`conversations_dir` で場所を変えられる）が無いと確かめられたとき（ENOENT）だけ `gone` とします。権限などで確かめられないときは `unknown` です。notifier の起動時にそのディレクトリが無ければ、判定はしません（版や置き場所が変わっても確認が止まらないように）。
 
 「対応する」の後の流れと答え：
 
 | 場合                                                                                                                 | 記録                                            | HAB 上                             |
 | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------- |
-| 依頼文（handoff prompt、自動受付ならその文）が 96 KiB を超える（`agentapi` に引数 1 つで渡すため。Linux は引数 1 つ 128 KiB 未満、macOS は引数と環境変数の合計に上限がある）。NUL 文字を含む（引数に渡せない）。または `spool_dir` が所有者だけのディレクトリでない | `unsupported`。何も書かない                     | 未読のまま（`hab_inbox` で読める） |
+| 依頼文（handoff prompt、自動受付ならその文）が 96 KiB を超える（`agentapi` に引数 1 つで渡すため。Linux は引数 1 つ 128 KiB 未満、macOS は引数と環境変数の合計に上限がある）。NUL 文字を含む（引数に渡せない）。または `spool_dir` が所有者だけのディレクトリでない、そこにファイルを作れない（実際に一時ファイルを作って確かめる） | `unsupported`。何も書かない                     | 未読のまま（`hab_inbox` で読める） |
 | 既読にしたあと、引き渡し箱に 1 件 1 ファイル（一時ファイルに書いて rename、600）で置いた                             | `queued`（会話に入ったかは relay のログで見る） | 既読                               |
 | 書き込みに失敗した                                                                                                   | `unknown`。自動では再送しない                   | 既読                               |
 
-箱のファイルには `message_id`・`sender_id`・`from`・`conversation_id`・`title`（`HAB: <送信元>`）・依頼文・書いた時刻が入ります。依頼文は HAB の handoff prompt そのもの（本文を区切り線で囲み、データとして扱うことと `hab_reply` に渡す `message_id` を書いた文）です。既読にしてから渡すので、会話は `hab_inbox` を呼ばずに、そのまま `hab_reply` で返せます。
+箱のファイルには `message_id`・`sender_id`・`from`・`conversation_id`・`title`（`HAB: <送信元>`）・依頼文・書いた時刻・HAB の返信期限（`expires_at`）が入ります。依頼文は HAB の handoff prompt そのもの（本文を区切り線で囲み、データとして扱うことと `hab_reply` に渡す `message_id` を書いた文）です。既読にしてから渡すので、会話は `hab_inbox` を呼ばずに、そのまま `hab_reply` で返せます。
 
 relay（sidecar）：`node <リポジトリ>/scripts/hab-notify.ts antigravity-relay --spool <spool_dir> --log <ログファイル>`。設定ファイルも HAB の token も読みません。アプリの sidecar として置きます（`~/.gemini/config/sidecars/hab-relay/sidecar.json`）。有効にするのは本人が Automations Dashboard で行います。
 
@@ -457,9 +457,10 @@ relay（sidecar）：`node <リポジトリ>/scripts/hab-notify.ts antigravity-r
 }
 ```
 
-- 1 つの箱を受け持つ relay は 1 つだけです。起動時に箱の `.relay.lock` を取り、別の relay が動いていれば `relay_running` で起動しません（動いている送信を、止まった送信と取り違えて `unknown/` に移さないように）。持ち主のプロセスがもういない lock は引き継ぎます。引き継ぎは `.relay.takeover` ディレクトリを作れた 1 つだけが行い、もう 1 つは `relay_running` で止まります（アプリが後で起動し直す）。この短い間に落ちて `.relay.takeover` が残ったときは、手で消します。
+- 1 つの箱を受け持つ relay は 1 つだけです。起動時に箱の `.relay.lock` を取ります（pid を書いた一時ファイルを hard link するので、中身の空の lock は残りません）。別の relay が動いていれば `relay_running` で起動しません（動いている送信を、止まった送信と取り違えて `unknown/` に移さないように）。持ち主のプロセスがもういない lock は引き継ぎます。引き継ぎは `.relay.takeover` ディレクトリを作れた 1 つだけが行い、もう 1 つは `relay_running` で止まります（アプリが後で起動し直す）。この短い間に落ちて `.relay.takeover` が残ったときは、手で消します。
 - 箱の変化と 2 秒ごとの確認で、古い順に 1 件ずつ、`sending/` に rename してから（これで 1 回だけに決まる）`agentapi send-message --title=HAB: <送信元> <会話 ID> <依頼文>` を引数の配列で実行します（シェルは通しません）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`、なければ `~/.gemini/antigravity/bin/agentapi` です。
-- どれも再送しません：終了コード 0 → `done/`、0 以外 → `failed/`、60 秒の時間切れ（届いたか分からない）→ `unknown/`、起動時に `sending/` に残っていたもの（送る途中で止まった）→ `unknown/`、書いてから 24 時間を過ぎたもの（アプリを長く閉じていた）→ 送らずに `expired/`、読めない・形が違う・他人が読めるファイル → `failed/`。
+- どれも再送しません：終了コード 0 → `done/`、0 以外 → `failed/`、60 秒の時間切れ（届いたか分からない）→ `unknown/`、起動時に `sending/` に残っていたもの（送る途中で止まった）→ `unknown/`、書いてから 24 時間を過ぎたもの（アプリを長く閉じていた）か、HAB の返信期限を過ぎたもの（`hab_reply` が断られる）→ 送らずに `expired/`、読めない・形が違う・他人が読めるファイル → `failed/`。
+- 止める合図（SIGTERM・SIGINT）を受けたら、送っている 1 件を終えたところで止まり、残りは箱に残して次の起動で送ります。箱の監視（`fs.watch`）がエラーになっても止まらず、2 秒ごとの確認だけで続けます。
 - 終わったファイルには本文が残るので、7 日たったら消します。`.` で始まる書きかけのファイルは読みません。
 - ログ（600）は 1 件 1 行で、時刻・`outcome`・`message_id`・`conversation_id`・終了コードだけです。依頼文、環境変数、CSRF token は残しません。
 

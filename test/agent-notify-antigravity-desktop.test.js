@@ -349,6 +349,7 @@ test("the relay never resends: failed, timed out, interrupted, expired and inval
     title: "HAB: s",
     prompt: "古い依頼",
     written_at: new Date(Date.now() - 25 * 3600_000).toISOString(),
+    expires_at: new Date(Date.now() + 3600_000).toISOString(),
   };
   writeFileSync(
     join(f.spool, "000000000000002-old.json"),
@@ -583,3 +584,86 @@ test("ADR-032: the conversation file says present or gone; no directory, no prob
   };
   assert.equal(configuredProbe(missing), undefined);
 });
+
+const ROOT = process.getuid?.() === 0;
+
+test("a request past HAB's reply deadline is not sent", async (t) => {
+  const f = setup(t, { unread: [message("m1")] });
+  const n = f.make();
+  await n.check();
+  await n.decide("m1", "accept");
+  const [name] = f.waiting();
+  const request = JSON.parse(readFileSync(join(f.spool, name), "utf8"));
+  assert.ok(Date.parse(request.expires_at) > Date.now());
+  const relay = f.relay({ now: () => Date.parse(request.expires_at) + 1 });
+  relay.start();
+  await relay.drain();
+  assert.deepEqual(f.inDir("expired"), [name]);
+  assert.equal(f.agentapi.calls().length, 0);
+});
+
+test("after a stop is asked, no further request is claimed", async (t) => {
+  const f = setup(t, { unread: [message("m1"), message("m2")] });
+  const n = f.make();
+  await n.check();
+  await n.decide("m1", "accept");
+  await delay(5);
+  await n.decide("m2", "accept");
+  f.agentapi.answer({ wait_ms: 200 });
+  const relay = f.relay();
+  relay.start();
+  const controller = new AbortController();
+  const draining = relay.drain(controller.signal);
+  for (let i = 0; i < 50 && !f.inDir("sending").length; i++) await delay(10);
+  controller.abort();
+  assert.equal(await draining, 1);
+  assert.equal(f.agentapi.calls().length, 1);
+  assert.equal(f.waiting().length, 1);
+  relay.stop();
+});
+
+test("the lock is made with its pid already in it, and no temporary file is left", async (t) => {
+  const f = setup(t);
+  const relay = f.relay();
+  relay.start();
+  assert.equal(
+    readFileSync(join(f.spool, ".relay.lock"), "utf8").trim(),
+    String(process.pid),
+  );
+  assert.deepEqual(
+    readdirSync(f.spool).filter((name) => name.startsWith(".relay.lock.")),
+    [],
+  );
+  relay.stop();
+});
+
+test(
+  "a spool the owner cannot write to is refused before the mail is marked read",
+  { skip: ROOT && "root can write to a 0500 directory" },
+  async (t) => {
+    const f = setup(t, { unread: [message("m1")] });
+    const n = f.make();
+    await n.check();
+    chmodSync(f.spool, 0o500);
+    try {
+      assert.equal((await n.decide("m1", "accept")).state, "unsupported");
+    } finally {
+      chmodSync(f.spool, 0o700);
+    }
+    assert.deepEqual(f.read, []);
+  },
+);
+
+test(
+  "ADR-032: a conversation file that cannot be checked is unknown, not gone",
+  { skip: ROOT && "root can search a 0000 directory" },
+  async (t) => {
+    const f = setup(t);
+    chmodSync(f.conversations, 0o000);
+    try {
+      assert.equal(await configuredProbe(f.config)(), "unknown");
+    } finally {
+      chmodSync(f.conversations, 0o700);
+    }
+  },
+);

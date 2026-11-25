@@ -19,7 +19,6 @@ import { createHash, randomBytes } from "node:crypto";
 import {
   closeSync,
   constants,
-  existsSync,
   fsyncSync,
   lstatSync,
   mkdirSync,
@@ -85,9 +84,27 @@ export function spoolProblem(dir: string): string | undefined {
     if (stat.mode & 0o077) return "spool_unsafe";
     const uid = process.getuid?.();
     if (uid !== undefined && stat.uid !== uid) return "spool_unsafe";
-    return undefined;
   } catch {
     return "spool_unavailable";
+  }
+  // The mode alone does not say a file can be made there (0500, a read-only volume): make
+  // one, so a request is never marked read and then fails to be written.
+  const probe = join(dir, `.probe.${randomBytes(6).toString("hex")}.tmp`);
+  try {
+    closeSync(
+      openSync(
+        probe,
+        constants.O_WRONLY |
+          constants.O_CREAT |
+          constants.O_EXCL |
+          constants.O_NOFOLLOW,
+        0o600,
+      ),
+    );
+    unlinkSync(probe);
+    return undefined;
+  } catch {
+    return "spool_not_writable";
   }
 }
 
@@ -107,6 +124,10 @@ export const spoolRequestSchema = z.strictObject({
       "request too large",
     ),
   written_at: z
+    .string()
+    .refine((value) => Number.isFinite(Date.parse(value)), "time"),
+  /** HAB's reply deadline: past it hab_reply is refused, so the relay does not send it. */
+  expires_at: z
     .string()
     .refine((value) => Number.isFinite(Date.parse(value)), "time"),
 });
@@ -157,6 +178,7 @@ export function antigravityDesktopHandoff(
     title: titleOf(message),
     prompt: message.handoff_prompt,
     written_at: new Date(at).toISOString(),
+    expires_at: message.expires_at,
   };
   const key = createHash("sha256")
     .update(JSON.stringify([message.sender_id, message.message_id]))
@@ -201,8 +223,9 @@ export function antigravityDesktopHandoff(
 
 /**
  * ADR-032 without a configured probe: the app keeps `<conversations>/<id>.db` for each
- * conversation. Missing file → `gone`; a missing directory (another version or home) →
- * `unknown`, so a layout change never makes the address absent.
+ * conversation. Only a file shown missing (ENOENT) is `gone`; a missing directory (another
+ * version or home) or a check that fails (EACCES and the like) is `unknown`, so neither a
+ * layout change nor a permission problem makes the address absent.
  */
 export function conversationFileProbe(
   conversationId: string,
@@ -214,8 +237,13 @@ export function conversationFileProbe(
     } catch {
       return Promise.resolve("unknown");
     }
-    return Promise.resolve(
-      existsSync(join(dir, `${conversationId}.db`)) ? "present" : "gone",
-    );
+    try {
+      lstatSync(join(dir, `${conversationId}.db`));
+      return Promise.resolve("present");
+    } catch (error) {
+      return Promise.resolve(
+        (error as NodeJS.ErrnoException).code === "ENOENT" ? "gone" : "unknown",
+      );
+    }
   };
 }
