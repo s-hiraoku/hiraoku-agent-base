@@ -125,6 +125,8 @@ export function sessionLabel(config: StandaloneSession): string {
       return screen.session_id;
     case "codex":
       return screen.thread_id;
+    case "antigravity":
+      return screen.conversation_id;
     case "chatgpt-connector":
       return screen.conversation;
     case "jsonl":
@@ -187,12 +189,18 @@ export function tokenPool(
 /** HAB waits 10 s for a ring, so the probe gets PROBE_MS and every ask runs it afresh. */
 function presenceOf(config: StandaloneSession, single: boolean) {
   const screen = config.screen;
-  if (screen.type !== "hermes-desktop" || !screen.session_probe) return;
+  if (
+    (screen.type !== "hermes-desktop" && screen.type !== "antigravity") ||
+    !screen.session_probe
+  )
+    return;
   const spec = screen.session_probe;
-  if (single) return sessionProbe(spec, screen.session_id);
+  const session =
+    screen.type === "antigravity" ? screen.conversation_id : screen.session_id;
+  if (single) return sessionProbe(spec, session);
   return sessionProbe(
     { ...spec, timeout_ms: Math.min(spec.timeout_ms ?? PROBE_MS, PROBE_MS) },
-    screen.session_id,
+    session,
     { reuseMs: 0 },
   );
 }

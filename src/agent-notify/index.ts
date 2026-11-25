@@ -38,6 +38,17 @@ export type {
   RpcConnection,
 } from "./codex.ts";
 export {
+  antigravityHandoff,
+  antigravityTarget,
+  spawnAgy,
+} from "./antigravity.ts";
+export type {
+  AgyRun,
+  AntigravityBinding,
+  AntigravityCli,
+  SpawnAgy,
+} from "./antigravity.ts";
+export {
   CHANNEL_REQUEST_BYTES,
   claudeCodeHandoff,
   claudeCodeStatusLine,

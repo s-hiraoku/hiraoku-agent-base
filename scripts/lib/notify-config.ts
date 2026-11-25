@@ -25,6 +25,8 @@ import {
   claudeCodeTarget,
   codexHandoff,
   codexQueueHandoff,
+  antigravityHandoff,
+  antigravityTarget,
   codexTarget,
 } from "../../src/agent-notify/index.ts";
 import { hermesDesktopAgentBinding } from "../../src/agent-notify/hermes-desktop.ts";
@@ -152,6 +154,24 @@ export const configSchema = z.strictObject({
         (codex) => !(codex.app_server && codex.queue),
         "set app_server or queue, not both",
       ),
+    z.strictObject({
+      type: z.literal("antigravity"),
+      path: z.string().min(1),
+      /** The Antigravity CLI conversation the user works in (conversation_id). */
+      conversation_id: label,
+      /** Optional: hands the approved request to the conversation with `agy -p --conversation`. */
+      cli: z
+        .strictObject({
+          agy_bin: z.string().refine(isAbsolute, "absolute agy_bin"),
+          cwd: z.string().refine(isAbsolute, "absolute cwd"),
+          log_file: z.string().min(1).optional(),
+          timeout_ms: z.number().int().min(1000).max(120_000).optional(),
+        })
+        .optional(),
+      /** Optional, ADR-032: tells whether the conversation still exists. */
+      session_probe: commandSchema.optional(),
+      display_command: commandSchema.optional(),
+    }),
     z.strictObject({
       type: z.literal("claude-code"),
       path: z.string().min(1),
@@ -358,6 +378,30 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
             : codexHandoff(binding, message),
       });
     }
+    case "antigravity": {
+      const binding = {
+        conversation_id: screen.conversation_id,
+        ...(screen.cli
+          ? {
+              cli: {
+                ...screen.cli,
+                agy_bin: resolve(screen.cli.agy_bin),
+                cwd: resolve(screen.cli.cwd),
+                ...(screen.cli.log_file
+                  ? { log_file: expand(screen.cli.log_file) }
+                  : {}),
+              },
+            }
+          : {}),
+      };
+      return new ProductScreen({
+        path,
+        target: antigravityTarget(binding),
+        handoff_capability: screen.cli ? "bound-session" : "unsupported",
+        ...display,
+        handoff: (message) => antigravityHandoff(binding, message),
+      });
+    }
     case "claude-code": {
       const binding = claudeBinding(screen);
       return new ProductScreen({
@@ -378,15 +422,22 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
 }
 
 /** ADR-032: whether the bound conversation still exists, when the config can ask. */
-export const configuredProbe = (config: NotifyConfig) =>
-  config.screen.type === "hermes-desktop" && config.screen.session_probe
-    ? sessionProbe(config.screen.session_probe, config.screen.session_id)
-    : undefined;
+export const configuredProbe = (config: NotifyConfig) => {
+  const screen = config.screen;
+  if (screen.type === "hermes-desktop" && screen.session_probe)
+    return sessionProbe(screen.session_probe, screen.session_id);
+  if (screen.type === "antigravity" && screen.session_probe)
+    return sessionProbe(screen.session_probe, screen.conversation_id);
+  return undefined;
+};
 
 /** Connection + recipient + product session fence for every configured adapter. */
 export function boundScreen(config: NotifyConfig): AgentScreen {
   const screen = configuredScreen(config);
   const product = config.screen;
+  // The tuple keeps its three entries for the older products: their stores were recorded
+  // under this encoding. Only Antigravity adds a fourth, the agy it hands requests to and the
+  // workspace it runs in (CLI conversations belong to a workspace).
   const connection = JSON.stringify([
     config.hab_url.replace(/\/+$/, ""),
     product.type === "codex"
@@ -395,6 +446,13 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
         : (product.app_server?.url ?? null)
       : null,
     product.type === "claude-code" ? (product.channel_socket ?? null) : null,
+    ...(product.type === "antigravity"
+      ? [
+          product.cli
+            ? [resolve(product.cli.agy_bin), resolve(product.cli.cwd)]
+            : null,
+        ]
+      : []),
   ]);
   const binding =
     product.type === "hermes-desktop"

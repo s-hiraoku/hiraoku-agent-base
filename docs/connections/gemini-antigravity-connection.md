@@ -44,6 +44,8 @@ Antigravity のアプリ・IDE・CLI は、1 つの MCP 設定ファイル `~/.g
 
 OAuth は認可コード方式で、Google の例では redirect URI に `https://antigravity.google/oauth-callback` を登録し、ブラウザでサインインした後に表示されるコードを Antigravity の設定（CLI ではプロンプト）へ貼り付ける。トークンは画面ごとに別に保存されるため、アプリ・IDE・CLI のそれぞれで認証が要る。v2.33.0（2026-11-17）で、リモート MCP の token 更新時にサインアウトされる不具合が直っている。
 
+Antigravity は、サーバーが DCR か CIMD に対応していれば `serverUrl` だけで PKCE のサインインを自動で行う（公開資料、2026-11-23 確認）。HAB の Auth0 で DCR を開く計画（docs/plans/auth0-dcr.md）が通れば、専用アプリの手作りは要らなくなる見込みだが、DCR は閉じたままなので、当面は手作りのアプリを使う。
+
 HAB 側の準備は Dots・claude.ai・Muse と同じ型になる見込みである。
 
 - Auth0 に Antigravity 専用のアプリ（Regular Web、client secret あり、Refresh Token あり）を作り、上の redirect URI を登録する。他の製品の client ID や token は使い回さない。
@@ -61,12 +63,18 @@ Antigravity には、外部のプログラムから既存の会話へ「届い�
 - フック（`hooks.json`、カスタムエージェントの front matter）：ターンの終わりや利用者の入力時に動く。会話が動いていない間に届いたメッセージは知らせられない。
 - `antigravity://` リンク：新しい会話を、送信前のプロンプトが入った状態で開く。既存の会話への引渡しではない。
 
-当面は Dots・Muse と同じく、会話の中で `hab_inbox` を呼ぶ手動の受信になる。`hab:notify` の JSON Lines ファイルと `display_command`（デスクトップ通知など）による知らせ方は使える。
+2026-11-23 の再調査で、Antigravity CLI（`agy`）の頭なし実行が `--conversation <会話 ID>` で既存の会話を再開できると分かった（`--output-format stream-json` の最初の `init` 行に `conversation_id` が出る）。これを受信通知の引渡しに使う。
+
+- 起きる：Hermes と同じく、運用者が登録した呼び鈴で Mac の notifier が起きる（Hook）。製品ごとに notifier の購読は 1 つ。
+- 見せる：notifier の通知ファイルと `display_command`（デスクトップ通知など）。会話の中にカードは出さない。
+- 選んだとおりに動く：「対応する」か ADR-023 の自動受付の後だけ、`agy -p <依頼> --conversation <会話 ID>` でアドレスに結び付けた CLI の会話を動かし、その会話が `hab_reply` で返す。届いただけではモデルを起こさない。
+
+設定と答えの決め方は[受信通知アダプタの Antigravity の節](../receiver/arrival-notifier.md#antigravity)、手順は[接続手順の Antigravity の節](agent-setup.md#antigravity-を設定する)と `config/products/antigravity.json` にある。
 
 ### 表示と引渡し
 
 - 表示：Antigravity の会話内にカードを足す公開の口は未確認。MCP ツールの結果としての表示（利用者が `hab_inbox` を呼んだとき）に限られる。
-- 引渡し：既存の会話へ外から入力を渡す公開の口は未確認。`antigravity://` で新しい会話を開く方法は、利用者が内容を見て送る形なら使える可能性があるが、同じ既存会話への引渡しの成功としては扱わない。
+- 引渡し：CLI の会話には `agy -p --conversation` で渡せる（上の受信通知）。デスクトップアプリ・IDE の会話は保存場所が別（`~/.gemini/antigravity`・`~/.gemini/antigravity-ide`）で、外から入力を渡す公開の口は未確認。`antigravity://` は新しい会話を開くだけなので、既存会話への引渡しとしては扱わない。
 - Antigravity SDK が公開されている。SDK で HAB を組み込んだ独自のエージェントを作ることはできるが、それは利用者が普段使う Antigravity アプリの会話への接続ではない。
 
 ## Gemini
@@ -93,8 +101,8 @@ Antigravity には、外部のプログラムから既存の会話へ「届い�
 | MCP 接続 | Custom Connected Apps（公開 HTTPS＋OAuth）。利用条件の確認が必要 | アプリが MCP クライアントを持てば可 | `mcp_config.json` の `serverUrl`＋OAuth（コード貼り付け） |
 | 受信通知 | 公開の入口なし（未確認） | アプリが自分で実装 | 公開の入口なし。作業完了通知・フックは別用途 |
 | 会話への表示 | ツール結果の MCP Apps UI（未確認） | アプリが自分で実装 | ツール結果のみ |
-| 既存会話への引渡し | 未確認 | アプリが自分で実装 | 未確認（`antigravity://` は新しい会話） |
-| 当面の受信 | 会話で `hab_inbox` | アプリ次第 | 会話で `hab_inbox` |
+| 既存会話への引渡し | 未確認 | アプリが自分で実装 | CLI の会話は `agy -p --conversation`（実装済み・実機未確認）。アプリ・IDE は未確認 |
+| 当面の受信 | 会話で `hab_inbox` | アプリ次第 | 呼び鈴で notifier が起き、「対応する」の後に `agy -p --conversation` で CLI の会話へ渡す |
 | 実機確認 | 未実施 | 未実施 | 未実施 |
 
 ## 次に確かめること
@@ -106,6 +114,9 @@ Antigravity には、外部のプログラムから既存の会話へ「届い�
 ## 公式確認先
 
 - [Google Workspace MCP servers in Google Antigravity 2.0, IDE, and/or CLI](https://codelabs.developers.google.com/google-workspace-mcp-antigravity)（共通の `mcp_config.json`、`serverUrl` と `oauth`、redirect URI）
+- [Headless mode - Antigravity CLI](https://antigravity.google/docs/cli/headless/)（`-p`、`--conversation`、`--output-format stream-json` の `init`）
+- [Antigravity MCP](https://antigravity.google/docs/mcp/)（`serverUrl`、`headers`、DCR/CIMD の自動 PKCE、手動 `oauth`）
+- [Antigravity permissions](https://antigravity.google/docs/permissions/)（`mcp(server/tool)` の許可規則、頭なし実行での扱い）
 - [Antigravity changelog](https://antigravity.google/docs/changelog.md)（v2.33.0 までの MCP・フック・通知・`antigravity://` リンク）
 - [An important update: transitioning Gemini CLI to Antigravity CLI](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)（2026-05-19 発表、2026-06-18 の提供終了）
 - [Connected Apps MCP developer guide](https://developers.google.com/connected-apps/mcp)（Gemini アプリのツール呼び出しと UI resource）

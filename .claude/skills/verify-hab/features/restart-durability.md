@@ -9,7 +9,7 @@ This recipe verifies that an accepted message remains deliverable after a gracef
 
 ## How to get to it (user POV)
 
-- Operator stops and restarts the host; agents keep calling the same `POST /mcp` URL.
+- Operator stops and restarts the host; agents keep calling the same `POST /mcp` and `POST /mcp/delivery` URLs.
 
 ## Driving it with verify-hab
 

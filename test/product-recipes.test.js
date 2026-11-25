@@ -10,9 +10,9 @@ import {
 import { main as runHabAdmin } from "../scripts/hab-admin.ts";
 
 const guide = readFileSync("docs/connections/agent-setup.md", "utf8");
-const PRODUCTS = ["claude-ai", "dots", "grok", "hermes", "muse"];
+const PRODUCTS = ["antigravity", "claude-ai", "dots", "grok", "hermes", "muse"];
 
-test("the five products have a recipe that follows its section of the setup guide", () => {
+test("the six products have a recipe that follows its section of the setup guide", () => {
   assert.deepEqual(listRecipes(), PRODUCTS);
   for (const product of PRODUCTS) {
     const recipe = loadRecipe(product);
@@ -101,6 +101,7 @@ test("recipes hold no secret, token, Webhook URL or real address", () => {
   const allowedUrls = new Set([
     "https://<HAB の公開入口>/hab/mcp",
     "https://claude.ai/api/mcp/auth_callback",
+    "https://antigravity.google/oauth-callback",
     "http://127.0.0.1:<wake のポート>/wake",
   ]);
   for (const product of PRODUCTS) {
@@ -173,6 +174,7 @@ test("hab:admin recipe lists the products and prints one filled in", () => {
       p.receive,
     ]),
     [
+      ["antigravity", "hook"],
       ["claude-ai", "on_request"],
       ["dots", "hook"],
       ["grok", "hook"],

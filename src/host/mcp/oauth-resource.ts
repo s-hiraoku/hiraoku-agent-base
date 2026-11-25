@@ -8,6 +8,16 @@ export const HAB_OAUTH_SCOPES = Object.freeze([
   "hab:poll",
   "hab:ack",
 ]);
+/**
+ * What the metadata and the 401 challenge advertise: the required scopes plus
+ * `offline_access`, so a client that registers itself (DCR) and copies the advertised scopes
+ * asks the issuer for a refresh token. Tokens are still checked against HAB_OAUTH_SCOPES only;
+ * `offline_access` is never required.
+ */
+export const HAB_ADVERTISED_SCOPES = Object.freeze([
+  ...HAB_OAUTH_SCOPES,
+  "offline_access",
+]);
 export class McpOAuthResource {
   readonly issuer: string;
   readonly resource: string;
@@ -46,7 +56,7 @@ export class McpOAuthResource {
     Object.freeze(this);
   }
   challenge() {
-    return `Bearer resource_metadata="${this.metadataURL}", scope="${HAB_OAUTH_SCOPES.join(" ")}"`;
+    return `Bearer resource_metadata="${this.metadataURL}", scope="${HAB_ADVERTISED_SCOPES.join(" ")}"`;
   }
   response(path: string, method: string): Response | undefined {
     if (path !== this.metadataPath) return;
@@ -55,7 +65,7 @@ export class McpOAuthResource {
         ? JSON.stringify({
             resource: this.resource,
             authorization_servers: [this.issuer],
-            scopes_supported: HAB_OAUTH_SCOPES,
+            scopes_supported: HAB_ADVERTISED_SCOPES,
             bearer_methods_supported: ["header"],
           })
         : null,

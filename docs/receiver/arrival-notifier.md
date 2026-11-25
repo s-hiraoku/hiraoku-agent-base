@@ -258,9 +258,9 @@ notifier は呼び鈴を受けたとき（署名を確かめた後）と、毎�
 
 `session_probe` を書かなければ、これまでどおり確かめずに `200` で答えます。
 
-## Codex・Claude Code・ChatGPT コネクタ（Dots）
+## Codex・Claude Code・ChatGPT コネクタ（Dots）・Antigravity
 
-Hermes 以外の 3 製品にも画面アダプタを用意しました。実機にはまだつないでいません。設定ファイルの `screen` を書き換えれば、後からそのまま接続できます。3 つとも通知は同じ形の JSON Lines ファイル（`JsonlScreen` と同じ `notice`・`state` 行、`handoff` 行は書かない）に残します。`display_command` を設定すると、通知ごと・状態が変わるごとに、そのコマンドを 1 回実行します。標準入力には `{type: "notice" | "state", target, message_id, sender_id, …, display}` を 1 つの JSON で渡すので、デスクトップ通知などに使えます。コマンドは設定ファイルに書いた絶対パスだけで、メッセージから組み立てることはありません。コマンドが失敗した通知は `showing` のまま残り、次の確認で出し直します。
+Hermes 以外の 3 製品にも画面アダプタを用意しました。実機にはまだつないでいません。2026-11-23 に Antigravity の画面アダプタも同じ形で加えました（下の「Antigravity」の節）。設定ファイルの `screen` を書き換えれば、後からそのまま接続できます。3 つとも通知は同じ形の JSON Lines ファイル（`JsonlScreen` と同じ `notice`・`state` 行、`handoff` 行は書かない）に残します。`display_command` を設定すると、通知ごと・状態が変わるごとに、そのコマンドを 1 回実行します。標準入力には `{type: "notice" | "state", target, message_id, sender_id, …, display}` を 1 つの JSON で渡すので、デスクトップ通知などに使えます。コマンドは設定ファイルに書いた絶対パスだけで、メッセージから組み立てることはありません。コマンドが失敗した通知は `showing` のまま残り、次の確認で出し直します。
 
 ### 各製品の公開の仕組みと、できること・できないこと
 
@@ -359,6 +359,49 @@ Dots は ChatGPT のコネクタ（MCP クライアント）として HAB を使
 ```
 
 Dots の会話が実は Codex のスレッドとして app-server から見えるなら、`codex` の画面を使えば引渡しまでできます。これは未確認です。
+
+### Antigravity
+
+Antigravity（アプリ・IDE・CLI）には、外のプログラムから会話に通知を出したり、届いた時点で会話を起こしたりする公開の口がありません（2026-11-23 公開資料で確認）。フック（`hooks.json`）は利用者が始めたターンの前後でしか動かず、`antigravity://` リンクは新しい会話を開くだけです。通知は Codex と同じく、ファイルと `display_command` で Antigravity の外に出します。
+
+既存の会話に入る公開の口は、Antigravity CLI（`agy`）の頭なし実行だけです。`agy -p <依頼> --conversation <会話 ID> --output-format stream-json` は、その会話を再開して 1 ターン動かします。notifier はこれを「対応する」か ADR-023 の自動受付の後にだけ使い、届いただけではモデルを起こしません（未読のまま）。
+
+```json
+"screen": {
+  "type": "antigravity",
+  "path": "~/.hab-notify/antigravity.jsonl",
+  "conversation_id": "<agy -p … --output-format json の conversation_id>",
+  "cli": {
+    "agy_bin": "/absolute/path/to/agy",
+    "cwd": "/absolute/path/to/workspace",
+    "log_file": "~/.hab-notify/antigravity-runs.jsonl"
+  },
+  "display_command": { "command": ["/usr/bin/osascript", "/absolute/path/to/notify.applescript"], "cwd": "/absolute/path" }
+}
+```
+
+- `conversation_id` は HAB のアドレスと 1 対 1 に結び付ける会話です。台帳のセッション名にもこの値を使います。
+- `cwd` は会話を作った作業フォルダです（CLI の会話は作業フォルダごとに管理される）。
+- `log_file` には、実行ごとに 1 行、`message_id`・`status`（`SUCCESS` など）・`num_turns`・終了コードだけを残します（所有者だけが読める 600）。依頼文や返答の本文は残しません。
+- `cli` を書かないと表示だけになり、「対応する」は `unsupported` です。
+- `session_probe` を書くと、ADR-032 の「会話が終わった」判定に使えます（Hermes と同じ形の信頼済みコマンド、`{session_id}` に `conversation_id` を渡す）。CLI の会話の保存場所は公開資料にしか書かれていないので、組み込みの判定は入れていません。
+
+「対応する」の後、既読にしてから `agy` を引数の配列で起動します（シェルは通しません）。最初の NDJSON 行 `init` を待って答えを決め、その後のターンは裏で最後まで動かします。
+
+| 答え                                                                                                   | 記録                              |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `init` の `conversation_id` が設定と同じ                                                               | `started`（ターンはその後も続く） |
+| `init` が別の会話（`--conversation` が効かなかった）。その場でプロセスを止めるので、ターンは始まらない | `unsupported`                     |
+| `init` の前に終わった（会話がない、サインインしていない、`agy` が見つからない）                        | `unsupported`                     |
+| `timeout_ms`（既定 20 秒）までに `init` が来ない。プロセスを止める                                     | `unknown`。自動では再送しない     |
+
+前提（実機で確かめること）：
+
+- HAB の MCP を `~/.gemini/config/mcp_config.json` に設定し、`agy` で一度サインインしておく（頭なし実行は保存済みの認証を使う）。
+- 頭なし実行では、承認が必要なツールは断られる（終了コード 0 のまま）。`~/.gemini/antigravity-cli/settings.json` の `permissions.allow` に `mcp(hab/*)` を足し、HAB のツールだけを許可する。`--dangerously-skip-permissions` は使わない。
+- 渡した依頼のターンは CLI の会話に残ります。利用者はあとで `agy --conversation <会話 ID>` か `/resume` で中身を見られます。デスクトップアプリや IDE の会話は保存場所が別なので、この方法では渡せません。
+
+未確認の点：同じ会話を TUI で開いている間に頭なし実行で再開できるか。`init` が本当に最初の行か（公開資料の例では最初）。会話がないときの終了の仕方。
 
 ## 選択と状態
 
