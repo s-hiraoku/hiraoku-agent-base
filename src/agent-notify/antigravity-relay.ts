@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   closeSync,
+  fsyncSync,
   constants,
   linkSync,
   lstatSync,
@@ -86,6 +87,13 @@ export interface RelayOptions {
   max_age_ms?: number;
   keep_ms?: number;
   send_timeout_ms?: number;
+  /** For tests: how the lock's pid is written (default writeSync). */
+  write_lock?: (
+    fd: number,
+    buffer: Buffer,
+    offset: number,
+    length: number,
+  ) => number;
 }
 
 export const agentapiPath = (env: NodeJS.ProcessEnv = process.env) =>
@@ -114,6 +122,7 @@ export class AntigravityRelay {
   readonly #maxAge: number;
   readonly #keep: number;
   readonly #timeout: number;
+  readonly #write: NonNullable<RelayOptions["write_lock"]>;
   constructor(options: RelayOptions) {
     this.#spool = options.spool;
     this.#log = options.log;
@@ -123,6 +132,7 @@ export class AntigravityRelay {
     this.#maxAge = options.max_age_ms ?? RELAY_MAX_AGE_MS;
     this.#keep = options.keep_ms ?? RELAY_KEEP_MS;
     this.#timeout = options.send_timeout_ms ?? RELAY_SEND_TIMEOUT_MS;
+    this.#write = options.write_lock ?? writeSync;
   }
   #locked = false;
   /**
@@ -175,11 +185,19 @@ export class AntigravityRelay {
       0o600,
     );
     try {
-      writeSync(fd, `${process.pid}\n`);
-    } finally {
-      closeSync(fd);
-    }
-    try {
+      // The whole pid, or no lock: a short or failed write (ENOSPC, EIO) must not become a
+      // lock naming a cut pid, and must not leave the temporary file behind.
+      try {
+        const bytes = Buffer.from(`${process.pid}\n`, "utf8");
+        for (let done = 0; done < bytes.length;) {
+          const wrote = this.#write(fd, bytes, done, bytes.length - done);
+          if (wrote <= 0) throw new Error("relay_lock_write_failed");
+          done += wrote;
+        }
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
       this.#linkLock(temporary);
     } finally {
       try {

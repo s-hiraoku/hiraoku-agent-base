@@ -12,6 +12,7 @@ import {
   rmSync,
   utimesSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import process from "node:process";
@@ -633,6 +634,48 @@ test("the lock is made with its pid already in it, and no temporary file is left
   assert.deepEqual(
     readdirSync(f.spool).filter((name) => name.startsWith(".relay.lock.")),
     [],
+  );
+  relay.stop();
+});
+
+for (const [label, write] of [
+  [
+    "fails",
+    () => {
+      throw Object.assign(new Error("no space"), { code: "ENOSPC" });
+    },
+  ],
+  ["writes nothing", () => 0],
+]) {
+  test(`a lock whose pid write ${label} leaves no lock and no temporary file, and the next start works`, async (t) => {
+    const f = setup(t);
+    mkdirSync(f.spool, { recursive: true, mode: 0o700 });
+    assert.throws(() => f.relay({ write_lock: write }).start());
+    assert.deepEqual(
+      readdirSync(f.spool).filter((name) => name.startsWith(".relay.lock")),
+      [],
+    );
+    const relay = f.relay();
+    relay.start();
+    assert.equal(
+      readFileSync(join(f.spool, ".relay.lock"), "utf8").trim(),
+      String(process.pid),
+    );
+    relay.stop();
+  });
+}
+
+test("a short write of the pid is finished, so the lock never names a cut pid", async (t) => {
+  const f = setup(t);
+  mkdirSync(f.spool, { recursive: true, mode: 0o700 });
+  const relay = f.relay({
+    write_lock: (fd, buffer, offset, length) =>
+      writeSync(fd, buffer, offset, Math.min(1, length)),
+  });
+  relay.start();
+  assert.equal(
+    readFileSync(join(f.spool, ".relay.lock"), "utf8").trim(),
+    String(process.pid),
   );
   relay.stop();
 });
