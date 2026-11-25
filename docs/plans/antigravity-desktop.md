@@ -53,7 +53,9 @@ notifier と sidecar を分けるのは、`agentapi` がアプリの子プロセ
 
 - アプリの sidecar として常駐する小さなコマンド。`--spool <dir>` と `--log <file>` だけを受け取り、HAB の token も鍵も持たない。
 - 引き渡し箱を見て、古い順に 1 件ずつ `agentapi send-message --title "HAB: <送信元>" <会話 ID> <依頼文>` を引数の配列で実行する（シェルは通さない）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`、なければ `~/.gemini/antigravity/bin/agentapi`。
-- 終了コード 0 なら、そのファイルを `done/` に移す。失敗したら `failed/` に移し、ログに 1 行残す。どちらも再送しない（同じ依頼を 2 回渡さないため）。
+- 送る前に、そのファイルを `sending/` に rename して印を付ける（同じディレクトリ内の rename なので一度に決まる）。`sending/` に移せたものだけを送る。
+- 終了コード 0 なら `done/` に、失敗したら `failed/` に移し、ログに 1 行残す。どちらも再送しない（同じ依頼を 2 回渡さないため）。
+- 起動したとき `sending/` に残っているものは、送ったかどうか分からない依頼なので、送らずに `unknown/` に移してログに残す（送る途中で sidecar が止まり、`restart_policy` で起動し直した場合に、同じ依頼を 2 回渡さない）。
 - ログに残すのは時刻・`message_id`・`conversation_id`・終了コードだけ。依頼文、環境変数、CSRF token は残さない。
 - 24 時間より古い依頼は送らずに `expired/` に移す（アプリを長く閉じていた場合、古い依頼で会話を突然動かさない）。
 
