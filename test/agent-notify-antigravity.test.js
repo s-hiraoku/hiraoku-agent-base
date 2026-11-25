@@ -398,7 +398,7 @@ test("an auto_accept rule starts a turn for a matching message once; others wait
   assert.deepEqual(f.read, ["allowed"]);
 });
 
-test("the CLI route is fenced apart from display only and from another agy", async (t) => {
+test("the CLI route is fenced apart from display only, another agy and another workspace", async (t) => {
   const f = setup(t);
   const cli = boundScreen(f.config);
   assert.equal(cli.capabilities.handoff, "bound-session");
@@ -413,7 +413,17 @@ test("the CLI route is fenced apart from display only and from another agy", asy
       cli: { ...f.config.screen.cli, agy_bin: join(f.dir, "other-agy") },
     },
   });
-  assert.equal(new Set([cli, display, otherAgy].map((s) => s.target)).size, 3);
+  const otherWorkspace = boundScreen({
+    ...f.config,
+    screen: {
+      ...f.config.screen,
+      cli: { ...f.config.screen.cli, cwd: join(f.dir, "other-workspace") },
+    },
+  });
+  assert.equal(
+    new Set([cli, display, otherAgy, otherWorkspace].map((s) => s.target)).size,
+    4,
+  );
   assert.equal(sessionLabel(f.config), CONVERSATION);
 });
 
