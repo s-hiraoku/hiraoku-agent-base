@@ -1288,6 +1288,13 @@
       "read_scope": "full"
     },
     {
+      "path": "docs/plans/antigravity-desktop.md",
+      "sha256": "7e9556c650d0f0effd155354695c37b87d6d5a3d729fe81a016fa08d117eb970",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Plan for receiving HAB mail in Antigravity desktop conversations. Records the 2026-11-24/25 Mac mini findings (shared mcp_config, pinned DCR client, refresh token after offline_access, agentapi send-message wakes a stopped desktop conversation but runs only inside app-launched processes). Design: launchd notifier keeps doorbell and notice; after accept or auto_accept it marks read and writes an owner-only spool file (queued); an Antigravity sidecar relay sends it with agentapi send-message once, never resending. Size cap before mark-read, conversation-file session_gone, explicit handoff prompt. Implementation units and open questions."
+    },
+    {
       "path": "docs/plans/auth0-dcr.md",
       "sha256": "0db2e2b3a166de09c841c81fb8038c9e98f29afeed34d44cd149fcf11b1d3d69",
       "role": "context",
