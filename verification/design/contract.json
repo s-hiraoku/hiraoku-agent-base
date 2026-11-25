@@ -1324,6 +1324,14 @@
       "review": "reviewed",
       "summary": "Design proposal (2026-11-21; PR #271 implements the pure routing and presence core): A Hermes/Codex/Claude Code notifier process owns up to 32 per-session units, each with its own address, native conversation ID, store, screen, binding, client and run loop. ADR-032 after PR #264: a signed ring needs both the owned address and its exact session, with a probe result of gone, for 410 session_gone. Unknown addresses, mismatches, inconclusive probes and provisional/legacy labels use 200 session_unconfirmed and preserve HAB absence. A provisional or legacy ring may wake its own unit when no probe is configured or the probe confirms presence, and no routing pause is active. Exact matches clear routing pauses, while configured probes allow reads only after present. One bounded presence observation per unit is shared between simultaneous checks and rings; late results do not overwrite state. The signed listener, product config, per-unit loops and TokenPool are separate follow-up work. Recovery uses an owner inbox read after a positive notifier probe, a new subscription, or a freshly registered operator doorbell. Grok and Dots remain one subscription per address with session checks in the agent's instructions. PR #277 preserves standalone --config run with optional as_address and its existing signed-ring response and logging. Multi-session product configs require canonical addresses, retain exact matching for 410, and stop before initiating a new check after shutdown.",
       "read_scope": "full"
+    },
+    {
+      "path": "docs/specs/message-relay.md",
+      "sha256": "7a50259f2304adb30dfa47abc9ab3181f3db2ae49374091829d2dcf2577b3335",
+      "role": "excluded",
+      "review": "reviewed",
+      "summary": "Software Garden acceptance spec for the synthetic local MVP (docs/local-mvp.md); restates its 13-stage pass conditions for the Garden's automated verify_relay flow.",
+      "exclusion_reason": "External verification-harness acceptance criteria derived from docs/local-mvp.md, not adopted HAB behavioral requirements."
     }
   ],
   "requirements": [
