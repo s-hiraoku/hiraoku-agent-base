@@ -272,6 +272,15 @@ test("a request too large for one argument is refused before it is marked read",
   assert.equal(n.get("big").state, "unsupported");
 });
 
+test("a request with a NUL character is refused before it is marked read", async (t) => {
+  const f = setup(t, { unread: [message("nul", {}, "前\u0000後")] });
+  const n = f.make();
+  await n.check();
+  assert.equal((await n.decide("nul", "accept")).state, "unsupported");
+  assert.deepEqual(f.read, []);
+  assert.deepEqual(f.waiting(), []);
+});
+
 test("an unsafe spool is refused before the mail is marked read", async (t) => {
   const f = setup(t, { unread: [message("m1")] });
   const n = f.make();

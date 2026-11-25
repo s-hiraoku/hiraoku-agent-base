@@ -128,6 +128,9 @@ export function antigravityDesktopPrecheck(
     ANTIGRAVITY_REQUEST_BYTES
   )
     return "unsupported";
+  // An argv entry cannot hold NUL: spawn would refuse it after the mail was read.
+  if (message.handoff_prompt.includes("\0") || titleOf(message).includes("\0"))
+    return "unsupported";
   return spoolProblem(binding.spool_dir) === undefined
     ? undefined
     : "unsupported";
