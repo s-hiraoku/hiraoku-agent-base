@@ -82,7 +82,7 @@ function boot({ openai } = {}) {
     listeners.forEach((fn) => fn({ source: parent, data }));
   const setGlobals = (globals) =>
     globalsListeners.forEach((fn) => fn({ detail: { globals } }));
-  return { root, sent, deliver, setGlobals };
+  return { root, sent, deliver, setGlobals, document };
 }
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -279,4 +279,27 @@ test("ChatGPT's window.openai.toolOutput and openai:set_globals draw the card to
     params: { structuredContent: { messages: [] } },
   });
   assert.match(later.root.textContent, /新しいメッセージはありません/);
+});
+
+test("the reported height is the content at max-content, not the frame's own height", () => {
+  const { sent, deliver, document } = boot();
+  const html = document.documentElement;
+  html.style.height = "";
+  // A frame 150px tall whose content needs 640px: only a max-content measure sees the content.
+  html.getBoundingClientRect = () => ({
+    width: 400,
+    height: html.style.height === "max-content" ? 640 : 150,
+  });
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      structuredContent: {
+        messages: [message("m1", "one"), message("m2", "two")],
+      },
+    },
+  });
+  const size = sent.filter((m) => m.method === "ui/notifications/size-changed");
+  assert.equal(size.at(-1).params.height, 640);
+  assert.equal(html.style.height, "");
 });

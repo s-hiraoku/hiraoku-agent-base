@@ -18,8 +18,14 @@
  * variables, no brand colour, so the card sits naturally in any agent that draws it.
  */
 
-/** Versioned like a cache key: a breaking change to the page gets a new URI. */
-export const HAB_INBOX_APP_URI = "ui://hab/inbox-v1";
+/**
+ * Versioned like a cache key: hosts such as claude.ai and Claude Duet keep the page they
+ * first read for a URI, so any change to the page gets a new URI. v2: the ambient look and
+ * the copy fallback (PR #295) never reached hosts that had cached v1.
+ */
+export const HAB_INBOX_APP_URI = "ui://hab/inbox-v2";
+/** Earlier URIs still answer with the current page, for a host holding an old tool list. */
+export const HAB_INBOX_APP_LEGACY_URIS = Object.freeze(["ui://hab/inbox-v1"]);
 export const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
 
 /** `_meta` for hab_inbox: the standard key and ChatGPT's older alias. */
@@ -61,9 +67,26 @@ function shortTime(value) {
     ? new Date(time).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
     : String(value);
 }
+// Inside a frame the root element is as tall as the frame, so measuring it as is reports the
+// frame's own height and a host that sizes from it never grows past the first card. Measure
+// the content at max-content height (as the MCP Apps SDK does), and again on the next frame
+// once layout has settled.
+let lastHeight = -1;
+function measureAndSend() {
+  const html = document.documentElement;
+  const before = html.style.height;
+  html.style.height = "max-content";
+  const rect = html.getBoundingClientRect();
+  html.style.height = before;
+  const height = Math.ceil(Math.max(rect.height, document.body ? document.body.scrollHeight : 0));
+  if (height === lastHeight) return;
+  lastHeight = height;
+  send({ method: "ui/notifications/size-changed", params: { width: Math.ceil(rect.width), height } });
+}
 function reportSize() {
-  const rect = document.documentElement.getBoundingClientRect();
-  send({ method: "ui/notifications/size-changed", params: { width: Math.ceil(rect.width), height: Math.ceil(rect.height) } });
+  lastHeight = -1;
+  measureAndSend();
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(measureAndSend);
 }
 function prompt(message, p) {
   const who = p.sender.label;
@@ -198,7 +221,11 @@ request("ui/initialize", {
   appCapabilities: {},
 }).then((result) => applyContext(result && result.hostContext), () => {})
   .then(() => send({ method: "ui/notifications/initialized", params: {} }));
-if (window.ResizeObserver) new ResizeObserver(reportSize).observe(document.documentElement);
+if (typeof ResizeObserver === "function") {
+  const observer = new ResizeObserver(measureAndSend);
+  observer.observe(document.documentElement);
+  observer.observe(root);
+}
 `;
 
 const style = `
