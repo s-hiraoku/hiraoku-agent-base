@@ -23,6 +23,8 @@ import { BlockList, isIP } from "node:net";
 import { z } from "zod";
 import { ensurePrivateFile } from "../agent-notify/private-file.ts";
 import { MessagingError } from "../messaging/delivery-service.ts";
+import { NOT_OBSERVED, derivePresence } from "./presence.ts";
+import type { Presence, PresenceReceive } from "./presence.ts";
 
 export const HAB_EVENT_NAME = "hab.message.received";
 export const habEventDefinition = Object.freeze({
@@ -1039,7 +1041,8 @@ export class HabEvents {
         "SELECT sender_id,message_id,rang_at FROM hab_event_quiet WHERE subscription_id=?",
       )
       .get(row.id) as
-      { sender_id: string; message_id: string; rang_at: number } | undefined;
+      | { sender_id: string; message_id: string; rang_at: number }
+      | undefined;
     if (!last || this.#now() - last.rang_at >= this.#unansweredAfter)
       return false;
     return this.#source.unread(row.agent_id, {
@@ -1161,6 +1164,22 @@ export class HabEvents {
     return !!this.#db
       .prepare("SELECT 1 FROM hab_event_absent WHERE agent_id=?")
       .get(agentId);
+  }
+  /**
+   * ADR-034: what HAB observed about an address, for hab_discover. Read-only, never
+   * throws: a store that cannot be read leaves the address `not_observed`.
+   */
+  presence(agentId: string, receive: PresenceReceive | null): Presence {
+    try {
+      const now = this.#now();
+      return derivePresence(
+        collectDoorbells(this.#db, now, agentId).get(agentId),
+        receive,
+        now,
+      );
+    } catch {
+      return NOT_OBSERVED;
+    }
   }
   /**
    * ADR-032: the recipient read its own inbox (hab_inbox, or the notifier's hab_peek), so
@@ -1291,7 +1310,8 @@ export class HabEvents {
           "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
         )
         .get(due_row.subscription_id, this.#now()) as unknown as
-        Row | undefined;
+        | Row
+        | undefined;
       if (!row) continue;
       const address = this.#source.addressOf(row.agent_id);
       if (
@@ -1349,7 +1369,8 @@ export class HabEvents {
     let delivered: number | null = null;
     for (const key of unread) {
       const row = first.get(agentId, key.sender_id, key.message_id) as
-        { accepted_at: number } | undefined;
+        | { accepted_at: number }
+        | undefined;
       if (row && (delivered === null || row.accepted_at < delivered))
         delivered = row.accepted_at;
     }
@@ -1460,100 +1481,113 @@ export function readDoorbells(
   store: string,
   now = Date.now(),
 ): Map<string, DoorbellState> {
-  const result = new Map<string, DoorbellState>();
   const db = new DatabaseSync(store, { readOnly: true, timeout: 5000 });
   try {
-    const tables = new Set(
-      (
-        db
-          .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-          .all() as { name: string }[]
-      ).map((row) => row.name),
-    );
-    const entry = (agentId: string) => {
-      let state = result.get(agentId);
-      if (!state) {
-        state = {
-          live: 0,
-          operator: 0,
-          until: null,
-          lapsed_at: null,
-          reason: null,
-          rang_at: null,
-          status: null,
-          delivered_at: null,
-          inbox_read_at: null,
-          absent_since: null,
-        };
-        result.set(agentId, state);
-      }
-      return state;
-    };
-    if (tables.has("hab_event_lapses"))
-      for (const row of db
-        .prepare("SELECT agent_id,lapsed_at,reason FROM hab_event_lapses")
-        .all() as unknown as {
-        agent_id: string;
-        lapsed_at: number;
-        reason: DoorbellState["reason"];
-      }[]) {
-        const state = entry(row.agent_id);
-        state.lapsed_at = row.lapsed_at;
-        state.reason = row.reason;
-      }
-    if (tables.has("hab_event_absent"))
-      for (const row of db
-        .prepare("SELECT agent_id,since FROM hab_event_absent")
-        .all() as unknown as { agent_id: string; since: number }[])
-        entry(row.agent_id).absent_since = row.since;
-    if (tables.has("hab_event_inbox_reads"))
-      for (const row of db
-        .prepare("SELECT agent_id,read_at FROM hab_event_inbox_reads")
-        .all() as unknown as { agent_id: string; read_at: number }[])
-        entry(row.agent_id).inbox_read_at = row.read_at;
-    if (tables.has("hab_event_rings"))
-      for (const row of db
-        .prepare(
-          "SELECT agent_id,rang_at,status,delivered_at FROM hab_event_rings",
-        )
-        .all() as unknown as {
-        agent_id: string;
-        rang_at: number;
-        status: number;
-        delivered_at: number | null;
-      }[]) {
-        const state = entry(row.agent_id);
-        state.rang_at = row.rang_at;
-        state.status = row.status;
-        state.delivered_at = row.delivered_at;
-      }
-    if (tables.has("hab_event_subscriptions"))
-      for (const row of db
-        .prepare(
-          `SELECT id,agent_id,expires_at FROM hab_event_subscriptions
-           ${tables.has("hab_event_operator_pauses") ? "WHERE id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses)" : ""}
-           ORDER BY expires_at`,
-        )
-        .all() as unknown as {
-        id: string;
-        agent_id: string;
-        expires_at: number;
-      }[]) {
-        const state = entry(row.agent_id);
-        // Operator-registered doorbells (ADR-029) never expire; they have no lifetime to show.
-        if (row.id.startsWith(STATIC_PREFIX)) {
-          state.live += 1;
-          state.operator += 1;
-        } else if (row.expires_at > now) {
-          state.live += 1;
-          state.until = row.expires_at;
-        } else if ((state.lapsed_at ?? 0) < row.expires_at) {
-          state.lapsed_at = row.expires_at;
-          state.reason = "expired";
-        }
-      }
+    return collectDoorbells(db, now);
   } finally {
     db.close();
   }
+}
+/** The same view from an open events store; `only` limits it to one recipient. */
+function collectDoorbells(
+  db: DatabaseSync,
+  now: number,
+  only?: string,
+): Map<string, DoorbellState> {
+  const result = new Map<string, DoorbellState>();
+  const filter = only === undefined ? "" : " WHERE agent_id=?";
+  const args = only === undefined ? [] : [only];
+  const tables = new Set(
+    (
+      db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string;
+      }[]
+    ).map((row) => row.name),
+  );
+  const entry = (agentId: string) => {
+    let state = result.get(agentId);
+    if (!state) {
+      state = {
+        live: 0,
+        operator: 0,
+        until: null,
+        lapsed_at: null,
+        reason: null,
+        rang_at: null,
+        status: null,
+        delivered_at: null,
+        inbox_read_at: null,
+        absent_since: null,
+      };
+      result.set(agentId, state);
+    }
+    return state;
+  };
+  if (tables.has("hab_event_lapses"))
+    for (const row of db
+      .prepare(
+        "SELECT agent_id,lapsed_at,reason FROM hab_event_lapses" + filter,
+      )
+      .all(...args) as unknown as {
+      agent_id: string;
+      lapsed_at: number;
+      reason: DoorbellState["reason"];
+    }[]) {
+      const state = entry(row.agent_id);
+      state.lapsed_at = row.lapsed_at;
+      state.reason = row.reason;
+    }
+  if (tables.has("hab_event_absent"))
+    for (const row of db
+      .prepare("SELECT agent_id,since FROM hab_event_absent" + filter)
+      .all(...args) as unknown as { agent_id: string; since: number }[])
+      entry(row.agent_id).absent_since = row.since;
+  if (tables.has("hab_event_inbox_reads"))
+    for (const row of db
+      .prepare("SELECT agent_id,read_at FROM hab_event_inbox_reads" + filter)
+      .all(...args) as unknown as { agent_id: string; read_at: number }[])
+      entry(row.agent_id).inbox_read_at = row.read_at;
+  if (tables.has("hab_event_rings"))
+    for (const row of db
+      .prepare(
+        "SELECT agent_id,rang_at,status,delivered_at FROM hab_event_rings" +
+          filter,
+      )
+      .all(...args) as unknown as {
+      agent_id: string;
+      rang_at: number;
+      status: number;
+      delivered_at: number | null;
+    }[]) {
+      const state = entry(row.agent_id);
+      state.rang_at = row.rang_at;
+      state.status = row.status;
+      state.delivered_at = row.delivered_at;
+    }
+  if (tables.has("hab_event_subscriptions"))
+    for (const row of db
+      .prepare(
+        `SELECT id,agent_id,expires_at FROM hab_event_subscriptions
+           WHERE 1=1${tables.has("hab_event_operator_pauses") ? " AND id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses)" : ""}${only === undefined ? "" : " AND agent_id=?"}
+           ORDER BY expires_at`,
+      )
+      .all(...args) as unknown as {
+      id: string;
+      agent_id: string;
+      expires_at: number;
+    }[]) {
+      const state = entry(row.agent_id);
+      // Operator-registered doorbells (ADR-029) never expire; they have no lifetime to show.
+      if (row.id.startsWith(STATIC_PREFIX)) {
+        state.live += 1;
+        state.operator += 1;
+      } else if (row.expires_at > now) {
+        state.live += 1;
+        state.until = row.expires_at;
+      } else if ((state.lapsed_at ?? 0) < row.expires_at) {
+        state.lapsed_at = row.expires_at;
+        state.reason = "expired";
+      }
+    }
   return result;
 }

@@ -452,7 +452,7 @@ Sources: [docs/operations/host-composition.md:15](../../docs/operations/host-com
 
 ### HAB-A14 — Discovery separates name and host identity
 
-Opt-in read-only discovery distinguishes authenticated group, selected address, trusted host session attestation, registration and unobserved presence. Unknown/stale attestation stays unknown; no inferred offline/available/ownership. Directory remains own-group scoped and occupancy checks neither reserve nor grant.
+Opt-in read-only discovery distinguishes authenticated group, selected address, trusted host session attestation, registration and unobserved presence. Unknown/stale attestation stays unknown; no inferred offline/available/ownership. Directory remains own-group scoped and occupancy checks neither reserve nor grant. (Superseded in part: ADR-025 lists other groups; ADR-034 derives presence only from HAB-observed doorbell, inbox-read, ledger and session_gone facts, granting nothing.)
 
 Reason: Shared credentials and registration are not proof of which real Bot/session is running.
 

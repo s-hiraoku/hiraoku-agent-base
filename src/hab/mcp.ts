@@ -22,6 +22,11 @@ import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabDirectory } from "./directory.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import type { HabDiscoveryService } from "./discovery.ts";
+import type {
+  Presence,
+  PresenceObserver,
+  PresenceReceive,
+} from "./presence.ts";
 import { HAB_ADDRESS_PATTERN, parseHabAddress } from "./registry.ts";
 import { HabEventError, habEventParamSchemas } from "./events.ts";
 import type { HabEvents } from "./events.ts";
@@ -217,6 +222,8 @@ export interface RecipientAbsence {
    * so it is no longer absent. Never fails the read it follows.
    */
   noteRecipientRead(context: unknown): void;
+  /** ADR-034: what HAB observed about an address, shown as its hab_discover presence. */
+  presence?(agentId: string, receive: PresenceReceive | null): Presence;
 }
 export function createHabMcpServer(
   service: HabMcpService,
@@ -266,20 +273,25 @@ export function createHabMcpServer(
   if (events && catalog === "agent")
     registerHabEvents(server, events, resolveContext, gate);
   if (service.discoveryEnabled === true) {
+    // ADR-034: presence comes from the same events store as the absence policy.
+    const observe: PresenceObserver | undefined =
+      typeof absence?.presence === "function"
+        ? (agentId, receive) => absence.presence!(agentId, receive)
+        : undefined;
     if (typeof service.discover !== "function")
       throw new MessagingError("invalid_hab_mcp_service");
     server.registerTool(
       "hab_discover",
       {
         description:
-          "Find agents and addresses you can message, or check which HAB address this connection uses (action `whoami`). A listed name is not proof that its agent is running. Availability does not reserve or authorize registration.",
+          "Find agents and addresses you can message, or check which HAB address this connection uses (action `whoami`). Each entry's `presence` is what HAB observed (doorbell, inbox reads, ended session); `available` means a notice should reach it, not that its agent will act. Availability does not reserve or authorize registration.",
         inputSchema: publishedInputSchema(habDiscoverySchema),
         annotations: { readOnlyHint: true, idempotentHint: true },
         ...security,
       },
       (input: unknown) =>
         executeDeliveryMcpOperation(resolveContext, gate, (context) =>
-          service.discover!(context, input),
+          service.discover!(context, input, observe),
         ),
     );
   }

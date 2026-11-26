@@ -238,6 +238,17 @@
 - **履歴はディスクの上限だけで止める。** `max_records`（全record）と `max_body_bytes`（既読で残した本文を含む）は全体の歯止めとして残し、通常のやり取りでは届かない大きさにする（例の設定は 10000 件・10 MB）。予約の未使用分はこの全体枠から引いておく。
 - **限界。** 受信者がすぐ読む相手へは、送信者が通数を増やし続けられる。それを抑えるのは送信rate（未実装）の役目で、全体の `max_records` に届けば全員が送れなくなる。exact replay・status・返信の照合のために record を保持期限まで残すことは変えない。
 
+## ADR-034 / 採用：宛先一覧の在席（presence）は、HABが自分で観測した事実から導く
+
+2026-11-26 JST、本人の指摘（「在席状態は全員 unknown なんだけど、直して」）。`hab_discover`（2026-10-31、#112）の`presence`は、当時のRegistryに観測の仕組みがなかったため、全員を`unknown / not_observed`に固定していた。その後、呼び鈴（ADR-022・029）とその答え、`hab_inbox`の時刻（ADR-032）、製品の受け方の台帳（ADR-032）、`session_gone`による「相手がいない」（ADR-032）が`events.sqlite`と`registry.sqlite`に揃い、`hab:admin status`はそれで`doorbell_failing`・`poll_overdue`・`recipient_absent`などを出している。宛先を選ぶエージェントにも同じ事実を見せる。
+
+- **材料はHABが見た事実だけ。** [受信の全体設計](receiver/wake-model.md)の§7「HABから見えること」の範囲（呼び鈴の結果、購読の期限、既読の時刻、`session_gone`）と台帳の受け方だけを使う。製品のタスクが起きたか、人が見たかは推測しない。
+- **3つの状態と理由。** `available`（知らせれば気づく見込み）・`unavailable`（届かない、読みに来ていない、セッションが終わった）・`unknown`（判断できない）に、理由`reason`と根拠の時刻`observed_at`を付ける。判定は上から順に`session_gone` → 呼び鈴あり（`doorbell_failing`／`doorbell_live`）→ 受け方`poll`（`polling`／`poll_overdue`、`hab:admin status`と同じ間隔の2倍）→ 1時間以内の`hab_inbox`（`inbox_read_recently`）→ `doorbell_lapsed` → 受け方`hook`で鳴らす先なし（`doorbell_missing`）→ 受け方`on_request` → 古い`hab_inbox`だけ（`inbox_read_earlier`）→ `not_observed`。一覧は[MCPからの自己識別・アドレス照会](connections/mcp-agent-discovery.md#在席presenceadr-034)。
+- **ほかのgroupにも出す。** ADR-025で一覧に出すほかのgroupのentryにも同じ`presence`を付ける。呼び鈴の宛先・鍵・本文・送信元・未読数は出さない。
+- **在席は約束でも権限でもない。** `available`でも読む・返信する・作業するとは限らない（ADR-015）。`presence`は登録・予約・権限・送信可否を変えない。送信を断るのは今までどおり`session_gone`の`recipient_absent`だけ。
+- **MCPイベントのないhostは今までどおり。** `ingress.events`がなく`events.sqlite`を持たないhostでは、全員`unknown / not_observed`のまま。観測の読み取りに失敗しても`hab_discover`は失敗させず、そのアドレスを`not_observed`にする。
+- **限界。** 呼び鈴を受けて2xxを返しても、製品のタスクが動くとは限らない（ADR-027）。`doorbell_live`はHABから知らせが届くことまでで、読まれることは`hab_inbox`の時刻でしか分からない。受信通知アダプタの`hab_peek`はまだ材料にしていない（Hermesは運用者の呼び鈴で`doorbell_live`になる）。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。

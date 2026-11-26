@@ -15,6 +15,8 @@ import {
   habDiscoveryPolicySchema,
 } from "./discovery.ts";
 import type { HabDiscoveryPolicy, HabHostIdentity } from "./discovery.ts";
+import { NOT_OBSERVED } from "./presence.ts";
+import type { Presence, PresenceObserver } from "./presence.ts";
 import { AUTH_GROUP_SCHEMA } from "./auth-groups.ts";
 import {
   AGENT_NAME_SCHEMA,
@@ -1781,7 +1783,8 @@ export class SQLiteHabRegistry {
                 "SELECT id,operation FROM hab_auth_group_authorizations WHERE group_id=? AND agent_id=? ORDER BY id DESC LIMIT 1",
               )
               .get(group.group_id, local.agent_id) as
-              { id: number; operation: string } | undefined)
+              | { id: number; operation: string }
+              | undefined)
           : undefined;
       if (last?.operation === operation)
         this.#db
@@ -1976,7 +1979,7 @@ export class SQLiteHabRegistry {
     };
   }
   /** Read-only snapshot. No registration, reservation, grant, lease, or history update. */
-  discover(context: unknown, value: unknown) {
+  discover(context: unknown, value: unknown, observe?: PresenceObserver) {
     const parsed = habDiscoverySchema.safeParse(value);
     if (!parsed.success) throw new MessagingError("invalid_request");
     const input = parsed.data;
@@ -2078,6 +2081,20 @@ export class SQLiteHabRegistry {
       } catch {
         throw new MessagingError("forbidden");
       }
+      // ADR-034: what HAB observed about each listed address. A failing observer never
+      // fails discovery; the address stays `not_observed`.
+      const presenceOf = (agent: AgentRecord): Presence => {
+        if (!observe) return { ...NOT_OBSERVED };
+        try {
+          return (
+            observe(agent.agent_id, this.#productReceive(agent.product_id)) ?? {
+              ...NOT_OBSERVED,
+            }
+          );
+        } catch {
+          return { ...NOT_OBSERVED };
+        }
+      };
       const entry = (agent: AgentRecord) => ({
         agent_id: agent.agent_id,
         address: agent.address,
@@ -2109,11 +2126,7 @@ export class SQLiteHabRegistry {
                 source: "host" as const,
                 reason: hostReason,
               },
-        presence: {
-          state: "unknown" as const,
-          reason: "not_observed" as const,
-          observed_at: null,
-        },
+        presence: presenceOf(agent),
       });
       // Another group's active address: enough to message it, nothing about its access.
       const otherEntry = (agent: AgentRecord) => ({
@@ -2124,11 +2137,7 @@ export class SQLiteHabRegistry {
         registration_state: agent.state,
         address_status: "issued_reserved" as const,
         relationship: "other_group" as const,
-        presence: {
-          state: "unknown" as const,
-          reason: "not_observed" as const,
-          observed_at: null,
-        },
+        presence: presenceOf(agent),
       });
       const membersSql =
         "SELECT agent_id FROM hab_auth_group_members WHERE group_id=?";
