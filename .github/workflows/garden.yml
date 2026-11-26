@@ -25,8 +25,19 @@ jobs:
       (github.event.issue.pull_request != null &&
        startsWith(github.event.comment.body, '/garden resume') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
-    uses: s-hiraoku/hiraoku-software-garden/.github/workflows/garden-reusable.yml@main
+    uses: s-hiraoku/hiraoku-software-garden/.github/workflows/garden-reusable.yml@v0.1.0
     with:
       flow: ${{ inputs.flow || (github.event_name == 'pull_request' && 'auto' || 'verify_relay') }}
       issue_number: ${{ github.event.pull_request.number || github.event.issue.number || 0 }}
+      nursery_ref: "v0.1.0"
       node_version_file: .node-version
+
+  feedback:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      startsWith(github.event.comment.body, '/garden feedback') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    uses: s-hiraoku/hiraoku-software-garden/.github/workflows/garden-feedback-reusable.yml@v0.1.0
+    with:
+      issue_number: ${{ github.event.issue.number }}
+      nursery_ref: "v0.1.0"

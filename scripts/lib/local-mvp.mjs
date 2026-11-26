@@ -43,6 +43,22 @@ const kinds = [
 const key = (n) => new Uint8Array(32).fill(n); // Synthetic integrity keys only.
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const text = (value) => ({ parts: [{ type: "text", text: value }] });
+const expectedStageIds = Object.freeze([
+  "enrollment",
+  "auth-denial",
+  "paused-by-default",
+  "ambiguous-send",
+  "ambiguous-ack",
+  "cold-start",
+  "same-id-recovery",
+  "reply-intent-restart",
+  "reply-roundtrip",
+  "offline-store-forward",
+  "execution-request-inert",
+  "loop-denial",
+  "stopped",
+]);
+
 export async function runLocalMvp(signal) {
   const directory = mkdtempSync(join(tmpdir(), "hab-local-mvp-"));
   chmodSync(directory, 0o700);
@@ -654,6 +670,16 @@ export async function runLocalMvp(signal) {
     stage("stopped");
     report.mcp_tools = [...tools].sort();
     report.audit = Object.fromEntries(audit);
+  } catch (error) {
+    if (error && typeof error === "object") {
+      const passedStages = stages.map((s) => s.id);
+      error.hab_mvp_progress = {
+        passed_stages: passedStages,
+        failed_stage: expectedStageIds[passedStages.length] ?? null,
+        total_stages: expectedStageIds.length,
+      };
+    }
+    throw error;
   } finally {
     signal?.removeEventListener("abort", onAbort);
     await stopServer();
