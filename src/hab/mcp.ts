@@ -43,6 +43,7 @@ import {
 import {
   HAB_INBOX_APP_HTML,
   HAB_INBOX_APP_URI,
+  HAB_INBOX_APP_LEGACY_URIS,
   MCP_APP_MIME_TYPE,
   habInboxAppResourceMeta,
   habInboxAppToolMeta,
@@ -413,26 +414,33 @@ function createAgentServer(
   server.server.registerCapabilities({ tools: { listChanged: false } });
   // ADR-026: the inbox card for MCP Apps hosts. A static page with no data of its own;
   // hosts without MCP Apps never read it.
-  server.registerResource(
-    "hab-inbox-card",
-    HAB_INBOX_APP_URI,
-    {
-      title: "HAB 受信箱",
-      description: "Draws hab_inbox results as cards.",
-      mimeType: MCP_APP_MIME_TYPE,
-      _meta: habInboxAppResourceMeta,
-    },
-    () => ({
-      contents: [
-        {
-          uri: HAB_INBOX_APP_URI,
-          mimeType: MCP_APP_MIME_TYPE,
-          text: HAB_INBOX_APP_HTML,
-          _meta: habInboxAppResourceMeta,
-        },
-      ],
-    }),
-  );
+  for (const [name, uri] of [
+    ["hab-inbox-card", HAB_INBOX_APP_URI],
+    ...HAB_INBOX_APP_LEGACY_URIS.map(
+      (legacy) =>
+        [`hab-inbox-card-${legacy.slice("ui://hab/".length)}`, legacy] as const,
+    ),
+  ] as const)
+    server.registerResource(
+      name,
+      uri,
+      {
+        title: "HAB 受信箱",
+        description: "Draws hab_inbox results as cards.",
+        mimeType: MCP_APP_MIME_TYPE,
+        _meta: habInboxAppResourceMeta,
+      },
+      () => ({
+        contents: [
+          {
+            uri,
+            mimeType: MCP_APP_MIME_TYPE,
+            text: HAB_INBOX_APP_HTML,
+            _meta: habInboxAppResourceMeta,
+          },
+        ],
+      }),
+    );
   const securityMeta =
     (security as { _meta?: Record<string, unknown> })._meta ?? {};
   for (const name of Object.keys(habAgentMcpSchemas)) {
