@@ -1913,3 +1913,32 @@ test("hab_discover presence follows reads, doorbells, the ledger and session_gon
   assert.equal((await presence("b", f.a.address)).state, "unavailable");
   assert.equal((await presence("b", f.a.address)).reason, "session_gone");
 });
+
+test("a hab_inbox read on the loopback endpoint (no events, shared store) is recorded", async (t) => {
+  const f = await setup(t);
+  // As the host wires loopback /mcp: no MCP events, the same store as the absence policy.
+  const loopback = new HabHttpGateway(
+    f.hab,
+    policy,
+    { record() {}, note() {} },
+    f.verifier,
+    undefined,
+    "agent",
+    undefined,
+    f.events,
+  );
+  const read = await decode(
+    await loopback.fetch(
+      request(
+        "tools/call",
+        { name: "hab_inbox", arguments: {} },
+        { headers: { Authorization: "Bearer fixture-a" } },
+      ),
+    ),
+  );
+  assert.notEqual(read.result.isError, true, JSON.stringify(read));
+  assert.notEqual(
+    readDoorbells(f.store).get(f.a.agent_id)?.inbox_read_at ?? null,
+    null,
+  );
+});

@@ -222,6 +222,8 @@ export interface RecipientAbsence {
    * so it is no longer absent. Never fails the read it follows.
    */
   noteRecipientRead(context: unknown): void;
+  /** ADR-032: the caller read its inbox with hab_inbox (for poll_overdue and presence). */
+  noteInboxRead?(context: unknown): void;
   /** ADR-034: what HAB observed about an address, shown as its hab_discover presence. */
   presence?(agentId: string, receive: PresenceReceive | null): Presence;
 }
@@ -514,7 +516,9 @@ function createAgentServer(
               maxResponseBytes,
             );
             if (readingInbox) {
-              events?.noteInboxRead(prepared.context);
+              // ADR-034: the loopback endpoint has no events but shares their store, so
+              // its reads count for poll_overdue and presence too.
+              (events ?? absence)?.noteInboxRead?.(prepared.context);
               absence?.noteRecipientRead(prepared.context);
             }
             const output = reminder
