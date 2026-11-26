@@ -10,8 +10,12 @@
  *
  * Buttons change nothing in HAB: hab_inbox already marked the messages read. The accept
  * choice (返信する／会話に渡す) sends the user a prepared message into the conversation
- * (`ui/message`) so the model drafts the reply and shows it before sending; あとで and
+ * (`ui/message`) so the model drafts the reply and shows it before sending; a host that
+ * refuses ui/message gets the same request as text with a copy button. あとで and
  * 対応しない only fold the card on this screen.
+ *
+ * The look is ambient: the host's own fonts, colours and radii through the MCP Apps style
+ * variables, no brand colour, so the card sits naturally in any agent that draws it.
  */
 
 /** Versioned like a cache key: a breaking change to the page gets a new URI. */
@@ -71,7 +75,7 @@ function card(message) {
   const p = message.presentation;
   const article = el("article", "card");
   const header = el("header", "head");
-  header.append(el("span", "badge", "HAB"), el("strong", "", p ? p.heading : (message.from || "（削除された送信者）") + " からのメッセージです"));
+  header.append(el("strong", "from", p ? p.heading : (message.from || "（削除された送信者）") + " からのメッセージです"), el("span", "via", "HAB"));
   article.append(header);
   if (p) {
     const facts = [p.kind_label, p.is_reply ? "あなたが送ったメッセージへの返事" : "返信期限 " + shortTime(p.reply_by)];
@@ -84,6 +88,8 @@ function card(message) {
     article.append(el("div", "meta", "表示していない構造化データが " + p.hidden_data_parts + " 件あります"));
   const status = el("div", "status");
   status.setAttribute("role", "status");
+  const handoff = el("div", "handoff");
+  handoff.hidden = true;
   const actions = el("div", "actions");
   const choices = p ? p.choices : [];
   for (const item of choices) {
@@ -98,11 +104,14 @@ function card(message) {
           if (sent && sent.isError) throw new Error("rejected");
           status.textContent = "会話に送りました。返信は送る前に確認できます。";
         } catch {
-          status.textContent = "会話に送れませんでした。チャットで「" + message.message_id + " に返信」と伝えてください。";
+          status.textContent = "会話に送れませんでした。下の文をコピーして、チャットに貼ってください。";
+          showHandoff(handoff, prompt(message, p));
           for (const other of actions.querySelectorAll("button")) other.disabled = false;
         }
       } else {
         body.hidden = true;
+        handoff.hidden = true;
+        article.className = "card folded";
         status.textContent = item.choice === "later"
           ? "あとで対応します。7 日間は受信箱から読み直せます。"
           : "対応しません。";
@@ -112,8 +121,27 @@ function card(message) {
     actions.append(button);
   }
   if (choices.length) article.append(actions);
-  article.append(status);
+  article.append(status, handoff);
   return article;
+}
+// When the host will not take ui/message (Claude Duet, for one), hand the same request to
+// the user as text they can copy into the chat, so the choice still leads somewhere.
+function showHandoff(box, text) {
+  box.replaceChildren();
+  const line = el("p", "handoff-text", text);
+  const copy = el("button", "", "文をコピー");
+  copy.type = "button";
+  copy.addEventListener("click", async () => {
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard) throw new Error("no clipboard");
+      await navigator.clipboard.writeText(text);
+      copy.textContent = "コピーしました";
+    } catch {
+      copy.textContent = "文を選んでコピーしてください";
+    }
+  });
+  box.append(line, copy);
+  box.hidden = false;
 }
 function render(result) {
   const messages = result && result.structuredContent && Array.isArray(result.structuredContent.messages)
@@ -174,20 +202,45 @@ if (window.ResizeObserver) new ResizeObserver(reportSize).observe(document.docum
 `;
 
 const style = `
-:root { color-scheme: light dark; --hab-accent: #5b6cff; }
-body { margin: 0; font-family: var(--font-sans, system-ui, sans-serif); color: var(--color-text-primary, CanvasText); background: transparent; }
-.card { border: 1px solid rgba(127,127,127,0.45); border-left: 4px solid var(--hab-accent); border-radius: 8px; padding: 8px 12px; margin: 6px 0; }
-.head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.badge { background: var(--hab-accent); color: #fff; border-radius: 4px; padding: 0 6px; font-size: 0.75em; font-weight: 700; letter-spacing: 0.05em; }
-.meta { font-size: 0.85em; opacity: 0.8; margin-bottom: 6px; }
-.body { white-space: pre-wrap; overflow-wrap: anywhere; background: rgba(127,127,127,0.08); border-radius: 6px; padding: 6px 10px; margin: 4px 0; }
-.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-button { font: inherit; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(127,127,127,0.5); background: transparent; color: inherit; cursor: pointer; }
-button.primary { background: var(--hab-accent); border-color: var(--hab-accent); color: #fff; }
-button:disabled { opacity: 0.5; cursor: default; }
-.status { font-size: 0.85em; margin-top: 4px; }
+/* Ambient: the card borrows the host's own type, colours and radii (MCP Apps style
+   variables) and adds no brand colour, so it reads as part of whichever agent draws it. */
+:root {
+  color-scheme: light dark;
+  --ink: var(--color-text-primary, CanvasText);
+  --ink-soft: var(--color-text-secondary, color-mix(in srgb, CanvasText 62%, transparent));
+  --rule: var(--color-border-secondary, color-mix(in srgb, CanvasText 14%, transparent));
+  --wash: var(--color-background-secondary, color-mix(in srgb, CanvasText 4%, transparent));
+  --solid: var(--color-background-inverse, CanvasText);
+  --solid-ink: var(--color-text-inverse, Canvas);
+  --focus: var(--color-ring-primary, Highlight);
+  --radius: var(--border-radius-md, 8px);
+}
+body { margin: 0; font-family: var(--font-sans, system-ui, sans-serif); font-size: var(--font-text-md-size, 15px); line-height: 1.55; color: var(--ink); background: transparent; }
+main { padding: 2px 0; }
+.card { padding: 12px 0; }
+.card + .card { border-top: 1px solid var(--rule); }
+.head { display: flex; align-items: baseline; gap: 8px; }
+.from { font-weight: 600; }
+.via { color: var(--ink-soft); font-size: 0.8125em; }
+.meta { color: var(--ink-soft); font-size: 0.8125em; margin-top: 2px; }
+/* The sender's own words: set off like a quotation, because they are data, not the host's voice. */
+.body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0 0; padding: 2px 0 2px 12px; border-left: 2px solid var(--rule); max-width: 68ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+button { font: inherit; font-size: 0.875em; line-height: 1.4; padding: 5px 14px; border-radius: var(--radius); border: 1px solid var(--rule); background: transparent; color: inherit; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--wash); }
+button.primary { background: var(--solid); border-color: var(--solid); color: var(--solid-ink); }
+button.primary:hover:not(:disabled) { opacity: 0.88; background: var(--solid); }
+button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: default; }
+.status { color: var(--ink-soft); font-size: 0.8125em; margin-top: 8px; }
 .status:empty { display: none; }
-.empty { opacity: 0.8; margin: 6px 0; }
+.folded .actions { display: none; }
+.folded .status { margin-top: 4px; }
+.handoff { margin-top: 8px; padding: 10px 12px; background: var(--wash); border-radius: var(--radius); }
+.handoff[hidden] { display: none; }
+.handoff-text { margin: 0 0 8px; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; font-size: 0.875em; }
+.empty { color: var(--ink-soft); margin: 8px 0; }
+@media (prefers-reduced-motion: no-preference) { button { transition: background-color 120ms ease, opacity 120ms ease; } }
 `;
 
 /** The whole page, as served by resources/read. */

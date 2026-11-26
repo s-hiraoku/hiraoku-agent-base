@@ -93,6 +93,15 @@ test("the agent catalog lists only the agent tools and carries usage instruction
     assert.ok(HAB_AGENT_INSTRUCTIONS.includes(word));
 });
 
+test("instructions ask an agent that checks accounts on its own to include the inbox", () => {
+  // Agents such as Claude Duet wake only for their own periodic checks and briefs, and no
+  // HAB doorbell reaches them; the instructions carry the habit so no per-agent setting is needed.
+  assert.match(
+    HAB_AGENT_INSTRUCTIONS,
+    /When you check your connected accounts on your own, at intervals or to prepare a brief or summary for your user, include hab_inbox in that check/,
+  );
+});
+
 test("send, read, reply and status round trip with only addresses and text", async (t) => {
   const f = await setup(t);
   const before = Date.now();

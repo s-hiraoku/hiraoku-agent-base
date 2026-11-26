@@ -177,7 +177,52 @@ test("a host that refuses ui/message leaves the buttons usable and says how to a
     assert.ok(
       root.children[0].querySelectorAll("button").every((b) => !b.disabled),
     );
+    // The same request is shown as text to copy into the chat, never the sender's words.
+    const handoff = root.children[0]
+      .all()
+      .find((n) => n.className === "handoff");
+    assert.equal(handoff.hidden, false);
+    assert.match(handoff.textContent, /message_id "m1"/);
+    assert.ok(
+      handoff
+        .querySelectorAll("button")
+        .some((b) => b.textContent === "文をコピー"),
+    );
   }
+  // Without a clipboard the copy button says to select the text instead.
+  const handoff = root.children[0].all().find((n) => n.className === "handoff");
+  const copy = handoff.querySelectorAll("button")[0];
+  await copy.listeners.click[0]();
+  assert.equal(copy.textContent, "文を選んでコピーしてください");
+});
+
+test("the card carries no brand colour and takes the host's style variables", () => {
+  const style = /<style>([\s\S]*)<\/style>/.exec(HAB_INBOX_APP_HTML)[1];
+  assert.doesNotMatch(style, /#[0-9a-fA-F]{3,6}\b/);
+  for (const variable of [
+    "--color-text-primary",
+    "--color-border-secondary",
+    "--font-sans",
+    "--border-radius-md",
+  ])
+    assert.ok(style.includes(variable), variable);
+  assert.match(style, /focus-visible/);
+  assert.match(style, /prefers-reduced-motion/);
+});
+
+test("later folds the card to its status line", async () => {
+  const { root, deliver } = boot();
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [message("m1", "hi")] } },
+  });
+  const later = root.children[0]
+    .querySelectorAll("button")
+    .find((b) => b.textContent === "あとで");
+  await later.listeners.click[0]();
+  assert.match(root.children[0].className, /folded/);
+  assert.match(root.children[0].textContent, /あとで対応します/);
 });
 
 test("an empty inbox and a result without messages say so", async () => {
