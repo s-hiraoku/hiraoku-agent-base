@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HAB_INBOX_APP_HTML } from "../src/hab/inbox-app.ts";
+import { createHash } from "node:crypto";
+import {
+  HAB_INBOX_APP_HTML,
+  HAB_INBOX_APP_LEGACY_URIS,
+  HAB_INBOX_APP_URI,
+} from "../src/hab/inbox-app.ts";
 import { incomingPresentation } from "../src/messaging/incoming-notice.ts";
 
 // ADR-026: the MCP Apps inbox card, driven through the postMessage protocol with a
@@ -154,6 +159,36 @@ test("the inbox card speaks the MCP Apps handshake, draws text only and sends ui
   assert.match(cards[0].textContent, /会話に送りました/);
 });
 
+test("a host that refuses ui/message but takes model context gets the request there", async () => {
+  const { root, sent, deliver } = boot();
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [message("m1", "<b>hi</b>")] } },
+  });
+  const [accept] = root.children[0].querySelectorAll("button");
+  accept.listeners.click[0]();
+  const ask = sent.find((m) => m.method === "ui/message");
+  deliver({
+    jsonrpc: "2.0",
+    id: ask.id,
+    error: { code: -32601, message: "no" },
+  });
+  await tick();
+  const note = sent.find((m) => m.method === "ui/update-model-context");
+  assert.equal(note.params.content[0].type, "text");
+  assert.match(note.params.content[0].text, /message_id "m1"/);
+  assert.doesNotMatch(note.params.content[0].text, /<b>/);
+  deliver({ jsonrpc: "2.0", id: note.id, result: {} });
+  await tick();
+  assert.match(root.children[0].textContent, /会話に伝えました/);
+  const handoff = root.children[0].all().find((n) => n.className === "handoff");
+  assert.equal(handoff.hidden, true);
+  assert.ok(
+    root.children[0].querySelectorAll("button").every((b) => !b.disabled),
+  );
+});
+
 test("a host that refuses ui/message leaves the buttons usable and says how to ask in chat", async () => {
   const { root, sent, deliver } = boot();
   const init = sent.find((m) => m.method === "ui/initialize");
@@ -172,6 +207,13 @@ test("a host that refuses ui/message leaves the buttons usable and says how to a
     accept.listeners.click[0]();
     const ask = sent.filter((m) => m.method === "ui/message").at(-1);
     deliver({ jsonrpc: "2.0", id: ask.id, ...answer });
+    await tick();
+    // Then the model-context fallback is refused too.
+    const note = sent
+      .filter((m) => m.method === "ui/update-model-context")
+      .at(-1);
+    assert.match(note.params.content[0].text, /message_id "m1"/);
+    deliver({ jsonrpc: "2.0", id: note.id, ...answer });
     await tick();
     assert.match(root.children[0].textContent, /会話に送れませんでした/);
     assert.ok(
@@ -302,4 +344,16 @@ test("the reported height is the content at max-content, not the frame's own hei
   const size = sent.filter((m) => m.method === "ui/notifications/size-changed");
   assert.equal(size.at(-1).params.height, 640);
   assert.equal(html.style.height, "");
+});
+
+// Hosts (claude.ai, Claude Duet) keep the page they first read for a URI. When this hash
+// changes, give the page a new URI in src/hab/inbox-app.ts (and move the old one to
+// HAB_INBOX_APP_LEGACY_URIS), then update both values here.
+test("a changed page gets a new URI, so hosts do not keep showing the old one", () => {
+  assert.equal(HAB_INBOX_APP_URI, "ui://hab/inbox-v3");
+  assert.equal(
+    createHash("sha256").update(HAB_INBOX_APP_HTML).digest("hex"),
+    "395a05c16dee59b742bb94a3947d44595d52dab1933b1bce9a5b54c04b23d4fc",
+  );
+  assert.ok(!HAB_INBOX_APP_LEGACY_URIS.includes(HAB_INBOX_APP_URI));
 });

@@ -89,6 +89,9 @@ test("the agent catalog lists only the agent tools and carries usage instruction
     ),
   );
   assert.equal(init.result.instructions, HAB_AGENT_INSTRUCTIONS);
+  // Nothing on this server changes at runtime, so no host should open subscriptions/listen.
+  assert.deepEqual(init.result.capabilities.tools, { listChanged: false });
+  assert.deepEqual(init.result.capabilities.resources, { listChanged: false });
   for (const word of ["hab_send", "hab_inbox", "hab_reply", "hab_status"])
     assert.ok(HAB_AGENT_INSTRUCTIONS.includes(word));
 });
@@ -607,25 +610,25 @@ test("hab_inbox alone names the inbox card, and the card is a self-contained MCP
   const f = await setup(t);
   const listed = await decode(await f.agent.fetch(request()));
   const inbox = listed.result.tools.find((tool) => tool.name === "hab_inbox");
-  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v2" });
-  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v2");
+  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v3" });
+  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v3");
   for (const tool of listed.result.tools.filter((x) => x.name !== "hab_inbox"))
     assert.equal(tool._meta?.ui, undefined, tool.name);
   const raw = await f.agent.fetch(
     request(
       "resources/read",
-      { uri: "ui://hab/inbox-v2" },
+      { uri: "ui://hab/inbox-v3" },
       {
         headers: {
           Authorization: "Bearer fixture-b",
-          "Mcp-Name": "ui://hab/inbox-v2",
+          "Mcp-Name": "ui://hab/inbox-v3",
         },
       },
     ),
   );
   const read = await decode(raw);
   const [page] = read.result.contents;
-  assert.equal(page.uri, "ui://hab/inbox-v2");
+  assert.equal(page.uri, "ui://hab/inbox-v3");
   // A host holding the old tool list still gets the current page under the old URI.
   const legacy = await decode(
     await f.agent.fetch(
