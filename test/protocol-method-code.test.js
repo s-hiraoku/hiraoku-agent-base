@@ -20,6 +20,15 @@ test("known MCP methods map to fixed audit codes", () => {
     mcpMethodCode(rpc("notifications/roots/list_changed"), undefined),
     "notifications_roots_list_changed",
   );
+  // Newer MCP client methods (a host retrying an unknown one showed only as `other`).
+  assert.equal(
+    mcpMethodCode(rpc("subscriptions/listen"), undefined),
+    "subscriptions_listen",
+  );
+  assert.equal(
+    mcpMethodCode(rpc("notifications/elicitation/complete"), undefined),
+    "notifications_elicitation_complete",
+  );
 });
 
 test("resources/read keeps only whether a ui:// card was read, never the URI", () => {
@@ -81,6 +90,14 @@ test("every code fits the audit reason format", () => {
     "notifications/progress",
     "notifications/roots/list_changed",
     "notifications/tasks/status",
+    "notifications/message",
+    "notifications/elicitation/complete",
+    "notifications/prompts/list_changed",
+    "notifications/resources/list_changed",
+    "notifications/resources/updated",
+    "notifications/tools/list_changed",
+    "notifications/subscriptions/acknowledged",
+    "subscriptions/listen",
     "unknown/method",
   ];
   for (const method of methods)

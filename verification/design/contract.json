@@ -184,7 +184,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/agent-tools.md",
-      "sha256": "0a1a74e117920c08841340ce36ad528270ad96a0ef0c261edaf733469dbad55d",
+      "sha256": "679bf084a21441aad9bb9e9326f902305a17fee9ddbdc591683c5769215d0f71",
       "role": "normative",
       "review": "reviewed",
       "summary": "Agent catalog recipe (ADR-020): /mcp lists only hab_send, hab_inbox, hab_reply and hab_status while /mcp/delivery lists the six delivery tools (with hab_peek) for the same token; send with address and text, host-filled seven-day deadline and thread; inbox read marks read and re-reads for seven days; notice with sender, kind, reply deadline, tag-framed untrusted body and the choices 対応する／あとで／対応しない (ADR-021); reply in the same thread as answer; specific error codes with message and details; fixed audit reasons without text. Gotchas: inbox and poll share the queue, schema mistakes are refused by the SDK, a reply after the deadline is refused, hab_send is not idempotent. Synthetic identities only. Reviewed PR #216: status exposes kind, bounded reply metadata and read state without body; fixture checks reply presence before and after inbox read. PR225 review: existing feature entries/recipe now describe additive bounded reply_watch, unread/read stop semantics, accepted-result preservation and actual optional owner runner regression coverage without native Dots claims. Automatic-review follow-up: complete-set has_unread_replies instead of truncated-summary inference, and signal-fenced batch shutdown; synthetic regression evidence only. 2026-11-18 maintain-verification-skill pass (PR #231): every feature reread from source and driven live; corrected drift only, no behavior change. ADR-026 (2026-11-19): agent-presentation (body-free presentation on each inbox message) and agent-inbox-card (hab_inbox-only ui://hab/inbox-v1 _meta, resources/read on /mcp, 405 on /mcp/delivery). 2026-11-19 (ADR-028): agent-inbox-wait sub-feature and live recipe (wait returns on arrival, empty after the cap, invalid combinations). 2026-11-21 (PR-7/ADR-032): agent-errors lists recipient_absent (events only, see mcp-events). 2026-11-22: agent-inbox-card notes the loading placeholder, initialized after a failed ui/initialize and ChatGPT window.openai.toolOutput / openai:set_globals drawing. 2026-11-23 maintain-verification-skill pass: every feature reread from source and driven live against main 7b63fd4; added #281 request_id retries, read_history, operator ping and hab:dashboard, ADR-033 unread-only capacity and the admin doorbell refusal; corrected loopback operator doorbells, the recipient_absent test count, notice-kind replies and paths. Map only, no product change.",
@@ -208,7 +208,7 @@
     },
     {
       "path": ".claude/skills/verify-hab/features/access-control.md",
-      "sha256": "1a925283a664d6a34b9c10fde2891529ec873df8214755b3d6845e311d3051b8",
+      "sha256": "e57a1793654ce4a3d6ebef88d05fa01273602472a7028030cc61e6ddcf97033d",
       "role": "normative",
       "review": "reviewed",
       "summary": "Wire recipe for absent/unknown bearer refusal (HTTP 401), exactly the four agent tools at /mcp and the seven delivery tools (with hab_peek and hab_mark_read, ADR-021) at /mcp/delivery for a known synthetic identity (ADR-020), no mutation after denied calls and sender-scoped receipt status; explicitly not production Auth0 binding. Clarifies that a valid unconnected credential still lists the full static catalog; authorization runs on tool call. Deny-all without credentials is the configured host path.",
