@@ -260,7 +260,7 @@ notifier は呼び鈴を受けたとき（署名を確かめた後）と、毎�
 
 ## Codex・Claude Code・ChatGPT コネクタ（Dots）・Antigravity
 
-Hermes 以外の 3 製品にも画面アダプタを用意しました。実機にはまだつないでいません。2026-11-23 に Antigravity の画面アダプタも同じ形で加えました（下の「Antigravity」の節）。設定ファイルの `screen` を書き換えれば、後からそのまま接続できます。3 つとも通知は同じ形の JSON Lines ファイル（`JsonlScreen` と同じ `notice`・`state` 行、`handoff` 行は書かない）に残します。`display_command` を設定すると、通知ごと・状態が変わるごとに、そのコマンドを 1 回実行します。標準入力には `{type: "notice" | "state", target, message_id, sender_id, …, display}` を 1 つの JSON で渡すので、デスクトップ通知などに使えます。コマンドは設定ファイルに書いた絶対パスだけで、メッセージから組み立てることはありません。コマンドが失敗した通知は `showing` のまま残り、次の確認で出し直します。
+Hermes 以外の 3 製品にも画面アダプタを用意しました。実機にはまだつないでいません。2026-11-23 に Antigravity の画面アダプタも同じ形で加えました（下の「Antigravity」の節）。2026-11-25 に、アプリ（IDE を含む）の会話へ渡す `antigravity-desktop` も加えました（「Antigravity デスクトップ版」の節）。設定ファイルの `screen` を書き換えれば、後からそのまま接続できます。3 つとも通知は同じ形の JSON Lines ファイル（`JsonlScreen` と同じ `notice`・`state` 行、`handoff` 行は書かない）に残します。`display_command` を設定すると、通知ごと・状態が変わるごとに、そのコマンドを 1 回実行します。標準入力には `{type: "notice" | "state", target, message_id, sender_id, …, display}` を 1 つの JSON で渡すので、デスクトップ通知などに使えます。コマンドは設定ファイルに書いた絶対パスだけで、メッセージから組み立てることはありません。コマンドが失敗した通知は `showing` のまま残り、次の確認で出し直します。
 
 ### 各製品の公開の仕組みと、できること・できないこと
 
@@ -399,9 +399,75 @@ Antigravity（アプリ・IDE・CLI）には、外のプログラムから会話
 
 - HAB の MCP を `~/.gemini/config/mcp_config.json` に設定し、`agy` で一度サインインしておく（頭なし実行は保存済みの認証を使う）。
 - 頭なし実行では、承認が必要なツールは断られる（終了コード 0 のまま）。`~/.gemini/antigravity-cli/settings.json` の `permissions.allow` に `mcp(hab/*)` を足し、HAB のツールだけを許可する。`--dangerously-skip-permissions` は使わない。
-- 渡した依頼のターンは CLI の会話に残ります。利用者はあとで `agy --conversation <会話 ID>` か `/resume` で中身を見られます。デスクトップアプリや IDE の会話は保存場所が別なので、この方法では渡せません。
+- 渡した依頼のターンは CLI の会話に残ります。利用者はあとで `agy --conversation <会話 ID>` か `/resume` で中身を見られます。デスクトップアプリや IDE の会話は保存場所が別なので、この方法では渡せません（次の「Antigravity デスクトップ版」を使います）。
 
 未確認の点：同じ会話を TUI で開いている間に頭なし実行で再開できるか。`init` が本当に最初の行か（公開資料の例では最初）。会話がないときの終了の仕方。
+
+### Antigravity デスクトップ版
+
+Antigravity のアプリ（IDE を含む）の会話に依頼を渡せるのは、アプリ同梱の `agentapi send-message <会話 ID> <本文>` だけです（2026-11-25 Mac mini、Antigravity 2.35.0 で確認。止まっている会話に高優先度のメッセージとして届き、ターンが始まる）。`agentapi` はアプリが起動したプロセスの中でしか動かず（外のシェルや launchd からは `ANTIGRAVITY_LS_ADDRESS is not set`）、notifier は launchd で動くので、間に引き渡し箱（spool）を置きます。計画は [Antigravity デスクトップ版の計画](../plans/antigravity-desktop.md)です。
+
+```text
+呼び鈴 → notifier（launchd）→ 通知（未読のまま）
+                  │「対応する」か自動受付 → 既読 → 引き渡し箱に 1 件（queued）
+                  ▼
+        relay（Antigravity の sidecar）→ agentapi send-message <会話 ID> <依頼>
+```
+
+notifier の設定：
+
+```json
+"screen": {
+  "type": "antigravity-desktop",
+  "path": "~/.hab-notify/antigravity.jsonl",
+  "conversation_id": "<会話の中で echo $ANTIGRAVITY_CONVERSATION_ID の値>",
+  "spool_dir": "/Users/<you>/.hab-notify/antigravity-spool",
+  "display_command": { "command": ["/usr/bin/osascript", "/absolute/path/to/notify.applescript"], "cwd": "/absolute/path" }
+}
+```
+
+- `conversation_id` は HAB のアドレスと 1 対 1 に結び付けるアプリの会話です。台帳のセッション名にもこの値を使います。英数字・`-`・`_` だけを受け付けます。
+- `spool_dir` は絶対パスです。なければ所有者だけのディレクトリ（700）として作ります。結び付き（notices store の binding）には `conversation_id` と `spool_dir` の実パスが入るので、どちらかを変えたら[結び付けの移行](#safe-migration-and-verification-limits)が要ります。
+- 会話の有無（ADR-032）：`session_probe` を書けばそれを使います。書かなければ、`~/.gemini/antigravity/conversations/<会話 ID>.db`（`conversations_dir` で場所を変えられる）が無いと確かめられたとき（ENOENT）だけ `gone` とします。権限などで確かめられないときは `unknown` です。notifier の起動時にそのディレクトリが無ければ、判定はしません（版や置き場所が変わっても確認が止まらないように）。
+
+「対応する」の後の流れと答え：
+
+| 場合                                                                                                                 | 記録                                            | HAB 上                             |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------- |
+| 依頼文（handoff prompt、自動受付ならその文）が 96 KiB を超える（`agentapi` に引数 1 つで渡すため。Linux は引数 1 つ 128 KiB 未満、macOS は引数と環境変数の合計に上限がある）。NUL 文字を含む（引数に渡せない）。または `spool_dir` が所有者だけのディレクトリでない、そこにファイルを作れない（実際に一時ファイルを作って確かめる） | `unsupported`。何も書かない                     | 未読のまま（`hab_inbox` で読める） |
+| 既読にしたあと、引き渡し箱に 1 件 1 ファイル（一時ファイルに書いて rename、600）で置いた                             | `queued`（会話に入ったかは relay のログで見る） | 既読                               |
+| 書き込みに失敗した                                                                                                   | `unknown`。自動では再送しない                   | 既読                               |
+
+箱のファイルには `message_id`・`sender_id`・`from`・`conversation_id`・`title`（`HAB: <送信元>`）・依頼文・書いた時刻・HAB の返信期限（`expires_at`）が入ります。依頼文は HAB の handoff prompt そのもの（本文を区切り線で囲み、データとして扱うことと `hab_reply` に渡す `message_id` を書いた文）です。既読にしてから渡すので、会話は `hab_inbox` を呼ばずに、そのまま `hab_reply` で返せます。
+
+relay（sidecar）：`node <リポジトリ>/scripts/hab-notify.ts antigravity-relay --spool <spool_dir> --log <ログファイル>`。設定ファイルも HAB の token も読みません。アプリの sidecar として置きます（`~/.gemini/config/sidecars/hab-relay/sidecar.json`）。有効にするのは本人が Automations Dashboard で行います。
+
+```json
+{
+  "command": "/absolute/path/to/node",
+  "args": [
+    "/absolute/path/to/hiraoku-agent-base/scripts/hab-notify.ts",
+    "antigravity-relay",
+    "--spool",
+    "/Users/<you>/.hab-notify/antigravity-spool",
+    "--log",
+    "/Users/<you>/.hab-notify/antigravity-relay.jsonl"
+  ],
+  "restart_policy": "always"
+}
+```
+
+- 1 つの箱を受け持つ relay は 1 つだけです。起動時に箱の `.relay.lock` を取ります（pid を書いた一時ファイルを hard link するので、中身の空の lock は残りません。pid を書き切れなかったとき（ENOSPC など）は、lock も一時ファイルも残さずに起動を止めます）。別の relay が動いていれば `relay_running` で起動しません（動いている送信を、止まった送信と取り違えて `unknown/` に移さないように）。持ち主のプロセスがもういない lock は引き継ぎます。引き継ぎは `.relay.takeover` ディレクトリを作れた 1 つだけが行い、もう 1 つは `relay_running` で止まります（アプリが後で起動し直す）。この短い間に落ちて `.relay.takeover` が残ったときは、手で消します。
+- 箱の変化と 2 秒ごとの確認で、古い順に 1 件ずつ、`sending/` に rename してから（これで 1 回だけに決まる）`agentapi send-message --title=HAB: <送信元> <会話 ID> <依頼文>` を引数の配列で実行します（シェルは通しません）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`、なければ `~/.gemini/antigravity/bin/agentapi` です。
+- どれも再送しません：終了コード 0 → `done/`、0 以外 → `failed/`、60 秒の時間切れ（届いたか分からない）→ `unknown/`、起動時に `sending/` に残っていたもの（送る途中で止まった）→ `unknown/`、書いてから 24 時間を過ぎたもの（アプリを長く閉じていた）か、HAB の返信期限を過ぎたもの（`hab_reply` が断られる）→ 送らずに `expired/`、読めない・形が違う・他人が読めるファイル → `failed/`。
+- 止める合図（SIGTERM・SIGINT）を受けたら、送っている 1 件を終えたところで止まり、残りは箱に残して次の起動で送ります。箱の監視（`fs.watch`）がエラーになっても止まらず、2 秒ごとの確認だけで続けます。
+- 終わったファイルには本文が残るので、7 日たったら消します。`.` で始まる書きかけのファイルは読みません。
+- ログ（600）は 1 件 1 行で、時刻・`outcome`・`message_id`・`conversation_id`・終了コードだけです。依頼文、環境変数、CSRF token は残しません。
+
+前提と未確認の点：
+
+- デスクトップ版の会話が `hab_*` を呼ぶときに承認を求めると、自動受付では止まります。アプリの権限設定で HAB のツール（`mcp(hab/*)`）を許可します（置き場所は実機で確かめる）。
+- 会話が動いている最中に `send-message` したときの順番、sidecar に渡る環境変数の名前、アプリ再起動後の常駐の再開、`agentapi` の使い方が版で変わらないか、は実機で確かめます。変わったときは relay のログの `failed` で気づけます。
 
 ## 選択と状態
 
@@ -415,7 +481,7 @@ Antigravity（アプリ・IDE・CLI）には、外のプログラムから会話
 | `accepting` | 「対応する」を受けて渡している最中。通知アダプタが途中で止まり 15 分たっても残っていれば、次の確認で `unknown` にする（再送しない） | 既読 |
 | `accept_waiting` | 「対応する」を受けたが、HAB に既読を伝えられなかった（token の更新待ちなど）。何も渡していない。確認のたびに既読にし直し、できたら渡す。返信期限を過ぎたら `expired` | 未読 |
 | `started` / `queued` | セッションが受け付けた／入力に入れた | 既読 |
-| `unsupported` | そのセッションへの正式な入口がない | 既読 |
+| `unsupported` | そのセッションへの正式な入口がない。画面が既読にする前に断ったとき（Antigravity デスクトップ版の大きすぎる依頼など）は未読のまま | 既読（前の場合は未読） |
 | `unknown` | 渡せたか分からない。自動では再送しない | 既読 |
 | `unavailable` | 選んだ時点で HAB がもう渡さない（期限切れ、読み直し期間後、送信者の権限取消し）。何も渡さない | — |
 | `expired` | 選ぶ前に返信期限を過ぎた | 期限切れ |

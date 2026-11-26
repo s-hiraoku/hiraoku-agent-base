@@ -4,7 +4,7 @@
  * neither imports the other: the CLI entry awaits `main()` at the top level, and a cycle
  * through it would never settle (exit 13).
  */
-import { lstatSync, readFileSync, renameSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, renameSync } from "node:fs";
 import { sessionProbe } from "../../src/agent-notify/session-probe.ts";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
@@ -27,6 +27,13 @@ import {
   codexQueueHandoff,
   antigravityHandoff,
   antigravityTarget,
+  antigravityDesktopHandoff,
+  antigravityDesktopPrecheck,
+  antigravityDesktopTarget,
+  conversationFileProbe,
+  conversationIdSchema,
+  defaultConversationsDir,
+  spoolPath,
   codexTarget,
 } from "../../src/agent-notify/index.ts";
 import { hermesDesktopAgentBinding } from "../../src/agent-notify/hermes-desktop.ts";
@@ -170,6 +177,28 @@ export const configSchema = z.strictObject({
         .optional(),
       /** Optional, ADR-032: tells whether the conversation still exists. */
       session_probe: commandSchema.optional(),
+      display_command: commandSchema.optional(),
+    }),
+    z.strictObject({
+      type: z.literal("antigravity-desktop"),
+      path: z.string().min(1),
+      /** The app conversation the user works in ($ANTIGRAVITY_CONVERSATION_ID). */
+      conversation_id: conversationIdSchema,
+      /**
+       * Owner-only directory where an approved request waits for the relay that Antigravity
+       * runs as a sidecar (`hab-notify antigravity-relay`).
+       */
+      spool_dir: z.string().refine(isAbsolute, "absolute spool_dir"),
+      /**
+       * Optional, ADR-032: tells whether the conversation still exists. Without it, the
+       * conversation file `<conversations_dir>/<id>.db` is checked.
+       */
+      session_probe: commandSchema.optional(),
+      /** Default ~/.gemini/antigravity/conversations. */
+      conversations_dir: z
+        .string()
+        .refine(isAbsolute, "absolute conversations_dir")
+        .optional(),
       display_command: commandSchema.optional(),
     }),
     z.strictObject({
@@ -402,6 +431,20 @@ function configuredScreen(config: NotifyConfig): AgentScreen {
         handoff: (message) => antigravityHandoff(binding, message),
       });
     }
+    case "antigravity-desktop": {
+      const binding = {
+        conversation_id: screen.conversation_id,
+        spool_dir: spoolPath(screen.spool_dir),
+      };
+      return new ProductScreen({
+        path,
+        target: antigravityDesktopTarget(binding),
+        handoff_capability: "bound-session",
+        ...display,
+        precheck: (message) => antigravityDesktopPrecheck(binding, message),
+        handoff: (message) => antigravityDesktopHandoff(binding, message),
+      });
+    }
     case "claude-code": {
       const binding = claudeBinding(screen);
       return new ProductScreen({
@@ -428,16 +471,50 @@ export const configuredProbe = (config: NotifyConfig) => {
     return sessionProbe(screen.session_probe, screen.session_id);
   if (screen.type === "antigravity" && screen.session_probe)
     return sessionProbe(screen.session_probe, screen.conversation_id);
+  if (screen.type === "antigravity-desktop")
+    return antigravityDesktopProbe(screen);
   return undefined;
 };
+
+/**
+ * The Antigravity app conversation: the configured probe, else its conversation file. The
+ * file check is used only when the conversations directory exists when the notifier starts,
+ * so another layout or home never stops the checks.
+ */
+export function antigravityDesktopProbe(
+  screen: Extract<NotifyConfig["screen"], { type: "antigravity-desktop" }>,
+  timeoutMs?: number,
+) {
+  if (screen.session_probe)
+    return sessionProbe(
+      timeoutMs === undefined
+        ? screen.session_probe
+        : {
+            ...screen.session_probe,
+            timeout_ms: Math.min(
+              screen.session_probe.timeout_ms ?? timeoutMs,
+              timeoutMs,
+            ),
+          },
+      screen.conversation_id,
+      timeoutMs === undefined ? {} : { reuseMs: 0 },
+    );
+  const dir = screen.conversations_dir
+    ? expand(screen.conversations_dir)
+    : defaultConversationsDir();
+  return existsSync(dir)
+    ? conversationFileProbe(screen.conversation_id, dir)
+    : undefined;
+}
 
 /** Connection + recipient + product session fence for every configured adapter. */
 export function boundScreen(config: NotifyConfig): AgentScreen {
   const screen = configuredScreen(config);
   const product = config.screen;
   // The tuple keeps its three entries for the older products: their stores were recorded
-  // under this encoding. Only Antigravity adds a fourth, the agy it hands requests to and the
-  // workspace it runs in (CLI conversations belong to a workspace).
+  // under this encoding. Only Antigravity adds a fourth: for the CLI, the agy it hands
+  // requests to and the workspace it runs in (CLI conversations belong to a workspace); for
+  // the app, the real path of the spool its relay reads.
   const connection = JSON.stringify([
     config.hab_url.replace(/\/+$/, ""),
     product.type === "codex"
@@ -452,6 +529,9 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
             ? [resolve(product.cli.agy_bin), resolve(product.cli.cwd)]
             : null,
         ]
+      : []),
+    ...(product.type === "antigravity-desktop"
+      ? [spoolPath(product.spool_dir)]
       : []),
   ]);
   const binding =
@@ -468,6 +548,9 @@ export function boundScreen(config: NotifyConfig): AgentScreen {
     binding,
     target: bindingIdentity(binding),
     show: (message) => screen.show(message),
+    ...(screen.precheck
+      ? { precheck: (message) => screen.precheck!(message) }
+      : {}),
     handoff: (message) => screen.handoff(message),
     report: (message, state) =>
       screen.report?.(message, state) ?? Promise.resolve(),

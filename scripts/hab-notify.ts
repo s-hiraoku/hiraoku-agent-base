@@ -26,11 +26,16 @@
  *       (screen type claude-code: the Claude Code status line command; reads the session
  *       JSON on stdin and only the local choice record, never HAB)
  *
+ *   hab-notify antigravity-relay --spool <dir> --log <file>
+ *       (the Antigravity app's sidecar: gives each approved request in the spool to its
+ *       conversation once with agentapi send-message; needs no config, token or HAB call)
+ *
  *   hab-notify --config <notify.json> login
  *       (token.oauth only: one browser sign-in that gives the notifier its own grant; after
  *       it the notifier refreshes its token itself)
  *
- * Screen types: jsonl, hermes-desktop, codex, antigravity, claude-code, chatgpt-connector (Dots).
+ * Screen types: jsonl, hermes-desktop, codex, antigravity, antigravity-desktop, claude-code,
+ * chatgpt-connector (Dots).
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -44,6 +49,8 @@ import {
 } from "../src/agent-notify/index.ts";
 import { MessagingError } from "../src/messaging/delivery-service.ts";
 import { login } from "../src/agent-notify/oauth-token.ts";
+import { runRelay } from "../src/agent-notify/antigravity-relay.ts";
+import { isAbsolute } from "node:path";
 
 import {
   boundScreen,
@@ -96,7 +103,8 @@ const usage = `usage:
   hab-notify --config <notify.json> action   (one decision as JSON on stdin)
   hab-notify --config <notify.json> statusline
   hab-notify --config <notify.json> binding|states|adapter-action
-  hab-notify --config <notify.json> login    (token.oauth: one browser sign-in)`;
+  hab-notify --config <notify.json> login    (token.oauth: one browser sign-in)
+  hab-notify antigravity-relay --spool <dir> --log <file>`;
 
 /** Requested state authority is scoped to these exact keys, never a whole-store snapshot. */
 export const STATE_KEYS_MAX = 50;
@@ -277,11 +285,57 @@ async function loginCommand(
   }
 }
 
+/**
+ * `antigravity-relay --spool <dir> --log <file>`: runs until SIGTERM or SIGINT. It reads no
+ * config and holds no token; agentapi comes from the app's environment.
+ */
+export async function relayCommand(
+  args: string[],
+  out: (line: string) => void,
+  signal?: AbortSignal,
+): Promise<number> {
+  const options: Record<string, string> = {};
+  for (let i = 0; i < args.length; i += 2) {
+    const name = args[i];
+    const value = args[i + 1];
+    if ((name !== "--spool" && name !== "--log") || !value || name in options) {
+      out(usage);
+      return 2;
+    }
+    options[name] = value;
+  }
+  const spool = options["--spool"];
+  const log = options["--log"];
+  if (!spool || !log || !isAbsolute(spool) || !isAbsolute(log)) {
+    out(usage);
+    return 2;
+  }
+  let stop = signal;
+  if (!stop) {
+    const controller = new AbortController();
+    for (const name of ["SIGTERM", "SIGINT"] as const)
+      process.once(name, () => controller.abort());
+    stop = controller.signal;
+  }
+  try {
+    await runRelay({ spool, log }, stop);
+    return 0;
+  } catch (error) {
+    out(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "failed",
+      }),
+    );
+    return 1;
+  }
+}
+
 export async function main(
   args: string[],
   out = console.log,
   input: () => string = () => readFileSync(0, "utf8"),
 ) {
+  if (args[0] === "antigravity-relay") return relayCommand(args.slice(1), out);
   const productPath = args[0] === "--product" ? args[1] : undefined;
   if (productPath && isProductCommand(args[2]) && args.length === 3) {
     const product = await import("./lib/notify-product.ts");

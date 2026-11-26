@@ -74,7 +74,7 @@ Antigravity には、外部のプログラムから既存の会話へ「届い�
 ### 表示と引渡し
 
 - 表示：Antigravity の会話内にカードを足す公開の口は未確認。MCP ツールの結果としての表示（利用者が `hab_inbox` を呼んだとき）に限られる。
-- 引渡し：CLI の会話には `agy -p --conversation` で渡せる（上の受信通知）。デスクトップアプリ・IDE の会話は保存場所が別（`~/.gemini/antigravity`・`~/.gemini/antigravity-ide`）で、外から入力を渡す公開の口は未確認。`antigravity://` は新しい会話を開くだけなので、既存会話への引渡しとしては扱わない。
+- 引渡し：CLI の会話には `agy -p --conversation` で渡せる（上の受信通知）。デスクトップアプリ・IDE の会話には、アプリ同梱の `agentapi send-message` で渡せる（2026-11-25 実機で確認、アプリが起動したプロセスの中だけ）。受信通知の `antigravity-desktop` 画面と、アプリの sidecar で動く relay を使う（[受信通知アダプタの Antigravity デスクトップ版](../receiver/arrival-notifier.md#antigravity-デスクトップ版)）。`antigravity://` は新しい会話を開くだけなので、既存会話への引渡しとしては扱わない。
 - Antigravity SDK が公開されている。SDK で HAB を組み込んだ独自のエージェントを作ることはできるが、それは利用者が普段使う Antigravity アプリの会話への接続ではない。
 
 ## Gemini

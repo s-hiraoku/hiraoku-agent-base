@@ -26,6 +26,7 @@ import {
 import { startWakeListener } from "../../src/agent-notify/wake-listener.ts";
 import { MessagingError } from "../../src/messaging/delivery-service.ts";
 import {
+  antigravityDesktopProbe,
   boundScreen,
   configSchema,
   createNotifier,
@@ -126,6 +127,7 @@ export function sessionLabel(config: StandaloneSession): string {
     case "codex":
       return screen.thread_id;
     case "antigravity":
+    case "antigravity-desktop":
       return screen.conversation_id;
     case "chatgpt-connector":
       return screen.conversation;
@@ -189,6 +191,8 @@ export function tokenPool(
 /** HAB waits 10 s for a ring, so the probe gets PROBE_MS and every ask runs it afresh. */
 function presenceOf(config: StandaloneSession, single: boolean) {
   const screen = config.screen;
+  if (screen.type === "antigravity-desktop")
+    return antigravityDesktopProbe(screen, single ? undefined : PROBE_MS);
   if (
     (screen.type !== "hermes-desktop" && screen.type !== "antigravity") ||
     !screen.session_probe

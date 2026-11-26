@@ -35,7 +35,7 @@ HAB は送り先・名義・配送だけを受け持ち、返すかどうかを�
 | claude.ai       | 話しかけたときだけ                                                                                                                   | MCP Apps のカード。確認済み                      | カードの「対応する」から返信案、または文章で返事                  |
 | Claude Code     | `/loop` か予定タスク。channels は開発用フラグが要る                                                                                  | 会話の中の文章                                   | できる                                                            |
 | Codex           | 外から会話を起こす口はない。受信通知の「対応する」の後に `codex queue` で会話へ渡す                                                  | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。試し送りで会話が 7 秒後に始まった   |
-| Antigravity     | Hook（運用者登録の呼び鈴で notifier が起きる）。「対応する」か自動受付の後に `agy -p --conversation` で CLI の会話へ渡す。実機未確認 | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。実機未確認                          |
+| Antigravity     | Hook（運用者登録の呼び鈴で notifier が起きる）。「対応する」か自動受付の後に、アプリの sidecar が `agentapi send-message` で会話へ渡す。実機未確認 | 受信通知（notifier）の表示                       | 渡した依頼の中で `hab_reply`。実機未確認                          |
 | Gemini アプリ   | 話しかけたときだけ                                                                                                                   | 文章                                             | 文章で返事をすればできる                                          |
 
 ## 運用者 AI に頼むときの約束
@@ -251,26 +251,30 @@ WebSocket の設定に戻すときは、`queue` を消して元の `app_server` 
 
 ## Antigravity を設定する
 
-Antigravity は、Mac 上の受信通知（notifier）と Antigravity CLI（`agy`）の頭なし実行で動きます。
+Antigravity は、Mac 上の受信通知（notifier）と、アプリが動かす sidecar（`hab-notify antigravity-relay`）で動きます。
 届いた時点で会話を起こす口はないので、呼び鈴で notifier が起きて通知を出し、「対応する」か自動受付の後に
-`agy -p … --conversation <会話 ID>` で、アドレスに結び付けた CLI の会話へ依頼を渡します。
-デスクトップアプリや IDE の会話には渡せません（保存場所が別）。
+依頼を引き渡し箱に置きます。sidecar がそれを `agentapi send-message <会話 ID>` で、アドレスに結び付けたアプリ（IDE を含む）の会話へ 1 回だけ渡します。
+CLI の会話へ渡す方法は[受信通知アダプタの Antigravity の節](../receiver/arrival-notifier.md#antigravity)にあります。
 
-1. Auth0 にこの製品専用の Regular Web Application を作り、Refresh Token を許可し、callback https://antigravity.google/oauth-callback を登録する。
-2. ~/.gemini/config/mcp_config.json の mcpServers に hab を足す。serverUrl は https://<HAB の公開入口>/hab/mcp、oauth に作ったアプリの clientId と clientSecret を書く。
-3. ターミナルで agy を起動して HAB にサインインし（表示されたコードを貼り付ける）、終える。続けて作業フォルダで agy -p "hab_discover で自分のアドレスを確かめて" --output-format json を実行し、出力の conversation_id を控える。
-4. ~/.gemini/antigravity-cli/settings.json の permissions.allow に mcp(hab/*) を足す（頭なしの実行で HAB のツールが拒否されないように）。
-5. Mac で Claude Code などのコーディングエージェントに、次の文を渡す。
+1. HAB の Auth0 で DCR（クライアントの自動登録）が開いていることを運用者に確かめる。
+2. ~/.gemini/config/mcp_config.json の mcpServers に hab を足す。serverUrl は https://<HAB の公開入口>/hab/mcp だけを書く。
+3. アプリを Cmd+Q で終了して起動し直し、Customizations → Installed → MCP Servers の hab で Authenticate を押してサインインする。運用者が承認したら、もう一度 Authenticate を押す。
+4. サインインで登録された client ID（tpc_ で始まる）を、mcp_config.json の hab の oauth.clientId に書いて固定する（認証が切れたときに登録し直さないように）。
+5. HAB を受ける会話で echo $ANTIGRAVITY_CONVERSATION_ID を実行させ、会話 ID を控える。
+6. アプリの権限設定で HAB のツール（mcp(hab/*)）を許可する（自動受付のときに承認待ちで止まらないように）。
+7. Mac で Claude Code などのコーディングエージェントに、下の文を渡す。
 
 ```text
-hiraoku-agent-base の docs/receiver/arrival-notifier.md の Antigravity の節に沿って、この Mac に
-HAB の受信通知（hab:notify）を Antigravity 用に設定してください。
-アドレスは <antigravity のアドレス>、引き渡し先は Antigravity CLI の会話 <会話> です。
+hiraoku-agent-base の docs/receiver/arrival-notifier.md の「Antigravity デスクトップ版」の節に沿って、この Mac に
+HAB の受信通知（hab:notify）と Antigravity の sidecar（hab-notify antigravity-relay）を設定してください。
+アドレスは <antigravity のアドレス>、引き渡し先は Antigravity アプリの会話 <会話> です。
 自動で受け付ける相手は <許可するアドレス> だけにして、notify.json の auto_accept に書いてください。
 設定ファイルを変える前にバックアップを取り、変えたあとに hab-notify check を通してください。
 ```
 
-確かめ方：許可した相手から試験メールを 1 通送り、`hab-notify list` で `started` になり、Antigravity の会話から返信が届けば完了です。
+8. 置かれた sidecar（hab-relay）を、Automations Dashboard で有効にする。
+
+確かめ方：許可した相手から試験メールを 1 通送り、`hab-notify list` で `queued` になり、relay のログに `done` が出て、Antigravity の会話から返信が届けば完了です。
 許可していない相手のメールは、通知が出て「対応する」を選ぶまで未読のままです。
 
 ## Gemini アプリを設定する
