@@ -11,7 +11,8 @@
  * Buttons change nothing in HAB: hab_inbox already marked the messages read. The accept
  * choice (返信する／会話に渡す) sends the user a prepared message into the conversation
  * (`ui/message`) so the model drafts the reply and shows it before sending; a host that
- * refuses ui/message gets the same request as text with a copy button. あとで and
+ * refuses ui/message gets it as model context (`ui/update-model-context`), and one that
+ * refuses both gets the same request as text with a copy button. あとで and
  * 対応しない only fold the card on this screen.
  *
  * The look is ambient: the host's own fonts, colours and radii through the MCP Apps style
@@ -21,11 +22,15 @@
 /**
  * Versioned like a cache key: hosts such as claude.ai and Claude Duet keep the page they
  * first read for a URI, so any change to the page gets a new URI. v2: the ambient look and
- * the copy fallback (PR #295) never reached hosts that had cached v1.
+ * the copy fallback (PR #295) never reached hosts that had cached v1. v3: the
+ * model-context fallback. test/hab-inbox-app.test.js pins the page's hash to the URI.
  */
-export const HAB_INBOX_APP_URI = "ui://hab/inbox-v2";
+export const HAB_INBOX_APP_URI = "ui://hab/inbox-v3";
 /** Earlier URIs still answer with the current page, for a host holding an old tool list. */
-export const HAB_INBOX_APP_LEGACY_URIS = Object.freeze(["ui://hab/inbox-v1"]);
+export const HAB_INBOX_APP_LEGACY_URIS = Object.freeze([
+  "ui://hab/inbox-v1",
+  "ui://hab/inbox-v2",
+]);
 export const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
 
 /** `_meta` for hab_inbox: the standard key and ChatGPT's older alias. */
@@ -127,8 +132,16 @@ function card(message) {
           if (sent && sent.isError) throw new Error("rejected");
           status.textContent = "会話に送りました。返信は送る前に確認できます。";
         } catch {
-          status.textContent = "会話に送れませんでした。下の文をコピーして、チャットに貼ってください。";
-          showHandoff(handoff, prompt(message, p));
+          // Some hosts (Claude Duet) refuse ui/message but still take model context: the
+          // request then waits in the conversation for the user's next word.
+          try {
+            const noted = await request("ui/update-model-context", { content: [{ type: "text", text: prompt(message, p) }] });
+            if (noted && noted.isError) throw new Error("rejected");
+            status.textContent = "会話に伝えました。チャットで「返信して」と送ると、返信の案が出ます。";
+          } catch {
+            status.textContent = "会話に送れませんでした。下の文をコピーして、チャットに貼ってください。";
+            showHandoff(handoff, prompt(message, p));
+          }
           for (const other of actions.querySelectorAll("button")) other.disabled = false;
         }
       } else {
@@ -243,8 +256,9 @@ const style = `
   --radius: var(--border-radius-md, 8px);
 }
 body { margin: 0; font-family: var(--font-sans, system-ui, sans-serif); font-size: var(--font-text-md-size, 15px); line-height: 1.55; color: var(--ink); background: transparent; }
-main { padding: 2px 0; }
-.card { padding: 12px 0; }
+main { padding: 0; }
+/* Hosts may draw their own frame around the card (Claude Duet does), so keep clear of it on every side. */
+.card { padding: 14px 16px; }
 .card + .card { border-top: 1px solid var(--rule); }
 .head { display: flex; align-items: baseline; gap: 8px; }
 .from { font-weight: 600; }
@@ -266,7 +280,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .handoff { margin-top: 8px; padding: 10px 12px; background: var(--wash); border-radius: var(--radius); }
 .handoff[hidden] { display: none; }
 .handoff-text { margin: 0 0 8px; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; font-size: 0.875em; }
-.empty { color: var(--ink-soft); margin: 8px 0; }
+.empty { color: var(--ink-soft); margin: 0; padding: 14px 16px; }
 @media (prefers-reduced-motion: no-preference) { button { transition: background-color 120ms ease, opacity 120ms ease; } }
 `;
 

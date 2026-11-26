@@ -441,6 +441,11 @@ function createAgentServer(
         ],
       }),
     );
+  // The card list never changes while the server runs. Left to the SDK, registering a
+  // resource advertises `resources.listChanged: true`, and a host on the 2026-07-28 protocol
+  // (Claude Duet) then opens `subscriptions/listen` streams that this host refuses, retrying
+  // on every connection.
+  server.server.registerCapabilities({ resources: { listChanged: false } });
   const securityMeta =
     (security as { _meta?: Record<string, unknown> })._meta ?? {};
   for (const name of Object.keys(habAgentMcpSchemas)) {
