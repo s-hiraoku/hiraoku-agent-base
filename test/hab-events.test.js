@@ -635,6 +635,8 @@ test("operators can see when and why a recipient's doorbell stopped; subscribing
       delivered_at: null,
       inbox_read_at: null,
       absent_since: null,
+      // ADR-034: when the live subscription was registered.
+      live_since: now,
     },
   );
   // The callback is gone (410).
@@ -1889,6 +1891,16 @@ test("hab_discover presence follows reads, doorbells, the ledger and session_gon
   await f.send("b", f.a.address, "again");
   await f.events.dispatch();
   assert.equal((await presence("b", f.a.address)).reason, "doorbell_failing");
+  // The operator replaces the failing callback: its old failure no longer counts.
+  now += 1000;
+  f.events.configureStatic([
+    {
+      agent_id: f.a.agent_id,
+      url: "https://hooks.example.com/cb/replaced",
+      secret: SECRET,
+    },
+  ]);
+  assert.equal((await presence("b", f.a.address)).reason, "doorbell_live");
   // Three session_gone answers: the address is absent and hab_send refuses it.
   answer = () => GONE;
   for (const text of ["one", "two", "three"]) {

@@ -88,6 +88,15 @@ test("a live doorbell is available unless its latest ring was not taken", () => 
     );
 });
 
+test("a failed ring for a doorbell since replaced does not count", () => {
+  const p = derivePresence(
+    facts({ live: 1, rang_at: NOW - 50, status: 503, live_since: NOW - 10 }),
+    null,
+    NOW,
+  );
+  assert.deepEqual(pick(p), ["available", "doorbell_live", null]);
+});
+
 test("a polling product is available until two intervals pass without a read", () => {
   const interval = 15 * 60_000;
   const ok = facts({ inbox_read_at: NOW - POLL_OVERDUE_FACTOR * interval });

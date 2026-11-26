@@ -729,7 +729,7 @@
     },
     {
       "path": "docs/connections/mcp-agent-discovery.md",
-      "sha256": "ca03e87a93a3200e6036f31086e129affb50a5528d60ea9e5bd7523495a61cfa",
+      "sha256": "3367c31be308f9c664d63028fb1f0e95f7c196ac88303c7961eca28b92919893",
       "role": "normative",
       "review": "reviewed",
       "summary": "Opt-in read-only sixth tool distinguishes authenticated group, selected address and host-attested session identity. Directory is confined to own binding/group with filtered MAC live-keyset cursors; availability optionally leaks only occupancy in approved namespaces and never reserves/grants. Unknown/stale host evidence remains unknown, callback is trusted read-only host code. No online state inferred from host or profile data, registration or identity from profile paths. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. 2026-11-26 (ADR-034): presence is derived from HAB-observed doorbell, inbox-read, ledger receive-mode and session_gone facts (available/unavailable/unknown with reason and observed_at); it grants nothing."
@@ -2542,7 +2542,7 @@
           "path": "docs/connections/mcp-agent-discovery.md",
           "start": 87,
           "end": 138,
-          "excerpt_sha256": "5936dc8535aa3024fa8c75db4a427f818d00ec9ef08d0e70ea367a69544ea50d"
+          "excerpt_sha256": "5fff332ec05f46e77ec6bab3aa492c938fdd7d8362a4bc60a655341d373487ab"
         },
         {
           "path": "docs/connections/mcp-agent-discovery.md",

@@ -102,7 +102,7 @@ issuer、subject、client ID、connection claim、fingerprint、tokenは返し�
 | 順 | `state` / `reason` | 条件 | `observed_at` |
 | --- | --- | --- | --- |
 | 1 | `unavailable` / `session_gone` | 製品がセッション終了を答え、`hab_send`が`recipient_absent`で断る状態 | 「相手がいない」になった時刻 |
-| 2 | `unavailable` / `doorbell_failing` | 生きている呼び鈴があるが、最後の呼び鈴が2xxで受け取られなかった | 最後に鳴らした時刻 |
+| 2 | `unavailable` / `doorbell_failing` | 生きている呼び鈴があるが、今の呼び鈴を登録してからの最後の呼び鈴が2xxで受け取られなかった（差し替える前の呼び鈴の失敗は数えない） | 最後に鳴らした時刻 |
 | 2 | `available` / `doorbell_live` | 生きている呼び鈴（購読または運用者の呼び鈴）がある | 最後に受け取られた呼び鈴か`hab_inbox`の新しいほう（無ければ`null`） |
 | 3 | `available` / `polling`、`unavailable` / `poll_overdue` | 受け方が`poll`。間隔の2倍以内に`hab_inbox`したか（`hab:admin status`の`poll_overdue`と同じ基準） | 最後の`hab_inbox` |
 | 4 | `available` / `inbox_read_recently` | 1時間以内に`hab_inbox`した | 最後の`hab_inbox` |

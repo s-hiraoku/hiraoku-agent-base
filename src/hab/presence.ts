@@ -39,6 +39,8 @@ export interface PresenceFacts {
   delivered_at: number | null;
   inbox_read_at: number | null;
   absent_since: number | null;
+  /** When the newest live doorbell was registered (older rings were for a replaced one). */
+  live_since?: number | null;
 }
 /** The ledger's receive mode for the address's product (ADR-032), or null when unset. */
 export interface PresenceReceive {
@@ -72,7 +74,8 @@ const latest = (...values: (number | null | undefined)[]) => {
 /**
  * First match wins:
  * 1. the product said the session ended (`session_gone`, hab_send refuses it);
- * 2. a live doorbell whose latest ring was not taken (`doorbell_failing`), else `doorbell_live`;
+ * 2. a live doorbell whose latest ring since it was registered was not taken
+ *    (`doorbell_failing`), else `doorbell_live`;
  * 3. a polling product read within two intervals (`polling`), else `poll_overdue`;
  * 4. any hab_inbox read within the last hour (`inbox_read_recently`);
  * 5. a doorbell that ended without renewal (`doorbell_lapsed`);
@@ -96,6 +99,7 @@ export function derivePresence(
   if (facts && facts.live > 0) {
     if (
       facts.rang_at != null &&
+      facts.rang_at >= (facts.live_since ?? 0) &&
       !(facts.status! >= 200 && facts.status! <= 299)
     )
       return {

@@ -1041,8 +1041,7 @@ export class HabEvents {
         "SELECT sender_id,message_id,rang_at FROM hab_event_quiet WHERE subscription_id=?",
       )
       .get(row.id) as
-      | { sender_id: string; message_id: string; rang_at: number }
-      | undefined;
+      { sender_id: string; message_id: string; rang_at: number } | undefined;
     if (!last || this.#now() - last.rang_at >= this.#unansweredAfter)
       return false;
     return this.#source.unread(row.agent_id, {
@@ -1310,8 +1309,7 @@ export class HabEvents {
           "SELECT * FROM hab_event_subscriptions WHERE id=? AND expires_at>?",
         )
         .get(due_row.subscription_id, this.#now()) as unknown as
-        | Row
-        | undefined;
+        Row | undefined;
       if (!row) continue;
       const address = this.#source.addressOf(row.agent_id);
       if (
@@ -1369,8 +1367,7 @@ export class HabEvents {
     let delivered: number | null = null;
     for (const key of unread) {
       const row = first.get(agentId, key.sender_id, key.message_id) as
-        | { accepted_at: number }
-        | undefined;
+        { accepted_at: number } | undefined;
       if (row && (delivered === null || row.accepted_at < delivered))
         delivered = row.accepted_at;
     }
@@ -1471,6 +1468,8 @@ export interface DoorbellState {
   inbox_read_at: number | null;
   /** Since when the product has reported this address's session as ended (ADR-032). */
   absent_since: number | null;
+  /** When the newest live doorbell was registered; an older failed ring was for another one. */
+  live_since: number | null;
 }
 /**
  * Read-only view of every recipient's doorbell for operators (`hab-admin status`). No
@@ -1518,6 +1517,7 @@ function collectDoorbells(
         delivered_at: null,
         inbox_read_at: null,
         absent_since: null,
+        live_since: null,
       };
       result.set(agentId, state);
     }
@@ -1567,7 +1567,7 @@ function collectDoorbells(
   if (tables.has("hab_event_subscriptions"))
     for (const row of db
       .prepare(
-        `SELECT id,agent_id,expires_at FROM hab_event_subscriptions
+        `SELECT id,agent_id,expires_at,created_at FROM hab_event_subscriptions
            WHERE 1=1${tables.has("hab_event_operator_pauses") ? " AND id NOT IN (SELECT subscription_id FROM hab_event_operator_pauses)" : ""}${only === undefined ? "" : " AND agent_id=?"}
            ORDER BY expires_at`,
       )
@@ -1575,8 +1575,11 @@ function collectDoorbells(
       id: string;
       agent_id: string;
       expires_at: number;
+      created_at: number;
     }[]) {
       const state = entry(row.agent_id);
+      if (row.id.startsWith(STATIC_PREFIX) || row.expires_at > now)
+        state.live_since = Math.max(state.live_since ?? 0, row.created_at);
       // Operator-registered doorbells (ADR-029) never expire; they have no lifetime to show.
       if (row.id.startsWith(STATIC_PREFIX)) {
         state.live += 1;
