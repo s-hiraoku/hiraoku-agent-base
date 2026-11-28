@@ -52,7 +52,7 @@ notifier と sidecar を分けるのは、`agentapi` がアプリの子プロセ
 ### 2.2 sidecar：`hab-notify antigravity-relay`
 
 - アプリの sidecar として常駐する小さなコマンド。`--spool <dir>` と `--log <file>` だけを受け取り、HAB の token も鍵も持たない。
-- 引き渡し箱を見て、古い順に 1 件ずつ `agentapi send-message --title "HAB: <送信元>" <会話 ID> <依頼文>` を引数の配列で実行する（シェルは通さない）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`、なければ `~/.gemini/antigravity/bin/agentapi`。
+- 引き渡し箱を見て、古い順に 1 件ずつ `agentapi send-message --title "HAB: <送信元>" <会話 ID> <依頼文>` を引数の配列で実行する（シェルは通さない）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`（language server 本体なので `agentapi` サブコマンドを足す）、なければ `~/.gemini/antigravity/bin/agentapi`。
 - 送る前に、そのファイルを `sending/` に rename して印を付ける（同じディレクトリ内の rename なので一度に決まる）。`sending/` に移せたものだけを送る。
 - 終了コード 0 なら `done/` に、失敗したら `failed/` に移し、ログに 1 行残す。どちらも再送しない（同じ依頼を 2 回渡さないため）。
 - 1 つの箱を受け持つ relay は 1 つだけにする（箱の `.relay.lock`。pid を書いた一時ファイルを hard link して取る。持ち主のプロセスがいなければ引き継ぐ）。
