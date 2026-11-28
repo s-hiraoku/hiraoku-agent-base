@@ -274,10 +274,10 @@
     },
     {
       "path": "README.md",
-      "sha256": "c3a391fe4ce58b73d769249419148dac258845afbb6da80a511b3674d61ae584",
+      "sha256": "919633e6d6e3ac40116d751ec75b5c194b09e3bbe1f714c54999eac73003974b",
       "role": "context",
       "review": "reviewed",
-      "summary": "Project entry point for the local MVP, product setup, host operations and test commands. Links the read-only local diagnostics dashboard. Describes the single host, SQLite delivery, group authentication, the agent and delivery MCP catalogs, optional A2A with a host-owned identity and recipient-owned decisions. Links the November 20–21 product-specific receive/reply results, the October 25 Codex/Hermes trial and the planned Gemini/Antigravity integration. Records the retirement of Relay, Task Hub, JetStream delivery and managed attachments, the public-source boundary and the TypeScript 6 API / TypeScript 7 compiler split."
+      "summary": "Project entry point for the local MVP, product setup, host operations and test commands. Links the read-only local diagnostics dashboard. Describes the single host, SQLite delivery, group authentication, the agent and delivery MCP catalogs, optional A2A with a host-owned identity and recipient-owned decisions. Links the November 20–21 product-specific receive/reply results, the October 25 Codex/Hermes trial and the planned Gemini/Antigravity integration. Records the retirement of Relay, Task Hub, JetStream delivery and managed attachments, the public-source boundary and the TypeScript 6 API / TypeScript 7 compiler split. Updated for ADR-036: standard receiving references three-mode wake (ADR-032) and arrival-notifier instead of ReceiveSupervisor."
     },
     {
       "path": "docs/a2a/a2a-host-preview.md",
@@ -349,10 +349,10 @@
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "8319a4ba25609d03bcbbb75c6e4449f9fc6cf8fc6eb00eb5c70ef29184d70671",
+      "sha256": "ad56be9d01720490d03ef85f44e56475aa1a9e8b52229ef48be9cb1e9510eb89",
       "role": "context",
       "review": "reviewed",
-      "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, the single-file SQLite delivery store (ADR-018), agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement.",
+      "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, the single-file SQLite delivery store (ADR-018), agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement. Updated for ADR-036: documents mail-style /mcp, three-mode wake, arrival-notifier and retirement of first-generation adapter-host/ReceiveSupervisor.",
       "read_scope": "full"
     },
     {
@@ -484,10 +484,10 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "aa7e4fe0906c7a7ea3009e9484875465bf4ef39c3685b5999bda5841f0a0ab68",
+      "sha256": "fa0965a3fb6e231678e1bdcb730651ee9489cf9f269c81a821a1782b9b9139e8",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task. ADR-023 (owner, 2026-11-17) adds an explicit opt-in exception to ADR-021: the notifier may choose 対応する for senders/kinds the owner listed in notify.json (default all manual), replacing the first handoff line to say nobody chose it and that only reading and hab_reply are allowed without the user; prompt-level only, product approvals remain the hard limit; per-sender/per-thread caps; body-free notifier audit; ADR-021 once-only handoff, unknown/no-resend and accept_waiting unchanged. ADR-024 (2026-11-17): host downtime or Mac sleep is not counted against MCP event subscriptions (outage credit up to max_ttl_ms); lapsed doorbells and unread backlog are shown by hab:admin status; HAB never re-creates subscriptions; host/notifier LaunchAgents always restart and sleep prevention is a separate job. ADR-023 2026-11-18 addendum (owner): after the first Dots-Hermes trial stalled on a command approval, the automatic prompt forbids approval-gated operations and asks the session to finish with hab_reply anyway, answering what it can and stating what waits for the user; no permission widened. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. ADR-026 (owner, 2026-11-19): each agent product adapter draws received mail; hab_inbox/hab_peek add a body-free presentation (version 1: heading, sender, kind label, reply flag, sent_at, reply_by, choices, body_untrusted note, hidden data count) built from the same labels as notice/display/handoff_prompt, which stay; hab_peek returns text again; the agent /mcp serves the read-only MCP Apps card ui://hab/inbox-v1 (no network, text-only body) on hab_inbox only, whose buttons change no HAB state (accept sends a ui/message asking the model to draft before sending); framing of model-facing text unchanged; real-host rendering unverified. ADR-027 (owner, 2026-11-19): a doorbell accepted with 2xx whose message stays unread unanswered_after_ms (default 5 min) is rung once more with a new eventId (no retry, ingress.events.rering false turns it off); the recipient's own /mcp hab_send/hab_reply/hab_status results carry a body-free inbox_reminder (hab_inbox only when the doorbell went unanswered), counted from the authorization-filtered unread view; agent instructions say to call hab_inbox on the event; HAB still never re-creates subscriptions or tasks. ADR-028 (owner, 2026-11-19, after agent-mail): hab_inbox wait_secs 0-60 waits for new mail only when none is unread, capped by http.max_wait_ms (default 25000, 0 off), at most max_active_requests-1 holds, newest wait per agent wins, no wait under writer admission; the in-host wake carries only the recipient agent ID and every read is the normal authorized hab_inbox; narrows ADR-020's no-long-poll rule, sending without waiting stays the default. ADR-029 (owner, 2026-11-19, after agent-mail): operator-registered doorbells in ingress.events.doorbells {address,url,secret_file} for agents that cannot subscribe (Grok Bot webhook routines); secret from an owner-only file, whsec_ signs and other tokens go as Bearer; public HTTPS only; same body/retry/ring-again as MCP event doorbells; no lifetime, challenge, subscriber slot or MCP unsubscribe; not rung for mail waiting at start; reading stays the agent's own hab_inbox. ADR-030 (owner, 2026-11-19): while a subscription's last 2xx-accepted doorbell is younger than unanswered_after_ms and its message is unread, newer mail is held (cursor not advanced) and rung only if still unread when the quiet ends; the ADR-027 ring again runs first and restarts the quiet; non-2xx never starts it; ingress.events.quiet false rings every message. ADR-031 (owner, 2026-11-20): inbox polling beside the doorbell, interval set by the user, default 10 min: the arrival notifier already polls at its interval_ms; for doorbell-only agents the dispatcher rings each live doorbell again for the oldest unread message once ingress.events.inbox_check.interval_ms (0 off, 60000-86400000, per address in addresses) has passed since its last accepted ring or check, never retried, at most max_rings (default 6) per oldest unread; agents with neither use their own product scheduler and the agent instructions say to call hab_inbox when a schedule starts them; HAB cannot ring a lapsed doorbell or re-create tasks. 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms. ADR-033 (2026-11-21): per-sender and per-recipient capacity counts only unread mail; read or expired messages stop counting at once, the per-agent retained-record budgets (max_records_per_sender, max_records_per_recipient, reservation records) are removed without compatibility, and history is bounded only by the store-wide max_records/max_body_bytes ceilings; record retention for replay/status is unchanged and sender rate limiting remains unimplemented. ADR-034 (2026-11-26): hab_discover presence derived only from HAB-observed facts. ADR-035 (owner, 2026-11-26): a wait that spends no agent tokens or product run quota while idle, works programmatically from published product specs and server-only HAB, and keeps holds/retention/status-check frequency within stated bounds is outside the ADR-028 wait cap and the ADR-032 no-timed-ring rule; it returns only a body-free arrival notice without marking read, reading stays hab_inbox and ADR-015/021 are unchanged; first candidate is an MCP Tasks wait tool, unimplemented until verified on real clients; scheduled polling and screen automation do not qualify."
+      "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task. ADR-023 (owner, 2026-11-17) adds an explicit opt-in exception to ADR-021: the notifier may choose 対応する for senders/kinds the owner listed in notify.json (default all manual), replacing the first handoff line to say nobody chose it and that only reading and hab_reply are allowed without the user; prompt-level only, product approvals remain the hard limit; per-sender/per-thread caps; body-free notifier audit; ADR-021 once-only handoff, unknown/no-resend and accept_waiting unchanged. ADR-024 (2026-11-17): host downtime or Mac sleep is not counted against MCP event subscriptions (outage credit up to max_ttl_ms); lapsed doorbells and unread backlog are shown by hab:admin status; HAB never re-creates subscriptions; host/notifier LaunchAgents always restart and sleep prevention is a separate job. ADR-023 2026-11-18 addendum (owner): after the first Dots-Hermes trial stalled on a command approval, the automatic prompt forbids approval-gated operations and asks the session to finish with hab_reply anyway, answering what it can and stating what waits for the user; no permission widened. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. ADR-026 (owner, 2026-11-19): each agent product adapter draws received mail; hab_inbox/hab_peek add a body-free presentation (version 1: heading, sender, kind label, reply flag, sent_at, reply_by, choices, body_untrusted note, hidden data count) built from the same labels as notice/display/handoff_prompt, which stay; hab_peek returns text again; the agent /mcp serves the read-only MCP Apps card ui://hab/inbox-v1 (no network, text-only body) on hab_inbox only, whose buttons change no HAB state (accept sends a ui/message asking the model to draft before sending); framing of model-facing text unchanged; real-host rendering unverified. ADR-027 (owner, 2026-11-19): a doorbell accepted with 2xx whose message stays unread unanswered_after_ms (default 5 min) is rung once more with a new eventId (no retry, ingress.events.rering false turns it off); the recipient's own /mcp hab_send/hab_reply/hab_status results carry a body-free inbox_reminder (hab_inbox only when the doorbell went unanswered), counted from the authorization-filtered unread view; agent instructions say to call hab_inbox on the event; HAB still never re-creates subscriptions or tasks. ADR-028 (owner, 2026-11-19, after agent-mail): hab_inbox wait_secs 0-60 waits for new mail only when none is unread, capped by http.max_wait_ms (default 25000, 0 off), at most max_active_requests-1 holds, newest wait per agent wins, no wait under writer admission; the in-host wake carries only the recipient agent ID and every read is the normal authorized hab_inbox; narrows ADR-020's no-long-poll rule, sending without waiting stays the default. ADR-029 (owner, 2026-11-19, after agent-mail): operator-registered doorbells in ingress.events.doorbells {address,url,secret_file} for agents that cannot subscribe (Grok Bot webhook routines); secret from an owner-only file, whsec_ signs and other tokens go as Bearer; public HTTPS only; same body/retry/ring-again as MCP event doorbells; no lifetime, challenge, subscriber slot or MCP unsubscribe; not rung for mail waiting at start; reading stays the agent's own hab_inbox. ADR-030 (owner, 2026-11-19): while a subscription's last 2xx-accepted doorbell is younger than unanswered_after_ms and its message is unread, newer mail is held (cursor not advanced) and rung only if still unread when the quiet ends; the ADR-027 ring again runs first and restarts the quiet; non-2xx never starts it; ingress.events.quiet false rings every message. ADR-031 (owner, 2026-11-20): inbox polling beside the doorbell, interval set by the user, default 10 min: the arrival notifier already polls at its interval_ms; for doorbell-only agents the dispatcher rings each live doorbell again for the oldest unread message once ingress.events.inbox_check.interval_ms (0 off, 60000-86400000, per address in addresses) has passed since its last accepted ring or check, never retried, at most max_rings (default 6) per oldest unread; agents with neither use their own product scheduler and the agent instructions say to call hab_inbox when a schedule starts them; HAB cannot ring a lapsed doorbell or re-create tasks. 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms. ADR-033 (2026-11-21): per-sender and per-recipient capacity counts only unread mail; read or expired messages stop counting at once, the per-agent retained-record budgets (max_records_per_sender, max_records_per_recipient, reservation records) are removed without compatibility, and history is bounded only by the store-wide max_records/max_body_bytes ceilings; record retention for replay/status is unchanged and sender rate limiting remains unimplemented. ADR-034 (2026-11-26): hab_discover presence derived only from HAB-observed facts. ADR-035 (owner, 2026-11-26): a wait that spends no agent tokens or product run quota while idle, works programmatically from published product specs and server-only HAB, and keeps holds/retention/status-check frequency within stated bounds is outside the ADR-028 wait cap and the ADR-032 no-timed-ring rule; it returns only a body-free arrival notice without marking read, reading stays hab_inbox and ADR-015/021 are unchanged; first candidate is an MCP Tasks wait tool, unimplemented until verified on real clients; scheduled polling and screen automation do not qualify. Added ADR-036 retiring first-generation adapter-host/adapter-policy/answer-intents/recipient-messages/owner-integrations, ReceiveSupervisor/ReceiveHost/SQLiteHostControl and hab:reply-watch."
     },
     {
       "path": "docs/hab-principles.md",
@@ -689,12 +689,12 @@
     },
     {
       "path": "docs/local-mvp.md",
-      "sha256": "7844cb00965b5174d2aadb57b1b485bc1b56af4dfc65262ba0201f06f263b5c8",
+      "sha256": "b21898a0f4e9d4f48838e52867b332308623fe6e1c8e43fb62380b088613e5d2",
       "hash": "316f9286a7a0ea1951063ce4ff6062130a0bfc759531d40bb4a6c3f29966bd04",
       "role": "normative",
       "review": "reviewed",
       "reviewed": true,
-      "summary": "Synthetic Node loopback local-MVP15-stage CLI combines durable delivery, ACK ambiguity, stable recovery, explicit fixed Task boundary and reply loop denial. It runs over the SQLite delivery store with no broker and removes its own temporary state. Close/reopen is not kill9/power/disk/independent restore proof. Legacy1:1 auth fixture remains while actual connection may use approved shared groups without exclusive Bot identity. Tests include Node/TS and auxiliary Python; production/G1 stays unaccepted. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Synthetic Node loopback local-MVP15-stage CLI combines durable delivery, ACK ambiguity, stable recovery, explicit fixed Task boundary and reply loop denial. It runs over the SQLite delivery store with no broker and removes its own temporary state. Close/reopen is not kill9/power/disk/independent restore proof. Legacy1:1 auth fixture remains while actual connection may use approved shared groups without exclusive Bot identity. Tests include Node/TS and auxiliary Python; production/G1 stays unaccepted. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. Updated for ADR-036: 13 stages exercise current mail-style /mcp and /mcp/delivery tools directly without AdapterHostCycle while preserving 4/4/4 deliveries and inert execution_request."
     },
     {
       "path": "docs/operations/host-composition.md",
@@ -1039,10 +1039,10 @@
     },
     {
       "path": "src/agent-sdk/README.md",
-      "sha256": "58e1bb0cb112c7e422b0db518954ab7c9f4f56bc49d75c0b2d92421826abcce9",
+      "sha256": "94bac9bf40f896f43e3443c3393f9389b6253b5aa613f652d965c0b1ac9398d4",
       "role": "normative",
       "review": "reviewed",
-      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and src/delivery. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved. Also documents local-only branded authentication recovery reasons and an optional owner-local identity verification gate. They perform no IO, hold no tokens and provide no refresh/login; product-native wiring and acceptance remain explicit separate requirements. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical."
+      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and src/delivery. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved. Also documents local-only branded authentication recovery reasons and an optional owner-local identity verification gate. They perform no IO, hold no tokens and provide no refresh/login; product-native wiring and acceptance remain explicit separate requirements. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. Updated for ADR-036: removed retired receive-host, receive-supervisor and sqlite-host-control entries while retaining DeliveryMcpClient, SQLiteHostOwner and durable outbox/inbox."
     },
     {
       "path": "src/hab/README.md",
@@ -1207,13 +1207,6 @@
       "summary": "Source-only V2 proposal narrowing the capacity exception to one administrative increase on a never-used, fully authenticated budget with a durable maintenance barrier and blanket inbox hold. Its source line references were rechecked against the baseline. Not accepted formal design, operative API or live authorization; six listed gates (formal exception, approval provenance, persistent barrier, receipt semantics, authoritative empty inventory, no startup adoption) still block implementation. Current normative budget policy is unchanged. Review context only."
     },
     {
-      "path": "verification/experiments/cross-process-handoff/README.md",
-      "sha256": "3dd540328ca096e807298d4a05cf7a7a35f971899b9ab94ba88724acf1461323",
-      "role": "context",
-      "review": "reviewed",
-      "summary": "Unadopted cross-process shared transaction authority proposal and synthetic SQLite model. Retains current native authorization and exact identity requirements; no native integration, product schema or runtime change. Distinguishes active-conversation MCP from background dispatch and model outbox from the existing SQLiteOutbox."
-    },
-    {
       "path": "docs/receiver/source-launch-journal.md",
       "sha256": "a4fad46d92ba5f0394f8f0a2312a1645a939f9ea5450424ebc3ef178ad4424b6",
       "role": "context",
@@ -1360,9 +1353,7 @@
       "checks": [
         "js-common-mcp",
         "ast-boundary",
-        "native-recipient",
-        "js-recipient-messages",
-        "js-recipient-host-mcp"
+        "native-recipient"
       ],
       "citations": [
         {
@@ -1390,15 +1381,7 @@
         "ts-root",
         "ast-boundary",
         "js-common-mcp",
-        "native-recipient",
-        "js-recipient-messages",
-        "js-recipient-host-mcp",
-        "js-single-source-stdio",
-        "js-private-recipient-http",
-        "js-external-owner",
-        "js-acp-owner",
-        "js-managed-transport",
-        "js-source-launch"
+        "native-recipient"
       ],
       "citations": [
         {
@@ -1424,14 +1407,7 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "ast-boundary",
-        "js-recipient-messages",
-        "js-recipient-host-mcp",
-        "js-single-source-stdio",
-        "js-private-recipient-http",
-        "js-external-owner",
-        "js-acp-owner",
-        "js-source-launch"
+        "ast-boundary"
       ],
       "citations": [
         {
@@ -1529,9 +1505,7 @@
       "checks": [
         "js-common-mcp",
         "js-root",
-        "gui-parity",
-        "js-recipient-messages",
-        "js-recipient-host-mcp"
+        "gui-parity"
       ],
       "citations": [
         {
@@ -1551,115 +1525,76 @@
     {
       "id": "HAB-F07",
       "title": "Pure source-authorized saved body read",
-      "statement": "inbox_read requires independent exact-source authorization and current actor, pause/epoch, configured owner and idle checks, rechecks before returning authenticated unreleased saved body as an independent copy. Missing/released/corrupt data gives no body.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: inbox_read requires independent exact-source authorization and current actor, pause/epoch, configured owner and idle checks, rechecks before returning authenticated unreleased saved body as an independent copy. Missing/released/corrupt data gives no body.",
       "rationale": "Metadata/receive permission must not silently grant body access; caller mutation must not corrupt saved evidence.",
-      "scope": "Local AdapterHostCycle inbox_read",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-common-mcp",
-        "js-recipient-host-mcp",
-        "js-single-source-stdio",
-        "js-private-recipient-http",
-        "js-external-owner",
-        "js-acp-owner",
-        "js-source-launch"
+        "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/adapter-host.md",
-          "start": 47,
-          "end": 49,
-          "excerpt_sha256": "073104c0de694fd13da5c6ff5589abd19ca614481e771ba766b9a2b85046eb60"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
     {
       "id": "HAB-F08",
       "title": "Read does not mutate receipt or act",
-      "statement": "inbox_read may return saved receipt_confirmed=false data but must not retry/confirm ACK, release body, modify inbox/ACK/outbox/Task or initiate model/Task/reply. Existing reply/task acceptance guards stay unchanged; body is untrusted data, never direct owner approval.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: inbox_read may return saved receipt_confirmed=false data but must not retry/confirm ACK, release body, modify inbox/ACK/outbox/Task or initiate model/Task/reply. Existing reply/task acceptance guards stay unchanged; body is untrusted data, never direct owner approval.",
       "rationale": "Decouples pure retrieval from uncertain transport state and independent action authority.",
-      "scope": "Local inbox_read and explicit recipient decisions",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-common-mcp",
-        "js-recipient-host-mcp"
+        "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/adapter-host.md",
-          "start": 47,
-          "end": 53,
-          "excerpt_sha256": "ec557a853c4ff94b20765e989f257ecb275d8acbb8c26b5e72dd67d4060eac8e"
-        },
-        {
-          "path": "docs/receiver/recipient-readiness.md",
-          "start": 7,
-          "end": 9,
-          "excerpt_sha256": "0ca09618e811399e00a00d5be2f13d244b35a553b68ebecb95555e82013bca20"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
     {
       "id": "HAB-F09",
       "title": "Receive-only supervisor authority",
-      "statement": "Supervisor repeats receive only with same-agent durable stores, current authorization, process owner and explicit resume. It stops on missing/lost owner, pause or local authorization failure and never clears pause, obtains/releases owner, logs in, updates grants, sends replies, accepts tasks or starts a model. An optional owner-local authentication gate begins blocked after process start and may unblock receive only after fresh verified evidence of the exact approved issuer/resource/subject/client/connection/agent identity; it is not authentication or a replacement for current authorization. Copied, foreign, reused or superseded verification tickets cannot unblock it. Credential refresh/login, independent identity verification and native notification delivery remain product responsibilities.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: Supervisor repeats receive only with same-agent durable stores, current authorization, process owner and explicit resume. It stops on missing/lost owner, pause or local authorization failure and never clears pause, obtains/releases owner, logs in, updates grants, sends replies, accepts tasks or starts a model. An optional owner-local authentication gate begins blocked after process start and may unblock receive only after fresh verified evidence of the exact approved issuer/resource/subject/client/connection/agent identity; it is not authentication or a replacement for current authorization. Copied, foreign, reused or superseded verification tickets cannot unblock it. Credential refresh/login, independent identity verification and native notification delivery remain product responsibilities.",
       "rationale": "A scheduler must not become privileged agent control or invent operational authorization.",
-      "scope": "ReceiveSupervisor host port v1, optional trusted local recovery gate; synthetic recovery checks in test/authentication-recovery.test.js do not establish native OAuth or deployment acceptance.",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-common-mcp",
         "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/receive-supervisor.md",
-          "start": 7,
-          "end": 17,
-          "excerpt_sha256": "07f5b088f6f2517f04d75774fa696d4a9977d8398f56957a742879374acb81a7"
-        },
-        {
-          "path": "docs/receiver/receive-supervisor.md",
-          "start": 92,
-          "end": 101,
-          "excerpt_sha256": "a361e52a6946305a2d6fa94588e9e15305f3a2e0e7eee0c9ee6e619c2613a2b3"
-        },
-        {
-          "path": "docs/receiver/receive-supervisor.md",
-          "start": 116,
-          "end": 129,
-          "excerpt_sha256": "67981f67c95e85fefe13edfd367f702f832bbfd899a107674003eadce89a4c63"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
     {
       "id": "HAB-F10",
       "title": "Bounded receive and drain",
-      "statement": "Configure finite receive interval/backoff/drain; only poll/ACK transport failures back off. A trusted local provider recovery signal becomes an explicit stop reason without a gate, or a blocked gate with bounded local-only waits and fixed, secret-free synchronous state notifications. Generic HTTP status or wire strings do not confer that local signal. No poll/ACK starts while blocked; current pause/owner/draining authority is rechecked before readmission. Storage failure stops without deleting data for room. Outstanding work prevents a new receive; stop prevents the next cycle and waits boundedly; drained=false does not certify safe DB/owner closure. Recovery retains original body/ACK and deferred send intent without extending existing time/attempt/retention horizons.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: Configure finite receive interval/backoff/drain; only poll/ACK transport failures back off. A trusted local provider recovery signal becomes an explicit stop reason without a gate, or a blocked gate with bounded local-only waits and fixed, secret-free synchronous state notifications. Generic HTTP status or wire strings do not confer that local signal. No poll/ACK starts while blocked; current pause/owner/draining authority is rechecked before readmission. Storage failure stops without deleting data for room. Outstanding work prevents a new receive; stop prevents the next cycle and waits boundedly; drained=false does not certify safe DB/owner closure. Recovery retains original body/ACK and deferred send intent without extending existing time/attempt/retention horizons.",
       "rationale": "Avoids overlap, lost durable evidence and false cleanup success.",
-      "scope": "ReceiveSupervisor timing, failures and cleanup",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-common-mcp",
         "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/receive-supervisor.md",
-          "start": 32,
-          "end": 53,
-          "excerpt_sha256": "7342e9473baf10562a41af925e77607b5360c2adec14e7ceaceebcf0141d292d"
-        },
-        {
-          "path": "docs/receiver/receive-supervisor.md",
-          "start": 77,
-          "end": 83,
-          "excerpt_sha256": "3601ea9fa012d53b7b3f244b70c2106569aa89a79869abe2e244a60f0b2ad241"
-        },
-        {
-          "path": "docs/receiver/receive-supervisor.md",
-          "start": 131,
-          "end": 138,
-          "excerpt_sha256": "86fa415b83d4168e15e1378b86101c69da30ac2b4bf1b1e90881430a7b3eaf50"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
@@ -1672,12 +1607,7 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "native-recipient",
-        "js-recipient-messages",
-        "js-recipient-host-mcp",
-        "js-external-owner",
-        "js-acp-owner",
-        "js-source-launch"
+        "native-recipient"
       ],
       "citations": [
         {
@@ -1749,8 +1679,7 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "mcp-durable-roundtrip",
-        "js-recipient-messages"
+        "mcp-durable-roundtrip"
       ],
       "citations": [
         {
@@ -1796,32 +1725,19 @@
     {
       "id": "HAB-F16",
       "title": "Pause and unresolved operations",
-      "statement": "New host control begins paused; each command retains actor/epoch and rechecks before/after RPC and commit. Pause/local abort is not remote cancellation. Timeout retains busy/draining until underlying work settles; original ACK IDs/envelopes/task keys survive uncertainty.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: New host control begins paused; each command retains actor/epoch and rechecks before/after RPC and commit. Pause/local abort is not remote cancellation. Timeout retains busy/draining until underlying work settles; original ACK IDs/envelopes/task keys survive uncertainty.",
       "rationale": "Prevents stale late responses and overlapping work after a superficial timeout or pause/resume.",
-      "scope": "Finite adapter host/control and optional task ports Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-root",
-        "js-recipient-host-mcp",
-        "js-single-source-stdio",
-        "js-private-recipient-http",
-        "js-external-owner",
-        "js-acp-owner",
-        "js-managed-transport",
-        "js-source-launch"
+        "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/adapter-host.md",
-          "start": 114,
-          "end": 128,
-          "excerpt_sha256": "3129a2dde2c501a4c4c4876f450daef0c7eebc732179b0471c8a676dfd312d7a"
-        },
-        {
-          "path": "docs/receiver/adapter-host.md",
-          "start": 63,
-          "end": 109,
-          "excerpt_sha256": "adaa1ea37e27a855e646636add39a87527e60fda52eda6617c61a29e1136050d"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
@@ -1834,8 +1750,7 @@
       "decision": "accepted",
       "checks": [
         "js-root",
-        "production-operations",
-        "js-recipient-messages"
+        "production-operations"
       ],
       "citations": [
         {
@@ -1893,8 +1808,7 @@
       "decision": "accepted",
       "checks": [
         "mcp-durable-roundtrip",
-        "native-recipient",
-        "js-recipient-messages"
+        "native-recipient"
       ],
       "citations": [
         {
@@ -2119,8 +2033,7 @@
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
-        "native-recipient",
-        "js-recipient-messages"
+        "native-recipient"
       ],
       "citations": [
         {
@@ -2232,8 +2145,7 @@
       "scope": "HAB Registry-composed SQLite delivery (HabDeliveryService); separate IO already sent cannot be retracted.",
       "decision": "accepted",
       "checks": [
-        "js-root",
-        "js-recipient-messages"
+        "js-root"
       ],
       "citations": [
         {
@@ -2600,8 +2512,7 @@
       "scope": "Public repository and verification output; detailed audit formats remain subsystem-specific.",
       "decision": "accepted",
       "checks": [
-        "source-publication",
-        "js-recipient-messages"
+        "source-publication"
       ],
       "citations": [
         {
@@ -2843,8 +2754,8 @@
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 21,
-          "end": 21,
+          "start": 18,
+          "end": 18,
           "excerpt_sha256": "c55b59519246310a7fe559f66ab8f9045dad669414c6ffebb07aa50f382ee709"
         },
         {
@@ -2960,14 +2871,14 @@
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 27,
-          "end": 27,
+          "start": 24,
+          "end": 24,
           "excerpt_sha256": "9001e9482a4b61a3d4a29d7073008de86c0592519b6f12feeee5bbdfeeeacde0"
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 31,
-          "end": 31,
+          "start": 28,
+          "end": 28,
           "excerpt_sha256": "ee2046e8909433b24a09d3fcd6c42cf39439634f69b3139aeac04eaa27f80047"
         },
         {
@@ -3004,8 +2915,8 @@
       "citations": [
         {
           "path": "src/agent-sdk/README.md",
-          "start": 23,
-          "end": 23,
+          "start": 20,
+          "end": 20,
           "excerpt_sha256": "00b1f2fe7b7d63a9eeba616c9b51a8b757e9412b83334572438252fce006dc9a"
         },
         {
@@ -3049,8 +2960,8 @@
         },
         {
           "path": "src/agent-sdk/README.md",
-          "start": 23,
-          "end": 23,
+          "start": 20,
+          "end": 20,
           "excerpt_sha256": "00b1f2fe7b7d63a9eeba616c9b51a8b757e9412b83334572438252fce006dc9a"
         },
         {
@@ -3477,51 +3388,38 @@
     {
       "id": "HAB-E06",
       "title": "Reply loops and budget are finite",
-      "statement": "Automated host replies only allow question→answer and execution_request→accepted/result with one stable reply per source/kind; replies/notices/failures cannot recursively generate answers or Tasks. Explicit finite shared budget is committed before outbox and never refunded to recover unknown delivery.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: Automated host replies only allow question→answer and execution_request→accepted/result with one stable reply per source/kind; replies/notices/failures cannot recursively generate answers or Tasks. Explicit finite shared budget is committed before outbox and never refunded to recover unknown delivery.",
       "rationale": "Bounds prevent self-amplifying communication, quota bypass and duplicate reply effects.",
-      "scope": "Recipient-local automated reply host and optional TaskReplies when budget explicitly connected; proposed8/thread60/min are not defaults.",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
         "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/adapter-reply-budget.md",
-          "start": 9,
-          "end": 36,
-          "excerpt_sha256": "30b367ad8769101e3c72dc2af81907b58313e2d3c2f6c6b92985fc4b7d68bfcb"
-        },
-        {
-          "path": "docs/receiver/adapter-reply-budget.md",
-          "start": 40,
-          "end": 44,
-          "excerpt_sha256": "871638080d588df74fe110a62629905e22bec1639bdf892a46b813a9279a1c3c"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
     {
       "id": "HAB-E07",
       "title": "Durable answer before handoff",
-      "statement": "Persist one decided answer envelope before budget/outbox handoff; same source replay reuses original ID/body/deadline. Uncertain cross-DB result remains prepared and is reconciled with same envelope. Startup/listing/expiry does not send, invent new answer, Task or deadline.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: Persist one decided answer envelope before budget/outbox handoff; same source replay reuses original ID/body/deadline. Uncertain cross-DB result remains prepared and is reconciled with same envelope. Startup/listing/expiry does not send, invent new answer, Task or deadline.",
       "rationale": "Prepared replies survive restart without recreating content from conversation or duplicating unknown handoff.",
-      "scope": "Optional AnswerIntents producer and its host wiring.",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-root",
-        "js-recipient-host-mcp"
+        "js-root"
       ],
       "citations": [
         {
-          "path": "docs/receiver/answer-intents.md",
-          "start": 5,
-          "end": 14,
-          "excerpt_sha256": "e08d8c2d55e4426e998ced5d0271ede3910f59e65db6cdaa2ca67d83cfd0e927"
-        },
-        {
-          "path": "docs/receiver/answer-intents.md",
-          "start": 18,
-          "end": 38,
-          "excerpt_sha256": "8eaaa4a53935d19281e69e58aff177eab5072e58ee48f883f009e2c5e42bace9"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
@@ -3533,13 +3431,7 @@
       "scope": "Optional SQLiteHostOwner; local-MVP composition requires it, legacy unconfigured compatibility is not evidence of owner enforcement. Managed transport is a trusted cooperative local-admission capability: unlike guarded fetch, its check releases the control transaction before physical SDK/IPC send. A request admitted before pause may still commit; every later request/retry needs a new current check. Product OAuth side clients must also be guarded. Abort/timeout never clears unsettled work or authorizes owner/store release.",
       "decision": "accepted",
       "checks": [
-        "js-root",
-        "js-single-source-stdio",
-        "js-private-recipient-http",
-        "js-external-owner",
-        "js-acp-owner",
-        "js-managed-transport",
-        "js-source-launch"
+        "js-root"
       ],
       "citations": [
         {
@@ -3597,7 +3489,7 @@
           "path": "docs/local-mvp.md",
           "start": 68,
           "end": 72,
-          "excerpt_sha256": "76ec86eead6e7402d4a3e8c69097afd3aebf19c9b6ed05f3d42dbf8a3f41e015"
+          "excerpt_sha256": "bdd525306c202d2ae85e85059428dd014d7702b4c2503160b054ae8260672778"
         }
       ]
     },
@@ -3627,8 +3519,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 271,
-          "end": 271,
+          "start": 280,
+          "end": 280,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -3744,19 +3636,19 @@
     {
       "id": "HAB-V04",
       "title": "Explicit saved-body read creates no authority",
-      "statement": "Saved-body reading must be explicit and source-authorized, preserve ACK-pending truth and return detached data without creating a Task or reply or granting permission to act.",
+      "statement": "Retired (historical): retired in ADR-036 with first-generation adapter-host, ReceiveSupervisor, answer-intents, adapter-policy, recipient-messages and owner-integrations. Original accepted statement, kept for provenance: Saved-body reading must be explicit and source-authorized, preserve ACK-pending truth and return detached data without creating a Task or reply or granting permission to act.",
       "rationale": "An agent needs received data while inspection remains separate from execution and approval.",
-      "scope": "Adapter inbox_read operation; native host/UI integration remains separately unverified.",
-      "decision": "accepted",
+      "scope": "Retired first-generation local adapter/supervisor surface (ADR-036); no current scope.",
+      "decision": "historical",
       "checks": [
-        "js-common-mcp"
+        "js-root"
       ],
       "citations": [
         {
-          "path": ".claude/skills/verify-hab/features/communication-boundary.md",
-          "start": 10,
-          "end": 10,
-          "excerpt_sha256": "4bca4a5e819734c1cec986594782bf151768254af3ef2c36fbc48ad350630222"
+          "path": "docs/hab-decisions.md",
+          "start": 265,
+          "end": 272,
+          "excerpt_sha256": "30e1be88f2dacd22c0e5784c11fa0fcb849fe2f44f671247db8b3c0cd304e356"
         }
       ]
     },
@@ -4043,161 +3935,6 @@
       "proves": "Runtime composition and module initialization preserve inner-core responsibilities beyond static module edges.",
       "limitations": "Not executed or automatically satisfied by this harness. Requires scoped external evidence and review; remains unverified.",
       "instructions": "Review actual initialization, injected ports and reachable runtime code for import-time DB/listener/network effects and hidden product/Task authority. AST module graphs deliberately do not prove package internals, aliased loaders, reflection or runtime side effects. Record exact reviewed paths/revision and scope before claiming this entire invariant."
-    },
-    {
-      "id": "js-recipient-messages",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/recipient-messages.test.js",
-        "test/recipient-supervisor.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Explicit confirmed-inbox handoff to synthetic durable native input, stable-key reconciliation, source/actor/epoch guards, recipient-owned policy/approval waits and exact reply revalidation through real SQLite budget/outbox; the real SQLite delivery store and one owned loopback MCP receive-to-reply path with no Task links. The policy/handoff fixture uses a finite sender lease longer than its RPC budget; a controlled submit-response delay crosses the former 400 ms lease while still requiring one accepted original reply. Also exercises opt-in common owner scheduling, pause/resume fencing, stop/drain, lost ACK/submit reconciliation, separate handoff versus inspect/reply authority, continued outbound work during poll failure and sanitized metadata states.",
-      "limitations": "Native input/policy store and owner are fixtures. No real product wake/input, model, native approval UI, atomic native production deduplication, backup rollback, residency or deployment is established. Same-process database close/reopen is not crash/powerloss proof.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-recipient-host-mcp",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/recipient-host-mcp.test.js",
-        "test/recipient-host-mcp-size.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Opt-in tool discovery without host calls; fixed context/operation schemas; per-call forwarding, synthetic operation revocation and sanitized errors; incomplete results without wrapper retries; real recipient SQLite receive/read, fixed answer enqueue/replay and separate send; official SDK MCP over in-memory and owned separate stdio processes. Parent-owned broker/scratch cleanup is checked after a deliberately interrupted child cleanup, with bounded stderr drainage. Exact UTF-8/JSON-escaped inbox_read CallToolResult limits reject without body/truncation, cannot be raised by tool arguments and preserve mutating results. A refused stdio read leaves discovery usable; explicit owner-aligned server/client budgets retrieve the complete same synthetic source.",
-      "limitations": "Synthetic recipient identity, policy, operator resume and chosen answers. host HTTP is an in-process gateway, not a socket deployment. Size cases use a synthetic host result, not a real large-message store or installed product. The read budget excludes JSON-RPC framing/request IDs and is not a universal wire/output/memory cap; products unable to carry the full response remain blocked. Stdio proves SDK transport and owned cleanup, not native session/auth/approval/wake, readOnlyHint enforcement, residency, restart or physical-fault recovery. Forced cleanup is not clean child shutdown or crash-durability proof. Post-call receipt observations do not replace the independent pre-ACK observer. Tests overlap js-root; counts are not unique.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-single-source-stdio",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/single-source-stdio.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Official SDK client over an owned separate stdio process with real recipient SQLite and the SQLite delivery store. Default deny/pause and explicit local-only grant/resume; fixed source and exact durable reply enqueue/send with revocation; finite lifetime and EOF pause/drain/close/owner release before caller store cleanup; failed drain retains ownership until underlying work settles and a local stop retry succeeds. No Task or arbitrary enqueue is exposed. Stop attempts irreversibly revoke recipient guards before control IO; an injected failed control read followed by resumed-state recovery still denies new calls and delayed poll saves. A gated SDK close independently witnesses owner held while pending and immediately on close completion, before release. Initial resume without a grant remains denied.",
-      "limitations": "Recipient/operator identity, policy and chosen answer are synthetic. host HTTP uses the existing in-process gateway. Not native session binding, product approval, model judgment, wake, residency, production launcher, process crash or physical restore evidence. Source grant covers the whole dedicated single-producer outbox, not exact-body human approval. Post-call receipt evidence does not replace the independent pre-ACK observer. Tests overlap js-root.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-private-recipient-http",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/private-recipient-http.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Owned loopback MCP with SQLite stores including the delivery store; all-request authentication and Host/Origin/path rejection without redirects; unbound tool denial and stable schemas; fresh discovery receipts and delayed-POST promotion fence; explicit grant/resume, fixed-source read and persisted answer prepare/enqueue/send with revocation; owner loss, DELETE, expiry, failed drain/control/startup-close retention and explicit cleanup retry.",
-      "limitations": "Synthetic bearer, recipient/operator contexts and policy only. External listener/credential delivery and native session launch verification remain owner responsibilities. No live agent, model, native approval, production queue, OS isolation or hard real-time guarantee. Tests overlap js-root.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-external-owner",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/external-owner.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Real owned loopback MCP and fresh SQLite remain deny-only by default before and after synthetic binding; exactly one create, stale/missing receipt refusal, native/outer owner loss, bounded unresolved work and retention. Separate clean-env child, no inherited Node options or raw output, sanitized failures, blocked-child watchdog, confirmed exit and simulated failed-kill evidence without blind retry. Startup cancellation rejects readiness but allows confirmed clean completion, including supervised exit0; reentrant stop shares one cleanup; genuine startup and cleanup errors remain failures. Late valid factory results are closed exactly once before handoff for stop/loss/lifetime/signals/disconnect; driver/store errors and timeouts fail, rejected factories retain ownership. Optional trusted local callback is exposed only after binding, preserves six-tool MCP/stop-only IPC, supports explicit epoch-fenced grant/pause/revoke, sanitizes failures and retains stores for unsettled callback work. Supervised factory activation is exercised with synthetic stores. Expected owner31. Independent review found supervised readiness still hardcoded bound-deny after local activation. Entry now sends the exact phase and supervisor accepts only bound-deny/bound metadata, never an activation command; missing/unknown phase is ignored. Default and hooked/malformed child fixtures assert truthful readiness. Test inventory stays owner31/root1346.",
-      "limitations": "Trusted synthetic driver only; no native verifier or ACP wire driver, credential issuance/delivery, model, live profile/queue or product session. No OS sandbox, descendant kill or parent-death plus blocked-child containment. Forced or unconfirmed termination is failure, not successful cleanup. Overlaps js-root.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-acp-owner",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/acp-owner.test.js",
-        "test/acp-fixed-wake.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Owned synthetic ACP stdio standard initialize and HTTP session/new; bounded framing/correlation, unsupported capabilities/permissions and malformed/late/error responses fail closed; no retries; trusted local verifier and current MCP discovery required; pre/post-bind tool denial with fresh SQLite; EOF/scope/lifetime shutdown, no env/Node-option inheritance, sanitized output and exact owned cleanup including simulated signal denial. Current-owner stop/scope-loss composition retains shared stop identity and confirms child exit before store close. Post-bind protocol faults remain failed after confirmed exit0, retaining stores. ACP EOF follow-up (2026-11-10): semantic framing faults remain latched during graceful drain; nonempty byte tails include partial JSON, missing newline and incomplete UTF-8. Process exit fences ownership immediately but successful close additionally requires bounded pipe close and validated natural stdout EOF. One well-formed correlated response to a locally canceled pending request may drain once without reviving ownership. Shutdown-induced pipe errors stay separate. Fourteen new synthetic cases cover post-bind store retention, shutdown faults, exit-before-drain ordering, missing end/close evidence and canceled response validation. Expected ACP51 and root1338; current-head execution and hosted/native/manual acceptance remain separate. Optional ACP fixed wake (2026-11-10): constructor-snapshotted local text and no-argument one-attempt session/prompt after successful deployment verification; caller still owns actual current bind and independent source policy. Bounded matching text/tool/plan/metadata updates are discarded, with strict UTF-8, escaped-surrogate, nesting, aggregate and wire-response boundaries. Same-session cancellation never clears an unknown attempt; unknown close rejects even after exit0 and a valid late response, preserving stores. Default no-prompt/deny-only behavior and existing six-tool/core/supervisor boundaries remain. No live authority, native durable input-id/inspection, product bridge prompt support, durable source ledger or automatic retry is added. Thirty-seven new synthetic cases set expected ACP88 and root1375; observed evidence and full/hosted/native/manual acceptance stay separate. PR162 hosted CI correction (2026-11-10): actual runs42823220070 and42823220082 at head633a418 failed because the synthetic fixed-wake peer truncated its observation JSON while the parent polled it, producing Unexpected end of JSON input in events()/waitForPrompt. Required hosted broker groups, exact inventory and cleanup passed; the new fixture observer alone raced. A test-only staged sibling file and atomic rename preserve whole observations; a deterministic injected-write regression sees the previous complete snapshot throughout empty/partial/full staging and only the complete replacement after publication. No parsing-error catch/retry, skipped assertion, timeout extension or production ACP behavior change. Added one case: current expected ACP89 (51+38), root1376, formal root-plus-tools1427 (1376+51). Historical failed evidence stays unchanged; current-head CI must revalidate.",
-      "limitations": "Synthetic executable and capability only. No real product/session/profile/ticket/model/queue, native commit semantics/effective participant verification, authorization bypass or operational deployment. No OS sandbox, descendant or blocked orphan containment. Forced/unconfirmed termination is failure, and native outcome may remain unknown after clean process exit. Overlaps js-root. The configured fixed wake is a standard protocol subset, not a per-source durable deduplication or native input claim. Caller binding and permissions stay external; unsupported media/resource/config/usage/info update variants fail closed.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-managed-transport",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/managed-transport.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 90,
-      "protocol": "node-tap",
-      "proves": "Product-neutral mutually exclusive managed transport with fresh per-command capability; current actor/epoch/owner checks across waits and retries; pause, failed authorized pause and finalization abort; stale/unauthorized controls cannot cancel; reentrant authorization cannot return successful admission after abort; pending work/outbox claim/owner retention through actual settlement; fresh resume cannot revive old callbacks.",
-      "limitations": "Synthetic managed SDK/transport and fresh private SQLite only. No product code, credential, native OAuth discovery/refresh, actual remote atomic-stop or production ownership cutover. Adapter-specific network guard coverage remains independently required. Overlaps js-root.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
-    },
-    {
-      "id": "js-source-launch",
-      "kind": "command",
-      "tier": "integration",
-      "argv": [
-        "node",
-        "--test",
-        "--test-reporter=tap",
-        "test/source-launch.test.js"
-      ],
-      "cwd": ".",
-      "timeout_seconds": 180,
-      "protocol": "node-tap",
-      "proves": "Actual temporary SQLite/inbox and held-host owner guard, immutable once-only source claim, question/ACK/current context/sender/actor/epoch checks, loss and store faults, private path/binding/capacity/tamper failures, reopen and response-loss reconciliation without relaunch. Owned synthetic SIGKILL-after-claim gap and two concurrent SQLite connections asking the actual parent host for every owner guard. Expected 25 cases, root1371. Independent adversarial review corrected cross-context MAC transplantation by binding every MAC to normalized agent/policy/limits/cap and sealing ordered membership; exact schema checks on every read/commit plus affected-row and sealed-candidate verification refuse ignored-write triggers. Initial text-only question/no-continuation scope is preserved. Twenty-five cases include cross-policy/agent transplantation, same-count signed row substitution, schema changes/ignored writes and normalized-limit order.",
-      "limitations": "Synthetic local policy, no actual native create/model/approval/OAuth/live stores/unattended runtime. Claim is not native admission or outcome; an unknown claim can remain blocked forever. No power/media crash or old-valid-snapshot rollback guarantee. Overlaps js-root.",
-      "env": {
-        "NODE_OPTIONS": "--disable-warning=ExperimentalWarning"
-      }
     }
   ],
   "conflicts": [
@@ -5291,8 +5028,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 271,
-          "end": 271,
+          "start": 280,
+          "end": 280,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]

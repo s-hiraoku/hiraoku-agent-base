@@ -262,6 +262,15 @@
 - **最初の候補。** MCP の Tasks 拡張（SEP-2663、protocol 2026-07-28）で新着を待つツール（仮に `hab_watch`）。Claude Code の公式文書では、待機中に task の結果が届くと Claude は頼まれずに取りかかり、claude.ai の新しいチャットでも、非活動で止まったセッションが通常は結果を拾う（追跡は最長7日）。プロジェクトのスレッド・シークレットチャット・クラウドの予定タスクは対象外と書かれている。Duet と Muse で起きるかは記載がなく、未確認。ツールの実装と台帳の受け方への追加は、実機で起きることを確かめてから別の判断にする。
 - **当てはまらない例。** 予定タスクで受信箱を一定間隔で読む polling（新着がなくても毎回エージェントのトークンを使う）と、画面操作でアプリを起こす方法。これらは今までどおり台帳の `poll` / `on_request` か、本人の個別の判断で扱う。
 
+## ADR-036 / 採用：第 1 世代の受信アダプタ群・`ReceiveSupervisor`・`hab:reply-watch` を廃止し、標準受信をメール型 `/mcp` と 3 モード受信へ一本化する
+
+2026-11-28 JST、owner判断。標準のエージェント接続はメール型 `/mcp`（ADR-020）・3 モード受信 `hook`/`poll`/`on_request`（ADR-032）・任意の受信通知アダプタ `hab:notify`（ADR-021）へ移行しており、ADR-016〜017 で保留・分離されていた第 1 世代の受信部品は実運用から孤立し、しかも `hab_poll → 保存後 ACK` は `hab_inbox` / `hab_peek` と排他的に競合する。全体の設計と保守性を簡素化するため、以下の第 1 世代部品を廃止する。
+
+- **廃止したモジュール・CLI。** `src/owner-integrations/`、`src/recipient-messages/`、`src/adapter-host/`、`src/answer-intents/`、`src/adapter-policy/`、`src/reply-watch/`、`src/agent-sdk/` の未使用 4 ファイル（`receive-host.ts`・`receive-supervisor.ts`・`sqlite-host-control.ts`・`guard.ts`）、`scripts/hab-reply-watch.ts`、`scripts/check-recipient-python-mcp.mjs`、対応テストと `verification/experiments/cross-process-handoff/` を削除した。
+- **残す部品の境界。** `src/agent-sdk/sqlite-host-owner.ts`（host の二重起動ロック）と `src/agent-sdk/mcp-client.ts`（`HabMcpClient` の基盤、`authentication-recovery.ts` を含む）、および A2A 入口（既定無効）が内部で使う 4 ファイル（`receiver.ts`・`sender.ts`・`sqlite-inbox.ts`・`sqlite-outbox.ts`）は本判断では維持する。旧 A2A 入口の去就は後続の判断で扱う。
+- **ローカル MVP。** `demo:hab-mvp`（`scripts/lib/local-mvp.mjs`）は第 1 世代の `AdapterHostCycle` を外し、現行のメール型 `/mcp`（`hab_send`・`hab_inbox`・`hab_reply`・`hab_status`）と `/mcp/delivery`（`hab_peek`・`hab_mark_read`・`hab_resolve`・`hab_submit`）による 13 段階確認へ簡素化した。配送受領だけで `execution_request` を実行しない不変条件と `production_connected: false` は維持する。
+- **変わらないこと。** ADR-015 の受信側判断・承認の分離、ADR-020 のメール型 `/mcp`、ADR-021/023 の受信通知と自動受付、ADR-032 の 3 モード受信、SQLite 配送ストア（ADR-018）は変更しない。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。

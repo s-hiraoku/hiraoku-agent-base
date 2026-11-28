@@ -19,7 +19,9 @@ import {
   sep,
 } from "node:path";
 import { z } from "zod";
-import { sourceKey } from "../../src/adapter-policy/contract.ts";
+
+const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
+const sourceKey = z.strictObject({ sender_id: id, message_id: id });
 
 const named = z
   .string()

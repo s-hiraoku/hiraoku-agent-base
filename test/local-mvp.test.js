@@ -9,6 +9,7 @@ import { join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runLocalMvp } from "../scripts/lib/local-mvp.mjs";
+
 const execute = promisify(execFile);
 const cli = fileURLToPath(
   new URL("../scripts/hab-mvp-demo.mjs", import.meta.url),
@@ -16,16 +17,16 @@ const cli = fileURLToPath(
 const stages = [
   "enrollment",
   "auth-denial",
-  "paused-by-default",
-  "ambiguous-send",
-  "ambiguous-ack",
+  "send-question",
+  "peek-unread",
   "cold-start",
-  "same-id-recovery",
-  "reply-intent-restart",
+  "inbox-read",
+  "reread-retention",
   "reply-roundtrip",
   "offline-store-forward",
   "execution-request-inert",
-  "loop-denial",
+  "same-id-idempotency",
+  "boundary-denials",
   "stopped",
 ];
 function directory(t) {
@@ -62,9 +63,12 @@ test(
       ack_receipts: 4,
     });
     assert.deepEqual(report.mcp_tools, [
-      "hab_ack",
-      "hab_poll",
+      "hab_inbox",
+      "hab_mark_read",
+      "hab_peek",
+      "hab_reply",
       "hab_resolve",
+      "hab_send",
       "hab_status",
       "hab_submit",
     ]);
@@ -152,7 +156,7 @@ test(
       const state = readdirSync(root).find((name) =>
         name.startsWith("hab-local-mvp-"),
       );
-      if (state && readdirSync(join(root, state)).includes("owner-a.sqlite"))
+      if (state && readdirSync(join(root, state)).includes("registry.sqlite"))
         break;
       if (child.exitCode !== null || Date.now() >= until)
         throw Error("mvp did not reach local startup");

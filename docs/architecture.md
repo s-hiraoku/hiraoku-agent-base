@@ -12,8 +12,8 @@ HAB は、エージェント同士がメッセージをやり取りするため�
 | Registry | `src/hab` | アドレス → 不変の `agent_id`、認証グループ、操作権限、停止・失効、改名（v3） |
 | host | `src/host` | 唯一のサーバー。設定・HTTP 入口・監査・管理 CLI・MCP server（`src/host/mcp`）・任意の A2A 入口 |
 | 配送 | `src/delivery` | host の状態ディレクトリにある 1 つの SQLite ファイルで受付・lease・ACK・状態照会（[配送 store](delivery-store.md)） |
-| エージェント SDK | `src/agent-sdk` | 送信側の永続 outbox、保存後に ACK する受信 inbox、MCP client、受信 supervisor |
-| 受信側の任意部品 | `src/adapter-host` ほか | 返信 budget、質問返信 intent、単一 owner、ACP 起動など。標準接続には不要（[receiver](receiver/)） |
+| エージェント SDK | `src/agent-sdk` | MCP client 基盤、host の二重起動ロック（`SQLiteHostOwner`）、A2A 内部の永続 outbox/inbox |
+| 受信通知アダプタ | `src/agent-notify` | 任意のローカル受信通知・カード表示・承認後引渡し（[receiver](receiver/arrival-notifier.md)） |
 
 host は `npm run hab:host` で起動し、アドレスの登録と接続は `npm run hab:admin` で行います。旧名の `hab:host`・`hab:admin` も同じコマンドの別名として残しています。MCP ツール名の `hab_*` は既存の接続設定との互換のために残しています。旧 HAB Relay は 2026-11-07 に廃止し（ADR-016）、配送は一時 NATS JetStream を経て、2026-11-13 から host の SQLite ファイル 1 つで行っています（ADR-018）。
 
@@ -35,7 +35,7 @@ agent SDK と受信サービスは `/mcp/delivery` の低レベルの 5 ツー�
 3. 受信側は `hab_poll` で lease 付きの配送を受け取り、自分の store に保存してから `hab_ack` します。保存に失敗したら ACK せず、lease が切れると再配送されます。
 4. `hab_status` で配送状態を確かめます。
 
-常駐受信はエージェント SDK の `ReceiveHost` と `ReceiveSupervisor` で組み立てます。モデルを使わずに poll・保存・ACK を繰り返し、認証が切れたら待機して、検証後に再開します（[受信 supervisor](receiver/receive-supervisor.md)）。届いた内容を判断して実行するのは受信エージェント自身で、HAB は配送を受け取っただけで Task を実行しません。
+受信の起こし方は、台帳で製品ごとに `hook`（MCP イベント／運用者登録の呼び鈴）・`poll`（製品側の定期確認）・`on_request`（話しかけ時）の 3 方式に分けます（[ADR-032](hab-decisions.md)）。ローカルアプリへのカード表示や承認後引渡しが必要な場合は、任意の受信通知アダプタ（[arrival-notifier](receiver/arrival-notifier.md)）を使います。旧第 1 世代の受信アダプタ群（`src/adapter-host` ほか）と `ReceiveSupervisor` は ADR-036 で廃止しました。届いた内容を判断して実行するのは受信エージェント自身で、HAB は配送を受け取っただけで Task を実行しません。
 
 ## 任意の入口と調整
 

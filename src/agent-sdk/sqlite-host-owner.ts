@@ -3,8 +3,25 @@ import { DatabaseSync } from "node:sqlite";
 import { openSync, closeSync, lstatSync, constants } from "node:fs";
 import { isAbsolute } from "node:path";
 import { createHmac } from "node:crypto";
-import { id, checkGuard } from "./guard.ts";
-import { HostError } from "./sqlite-host-control.ts";
+import { z } from "zod";
+export class HostError extends Error {
+  readonly code: string;
+  constructor(code: string) {
+    super(code);
+    this.code = code;
+  }
+}
+const id = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$(?![\s\S])/);
+function checkGuard(guard: () => void) {
+  if (typeof guard !== "function") throw new HostError("host_forbidden");
+  const result: unknown = guard();
+  if (result && typeof result === "object" && "then" in result) {
+    void Promise.resolve(result).catch(() => {});
+    throw new HostError("host_forbidden");
+  }
+}
 export interface HostOwnerOptions {
   agent_id: string;
   fingerprint_key: Uint8Array;

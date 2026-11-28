@@ -48,11 +48,8 @@ const coreModules = new Set([
     "authentication-recovery.ts",
     "sqlite-outbox.ts",
     "sqlite-inbox.ts",
-    // Agent-side receive host, its stop/epoch control and process owner (ADR-017).
-    "guard.ts",
-    "sqlite-host-control.ts",
+    // Process-lifetime SQLite host owner (used by src/host/server.ts).
     "sqlite-host-owner.ts",
-    "receive-host.ts",
   ].map(sdkPath),
   hostMcpPath("writer-admission.ts"),
   ...registryCore,
@@ -60,8 +57,6 @@ const coreModules = new Set([
 ]);
 const outerModules = new Set([
   sdkPath("mcp-client.ts"),
-  // Timer-driven scheduling over a receive host; no MCP/HTTP of its own.
-  sdkPath("receive-supervisor.ts"),
   ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
     hostMcpPath,
   ),
