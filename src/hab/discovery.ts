@@ -1,6 +1,7 @@
 /** Optional read-only HAB discovery contract. No enrollment or host-session inference. */
 import { z } from "zod";
 import { HAB_ADDRESS_PATTERN } from "./registry.ts";
+import type { PresenceObserver } from "./presence.ts";
 
 export const discoveryId = z
   .string()
@@ -59,5 +60,10 @@ export interface HabDiscoveryPolicy {
 }
 export interface HabDiscoveryService {
   readonly discoveryEnabled?: boolean;
-  discover?(context: unknown, input: unknown): unknown;
+  /** `observe` (ADR-034) fills each entry's `presence`; without it presence is `not_observed`. */
+  discover?(
+    context: unknown,
+    input: unknown,
+    observe?: PresenceObserver,
+  ): unknown;
 }

@@ -7,6 +7,7 @@ import type {
   Receipt,
   Delivery,
   AckReceipt,
+  InboxHistoryCursor,
   InboxMessage,
   ReceivedMessage,
 } from "../messaging/delivery-service.ts";
@@ -469,26 +470,27 @@ export class SqliteDelivery {
       )
         throw new MessagingError("capacity_exceeded");
       if (this.#options.agent_capacity) {
+        // Only unread mail is an agent's load: once read or expired it stops counting.
         const senders = this.#db
           .prepare(
-            `SELECT sender_id,count(*) records,sum(CASE WHEN state IN ${LIVE} THEN 1 ELSE 0 END) pending,coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages GROUP BY sender_id`,
+            `SELECT sender_id,count(*) pending,coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages WHERE state IN ${LIVE} GROUP BY sender_id`,
           )
           .all() as unknown as SenderCapacityUsage[];
         const recipient = this.#db
           .prepare(
-            "SELECT count(*) records,coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages WHERE recipient_id=?",
+            `SELECT coalesce(sum(body_bytes),0) body_bytes FROM delivery_messages WHERE recipient_id=? AND state IN ${LIVE}`,
           )
-          .get(message.recipient_id) as unknown as {
-          records: number;
-          body_bytes: number;
-        };
+          .get(message.recipient_id)!;
         assertAgentCapacity(
           this.#options.agent_capacity,
           this.#options,
           sender,
           size,
           senders,
-          recipient,
+          {
+            recipient_body_bytes: Number(recipient.body_bytes),
+            held_body_bytes: Number(usage.bytes),
+          },
         );
       }
       const thread = JSON.stringify([
@@ -814,6 +816,8 @@ export class SqliteDelivery {
       max_bytes?: number;
       /** Return unread messages only, leaving them unread. */
       peek?: boolean;
+      /** Browse only retained read mail, with an optional continuation position. */
+      history?: { before?: InboxHistoryCursor };
       /** With peek: only messages after this one in inbox order (accepted_at, sender, ID). */
       after?: { accepted_at: number; sender_id: string; message_id: string };
     },
@@ -842,7 +846,8 @@ export class SqliteDelivery {
       if (this.#identity(context, "poll", authorization) !== recipient)
         throw new MessagingError("forbidden");
       const now = Date.now();
-      this.#refresh(now);
+      const history = options.history;
+      if (!history) this.#refresh(now);
       const out: InboxMessage[] = [];
       const allowed = (row: Row) => {
         try {
@@ -874,17 +879,19 @@ export class SqliteDelivery {
         (only ? " AND message_id=?" : "") + (from ? " AND sender_id=?" : "");
       const args = [...(only ? [only] : []), ...(from ? [from] : [])];
       const after = options.peek ? options.after : undefined;
-      const unread = this.#db
-        .prepare(
-          `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
-        )
-        .all(
-          recipient,
-          ...args,
-          ...(after
-            ? [after.accepted_at, after.sender_id, after.message_id]
-            : []),
-        ) as unknown as Row[];
+      const unread = history
+        ? []
+        : (this.#db
+            .prepare(
+              `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='pending'${sql}${after ? " AND (accepted_at,sender_id,message_id)>(?,?,?)" : ""} ORDER BY accepted_at,sender_id,message_id`,
+            )
+            .all(
+              recipient,
+              ...args,
+              ...(after
+                ? [after.accepted_at, after.sender_id, after.message_id]
+                : []),
+            ) as unknown as Row[]);
       let spent = 0;
       // Whether one more message still fits the response; the first always does,
       // since a single message is bounded by the contract's text limit.
@@ -907,7 +914,8 @@ export class SqliteDelivery {
         const requestId = `inbox-${randomUUID()}`;
         this.#db
           .prepare(
-            // The kept body stays charged to the byte quotas until #refresh releases it.
+            // The kept body stays in the store-wide byte ceiling until #refresh releases it;
+            // the sender's and recipient's unread budgets stop counting it now.
             "UPDATE delivery_messages SET state='acked',token_hash=NULL,ack_request_id=?,ack_fingerprint=?,ack_receipt_id=?,acked_at=?,retain_until=? WHERE sender_id=? AND message_id=? AND state='pending'",
           )
           .run(
@@ -925,19 +933,28 @@ export class SqliteDelivery {
       }
       if (
         !options.peek &&
-        (options.include_read || only) &&
+        (history || options.include_read || only) &&
         out.length < options.limit
       ) {
+        const before = history?.before;
+        const cutoff = history ? "acked_at<=?" : "acked_at<?";
+        const bounds = before
+          ? " AND (acked_at,accepted_at,sender_id,message_id)<(?,?,?,?)"
+          : "";
+        const order = history
+          ? "acked_at DESC,accepted_at DESC,sender_id DESC,message_id DESC"
+          : "acked_at DESC,accepted_at DESC,sender_id,message_id";
         const read = this.#db
           .prepare(
-            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND acked_at<?${sql} ORDER BY acked_at DESC,accepted_at DESC,sender_id,message_id`,
+            `SELECT * FROM delivery_messages WHERE recipient_id=? AND state='acked' AND body IS NOT NULL AND acked_at>? AND ${cutoff}${sql}${bounds} ORDER BY ${order}`,
           )
-          .all(
+          .iterate(
             recipient,
             now - READ_BODY_RETENTION_MS,
             now,
             ...args,
-          ) as unknown as Row[];
+            ...(before ?? []),
+          ) as unknown as Iterable<Row>;
         for (const row of read) {
           if (out.length >= options.limit) break;
           if (!allowed(row)) continue;

@@ -323,7 +323,7 @@ wake/pushは「保存済みinboxをpollせよ」という補助通知とする�
 
 ## 11. 個体別公平性と返信ループ制御
 
-個体別に送信rate、保有message数・bytes、同時poll・lease、処理待ち数を制限する。全体容量上限と個体別quotaは別にし、1個体が他個体の枠をすべて消費しない予約／公平な受付を設ける。[message個体別容量](delivery/agent-capacity.md)は任意のhost設定として実装し、verified senderごとのpending・本文bytes・保持record上限と、保護対象の未使用最低枠を受付transactionで検証する。予約は認証・宛先容量・blob容量を代替しない。
+個体別に送信rate、保有message数・bytes、同時poll・lease、処理待ち数を制限する。全体容量上限と個体別quotaは別にし、1個体が他個体の枠をすべて消費しない予約／公平な受付を設ける。[message個体別容量](delivery/agent-capacity.md)は任意のhost設定として実装し、verified senderごとの未読件数・未読本文bytes上限、宛先ごとの未読本文bytes上限と、保護対象の未使用最低枠を受付transactionで検証する。既読・期限切れのmessageは個体別の枠に数えず、保持recordは全体の上限だけで扱う（ADR-033）。予約は認証・宛先容量・blob容量を代替しない。
 
 処理は個体単位の公平な順番と有限batchで進め、大きなtransactionや長いagent処理をhostのwriter内で実行しない。[公平pollと永続scan](delivery/fair-poll.md)は任意host設定で実装し、最大scan数の異なるsenderから各1候補を巡回する。許可されないkindで位置を失わず、lease／backoff／現在権限を維持する。これは配送選択回数の公平性であり、writer受付やbyte／実行時間の公平性・遅延SLOの証明ではない。
 

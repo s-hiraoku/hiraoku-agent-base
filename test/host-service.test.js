@@ -156,13 +156,22 @@ test("the audit names each requested MCP method by a fixed code, refused methods
   const refused = events.find(
     (event) => event.category === "method" && event.method === "prompts_list",
   );
-  assert.ok(
-    events.some(
-      (event) =>
-        event.correlation === refused.correlation &&
-        event.category === "resource_rejected",
-    ),
-  );
+  // One refusal writes one resource_rejected line, so audit counts are not doubled.
+  for (const method of ["prompts_list", "other"]) {
+    const line = events.find(
+      (event) => event.category === "method" && event.method === method,
+    );
+    assert.equal(
+      events.filter(
+        (event) =>
+          event.correlation === line.correlation &&
+          event.category === "resource_rejected",
+      ).length,
+      1,
+      method,
+    );
+  }
+  assert.ok(refused);
   const raw = readFileSync(join(f.dir, "audit/audit.jsonl"), "utf8");
   assert.ok(!raw.includes("x-private"));
   assert.ok(!raw.includes("prompts/list"));
@@ -187,7 +196,8 @@ test("configured delivery queue requires a per-sender capacity smaller than the 
       ...queue,
       agent_capacity: {
         ...queue.agent_capacity,
-        max_records_per_sender: queue.max_records,
+        // A removed key: read history is no longer an agent's budget.
+        max_records_per_sender: 25,
       },
     },
     {
@@ -340,7 +350,9 @@ test("example host config enables the per-sender capacity policy", () => {
     readFileSync(resolve("config/host-service.example.json"), "utf8"),
   );
   const queue = example.delivery.queue;
-  assert.ok(queue.agent_capacity.max_records_per_sender < queue.max_records);
+  assert.ok(
+    queue.agent_capacity.max_body_bytes_per_sender < queue.max_body_bytes,
+  );
   assert.ok(queue.agent_capacity.max_pending_per_sender < queue.max_pending);
 });
 test("CLI requires explicit config and prints no config contents", async () => {

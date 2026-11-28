@@ -28,6 +28,8 @@ export interface ProductScreenOptions {
   display_command?: TrustedCommand;
   /** Gives the user-approved request to the bound session. */
   handoff: (message: PeekedMessage) => Promise<HandoffResult>;
+  /** Optional: refuses a request before it is marked read (AgentScreen.precheck). */
+  precheck?: (message: PeekedMessage) => "unsupported" | undefined;
   handoff_capability?: "unsupported" | "bound-session";
   now?: () => number;
 }
@@ -42,6 +44,7 @@ export class ProductScreen implements AgentScreen {
   readonly #file: JsonlScreen;
   readonly #display: TrustedCommand | undefined;
   readonly #handoff: (message: PeekedMessage) => Promise<HandoffResult>;
+  readonly precheck?: (message: PeekedMessage) => "unsupported" | undefined;
   constructor(options: ProductScreenOptions) {
     this.target = options.target;
     this.capabilities = {
@@ -52,6 +55,7 @@ export class ProductScreen implements AgentScreen {
     this.#file = new JsonlScreen(options.path, options.target, options.now);
     this.#display = options.display_command;
     this.#handoff = options.handoff;
+    if (options.precheck) this.precheck = options.precheck;
   }
   async #run(event: Record<string, unknown>) {
     if (this.#display)

@@ -27,7 +27,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -80,11 +81,14 @@ h4 {
 }
 
 main.page {
+  display: grid;
+  gap: 20px;
   padding-top: 36px;
   padding-bottom: 36px;
 }
 
 .panel {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 24px;
@@ -141,7 +145,8 @@ label {
   font-weight: 600;
 }
 input,
-select {
+select,
+textarea {
   min-height: 40px;
   padding: 6px 10px;
   background: #fff;
@@ -154,6 +159,108 @@ input {
 }
 select {
   min-width: 122px;
+}
+textarea {
+  width: 100%;
+  resize: vertical;
+  font-weight: 400;
+}
+textarea:read-only {
+  background: #f4f6f2;
+}
+
+.mail-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+  margin-top: 16px;
+}
+.mail-columns:has(> [hidden]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mail-box,
+.mail-item {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+.mail-box,
+.mail-form {
+  display: grid;
+  gap: 12px;
+}
+.mail-field {
+  display: grid;
+  gap: 4px;
+}
+.mail-box select {
+  min-width: 0;
+  width: 100%;
+}
+.mail-heading,
+.mail-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mail-heading {
+  justify-content: space-between;
+}
+.mail-sender,
+.mail-status {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.mail-status:empty,
+.mail-items:empty {
+  display: none;
+}
+.mail-history {
+  margin-top: 20px;
+}
+.mail-history > .mail-heading {
+  margin-bottom: 8px;
+}
+.mail-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mail-history .mail-items {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  margin-top: 8px;
+}
+.mail-item > * + * {
+  margin-top: 8px;
+}
+.message-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mail-evidence {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 2fr);
+  gap: 2px 12px;
+  margin: 8px 0 0;
+}
+.mail-evidence dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mail-evidence dt {
+  color: var(--muted);
+}
+.mail-dialog {
+  max-width: 510px;
+}
+.mail-dialog .message-body {
+  margin: 0;
 }
 
 .list-meta {
@@ -329,5 +436,13 @@ dialog h2 {
   }
   .filters {
     margin-top: 12px;
+  }
+  .mail-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #mail-workspace > .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 }

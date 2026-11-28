@@ -2,11 +2,13 @@ import { MessagingError } from "../messaging/delivery-service.ts";
 import type {
   Authorization,
   DeliveryService,
+  InboxHistoryCursor,
 } from "../messaging/delivery-service.ts";
 import type { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { HabDirectory } from "../hab/directory.ts";
 import type { SqliteDelivery } from "../delivery/sqlite-delivery.ts";
 import { InboxArrivals } from "../hab/inbox-wait.ts";
+import type { PresenceObserver } from "../hab/presence.ts";
 
 /** HAB composition: the Registry authorizes each operation and the SQLite store delivers. Public operations stay synchronous. */
 export class HabDeliveryService implements DeliveryService, HabDirectory {
@@ -64,7 +66,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
       this.#backend.ackWithAuthorization(context, input, authorization),
     );
   }
-  /** Reads the caller's host inbox; unread messages become read (ACKed). Runs under `poll`. */
+  /** Reads the caller's host inbox under `poll`. Ordinary inbox reads ACK unread messages. */
   inbox(
     context: unknown,
     options: {
@@ -74,6 +76,7 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
       sender_id?: string;
       max_bytes?: number;
       peek?: boolean;
+      history?: { before?: InboxHistoryCursor };
       after?: { accepted_at: number; sender_id: string; message_id: string };
     },
   ) {
@@ -250,9 +253,9 @@ export class HabDeliveryService implements DeliveryService, HabDirectory {
   get discoveryEnabled() {
     return this.#registry.discoveryEnabled;
   }
-  discover(context: unknown, input: unknown) {
+  discover(context: unknown, input: unknown, observe?: PresenceObserver) {
     this.#assertCurrent();
-    return this.#registry.discover(context, input);
+    return this.#registry.discover(context, input, observe);
   }
   selectAddress(context: unknown, address: string, expectedAgentId?: string) {
     this.#assertCurrent();

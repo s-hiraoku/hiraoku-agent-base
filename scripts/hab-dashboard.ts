@@ -1,10 +1,17 @@
 import { pathToFileURL } from "node:url";
 import { startDashboard } from "../src/admin/server.ts";
+import { hostAdminErrorCode } from "../src/host/admin.ts";
 
 export async function main(args = process.argv.slice(2)) {
-  if (args.length !== 2 || args[0] !== "--config" || !args[1]) {
+  const [option, configPath, mode] = args;
+  if (
+    option !== "--config" ||
+    !configPath ||
+    args.length > 3 ||
+    (mode !== undefined && mode !== "--operator")
+  ) {
     process.stderr.write(
-      "使い方: npm run hab:dashboard -- --config <host-config>\n",
+      "使い方: npm run hab:dashboard -- --config <host-config> [--operator]\n",
     );
     process.exitCode = 2;
     return;
@@ -16,7 +23,9 @@ export async function main(args = process.argv.slice(2)) {
   process.once("SIGINT", stop);
   let dashboard;
   try {
-    dashboard = await startDashboard(args[1]);
+    dashboard = await startDashboard(configPath, {
+      operator: mode === "--operator",
+    });
     if (abort.signal.aborted) return;
     process.stdout.write(dashboard.launcherPath + "\n");
     await new Promise<void>((resolve) => {
@@ -33,8 +42,12 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  main().catch(() => {
-    process.stderr.write("dashboard_start_failed\n");
+  main().catch((error) => {
+    const detail =
+      hostAdminErrorCode(error) === "operator_mail_not_configured"
+        ? " operator_mail_not_configured"
+        : "";
+    process.stderr.write("dashboard_start_failed" + detail + "\n");
     process.exitCode = 1;
   });
 }

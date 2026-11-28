@@ -22,6 +22,11 @@ import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabDirectory } from "./directory.ts";
 import { habDiscoverySchema } from "./discovery.ts";
 import type { HabDiscoveryService } from "./discovery.ts";
+import type {
+  Presence,
+  PresenceObserver,
+  PresenceReceive,
+} from "./presence.ts";
 import { HAB_ADDRESS_PATTERN, parseHabAddress } from "./registry.ts";
 import { HabEventError, habEventParamSchemas } from "./events.ts";
 import type { HabEvents } from "./events.ts";
@@ -43,6 +48,7 @@ import {
 import {
   HAB_INBOX_APP_HTML,
   HAB_INBOX_APP_URI,
+  HAB_INBOX_APP_LEGACY_URIS,
   MCP_APP_MIME_TYPE,
   habInboxAppResourceMeta,
   habInboxAppToolMeta,
@@ -217,6 +223,10 @@ export interface RecipientAbsence {
    * so it is no longer absent. Never fails the read it follows.
    */
   noteRecipientRead(context: unknown): void;
+  /** ADR-032: the caller read its inbox with hab_inbox (for poll_overdue and presence). */
+  noteInboxRead?(context: unknown): void;
+  /** ADR-034: what HAB observed about an address, shown as its hab_discover presence. */
+  presence?(agentId: string, receive: PresenceReceive | null): Presence;
 }
 export function createHabMcpServer(
   service: HabMcpService,
@@ -266,20 +276,25 @@ export function createHabMcpServer(
   if (events && catalog === "agent")
     registerHabEvents(server, events, resolveContext, gate);
   if (service.discoveryEnabled === true) {
+    // ADR-034: presence comes from the same events store as the absence policy.
+    const observe: PresenceObserver | undefined =
+      typeof absence?.presence === "function"
+        ? (agentId, receive) => absence.presence!(agentId, receive)
+        : undefined;
     if (typeof service.discover !== "function")
       throw new MessagingError("invalid_hab_mcp_service");
     server.registerTool(
       "hab_discover",
       {
         description:
-          "Find agents and addresses you can message, or check which HAB address this connection uses (action `whoami`). A listed name is not proof that its agent is running. Availability does not reserve or authorize registration.",
+          "Find agents and addresses you can message, or check which HAB address this connection uses (action `whoami`). Each entry's `presence` is what HAB observed (doorbell, inbox reads, ended session); `available` means a notice should reach it, not that its agent will act. Availability does not reserve or authorize registration.",
         inputSchema: publishedInputSchema(habDiscoverySchema),
         annotations: { readOnlyHint: true, idempotentHint: true },
         ...security,
       },
       (input: unknown) =>
         executeDeliveryMcpOperation(resolveContext, gate, (context) =>
-          service.discover!(context, input),
+          service.discover!(context, input, observe),
         ),
     );
   }
@@ -413,26 +428,38 @@ function createAgentServer(
   server.server.registerCapabilities({ tools: { listChanged: false } });
   // ADR-026: the inbox card for MCP Apps hosts. A static page with no data of its own;
   // hosts without MCP Apps never read it.
-  server.registerResource(
-    "hab-inbox-card",
-    HAB_INBOX_APP_URI,
-    {
-      title: "HAB 受信箱",
-      description: "Draws hab_inbox results as cards.",
-      mimeType: MCP_APP_MIME_TYPE,
-      _meta: habInboxAppResourceMeta,
-    },
-    () => ({
-      contents: [
-        {
-          uri: HAB_INBOX_APP_URI,
-          mimeType: MCP_APP_MIME_TYPE,
-          text: HAB_INBOX_APP_HTML,
-          _meta: habInboxAppResourceMeta,
-        },
-      ],
-    }),
-  );
+  for (const [name, uri] of [
+    ["hab-inbox-card", HAB_INBOX_APP_URI],
+    ...HAB_INBOX_APP_LEGACY_URIS.map(
+      (legacy) =>
+        [`hab-inbox-card-${legacy.slice("ui://hab/".length)}`, legacy] as const,
+    ),
+  ] as const)
+    server.registerResource(
+      name,
+      uri,
+      {
+        title: "HAB 受信箱",
+        description: "Draws hab_inbox results as cards.",
+        mimeType: MCP_APP_MIME_TYPE,
+        _meta: habInboxAppResourceMeta,
+      },
+      () => ({
+        contents: [
+          {
+            uri,
+            mimeType: MCP_APP_MIME_TYPE,
+            text: HAB_INBOX_APP_HTML,
+            _meta: habInboxAppResourceMeta,
+          },
+        ],
+      }),
+    );
+  // The card list never changes while the server runs. Left to the SDK, registering a
+  // resource advertises `resources.listChanged: true`, and a host on the 2026-07-28 protocol
+  // (Claude Duet) then opens `subscriptions/listen` streams that this host refuses, retrying
+  // on every connection.
+  server.server.registerCapabilities({ resources: { listChanged: false } });
   const securityMeta =
     (security as { _meta?: Record<string, unknown> })._meta ?? {};
   for (const name of Object.keys(habAgentMcpSchemas)) {
@@ -486,22 +513,25 @@ function createAgentServer(
                   throw new MessagingError("recipient_absent");
               }
             }
-            // Read before the tool runs: hab_inbox marks the mail read (ADR-027).
-            const reminder = inboxReminder(
-              events,
-              service,
-              prepared.context,
-              tool === "hab_inbox",
-            );
+            const args = prepared.input as Record<string, unknown>;
+            const browsingHistory =
+              tool === "hab_inbox" && args.read_history !== undefined;
+            const readingInbox = tool === "hab_inbox" && !browsingHistory;
+            // Read before the tool runs: a new inbox read marks the mail read (ADR-027).
+            const reminder = browsingHistory
+              ? null
+              : inboxReminder(events, service, prepared.context, readingInbox);
             const result = runHabAgentTool(
               agent,
               prepared.context,
               tool,
-              prepared.input as Record<string, unknown>,
+              args,
               maxResponseBytes,
             );
-            if (tool === "hab_inbox") {
-              events?.noteInboxRead(prepared.context);
+            if (readingInbox) {
+              // ADR-034: the loopback endpoint has no events but shares their store, so
+              // its reads count for poll_overdue and presence too.
+              (events ?? absence)?.noteInboxRead?.(prepared.context);
               absence?.noteRecipientRead(prepared.context);
             }
             const output = reminder

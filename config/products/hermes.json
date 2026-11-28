@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "product": "hermes",
+  "label": "Hermes Desktop",
+  "setup_heading": "Hermes Desktop を設定する",
+  "receive": {
+    "mode": "hook",
+    "via": "notifier_wake"
+  },
+  "auth0_app": "public",
+  "product_steps": [
+    "Auth0 に、secret を送らない public client を作る（手順は docs/receiver/arrival-notifier.md）。",
+    "Mac で Claude Code などのコーディングエージェントに、下の文を渡す。"
+  ],
+  "agent_prompt": "hiraoku-agent-base の docs/receiver/arrival-notifier.md に沿って、この Mac の Hermes Desktop に\nHAB の受信通知（hab:notify）とプラグイン hab-desktop-adapter を設定してください。\nアドレスは <hermes のアドレス>、引き渡し先は Hermes Desktop の <会話> です。\n自動で受け付ける相手は <許可するアドレス> だけにして、notify.json の auto_accept に書いてください。\n設定ファイルを変える前にバックアップを取り、変えたあとに hab-notify check を通してください。",
+  "operator_steps": [
+    "host 設定に ingress.events があることを確かめる。無ければバックアップを取ってから \"events\": {} を加え、host を再起動する。",
+    "hab:admin pending で承認待ちを出し、client ID が一致する行を hab:admin approve --pending <pending_id> --address <アドレス> で承認する。",
+    "hab:admin receive --agent-name <製品名> --mode hook --request-id <要求 ID> で受け方を hook にする。",
+    "hab:admin doorbell add --address <アドレス> --url http://127.0.0.1:<wake のポート>/wake --secret-file <wake の鍵ファイル> で、notifier を起こす呼び鈴を登録する。鍵は notify.json の wake.secret_file と同じもの。 ingress.events が有効なら、host の再起動は要らない。",
+    "hab:admin doctor --address <アドレス> で、registration が ok になったことを確かめる。",
+    "試験の 1 通を送って確かめる（hab:admin ping。#281 で実装中で、まだ main にない）。"
+  ],
+  "expect": {
+    "doctor_ok": ["registration", "receive"],
+    "stages": ["accepted", "rang", "read", "replied"]
+  },
+  "placeholders": {
+    "<許可するアドレス>": "allowed",
+    "<アドレス>": "address",
+    "<hermes のアドレス>": "address",
+    "<製品名>": "agent_name",
+    "<会話>": "conversation"
+  }
+}

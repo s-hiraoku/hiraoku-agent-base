@@ -243,7 +243,10 @@ test("second loopback ingress exposes only its fixed metadata, the agent and del
   });
   assert.equal(meta.status, 200);
   assert.equal(meta.body.resource, resource);
-  assert.deepEqual(meta.body.scopes_supported, HAB_OAUTH_SCOPES);
+  assert.deepEqual(meta.body.scopes_supported, [
+    ...HAB_OAUTH_SCOPES,
+    "offline_access",
+  ]);
   const denied = await wire(h, { path: "/hab/mcp" });
   assert.equal(denied.status, 401);
   assert.match(

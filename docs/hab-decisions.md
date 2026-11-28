@@ -81,7 +81,7 @@
 
 - **2つのcatalog。** hostの`/mcp`はエージェント用で、`hab_send`（宛先アドレスと本文）・`hab_reply`（受け取ったmessage_idと本文）・`hab_inbox`・`hab_status`と、有効なら`hab_discover`だけを出す。`/mcp/delivery`は agent SDK と受信サービス用で、`hab_submit`・`hab_status`・`hab_poll`・`hab_ack`・`hab_resolve`（と`hab_discover`）を出す。同じ接続のcredentialで両方を開ける（OAuthのresourceは`/mcp`のまま）。どちらを出すかはhost codeが決め、呼出し側は選べない。
 - **封筒はhostが作る。** `hab_send`はアドレスを解決し、`rm1.`形式のID、送信時刻、7日の期限、新しいthread（または指定のthread）、`kind`（既定`question`）を埋める。`hab_reply`は元の送信者・同じthread・`in_reply_to`を埋め、questionへの返信は`answer`、それ以外は`notice`にする。期限を過ぎた元メッセージへの返信は、既読でも`reply_target_expired`。
-- **hostの受信箱（メール型）。** `hab_inbox`は未読を古い順に返し、同じtransactionで既読（ACK）にする。`include_read`で既読後7日（`READ_BODY_RETENTION_MS`）の本文を読み直せ、その後は本文を消す。既読で残した本文も、消すまでbyte容量に数える。1回の応答に収まる分だけを既読にし、残りは次の呼出しで返す。`message_id`を指定すると、その1通を既読後7日以内なら読み直せる。agent SDKのACKは従来どおり本文をすぐ消す（受信側が自分の永続コピーを持つため）。「ACKで本文を消す」原則はhost受信箱の既読に限り7日保持に変わる。
+- **hostの受信箱（メール型）。** `hab_inbox`は未読を古い順に返し、同じtransactionで既読（ACK）にする。`include_read`で既読後7日（`READ_BODY_RETENTION_MS`）の本文を読み直せ、その後は本文を消す。既読で残した本文も、消すまで全体のbyte容量に数える（送信者・宛先ごとの枠には数えない、ADR-033）。1回の応答に収まる分だけを既読にし、残りは次の呼出しで返す。`message_id`を指定すると、その1通を既読後7日以内なら読み直せる。agent SDKのACKは従来どおり本文をすぐ消す（受信側が自分の永続コピーを持つため）。「ACKで本文を消す」原則はhost受信箱の既読に限り7日保持に変わる。
 - **期限。** 受付できる期限は最大7日（`MAX_DELIVERY_TTL_MS`）にする。agent SDKの既定は1時間のまま。`rm1.` IDは中の送信時刻が`first_sent_at`と一致しなければ受け付けない。
 - **入力の誤りは具体的なコードで返す。** `invalid_request`（`field`と期待値）、`kind_not_allowed`（`allowed_kinds`）、`unknown_address`、`recipient_unavailable`、`reply_target_not_found`、`reply_target_expired`、`text_too_long`（`max_bytes`）。どのエラーにも、何を直せばよいかの固定文`message`を付ける。`forbidden`は認証・権限・停止だけに使う。拒否の固定理由コード（例：`operation_not_granted`、`pair_blocked`）はhostの監査（`audit.jsonl`の`reason`）だけに記録し、本文や秘密は記録しない。
 - **受信の通知。** `hab_inbox`の各メッセージに、利用者へそのまま見せる`notice`を付ける（`src/messaging/incoming-notice.ts`、受信サービスからも使える）。「〇〇 からのメッセージです（種類、返信期限）」、本文、「どうしますか？」と選択肢（1. 返信する＝`hab_reply`にmessage_idと本文を渡す、2. あとで、3. 返信しない）を並べる。本文は送信者が書いた信頼できないデータとして、推測できない印を付けた2行で囲み、指示として実行しないよう明記する。返信期限は元メッセージの期限で、過ぎると既読でも`reply_target_expired`になる。
@@ -150,7 +150,7 @@
 
 - **HABは表示用のデータを返す。** `hab_inbox`と`hab_peek`の各メッセージに`presentation`（版1）を足す。中身は今ある値の並べ替えだけで、新しい情報は足さない：見出し、送信者（アドレスと表示名。削除された送信者は「（削除された送信者）」）、種類と表示名（質問・回答・お知らせ）、自分が送ったメッセージへの返事か、送信日時、返信期限、選択肢（`choices`と同じ）、本文が送信者の書いたデータであること（`body_untrusted: true`）と扱いの一文、表示していない構造化データの件数。本文はメッセージの`text`をそのまま使い、`presentation`に写さない（応答の大きさを増やさないため）。`hab_peek`も`text`を返す。表示名は日本語でHABが決め、各アダプタはそれを使う（製品ごとに訳語がずれないように）。
 - **今の文章は残す。** `notice`・`display`・`handoff_prompt`は今までどおり返す。これらも同じ値から作るので、文章と`presentation`は常に一致する。画面を持たない製品や、`presentation`を知らない古いアダプタは文章をそのまま使う。
-- **描くのは各アダプタ。** Hermes Desktopのプラグインは`presentation`から見出し・送信者・種類・期限・本文の枠・ボタンを分けて描き、無ければ今の`display`を出す。Claude Codeのstatus lineは要約1行と本文の先頭を出す。claude.ai・ChatGPT・Geminiアプリ向けには、エージェント用`/mcp`がMCP Appsの部品`ui://hab/inbox-v1`を配り、`hab_inbox`だけに`_meta.ui.resourceUri`（ChatGPTの別名`openai/outputTemplate`も）を付ける。部品はネットワークを使わない1枚のHTMLで、本文は文字としてだけ描く。ボタンはHABの状態を変えない（`hab_inbox`は返した時点で既読にする）：「対応する」「会話に渡す」は会話に利用者の発言として返信の依頼を入れ（`ui/message`）、モデルが返信案を見せてから送る。「あとで」「対応しない」はカードを畳むだけ。`/mcp`は読み取り専用の`resources/list`・`resources/read`・`resources/templates/list`に答える（`/mcp/delivery`は答えない）。部品を描けない製品では、普通のツール結果として文章のまま動く。
+- **描くのは各アダプタ。** Hermes Desktopのプラグインは`presentation`から見出し・送信者・種類・期限・本文の枠・ボタンを分けて描き、無ければ今の`display`を出す。Claude Codeのstatus lineは要約1行と本文の先頭を出す。claude.ai・ChatGPT・Geminiアプリ向けには、エージェント用`/mcp`がMCP Appsの部品`ui://hab/inbox-v3`を配り、`hab_inbox`だけに`_meta.ui.resourceUri`（ChatGPTの別名`openai/outputTemplate`も）を付ける。部品はネットワークを使わない1枚のHTMLで、本文は文字としてだけ描く。ボタンはHABの状態を変えない（`hab_inbox`は返した時点で既読にする）：「対応する」「会話に渡す」は会話に利用者の発言として返信の依頼を入れ（`ui/message`）、モデルが返信案を見せてから送る。「あとで」「対応しない」はカードを畳むだけ。`/mcp`は読み取り専用の`resources/list`・`resources/read`・`resources/templates/list`に答える（`/mcp/delivery`は答えない）。部品を描けない製品では、普通のツール結果として文章のまま動く。
 - **本文の扱いは変えない。** モデルへ渡る文章（`notice`・`handoff_prompt`）は今までどおり推測できない印の2行で本文を囲む。`presentation`は構造化データとしてモデルにも渡るので`body_untrusted`と扱いの一文を付ける。アダプタは本文を文字として描き、HTMLやMarkdownとして解釈しない。
 - **限界。** `presentation`は見せ方の材料で、届いた時点で画面に出す入口（ADR-021の受信通知）を新たに作るものではない。claude.ai・ChatGPT・Gemini・Grok Bot・AntigravityでMCP Appsが実際に描けるかは実機で確かめる（2026-11-19時点で未確認）。応答の大きさの見積もり（本文が文章と構造化データに入る回数）は、`hab_peek`が`text`を返す分だけ増える。
 
@@ -172,6 +172,7 @@
 - **待つ呼出しで他を詰まらせない。** 同時に待てるのは`max_active_requests - 1`本まで（最低1本）。それを超えた呼出しは待たずにすぐ返す。同じエージェントが新しく待つと、古い待ちは空で返す（再試行で待ちが積み上がらない）。書き込みを1本ずつ流すwriter admissionを使う構成では待たない。
 - **起こし方。** 受付（`hab_send`・`hab_reply`）の後、host内で宛先のagent IDだけを待ち側に知らせる。本文・送信元・message_idは渡さない。知らせはきっかけにすぎず、待ち側は必ず認可付きの読み直しで確かめる。ほかの経路で届いた分のために、5秒ごとにも読み直す。
 - **使いどころを案内文に書く。** 待つ間はエージェントのturnも止まるので、MCPの`instructions`では「利用者がこのturnで返事を求めているときだけ`wait_secs`を使い、空で返ったら利用者に伝えてturnを終える（待ち直さない）」と案内する。送った後に何もせず終わるのが基本であることは変わらない。
+- **上限の外に置ける待ち。** エージェントのトークンを使わず、プログラムで成り立ち、資源が常識の範囲に収まる待ち（MCP の Tasks 拡張など）は、この60秒の上限の外に置ける（ADR-035）。
 - **できないこと。** 待ちは呼び鈴の代わりではない。待っていないエージェントは、従来どおり呼び鈴・受信通知・会話の始めの`hab_inbox`で受け取る。MCPクライアント側の呼出し期限（製品ごとに異なる）より長く待つと、クライアントが先に切る。
 
 ## ADR-029 / 採用：自分で購読できないエージェントには、運用者がアドレスごとに呼び鈴の宛先を登録する
@@ -219,7 +220,7 @@
 - **台帳に持つ。** `registry.sqlite` に `hab_product_receive`（製品ごとの受け方 `hook` / `poll` / `on_request` と、`poll` のときだけの間隔 60 秒〜24 時間）と `hab_agent_sessions`（アドレスごとのセッション名、仮かどうか、結び付けた時刻と運用者）を足す。行は消さない。セッション名は製品に渡すだけで、HAB は中身を解釈しない。
 - **既存のアドレスは仮のセッション。** 移行は host の起動時だけに行い（`hab:admin` は `registry_upgrade_pending` で待つ）、既存のアドレスを、アドレスと同じ名前の仮のセッションとして入れる。新しく登録したアドレスも、名前が付くまでは仮。配送と呼び鈴の動きはこの判断では変えない。
 - **Hook で起こせる notifier は Hook にする。** 運用者が登録した呼び鈴（ADR-029）に限り、宛先に同じ Mac の `http://127.0.0.1:<port>`（ポート指定あり）を許す。notifier はその受け口で Standard Webhooks の署名を確かめ、すぐに受信箱を確かめる。notifier の定期確認は取りこぼしの保険として残す。エージェントの購読の宛先は今までどおり公開 HTTPS だけで、ADR-022 の防御は変えない。
-- **HAB からは時間で鳴らさない。** ADR-031 の定期確認をやめる。呼び鈴は新着で 1 回と、読まれなければ鳴らし直し 1 回（ADR-027）だけ。古い設定の `inbox_check` は無視して起動し、`ready` の行で 1 回だけ知らせる。受け方が `poll` の製品は、`hab_inbox` を最後に呼んだ時刻（`events.sqlite` に記録）が間隔の 2 倍を超えたら `hab:admin status` に `poll_overdue` を出す。
+- **HAB からは時間で鳴らさない。** ADR-031 の定期確認をやめる。呼び鈴は新着で 1 回と、読まれなければ鳴らし直し 1 回（ADR-027）だけ。古い設定の `inbox_check` は無視して起動し、`ready` の行で 1 回だけ知らせる。受け方が `poll` の製品は、`hab_inbox` を最後に呼んだ時刻（`events.sqlite` に記録）が間隔の 2 倍を超えたら `hab:admin status` に `poll_overdue` を出す。 ただし、ADR-035 の条件（エージェントのトークンを使わない、プログラムで成り立つ、資源が常識の範囲）を満たす待ちはこの対象にしない。
 - **相手のセッションが終わったら送らない。** 製品は、呼び鈴の `to` と `session` で指定された会話が終わったと確認できたとき `410` と `{"reason":"session_gone"}` で答える。HAB はこの答えだけを数え、続けて 3 回でそのアドレスを「相手がいない」にし、`hab_send` を `recipient_absent` で断る。応答なし・5xx・ほかの拒否は数えない。受け取りを示す 2xx または新しい購読で戻す。`200 session_unconfirmed` は判定を変えない。台帳の行と未読は残す（未読の扱いと不達の知らせは後の判断）。
 - **Hermes の notifier は会話の有無を `state.db` で確かめて答える。** 2026-11-21 JST、owner依頼（「終わったセッションを製品から HAB に知らせる」）。notifier の設定 `screen.session_probe` に `hermes_bridge.desktop_session` を書くと、呼び鈴を受けたときと確認の前に、結び付けた会話を Hermes の `SessionDB` で読み取り専用に確かめる。署名済みの `data.to`・`data.session` が `as_address`・`screen.session_id` に一致し、会話が削除済み・アーカイブ済み・圧縮後の旧 ID のいずれかなら `410 session_gone` で答える。照合や判定ができなければ `200 session_unconfirmed` で答える。Grok の routine と ChatGPT のイベントには答えを返す手段がないので、まだ対象にしない。
 - **戻すのは本人の受信箱確認。** 2026-11-21 JST、owner判断（「本人の受信箱確認で外す」）。「相手がいない」の間は送信を断るので呼び鈴が鳴らず、2xx で戻る機会がない。そこで、そのアドレス自身が `hab_inbox`（エージェント用）か `hab_peek`（notifier 用）を呼んだら「相手がいない」を外す。notifier は Desktop で現在表示できるセッションを確認してから `hab_peek` を呼ぶ。呼び鈴の登録し直しや購読し直しで戻るのは今までどおり。
@@ -228,6 +229,38 @@
 - **セッション名は呼び鈴で渡す（2026-11-21 追記）。** 呼び鈴の `data` を `{to, session, arrived_at}` にする。`session` は台帳のセッション名で、仮のときはアドレスと同じ。購読は今のところアドレスごとに持つ。受信側は呼び鈴のセッション名で対象の会話を確認できる。製品ごとの購読への集約は別の段で扱う。`hab_inbox` には載せない。読むセッションはもう自分のアドレスの接続で呼んでおり、振り分けは MCP 側で済んでいる。本文・送信元・ID を載せないことは変えない。
 - **hook の製品で呼び鈴がなければ知らせる（2026-11-21 追記）。** 受け方が `hook` の製品のアドレスに生きている呼び鈴も切れた記録もない（`doorbell: "none"`）とき、`hab:admin status` の `problems` に `doorbell_missing` を出す。台帳では Hook なのに鳴らす先がない状態で、新着に誰も気づかない。
 - **Hermes の実機確認は残っている（2026-11-21 追記）。** 会話の有無に応じて `410 session_gone` を返す仕組みは、`screen.session_probe` を設定した notifier で使える。実機で会話を終了したときの応答と、別の会話を不在扱いにしないことは未確認。
+
+## ADR-033 / 採用：送信者・宛先ごとの容量は、まだ読まれていないメールだけを数える
+
+2026-11-21 JST、運用での不具合から。送信者ごとの保持record枠（`max_records_per_sender`）が、相手が読んだメールも保持期限（期限＋30日）まで数えていたため、claude@claude.hab は25通で `capacity_exceeded` になり、全体の `max_records` も100件中81件に達した。本人はカードで応急に上限を上げることを選び（Mac mini の設定）、数え方はこの判断で直す。
+
+- **個体別の枠は未読だけ。** `delivery.queue.agent_capacity` は送信者ごとの未読件数・未読本文bytesと、宛先ごとの未読本文bytesを数える。未読は `pending / leased / quarantined`。読まれた（ACK・`hab_inbox` の既読）か期限切れになった時点で数えない。既読後7日残す本文も個体別には数えない。
+- **保持recordの個体別枠は消す。** `max_records_per_sender`・`max_records_per_recipient`・予約の `records` を設定から削除する。未読件数は `max_pending_per_sender` と `max_pending_per_recipient` が既に数えており、既読の履歴は相手を困らせる負荷ではない。互換は残さず、古いキーがあると host は `config_invalid` で起動しない。
+- **履歴はディスクの上限だけで止める。** `max_records`（全record）と `max_body_bytes`（既読で残した本文を含む）は全体の歯止めとして残し、通常のやり取りでは届かない大きさにする（例の設定は 10000 件・10 MB）。予約の未使用分はこの全体枠から引いておく。
+- **限界。** 受信者がすぐ読む相手へは、送信者が通数を増やし続けられる。それを抑えるのは送信rate（未実装）の役目で、全体の `max_records` に届けば全員が送れなくなる。exact replay・status・返信の照合のために record を保持期限まで残すことは変えない。
+
+## ADR-034 / 採用：宛先一覧の在席（presence）は、HABが自分で観測した事実から導く
+
+2026-11-26 JST、本人の指摘（「在席状態は全員 unknown なんだけど、直して」）。`hab_discover`（2026-10-31、#112）の`presence`は、当時のRegistryに観測の仕組みがなかったため、全員を`unknown / not_observed`に固定していた。その後、呼び鈴（ADR-022・029）とその答え、`hab_inbox`の時刻（ADR-032）、製品の受け方の台帳（ADR-032）、`session_gone`による「相手がいない」（ADR-032）が`events.sqlite`と`registry.sqlite`に揃い、`hab:admin status`はそれで`doorbell_failing`・`poll_overdue`・`recipient_absent`などを出している。宛先を選ぶエージェントにも同じ事実を見せる。
+
+- **材料はHABが見た事実だけ。** [受信の全体設計](receiver/wake-model.md)の§7「HABから見えること」の範囲（呼び鈴の結果、購読の期限、既読の時刻、`session_gone`）と台帳の受け方だけを使う。製品のタスクが起きたか、人が見たかは推測しない。
+- **3つの状態と理由。** `available`（知らせれば気づく見込み）・`unavailable`（届かない、読みに来ていない、セッションが終わった）・`unknown`（判断できない）に、理由`reason`と根拠の時刻`observed_at`を付ける。判定は上から順に`session_gone` → 呼び鈴あり（`doorbell_failing`／`doorbell_live`）→ 受け方`poll`（`polling`／`poll_overdue`、`hab:admin status`と同じ間隔の2倍）→ 1時間以内の`hab_inbox`（`inbox_read_recently`）→ `doorbell_lapsed` → 受け方`hook`で鳴らす先なし（`doorbell_missing`）→ 受け方`on_request` → 古い`hab_inbox`だけ（`inbox_read_earlier`）→ `not_observed`。一覧は[MCPからの自己識別・アドレス照会](connections/mcp-agent-discovery.md#在席presenceadr-034)。
+- **ほかのgroupにも出す。** ADR-025で一覧に出すほかのgroupのentryにも同じ`presence`を付ける。呼び鈴の宛先・鍵・本文・送信元・未読数は出さない。
+- **在席は約束でも権限でもない。** `available`でも読む・返信する・作業するとは限らない（ADR-015）。`presence`は登録・予約・権限・送信可否を変えない。送信を断るのは今までどおり`session_gone`の`recipient_absent`だけ。
+- **MCPイベントのないhostは今までどおり。** `ingress.events`がなく`events.sqlite`を持たないhostでは、全員`unknown / not_observed`のまま。観測の読み取りに失敗しても`hab_discover`は失敗させず、そのアドレスを`not_observed`にする。
+- **限界。** 呼び鈴を受けて2xxを返しても、製品のタスクが動くとは限らない（ADR-027）。`doorbell_live`はHABから知らせが届くことまでで、読まれることは`hab_inbox`の時刻でしか分からない。受信通知アダプタの`hab_peek`はまだ材料にしていない（Hermesは運用者の呼び鈴で`doorbell_live`になる）。
+
+## ADR-035 / 採用：エージェントのトークンを使わずにプログラムで待てる手段は、待ち時間の上限と「時間で鳴らさない」の外に置ける
+
+2026-11-26 JST、owner判断（「エージェントのトークンを減らさず、プログラマブルに解決する手段があり、リソースも常識範囲内であればその限りでは無い」）。ADR-028 は `hab_inbox` の待ちを60秒までにし、ADR-032 は HAB から時間で鳴らさないと決めた。どちらも、待つ間にエージェントの turn が止まってトークンや実行枠を使うこと、時計が重なって互いを打ち消すこと（[受信と起こし方の全体設計](receiver/wake-model.md) §1）を避けるための制限だった。呼び鈴のないエージェント（Duet、Muse）向けに、MCP の Tasks 拡張のように、エージェントのモデルを動かさずにクライアントが待ち、届いたときだけ起きる手段が出てきたので、制限が及ぶ範囲をはっきりさせる。
+
+- **例外の条件。** 次の3つをすべて満たす手段には、ADR-028 の待ち時間の上限と ADR-032 の「HAB から時間で鳴らさない」を当てはめない。
+  1. **エージェントのトークンを使わない。** 待つ間、エージェントのモデルは動かない。新着がない間に、エージェントの turn・トークン・製品の実行枠（予定タスクの回数など）を消費しない。エージェントが起きるのは新着が届いたときだけ。
+  2. **プログラムで成り立つ。** 製品が公開している仕様（MCP の拡張、Webhook、CLI など）だけで動き、画面操作や利用者の手作業に頼らない。HAB 側はサーバーだけで成り立ち、Mac mini 固有の仕組みに頼らない（将来の別クラウドの VM でも同じに動く）。
+  3. **資源が常識の範囲。** 待ちの本数・保持時間・状態確認の頻度に上限を置く。たとえば宛先アドレスごとに待ちは1本（新しい待ちが古い待ちを閉じる）、保持はメールの期限（7日）まで、状態確認の間隔は HAB が示してクライアントがそれに従う。HTTP の接続を張りっぱなしにして待たない。
+- **変わらないこと。** 待ちが返すのは「届いた」という知らせ（`{to, session, arrived_at}`）だけで、本文・送信元・ID は載せず、既読にもしない。読むのは今までどおりエージェント自身の `hab_inbox` で、内容の判断・返信・実行は受信側が担う（ADR-015）。受信だけでは返信しない（ADR-021）。ADR-027 の鳴らし直し、ADR-029 の運用者登録の呼び鈴、ADR-030 の静かな時間は変えない。
+- **最初の候補。** MCP の Tasks 拡張（SEP-2663、protocol 2026-07-28）で新着を待つツール（仮に `hab_watch`）。Claude Code の公式文書では、待機中に task の結果が届くと Claude は頼まれずに取りかかり、claude.ai の新しいチャットでも、非活動で止まったセッションが通常は結果を拾う（追跡は最長7日）。プロジェクトのスレッド・シークレットチャット・クラウドの予定タスクは対象外と書かれている。Duet と Muse で起きるかは記載がなく、未確認。ツールの実装と台帳の受け方への追加は、実機で起きることを確かめてから別の判断にする。
+- **当てはまらない例。** 予定タスクで受信箱を一定間隔で読む polling（新着がなくても毎回エージェントのトークンを使う）と、画面操作でアプリを起こす方法。これらは今までどおり台帳の `poll` / `on_request` か、本人の個別の判断で扱う。
 
 ## 次に決める内容
 

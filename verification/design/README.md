@@ -409,3 +409,10 @@ The owner asked that new mail appear in the recipient's agent screen as soon as 
 - HAB-F04 and HAB-F05 re-cite the delivery-catalog section of `docs/common-mcp-connection.md`, which now also names `hab_peek`; their statements are unchanged. HAB-F21 and HAB-E20 moved with unchanged excerpts.
 - In source-review.json every changed source was re-read and rehashed with an appended note.
 
+
+## Discovery presence (ADR-034, 2026-11-26)
+
+The owner reported that every `hab_discover` entry showed `presence: unknown`. Presence is now derived only from facts HAB records itself (doorbell and its latest answer, ledger receive mode, the address's own `hab_inbox` reads, `session_gone`).
+
+- HAB-A14's statement now describes HAB-observed presence instead of unobserved presence, adds a citation of the ADR-034 section of `docs/hab-decisions.md`, and re-cites the rewritten field table and presence section of `docs/connections/mcp-agent-discovery.md` (lines 87–138). Its checks stay js-root (`test/hab-presence.test.js` and the `hab_discover presence` case in `test/hab-events.test.js`) and native-recipient.
+- HAB-A14's other citations, HAB-E20 and HAB-C-E08 moved with unchanged excerpts.

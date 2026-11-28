@@ -8,6 +8,7 @@ import {
 import {
   MAX_DELIVERY_TTL_MS,
   isReplayBoundMessageId,
+  makeReplayBoundMessageId,
 } from "../src/messaging/contract.ts";
 import { explainToolError } from "../src/messaging/tool-errors.ts";
 import { fixture } from "./hab-registry-fixtures.js";
@@ -88,8 +89,20 @@ test("the agent catalog lists only the agent tools and carries usage instruction
     ),
   );
   assert.equal(init.result.instructions, HAB_AGENT_INSTRUCTIONS);
+  // Nothing on this server changes at runtime, so no host should open subscriptions/listen.
+  assert.deepEqual(init.result.capabilities.tools, { listChanged: false });
+  assert.deepEqual(init.result.capabilities.resources, { listChanged: false });
   for (const word of ["hab_send", "hab_inbox", "hab_reply", "hab_status"])
     assert.ok(HAB_AGENT_INSTRUCTIONS.includes(word));
+});
+
+test("instructions ask an agent that checks accounts on its own to include the inbox", () => {
+  // Agents such as Claude Duet wake only for their own periodic checks and briefs, and no
+  // HAB doorbell reaches them; the instructions carry the habit so no per-agent setting is needed.
+  assert.match(
+    HAB_AGENT_INSTRUCTIONS,
+    /When you check your connected accounts on your own, at intervals or to prepare a brief or summary for your user, include hab_inbox in that check/,
+  );
 });
 
 test("send, read, reply and status round trip with only addresses and text", async (t) => {
@@ -236,6 +249,99 @@ test("a question sent to one's own address is not its own reply", async (t) => {
   );
 });
 
+test("prepared send and reply retries deliver one message per operation", async (t) => {
+  const f = await setup(t);
+  const now = new Date().toISOString();
+  const send = {
+    to: f.b.address,
+    expected_recipient_id: f.b.agent_id,
+    request_id: makeReplayBoundMessageId(now, "a".repeat(32)),
+    text: "Can you confirm the setup?",
+  };
+  const sent = await f.ok("a", "hab_send", send);
+  const retried = await f.ok("a", "hab_send", send);
+  assert.equal(sent.message_id, send.request_id);
+  assert.equal(
+    sent.expires_at,
+    new Date(Date.parse(now) + MAX_DELIVERY_TTL_MS).toISOString(),
+  );
+  assert.equal(retried.message_id, sent.message_id);
+  assert.equal(retried.thread_id, sent.thread_id);
+  assert.equal(retried.accepted_at, sent.accepted_at);
+  assert.equal(
+    (await f.fails("a", "hab_send", { ...send, text: "Changed after sending" }))
+      .error,
+    "idempotency_conflict",
+  );
+  const received = (await f.ok("b", "hab_inbox")).messages;
+  assert.deepEqual(
+    received.map(({ message_id, sent_at, text }) => [
+      message_id,
+      sent_at,
+      text,
+    ]),
+    [[sent.message_id, now, send.text]],
+  );
+
+  const reply = {
+    message_id: sent.message_id,
+    request_id: makeReplayBoundMessageId(
+      new Date().toISOString(),
+      "b".repeat(32),
+    ),
+    text: "Setup confirmed.",
+  };
+  const acknowledged = await f.ok("b", "hab_reply", reply);
+  const retriedReply = await f.ok("b", "hab_reply", reply);
+  assert.equal(acknowledged.message_id, reply.request_id);
+  assert.equal(retriedReply.message_id, acknowledged.message_id);
+  assert.equal(retriedReply.accepted_at, acknowledged.accepted_at);
+  assert.equal(
+    (
+      await f.fails("b", "hab_reply", {
+        ...reply,
+        text: "Changed after replying",
+      })
+    ).error,
+    "idempotency_conflict",
+  );
+  const replies = (await f.ok("a", "hab_inbox")).messages;
+  assert.deepEqual(
+    replies.map(({ message_id, in_reply_to, thread_id, text }) => [
+      message_id,
+      in_reply_to,
+      thread_id,
+      text,
+    ]),
+    [[reply.request_id, sent.message_id, sent.thread_id, reply.text]],
+  );
+});
+
+test("prepared sends refuse a different resolved recipient and invalid request IDs", async (t) => {
+  const f = await setup(t);
+  const send = { to: f.b.address, text: "Setup test" };
+  const wrong = await f.fails("a", "hab_send", {
+    ...send,
+    expected_recipient_id: f.a.agent_id,
+    request_id: makeReplayBoundMessageId(
+      new Date().toISOString(),
+      "a".repeat(32),
+    ),
+  });
+  assert.equal(wrong.error, "invalid_reference");
+  assert.equal(wrong.field, "expected_recipient_id");
+  for (const request_id of [
+    "not-a-replay-bound-id",
+    `rm1.${Date.UTC(10_000, 0, 1) - MAX_DELIVERY_TTL_MS}.${"a".repeat(32)}`,
+    `rm1.9007199254740991.${"a".repeat(32)}`,
+  ]) {
+    const malformed = await f.fails("a", "hab_send", { ...send, request_id });
+    assert.equal(malformed.error, "invalid_request");
+    assert.equal(malformed.field, "request_id");
+  }
+  assert.deepEqual((await f.ok("b", "hab_inbox")).messages, []);
+});
+
 test("an explicit thread and kind are kept, and read messages can be read again", async (t) => {
   const f = await setup(t);
   const sent = await f.ok("a", "hab_send", {
@@ -254,6 +360,88 @@ test("an explicit thread and kind are kept, and read messages can be read again"
     [[sent.message_id, "FYI", false]],
   );
   assert.match((await f.ok("b", "hab_inbox")).explanation, /No new messages/);
+});
+
+test("read history pages through tied receipts without reading pending or foreign mail", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const f = await setup(t);
+  const c = f.enroll("c");
+  const sent = [];
+  for (const [i, sender] of ["a", "c", "a", "c", "a"].entries()) {
+    const { message_id } = await f.ok(sender, "hab_send", {
+      to: f.b.address,
+      text: "Read message " + i,
+    });
+    sent.push({
+      message_id,
+      sender_id: sender === "a" ? f.a.agent_id : c.agent_id,
+    });
+  }
+  const firstRead = await f.ok("b", "hab_inbox");
+  assert.equal(firstRead.messages.length, 5);
+  assert.equal(
+    new Set(firstRead.messages.map(({ read_at }) => read_at)).size,
+    1,
+  );
+
+  const pending = await f.ok("a", "hab_send", {
+    to: f.b.address,
+    text: "Leave this unread",
+  });
+  const expected = sent
+    .sort((a, b) => {
+      const left = a.sender_id + "/" + a.message_id;
+      const right = b.sender_id + "/" + b.message_id;
+      return left < right ? 1 : -1;
+    })
+    .map(({ message_id }) => message_id);
+  const seen = [];
+  let cursor = "start";
+  let firstPageCursor;
+  for (const count of [2, 2, 1, 0]) {
+    const page = await f.ok("b", "hab_inbox", {
+      read_history: cursor,
+      limit: 2,
+    });
+    assert.equal(page.messages.length, count);
+    assert.ok(page.messages.every(({ new: unread }) => !unread));
+    seen.push(...page.messages.map(({ message_id }) => message_id));
+    cursor = page.next_cursor;
+    firstPageCursor ??= cursor;
+  }
+  assert.deepEqual(seen, expected);
+  assert.equal(cursor, null);
+  assert.deepEqual(
+    (await f.ok("a", "hab_inbox", { read_history: firstPageCursor })).messages,
+    [],
+  );
+  assert.equal(
+    (await f.ok("a", "hab_status", { message_id: pending.message_id })).state,
+    "pending",
+  );
+  for (const options of [
+    { read_history: "bad+cursor" },
+    { read_history: "start", message_id: pending.message_id },
+    { read_history: "start", wait_secs: 1 },
+  ]) {
+    assert.equal(
+      (await f.fails("b", "hab_inbox", options)).error,
+      "invalid_request",
+    );
+  }
+  const reply = await f.ok("b", "hab_reply", {
+    message_id: seen.at(-1),
+    text: "Answer to the oldest page",
+  });
+  assert.equal(reply.in_reply_to, seen.at(-1));
+
+  f.mutable.expires_at = new Date(Date.now() + 30_000).toISOString();
+  t.mock.timers.tick(7 * 86_400_000);
+  const expiredHistory = await f.ok("b", "hab_inbox", {
+    read_history: "start",
+  });
+  assert.deepEqual(expiredHistory.messages, []);
+  assert.equal(expiredHistory.next_cursor, null);
 });
 
 test("input mistakes get specific codes, details and explanations, and audit reasons", async (t) => {
@@ -422,24 +610,42 @@ test("hab_inbox alone names the inbox card, and the card is a self-contained MCP
   const f = await setup(t);
   const listed = await decode(await f.agent.fetch(request()));
   const inbox = listed.result.tools.find((tool) => tool.name === "hab_inbox");
-  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v1" });
-  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v1");
+  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v3" });
+  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v3");
   for (const tool of listed.result.tools.filter((x) => x.name !== "hab_inbox"))
     assert.equal(tool._meta?.ui, undefined, tool.name);
   const raw = await f.agent.fetch(
     request(
       "resources/read",
-      { uri: "ui://hab/inbox-v1" },
+      { uri: "ui://hab/inbox-v3" },
       {
         headers: {
           Authorization: "Bearer fixture-b",
-          "Mcp-Name": "ui://hab/inbox-v1",
+          "Mcp-Name": "ui://hab/inbox-v3",
         },
       },
     ),
   );
   const read = await decode(raw);
   const [page] = read.result.contents;
+  assert.equal(page.uri, "ui://hab/inbox-v3");
+  // A host holding the old tool list still gets the current page under the old URI.
+  const legacy = await decode(
+    await f.agent.fetch(
+      request(
+        "resources/read",
+        { uri: "ui://hab/inbox-v1" },
+        {
+          headers: {
+            Authorization: "Bearer fixture-b",
+            "Mcp-Name": "ui://hab/inbox-v1",
+          },
+        },
+      ),
+    ),
+  );
+  assert.equal(legacy.result.contents[0].uri, "ui://hab/inbox-v1");
+  assert.equal(legacy.result.contents[0].text, page.text);
   assert.equal(page.mimeType, "text/html;profile=mcp-app");
   assert.deepEqual(page._meta.ui.csp, {
     connectDomains: [],

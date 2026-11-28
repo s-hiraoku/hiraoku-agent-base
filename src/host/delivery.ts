@@ -23,20 +23,18 @@ const queue = z
     retry_cap_ms: positive,
     poll_scan_limit: positive,
     fair_poll: z.boolean().optional(),
-    // Required: without a per-sender budget one enrolled sender can fill the retained-record pool for every agent.
+    // Required: without a per-sender budget one enrolled sender can fill the unread pool for every agent.
+    // The budgets count unread mail only; read history is bounded by the store-wide max_records.
     agent_capacity: z.strictObject({
       max_pending_per_sender: positive,
       max_body_bytes_per_sender: positive,
-      max_records_per_sender: positive,
       max_body_bytes_per_recipient: positive,
-      max_records_per_recipient: positive,
       reservations: z
         .array(
           z.strictObject({
             sender_id: z.string(),
             pending: positive,
             body_bytes: positive,
-            records: positive,
           }),
         )
         .max(256),
@@ -44,8 +42,8 @@ const queue = z
   })
   .refine(
     (value) =>
-      value.agent_capacity.max_records_per_sender < value.max_records &&
-      value.agent_capacity.max_pending_per_sender < value.max_pending,
+      value.agent_capacity.max_pending_per_sender < value.max_pending &&
+      value.agent_capacity.max_body_bytes_per_sender < value.max_body_bytes,
   );
 /** The host config's `delivery` section. SQLite is the only delivery store (ADR-018). */
 export const deliverySchema = z.strictObject({

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { HAB_INBOX_APP_HTML } from "../src/hab/inbox-app.ts";
+import { createHash } from "node:crypto";
+import {
+  HAB_INBOX_APP_HTML,
+  HAB_INBOX_APP_LEGACY_URIS,
+  HAB_INBOX_APP_URI,
+} from "../src/hab/inbox-app.ts";
 import { incomingPresentation } from "../src/messaging/incoming-notice.ts";
 
 // ADR-026: the MCP Apps inbox card, driven through the postMessage protocol with a
@@ -53,10 +58,11 @@ class Node {
   }
 }
 
-function boot() {
+function boot({ openai } = {}) {
   const root = new Node("main");
   const sent = [];
   const listeners = [];
+  const globalsListeners = [];
   const parent = {
     postMessage(message) {
       sent.push(structuredClone(message));
@@ -64,7 +70,11 @@ function boot() {
   };
   const window = {
     parent,
-    addEventListener: (type, fn) => type === "message" && listeners.push(fn),
+    openai,
+    addEventListener: (type, fn) =>
+      type === "message"
+        ? listeners.push(fn)
+        : type === "openai:set_globals" && globalsListeners.push(fn),
   };
   const document = {
     getElementById: () => root,
@@ -75,7 +85,9 @@ function boot() {
   new Function("window", "document", script)(window, document);
   const deliver = (data) =>
     listeners.forEach((fn) => fn({ source: parent, data }));
-  return { root, sent, deliver };
+  const setGlobals = (globals) =>
+    globalsListeners.forEach((fn) => fn({ detail: { globals } }));
+  return { root, sent, deliver, setGlobals, document };
 }
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -147,6 +159,36 @@ test("the inbox card speaks the MCP Apps handshake, draws text only and sends ui
   assert.match(cards[0].textContent, /会話に送りました/);
 });
 
+test("a host that refuses ui/message but takes model context gets the request there", async () => {
+  const { root, sent, deliver } = boot();
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [message("m1", "<b>hi</b>")] } },
+  });
+  const [accept] = root.children[0].querySelectorAll("button");
+  accept.listeners.click[0]();
+  const ask = sent.find((m) => m.method === "ui/message");
+  deliver({
+    jsonrpc: "2.0",
+    id: ask.id,
+    error: { code: -32601, message: "no" },
+  });
+  await tick();
+  const note = sent.find((m) => m.method === "ui/update-model-context");
+  assert.equal(note.params.content[0].type, "text");
+  assert.match(note.params.content[0].text, /message_id "m1"/);
+  assert.doesNotMatch(note.params.content[0].text, /<b>/);
+  deliver({ jsonrpc: "2.0", id: note.id, result: {} });
+  await tick();
+  assert.match(root.children[0].textContent, /会話に伝えました/);
+  const handoff = root.children[0].all().find((n) => n.className === "handoff");
+  assert.equal(handoff.hidden, true);
+  assert.ok(
+    root.children[0].querySelectorAll("button").every((b) => !b.disabled),
+  );
+});
+
 test("a host that refuses ui/message leaves the buttons usable and says how to ask in chat", async () => {
   const { root, sent, deliver } = boot();
   const init = sent.find((m) => m.method === "ui/initialize");
@@ -166,11 +208,63 @@ test("a host that refuses ui/message leaves the buttons usable and says how to a
     const ask = sent.filter((m) => m.method === "ui/message").at(-1);
     deliver({ jsonrpc: "2.0", id: ask.id, ...answer });
     await tick();
+    // Then the model-context fallback is refused too.
+    const note = sent
+      .filter((m) => m.method === "ui/update-model-context")
+      .at(-1);
+    assert.match(note.params.content[0].text, /message_id "m1"/);
+    deliver({ jsonrpc: "2.0", id: note.id, ...answer });
+    await tick();
     assert.match(root.children[0].textContent, /会話に送れませんでした/);
     assert.ok(
       root.children[0].querySelectorAll("button").every((b) => !b.disabled),
     );
+    // The same request is shown as text to copy into the chat, never the sender's words.
+    const handoff = root.children[0]
+      .all()
+      .find((n) => n.className === "handoff");
+    assert.equal(handoff.hidden, false);
+    assert.match(handoff.textContent, /message_id "m1"/);
+    assert.ok(
+      handoff
+        .querySelectorAll("button")
+        .some((b) => b.textContent === "文をコピー"),
+    );
   }
+  // Without a clipboard the copy button says to select the text instead.
+  const handoff = root.children[0].all().find((n) => n.className === "handoff");
+  const copy = handoff.querySelectorAll("button")[0];
+  await copy.listeners.click[0]();
+  assert.equal(copy.textContent, "文を選んでコピーしてください");
+});
+
+test("the card carries no brand colour and takes the host's style variables", () => {
+  const style = /<style>([\s\S]*)<\/style>/.exec(HAB_INBOX_APP_HTML)[1];
+  assert.doesNotMatch(style, /#[0-9a-fA-F]{3,6}\b/);
+  for (const variable of [
+    "--color-text-primary",
+    "--color-border-secondary",
+    "--font-sans",
+    "--border-radius-md",
+  ])
+    assert.ok(style.includes(variable), variable);
+  assert.match(style, /focus-visible/);
+  assert.match(style, /prefers-reduced-motion/);
+});
+
+test("later folds the card to its status line", async () => {
+  const { root, deliver } = boot();
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [message("m1", "hi")] } },
+  });
+  const later = root.children[0]
+    .querySelectorAll("button")
+    .find((b) => b.textContent === "あとで");
+  await later.listeners.click[0]();
+  assert.match(root.children[0].className, /folded/);
+  assert.match(root.children[0].textContent, /あとで対応します/);
 });
 
 test("an empty inbox and a result without messages say so", async () => {
@@ -187,4 +281,79 @@ test("an empty inbox and a result without messages say so", async () => {
     params: { isError: true },
   });
   assert.equal(root.textContent, "受信箱を読めませんでした。");
+});
+
+test("the card is never an empty frame before the result, and sends initialized even if ui/initialize fails", async () => {
+  const { root, sent, deliver } = boot();
+  assert.match(root.textContent, /読み込んでいます/);
+  assert.ok(sent.some((m) => m.method === "ui/notifications/size-changed"));
+  const init = sent.find((m) => m.method === "ui/initialize");
+  deliver({
+    jsonrpc: "2.0",
+    id: init.id,
+    error: { code: -32602, message: "no" },
+  });
+  await tick();
+  await tick();
+  assert.ok(sent.some((m) => m.method === "ui/notifications/initialized"));
+});
+
+test("ChatGPT's window.openai.toolOutput and openai:set_globals draw the card too", async () => {
+  const first = boot({
+    openai: { toolOutput: { messages: [message("m1", "hi")] } },
+  });
+  assert.equal(first.root.children.length, 1);
+  assert.match(
+    first.root.textContent,
+    /stallone@dot\.hab からのメッセージです/,
+  );
+
+  const later = boot({ openai: { toolOutput: null } });
+  assert.match(later.root.textContent, /読み込んでいます/);
+  later.setGlobals({ theme: "dark" });
+  assert.match(later.root.textContent, /読み込んでいます/);
+  later.setGlobals({ toolOutput: { messages: [message("m2", "hello")] } });
+  assert.match(later.root.textContent, /hello/);
+  // The standard notification still wins when it comes after.
+  later.deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { messages: [] } },
+  });
+  assert.match(later.root.textContent, /新しいメッセージはありません/);
+});
+
+test("the reported height is the content at max-content, not the frame's own height", () => {
+  const { sent, deliver, document } = boot();
+  const html = document.documentElement;
+  html.style.height = "";
+  // A frame 150px tall whose content needs 640px: only a max-content measure sees the content.
+  html.getBoundingClientRect = () => ({
+    width: 400,
+    height: html.style.height === "max-content" ? 640 : 150,
+  });
+  deliver({
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: {
+      structuredContent: {
+        messages: [message("m1", "one"), message("m2", "two")],
+      },
+    },
+  });
+  const size = sent.filter((m) => m.method === "ui/notifications/size-changed");
+  assert.equal(size.at(-1).params.height, 640);
+  assert.equal(html.style.height, "");
+});
+
+// Hosts (claude.ai, Claude Duet) keep the page they first read for a URI. When this hash
+// changes, give the page a new URI in src/hab/inbox-app.ts (and move the old one to
+// HAB_INBOX_APP_LEGACY_URIS), then update both values here.
+test("a changed page gets a new URI, so hosts do not keep showing the old one", () => {
+  assert.equal(HAB_INBOX_APP_URI, "ui://hab/inbox-v3");
+  assert.equal(
+    createHash("sha256").update(HAB_INBOX_APP_HTML).digest("hex"),
+    "395a05c16dee59b742bb94a3947d44595d52dab1933b1bce9a5b54c04b23d4fc",
+  );
+  assert.ok(!HAB_INBOX_APP_LEGACY_URIS.includes(HAB_INBOX_APP_URI));
 });

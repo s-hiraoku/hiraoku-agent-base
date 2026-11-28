@@ -42,7 +42,7 @@ HABの対象は、利用者が承認して登録したエージェントであ�
 | 確定した製品要件 | 簡単な異種agent通信、GUIとMCPの共通業務境界、登録/宛先/割当の管理、状態の区別、権限分離、privateなPC/モバイル利用、Kanbanの別アプリ化 |
 | 現行コード基準 | `main` `28dd393`（2026-11-12照合）。2026-11-21 に `86dc505` で、エージェント用MCPが4操作（`hab_send`・`hab_inbox`・`hab_reply`・`hab_status`、ADR-020）と任意の`hab_discover`であること、Registryに製品の受け方とセッションの台帳（ADR-032）があることだけを照合した。Registry、host（`src/host`）のSQLite配送store、任意のhab_discover、既定無効のA2A入口、限定Task bridge。本書の追加だけで配備済みとはしない |
 | ローカル候補 | 対話登録、session/bot binding、継続poll、inbox/sidecarと表示consumerの統合。mainへの適用・常用受入れとは別 |
-| GUIの現在の範囲 | 既存のread-only成果は登録一覧、検索、状態filter、pagination、宛先copyに限定。登録・割当変更・テスト送信等のmutationは将来実装。本repoへの同梱・配備状況とは別に追跡する |
+| GUIの現在の範囲 | 通常起動は登録一覧・接続案内・診断の閲覧。運用者モードでは承認済み名義で宛先選択、送信、受信箱、返信、配送状況の確認と試験送信を提供。 [起動と操作](host-service.md#cli-の試験送信とダッシュボードの送受信) |
 | 新規技術の評価 | SDK/driver/版、通知方式、複数host。A2Aは2026-11-12のowner確認で相互運用の入口として採用済み（既定は無効）。**A2Aの本番配備は未決** |
 | 採用済みの配送 | 2026-11-13 JSTの[ADR-018](hab-decisions.md)で、配送をhostの1つのSQLiteファイル（[配送store](delivery-store.md)）だけにした。2026-11-06のADR-016で採用したNATS JetStreamは外し、JetStream版の旧messageは移行しない。クラウド展開は1台のVMを前提とする。本番配備・実storageの故障挙動の受入れは別に残る |
 
@@ -76,7 +76,7 @@ HABはoutbox、宛先ID、期限、再送相関を保存し、配送受付と相
 | --- | --- | --- |
 | F-01 | 接続・対話onboarding | 認証、参加登録、接続binding、有効化を区別する。既存接続を再利用し、失効や追加承認を可視化する |
 | F-02 | 登録・自己識別 | 不変agent ID、論理アドレス、人間可読名、認証名義、実行中のsession/botを区別する。検証済みhost情報だけを自己識別に使う |
-| F-03 | directory・宛先選択 | HABに登録された有効なエージェント全員の一覧（ADR-025）、検索、状態filter、pagination、宛先copyとpicker。製品/説明で同名候補を区別する。他groupの宛先は名前と状態だけを出す |
+| F-03 | directory・宛先選択 | HABに登録された有効なエージェント全員の一覧（ADR-025）、検索、状態filter、pagination、宛先copyとpicker。製品/説明で同名候補を区別する。他groupの宛先は名前と状態だけを出す。各宛先にHABが観測した在席（presence、ADR-034）を付ける |
 | F-04 | session/bot割当 | 対象を本人が確認し、永続bindingと世代を照合する。表示名変更やprofile移動を自動再登録・別会話への転送にしない |
 | F-05 | メッセージ・返信 | テキスト/許可schemaの送受信、返信参照、相手選択、状態表示。kindの選択とACK・再送を利用者から隠す |
 | F-06 | 作業依頼・結果 | 能力と実行policyを満たす依頼、引受け、進捗、追加確認、結果、対応する取消を提供。保存ACKだけで実行しない |

@@ -52,9 +52,11 @@ DCR を閉じても、すでに登録されたアプリのログインと refres
 1. **承認前の 401 で、製品は何をするか。** 承認待ちの組は 401 で断る（`src/host/mcp/http.ts`、`WWW-Authenticate` に `resource_metadata` と `scope`）。MCP の仕組みでは、401 を受けた製品は認可をやり直してよい。claude.ai と Grok は、やり直すたびに新しいアプリを登録する見込みなので、承認待ちの行が増えるだけで、承認した組が使われない恐れがある。承認後も、承認前に出た token は `token_before_approval` で断るので、製品が同じアプリのまま refresh して初めて通る。
    - 合格：承認後、同じ `tpc_` の client ID で `hab_status` が通る。
    - 不合格のとき：承認待ちの組への返事を、認可のやり直しを誘わない形（`WWW-Authenticate` を付けない 403 など）に変える案を、その製品の結果を見て決める。
+   - 結果（Antigravity 2.35.0、2026-11-25）：不合格。承認前の 401 を受けると token を消し、次の Authenticate でアプリを登録し直した（承認待ちが 2 行）。新しい方を承認し、`~/.gemini/config/mcp_config.json` の `oauth.clientId` にその `tpc_` を書いて固定すると、登録し直さずに通った。返事の形は変えていない。
 2. **refresh token が出るか。** HAB の protected resource metadata の `scopes_supported` は 5 scope だけで、`offline_access` が無い（`src/host/mcp/oauth-resource.ts`）。今の手作りの接続では、人が製品の画面で `offline_access` を足している（[設定手順書](../connections/agent-setup.md)の共通の準備 3）。DCR には入れる欄が無い製品がある。claude.ai は「認可サーバーの metadata にあれば付ける」と書いていて、Auth0 側の metadata を読むなら今のままで出る（推測）。
    - 合格：Auth0 のログで、その `tpc_` のアプリに refresh token が出ている。access token の期限（最長 600 秒）を過ぎても、つなぎ直しなしで `hab_status` が通る。
    - 不合格のとき：`scopes_supported` と 401 の `scope` に `offline_access` を足す（`oauth-resource.ts` の 2 か所と、`test/oauth-auth.test.js`・`test/host-oauth.test.js` の期待値）。手作りの製品にも同じ値が見えるので、今の 5 製品が切れないことも確かめる。
+   - 結果（Antigravity 2.35.0、2026-11-25）：不合格。token は access token だけ（期限 600 秒）で refresh token が無かった。`offline_access` を `scopes_supported` と 401 の `scope` に足した（`HAB_ADVERTISED_SCOPES`）。token の確かめは今までどおり 5 scope だけで、`offline_access` は求めない。
 3. **アプリを消すと、その refresh token は止まるか。** 7 章の付け替えは、古い `tpc_` のアプリを Auth0 で消すことに頼る。
    - 合格：消したアプリの refresh token で新しい access token が出ない（Auth0 のログで確かめる）。
 

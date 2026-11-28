@@ -24,13 +24,56 @@ export { ProductScreen } from "./product-screen.ts";
 export type { ProductScreenOptions } from "./product-screen.ts";
 export { runCommand } from "./command.ts";
 export type { TrustedCommand } from "./command.ts";
-export { codexHandoff, codexTarget, websocketConnect } from "./codex.ts";
+export {
+  codexHandoff,
+  codexQueueHandoff,
+  codexTarget,
+  execArgv,
+  websocketConnect,
+} from "./codex.ts";
 export type {
   CodexAppServer,
   CodexBinding,
   RpcConnect,
   RpcConnection,
 } from "./codex.ts";
+export {
+  antigravityHandoff,
+  antigravityTarget,
+  spawnAgy,
+} from "./antigravity.ts";
+export type {
+  AgyRun,
+  AntigravityBinding,
+  AntigravityCli,
+  SpawnAgy,
+} from "./antigravity.ts";
+export {
+  ANTIGRAVITY_REQUEST_BYTES,
+  antigravityDesktopHandoff,
+  antigravityDesktopPrecheck,
+  antigravityDesktopTarget,
+  conversationFileProbe,
+  conversationIdSchema,
+  defaultConversationsDir,
+  spoolPath,
+  spoolProblem,
+  spoolRequestSchema,
+} from "./antigravity-desktop.ts";
+export type {
+  AntigravityDesktopBinding,
+  SpoolRequest,
+} from "./antigravity-desktop.ts";
+export {
+  AntigravityRelay,
+  RELAY_DIRS,
+  RELAY_KEEP_MS,
+  RELAY_MAX_AGE_MS,
+  agentapiCommand,
+  runAgentapi,
+  runRelay,
+} from "./antigravity-relay.ts";
+export type { RelayOptions, RunAgentapi } from "./antigravity-relay.ts";
 export {
   CHANNEL_REQUEST_BYTES,
   claudeCodeHandoff,
