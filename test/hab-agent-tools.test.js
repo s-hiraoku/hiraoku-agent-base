@@ -89,8 +89,20 @@ test("the agent catalog lists only the agent tools and carries usage instruction
     ),
   );
   assert.equal(init.result.instructions, HAB_AGENT_INSTRUCTIONS);
+  // Nothing on this server changes at runtime, so no host should open subscriptions/listen.
+  assert.deepEqual(init.result.capabilities.tools, { listChanged: false });
+  assert.deepEqual(init.result.capabilities.resources, { listChanged: false });
   for (const word of ["hab_send", "hab_inbox", "hab_reply", "hab_status"])
     assert.ok(HAB_AGENT_INSTRUCTIONS.includes(word));
+});
+
+test("instructions ask an agent that checks accounts on its own to include the inbox", () => {
+  // Agents such as Claude Duet wake only for their own periodic checks and briefs, and no
+  // HAB doorbell reaches them; the instructions carry the habit so no per-agent setting is needed.
+  assert.match(
+    HAB_AGENT_INSTRUCTIONS,
+    /When you check your connected accounts on your own, at intervals or to prepare a brief or summary for your user, include hab_inbox in that check/,
+  );
 });
 
 test("send, read, reply and status round trip with only addresses and text", async (t) => {
@@ -598,24 +610,42 @@ test("hab_inbox alone names the inbox card, and the card is a self-contained MCP
   const f = await setup(t);
   const listed = await decode(await f.agent.fetch(request()));
   const inbox = listed.result.tools.find((tool) => tool.name === "hab_inbox");
-  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v1" });
-  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v1");
+  assert.deepEqual(inbox._meta.ui, { resourceUri: "ui://hab/inbox-v3" });
+  assert.equal(inbox._meta["openai/outputTemplate"], "ui://hab/inbox-v3");
   for (const tool of listed.result.tools.filter((x) => x.name !== "hab_inbox"))
     assert.equal(tool._meta?.ui, undefined, tool.name);
   const raw = await f.agent.fetch(
     request(
       "resources/read",
-      { uri: "ui://hab/inbox-v1" },
+      { uri: "ui://hab/inbox-v3" },
       {
         headers: {
           Authorization: "Bearer fixture-b",
-          "Mcp-Name": "ui://hab/inbox-v1",
+          "Mcp-Name": "ui://hab/inbox-v3",
         },
       },
     ),
   );
   const read = await decode(raw);
   const [page] = read.result.contents;
+  assert.equal(page.uri, "ui://hab/inbox-v3");
+  // A host holding the old tool list still gets the current page under the old URI.
+  const legacy = await decode(
+    await f.agent.fetch(
+      request(
+        "resources/read",
+        { uri: "ui://hab/inbox-v1" },
+        {
+          headers: {
+            Authorization: "Bearer fixture-b",
+            "Mcp-Name": "ui://hab/inbox-v1",
+          },
+        },
+      ),
+    ),
+  );
+  assert.equal(legacy.result.contents[0].uri, "ui://hab/inbox-v1");
+  assert.equal(legacy.result.contents[0].text, page.text);
   assert.equal(page.mimeType, "text/html;profile=mcp-app");
   assert.deepEqual(page._meta.ui.csp, {
     connectDomains: [],

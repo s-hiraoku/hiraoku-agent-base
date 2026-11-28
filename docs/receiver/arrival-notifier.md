@@ -458,7 +458,7 @@ relay（sidecar）：`node <リポジトリ>/scripts/hab-notify.ts antigravity-r
 ```
 
 - 1 つの箱を受け持つ relay は 1 つだけです。起動時に箱の `.relay.lock` を取ります（pid を書いた一時ファイルを hard link するので、中身の空の lock は残りません。pid を書き切れなかったとき（ENOSPC など）は、lock も一時ファイルも残さずに起動を止めます）。別の relay が動いていれば `relay_running` で起動しません（動いている送信を、止まった送信と取り違えて `unknown/` に移さないように）。持ち主のプロセスがもういない lock は引き継ぎます。引き継ぎは `.relay.takeover` ディレクトリを作れた 1 つだけが行い、もう 1 つは `relay_running` で止まります（アプリが後で起動し直す）。この短い間に落ちて `.relay.takeover` が残ったときは、手で消します。
-- 箱の変化と 2 秒ごとの確認で、古い順に 1 件ずつ、`sending/` に rename してから（これで 1 回だけに決まる）`agentapi send-message --title=HAB: <送信元> <会話 ID> <依頼文>` を引数の配列で実行します（シェルは通しません）。`agentapi` はアプリが渡す `ANTIGRAVITY_AGENTAPI_EXE`、なければ `~/.gemini/antigravity/bin/agentapi` です。
+- 箱の変化と 2 秒ごとの確認で、古い順に 1 件ずつ、`sending/` に rename してから（これで 1 回だけに決まる）`agentapi send-message --title=HAB: <送信元> <会話 ID> <依頼文>` を引数の配列で実行します（シェルは通しません）。`agentapi` は、アプリが `ANTIGRAVITY_AGENTAPI_EXE` を渡していればそれに `agentapi` を足した `<ANTIGRAVITY_AGENTAPI_EXE> agentapi send-message …` です（この変数はアプリの language server 本体を指し、agentapi はそのサブコマンド。足さないと終了コード 2 で失敗する。2026-11-28 Mac mini で確認）。渡されていなければ、サブコマンドを足して呼ぶ `~/.gemini/antigravity/bin/agentapi` です。
 - どれも再送しません：終了コード 0 → `done/`、0 以外 → `failed/`、60 秒の時間切れ（届いたか分からない）→ `unknown/`、起動時に `sending/` に残っていたもの（送る途中で止まった）→ `unknown/`、書いてから 24 時間を過ぎたもの（アプリを長く閉じていた）か、HAB の返信期限を過ぎたもの（`hab_reply` が断られる）→ 送らずに `expired/`、読めない・形が違う・他人が読めるファイル → `failed/`。
 - 止める合図（SIGTERM・SIGINT）を受けたら、送っている 1 件を終えたところで止まり、残りは箱に残して次の起動で送ります。箱の監視（`fs.watch`）がエラーになっても止まらず、2 秒ごとの確認だけで続けます。
 - 終わったファイルには本文が残るので、7 日たったら消します。`.` で始まる書きかけのファイルは読みません。

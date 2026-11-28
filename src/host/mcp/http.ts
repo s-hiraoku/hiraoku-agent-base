@@ -46,11 +46,19 @@ class HttpFailure extends Error {
   readonly status: number;
   readonly category: AuditCategory;
   readonly reason: string | undefined;
-  constructor(status: number, category: AuditCategory, reason?: string) {
+  /** The refusal was already written to the audit by whoever raised it. */
+  readonly recorded: boolean;
+  constructor(
+    status: number,
+    category: AuditCategory,
+    reason?: string,
+    recorded = false,
+  ) {
     super("MCP HTTP rejected");
     this.status = status;
     this.category = category;
     this.reason = reason;
+    this.recorded = recorded;
   }
 }
 function origin(value: string): URL {
@@ -445,7 +453,8 @@ export class McpHttpGateway {
             this.resourcesEnabled,
           ))
         )
-          throw new HttpFailure(405, "resource_rejected");
+          // protocolAdmission already wrote its own refusal line; one refusal, one line.
+          throw new HttpFailure(405, "resource_rejected", undefined, true);
         const envelope = parsed as Record<string, unknown>;
         const params = (
           envelope.jsonrpc === "2.0" ? envelope.params : envelope
@@ -567,11 +576,12 @@ export class McpHttpGateway {
                       : "resource_rejected",
                 )
               : new HttpFailure(503, "transport_error");
-        try {
-          await record(failure.category, failure.reason);
-        } catch {
-          return empty(503);
-        }
+        if (!failure.recorded)
+          try {
+            await record(failure.category, failure.reason);
+          } catch {
+            return empty(503);
+          }
         return empty(failure.status);
       } finally {
         if (!request.bodyUsed) void request.body?.cancel().catch(() => {});

@@ -24,6 +24,7 @@ import {
   AntigravityRelay,
   AutoAcceptPolicy,
   AutoAudit,
+  agentapiCommand,
   ReceiptNotifier,
   SQLiteNotices,
   autoAcceptConfigSchema,
@@ -493,7 +494,22 @@ test("runRelay sends with the agentapi the app names and stops on abort", async 
   assert.equal(f.inDir("done").length, 1);
   controller.abort();
   await running;
-  assert.equal(f.agentapi.calls().length, 1);
+  const calls = f.agentapi.calls();
+  assert.equal(calls.length, 1);
+  // The app's variable names its language server: agentapi is its subcommand.
+  assert.deepEqual(calls[0].argv.slice(0, 2), ["agentapi", "send-message"]);
+});
+
+test("agentapiCommand: the app's language server gets the agentapi subcommand; the wrapper does not", () => {
+  assert.deepEqual(
+    agentapiCommand({ ANTIGRAVITY_AGENTAPI_EXE: "/app/language_server" }),
+    ["/app/language_server", "agentapi"],
+  );
+  const [wrapper, ...rest] = agentapiCommand({});
+  assert.ok(
+    wrapper.endsWith(join(".gemini", "antigravity", "bin", "agentapi")),
+  );
+  assert.deepEqual(rest, []);
 });
 
 test("runAgentapi: a missing binary fails, a hung one is killed at the deadline", async (t) => {
