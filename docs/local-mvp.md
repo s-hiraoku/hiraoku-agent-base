@@ -31,17 +31,17 @@ node scripts/hab-mvp-demo.mjs --simulate
 | --- | --- |
 | enrollment | 実登録workflowで3個体を登録。同じ製品の2個体を含み、アドレスは別々 |
 | auth-denial | 認証なし・未知の模擬Bearerは401 |
-| paused-by-default | 各hostはowner取得後もpaused。送信を開始しない |
-| ambiguous-send | delivery commit後に送信応答を失わせ、senderは不明結果を保持。sender statusは受付済み |
-| ambiguous-ack | inbox保存後、server ACK commit後の応答を失わせ、未確認の元ACKを保持 |
-| cold-start | 全host・host／registry／enrollment DB・listenerを閉じて再構成。同じ個体、保存済みpaused、ownerを確認 |
-| same-id-recovery | 明示resume後、同じ送信ID・receipt・元ACKで復旧。追加配送を作らない |
-| reply-intent-restart | 質問への回答を先に保存して原質問本文をrelease。返信journalを開き直し、未確認一覧の元ID・本文・期限でoutboxへ引渡し |
-| reply-roundtrip | 元質問への回答をMCPで送信し、相手のdurable inbox保存・ACKとsender statusで確認 |
-| offline-store-forward | 受信hostがpausedでもhostへ蓄積。resume後に受領・ACK |
-| execution-request-inert | execution_requestを配送・保存・ACKしても受信hostは実行しない。本文は受信者のinboxに残り、送信者のstatusはacked |
-| loop-denial | 受け取った回答への自動answerを拒否し、追加intentを作らない。質問にshell要求の文字が含まれても本文を実行しない |
-| stopped | 全hostをpauseし、未完了workがないことを確認してownerを解放 |
+| send-question | `/mcp` の `hab_send` で質問（shell要求文字列を含む非信頼本文）を送信し、受付状態 `pending` を確認 |
+| peek-unread | `/mcp/delivery` の `hab_peek` で未読を既読にせず確認。送信側の `hab_status` は `pending` のまま |
+| cold-start | hostのSQLite DB（registry・delivery・enrollment・owner）とHTTP listenerを閉じて再構成。登録と未読が保持されることを確認 |
+| inbox-read | `/mcp` の `hab_inbox` で未読を読み込み既読化（`acked`）。非信頼枠付き `notice` と `presentation`、`reply_state: "waiting"` を確認 |
+| reread-retention | 既読になったメッセージを `message_id` 指定の `hab_inbox` で7日保持期間内に再読できることを確認 |
+| reply-roundtrip | `/mcp` の `hab_reply` で同一threadへ `answer` を返信し、送信元が `hab_inbox` で既読化、`hab_status` が `reply_state: "replied"` になることを確認 |
+| offline-store-forward | 不在の受信者宛てに `hab_send`（`notice`）を蓄積し、後続の `hab_inbox` で既読化されることを確認 |
+| execution-request-inert | `/mcp/delivery` の `hab_resolve`＋`hab_submit` で `execution_request` を配送し、`hab_peek`＋`hab_mark_read` で既読化しても実行されないことを確認 |
+| same-id-idempotency | 同じ `message_id` の `hab_submit` 再送が同一の `receipt_id` を返し、重複配送を作らないことを確認 |
+| boundary-denials | 他送信者の `hab_status` 参照拒否（`not_found`）と不正対象への `hab_reply` 拒否（`reply_target_not_found`）を確認 |
+| stopped | 配送件数・既読件数・ACK receipt件数が4件で一致することを確認し、listener停止・owner解放を完了 |
 
 JSONの期待する要点は以下です。実行ログそのものを公開repoへ保存する必要はありません。
 
@@ -61,13 +61,13 @@ JSONの期待する要点は以下です。実行ログそのものを公開repo
 }
 ```
 
-mcp_toolsにはhab_resolve／submit／status／poll／ackの5種が並び、auditには固定categoryの件数だけを返します。本文・指紋・token・実行パスは出力しません。4配送は質問・回答・不在時通知・実行依頼です。MCPの双方の状態と、最後のDBの配送／ACK receipt件数を照合します。
+mcp_toolsには実際に呼んだ `hab_inbox`／`hab_mark_read`／`hab_peek`／`hab_reply`／`hab_resolve`／`hab_send`／`hab_status`／`hab_submit` が並び、auditには固定categoryの件数だけを返します。本文・指紋・token・実行パスは出力しません。4配送は質問・回答・不在時通知・実行依頼です。MCPの双方の状態と、最後のDBの配送／ACK receipt件数を照合します。
 
 ## 保存と再開の境界
 
-各個体は同じIDへbindingした専用owner、control、inbox、outbox、共通返信budget、質問返信intentを使います。ownerの取得はresumeの許可を兼ねません。
+hostは単一のownerロックとSQLite DB（`registry.sqlite`・`delivery.sqlite`・`enrollment.sqlite`）を管理します。ADR-036で第1世代のローカル `AdapterHostCycle`・返信budget・質問返信intentを廃止したため、MVPは現行のメール型 `/mcp` と `/mcp/delivery` の実HTTP往復を検証します。
 
-reopen時は新しいDB handle・host・clientを作り、登録checkpoint、永続停止状態、未確認ACK／送信、質問返信のpendingを読み直します。回答本文を会話contextから作り直して渡しません。
+reopen時は新しいDB handle・host listenerを作り、登録済み個体と未読メッセージをディスクから読み直します。
 
 これは**保存済みDBのclose／reopen**です。過去のbackupへのrollback、ディスク喪失、任意のDB単独restoreからの自動再開は行いません。整合世代を揃えたbackup／restoreの全host profileは未完了です。
 
@@ -102,6 +102,4 @@ MVPの5テストは、上記CLIそのものの13段階、引数拒否、import�
 | 新規認証・永続起動 | credential／OAuthの発行・scope、保存先・有効期限、実daemonやcron、既存設定変更は個別確認。MVP実行の承認から引き継がない |
 | G1全体・運用 | 全hostの整合backup／restore、運用policy・監視・実負荷・全入口のowner適用。既存部品のテスト合格と運用受入れを分ける |
 
-この一覧の未確定値を推測して接続・credential発行・課金・公開へ進めません。現在の完了は、ローカルMVPの再現手順・模擬往復・失敗復旧と、その検証済みコードです。
-
-新規question／notice／execution_requestの投入も、共通hostの明示的な `message_enqueue` を通します。デモからoutboxへ直接投入せず、認可・停止・所有権を確認した保存と、別のsend命令によるHTTP送信を分けて検証します。返信は従来のsource別intent／budgetを使います。
+この一覧の未確定値を推測して接続・credential発行・課金・公開へ進めません。現在の完了は、ローカルMVPの再現手順・模擬往復・再起動確認と、その検証済みコードです。

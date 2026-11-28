@@ -54,7 +54,6 @@ const regressionFiles = [
   "hab-enrollment-delivery",
   "hab-auth-groups",
   "hab-discovery",
-  "receive-supervisor",
   "inbox-maintenance",
   "outbox-maintenance",
 ].map((name) => `test/${name}.test.js`);

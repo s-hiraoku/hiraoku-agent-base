@@ -11,10 +11,7 @@ Importing `./index.ts` performs no IO. It exports the pure `DurableSender` and `
 | `sender.ts` | `DurableSender`. `enqueue()` commits the immutable submission before any network call. `sendOnce()` claims at most one job. |
 | `sqlite-outbox.ts` | `SQLiteOutbox`, the sender store with lease fencing, bounded backoff and `maintain`. |
 | `mcp-client.ts` | `DeliveryMcpClient`, the fixed hab_* tool client over Streamable HTTP. It implements both transport ports. |
-| `receive-host.ts` | `HostCore`, the serialized, epoch-fenced command runner, and `ReceiveHost`, which accepts only `receive`. It needs a control, an inbox and a transport, plus an optional process owner. |
-| `sqlite-host-control.ts` | `SQLiteHostControl`, the durable pause/resume switch and epoch that stops a running command. A new control starts paused. |
 | `sqlite-host-owner.ts` | `SQLiteHostOwner`, the process-lifetime lock that keeps two hosts off the same stores. |
-| `receive-supervisor.ts` | `ReceiveSupervisor`, the model-free loop that repeats one `receive` step with backoff ([docs](../../docs/receiver/receive-supervisor.md)). |
 
 ## Receiver: save, then ACK
 
@@ -30,17 +27,16 @@ A lost acceptance response replays the exact original submission. Once the submi
 
 `DeliveryMcpClient` makes one network attempt per operation, with byte, deadline, concurrency, SSE and JSON budgets supplied by the host. It refuses redirects, compressed responses and nonlocal plain HTTP. An injected credential provider supplies the Bearer header. The expected `agent_id` is a local result check, not identity proof; a mismatch returns `forbidden`, so the sender quarantines instead of replaying under other credentials. HTTP and protocol failures normalize to `transport_failed`. Only allowlisted tool errors keep their code. The durable journals own retry, backoff and restart recovery.
 
-## Receive host
+## Retired receive host (ADR-036)
 
-A new agent receives with `ReceiveHost` and `ReceiveSupervisor` alone: no outbox, reply budget, Task bridge or answer journal is needed. The operator resumes the control and acquires the owner before the supervisor starts. `src/adapter-host`'s `AdapterHostCycle` extends the same `HostCore` and adds send, answers and the optional Task bridge.
+`ReceiveHost`, `ReceiveSupervisor`, `SQLiteHostControl` and `src/adapter-host` were retired in ADR-036; standard agents receive via the host's `/mcp` inbox (ADR-020), three-mode wake (ADR-032) and optional `hab:notify` (ADR-021).
 
 ## Tests
 
 ```sh
 node --test test/receiver.test.js test/inbox-maintenance.test.js \
   test/sender.test.js test/outbox-maintenance.test.js \
-  test/mcp-client.test.js test/mcp-client-http.test.js \
-  test/receive-host.test.js test/receive-supervisor.test.js
+  test/mcp-client.test.js test/mcp-client-http.test.js
 ```
 
 The fixtures use synthetic keys and new temporary databases only.
