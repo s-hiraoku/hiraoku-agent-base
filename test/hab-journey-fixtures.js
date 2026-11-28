@@ -199,16 +199,6 @@ export async function journey(t, productNames = ["grok-bot", "dot", "hermes"]) {
       };
     },
     // Fault injection only in newly created test DBs; never alter original payload IDs/deadlines.
-    dueOutbox(name) {
-      raw(`outbox-${name}.sqlite`, (db) =>
-        db.exec("UPDATE outbox SET next_retry_at=0"),
-      );
-    },
-    dueAck(name) {
-      raw(`inbox-${name}.sqlite`, (db) =>
-        db.exec("UPDATE receiver_acks SET next_retry_at=0"),
-      );
-    },
     expireLeases() {
       raw("delivery.sqlite", (db) =>
         db.exec(

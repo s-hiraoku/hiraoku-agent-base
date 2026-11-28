@@ -16,9 +16,6 @@ import {
   hostAdminReceive,
 } from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
-import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { envelope, message, limits, decode } from "./mcp-http-fixtures.js";
 import { fixture, list } from "./host-service-fixtures.js";
 import { eventually, pollUntilDelivered } from "./delivery-fixture.js";
@@ -244,85 +241,32 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
       limits,
       authorization: () => `Bearer ${tokens[name]}`,
     });
-    const outbox = new SQLiteOutbox(join(f.dir, `outbox-${name}.sqlite`), {
-      agent_id: agentId,
-      fingerprint_key: new Uint8Array(32).fill(71),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_submit_attempts: 3,
-      max_status_attempts: 3,
-      status_retry_ms: 86400000,
-    });
-    outbox.migrate();
-    t.after(() => outbox.close());
-    const inboxPath = join(f.dir, `inbox-${name}.sqlite`);
-    const openInbox = () => {
-      const store = new SQLiteInbox(inboxPath, {
-        agent_id: agentId,
-        fingerprint_key: new Uint8Array(32).fill(72),
-        limits,
-        max_records: 10,
-        max_body_bytes: 100000,
-        max_ack_records: 30,
-        ack_retry_ms: 86400000,
-        retry_base_ms: 1000,
-        retry_cap_ms: 60000,
-        max_attempts: 5,
-      });
-      store.migrate();
-      return store;
-    };
-    const inbox = openInbox();
-    t.after(() => inbox.close());
-    const savedBeforeAck = [];
-    const receiver = new DurableReceiver(inbox, {
-      // The pump publishes on its next cycle; every receive in this test expects a message.
-      poll: () => pollUntilDelivered(client),
-      ack: async (request) => {
-        // A separate connection must see the committed body before network ACK.
-        const reader = openInbox();
-        try {
-          const saved = reader
-            .inbox()
-            .find(
-              (entry) =>
-                entry.sender_id === request.sender_id &&
-                entry.message.message_id === request.message_id,
-            );
-          assert.ok(saved);
-          assert.equal(saved.receipt_confirmed, false);
-          savedBeforeAck.push(saved.message);
-        } finally {
-          reader.close();
-        }
-        return client.ack(request);
-      },
-    });
     return {
       address,
       name,
       agentId,
       client,
-      outbox,
-      receiver,
-      savedBeforeAck,
-      sender: new DurableSender(outbox, client),
     };
   });
   const [a, b] = participants;
   assert.equal((await a.client.resolve(b.address)).recipient_id, b.agentId);
   const sent = { ...message(), recipient_id: b.agentId };
-  assert.equal(a.sender.enqueue(sent).state, "queued");
-  await a.sender.sendOnce();
-  assert.equal(a.outbox.get(sent.message_id).state, "accepted");
-  await b.receiver.receiveOnce();
-  assert.deepEqual(b.savedBeforeAck, [sent]);
-  assert.equal(b.receiver.inbox()[0].receipt_confirmed, true);
+  const accepted = await a.client.submit(sent);
+  assert.equal(accepted.state, "pending");
+  const delivery = await pollUntilDelivered(b.client);
+  assert.deepEqual(delivery.message, { ...sent, sender_id: a.agentId });
+  assert.equal(
+    (
+      await b.client.ack({
+        sender_id: delivery.message.sender_id,
+        message_id: delivery.message.message_id,
+        generation: delivery.generation,
+        lease_token: delivery.lease_token,
+        request_id: "ack-b-roundtrip",
+      })
+    ).state,
+    "acked",
+  );
 
   const reply = {
     ...message("2".repeat(32)),
@@ -330,15 +274,25 @@ test("configured groups complete a durable reply roundtrip and revoke both conne
     kind: "answer",
     in_reply_to: { sender_id: a.agentId, message_id: sent.message_id },
   };
-  assert.equal(b.sender.enqueue(reply).state, "queued");
-  await b.sender.sendOnce();
-  assert.equal(b.outbox.get(reply.message_id).state, "accepted");
-  await a.receiver.receiveOnce();
-  assert.deepEqual(a.savedBeforeAck, [reply]);
-  assert.equal(a.receiver.inbox()[0].receipt_confirmed, true);
+  const replyAccepted = await b.client.submit(reply);
+  assert.equal(replyAccepted.state, "pending");
+  const replyDelivery = await pollUntilDelivered(a.client);
+  assert.deepEqual(replyDelivery.message, { ...reply, sender_id: b.agentId });
+  assert.equal(
+    (
+      await a.client.ack({
+        sender_id: replyDelivery.message.sender_id,
+        message_id: replyDelivery.message.message_id,
+        generation: replyDelivery.generation,
+        lease_token: replyDelivery.lease_token,
+        request_id: "ack-a-roundtrip",
+      })
+    ).state,
+    "acked",
+  );
   assert.equal((await a.client.status(sent.message_id)).state, "acked");
   assert.equal((await b.client.status(reply.message_id)).state, "acked");
-  assert.deepEqual(a.receiver.inbox()[0].message.in_reply_to, {
+  assert.deepEqual(replyDelivery.message.in_reply_to, {
     sender_id: a.agentId,
     message_id: sent.message_id,
   });
@@ -844,22 +798,6 @@ test("journaled admin rename CLI keeps the credential and exposes the current na
   assert.equal(
     Date.parse(previous.grace_until) - Date.parse(previous.renamed_at),
     30 * 86400000,
-  );
-  // A host config that still names the previous address is reported, not rewritten.
-  f.config.a2a = {
-    port: 0,
-    identity: "a2a-host@hermes.hab",
-    recipient: "old@hermes.hab",
-    poll_interval_ms: 1000,
-    max_active_requests: 1,
-    max_records: 10,
-  };
-  f.write("service.local.json", f.config);
-  assert.deepEqual(
-    hostAdminStatus(f.configPath).problems.filter((p) =>
-      p.code.startsWith("config_previous"),
-    ),
-    [{ code: "config_previous_address", subject: "a2a.recipient" }],
   );
 });
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ReadableStream } from "node:stream/web";
-import { DeliveryMcpClient } from "../src/agent-sdk/mcp-client.ts";
+import { DeliveryMcpClient } from "../src/hab/delivery-mcp-client.ts";
 import { limits, fixture, message, tick } from "./mcp-http-fixtures.js";
 
 const policy = {

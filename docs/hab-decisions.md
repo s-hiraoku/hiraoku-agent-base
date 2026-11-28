@@ -271,6 +271,18 @@
 - **ローカル MVP。** `demo:hab-mvp`（`scripts/lib/local-mvp.mjs`）は第 1 世代の `AdapterHostCycle` を外し、現行のメール型 `/mcp`（`hab_send`・`hab_inbox`・`hab_reply`・`hab_status`）と `/mcp/delivery`（`hab_peek`・`hab_mark_read`・`hab_resolve`・`hab_submit`）による 13 段階確認へ簡素化した。配送受領だけで `execution_request` を実行しない不変条件と `production_connected: false` は維持する。
 - **変わらないこと。** ADR-015 の受信側判断・承認の分離、ADR-020 のメール型 `/mcp`、ADR-021/023 の受信通知と自動受付、ADR-032 の 3 モード受信、SQLite 配送ストア（ADR-018）は変更しない。
 
+## ADR-037 / 採用：旧 `connectivity_check` 専用 A2A 入口と `src/agent-sdk` 層を撤去し、現役の host・MCP クライアント部品を `src/host`・`src/hab` へ統合する
+
+2026-11-28 JST、owner判断。ADR-016 で追加した host 内 A2A 入口（`src/a2a/`・`src/host/a2a.ts`）と `src/task-bridge/` は `connectivity_check` 固定タスク前提の旧実装であり、現行のメール型 `/mcp`（ADR-020）および今後のクラウド移行・シンプルなコネクタ構成の妨げになる。また ADR-036 後、`src/agent-sdk/` に残っていた 4 つのクライアント側 SQLite outbox/inbox ファイルは旧 A2A 以外に実行時の利用先がない。将来 A2A 互換が必要になった場合は現行メール型 `/mcp` の上へ薄く再実装することとし、旧実装を撤去する。
+
+- **廃止したモジュール・設定例。** `src/a2a/`、`src/host/a2a.ts`、`src/task-bridge/`、`config/host-a2a.example.json`、および `src/agent-sdk/` のクライアント側 outbox/inbox 層（`sender.ts`・`receiver.ts`・`sqlite-outbox.ts`・`sqlite-inbox.ts`・`index.ts`・`README.md`）と対応テストを削除した。`src/host/{config,start,server,admin}.ts` と `scripts/hab-host.ts` から `a2a` 設定セクションと host A2A 名義の自動作成を外した（旧 `a2a` セクションを含む設定は `config_invalid` で拒否される）。
+- **現役部品の移動。** `src/agent-sdk/` にあった現役の 3 モジュールを恒久配置へ移し、`src/agent-sdk/` ディレクトリを解消した。
+  - `src/host/sqlite-host-owner.ts`（host の二重起動ロック）
+  - `src/hab/delivery-mcp-client.ts`（有界な配送 MCP HTTP クライアント、`HabMcpClient` の基底）
+  - `src/hab/authentication-recovery.ts`（ローカル OAuth 復旧シグナル・ゲート）
+- **設計検証の更新。** `verification/design/checks/communication-boundary.mjs` は移動後の 3 モジュールを通信・コア境界の対象へ更新した。`verification/design/checks/mcp-durable-roundtrip.mjs` と `assert-automated.mjs` は、クライアント側 `SQLiteInbox` ではなく、実ループバックの `/mcp/delivery`（`hab_resolve`・`hab_submit` 同 ID 再送・`hab_poll`・`hab_ack` 同 ID 再送・`hab_status`）＋独立読み取り専用 SQLite 検証＋メール型 `/mcp`（`hab_send`・`hab_inbox`・7 日再読・`hab_status`）の往復を検証する形へ更新した。
+- **変わらないこと。** `/mcp` と `/mcp/delivery` の 2 カタログ、SQLite 配送ストア（`delivery.sqlite`）の単一トランザクション永続化・idempotency・lease fencing、認証グループと Registry 認可、受信側の判断・承認分離（ADR-015）は変更しない。
+
 ## 次に決める内容
 
 1. Hub外部resource URLとdiscovery route。既存MCPのclient/認証を確認し、既存routeへの干渉がない案を承認する。

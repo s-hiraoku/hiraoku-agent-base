@@ -1,9 +1,6 @@
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { join } from "node:path";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { HabHttpGateway } from "../src/hab/http.ts";
 import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 import { limits, policy } from "./mcp-http-fixtures.js";
@@ -63,63 +60,14 @@ export async function setup(t, f, hab = f.hab) {
       authorization: () => `Bearer fixture-${name}`,
       fetch,
     });
-  const stores = new Set();
-  const outbox = (name, agent) => {
-    const s = new SQLiteOutbox(join(f.dir, `outbox-${name}.sqlite`), {
-      agent_id: agent.agent_id,
-      fingerprint_key: new Uint8Array(32).fill(71),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_submit_attempts: 3,
-      max_status_attempts: 3,
-      status_retry_ms: 86400000,
-    });
-    s.migrate();
-    stores.add(s);
-    return s;
-  };
-  const inbox = (name, agent) => {
-    const s = new SQLiteInbox(join(f.dir, `inbox-${name}.sqlite`), {
-      agent_id: agent.agent_id,
-      fingerprint_key: new Uint8Array(32).fill(72),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_ack_records: 30,
-      ack_retry_ms: 86400000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_attempts: 5,
-    });
-    s.migrate();
-    stores.add(s);
-    return s;
-  };
-  const closeStores = () => {
-    for (const s of stores) s.close();
-    stores.clear();
-  };
-  t.after(closeStores);
   return {
     url,
     clients,
-    outbox,
-    inbox,
     tools,
     start,
     stop,
     async dispose() {
       await stop();
-      closeStores();
-    },
-    close(store) {
-      store.close();
-      stores.delete(store);
     },
   };
 }

@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
 import { setup } from "./hab-http-fixtures.js";
 import { test } from "node:test";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { fixture, code, operations } from "./hab-registry-fixtures.js";
 import { message, decode, request } from "./mcp-http-fixtures.js";
 
+const ackFor = (delivery, requestId) => ({
+  sender_id: delivery.message.sender_id,
+  message_id: delivery.message.message_id,
+  generation: delivery.generation,
+  lease_token: delivery.lease_token,
+  request_id: requestId,
+});
+
 test(
-  "mock three-individual HTTP round trip resolves over MCP and retries durable send after restart without resolving again",
+  "mock three-individual HTTP round trip resolves over MCP and retries submit after lost acceptance without resolving again",
   { timeout: 10000 },
   async (t) => {
     const f = await fixture(t),
@@ -30,47 +35,29 @@ test(
     const ca = net.clients("a", a),
       cb = net.clients("b", b),
       cc = net.clients("c", c);
-    const stored = net.outbox("a", a),
-      receiver = new DurableReceiver(net.inbox("b", b), cb);
     let lost = false;
-    let sender = new DurableSender(
-      stored,
-      net.clients("a", a, async (url, init) => {
-        const response = await globalThis.fetch(url, init);
-        if (init.headers["Mcp-Name"] === "hab_submit" && !lost) {
-          lost = true;
-          await response.arrayBuffer();
-          throw Error("synthetic lost acceptance");
-        }
-        return response;
-      }),
-    );
+    const losingSender = net.clients("a", a, async (url, init) => {
+      const response = await globalThis.fetch(url, init);
+      if (init.headers["Mcp-Name"] === "hab_submit" && !lost) {
+        lost = true;
+        await response.arrayBuffer();
+        throw Error("synthetic lost acceptance");
+      }
+      return response;
+    });
     const resolved = await ca.resolve(b.address),
       m = { ...message(), recipient_id: resolved.recipient_id };
-    sender.enqueue(m);
-    await assert.rejects(sender.sendOnce(), code("sender_transport_failed"));
+    await assert.rejects(losingSender.submit(m), code("transport_failed"));
     assert.equal(f.count(), 1);
     const receipt = hab.status(f.contexts.a, m.message_id);
     assert.equal(net.tools.filter((tool) => tool === "hab_resolve").length, 1);
-    net.close(stored);
-    const raw = new DatabaseSync(join(f.dir, "outbox-a.sqlite"));
-    try {
-      raw.exec("UPDATE outbox SET next_retry_at=0");
-    } finally {
-      raw.close();
-    }
-    sender = new DurableSender(net.outbox("a", a), net.clients("a", a));
-    await sender.sendOnce();
+    const recovered = await ca.submit(m);
     assert.equal(net.tools.filter((tool) => tool === "hab_resolve").length, 1);
-    assert.equal(
-      sender.get(m.message_id).receipt.receipt_id,
-      receipt.receipt_id,
-    );
-    assert.equal(sender.get(m.message_id).state, "accepted");
-    assert.equal(sender.get(m.message_id).receipt.recipient_id, b.agent_id);
-    await receiver.receiveOnce();
-    assert.deepEqual(receiver.inbox()[0].message, m);
-    assert.equal(receiver.inbox()[0].receipt_confirmed, true);
+    assert.equal(recovered.receipt_id, receipt.receipt_id);
+    assert.equal(recovered.recipient_id, b.agent_id);
+    const delivered = await cb.poll();
+    assert.deepEqual(delivered.message, { ...m, sender_id: a.agent_id });
+    assert.equal((await cb.ack(ackFor(delivered, "ack-ab"))).state, "acked");
     assert.equal(await cc.poll(), null);
     await assert.rejects(cc.status(m.message_id), code("not_found"));
     const reply = {
@@ -80,23 +67,32 @@ test(
       thread_id: m.thread_id,
       in_reply_to: { sender_id: a.agent_id, message_id: m.message_id },
     };
-    const replying = new DurableSender(net.outbox("b", b), cb),
-      receiving = new DurableReceiver(net.inbox("a", a), ca);
-    replying.enqueue(reply);
-    await replying.sendOnce();
-    await receiving.receiveOnce();
-    assert.deepEqual(receiving.inbox()[0].message, reply);
+    await cb.submit(reply);
+    const replyDelivery = await ca.poll();
+    assert.deepEqual(replyDelivery.message, {
+      ...reply,
+      sender_id: b.agent_id,
+    });
+    assert.equal(
+      (await ca.ack(ackFor(replyDelivery, "ack-ba"))).state,
+      "acked",
+    );
     const notice = {
       ...message("3".repeat(32)),
       recipient_id: (await cc.resolve(a.address)).recipient_id,
       thread_id: "thread-ca",
       kind: "notice",
     };
-    const third = new DurableSender(net.outbox("c", c), cc);
-    third.enqueue(notice);
-    await third.sendOnce();
-    await receiving.receiveOnce();
-    assert.equal(receiving.inbox().length, 2);
+    await cc.submit(notice);
+    const noticeDelivery = await ca.poll();
+    assert.deepEqual(noticeDelivery.message, {
+      ...notice,
+      sender_id: c.agent_id,
+    });
+    assert.equal(
+      (await ca.ack(ackFor(noticeDelivery, "ack-ca"))).state,
+      "acked",
+    );
     assert.equal(f.count(), 3);
     assert.equal((await cc.status(notice.message_id)).state, "acked");
     const listed = await decode(
@@ -115,7 +111,7 @@ test(
 );
 
 test(
-  "cached address resolution never bypasses a later stop or silently redirects a stored outbox",
+  "cached address resolution never bypasses a later stop or allows name reuse",
   { timeout: 10000 },
   async (t) => {
     const f = await fixture(t),
@@ -125,8 +121,6 @@ test(
     const ca = net.clients("a", a);
     const target = await ca.resolve(b.address),
       m = { ...message(), recipient_id: target.recipient_id };
-    const sender = new DurableSender(net.outbox("a", a), net.clients("a", a));
-    sender.enqueue(m);
     const stopped = f.registry.setAccess(f.admin, {
       request_id: "stop-b",
       agent_id: b.agent_id,
@@ -134,10 +128,7 @@ test(
       state: "stopped",
       operations: [],
     });
-    await sender.sendOnce();
-    assert.equal(sender.get(m.message_id).state, "quarantined");
-    assert.equal(sender.get(m.message_id).reason, "recipient_unavailable");
-    assert.equal(sender.get(m.message_id).recipient_id, b.agent_id);
+    await assert.rejects(ca.submit(m), code("recipient_unavailable"));
     assert.equal(f.count(), 0);
     assert.throws(
       () =>
@@ -155,8 +146,6 @@ test(
       state: "active",
       operations,
     });
-    await sender.sendOnce();
-    assert.equal(f.count(), 0);
     assert.equal(
       (await ca.resolve(b.address)).recipient_id,
       target.recipient_id,

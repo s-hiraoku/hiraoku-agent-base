@@ -12,7 +12,7 @@ import { SQLiteEnrollmentJournal } from "../../src/hab/sqlite-enrollment-journal
 import { runHabEnrollment } from "../../src/hab/enrollment.ts";
 import { HabHttpGateway } from "../../src/hab/http.ts";
 import { routeMcpNodeHandlers } from "../../src/host/mcp/http-node.ts";
-import { SQLiteHostOwner } from "../../src/agent-sdk/sqlite-host-owner.ts";
+import { SQLiteHostOwner } from "../../src/host/sqlite-host-owner.ts";
 import { makeReplayBoundMessageId } from "../../src/messaging/contract.ts";
 import { SqliteDelivery } from "../../src/delivery/sqlite-delivery.ts";
 import { HabDeliveryService } from "../../src/host/hab-delivery-service.ts";

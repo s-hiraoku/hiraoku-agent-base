@@ -9,7 +9,6 @@ import type { HabEventOptions, HabEventSource } from "../hab/events.ts";
 import type { Server } from "node:http";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { createHmac } from "node:crypto";
 import {
   lstatSync,
   realpathSync,
@@ -18,14 +17,10 @@ import {
   constants,
 } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { SQLiteHostOwner } from "../agent-sdk/sqlite-host-owner.ts";
+import { SQLiteHostOwner } from "./sqlite-host-owner.ts";
 import { SQLiteHabRegistry } from "../hab/sqlite-registry.ts";
 import type { RegistryOptions } from "../hab/sqlite-registry.ts";
-import type {
-  AgentRecord,
-  RegistryAuthority,
-  VerifiedIndividual,
-} from "../hab/registry.ts";
+import type { RegistryAuthority } from "../hab/registry.ts";
 import type { HabMcpService } from "../hab/mcp.ts";
 import { HabHttpGateway } from "../hab/http.ts";
 import { validateLimits } from "../messaging/contract.ts";
@@ -33,14 +28,6 @@ import type { ContractLimits } from "../messaging/contract.ts";
 import type { McpHttpPolicy, McpHttpVerifier } from "./mcp/http.ts";
 import { routeMcpNodeHandlers } from "./mcp/http-node.ts";
 import type { AuditSink } from "../security.ts";
-import {
-  HOST_A2A_ISSUER,
-  hostA2aIndividual,
-  provisionHostA2aIdentity,
-  provisioningOperations,
-  startHostA2a,
-} from "./a2a.ts";
-import type { HostA2aConfig } from "./config.ts";
 
 export interface HostServerOptions {
   /** Existing canonical, owner-only directory dedicated to this host. */
@@ -79,8 +66,6 @@ export interface HostServerOptions {
   audit: AuditSink;
   /** The delivery backend. The host wires it and never chooses between backends. */
   delivery: DeliveryFactory;
-  /** Optional A2A entry with its own host-owned identity and loopback listener. */
-  a2a?: HostA2aConfig;
 }
 
 export interface DeliveryDependencies {
@@ -155,15 +140,6 @@ export async function startHostServer(options: HostServerOptions) {
       typeof ingress.verify !== "function")
   )
     throw Error("invalid_host_ingress");
-  const a2aConfig = options.a2a;
-  if (
-    a2aConfig &&
-    a2aConfig.port !== 0 &&
-    (a2aConfig.port < 1024 ||
-      a2aConfig.port === options.port ||
-      a2aConfig.port === ingress?.port)
-  )
-    throw Error("invalid_host_a2a");
   privatePath(options.directory, true);
   validateLimits(options.limits);
   const preflight: unknown = options.delivery.preflight?.(options.directory);
@@ -179,22 +155,10 @@ export async function startHostServer(options: HostServerOptions) {
     ingressHandler: ReturnType<typeof routeMcpNodeHandlers> | undefined,
     ingressServer: Server | undefined,
     serviceClose: (() => Promise<void>) | undefined,
-    a2a: Awaited<ReturnType<typeof startHostA2a>> | undefined,
     events: HabEvents | undefined,
     // Config doorbell addresses that a registered doorbell replaced at start (plan 3).
     doorbellsReplaced: string[] = [],
     stopping = false;
-  // Only host code holds these. The first is the host A2A identity's verified context;
-  // the second answers as administrator only while startup provisions that identity.
-  const hostContext = Object.freeze({});
-  const provisioner = Object.freeze({});
-  let provisioning = false;
-  const a2aKey = createHmac("sha256", options.registry.fingerprint_key)
-    .update("hab-host-a2a-v1")
-    .digest();
-  // The reserved host issuer can never come from operator credentials or OAuth.
-  const operatorIndividual = (value: VerifiedIndividual | undefined) =>
-    value?.principal.issuer === HOST_A2A_ISSUER ? undefined : value;
   const pending = new Set<Promise<void>>();
   const makeServer = (current: () => typeof handler) =>
     createServer(
@@ -246,11 +210,6 @@ export async function startHostServer(options: HostServerOptions) {
       } finally {
         try {
           try {
-            await a2a?.close();
-          } catch {
-            // Closing delivery and the Registry still runs.
-          }
-          try {
             await events?.close();
           } catch {
             // Closing delivery and the Registry still runs.
@@ -287,12 +246,6 @@ export async function startHostServer(options: HostServerOptions) {
       join(options.directory, "registry.sqlite"),
       registryOptions,
       {
-        administrator: (context, operation) =>
-          provisioning &&
-          context === provisioner &&
-          provisioningOperations.has(operation)
-            ? { actor_id: "hab-host" }
-            : undefined,
         hostIdentity: (context) => {
           ownership.check();
           if (stopping) return undefined;
@@ -303,29 +256,14 @@ export async function startHostServer(options: HostServerOptions) {
         individual: (context) => {
           ownership.check();
           if (stopping) return undefined;
-          if (a2aConfig && context === hostContext)
-            return hostA2aIndividual(registryOptions.max_context_ms);
-          return operatorIndividual(
+          return (
             options.authority.individual!(context) ??
-              ingress?.authority.individual?.(context),
+            ingress?.authority.individual?.(context)
           );
         },
       },
     );
     registry.migrate();
-    let identity: AgentRecord | undefined;
-    if (a2aConfig) {
-      provisioning = true;
-      try {
-        identity = provisionHostA2aIdentity(
-          registry,
-          provisioner,
-          a2aConfig.identity,
-        );
-      } finally {
-        provisioning = false;
-      }
-    }
     const privateFile = (name: string) => {
       if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(name))
         throw Error("invalid_host_options");
@@ -546,26 +484,10 @@ export async function startHostServer(options: HostServerOptions) {
       ingressPort = remoteAddress.port;
     }
     events?.start();
-    if (a2aConfig && identity)
-      a2a = await startHostA2a({
-        config: a2aConfig,
-        registry,
-        service,
-        identity,
-        hostContext,
-        limits: options.limits,
-        fingerprintKey: a2aKey,
-        timeoutMs: options.http.timeout_ms,
-        privateFile,
-        verify: options.verify,
-        assertOwner,
-        stopping: () => stopping,
-      });
     return Object.freeze({
       url: policy(address.port, "").resource_url,
       delivery_url: policy(address.port, "/delivery").resource_url,
       close,
-      ...(a2a ? { a2a_url: a2a.url } : {}),
       ...(doorbellsReplaced.length
         ? { doorbells_replaced: doorbellsReplaced }
         : {}),

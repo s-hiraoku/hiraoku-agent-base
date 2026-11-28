@@ -23,122 +23,101 @@ assert(
   "Node >= 24 required",
 );
 
-// Independent read-only connection: no migration, writes or receiver API can satisfy this gate.
-function assertCommittedBeforeAck(path, request, expectedSender, message) {
+// Independent read-only connection: no migration, writes or host API can satisfy this gate.
+function assertCommittedDelivery(
+  path,
+  expectedSender,
+  messageId,
+  expectedState,
+  expectedBody,
+) {
   const raw = new DatabaseSync(path, { readOnly: true });
   try {
-    assert.equal(request.sender_id, expectedSender);
-    assert.equal(request.message_id, message.message_id);
     const row = raw
       .prepare(
-        "SELECT body,receipt_confirmed FROM inbox WHERE sender_id=? AND message_id=?",
+        "SELECT state, body, body_bytes, ack_receipt_id, acked_at FROM delivery_messages WHERE sender_id=? AND message_id=?",
       )
-      .get(expectedSender, message.message_id);
-    assert(row, "ACK before independently visible committed inbox body");
-    assert.deepEqual(
-      JSON.parse(row.body),
-      message,
-      "committed inbox body differs",
-    );
-    assert.equal(
-      row.receipt_confirmed,
-      0,
-      "ACK gate expected an unconfirmed receipt",
-    );
-    const ack = raw
-      .prepare(
-        "SELECT request,state FROM receiver_acks WHERE request_id=? AND sender_id=? AND message_id=?",
-      )
-      .get(request.request_id, expectedSender, message.message_id);
-    assert(ack, "ACK before independently visible original request journal");
-    assert.equal(ack.state, "pending");
-    assert.deepEqual(
-      JSON.parse(ack.request),
-      request,
-      "outgoing ACK differs from durable original request",
-    );
+      .get(expectedSender, messageId);
+    assert(row, "missing independently visible committed delivery row");
+    assert.equal(row.state, expectedState, "committed delivery state differs");
+    if (expectedBody === null) {
+      assert.equal(row.body, null, "expected released body after ACK");
+      assert.equal(row.body_bytes, 0, "expected zero body_bytes after ACK");
+      assert(row.ack_receipt_id, "missing committed ack_receipt_id");
+      assert(row.acked_at !== null, "missing committed acked_at");
+    } else {
+      assert(row.body, "missing independently visible committed body");
+      assert.deepEqual(
+        JSON.parse(row.body),
+        { sender_id: expectedSender, message: expectedBody },
+        "committed delivery body differs",
+      );
+      assert(row.body_bytes > 0, "expected positive body_bytes");
+    }
   } finally {
     raw.close();
   }
 }
 
 function guardSelfTest() {
-  const scratch = mkdtempSync(join(tmpdir(), "hab-pre-ack-")),
+  const scratch = mkdtempSync(join(tmpdir(), "hab-delivery-guard-")),
     path = join(scratch, "guard.sqlite");
   const db = new DatabaseSync(path);
-  const message = { message_id: "synthetic-message", body: "synthetic body" };
-  const request = {
-    sender_id: "synthetic-sender",
-    message_id: message.message_id,
-    request_id: "original-request",
-  };
+  const body = { parts: [{ type: "text", text: "synthetic body" }] };
+  const sender = "synthetic-sender",
+    messageId = "synthetic-message";
   try {
     db.exec(
-      "PRAGMA journal_mode=WAL; CREATE TABLE inbox(sender_id TEXT,message_id TEXT,body TEXT,receipt_confirmed INTEGER); CREATE TABLE receiver_acks(request_id TEXT,sender_id TEXT,message_id TEXT,request TEXT,state TEXT);",
+      "PRAGMA journal_mode=WAL; CREATE TABLE delivery_messages(sender_id TEXT,message_id TEXT,state TEXT,body TEXT,body_bytes INTEGER,ack_receipt_id TEXT,acked_at INTEGER);",
     );
-    const check = () =>
-      assertCommittedBeforeAck(path, request, request.sender_id, message);
+    const checkPending = () =>
+      assertCommittedDelivery(path, sender, messageId, "pending", body);
+    const checkAcked = () =>
+      assertCommittedDelivery(path, sender, messageId, "acked", null);
     assert.throws(
-      check,
-      /ACK before independently visible committed inbox body/,
+      checkPending,
+      /missing independently visible committed delivery row/,
     );
     db.exec("BEGIN IMMEDIATE");
-    db.prepare("INSERT INTO inbox VALUES(?,?,?,0)").run(
-      request.sender_id,
-      message.message_id,
-      JSON.stringify(message),
+    db.prepare(
+      "INSERT INTO delivery_messages VALUES(?,?,?,?,?,NULL,NULL)",
+    ).run(
+      sender,
+      messageId,
+      "pending",
+      JSON.stringify({ sender_id: sender, message: body }),
+      42,
     );
     assert.throws(
-      check,
-      /ACK before independently visible committed inbox body/,
+      checkPending,
+      /missing independently visible committed delivery row/,
     );
     db.exec("COMMIT");
-    assert.throws(
-      check,
-      /ACK before independently visible original request journal/,
+    checkPending();
+    db.prepare("UPDATE delivery_messages SET body=?").run(
+      JSON.stringify({
+        sender_id: sender,
+        message: { parts: [{ type: "text", text: "changed" }] },
+      }),
     );
-    db.exec("BEGIN IMMEDIATE");
-    db.prepare("INSERT INTO receiver_acks VALUES(?,?,?,?,?)").run(
-      request.request_id,
-      request.sender_id,
-      message.message_id,
-      JSON.stringify(request),
-      "pending",
-    );
-    assert.throws(
-      check,
-      /ACK before independently visible original request journal/,
-    );
-    db.exec("ROLLBACK");
-    db.prepare("INSERT INTO receiver_acks VALUES(?,?,?,?,?)").run(
-      request.request_id,
-      request.sender_id,
-      message.message_id,
-      JSON.stringify({ ...request, request_id: "wrong-request" }),
-      "pending",
-    );
-    assert.throws(check, /outgoing ACK differs/);
-    db.prepare("UPDATE receiver_acks SET request=?").run(
-      JSON.stringify(request),
-    );
-    check();
-    db.prepare("UPDATE inbox SET body=?").run(
-      JSON.stringify({ ...message, body: "changed" }),
-    );
-    assert.throws(check, /committed inbox body differs/);
+    assert.throws(checkPending, /committed delivery body differs/);
+    db.prepare("UPDATE delivery_messages SET state='acked',body=NULL,body_bytes=0").run();
+    assert.throws(checkAcked, /missing committed ack_receipt_id/);
+    db.prepare(
+      "UPDATE delivery_messages SET ack_receipt_id='ack-1',acked_at=1000",
+    ).run();
+    checkAcked();
     console.log(
       JSON.stringify({
         status: "pass",
         scope: "observer guard only; no HAB protocol behavior exercised",
         negativeControls: [
-          "ACK before save",
-          "uncommitted save",
-          "missing journal",
-          "uncommitted journal",
-          "changed original ACK",
-          "changed body",
+          "missing delivery row",
+          "uncommitted delivery insert",
+          "changed committed body",
+          "acked without ack_receipt_id",
         ],
-        committedOriginalRequestControl: "pass",
+        committedDeliveryControl: "pass",
       }),
     );
   } finally {
@@ -161,8 +140,7 @@ if (args.length === 1 && args[0] === "--self-test") {
 async function roundtrip(target, out) {
   assert(!existsSync(out), "refuse to overwrite previous evidence");
   mkdirSync(out, { recursive: true, mode: 0o700 });
-  const run = join(out, "scaffold"),
-    inboxPath = join(out, "receiver.sqlite");
+  const run = join(out, "scaffold");
   const logPath = join(out, "stack.log"),
     tracePath = join(out, "trace.jsonl");
   writeFileSync(logPath, "");
@@ -181,7 +159,6 @@ async function roundtrip(target, out) {
     childError,
     exited,
     log = "",
-    inbox,
     result,
     failure;
   const cleanup = {
@@ -195,8 +172,6 @@ async function roundtrip(target, out) {
   try {
     const load = (name) => import(pathToFileURL(join(target, name)).href);
     const { HabMcpClient } = await load("src/hab/mcp-client.ts");
-    const { SQLiteInbox } = await load("src/agent-sdk/sqlite-inbox.ts");
-    const { DurableReceiver } = await load("src/agent-sdk/receiver.ts");
     controller.signal.throwIfAborted();
     child = spawn(
       process.execPath,
@@ -244,7 +219,6 @@ async function roundtrip(target, out) {
     assert.equal(url.hostname, "127.0.0.1");
     assert.equal(url.pathname, "/mcp");
     assert.equal(Number(url.port), state.port);
-    // The SDK uses the delivery catalog; agents use /mcp (ADR-020).
     assert.equal(state.delivery_url, `${state.url}/delivery`);
     assert(
       Number.isInteger(state.port) && state.port > 0 && state.port < 65536,
@@ -271,7 +245,25 @@ async function roundtrip(target, out) {
       json_depth: 20,
       json_nodes: 1000,
     };
-    const makeClient = (agent, beforeAck) =>
+    const deliveryDbPath = join(run, "instance/delivery.sqlite");
+    const tracedFetch = async (address, init) => {
+      const body = JSON.parse(init.body);
+      trace("request", body); // Authorization headers are deliberately absent.
+      const response = await fetch(address, {
+        ...init,
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(3000),
+          ...(init.signal ? [init.signal] : []),
+        ]),
+      });
+      trace("response", {
+        status: response.status,
+        body: await response.clone().text(),
+      });
+      return response;
+    };
+    const makeClient = (agent) =>
       new HabMcpClient({
         limits,
         policy: {
@@ -287,27 +279,44 @@ async function roundtrip(target, out) {
           max_json_nodes: 10000,
         },
         authorization: () => `Bearer ${state.agents[agent].token}`,
-        fetch: async (address, init) => {
-          const body = JSON.parse(init.body);
-          trace("request", body); // Authorization headers are deliberately absent.
-          if (body.params?.name === "hab_ack" && beforeAck)
-            beforeAck(body.params.arguments);
-          const response = await fetch(address, {
-            ...init,
-            signal: AbortSignal.any([
-              controller.signal,
-              AbortSignal.timeout(3000),
-              ...(init.signal ? [init.signal] : []),
-            ]),
-          });
-          trace("response", {
-            status: response.status,
-            body: await response.clone().text(),
-          });
-          return response;
-        },
+        fetch: tracedFetch,
       });
+    let rpcId = 100;
+    const callAgentTool = async (agent, name, args) => {
+      const response = await tracedFetch(state.url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          Authorization: `Bearer ${state.agents[agent].token}`,
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/call",
+          "Mcp-Name": name,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: ++rpcId,
+          method: "tools/call",
+          params: {
+            name,
+            arguments: args,
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+            },
+          },
+        }),
+      });
+      assert.equal(response.status, 200);
+      const parsed = await response.json();
+      assert.equal(parsed.error, undefined);
+      assert.equal(Boolean(parsed.result?.isError), false);
+      return parsed.result.structuredContent;
+    };
+
+    // 1. Low-level /mcp/delivery roundtrip with independent SQLite verification.
     const sender = makeClient("a");
+    const receiver = makeClient("b");
     const resolution = await sender.resolve(state.agents.b.address);
     assert.equal(resolution.recipient_id, state.agents.b.agent_id);
     const at = Date.now() - 100;
@@ -336,85 +345,93 @@ async function roundtrip(target, out) {
       sameReceipt: true,
       messageId: message.message_id,
     });
-    const options = {
-      agent_id: state.agents.b.agent_id,
-      fingerprint_key: new Uint8Array(32).fill(91),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_ack_records: 30,
-      ack_retry_ms: 86400000,
-      retry_base_ms: 1,
-      retry_cap_ms: 10,
-      max_attempts: 3,
+    assertCommittedDelivery(
+      deliveryDbPath,
+      state.agents.a.agent_id,
+      message.message_id,
+      "pending",
+      message,
+    );
+    trace("independent_committed_delivery", {
+      messageId: message.message_id,
+      state: "pending",
+      committedBody: true,
+      observerReadOnly: true,
+    });
+    const delivered = await receiver.poll();
+    assert.ok(delivered);
+    assert.deepEqual(delivered.message, {
+      ...message,
+      sender_id: state.agents.a.agent_id,
+    });
+    const ackReq = {
+      sender_id: state.agents.a.agent_id,
+      message_id: message.message_id,
+      generation: delivered.generation,
+      lease_token: delivered.lease_token,
+      request_id: `proof-ack-${at}`,
     };
-    inbox = new SQLiteInbox(inboxPath, options);
-    inbox.migrate();
-    let observed = 0;
-    const receiverClient = makeClient("b", (request) => {
-      try {
-        assertCommittedBeforeAck(
-          inboxPath,
-          request,
-          state.agents.a.agent_id,
-          message,
-        );
-      } catch (error) {
-        trace("independent_pre_ack_rejected", { message: error.message });
-        throw error;
-      }
-      observed++;
-      trace("independent_pre_ack_read", {
-        messageId: message.message_id,
-        requestId: request.request_id,
-        committedBody: true,
-        originalPendingAck: true,
-        receiptConfirmed: false,
-        observerReadOnly: true,
-      });
+    const acked = await receiver.ack(ackReq);
+    const ackReplay = await receiver.ack(ackReq);
+    assert.deepEqual(ackReplay, acked);
+    assertCommittedDelivery(
+      deliveryDbPath,
+      state.agents.a.agent_id,
+      message.message_id,
+      "acked",
+      null,
+    );
+    trace("independent_acked_delivery", {
+      messageId: message.message_id,
+      requestId: ackReq.request_id,
+      state: "acked",
+      bodyReleased: true,
+      observerReadOnly: true,
     });
-    const receiver = new DurableReceiver(inbox, receiverClient);
-    // An accepted message is pollable at once; the bounded retry only guards a slow first receive.
-    const receiveDeadline = Date.now() + 5000;
-    await receiver.receiveOnce();
-    while (
-      observed === 0 &&
-      receiver.inbox().length === 0 &&
-      Date.now() < receiveDeadline
-    ) {
-      await delay(25);
-      await receiver.receiveOnce();
-    }
-    assert.equal(observed, 1);
-    const readEntry = () =>
-      inbox.withEntry(state.agents.a.agent_id, message.message_id, (entry) =>
-        structuredClone(entry),
-      );
-    assert.deepEqual(readEntry().message, message);
-    assert.equal(readEntry().receipt_confirmed, true);
-    inbox.close();
-    inbox = undefined;
-    inbox = new SQLiteInbox(inboxPath, options);
-    inbox.migrate();
-    assert.deepEqual(readEntry().message, message);
-    assert.equal(readEntry().receipt_confirmed, true);
-    trace("receiver_clean_reopen", {
-      body: "unchanged",
-      receiptConfirmed: true,
-      keyedIntegrityRead: true,
+    assert.equal((await sender.status(message.message_id)).state, "acked");
+    assert.equal(await receiver.poll(), null);
+
+    // 2. Mail-style /mcp agent roundtrip (ADR-020).
+    const mailText = "Synthetic mail-style roundtrip; do not execute.";
+    const sentMail = await callAgentTool("a", "hab_send", {
+      to: state.agents.b.address,
+      text: mailText,
+      kind: "question",
     });
-    const status = await sender.status(message.message_id);
-    assert.equal(status.state, "acked");
-    assert.equal(await receiverClient.poll(), null);
+    assert.equal(sentMail.state, "pending");
+    const inboxRead = await callAgentTool("b", "hab_inbox", { limit: 10 });
+    assert.equal(inboxRead.messages.length, 1);
+    assert.equal(inboxRead.messages[0].message_id, sentMail.message_id);
+    assert.equal(inboxRead.messages[0].text, mailText);
+    assert.equal(inboxRead.messages[0].presentation.body_untrusted, true);
+    const reread = await callAgentTool("b", "hab_inbox", {
+      message_id: sentMail.message_id,
+    });
+    assert.equal(reread.messages.length, 1);
+    assert.equal(reread.messages[0].text, mailText);
+    const mailStatus = await callAgentTool("a", "hab_status", {
+      message_id: sentMail.message_id,
+    });
+    assert.equal(mailStatus.state, "acked");
+    assert.equal(mailStatus.reply_state, "waiting");
+    trace("mail_style_roundtrip", {
+      messageId: sentMail.message_id,
+      untrustedMarked: true,
+      rereadRetained: true,
+      acked: true,
+    });
+
     result = {
       evidence:
-        "real loopback MCP resolve/submit/poll/ACK/status, independent read-only committed inbox + original ACK journal BEFORE network ACK",
+        "real loopback MCP /mcp/delivery (resolve/submit/replay/poll/ACK/replay/status) and mail-style /mcp (send/inbox/reread/status), with independent read-only SQLite commit verification",
       syntheticAuthority: true,
       sameIdReplay: true,
-      receiverCleanReopen: true,
+      independentCommittedDelivery: true,
+      independentAckedDelivery: true,
+      mailStyleRoundtrip: true,
       node: process.version,
       limits:
-        "Synthetic verification scaffold, not native products, production OAuth, model/tool execution or approval. Orderly receiver-store reopen only; no server restart, kill-9, power-loss, physical-media, lost-response or general Task-absence proof.",
+        "Synthetic verification scaffold, not native products, production OAuth, model/tool execution or approval. No kill-9, power-loss, physical-media or general Task-absence proof.",
     };
   } catch (error) {
     failure = {
@@ -423,11 +440,6 @@ async function roundtrip(target, out) {
     };
     trace("failure", failure);
   } finally {
-    try {
-      inbox?.close();
-    } catch (error) {
-      cleanup.errors.push(`receiver close: ${error.message}`);
-    }
     if (child) {
       if (!childResult && child.exitCode === null && child.signalCode === null)
         child.kill("SIGTERM");
@@ -456,8 +468,6 @@ async function roundtrip(target, out) {
     if (cleanup.exitObserved && cleanup.errors.length === 0) {
       try {
         rmSync(join(run, "instance"), { recursive: true, force: true });
-        for (const path of [inboxPath, `${inboxPath}-wal`, `${inboxPath}-shm`])
-          rmSync(path, { force: true });
         cleanup.storesRemoved = true;
       } catch (error) {
         cleanup.errors.push(`remove disposable stores: ${error.message}`);

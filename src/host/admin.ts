@@ -171,7 +171,6 @@ function open(configPath: string) {
   const resources = [
     ...(config.port ? [`http://127.0.0.1:${config.port}/mcp`] : []),
     ...(config.ingress ? [config.ingress.resource_url] : []),
-    ...(config.a2a?.port ? [`http://127.0.0.1:${config.a2a.port}/a2a`] : []),
   ];
   const credentials = () => {
     let parsed;
@@ -223,8 +222,6 @@ function open(configPath: string) {
     registry,
     resources,
     credentials,
-    a2aIdentity: config.a2a?.identity,
-    a2aRecipient: config.a2a?.recipient,
     directory: config.directory,
     eventsEnabled: !!config.ingress?.events,
     oauthLedger: config.ingress?.oauth_file,
@@ -363,8 +360,6 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
       registry,
       resources,
       credentials,
-      a2aIdentity,
-      a2aRecipient,
       directory,
       eventsEnabled,
     }) => {
@@ -439,20 +434,6 @@ export function hostAdminStatus(configPath: string, now = Date.now()) {
           });
       }
       const previous = registry.previousNames(operator);
-      for (const [key, configured] of [
-        ["a2a.identity", a2aIdentity],
-        ["a2a.recipient", a2aRecipient],
-      ] as const) {
-        const name = previous.find((entry) => entry.address === configured);
-        // A host start after the grace period refuses this name; update the config first.
-        if (name)
-          problems.push({
-            code: name.resolves
-              ? "config_previous_address"
-              : "config_previous_address_expired",
-            subject: key,
-          });
-      }
       if (view.stopped)
         problems.push({ code: "emergency_stopped", subject: "*" });
       // Whether recipients notice their mail: the unread backlog and, with MCP events on,
@@ -626,10 +607,7 @@ export function hostAdminConnect(configPath: string, input: ConnectInput) {
     throw new HostAdminError("invalid_operations");
   return withRegistry(
     configPath,
-    ({ registry, resources, credentials, a2aIdentity }) => {
-      // A second credential on the host identity could read every A2A reply.
-      if (address.address === a2aIdentity)
-        throw new HostAdminError("a2a_identity_reserved");
+    ({ registry, resources, credentials }) => {
       const principal = principalFor(
         credentials(),
         input.connection_id,

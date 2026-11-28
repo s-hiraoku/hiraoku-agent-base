@@ -1,6 +1,6 @@
 /** Fixed HAB directory client using the same bounded delivery MCP transport/admission. */
-import { DeliveryMcpClient } from "../agent-sdk/mcp-client.ts";
-import type { DeliveryMcpClientOptions } from "../agent-sdk/mcp-client.ts";
+import { DeliveryMcpClient } from "./delivery-mcp-client.ts";
+import type { DeliveryMcpClientOptions } from "./delivery-mcp-client.ts";
 import { parseHabAddress } from "./registry.ts";
 import { parseHabResolveInput, parseHabResolution } from "./directory.ts";
 import type { HabResolution } from "./directory.ts";

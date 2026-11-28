@@ -2,8 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
@@ -12,9 +10,7 @@ import {
   limits,
   message,
 } from "./mcp-http-fixtures.js";
-import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
-import { DeliveryMcpClient } from "../src/agent-sdk/mcp-client.ts";
+import { DeliveryMcpClient } from "../src/hab/delivery-mcp-client.ts";
 import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 
 const bodies = {
@@ -49,46 +45,24 @@ const bodies = {
 for (const [kind, body] of Object.entries(bodies))
   test(`Common MCP boundary: ${kind} is durably received without Task acceptance or reply`, async (t) => {
     const f = await mcpFixture(t);
-    const dir = mkdtempSync(join(tmpdir(), "hab-common-boundary-"));
-    const inboxPath = join(dir, "inbox.sqlite");
-    const inbox = new SQLiteInbox(inboxPath, {
-      agent_id: "b",
-      fingerprint_key: new Uint8Array(32).fill(91),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_ack_records: 30,
-      ack_retry_ms: 86400000,
-      retry_base_ms: 1,
-      retry_cap_ms: 10,
-      max_attempts: 3,
+    const deliveryRaw = new DatabaseSync(join(f.dir, "delivery.sqlite"), {
+      readOnly: true,
     });
-    inbox.migrate();
-    const inboxRaw = new DatabaseSync(inboxPath, { readOnly: true });
     t.after(() => {
-      inboxRaw.close();
-      inbox.close();
-      rmSync(dir, { recursive: true, force: true });
+      deliveryRaw.close();
     });
 
     const tools = [];
-    const ackSnapshots = [];
+    const preAckSnapshots = [];
     let handle;
     const server = createServer((req, res) => {
       const tool = req.headers["mcp-name"];
       if (tool) tools.push(tool);
       if (tool === "hab_ack") {
-        const row = inboxRaw
-          .prepare("SELECT body, receipt_confirmed FROM inbox")
+        const row = deliveryRaw
+          .prepare("SELECT state, body, body_bytes FROM delivery_messages")
           .get();
-        ackSnapshots.push({
-          row,
-          savedRequests: inboxRaw
-            .prepare(
-              "SELECT count(*) n FROM receiver_acks WHERE request IS NOT NULL",
-            )
-            .get().n,
-        });
+        preAckSnapshots.push(row);
       }
       void handle(req, res);
     });
@@ -124,24 +98,37 @@ for (const [kind, body] of Object.entries(bodies))
       authorization: () => "Bearer fixture-b",
       fetch: globalThis.fetch,
     });
-    const receiver = new DurableReceiver(inbox, client);
-    await receiver.receiveOnce();
-    await receiver.receiveOnce();
 
-    assert.equal(ackSnapshots.length, 1);
-    const { row, savedRequests } = ackSnapshots[0];
-    assert.ok(
-      row,
-      "an independent SQLite connection sees committed inbox before ACK",
-    );
-    assert.deepEqual(JSON.parse(row.body).body, body);
-    assert.equal(row.receipt_confirmed, 0);
-    assert.equal(savedRequests, 1);
+    const delivery = await client.poll();
+    assert.ok(delivery);
+    assert.deepEqual(JSON.parse(JSON.stringify(delivery.message)), {
+      ...input,
+      sender_id: "a",
+    });
+    assert.deepEqual(JSON.parse(JSON.stringify(delivery.message.body)), body);
 
-    const entries = inbox.inbox();
-    assert.equal(entries.length, 1);
-    assert.deepEqual(entries[0].message, input);
-    assert.equal(entries[0].receipt_confirmed, true);
+    const ackRequest = {
+      sender_id: delivery.message.sender_id,
+      message_id: delivery.message.message_id,
+      generation: delivery.generation,
+      lease_token: delivery.lease_token,
+      request_id: `boundary-ack-${kind}`,
+    };
+    const acked = await client.ack(ackRequest);
+    assert.equal(acked.state, "acked");
+    assert.deepEqual(await client.ack(ackRequest), acked);
+    assert.equal(await client.poll(), null);
+
+    assert.equal(preAckSnapshots.length, 2);
+    assert.equal(preAckSnapshots[0].state, "leased");
+    assert.deepEqual(JSON.parse(preAckSnapshots[0].body), {
+      sender_id: "a",
+      message: input,
+    });
+    assert.ok(preAckSnapshots[0].body_bytes > 0);
+    assert.equal(preAckSnapshots[1].state, "acked");
+    assert.equal(preAckSnapshots[1].body, null);
+    assert.equal(preAckSnapshots[1].body_bytes, 0);
 
     const status = await call(
       http,
@@ -153,6 +140,7 @@ for (const [kind, body] of Object.entries(bodies))
     assert.deepEqual(tools, [
       "hab_submit",
       "hab_poll",
+      "hab_ack",
       "hab_ack",
       "hab_poll",
       "hab_status",

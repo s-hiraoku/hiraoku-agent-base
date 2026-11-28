@@ -5,10 +5,8 @@ import {
   AuthenticationRecoveryGate,
   authenticationRecoveryReason,
   authenticationRecoveryReasons,
-} from "../src/agent-sdk/authentication-recovery.ts";
-import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
-import { DurableSender } from "../src/agent-sdk/sender.ts";
-import { DeliveryMcpClient } from "../src/agent-sdk/mcp-client.ts";
+} from "../src/hab/authentication-recovery.ts";
+import { DeliveryMcpClient } from "../src/hab/delivery-mcp-client.ts";
 import { limits } from "./mcp-http-fixtures.js";
 
 const identity = Object.freeze({
@@ -219,56 +217,3 @@ test("provider timeout keeps underlying work counted and does not promote a late
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(client.activeRequests, 0);
 });
-
-test("receiver preserves recovery but not an error code string", async () => {
-  for (const error of [
-    recovery(),
-    Object.assign(new Error("synthetic-private"), {
-      code: "reauthentication_required",
-    }),
-  ]) {
-    const receiver = new DurableReceiver(
-      { claimAck: () => null },
-      {
-        poll: async () => {
-          throw error;
-        },
-      },
-    );
-    await assert.rejects(
-      receiver.receiveOnce(),
-      error instanceof AuthenticationRecoveryError
-        ? isRecovery
-        : { code: "poll_transport_failed" },
-    );
-  }
-});
-
-for (const operation of ["submit", "status"]) {
-  test(`sender durably defers ${operation} before reporting recovery, without quarantine`, async () => {
-    const job = {
-      operation,
-      message_id: "synthetic-message",
-      fence: 1,
-      message: {},
-    };
-    const events = [];
-    const sender = new DurableSender(
-      {
-        claim: () => job,
-        defer: (value) => {
-          assert.equal(value, job);
-          events.push("defer");
-        },
-        quarantine: () => events.push("quarantine"),
-      },
-      {
-        [operation]: async () => {
-          throw recovery();
-        },
-      },
-    );
-    await assert.rejects(sender.sendOnce(), isRecovery);
-    assert.deepEqual(events, ["defer"]);
-  });
-}
