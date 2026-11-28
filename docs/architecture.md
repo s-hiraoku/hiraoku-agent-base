@@ -9,10 +9,9 @@ HAB は、エージェント同士がメッセージをやり取りするため�
 | 部品 | 場所 | 役割 |
 | --- | --- | --- |
 | メッセージ契約 | `src/messaging` | message の形、`DeliveryService` interface、ツールの error code |
-| Registry | `src/hab` | アドレス → 不変の `agent_id`、認証グループ、操作権限、停止・失効、改名（v3） |
-| host | `src/host` | 唯一のサーバー。設定・HTTP 入口・監査・管理 CLI・MCP server（`src/host/mcp`）・任意の A2A 入口 |
+| Registry・MCP クライアント | `src/hab` | アドレス → 不変の `agent_id`、認証グループ、操作権限、停止・失効、改名（v3）、配送 MCP クライアント（`delivery-mcp-client.ts`・`mcp-client.ts`・`authentication-recovery.ts`） |
+| host | `src/host` | 唯一のサーバー。設定・二重起動ロック（`sqlite-host-owner.ts`）・HTTP 入口・監査・管理 CLI・MCP server（`src/host/mcp`） |
 | 配送 | `src/delivery` | host の状態ディレクトリにある 1 つの SQLite ファイルで受付・lease・ACK・状態照会（[配送 store](delivery-store.md)） |
-| エージェント SDK | `src/agent-sdk` | MCP client 基盤、host の二重起動ロック（`SQLiteHostOwner`）、A2A 内部の永続 outbox/inbox |
 | 受信通知アダプタ | `src/agent-notify` | 任意のローカル受信通知・カード表示・承認後引渡し（[receiver](receiver/arrival-notifier.md)） |
 
 host は `npm run hab:host` で起動し、アドレスの登録と接続は `npm run hab:admin` で行います。旧名の `hab:host`・`hab:admin` も同じコマンドの別名として残しています。MCP ツール名の `hab_*` は既存の接続設定との互換のために残しています。旧 HAB Relay は 2026-11-07 に廃止し（ADR-016）、配送は一時 NATS JetStream を経て、2026-11-13 から host の SQLite ファイル 1 つで行っています（ADR-018）。
@@ -28,18 +27,17 @@ host は `npm run hab:host` で起動し、アドレスの登録と接続は `np
 
 エージェントは標準の MCP client から host の `/mcp` に接続し、`hab_send`（アドレスと本文で送る）・`hab_inbox`（受信箱を読み、既読にする）・`hab_reply`（受け取ったメッセージに返す）・`hab_status`（送ったものが読まれたか）の 4 つを使います。ID・時刻・期限・thread は host が埋めます。未読は 7 日で期限切れになり、既読の本文は 7 日読み直せます（[ADR-020](hab-decisions.md)、[共通 MCP 接続](common-mcp-connection.md)）。
 
-agent SDK と受信サービスは `/mcp/delivery` の低レベルの 5 ツールを使います。
+低レベル配送クライアントと受信通知アダプタは `/mcp/delivery` の低レベルツールを使います。
 
 1. `hab_resolve` でアドレスを解決します。
 2. `hab_submit` で送ります。同じ `message_id` の再送は同じ受付結果になります。
-3. 受信側は `hab_poll` で lease 付きの配送を受け取り、自分の store に保存してから `hab_ack` します。保存に失敗したら ACK せず、lease が切れると再配送されます。
+3. 受信側は `hab_poll` で lease 付きの配送を受け取り、`hab_ack` で受領を確定します（未確定なら lease 期限後に再配送されます）。通知アダプタは `hab_peek`・`hab_mark_read` を使います。
 4. `hab_status` で配送状態を確かめます。
 
-受信の起こし方は、台帳で製品ごとに `hook`（MCP イベント／運用者登録の呼び鈴）・`poll`（製品側の定期確認）・`on_request`（話しかけ時）の 3 方式に分けます（[ADR-032](hab-decisions.md)）。ローカルアプリへのカード表示や承認後引渡しが必要な場合は、任意の受信通知アダプタ（[arrival-notifier](receiver/arrival-notifier.md)）を使います。旧第 1 世代の受信アダプタ群（`src/adapter-host` ほか）と `ReceiveSupervisor` は ADR-036 で廃止しました。届いた内容を判断して実行するのは受信エージェント自身で、HAB は配送を受け取っただけで Task を実行しません。
+受信の起こし方は、台帳で製品ごとに `hook`（MCP イベント／運用者登録の呼び鈴）・`poll`（製品側の定期確認）・`on_request`（話しかけ時）の 3 方式に分けます（[ADR-032](hab-decisions.md)）。ローカルアプリへのカード表示や承認後引渡しが必要な場合は、任意の受信通知アダプタ（[arrival-notifier](receiver/arrival-notifier.md)）を使います。旧第 1 世代の受信アダプタ群（`src/adapter-host` ほか）と `ReceiveSupervisor` は ADR-036 で、旧 `connectivity_check` 専用 A2A 入口と `src/agent-sdk` 層は ADR-037 で廃止しました。届いた内容を判断して実行するのは受信エージェント自身で、HAB は配送を受け取っただけで Task を実行しません。
 
 ## 任意の入口と調整
 
-- **A2A**: 設定に `a2a` section があるときだけ loopback listener を開きます。A2A Task は host 所有のアドレスから設定済みの受信者へ送られ、結果は受信者の永続返信で報告します（[A2A](a2a/a2a-host-preview.md)）。
 - **OAuth 入口**: HTTPS reverse proxy から同じ 2 つの catalog（`/mcp` と `/mcp/delivery`）を受けます（[OAuth 入口](operations/oauth-ingress.md)、[常用 OAuth](operations/persistent-mcp-auth.md)）。
 - **アドレス照会**: 任意の `hab_discover` ツール（[エージェント照会](connections/mcp-agent-discovery.md)）。
 - **配送の調整**: 個体別の容量、公平な poll、公平な writer 受付（[delivery](delivery/)）。

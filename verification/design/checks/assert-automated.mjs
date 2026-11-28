@@ -170,7 +170,9 @@ function roundtripEvidence(out, check, expand) {
   for (const key of [
     "syntheticAuthority",
     "sameIdReplay",
-    "receiverCleanReopen",
+    "independentCommittedDelivery",
+    "independentAckedDelivery",
+    "mailStyleRoundtrip",
   ])
     assert.equal(proof[key], true, `roundtrip proof missing ${key}`);
   assert.equal(proof.failure, null, "roundtrip proof has failure");
@@ -225,11 +227,6 @@ function roundtripEvidence(out, check, expand) {
     0,
     "roundtrip trace records a failure",
   );
-  assert.equal(
-    events("independent_pre_ack_rejected").length,
-    0,
-    "roundtrip pre-ACK gate rejected evidence",
-  );
   const doctor = one("doctor");
   assert.equal(
     doctor.value.ownedPid,
@@ -247,32 +244,25 @@ function roundtripEvidence(out, check, expand) {
   );
   const requests = events("request"),
     responses = events("response");
-  // SQLite delivery makes an accepted message pollable at once; the helper still tolerates a bounded repeat poll (5 s at 25 ms).
   const names = requests.map((row) => row.value.params?.name);
-  let polls = 0;
-  while (names[3 + polls] === "hab_poll") polls++;
-  assert(polls >= 1 && polls <= 201, "roundtrip poll retry count out of range");
   equal(
     names,
     [
       "hab_resolve",
       "hab_submit",
       "hab_submit",
-      ...Array(polls).fill("hab_poll"),
+      "hab_poll",
+      "hab_ack",
       "hab_ack",
       "hab_status",
       "hab_poll",
+      "hab_send",
+      "hab_inbox",
+      "hab_inbox",
+      "hab_status",
     ],
     "roundtrip missing/extra/reordered MCP operations",
   );
-  for (let i = 3; i < 3 + polls - 1; i++)
-    assert.equal(
-      JSON.parse(responses[i].value.body).result?.structuredContent?.delivery,
-      null,
-      "roundtrip retried a poll that returned a delivery",
-    );
-  const ackAt = 3 + polls,
-    statusAt = ackAt + 1;
   assert.equal(
     responses.length,
     requests.length,
@@ -293,32 +283,44 @@ function roundtripEvidence(out, check, expand) {
     requests[2].value.params.arguments,
     "roundtrip replay body changed",
   );
+  equal(
+    requests[4].value.params.arguments,
+    requests[5].value.params.arguments,
+    "roundtrip ACK replay changed",
+  );
   const messageId = requests[1].value.params.arguments.message_id;
   nonempty(messageId, "roundtrip submitted message ID");
-  const beforeAck = one("independent_pre_ack_read"),
-    ack = requests[ackAt].value.params.arguments;
-  assert(
-    requests[ackAt].index < beforeAck.index &&
-      beforeAck.index < responses[ackAt].index,
-    "pre-ACK observation outside actual ACK boundary",
-  );
-  for (const key of ["committedBody", "originalPendingAck", "observerReadOnly"])
-    assert.equal(beforeAck.value[key], true, `roundtrip pre-ACK ${key}`);
-  assert.equal(beforeAck.value.receiptConfirmed, false);
-  assert.equal(beforeAck.value.messageId, messageId);
-  assert.equal(ack.message_id, messageId);
-  assert.equal(beforeAck.value.requestId, ack.request_id);
-  nonempty(ack.request_id, "original ACK ID");
   const replay = one("same_id_replay");
   assert.equal(replay.value.sameReceipt, true);
   assert.equal(replay.value.messageId, messageId);
-  const reopen = one("receiver_clean_reopen");
-  assert.equal(reopen.value.body, "unchanged");
-  assert.equal(reopen.value.receiptConfirmed, true);
-  assert.equal(reopen.value.keyedIntegrityRead, true);
+  const committed = one("independent_committed_delivery");
+  assert.equal(committed.value.messageId, messageId);
+  assert.equal(committed.value.state, "pending");
+  assert.equal(committed.value.committedBody, true);
+  assert.equal(committed.value.observerReadOnly, true);
   assert(
-    beforeAck.index < reopen.index && reopen.index < requests[statusAt].index,
-    "receiver reopen trace order mismatch",
+    responses[2].index < committed.index && committed.index < requests[3].index,
+    "committed delivery observation outside submit/poll boundary",
+  );
+  const acked = one("independent_acked_delivery");
+  assert.equal(acked.value.messageId, messageId);
+  assert.equal(acked.value.state, "acked");
+  assert.equal(acked.value.bodyReleased, true);
+  assert.equal(acked.value.observerReadOnly, true);
+  assert.equal(acked.value.requestId, requests[4].value.params.arguments.request_id);
+  nonempty(acked.value.requestId, "original ACK ID");
+  assert(
+    responses[5].index < acked.index && acked.index < requests[6].index,
+    "acked delivery observation outside ACK/status boundary",
+  );
+  const mail = one("mail_style_roundtrip");
+  nonempty(mail.value.messageId, "mail-style message ID");
+  assert.equal(mail.value.untrustedMarked, true);
+  assert.equal(mail.value.rereadRetained, true);
+  assert.equal(mail.value.acked, true);
+  assert(
+    responses[11].index < mail.index,
+    "mail-style observation before final status response",
   );
   assert(
     readFileSync(
@@ -331,15 +333,6 @@ function roundtripEvidence(out, check, expand) {
     !existsSync(join(folder, "scaffold/instance")),
     "disposable scaffold stores remain despite cleanup claim",
   );
-  for (const name of [
-    "receiver.sqlite",
-    "receiver.sqlite-wal",
-    "receiver.sqlite-shm",
-  ])
-    assert(
-      !existsSync(join(folder, name)),
-      "receiver store remains despite cleanup claim",
-    );
 }
 
 function inspect(reportPath, contractPath) {
@@ -605,7 +598,7 @@ function selfTest() {
       typeof value === "string" ? value : JSON.stringify(value, null, 2) + "\n",
     );
   };
-  const fixture = ({ emptyPolls = 0, retriedDelivery = false } = {}) => {
+  const fixture = () => {
     rmSync(scratch, { recursive: true, force: true });
     mkdirSync(scratch, { recursive: true });
     const target = join(scratch, "target"),
@@ -754,7 +747,9 @@ function selfTest() {
       status: "pass",
       syntheticAuthority: true,
       sameIdReplay: true,
-      receiverCleanReopen: true,
+      independentCommittedDelivery: true,
+      independentAckedDelivery: true,
+      mailStyleRoundtrip: true,
       node: "v24.0.0",
       failure: null,
     });
@@ -790,13 +785,19 @@ function selfTest() {
       "hab_resolve",
       "hab_submit",
       "hab_submit",
-      ...Array(emptyPolls + 1).fill("hab_poll"),
+      "hab_poll",
+      "hab_ack",
       "hab_ack",
       "hab_status",
       "hab_poll",
+      "hab_send",
+      "hab_inbox",
+      "hab_inbox",
+      "hab_status",
     ];
-    let pollsSeen = 0;
-    for (const name of names) {
+    let submits = 0,
+      acks = 0;
+    for (const [index, name] of names.entries()) {
       const args =
         name === "hab_submit"
           ? { message_id: "synthetic-message", body: "synthetic" }
@@ -807,48 +808,45 @@ function selfTest() {
         event: "request",
         value: { params: { name, arguments: args } },
       });
-      if (name === "hab_ack")
-        trace.push({
-          event: "independent_pre_ack_read",
-          value: {
-            messageId: "synthetic-message",
-            requestId: "original-ack",
-            committedBody: true,
-            originalPendingAck: true,
-            observerReadOnly: true,
-            receiptConfirmed: false,
-          },
-        });
-      const retried = name === "hab_poll" && pollsSeen++ < emptyPolls;
-      const body = retried
-        ? JSON.stringify({
-            result: {
-              structuredContent: {
-                delivery: retriedDelivery ? { message_id: "x" } : null,
-              },
-            },
-          })
-        : "{}";
-      trace.push({ event: "response", value: { status: 200, body } });
-      if (
-        name === "hab_submit" &&
-        trace.filter(
-          (r) => r.event === "request" && r.value.params.name === name,
-        ).length === 2
-      )
+      trace.push({ event: "response", value: { status: 200, body: "{}" } });
+      if (name === "hab_submit" && ++submits === 2) {
         trace.push({
           event: "same_id_replay",
           value: { sameReceipt: true, messageId: "synthetic-message" },
         });
-      if (name === "hab_ack")
         trace.push({
-          event: "receiver_clean_reopen",
+          event: "independent_committed_delivery",
           value: {
-            body: "unchanged",
-            receiptConfirmed: true,
-            keyedIntegrityRead: true,
+            messageId: "synthetic-message",
+            state: "pending",
+            committedBody: true,
+            observerReadOnly: true,
           },
         });
+      }
+      if (name === "hab_ack" && ++acks === 2) {
+        trace.push({
+          event: "independent_acked_delivery",
+          value: {
+            messageId: "synthetic-message",
+            requestId: "original-ack",
+            state: "acked",
+            bodyReleased: true,
+            observerReadOnly: true,
+          },
+        });
+      }
+      if (index === names.length - 1) {
+        trace.push({
+          event: "mail_style_roundtrip",
+          value: {
+            messageId: "synthetic-mail",
+            untrustedMarked: true,
+            rereadRetained: true,
+            acked: true,
+          },
+        });
+      }
     }
     put(
       join(round, "trace.jsonl"),
@@ -858,8 +856,6 @@ function selfTest() {
     return { report: json(reportPath), round, out, bundle };
   };
   try {
-    fixture({ emptyPolls: 2 });
-    assert.equal(inspect(reportPath, contractPath).status, "pass");
     fixture();
     assert.equal(inspect(reportPath, contractPath).status, "pass");
     const controls = [
@@ -953,10 +949,6 @@ function selfTest() {
         },
       ],
       ["missing trace", (f) => rmSync(join(f.round, "trace.jsonl"))],
-      [
-        "retried poll that returned a delivery",
-        () => fixture({ emptyPolls: 1, retriedDelivery: true }),
-      ],
       [
         "forged passed status over skipped TAP",
         (f) => {

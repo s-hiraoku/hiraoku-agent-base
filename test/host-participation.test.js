@@ -40,8 +40,6 @@ import {
   hostAdminStatus,
 } from "../src/host/admin.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
-import { DurableReceiver } from "../src/agent-sdk/receiver.ts";
 import { envelope, limits, message } from "./mcp-http-fixtures.js";
 
 // Synthetic reverse proxy transport. It accepts exactly the public resource and its
@@ -200,49 +198,22 @@ test("persistent configured MCP keeps groups and durable receipts across host to
   assert.equal(permission.addresses.length, 2);
   assert.deepEqual(status.problems, []);
 
-  const inboxPath = join(f.dir, "receiver-inbox.sqlite");
-  const openInbox = (agent = f.local, path = inboxPath) => {
-    const store = new SQLiteInbox(path, {
-      agent_id: agent.agent_id,
-      fingerprint_key: new Uint8Array(32).fill(72),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_ack_records: 30,
-      ack_retry_ms: 86400000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_attempts: 5,
-    });
-    store.migrate();
-    return store;
-  };
-  let inbox = openInbox();
-  t.after(() => inbox.close());
-  const replyInboxPath = join(f.dir, "sender-inbox.sqlite");
-  let replyInbox = openInbox(f.remote, replyInboxPath);
-  t.after(() => replyInbox.close());
   const sent = { ...message(), recipient_id: f.local.agent_id };
   const accepted = await remote.submit(sent);
-  const receiver = new DurableReceiver(inbox, {
-    poll: () => pollUntilDelivered(local),
-    ack: async (ack) => {
-      const separate = openInbox();
-      try {
-        const saved = separate
-          .inbox()
-          .find((e) => e.message.message_id === sent.message_id);
-        assert.deepEqual(saved.message, sent);
-        assert.equal(saved.sender_id, f.remote.agent_id);
-        assert.equal(saved.receipt_confirmed, false);
-      } finally {
-        separate.close();
-      }
-      return local.ack(ack);
-    },
-  });
-  await receiver.receiveOnce();
-  assert.equal(inbox.inbox()[0].receipt_confirmed, true);
+  const delivered = await pollUntilDelivered(local);
+  assert.deepEqual(delivered.message, { ...sent, sender_id: f.remote.agent_id });
+  assert.equal(
+    (
+      await local.ack({
+        sender_id: f.remote.agent_id,
+        message_id: sent.message_id,
+        generation: delivered.generation,
+        lease_token: delivered.lease_token,
+        request_id: "persistent-ack-1",
+      })
+    ).state,
+    "acked",
+  );
   assert.equal((await remote.status(sent.message_id)).state, "acked");
   const reply = {
     ...message("2".repeat(32)),
@@ -252,31 +223,25 @@ test("persistent configured MCP keeps groups and durable receipts across host to
     in_reply_to: { sender_id: f.remote.agent_id, message_id: sent.message_id },
   };
   await local.submit(reply);
-  await new DurableReceiver(replyInbox, {
-    poll: () => pollUntilDelivered(remote),
-    ack: async (ack) => {
-      const separate = openInbox(f.remote, replyInboxPath);
-      try {
-        assert.deepEqual(separate.inbox()[0].message, reply);
-      } finally {
-        separate.close();
-      }
-      return remote.ack(ack);
-    },
-  }).receiveOnce();
-  assert.equal((await local.status(reply.message_id)).state, "acked");
-  assert.equal(replyInbox.inbox()[0].receipt_confirmed, true);
-  inbox.close();
-  replyInbox.close();
-  await f.restart();
-  inbox = openInbox();
-  replyInbox = openInbox(f.remote, replyInboxPath);
-  assert.equal(inbox.inbox()[0].receipt_confirmed, true);
-  assert.equal(replyInbox.inbox()[0].receipt_confirmed, true);
-  assert.deepEqual(
-    replyInbox.inbox()[0].message.in_reply_to,
-    reply.in_reply_to,
+  const replyDelivered = await pollUntilDelivered(remote);
+  assert.deepEqual(replyDelivered.message, {
+    ...reply,
+    sender_id: f.local.agent_id,
+  });
+  assert.equal(
+    (
+      await remote.ack({
+        sender_id: f.local.agent_id,
+        message_id: reply.message_id,
+        generation: replyDelivered.generation,
+        lease_token: replyDelivered.lease_token,
+        request_id: "persistent-ack-2",
+      })
+    ).state,
+    "acked",
   );
+  assert.equal((await local.status(reply.message_id)).state, "acked");
+  await f.restart();
   assert.equal(
     (await remote.status(sent.message_id)).receipt_id,
     accepted.receipt_id,

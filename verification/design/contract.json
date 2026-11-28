@@ -274,7 +274,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "919633e6d6e3ac40116d751ec75b5c194b09e3bbe1f714c54999eac73003974b",
+      "sha256": "80448910b0b0fef6fa7da0878881d98ca3d8b23ad7c4669d53b7689513d7c6b1",
       "role": "context",
       "review": "reviewed",
       "summary": "Project entry point for the local MVP, product setup, host operations and test commands. Links the read-only local diagnostics dashboard. Describes the single host, SQLite delivery, group authentication, the agent and delivery MCP catalogs, optional A2A with a host-owned identity and recipient-owned decisions. Links the November 20–21 product-specific receive/reply results, the October 25 Codex/Hermes trial and the planned Gemini/Antigravity integration. Records the retirement of Relay, Task Hub, JetStream delivery and managed attachments, the public-source boundary and the TypeScript 6 API / TypeScript 7 compiler split. Updated for ADR-036: standard receiving references three-mode wake (ADR-032) and arrival-notifier instead of ReceiveSupervisor."
@@ -349,7 +349,7 @@
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "ad56be9d01720490d03ef85f44e56475aa1a9e8b52229ef48be9cb1e9510eb89",
+      "sha256": "6e429cd7f5b13c15e3dedcd6d8e1e78dbbc412f7e0c0eaa45ee657a80d5b1b23",
       "role": "context",
       "review": "reviewed",
       "summary": "Current component overview written after the Task Hub deletion: messaging contract, Registry, single host, the single-file SQLite delivery store (ADR-018), agent SDK and optional receiver parts; group-only binding, sender identity from the authenticated connection, intersected group/address grants, save-then-ACK receive and the optional A2A/OAuth/discovery entries. Points to the normative documents; adds no requirement. Updated for ADR-036: documents mail-style /mcp, three-mode wake, arrival-notifier and retirement of first-generation adapter-host/ReceiveSupervisor.",
@@ -484,7 +484,7 @@
     },
     {
       "path": "docs/hab-decisions.md",
-      "sha256": "fa0965a3fb6e231678e1bdcb730651ee9489cf9f269c81a821a1782b9b9139e8",
+      "sha256": "f1cada5ccc51d37cc443525403b9341db3dfb2ab8d2e0459ca288878cc6f4350",
       "role": "normative",
       "review": "reviewed",
       "summary": "Decision ledger with adoption distinct from production/fee/publication authorization. ADR013 reusable store-and-forward; ADR014 approved-group auth and address separation; ADR015 explicitly standard common MCP, recipient polling/save-before-ACK and recipient judgment/approval, optional Tasks and no Hermes runner dependency. ADR016 revises the composition (single src/host with its MCP server, src/messaging contract and DeliveryService, Registry authority, src/agent-sdk sender/receiver, JetStream-only delivery without migration, hab_* tool names kept), records the 2026-11-06 owner decision (decision item 5) to wire the A2A gateway into the host with a host-owned identity, off by default, per-caller Registry checks and reply-attested results that are not engine verification, and the 2026-11-07 owner decision that a Task without a result applied in its one-day reply window becomes the standard FAILED with reason result_window_expired and an outcome-unknown status, never staying WORKING and adding no custom A2A state, with a reply under a new message ID saved only when it would change its Task and the transition made in the receive cycle after the earliest window closes, and leaves task-bridge, answer-intents and adapter-host deferred. Its rollback line (now historical) notes that the journal is schema 4, which earlier builds cannot open, so going back restores the whole pre-upgrade backup, reconciles by original ID the accepted messages and those incomplete at backup, treats journal expired/quarantined as unproven non-delivery, and keeps the earlier build stopped until every restored ID has expired. Earlier fixed Tasks/host decisions retain narrow scope. ShiftLog integration is adopted goal with restricted proposed read adapter and private context/credential/retention boundaries; actual connection unimplemented. The rollback procedure also reconciles post-backup IDs retained only in recipient evidence and unreleased bodies retained only in upgraded copies, with original-key application-specific local handoff after ruling out prior effects; unknown effects stay stopped. Review clarifies bounded reply-capacity collection and fair overdue traversal without changing normal shutdown, result-window or permanent-disconnect decisions. ADR-018 (owner, 2026-11-13) supersedes the JetStream delivery of ADR-016 with one SQLite delivery store per host for a single-VM deployment, migrates no JetStream message, refuses to start while jetstream-journal.sqlite remains and defers multi-host/HA delivery. ADR021 shows new mail in the recipient agent screen through hab_peek and the arrival notifier, hands off to the same session only on 対応する, at most once. Reviewed PR #216 ADR-020 addition: bounded same-thread recipient reply metadata, four reply states, no long-poll or recipient startup, and one submit authorization per reply. ADR-021 consent/session boundaries and reply-attested A2A completion remain unchanged. ADR-022 (owner, 2026-11-16) sends cloud agents only a content-free new-mail doorbell over opt-in MCP Events on the ingress agent /mcp (ingress.events): subscription by the verified poll recipient, public-HTTPS signed-challenge callbacks, bounded TTL/subscriptions/retries; reading stays hab_inbox and ADR-015 recipient pull/judgment is unchanged; Muse uses its own scheduled task. ADR-023 (owner, 2026-11-17) adds an explicit opt-in exception to ADR-021: the notifier may choose 対応する for senders/kinds the owner listed in notify.json (default all manual), replacing the first handoff line to say nobody chose it and that only reading and hab_reply are allowed without the user; prompt-level only, product approvals remain the hard limit; per-sender/per-thread caps; body-free notifier audit; ADR-021 once-only handoff, unknown/no-resend and accept_waiting unchanged. ADR-024 (2026-11-17): host downtime or Mac sleep is not counted against MCP event subscriptions (outage credit up to max_ttl_ms); lapsed doorbells and unread backlog are shown by hab:admin status; HAB never re-creates subscriptions; host/notifier LaunchAgents always restart and sleep prevention is a separate job. ADR-023 2026-11-18 addendum (owner): after the first Dots-Hermes trial stalled on a command approval, the automatic prompt forbids approval-gated operations and asks the session to finish with hab_reply anyway, answering what it can and stating what waits for the user; no permission widened. 2026-11-19 (ADR-025): hab_discover directory lists every active registered address by default (other groups: names and state only); registry.discovery.directory group keeps the group-only list. ADR-026 (owner, 2026-11-19): each agent product adapter draws received mail; hab_inbox/hab_peek add a body-free presentation (version 1: heading, sender, kind label, reply flag, sent_at, reply_by, choices, body_untrusted note, hidden data count) built from the same labels as notice/display/handoff_prompt, which stay; hab_peek returns text again; the agent /mcp serves the read-only MCP Apps card ui://hab/inbox-v1 (no network, text-only body) on hab_inbox only, whose buttons change no HAB state (accept sends a ui/message asking the model to draft before sending); framing of model-facing text unchanged; real-host rendering unverified. ADR-027 (owner, 2026-11-19): a doorbell accepted with 2xx whose message stays unread unanswered_after_ms (default 5 min) is rung once more with a new eventId (no retry, ingress.events.rering false turns it off); the recipient's own /mcp hab_send/hab_reply/hab_status results carry a body-free inbox_reminder (hab_inbox only when the doorbell went unanswered), counted from the authorization-filtered unread view; agent instructions say to call hab_inbox on the event; HAB still never re-creates subscriptions or tasks. ADR-028 (owner, 2026-11-19, after agent-mail): hab_inbox wait_secs 0-60 waits for new mail only when none is unread, capped by http.max_wait_ms (default 25000, 0 off), at most max_active_requests-1 holds, newest wait per agent wins, no wait under writer admission; the in-host wake carries only the recipient agent ID and every read is the normal authorized hab_inbox; narrows ADR-020's no-long-poll rule, sending without waiting stays the default. ADR-029 (owner, 2026-11-19, after agent-mail): operator-registered doorbells in ingress.events.doorbells {address,url,secret_file} for agents that cannot subscribe (Grok Bot webhook routines); secret from an owner-only file, whsec_ signs and other tokens go as Bearer; public HTTPS only; same body/retry/ring-again as MCP event doorbells; no lifetime, challenge, subscriber slot or MCP unsubscribe; not rung for mail waiting at start; reading stays the agent's own hab_inbox. ADR-030 (owner, 2026-11-19): while a subscription's last 2xx-accepted doorbell is younger than unanswered_after_ms and its message is unread, newer mail is held (cursor not advanced) and rung only if still unread when the quiet ends; the ADR-027 ring again runs first and restarts the quiet; non-2xx never starts it; ingress.events.quiet false rings every message. ADR-031 (owner, 2026-11-20): inbox polling beside the doorbell, interval set by the user, default 10 min: the arrival notifier already polls at its interval_ms; for doorbell-only agents the dispatcher rings each live doorbell again for the oldest unread message once ingress.events.inbox_check.interval_ms (0 off, 60000-86400000, per address in addresses) has passed since its last accepted ring or check, never retried, at most max_rings (default 6) per oldest unread; agents with neither use their own product scheduler and the agent instructions say to call hab_inbox when a schedule starts them; HAB cannot ring a lapsed doorbell or re-create tasks. 2026-11-21 (ADR-032, PR #264): the Hermes notifier's session_probe confirms the bound Desktop session and reports 410 session_gone only for matching signed address and session metadata. Compressed ancestors require rebinding to the current ID. Unknown or unmatched rings return 200 session_unconfirmed and preserve absence. The notifier peeks only when the probe confirms presence; the recipient's own hab_inbox/hab_peek clears recipient_absent, and session_gone answers are spaced by absent_spacing_ms. ADR-033 (2026-11-21): per-sender and per-recipient capacity counts only unread mail; read or expired messages stop counting at once, the per-agent retained-record budgets (max_records_per_sender, max_records_per_recipient, reservation records) are removed without compatibility, and history is bounded only by the store-wide max_records/max_body_bytes ceilings; record retention for replay/status is unchanged and sender rate limiting remains unimplemented. ADR-034 (2026-11-26): hab_discover presence derived only from HAB-observed facts. ADR-035 (owner, 2026-11-26): a wait that spends no agent tokens or product run quota while idle, works programmatically from published product specs and server-only HAB, and keeps holds/retention/status-check frequency within stated bounds is outside the ADR-028 wait cap and the ADR-032 no-timed-ring rule; it returns only a body-free arrival notice without marking read, reading stays hab_inbox and ADR-015/021 are unchanged; first candidate is an MCP Tasks wait tool, unimplemented until verified on real clients; scheduled polling and screen automation do not qualify. Added ADR-036 retiring first-generation adapter-host/adapter-policy/answer-intents/recipient-messages/owner-integrations, ReceiveSupervisor/ReceiveHost/SQLiteHostControl and hab:reply-watch."
@@ -1036,13 +1036,6 @@
       "role": "normative",
       "review": "reviewed",
       "summary": "Optional single-process shared WriterAdmission uses verified immutable identity, finite map/queues and monotonic token buckets with round-robin callbacks. Waiters hold no DB locks; identity/authority is checked again before callback and normal service guards remain mandatory. Active work/audit retains slot after timeout until actual settlement; no auto retry/new Task/message. HTTP gateway shares one bucket across the five tools and gateways; process restart resets rate state, and HTTP failure may follow commit."
-    },
-    {
-      "path": "src/agent-sdk/README.md",
-      "sha256": "94bac9bf40f896f43e3443c3393f9389b6253b5aa613f652d965c0b1ac9398d4",
-      "role": "normative",
-      "review": "reviewed",
-      "summary": "Successor of the deleted src/relay/README.md. The agent-side client of HAB delivery: importing index.ts performs no IO, and the SQLite stores and MCP transport are separate opt-in entry points. DurableReceiver saves body, dedup key and stable ACK request before ACK and recovers a lost committed ACK with the same request. The inbox is a received-message record released by explicit releaseBody, with finite quotas that count unreleased bodies only, a separate max_ack_records bound on the dedup history counted per message (one message keeps at most max_attempts ACK generations, so at most max_ack_records × max_attempts ACK rows), releaseUnconfirmable for an expired unconfirmed body with no pending ACK, and 30-day rm1-only collection. Legacy-ID tombstones are never collected, so rows are capped at max_records + max_ack_records and legacy-ID rows at max_ack_records (inbox_legacy_id_capacity_exceeded). DurableSender commits before submit, replays the exact original, switches to status-only without extending TTL and ends in quarantine or expired_unknown. RelayMcpClient makes one bounded attempt per operation and leaves retry to the journals. The server side lives in src/messaging, src/hab, src/host and src/delivery. Documents hasCapacityFor as a non-reserving, non-collecting read-only body/byte, distinct-message ACK-history and retained-row check for a batch of replay-bound messages; actual-local-terminal retention is preserved. Also documents local-only branded authentication recovery reasons and an optional owner-local identity verification gate. They perform no IO, hold no tokens and provide no refresh/login; product-native wiring and acceptance remain explicit separate requirements. Reviewed 2026-11-13 for ADR-018: JetStream/nats-server/packages/relay-nats references now name the SQLite delivery store (docs/delivery-store.md) or are marked historical. Updated for ADR-036: removed retired receive-host, receive-supervisor and sqlite-host-control entries while retaining DeliveryMcpClient, SQLiteHostOwner and durable outbox/inbox."
     },
     {
       "path": "src/hab/README.md",
@@ -2646,7 +2639,7 @@
       "statement": "A2A is off unless the host config has an `a2a` section; without it there is no listener, mailbox file or host identity. When enabled, startup converges the configured identity address idempotently onto one active agent whose only live binding is the reserved in-process principal `urn:hab:host` with ack/poll/status/submit, and refuses to start with a2a_identity_conflict, a2a_identity_revoked, a2a_identity_stopped or a2a_identity_retired instead of repairing such an identity. The identity has no wire credential: an operator or OAuth principal with the `urn:hab:host` issuer authenticates as nobody, and hab:admin connect refuses the identity address with a2a_identity_reserved. Every A2A request is verified with the caller's own credential, whose audience must be the A2A endpoint. The caller must currently hold resolve and submit and be allowed to send execution_request to the configured recipient; that check repeats inside the Registry guard that commits the outbox record and around each send. The host identity's submit runs inside a Registry transaction that first repeats the caller check, because a withAuthorization called inside another's callback joins its transaction, so a revocation from another connection commits either before that check, which refuses the send, or after the message is admitted, never between them. The caller cannot choose sender, recipient, kind or body. Tasks are scoped to the caller's agent ID and the recipient tenant, so another caller cannot read them, and a revoked grant or disconnection makes them unreachable. The fixed host principal remains reserved to its original agent after revocation. Disconnect is a permanent A2A off switch for this Registry; changing the identity address cannot undo it. Removing the a2a section permits MCP-only startup without deleting stored history. No identity rotation or revocation reset is provided.",
       "rationale": "The host identity submits under its own rights. Without a current per-request check of the caller it could deliver to a recipient the caller cannot reach, or expose another caller's replies.",
       "scope": "Opt-in host A2A entry (src/host/a2a.ts) with the local bearer verifier only; the OAuth ingress does not serve A2A, and a group-authenticated caller with several addresses is refused. Covered in js-root by test/a2a-host.test.js.",
-      "decision": "accepted",
+      "decision": "historical",
       "checks": [
         "js-root"
       ],
@@ -2692,6 +2685,12 @@
           "start": 81,
           "end": 88,
           "excerpt_sha256": "46fea87894ae868b469de07fb368acadc111e29f03c0d916e29249d11069dfcd"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         }
       ]
     },
@@ -2708,16 +2707,10 @@
       ],
       "citations": [
         {
-          "path": "src/agent-sdk/README.md",
-          "start": 3,
-          "end": 5,
-          "excerpt_sha256": "6818c2fbf45dda98cc9c104d7aa98bd48038556feacb1b2b177b4f0b25ed3ce1"
-        },
-        {
-          "path": "src/agent-sdk/README.md",
-          "start": 9,
-          "end": 9,
-          "excerpt_sha256": "8d44fd686d17a730e650b39eb3bb175bc5cab4e7841d430ccfac2aa785e8c0b3"
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -2738,7 +2731,7 @@
       "title": "Durable recipient save before ACK",
       "statement": "The recipient commits the exact body, dedup identity and stable ACK request before issuing ACK. A failed save sends no ACK; repeated delivery and lost ACK response recover original body/receipt without duplicating inbox entries or claiming execution.",
       "rationale": "ACK authorizes server body disposal, so a committed local receive record must exist first.",
-      "scope": "DurableReceiver and recipient-owned SQLite inbox/ACK journal",
+      "scope": "Host SQLite delivery store commit, lease fencing, ACK idempotency, and mail-style /mcp roundtrip (ADR-037 retired client-side SQLiteInbox/DurableReceiver).",
       "decision": "accepted",
       "checks": [
         "js-common-mcp",
@@ -2747,16 +2740,10 @@
       ],
       "citations": [
         {
-          "path": "src/agent-sdk/README.md",
-          "start": 9,
-          "end": 9,
-          "excerpt_sha256": "8d44fd686d17a730e650b39eb3bb175bc5cab4e7841d430ccfac2aa785e8c0b3"
-        },
-        {
-          "path": "src/agent-sdk/README.md",
-          "start": 18,
-          "end": 18,
-          "excerpt_sha256": "c55b59519246310a7fe559f66ab8f9045dad669414c6ffebb07aa50f382ee709"
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -2864,22 +2851,10 @@
       ],
       "citations": [
         {
-          "path": "src/agent-sdk/README.md",
-          "start": 11,
-          "end": 11,
-          "excerpt_sha256": "54a3b92daf91ff7bda669e9563a682ddb98a03eb54fb591d8492e8c6a8c4e56a"
-        },
-        {
-          "path": "src/agent-sdk/README.md",
-          "start": 24,
-          "end": 24,
-          "excerpt_sha256": "9001e9482a4b61a3d4a29d7073008de86c0592519b6f12feeee5bbdfeeeacde0"
-        },
-        {
-          "path": "src/agent-sdk/README.md",
-          "start": 28,
-          "end": 28,
-          "excerpt_sha256": "ee2046e8909433b24a09d3fcd6c42cf39439634f69b3139aeac04eaa27f80047"
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -2914,10 +2889,10 @@
       ],
       "citations": [
         {
-          "path": "src/agent-sdk/README.md",
-          "start": 20,
-          "end": 20,
-          "excerpt_sha256": "00b1f2fe7b7d63a9eeba616c9b51a8b757e9412b83334572438252fce006dc9a"
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -2953,16 +2928,10 @@
       ],
       "citations": [
         {
-          "path": "src/agent-sdk/README.md",
-          "start": 10,
-          "end": 12,
-          "excerpt_sha256": "b7b4b6f734996d161508be0259155fb2a35c829e95b20b1590c52cf736aeb32c"
-        },
-        {
-          "path": "src/agent-sdk/README.md",
-          "start": 20,
-          "end": 20,
-          "excerpt_sha256": "00b1f2fe7b7d63a9eeba616c9b51a8b757e9412b83334572438252fce006dc9a"
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         },
         {
           "path": "docs/hab-messaging-spec.md",
@@ -3003,9 +2972,9 @@
         },
         {
           "path": "README.md",
-          "start": 66,
-          "end": 68,
-          "excerpt_sha256": "786bf42a450c3ee495477bd08a52e6b6325686547930d43fe17ccf2beac45758"
+          "start": 62,
+          "end": 64,
+          "excerpt_sha256": "1bc2a4f92c64410a354b114d0ea267af1191fd185c86427ba4f3497bfacf4e0a"
         }
       ]
     },
@@ -3266,7 +3235,7 @@
       "statement": "The host A2A outbox, inbox and SDK Task store are private 0600 files in the host state directory; a saved Task, its send intent and received replies survive a host restart, and a replay reuses the original message ID and one-hour expiry. A saved intent is sent only inside its owner's authorized SendMessage, which claims only that message ID from the shared outbox. There is no background submit retry; a retry is a repeated SendMessage with the same messageId. The only background work is the receiver loop, which polls the host mailbox and classifies each delivery before saving anything. A new reply ID is classified against the stored Task and only ACK-confirmed held replies. If it cannot change that state or is refused by validated contract/schema rules, it is discarded with ACK and no inbox record. If it would change that state but would be redundant or conflicting assuming an unconfirmed held reply became usable, it is deferred without save or ACK. Unexpected preview failures also defer rather than proving redundancy. A deferred delivery remains subject to finite delivery leases, attempts and TTL, so it may quarantine or expire; recovery is not guaranteed. An ID already held still reaches the inbox for deduplication and ACK confirmation. Unconfirmed replies are never applied. Any other delivery is ACKed without an inbox record or ACK history entry, so unrelated senders spend none of the capacity replies need; dropping it again on a redelivery is harmless, so it needs no dedup record. At most once a minute the loop runs bounded inbox and outbox maintenance. Window closure uses at most 100 overdue Tasks per receive cycle, ordered and paged by the complete stable (tenant, owner, id) key. The cursor advances past individual failed applies; a full page schedules another cycle, and the end resets the cursor for the next scheduled pass. The earliest open window or at most one minute schedules that pass. Thus a failed full batch does not permanently hide later Tasks, but a backlog or persistent storage failure does not promise every transition within one cycle. `max_records` caps the outbox. The inbox holds `2 × max_records` unreleased reply bodies, one `execution_accepted` and one `execution_result` per host message, so an accepted reply never takes the slot its own result needs. The receiver loop applies each ACKed reply to its Task and releases the body once the Task store holds the new state; a reply the Task refuses (a conflict, a malformed body, such as a late reply to a terminal Task, or one over the A2A contract limits) is released the same way, and any other failure keeps the body for the next cycle. A successful durable apply releases the body even without a caller read; unexpected storage failures retain it for retry. A saved reply whose ACK never committed is never applied; once it has expired with no ACK request pending, so no redelivery can confirm it, the loop releases its body unread with `releaseUnconfirmable` and keeps its tombstone for dedup, and its Task waits for another reply or for its reply window to close. A reply is saved only while the current time is before its request's expiry plus one day (the reply window); a later reply is ACKed without a record and does not change its Task. Each outbox record is kept for at least the reply window plus the one-day ACK retry plus two hours past its expiry, then 30 days. That horizon alone cannot outlive an ACK first made terminal after a long stop: the required 30 days from its actual local terminal time are preserved. Maintenance collects the inbox first, then computes a bounded outbox collection allowance. Let M be max_records, T be retained outbox rows, W be retained sources whose reply windows are still open (expires_at > now minus one day), and p be proposed collected rows. It binary-searches p from 0 through 100 against room for 2 × (max(0, M - T + p) + W) new replies. For T <= M this equals 2 × (F + W + p), where F = M - T. If an operator lowers M below T, collecting excess rows creates no usable sender slots until the count falls below M. The check includes those replies and their maximum envelope bytes, checking unreleased body/byte, distinct-message ACK-history and all retained-row capacities. This preserves two future replies for each free slot and open source before freeing additional sender slots. The snapshots and numeric-cap collection have no intervening await in the single-owner host. Only eligible rows are collected, and expiry still runs even when the allowance is zero. This is conservative capacity accounting, not a multi-writer reservation or shortened retention. The inbox keeps an ACK history of three times `max_records` messages for the same 30 days, counted per message, so the lease redeliveries of one reply (up to `max_attempts` generations) take a single slot. A blocking SendMessage holds the handler's Task serializer only for each 25 ms check, which reloads the stored Task, so the receiver loop applies replies during the five-second wait and a result saved in a later receive cycle than its acceptance completes the Task. On close the host refuses new A2A requests with 503 and waits for in-flight requests and the current receiver cycle before closing its stores, leaving unsent intents, unACKed deliveries and saved Tasks on disk. Closing the Task store must close its eagerly opened SQLite connection even if the lazy SDK database driver was never initialized by a load/save, and repeated close is safe. An optional original-source (sender_id, message_id) hint limits SQLite inbox reads through an additive partial expression index over unreleased bodies. It includes pending ACKs, preserves ordering, excludes released empty bodies, and changes neither record format/version nor retention. The hint never replaces receipt, identity, reference, thread, schema or current-authorization checks; unfiltered route implementations remain compatible.",
       "rationale": "A background resend under the host identity would send without a current check of the caller who asked for it; save-before-ACK keeps replies recoverable across a crash.",
       "scope": "Opt-in host A2A entry, one host process per state directory. Not multi-host writer coordination, production retention or capacity design. Covered in js-root by test/a2a-host.test.js, including results saved when accepted replies fill the cap, unread completed Tasks freeing their slots after the outbox purge, a Task admitted after a purge whose replies are saved after a late reply, unconfirmable saved replies that release their slots so a later reply still completes its Task, and a blocking SendMessage completing from a result in a later receive cycle than its acceptance. Its case \"a saved confirmed reply that breaks the A2A contract limits is released as refused and leaves its Task unchanged\" saves and ACK-confirms, offline, an execution_result whose data part is over HAB_A2A_LIMITS, then checks that the running host releases the body instead of retrying it every cycle and that the Task stays SUBMITTED. Its case \"a flood of fresh-ID replies that would not change the Task takes no ACK history, so the valid result still completes it\" sends more repeated acceptances, conflicting acceptances and refused results under fresh IDs than the `3 × max_records` ACK history holds, then a valid result, and checks that the result completes the Task with only two inbox rows. \"when the running host loses its own ACK of a saved result, the reply expires unapplied and a new result still completes the Task\" drops the running host's ACKs of one result at its delivery-service transport while the result is live, then checks the real relay's invalid_ack, the unapplied release and completion from a new result. \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" covers the window timing (HAB-E20). The long-stop regression uses a 500 ms lease and injected host ACK transport failures to leave acceptance and result ACKs pending before one stop. It models 40 days offline by shifting timestamps and replay-bound IDs, verifies new Task refusal while local-terminal history is retained, then models another 31 days and verifies admission and both replies recover through normal maintenance. It is not a real 71-day outage or an unconditional downtime claim. This gate prevents future outbox collection; it does not restore source slots an earlier build already purged, repair already lost/quarantined results, or establish spare capacity in an existing deployment. Before resuming an affected deployment, quiesce new A2A admissions and let normal inbox maintenance and the full 30-day retention from actual local terminal time restore sufficient capacity. Do not delete history, shorten retention or re-execute Tasks with unknown outcomes. The bounded allowance remains conservative and does not repair previously lost admission reservations. No live deployment has been checked. test/a2a-sdk-store.test.js covers unused eager connection closure after direct host maintenance reads, closure after SDK initialization, safe repeated close and reopening. This demonstrates the lifecycle defect and its repair, not a universal cause or repair for malformed databases. The outage fixture now ages first_sent_at consistently with the replay-bound ID and expires_at, uses the host Task-store driver for offline Task metadata changes and checks integrity before reopening. It checks the old Task reaches FAILED after its result window and retries only outbox_capacity_exceeded, surfacing other errors immediately without increasing the timeout. A held confirmed body is retained on an unexpected per-Task save failure; no exception-based blanket release is allowed. The mixed-cohort regression injects that failure for one legitimate Task, verifies partial collection and another Task completing while the body remains, then removes the fault and verifies recovery. It does not repair malformed SQLite pages, a globally failed database or invalid JSON that prevents inbox enumeration. Cohort aging changes rm1 IDs and timestamps consistently but does not refresh fingerprints, so it is maintenance/capacity evidence, not a whole-state restore proof. The shutdown controls demonstrate a saved Task retrying under its original identity after close, and synchronous claim-to-admission before a queued close; no normal-shutdown race fix is claimed. The overdue control injects 100 per-Task save failures before a healthy later Task, then removes the fault and checks wrap/retry. It does not establish corrupt metadata reachability through the API.",
-      "decision": "accepted",
+      "decision": "historical",
       "checks": [
         "js-root"
       ],
@@ -3336,6 +3305,12 @@
           "start": 139,
           "end": 139,
           "excerpt_sha256": "dfe159f75a5c2e1f5383863c6327e04f221c64bb2b202c84a69e6cd36e4ea261"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         }
       ]
     },
@@ -3372,7 +3347,7 @@
       "statement": "Receiving and ACK do not create a Task; separate current local accept and independently authenticated Task submit are required. Completion/result emission requires saved matching terminal evidence with execution_open=0.",
       "rationale": "Avoid interpreting transportation success as authorization or execution success.",
       "scope": "Explicit fixed TaskBridge and the A2A host preview composed with HabExecutionEvidence only; the host-routed A2A entry is reply-attested under HAB-E20 and never satisfies this completion rule; ordinary message receive stays Task-free.",
-      "decision": "accepted",
+      "decision": "historical",
       "checks": [
         "js-root"
       ],
@@ -3382,6 +3357,12 @@
           "start": 23,
           "end": 27,
           "excerpt_sha256": "30775802bf01143ec7b46e9b3d45acf6fa31611d0de17ed48eab9d576f19c868"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         }
       ]
     },
@@ -3499,7 +3480,7 @@
       "statement": "The host-routed A2A entry has no engine evidence port. Recipient storage ACK leaves the Task SUBMITTED. A durable execution_accepted reply makes it WORKING, and a durable execution_result reply makes it COMPLETED (succeeded, with the result text as the only Artifact), FAILED or CANCELED; an expired or quarantined request with no reply becomes INPUT_REQUIRED until its reply window closes. A reply counts only when the configured recipient sent it, it references that Task's own host source message, its thread matches and its schema is exact. A reply counts only if it arrives before its request's expiry plus one day (the reply window); a later one is ACKed without a record and never changes the Task. By the owner's 2026-11-07 decision (ADR-016), a Task with no result applied when its reply window closes, whether SUBMITTED, WORKING or INPUT_REQUIRED, moves to the standard TASK_STATE_FAILED with no Artifact, `reason: \"result_window_expired\"` in its status message metadata and its public `hab` metadata, and a status message that starts with `result_window_expired` and says the outcome is unknown, because the recipient may or may not have executed the request; no custom A2A state is added and the Task never stays WORKING. The host receiver loop makes this transition without a caller read through bounded stable-key pages from the Task store's `overdue()`, starting when the earliest window closes; later pages and failed applies can require later cycles. A read after the window attempts the transition at once. A reply arriving afterwards never revives or changes the Task. FAILED with result_window_expired never claims that the recipient did not execute the request. A later reply with another engine Task ID, or a second terminal result with another state, is refused without replacing the saved Task. Every such Task's public metadata carries `attestation: \"recipient_reply\"`, and the Card and Artifact describe the result as the recipient's report. COMPLETED here claims no verification of the recipient's engine and never satisfies the evidence-verified rule of HAB-E02 and HAB-V12.",
       "rationale": "The host cannot read a remote recipient's engine. The label keeps a recipient's self-report from passing as independently verified execution.",
       "scope": "Opt-in host A2A entry only. The preview composition with HabExecutionEvidence keeps HAB-E02. Covered in js-root by test/a2a-host.test.js; an actual product recipient's reply is not exercised. Its case \"a WORKING Task whose reply window closes without a result fails as result_window_expired, and a late result does not revive it\" ages the request two days while the host is stopped, waits for the stored Task to fail without a caller read, checks the reason, the outcome-unknown message and the empty Artifacts, and checks that a late result is ACKed without a record and leaves the status unchanged. Its case \"a Task whose reply window closes while the host runs fails within seconds, not at the next once-a-minute maintenance\" ages the request so that its window closes five seconds after a restart, after the restart's first maintenance pass, and checks that the stored Task fails within 20 seconds of that time without a read. A live drive cannot wait out the day (features/a2a-host.md a2a-window). A new unit control holds a pre-window result unconfirmed, reaches FAILED at the window, then confirms it and checks that it cannot revive the failed Task. It preserves the existing deadline semantics, not a new grace period. One-cycle timing is an unobstructed fixture claim, not a backlog guarantee.",
-      "decision": "accepted",
+      "decision": "historical",
       "checks": [
         "js-root",
         "native-recipient"
@@ -3519,8 +3500,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 280,
-          "end": 280,
+          "start": 292,
+          "end": 292,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         },
         {
@@ -3558,6 +3539,12 @@
           "start": 44,
           "end": 44,
           "excerpt_sha256": "15369aedd6d0db41639effdc3b7b73ac847ca0f21985614b3696f8261f2a6415"
+        },
+        {
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         }
       ]
     },
@@ -3592,7 +3579,7 @@
       "title": "Durable receiver evidence precedes network ACK",
       "statement": "To claim durable receipt, independently observe committed recipient body and original ACK request before the actual network ACK; raw poll/ACK and host snapshots prove only wire behavior.",
       "rationale": "delivery ACK can delete its body; loss between ACK and durable recipient storage would otherwise be hidden.",
-      "scope": "DurableReceiver/SQLiteInbox through real MCP HTTP; independent connection, not native product execution.",
+      "scope": "Host SQLite delivery store independent read-only commit and ACK evidence through real MCP HTTP; not native product execution.",
       "decision": "accepted",
       "checks": [
         "ack-observer-controls",
@@ -3861,7 +3848,7 @@
       "cwd": ".",
       "timeout_seconds": 180,
       "protocol": "exit",
-      "proves": "The same independent SQLite observer used before real ACK rejects missing/uncommitted body/journal and changed body/original ACK; committed exact evidence passes.",
+      "proves": "Independent read-only SQLite observer rejects missing rows, uncommitted inserts, changed committed bodies, and missing ack_receipt_id on acked rows, and accepts committed delivery rows.",
       "limitations": "Observer negative controls only, using two real SQLite connections and simplified test tables; not a substitute for the following real HAB path."
     },
     {
@@ -3877,8 +3864,8 @@
       "cwd": ".",
       "timeout_seconds": 60,
       "protocol": "exit",
-      "proves": "Owned ephemeral HTTP scaffold; 401 + actual authenticated resolve doctor; same-ID submit replay; actual DurableReceiver and independent read-only committed body + exact ACK journal BEFORE network ACK; confirmed receipt, clean keyed recipient reopen, sender acked status, bounded clean stop and retained evidence.",
-      "limitations": "Real local MCP/HTTP and SQLite, synthetic authority/scaffold. No native products, OAuth, models, approval UI, periodic residency, server crash, lost response, power or physical-media guarantee. Read the cleanup and proof files."
+      "proves": "Owned ephemeral HTTP scaffold; 401 + authenticated resolve doctor; same-ID submit replay; independent read-only SQLite committed pending body check; poll + idempotent ACK replay + independent acked/body-released SQLite check; mail-style /mcp send/inbox/7-day-reread/status roundtrip; bounded clean stop and retained evidence.",
+      "limitations": "Synthetic verification scaffold, not native products, production OAuth, model/tool execution or approval. No kill-9, power-loss, physical-media or general Task-absence proof."
     },
     {
       "id": "native-recipient",
@@ -4052,8 +4039,8 @@
         },
         {
           "path": "README.md",
-          "start": 64,
-          "end": 64,
+          "start": 60,
+          "end": 60,
           "excerpt_sha256": "b627b7b15ffc1ea7622b00f28badb2b45ca03e3718e1ecd58ed0ecb54caea0ea"
         },
         {
@@ -4100,9 +4087,9 @@
         },
         {
           "path": "README.md",
-          "start": 58,
-          "end": 58,
-          "excerpt_sha256": "2638c3083f294f2d60b9f085b2f2dde8a393f53a9719dba601f1e6150f40402b"
+          "start": 64,
+          "end": 64,
+          "excerpt_sha256": "3648e88b272f6786e8bb3cb7c0fc7fcab2fe88ada70bce7d7afa6694ab1f74a2"
         },
         {
           "path": "docs/hab-product-spec.md",
@@ -4433,10 +4420,10 @@
       "classification": "historical",
       "citations": [
         {
-          "path": "src/agent-sdk/README.md",
-          "start": 3,
-          "end": 3,
-          "excerpt_sha256": "d6d49aa37b6f59c9b30db8392f78be20a8845cd8256714eab9afa4d416f76049"
+          "path": "docs/hab-decisions.md",
+          "start": 274,
+          "end": 284,
+          "excerpt_sha256": "aa0fe725fd0620f02f9ff251eb508c306ef536d5bf33688b9f79ea4e66596074"
         },
         {
           "path": "docs/delivery/writer-admission.md",
@@ -5028,8 +5015,8 @@
         },
         {
           "path": "docs/hab-decisions.md",
-          "start": 280,
-          "end": 280,
+          "start": 292,
+          "end": 292,
           "excerpt_sha256": "0dae67579a2ac58a441a35424a28678fd6d4409921611ab95508c1abd4a402cf"
         }
       ]

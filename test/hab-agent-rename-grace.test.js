@@ -4,7 +4,6 @@ import { DatabaseSync } from "node:sqlite";
 import { fixture, code } from "./hab-registry-fixtures.js";
 import { groupFixture } from "./hab-group-fixtures.js";
 import { message } from "./mcp-http-fixtures.js";
-import { provisionHostA2aIdentity } from "../src/host/a2a.ts";
 
 const renamed = (f, agent, bot_name = "renamed", request_id = "rename") =>
   f.registry.renameAgent(f.admin, {
@@ -158,43 +157,6 @@ test("a frozen as_address keeps working for the same group member during the gra
     previous.callers.map((caller) => caller.caller_id),
     [f.first.agent_id],
   );
-});
-
-test("the A2A host identity keeps its agent under a previous name and is refused after the grace period", async (t) => {
-  for (const [grace, expected] of [
-    [30, "same"],
-    [0, "a2a_identity_renamed"],
-  ]) {
-    const f = await fixture(t, {
-      agent_rename: true,
-      rename_grace_days: grace,
-    });
-    f.enroll("b");
-    const host = provisionHostA2aIdentity(
-      f.registry,
-      f.admin,
-      "a2a-host@grok-bot.hab",
-    );
-    const current = renamed(f, f.registry.inspect(f.admin, host.agent_id));
-    if (expected === "same") {
-      const again = provisionHostA2aIdentity(
-        f.registry,
-        f.admin,
-        "a2a-host@grok-bot.hab",
-      );
-      assert.equal(again.agent_id, host.agent_id);
-      assert.equal(again.address, current.address);
-    } else
-      assert.throws(
-        () =>
-          provisionHostA2aIdentity(
-            f.registry,
-            f.admin,
-            "a2a-host@grok-bot.hab",
-          ),
-        new RegExp(expected),
-      );
-  }
 });
 
 test("an existing v3 name schema gains the use table on the next start, not before", async (t) => {

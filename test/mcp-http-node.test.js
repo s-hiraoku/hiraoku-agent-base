@@ -2,12 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer, request as nodeRequest } from "node:http";
 import { once } from "node:events";
-import { join } from "node:path";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 import {
   fixture,
-  limits,
   envelope,
   request,
   decode,
@@ -106,22 +103,13 @@ test(
       { headers: { Authorization: "Bearer fixture-b" } },
     );
     const d = poll.body.result.structuredContent.delivery;
-    const inbox = new SQLiteInbox(join(f.dir, "inbox.sqlite"), {
-      agent_id: "b",
-      fingerprint_key: new Uint8Array(32).fill(43),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_ack_records: 30,
-      ack_retry_ms: 86400000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_attempts: 5,
-    });
-    t.after(() => inbox.close());
-    inbox.migrate();
-    inbox.save(d);
-    const req = inbox.claimAck();
+    const req = {
+      sender_id: d.message.sender_id,
+      message_id: d.message.message_id,
+      generation: d.generation,
+      lease_token: d.lease_token,
+      request_id: "ack-http-node-1",
+    };
     const r = await send(url, "hab_ack", req, {
       headers: { Authorization: "Bearer fixture-b" },
     });
@@ -132,8 +120,7 @@ test(
       repeated.body.result.structuredContent,
       r.body.result.structuredContent,
     );
-    inbox.confirmAck(req, repeated.body.result.structuredContent);
-    assert.equal(inbox.inbox()[0].receipt_confirmed, true);
+    assert.equal(r.body.result.structuredContent.state, "acked");
     assert.equal(
       (await send(url, "hab_status", { message_id: m.message_id })).body
         .result.structuredContent.state,

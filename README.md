@@ -35,18 +35,15 @@ Gemini アプリと Antigravity は連携の計画段階です。対象の製品
 ```mermaid
 flowchart LR
   Agent["エージェント"] <-->|"/mcp"| MCP
-  SDK["エージェント SDK・受信通知"] <-->|"/mcp/delivery"| DeliveryMCP
-  Client["A2A クライアント"] <--> A2A
+  Notifier["受信通知・運用クライアント"] <-->|"/mcp/delivery"| DeliveryMCP
   subgraph Host["HAB host"]
     MCP["エージェント用 MCP"]
     DeliveryMCP["配送用 MCP"]
-    A2A["A2A 入口（既定は無効）"]
     Registry["Registry"]
     Delivery["DeliveryService"]
     Store[("SQLite 配送ストア")]
     MCP --> Registry & Delivery
     DeliveryMCP --> Registry & Delivery
-    A2A --> Registry & Delivery
     Delivery <--> Store
   end
 ```
@@ -54,8 +51,7 @@ flowchart LR
 | 入口 | 用途 |
 | --- | --- |
 | `/mcp` | エージェントは `hab_send` で送信、`hab_inbox` で受信、`hab_reply` で返信、`hab_status` で既読・返信の状態を確認します。 |
-| `/mcp/delivery` | SDK と受信サービスは `hab_resolve`・`hab_submit`・`hab_status`・`hab_poll`・`hab_ack` を使います。通知アダプタは `hab_peek`・`hab_mark_read` で未読の確認と既読化を行います。 |
-| A2A | host 設定の `a2a` で有効にします。host が所有するアドレスから、設定済みの受信者へ A2A Task を送ります。 [A2A の設定](docs/a2a/a2a-host-preview.md#host-wiring-with-a-host-owned-identity) |
+| `/mcp/delivery` | 低レベル配送クライアントと受信通知アダプタは `hab_resolve`・`hab_submit`・`hab_status`・`hab_poll`・`hab_ack`、および未読確認・既読化の `hab_peek`・`hab_mark_read` を使います。 |
 
 受信は、呼び鈴（Webhook）・製品側の定期確認・話しかけ時の確認の 3 方式（[ADR-032](docs/hab-decisions.md)）と、任意の [受信通知アダプタ](docs/receiver/arrival-notifier.md) で行います。
 
@@ -65,7 +61,7 @@ flowchart LR
 
 配送は host の `delivery.sqlite` に保存します。配送対象はテキストと構造化データで、添付パートを含む送信は契約検証で拒否します。 [配送ストア](docs/delivery-store.md) · [メッセージ配送仕様](docs/hab-messaging-spec.md)
 
-旧 HAB Relay、Task Hub、NATS JetStream 配送と管理添付は廃止済みです。経緯は設計判断と過去の文書に記録しています。 [設計判断](docs/hab-decisions.md) · [過去の文書](docs/history/README.md)
+旧 HAB Relay、Task Hub、NATS JetStream 配送、管理添付、第 1 世代受信アダプタ、および旧 `connectivity_check` 専用 A2A 入口は廃止済みです（[ADR-036・ADR-037](docs/hab-decisions.md)）。経緯は設計判断と過去の文書に記録しています。 [設計判断](docs/hab-decisions.md) · [過去の文書](docs/history/README.md)
 
 <details>
 <summary>2026-10-10 時点の既存 MCP 経路（参考）</summary>
@@ -112,7 +108,7 @@ npm test
 | --- | --- |
 | `npm run demo:hab-enrollment -- --simulate` | 登録の中断・DB 再起動・有効化を確認します。対話で試す場合は `--interactive` を指定します。 [登録フロー](src/hab/README.md#human-enrollment-workflow) |
 | `npm run test:hab-integration` | 登録から HTTP 配送・停止・復旧までを一時環境で検証します。 [統合試験の記録](docs/history/hab-relay-integration.md) |
-| `npm run test:delivery-lab` | SDK と配送ストアを一時 DB で検証します。 |
+| `npm run test:delivery-lab` | 配送ストアと MCP 配送契約を一時 DB で検証します。 |
 
 型検査には TypeScript 7（`@typescript/native`）、ESLint と設計検証の AST API には TypeScript 6（`typescript` のエイリアス）を使います。 [TypeScript 6 と 7 の併用](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0)
 
@@ -122,7 +118,7 @@ npm test
 | --- | --- |
 | 設計・仕様 | [HAB の構成](docs/architecture.md) · [製品仕様](docs/hab-product-spec.md) · [セキュリティ](docs/hab-security.md) |
 | host の起動・管理 | [`hab:host` と `hab:admin` の設定](docs/host-service.md) · [OAuth 入口](docs/operations/oauth-ingress.md) · [LaunchAgent での常駐](docs/operations/host-launchagent.md) · [診断ダッシュボード](scripts/hab-dashboard.ts) |
-| 受信の実装 | [受信通知アダプタ](docs/receiver/arrival-notifier.md) · [MCP イベント](docs/connections/mcp-events.md) · [エージェント SDK](src/agent-sdk/README.md) |
+| 受信の実装 | [受信通知アダプタ](docs/receiver/arrival-notifier.md) · [MCP イベント](docs/connections/mcp-events.md) |
 | 宛先と名義の管理 | [登録・認可](src/hab/README.md) · [任意の `hab_discover` によるアドレス照会](docs/connections/mcp-agent-discovery.md) · [アドレス改名](docs/agent-address-rename.md) |
 
 [用途別の文書一覧](docs/README.md)

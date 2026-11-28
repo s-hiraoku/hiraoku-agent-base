@@ -10,8 +10,6 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { SQLiteInbox } from "../../src/agent-sdk/sqlite-inbox.ts";
-import { DurableReceiver } from "../../src/agent-sdk/index.ts";
 import { SqliteDelivery } from "../../src/delivery/sqlite-delivery.ts";
 import { limits, message } from "../mcp-http-fixtures.js";
 import { authorizedDelivery } from "../delivery-fixture.js";
@@ -22,8 +20,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { labEnvironment } from "../../scripts/lib/delivery-lab.mjs";
 
-// SQLite failure seams of the delivery path: the delivery store on the host side and the
-// durable inbox on the receiver side.
+// SQLite failure seams of the host delivery store.
 async function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "delivery-failure-"));
   chmodSync(dir, 0o700);
@@ -54,36 +51,12 @@ async function fixture(t) {
   });
   const path = delivery.options.path;
   const raw = track(new DatabaseSync(path));
-  const inboxPath = join(dir, "inbox.sqlite");
-  const inboxOptions = {
-    agent_id: "b",
-    limits,
-    fingerprint_key: new Uint8Array(32).fill(84),
-    max_records: 10,
-    max_body_bytes: 100000,
-    max_ack_records: 30,
-    ack_retry_ms: 86400000,
-    retry_base_ms: 1,
-    retry_cap_ms: 10,
-    max_attempts: 5,
-  };
-  const openInbox = () => track(new SQLiteInbox(inboxPath, inboxOptions));
-  const inbox = openInbox();
-  inbox.migrate();
   return {
     dir,
     path,
     options: delivery.options,
     raw,
     service: delivery.service,
-    inboxPath,
-    inbox,
-    openInbox,
-    inboxOptions,
-    closeInbox() {
-      inbox.close();
-      opened.delete(inbox);
-    },
   };
 }
 
@@ -146,42 +119,6 @@ test("F01 real SQLITE_FULL under a per-database page cap never returns acceptanc
   assert.deepEqual(f.service.submit("a", input), receipt);
 });
 
-test("F02 full durable inbox sends zero ACKs, retains server body and recovers with one inbox entry", async (t) => {
-  const f = await fixture(t);
-  const input = message();
-  input.body.parts[0].text = "x".repeat(15000);
-  f.service.submit("a", input);
-  const fault = pageLimit(t, f.inboxPath);
-  let acks = 0;
-  const receiver = new DurableReceiver(f.inbox, {
-    poll: async () => f.service.poll("b"),
-    ack: async (request) => {
-      acks++;
-      return f.service.ack("b", request);
-    },
-  });
-  await assert.rejects(receiver.receiveOnce());
-  assert.equal(fault.fullErrors(), 1);
-  assert.equal(acks, 0);
-  assert.deepEqual(receiver.inbox(), []);
-  const body = () =>
-    f.raw.prepare("SELECT body,body_bytes FROM delivery_messages").get();
-  assert.ok(body().body);
-  assert.ok(body().body_bytes > 0);
-  assert.equal(f.service.status("a", input.message_id).state, "leased");
-  fault.recover();
-  f.raw.exec("UPDATE delivery_messages SET lease_until=0,next_visible_at=0");
-  await receiver.receiveOnce();
-  assert.equal(acks, 1);
-  assert.deepEqual(
-    receiver.inbox().map((entry) => entry.message),
-    [input],
-  );
-  assert.equal(receiver.inbox()[0].receipt_confirmed, true);
-  assert.equal(body().body, null);
-  assert.equal(body().body_bytes, 0);
-});
-
 test("F03 exact journal-clock TTL and skew boundaries fail closed without host clock changes", async (t) => {
   const f = await fixture(t);
   const at = Math.floor(Date.now() / 1000) * 1000;
@@ -238,33 +175,31 @@ test("F04 malformed SQLite file is rejected without overwriting the evidence", a
 });
 
 test(
-  "F05 SIGKILL after durable save before ACK recovers the saved request with one inbox entry",
+  "F05 SIGKILL after committed submit preserves delivery row across reopen and allows poll and ACK",
   { timeout: 10000 },
   async (t) => {
     const f = await fixture(t);
     const input = message();
-    f.service.submit("a", input);
-    const delivery = f.service.poll("b");
-    f.closeInbox();
-    const inboxModule = new URL(
-      "../../src/agent-sdk/sqlite-inbox.ts",
+    const deliveryModule = new URL(
+      "../../src/delivery/sqlite-delivery.ts",
       import.meta.url,
     ).href;
-    const receiverModule = new URL(
-      "../../src/agent-sdk/receiver.ts",
-      import.meta.url,
-    ).href;
-    const options = { ...f.inboxOptions, fingerprint_key: undefined };
+    const options = {
+      ...f.options,
+      fingerprint_key: undefined,
+      authorization: undefined,
+    };
     const source = `
-    import { SQLiteInbox } from ${JSON.stringify(inboxModule)};
-    import { DurableReceiver } from ${JSON.stringify(receiverModule)};
-    const inbox = new SQLiteInbox(${JSON.stringify(f.inboxPath)}, { ...${JSON.stringify(options)}, fingerprint_key: new Uint8Array(32).fill(84) });
-    inbox.migrate();
+    import { SqliteDelivery } from ${JSON.stringify(deliveryModule)};
+    const authorization = { authorize: (ctx) => ["a", "b", "c"].includes(ctx) ? { agent_id: ctx } : undefined };
+    const store = SqliteDelivery.open({
+      ...${JSON.stringify(options)},
+      fingerprint_key: Uint8Array.from(${JSON.stringify([...f.options.fingerprint_key])}),
+      authorization,
+    });
+    store.admitWithAuthorization("a", ${JSON.stringify(input)}, authorization);
+    process.stdout.write("committed\\n");
     setInterval(() => {}, 1000);
-    await new DurableReceiver(inbox, {
-      poll: async () => (${JSON.stringify(delivery)}),
-      ack: async () => { process.stdout.write('saved\\n'); return new Promise(() => {}); }
-    }).receiveOnce();
   `;
     const child = spawn(
       process.execPath,
@@ -285,31 +220,24 @@ test(
     try {
       await Promise.race([
         once(child.stdout, "data").then(([bytes]) =>
-          assert.equal(bytes.toString(), "saved\n"),
+          assert.equal(bytes.toString(), "committed\n"),
         ),
         exited.then(([code, signal]) => {
           throw Error(
-            `receiver exited before save: ${code}/${signal} ${stderr}`,
+            `writer exited before commit: ${code}/${signal} ${stderr}`,
           );
         }),
       ]);
-      assert.equal(f.service.status("a", input.message_id).state, "leased");
       assert.equal(child.kill("SIGKILL"), true);
       const [, signal] = await exited;
       assert.equal(signal, "SIGKILL");
-      const restored = f.openInbox();
-      restored.migrate();
-      assert.deepEqual(
-        restored.inbox().map((entry) => entry.message),
-        [input],
+      assert.equal(f.service.status("a", input.message_id).state, "pending");
+      const delivered = f.service.poll("b");
+      assert.deepEqual(delivered.message, { ...input, sender_id: "a" });
+      assert.equal(
+        f.service.ack("b", ackRequest(delivered, "f05-ack")).state,
+        "acked",
       );
-      assert.equal(restored.inbox()[0].receipt_confirmed, false);
-      await new DurableReceiver(restored, {
-        poll: async () => f.service.poll("b"),
-        ack: async (request) => f.service.ack("b", request),
-      }).receiveOnce();
-      assert.equal(restored.inbox().length, 1);
-      assert.equal(restored.inbox()[0].receipt_confirmed, true);
       assert.equal(f.service.status("a", input.message_id).state, "acked");
     } finally {
       if (child.exitCode === null && child.signalCode === null)

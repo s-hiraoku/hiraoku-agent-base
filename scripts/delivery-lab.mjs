@@ -49,13 +49,9 @@ const pending = [
 ];
 const regressionFiles = [
   "messaging-contract",
-  "receiver",
-  "sender",
   "hab-enrollment-delivery",
   "hab-auth-groups",
   "hab-discovery",
-  "inbox-maintenance",
-  "outbox-maintenance",
 ].map((name) => `test/${name}.test.js`);
 const definitions = [
   { id: "shared-contracts", files: ["test/delivery-lab/contracts.test.js"] },

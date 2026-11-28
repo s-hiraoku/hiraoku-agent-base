@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   AuthenticationRecoveryError,
   authenticationRecoveryReason,
-} from "../agent-sdk/authentication-recovery.ts";
+} from "../hab/authentication-recovery.ts";
 import { HabMcpClient } from "../hab/mcp-client.ts";
 import { HAB_ADDRESS_PATTERN } from "../hab/registry.ts";
 import { replayBoundSentAt } from "../messaging/contract.ts";

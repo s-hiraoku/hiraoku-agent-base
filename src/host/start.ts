@@ -20,12 +20,6 @@ const hostReasons = new Set([
   "unknown_doorbell_address",
   "invalid_doorbell",
   "unsafe_doorbell_secret",
-  "invalid_host_a2a",
-  "a2a_identity_conflict",
-  "a2a_identity_retired",
-  "a2a_identity_renamed",
-  "a2a_identity_revoked",
-  "a2a_identity_stopped",
   "registry_key_mismatch",
   "unsupported_registry_schema",
   "unsupported_registry_name_schema",
@@ -131,7 +125,6 @@ export async function startHost(configPath: string) {
           },
         },
         delivery,
-        ...(config.a2a ? { a2a: config.a2a } : {}),
       });
     } catch (error) {
       throw new HostStartError(hostReason(error));

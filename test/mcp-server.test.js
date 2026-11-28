@@ -10,7 +10,6 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createDeliveryMcpServer } from "../src/host/mcp/server.ts";
 import { makeReplayBoundMessageId } from "../src/messaging/index.ts";
 import { authorizedDelivery } from "./delivery-fixture.js";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
 const limits = {
   envelope_bytes: 32768,
   text_bytes: 16000,
@@ -247,30 +246,13 @@ test("SDK request/response path submits multipart data, durably receives before 
   );
   const d = (await call(f.b, "hab_poll")).structuredContent.delivery;
   assert.deepEqual(d.message.body, m.body);
-  const inbox = new SQLiteInbox(join(f.dir, "inbox.sqlite"), {
-    agent_id: "b",
-    fingerprint_key: new Uint8Array(32).fill(43),
-    limits,
-    max_records: 10,
-    max_body_bytes: 100000,
-    max_ack_records: 30,
-    ack_retry_ms: 86400000,
-    retry_base_ms: 1000,
-    retry_cap_ms: 60000,
-    max_attempts: 5,
-  });
-  t.after(() => inbox.close());
-  inbox.migrate();
-  inbox.save(d);
-  const req = inbox.claimAck(),
+  const req = request(d),
     r = await call(f.b, "hab_ack", req);
   assert.equal(r.structuredContent.state, "acked");
   assert.deepEqual(
     (await call(f.b, "hab_ack", req)).structuredContent,
     r.structuredContent,
   );
-  inbox.confirmAck(req, r.structuredContent);
-  assert.equal(inbox.inbox()[0].receipt_confirmed, true);
   assert.equal(
     (await call(f.a, "hab_status", { message_id: m.message_id }))
       .structuredContent.state,
@@ -280,8 +262,6 @@ test("SDK request/response path submits multipart data, durably receives before 
     f.raw.prepare("SELECT body FROM delivery_messages").get().body,
     null,
   );
-  assert.equal(inbox.releaseBody("a", m.message_id), true);
-  assert.equal(inbox.inbox().length, 0);
   assert.deepEqual((await call(f.b, "hab_poll")).structuredContent, {
     delivery: null,
   });

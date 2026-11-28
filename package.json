@@ -21,7 +21,6 @@
     "hab:dashboard": "node scripts/hab-dashboard.ts",
     "hab:notify": "node scripts/hab-notify.ts",
     "test:communication-boundary": "node --test --test-reporter=tap test/common-mcp-boundary.test.js test/hab-mcp-resolve.test.js",
-    "test:a2a": "node --test test/a2a-sdk-store.test.js test/a2a-hab-unit.test.js test/a2a-host.test.js",
     "test:delivery-lab": "node scripts/delivery-lab.mjs",
     "test:tools": "node --test test/tools/*.test.ts test/compatibility/native-trial-preflight.test.js"
   },

@@ -23,13 +23,18 @@ const target = resolve(targetArg);
 const ts = createRequire(join(target, "package.json"))("typescript");
 const shared = new Set(["src/protocol.ts", "src/security.ts"]);
 const slash = (path) => path.split(sep).join("/");
-const sdkPath = (name) => `src/agent-sdk/${name}`;
 const messagingPath = (name) => `src/messaging/${name}`;
 const hostMcpPath = (name) => `src/host/mcp/${name}`;
 // Registry-owned sender capacity policy, used by the SQLite delivery store.
 const registryCore = ["src/hab/agent-capacity.ts"];
 // The host's delivery store (ADR-018): durable storage, no MCP/OAuth/HTTP.
 const deliveryCore = ["src/delivery/sqlite-delivery.ts"];
+// Focused host/client primitives moved out of the retired src/agent-sdk layer (ADR-037).
+const corePrimitives = [
+  "src/hab/authentication-recovery.ts",
+  "src/host/sqlite-host-owner.ts",
+];
+const outerPrimitives = ["src/hab/delivery-mcp-client.ts"];
 // docs/hab-messaging-spec.md section 3.1: domain/durable storage must not depend
 // inward on MCP/OAuth/HTTP composition. Keep these roles explicit for review.
 const coreModules = new Set([
@@ -41,22 +46,13 @@ const coreModules = new Set([
     // Pure formatting of the incoming-message notice (ADR-020); node:crypto only.
     "incoming-notice.ts",
   ].map(messagingPath),
-  ...[
-    "index.ts",
-    "sender.ts",
-    "receiver.ts",
-    "authentication-recovery.ts",
-    "sqlite-outbox.ts",
-    "sqlite-inbox.ts",
-    // Process-lifetime SQLite host owner (used by src/host/server.ts).
-    "sqlite-host-owner.ts",
-  ].map(sdkPath),
+  ...corePrimitives,
   hostMcpPath("writer-admission.ts"),
   ...registryCore,
   ...deliveryCore,
 ]);
 const outerModules = new Set([
-  sdkPath("mcp-client.ts"),
+  ...outerPrimitives,
   ...["server.ts", "http.ts", "http-node.ts", "oauth-resource.ts"].map(
     hostMcpPath,
   ),
@@ -74,9 +70,10 @@ const corePackages = new Set([
 const communicationPolicy = {
   name: "communication",
   allowsModule: (name) =>
-    name.startsWith("src/agent-sdk/") ||
     name.startsWith("src/messaging/") ||
     name.startsWith("src/host/mcp/") ||
+    corePrimitives.includes(name) ||
+    outerPrimitives.includes(name) ||
     registryCore.includes(name) ||
     deliveryCore.includes(name) ||
     shared.has(name),
@@ -171,7 +168,7 @@ function inspect(root, entries, policy = communicationPolicy) {
   return { files: [...seen].sort(), edges };
 }
 
-function sourceEntries(root, directory = "src/agent-sdk") {
+function sourceEntries(root, directory) {
   return readdirSync(join(root, directory), { withFileTypes: true }).flatMap(
     (entry) => {
       const name = `${directory}/${entry.name}`;
@@ -191,10 +188,10 @@ function sourceEntries(root, directory = "src/agent-sdk") {
 if (mode === "--self-test") {
   const scratch = mkdtempSync(join(tmpdir(), "hab-boundary-"));
   try {
-    mkdirSync(join(scratch, "src/agent-sdk"), { recursive: true });
     mkdirSync(join(scratch, "src/messaging"), { recursive: true });
     mkdirSync(join(scratch, "src/host/mcp"), { recursive: true });
-    const entry = join(scratch, "src/agent-sdk/index.ts");
+    mkdirSync(join(scratch, "src/hab"), { recursive: true });
+    const entry = join(scratch, "src/messaging/index.ts");
     // A deliberately isolated optional adapter must not contaminate the communication closure.
     writeFileSync(
       join(scratch, "src/optional-hermes.ts"),
@@ -204,9 +201,10 @@ if (mode === "--self-test") {
       entry,
       "// Hermes and Task are allowed words in comments.\nexport const text = 'openai';\n",
     );
-    assert.deepEqual(inspect(scratch, sourceEntries(scratch)).files, [
-      "src/agent-sdk/index.ts",
-    ]);
+    assert.deepEqual(
+      inspect(scratch, sourceEntries(scratch, "src/messaging")).files,
+      ["src/messaging/index.ts"],
+    );
     const controls = [
       ["direct product import", 'import "../hermes-run-driver.ts";'],
       ["task re-export", 'export * from "../generic-jobs.ts";'],
@@ -224,18 +222,18 @@ if (mode === "--self-test") {
     for (const [name, text] of controls) {
       writeFileSync(entry, text);
       assert.throws(
-        () => inspect(scratch, ["src/agent-sdk/index.ts"]),
+        () => inspect(scratch, ["src/messaging/index.ts"]),
         undefined,
         name,
       );
     }
     writeFileSync(entry, 'import "./helper.ts";');
     writeFileSync(
-      join(scratch, "src/agent-sdk/helper.ts"),
+      join(scratch, "src/messaging/helper.ts"),
       'export * from "../generic-jobs.ts";',
     );
     assert.throws(
-      () => inspect(scratch, ["src/agent-sdk/index.ts"]),
+      () => inspect(scratch, ["src/messaging/index.ts"]),
       /forbidden communication dependency/,
     );
     const service = join(scratch, "src/messaging/delivery-service.ts");
@@ -252,9 +250,9 @@ if (mode === "--self-test") {
       'import { McpServer } from "@modelcontextprotocol/server";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
-    writeFileSync(service, 'import "../agent-sdk/sender.ts";');
+    writeFileSync(service, 'import "../hab/authentication-recovery.ts";');
     writeFileSync(
-      join(scratch, "src/agent-sdk/sender.ts"),
+      join(scratch, "src/hab/authentication-recovery.ts"),
       'export * from "../host/mcp/server.ts";',
     );
     assert.throws(coreCheck, /forbidden core dependency/);
@@ -296,9 +294,10 @@ if (mode === "--self-test") {
   }
 } else {
   const entries = [
-    ...sourceEntries(target),
     ...sourceEntries(target, "src/messaging"),
     ...sourceEntries(target, "src/host/mcp"),
+    ...corePrimitives,
+    ...outerPrimitives,
     ...registryCore,
     ...deliveryCore,
   ];

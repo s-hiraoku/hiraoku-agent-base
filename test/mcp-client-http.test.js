@@ -2,12 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
-import { SQLiteOutbox } from "../src/agent-sdk/sqlite-outbox.ts";
-import { SQLiteInbox } from "../src/agent-sdk/sqlite-inbox.ts";
-import { DeliveryMcpClient } from "../src/agent-sdk/mcp-client.ts";
+import { DeliveryMcpClient } from "../src/hab/delivery-mcp-client.ts";
 import { createMcpNodeHandler } from "../src/host/mcp/http-node.ts";
 import { fixture, message, limits } from "./mcp-http-fixtures.js";
 
@@ -52,70 +47,14 @@ async function listening(t, f) {
     });
   return { url, connect };
 }
-function journals(t, f) {
-  const stores = new Set(),
-    outboxPath = join(f.dir, "outbox.sqlite"),
-    inboxPath = join(f.dir, "inbox.sqlite");
-  const openOutbox = () => {
-    const s = new SQLiteOutbox(outboxPath, {
-      agent_id: "a",
-      fingerprint_key: new Uint8Array(32).fill(44),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_clock_skew_ms: 1000,
-      lease_ms: 30000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_submit_attempts: 3,
-      max_status_attempts: 3,
-      status_retry_ms: 86400000,
-    });
-    s.migrate();
-    stores.add(s);
-    return s;
-  };
-  const openInbox = () => {
-    const s = new SQLiteInbox(inboxPath, {
-      agent_id: "b",
-      fingerprint_key: new Uint8Array(32).fill(43),
-      limits,
-      max_records: 10,
-      max_body_bytes: 100000,
-      max_ack_records: 30,
-      ack_retry_ms: 86400000,
-      retry_base_ms: 1000,
-      retry_cap_ms: 60000,
-      max_attempts: 5,
-    });
-    s.migrate();
-    stores.add(s);
-    return s;
-  };
-  const outbox = openOutbox(),
-    inbox = openInbox(),
-    outboxRaw = new DatabaseSync(outboxPath),
-    inboxRaw = new DatabaseSync(inboxPath);
-  const close = (s) => {
-    s.close();
-    stores.delete(s);
-  };
-  t.after(() => {
-    outboxRaw.close();
-    inboxRaw.close();
-    for (const s of stores) s.close();
-  });
-  return { outbox, inbox, openOutbox, openInbox, close, outboxRaw, inboxRaw };
-}
 const code = (wanted) => (e) => e.code === wanted && e.message === wanted;
 
 for (const loss of ["before_send", "after_commit"]) {
   test(
-    `HTTP durable journals recover ${loss} submit loss and committed ACK loss across client/store restart`,
+    `HTTP client recovers ${loss} submit loss and committed ACK loss via idempotent retries`,
     { timeout: 10000 },
     async (t) => {
       const f = await fixture(t),
-        j = journals(t, f),
         { connect } = await listening(t, f),
         m = message();
       const submits = [],
@@ -125,11 +64,6 @@ for (const loss of ["before_send", "after_commit"]) {
       const aFetch = async (url, init) => {
         const args = JSON.parse(init.body).params.arguments;
         submits.push(args);
-        const row = j.outboxRaw
-          .prepare("SELECT state,body FROM outbox")
-          .get();
-        assert.equal(row.state, "sending");
-        assert.deepEqual(JSON.parse(row.body), m);
         if (loseSubmit && loss === "before_send") {
           loseSubmit = false;
           throw Error("synthetic lost send");
@@ -142,45 +76,23 @@ for (const loss of ["before_send", "after_commit"]) {
         }
         return response;
       };
-      let sender = new DurableSender(j.outbox, connect("a", aFetch));
-      sender.enqueue(m);
-      await assert.rejects(sender.sendOnce(), code("sender_transport_failed"));
+      const sender = connect("a", aFetch);
+      await assert.rejects(sender.submit(m), code("transport_failed"));
       assert.equal(f.count(), loss === "before_send" ? 0 : 1);
       const acceptedBeforeRetry =
         loss === "after_commit"
           ? f.service.status(f.contexts.a, m.message_id).receipt_id
           : null;
-      j.close(j.outbox);
-      const outbox = j.openOutbox();
-      j.outboxRaw.exec("UPDATE outbox SET next_retry_at=0");
-      sender = new DurableSender(outbox, connect("a", aFetch));
-      await sender.sendOnce();
+      const accepted = await sender.submit(m);
       assert.deepEqual(submits, [m, m]);
       assert.equal(f.count(), 1);
-      assert.equal(sender.get(m.message_id).state, "accepted");
-      assert.equal(
-        j.outboxRaw.prepare("SELECT body FROM outbox").get().body,
-        null,
-      );
+      assert.equal(accepted.state, "pending");
       if (acceptedBeforeRetry)
-        assert.equal(
-          sender.get(m.message_id).receipt.receipt_id,
-          acceptedBeforeRetry,
-        );
+        assert.equal(accepted.receipt_id, acceptedBeforeRetry);
+
       const bFetch = async (url, init) => {
-        if (JSON.parse(init.body).params.name === "hab_ack") {
-          const args = JSON.parse(init.body).params.arguments;
-          acks.push(args);
-          const pending = j.inboxRaw
-            .prepare("SELECT request,state FROM receiver_acks")
-            .get();
-          assert.equal(pending.state, "pending");
-          assert.deepEqual(JSON.parse(pending.request), args);
-          assert.equal(
-            j.inboxRaw.prepare("SELECT count(*) n FROM inbox").get().n,
-            1,
-          );
-        }
+        if (JSON.parse(init.body).params.name === "hab_ack")
+          acks.push(JSON.parse(init.body).params.arguments);
         const response = await globalThis.fetch(url, init);
         if (JSON.parse(init.body).params.name === "hab_ack" && loseAck) {
           loseAck = false;
@@ -189,37 +101,26 @@ for (const loss of ["before_send", "after_commit"]) {
         }
         return response;
       };
-      let receiver = new DurableReceiver(j.inbox, connect("b", bFetch));
-      await assert.rejects(
-        receiver.receiveOnce(),
-        code("ack_transport_failed"),
-      );
-      assert.deepEqual(receiver.inbox()[0].message, m);
-      assert.equal(receiver.inbox()[0].receipt_confirmed, false);
+      const receiver = connect("b", bFetch);
+      const delivery = await receiver.poll();
+      assert.deepEqual(delivery.message, { ...m, sender_id: "a" });
+      const ackRequest = {
+        sender_id: "a",
+        message_id: m.message_id,
+        generation: delivery.generation,
+        lease_token: delivery.lease_token,
+        request_id: `ack-${loss}`,
+      };
+      await assert.rejects(receiver.ack(ackRequest), code("transport_failed"));
       assert.equal(f.service.status(f.contexts.a, m.message_id).state, "acked");
       assert.equal(
         f.raw.prepare("SELECT body FROM delivery_messages").get().body,
         null,
       );
-      j.close(j.inbox);
-      const inbox = j.openInbox();
-      j.inboxRaw.exec("UPDATE receiver_acks SET next_retry_at=0");
-      receiver = new DurableReceiver(inbox, connect("b", bFetch));
-      await receiver.receiveOnce();
+      const confirmed = await receiver.ack(ackRequest);
+      assert.equal(confirmed.state, "acked");
       assert.deepEqual(acks[0], acks[1]);
       assert.equal(acks.length, 2);
-      assert.equal(receiver.inbox().length, 1);
-      assert.equal(receiver.inbox()[0].receipt_confirmed, true);
-      assert.equal(
-        j.inboxRaw.prepare("SELECT request FROM receiver_acks").get()
-          .request,
-        null,
-      );
-      assert.equal(
-        j.inboxRaw.prepare("SELECT count(*) n FROM receiver_acks").get()
-          .n,
-        1,
-      );
       assert.equal(await connect("c").poll(), null);
       await assert.rejects(
         connect("c").status(m.message_id),
@@ -280,26 +181,21 @@ test(
 );
 
 test(
-  "HTTP credential refusal and current revocation preserve pending sender intent without switching identity",
+  "HTTP credential refusal and current revocation prevent acceptance without switching identity",
   { timeout: 10000 },
   async (t) => {
     const f = await fixture(t),
-      j = journals(t, f),
       { connect } = await listening(t, f),
       m = message();
-    const sender = new DurableSender(
-      j.outbox,
-      connect("a", globalThis.fetch, () => "Bearer unverified-fixture"),
+    await assert.rejects(
+      connect("a", globalThis.fetch, () => "Bearer unverified-fixture").submit(
+        m,
+      ),
+      code("transport_failed"),
     );
-    sender.enqueue(m);
-    await assert.rejects(sender.sendOnce(), code("sender_transport_failed"));
     assert.equal(f.count(), 0);
-    assert.equal(sender.get(m.message_id).state, "queued");
-    j.outboxRaw.exec("UPDATE outbox SET next_retry_at=0");
     f.active.delete("a");
-    await new DurableSender(j.outbox, connect("a")).sendOnce();
-    assert.equal(sender.get(m.message_id).state, "quarantined");
-    assert.equal(sender.get(m.message_id).reason, "forbidden");
+    await assert.rejects(connect("a").submit(m), code("forbidden"));
     assert.equal(f.count(), 0);
   },
 );
@@ -342,33 +238,25 @@ test(
 );
 
 test(
-  "misbound credentials cannot select a sender with local agent labels; returned mismatch stops resending",
+  "misbound credentials cannot select a sender with local agent labels; returned mismatch is rejected",
   { timeout: 10000 },
   async (t) => {
     const f = await fixture(t),
-      j = journals(t, f),
       { connect } = await listening(t, f),
       m = message();
-    const sender = new DurableSender(
-      j.outbox,
-      connect("a", globalThis.fetch, () => "Bearer fixture-c"),
+    await assert.rejects(
+      connect("a", globalThis.fetch, () => "Bearer fixture-c").submit(m),
+      code("forbidden"),
     );
-    sender.enqueue(m);
-    await sender.sendOnce();
     assert.equal(f.count(), 1);
     assert.equal(
       f.raw.prepare("SELECT sender_id FROM delivery_messages").get().sender_id,
       "c",
     );
-    assert.equal(sender.get(m.message_id).state, "quarantined");
-    assert.equal(sender.get(m.message_id).reason, "forbidden");
-    assert.equal(sender.get(m.message_id).receipt, null);
     assert.equal(f.service.status(f.contexts.c, m.message_id).state, "pending");
     assert.throws(
       () => f.service.status(f.contexts.a, m.message_id),
       code("not_found"),
     );
-    await new DurableSender(j.outbox, connect("a")).sendOnce();
-    assert.equal(f.count(), 1);
   },
 );

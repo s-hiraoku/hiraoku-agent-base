@@ -16,8 +16,6 @@ import type {
   Delivery,
   AckReceipt,
 } from "../messaging/delivery-service.ts";
-import type { SenderTransport } from "./sender.ts";
-import type { ReceiverTransport } from "./receiver.ts";
 import { isPublicToolError } from "../messaging/tool-errors.ts";
 import {
   AuthenticationRecoveryError,
@@ -248,7 +246,7 @@ async function readResponse(
   }
 }
 
-export class DeliveryMcpClient implements SenderTransport, ReceiverTransport {
+export class DeliveryMcpClient {
   readonly #policy: Readonly<DeliveryMcpClientPolicy>;
   readonly #limits: Readonly<ContractLimits>;
   readonly #authorization: McpCredentialProvider;

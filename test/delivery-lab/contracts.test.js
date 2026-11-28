@@ -6,10 +6,7 @@ const scenarios = [
   [
     "D01 six directed round trips preserve sender, recipient and UTF-8 body",
     async (t, f) => {
-      const receivers = Object.fromEntries(
-        ["a", "b", "c"].map((name) => [name, f.receiver(name)]),
-      );
-      const expected = { a: [], b: [], c: [] };
+      let seq = 0;
       for (const [from, to] of [
         ["a", "b"],
         ["b", "a"],
@@ -23,29 +20,26 @@ const scenarios = [
             parts: [{ type: "text", text: `日本語\r\n${from} → ${to}` }],
           },
         });
-        expected[to].push({ sender_id: f.agent(from), message });
         const receipt = await f.transport(from).submit(message);
         assert.equal(receipt.sender_id, f.agent(from));
         assert.equal(receipt.recipient_id, f.agent(to));
-        await receivers[to].once();
+        const delivery = await f.transport(to).poll();
+        assert.deepEqual(delivery.message, {
+          ...message,
+          sender_id: f.agent(from),
+        });
+        assert.equal(
+          (await f.transport(to).ack(ackRequest(delivery, `d01-${++seq}`)))
+            .state,
+          "acked",
+        );
         assert.equal(
           (await f.transport(from).status(message.message_id)).state,
           "acked",
         );
       }
-      for (const name of ["a", "b", "c"]) {
-        assert.deepEqual(
-          receivers[name]
-            .entries()
-            .map(({ sender_id, message }) => ({ sender_id, message })),
-          expected[name],
-        );
-        assert.equal(
-          receivers[name].entries().every((entry) => entry.receipt_confirmed),
-          true,
-        );
+      for (const name of ["a", "b", "c"])
         assert.equal(await f.transport(name).poll(), null);
-      }
     },
   ],
   [
@@ -55,119 +49,70 @@ const scenarios = [
       const first = await f.transport("a").submit(message);
       assert.deepEqual(await f.transport("a").submit(message), first);
       await assert.rejects(
-        f
-          .transport("a")
-          .submit({
-            ...message,
-            body: { parts: [{ type: "text", text: "changed" }] },
-          }),
+        f.transport("a").submit({
+          ...message,
+          body: { parts: [{ type: "text", text: "changed" }] },
+        }),
         { code: "idempotency_conflict" },
       );
-      const receiver = f.receiver("b");
-      await receiver.once();
-      await receiver.once();
-      assert.deepEqual(
-        receiver.entries().map((entry) => entry.message),
-        [message],
-      );
+      const delivery = await f.transport("b").poll();
+      assert.deepEqual(delivery.message, {
+        ...message,
+        sender_id: f.agent("a"),
+      });
+      await f.transport("b").ack(ackRequest(delivery, "d02-ack"));
+      assert.equal(await f.transport("b").poll(), null);
     },
   ],
   [
-    "D03 ACK is sent only after inbox survives an independent reopen",
+    "D03 accepted message survives restart before poll and ACK",
     async (t, f) => {
       const message = f.message("b");
       await f.transport("a").submit(message);
-      let calls = 0;
-      const receiver = f.receiver("b", {
-        async ack(request) {
-          calls++;
-          const witness = f.receiver("b");
-          try {
-            assert.deepEqual(
-              witness.entries().map((entry) => entry.message),
-              [message],
-            );
-            assert.equal(witness.entries()[0].receipt_confirmed, false);
-          } finally {
-            witness.close();
-          }
-          return f.transport("b").ack(request);
-        },
-      });
-      await receiver.once();
-      assert.equal(calls, 1);
-      assert.equal(receiver.entries()[0].receipt_confirmed, true);
-      assert.equal(
-        (await f.transport("a").status(message.message_id)).state,
-        "acked",
-      );
-    },
-  ],
-  [
-    "D04 lost committed ACK response recovers the exact request after restart",
-    async (t, f) => {
-      const message = f.message("b");
-      await f.transport("a").submit(message);
-      const requests = [];
-      const receiver = f.receiver("b", {
-        async ack(request) {
-          requests.push(structuredClone(request));
-          await f.transport("b").ack(request);
-          throw Error("synthetic response loss");
-        },
-      });
-      await assert.rejects(receiver.once(), { code: "ack_transport_failed" });
-      assert.equal(receiver.entries()[0].receipt_confirmed, false);
-      assert.equal(
-        (await f.transport("a").status(message.message_id)).state,
-        "acked",
-      );
-      receiver.close();
       await f.restart();
-      f.faults.ackRetryDue("b");
-      const restored = f.receiver("b", {
-        async ack(request) {
-          requests.push(structuredClone(request));
-          return f.transport("b").ack(request);
-        },
+      const delivery = await f.transport("b").poll();
+      assert.deepEqual(delivery.message, {
+        ...message,
+        sender_id: f.agent("a"),
       });
-      await restored.once();
-      assert.deepEqual(requests[1], requests[0]);
-      assert.equal(requests.length, 2);
-      assert.deepEqual(
-        restored.entries().map((entry) => entry.message),
-        [message],
+      await f.transport("b").ack(ackRequest(delivery, "d03-ack"));
+      assert.equal(
+        (await f.transport("a").status(message.message_id)).state,
+        "acked",
       );
-      assert.equal(restored.entries()[0].receipt_confirmed, true);
     },
   ],
   [
-    "D05 ACK loss before commit and lease expiry redeliver without a duplicate inbox entry",
+    "D04 lost committed ACK response recovers the exact receipt after restart",
     async (t, f) => {
       const message = f.message("b");
       await f.transport("a").submit(message);
-      let stale;
-      const receiver = f.receiver("b", {
-        async ack(request) {
-          stale = structuredClone(request);
-          throw Error("synthetic disconnect before ACK");
-        },
-      });
-      await assert.rejects(receiver.once(), { code: "ack_transport_failed" });
-      receiver.close();
+      const delivery = await f.transport("b").poll();
+      const req = ackRequest(delivery, "d04-ack");
+      const first = await f.transport("b").ack(req);
+      assert.equal(first.state, "acked");
+      await f.restart();
+      const second = await f.transport("b").ack(req);
+      assert.deepEqual(second, first);
+      assert.equal(await f.transport("b").poll(), null);
+    },
+  ],
+  [
+    "D05 unacked lease expiry redelivers under a new generation and rejects the stale ACK",
+    async (t, f) => {
+      const message = f.message("b");
+      await f.transport("a").submit(message);
+      const first = await f.transport("b").poll();
+      const stale = ackRequest(first, "d05-stale");
       await f.restart();
       f.faults.leaseExpired();
-      f.faults.ackRetryDue("b");
-      const restored = f.receiver("b");
-      await restored.once();
-      assert.deepEqual(
-        restored.entries().map((entry) => entry.message),
-        [message],
-      );
-      assert.equal(restored.entries()[0].receipt_confirmed, true);
+      const second = await f.transport("b").poll();
+      assert.equal(second.generation, first.generation + 1);
+      assert.notEqual(second.lease_token, first.lease_token);
       await assert.rejects(f.transport("b").ack(stale), {
         code: "invalid_ack",
       });
+      await f.transport("b").ack(ackRequest(second, "d05-fresh"));
       assert.equal(
         (await f.transport("a").status(message.message_id)).state,
         "acked",
@@ -218,17 +163,20 @@ const scenarios = [
     async (t, f) => {
       const message = f.message("b");
       await f.transport("a").submit(message);
-      const receiver = f.receiver("b");
       await f.disconnect();
-      await assert.rejects(receiver.once(), { code: "poll_transport_failed" });
-      assert.deepEqual(receiver.entries(), []);
+      await assert.rejects(f.transport("b").poll(), {
+        code: "transport_failed",
+      });
       await f.reconnect();
-      await receiver.once();
-      assert.deepEqual(
-        receiver.entries().map((entry) => entry.message),
-        [message],
+      const delivery = await f.transport("b").poll();
+      assert.deepEqual(delivery.message, {
+        ...message,
+        sender_id: f.agent("a"),
+      });
+      assert.equal(
+        (await f.transport("b").ack(ackRequest(delivery, "d08-ack"))).state,
+        "acked",
       );
-      assert.equal(receiver.entries()[0].receipt_confirmed, true);
     },
   ],
 ];

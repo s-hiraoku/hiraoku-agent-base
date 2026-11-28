@@ -1,19 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { journey } from "./hab-journey-fixtures.js";
 import { code, operations } from "./hab-registry-fixtures.js";
 import { decode, request } from "./mcp-http-fixtures.js";
 
 const config = { timeout: 15000 };
-function sender(f, name, transport = f.client(name)) {
-  const store = f.net.outbox(name, f.agents[name]);
-  return { store, sender: new DurableSender(store, transport) };
-}
-function receiver(f, name, transport = f.client(name)) {
-  const store = f.net.inbox(name, f.agents[name]);
-  return { store, receiver: new DurableReceiver(store, transport) };
-}
 const ack = (delivery, requestId) => ({
   sender_id: delivery.message.sender_id,
   message_id: delivery.message.message_id,
@@ -21,6 +12,13 @@ const ack = (delivery, requestId) => ({
   lease_token: delivery.lease_token,
   request_id: requestId,
 });
+async function receiveAndAck(client, requestId) {
+  const delivery = await client.poll();
+  assert.ok(delivery);
+  const receipt = await client.ack(ack(delivery, requestId));
+  assert.equal(receipt.state, "acked");
+  return delivery;
+}
 function state(f, name, next, requestId) {
   const a = f.registry.inspect(f.admin, f.agents[name].agent_id);
   return f.registry.setAccess(f.admin, {
@@ -33,7 +31,7 @@ function state(f, name, next, requestId) {
 }
 
 test(
-  "journey: stop after a committed ACK response is lost quarantines retry without losing the local body",
+  "journey: stop after a committed ACK response is lost forbids retry until resumed while server keeps acked receipt",
   config,
   async (t) => {
     const f = await journey(t);
@@ -51,41 +49,22 @@ test(
       }
       return response;
     });
-    const initial = receiver(f, "b", transport);
-    await assert.rejects(
-      initial.receiver.receiveOnce(),
-      code("ack_transport_failed"),
-    );
-    f.net.close(initial.store);
+    const delivery = await transport.poll();
+    const ackReq = ack(delivery, "ack-during-stop");
+    await assert.rejects(transport.ack(ackReq), code("transport_failed"));
     await f.restart();
-    f.dueAck("b");
-    const restored = receiver(f, "b");
-    await restored.receiver.receiveOnce();
-    assert.deepEqual(restored.receiver.inbox()[0].message, m);
-    assert.equal(restored.receiver.inbox()[0].receipt_confirmed, false);
-    assert.deepEqual(
-      {
-        ...f.raw("inbox-b.sqlite", (db) =>
-          db.prepare("SELECT state,reason,request FROM receiver_acks").get(),
-        ),
-      },
-      { state: "quarantined", reason: "forbidden", request: null },
-    );
+    await assert.rejects(f.client("b").ack(ackReq), code("forbidden"));
     assert.equal((await f.client("a").status(m.message_id)).state, "acked");
     state(f, "b", "active", "explicit-resume-after-ack");
-    const calls = f.net.tools.filter((tool) => tool === "hab_ack").length;
-    await restored.receiver.receiveOnce();
-    assert.equal(
-      f.net.tools.filter((tool) => tool === "hab_ack").length,
-      calls,
-    );
-    assert.equal(restored.receiver.inbox().length, 1);
+    const confirmed = await f.client("b").ack(ackReq);
+    assert.equal(confirmed.state, "acked");
+    assert.equal(await f.client("b").poll(), null);
     assert.equal(f.count("messages"), 1);
   },
 );
 
 test(
-  "journey: stopping a sender during uncertain acceptance quarantines the original outbox instead of creating another message",
+  "journey: stopping a sender during uncertain acceptance forbids retry until resumed without creating another message",
   config,
   async (t) => {
     const f = await journey(t);
@@ -101,30 +80,14 @@ test(
       }
       return response;
     });
-    const initial = sender(f, "a", transport),
-      m = f.makeMessage("b");
-    initial.sender.enqueue(m);
-    await assert.rejects(
-      initial.sender.sendOnce(),
-      code("sender_transport_failed"),
-    );
-    f.net.close(initial.store);
+    const m = f.makeMessage("b");
+    await assert.rejects(transport.submit(m), code("transport_failed"));
     await f.restart();
-    f.dueOutbox("a");
-    const restored = sender(f, "a");
-    await restored.sender.sendOnce();
-    assert.equal(restored.sender.get(m.message_id).state, "quarantined");
-    assert.equal(
-      restored.sender.get(m.message_id).recipient_id,
-      f.agents.b.agent_id,
-    );
+    await assert.rejects(f.client("a").submit(m), code("forbidden"));
     assert.equal(f.count("messages"), 1);
     state(f, "a", "active", "explicit-resume-sender");
-    await restored.sender.sendOnce();
-    assert.equal(restored.sender.get(m.message_id).state, "quarantined");
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    assert.deepEqual(b.inbox()[0].message, m);
+    const delivered = await receiveAndAck(f.client("b"), "ack-b-1");
+    assert.deepEqual(delivered.message, { ...m, sender_id: f.agents.a.agent_id });
     assert.equal(f.count("messages"), 1);
     assert.equal((await f.client("a").status(m.message_id)).state, "acked");
   },
@@ -202,12 +165,7 @@ test(
         .sort(),
       ["dot", "grok-bot", "hermes"],
     );
-    const senders = {},
-      receivers = {};
-    for (const name of ["a", "b", "c"]) {
-      senders[name] = sender(f, name).sender;
-      receivers[name] = receiver(f, name).receiver;
-    }
+    let seq = 0;
     for (const [from, to] of [
       ["a", "b"],
       ["b", "a"],
@@ -230,15 +188,12 @@ test(
         ],
       };
       const m = f.makeMessage(to, { recipient_id: target.recipient_id, body });
-      senders[from].enqueue(m);
-      await senders[from].sendOnce();
-      await receivers[to].receiveOnce();
-      const local = receivers[to]
-        .inbox()
-        .find((item) => item.message.message_id === m.message_id);
-      assert.deepEqual(local.message, m);
-      assert.equal(local.sender_id, f.agents[from].agent_id);
-      assert.equal(local.receipt_confirmed, true);
+      await f.client(from).submit(m);
+      const delivered = await receiveAndAck(f.client(to), `ack-${++seq}`);
+      assert.deepEqual(JSON.parse(JSON.stringify(delivered.message)), {
+        ...m,
+        sender_id: f.agents[from].agent_id,
+      });
       assert.equal((await f.client(from).status(m.message_id)).state, "acked");
     }
     assert.equal(f.count("messages"), 6);
@@ -267,26 +222,25 @@ test(
     await f.enrollAll();
     assert.equal(f.agents.a.agent_name, f.agents.b.agent_name);
     assert.notEqual(f.agents.a.agent_id, f.agents.b.agent_id);
-    const { sender: a } = sender(f, "a"),
-      { receiver: b } = receiver(f, "b");
     const m = f.makeMessage("b");
-    a.enqueue(m);
-    await a.sendOnce();
+    await f.client("a").submit(m);
     assert.equal(await f.client("a").poll(), null);
     assert.equal(await f.client("c").poll(), null);
     await assert.rejects(f.client("b").status(m.message_id), code("not_found"));
     await assert.rejects(f.client("c").status(m.message_id), code("not_found"));
-    await b.receiveOnce();
-    assert.equal(b.inbox()[0].sender_id, f.agents.a.agent_id);
+    const delivered = await receiveAndAck(f.client("b"), "ack-b-distinct");
+    assert.equal(delivered.message.sender_id, f.agents.a.agent_id);
     const reply = f.makeMessage("a", {
       kind: "answer",
       thread_id: m.thread_id,
       in_reply_to: { sender_id: f.agents.a.agent_id, message_id: m.message_id },
     });
     await f.client("b").submit(reply);
-    const { receiver: receivingA } = receiver(f, "a");
-    await receivingA.receiveOnce();
-    assert.deepEqual(receivingA.inbox()[0].message, reply);
+    const replyDelivered = await receiveAndAck(f.client("a"), "ack-a-distinct");
+    assert.deepEqual(replyDelivered.message, {
+      ...reply,
+      sender_id: f.agents.b.agent_id,
+    });
   },
 );
 
@@ -298,11 +252,9 @@ test(
     await f.enrollAll();
     const records = [];
     for (const from of ["a", "c"]) {
-      const { sender: sending } = sender(f, from);
       const m = f.makeMessage("b");
       records.push([from, m]);
-      sending.enqueue(m);
-      await sending.sendOnce();
+      await f.client(from).submit(m);
       assert.equal(
         (await f.client(from).status(m.message_id)).state,
         "pending",
@@ -318,16 +270,19 @@ test(
       Object.values(f.agents).map((a) => a.agent_id),
       ids,
     );
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    await b.receiveOnce();
-    assert.equal(b.inbox().length, 2);
+    const received = [
+      await receiveAndAck(f.client("b"), "offline-1"),
+      await receiveAndAck(f.client("b"), "offline-2"),
+    ];
+    assert.equal(await f.client("b").poll(), null);
     for (const [from, original] of records) {
-      const saved = b
-        .inbox()
-        .find((entry) => entry.message.message_id === original.message_id);
-      assert.deepEqual(saved.message, original);
-      assert.equal(saved.receipt_confirmed, true);
+      const saved = received.find(
+        (entry) => entry.message.message_id === original.message_id,
+      );
+      assert.deepEqual(saved.message, {
+        ...original,
+        sender_id: f.agents[from].agent_id,
+      });
       assert.equal(
         (await f.client(from).status(original.message_id)).expires_at,
         original.expires_at,
@@ -337,7 +292,7 @@ test(
 );
 
 test(
-  "journey: lost committed submission survives Hub and sender restart without re-resolution or duplicate delivery",
+  "journey: lost committed submission survives Hub restart without re-resolution or duplicate delivery",
   config,
   async (t) => {
     const f = await journey(t);
@@ -355,32 +310,18 @@ test(
       }
       return response;
     });
-    const initial = sender(f, "a", transport),
-      m = f.makeMessage("b", { recipient_id: target.recipient_id });
-    initial.sender.enqueue(m);
-    await assert.rejects(
-      initial.sender.sendOnce(),
-      code("sender_transport_failed"),
-    );
+    const m = f.makeMessage("b", { recipient_id: target.recipient_id });
+    await assert.rejects(transport.submit(m), code("transport_failed"));
     const receipt = f.raw(
       "delivery.sqlite",
       (db) =>
         db.prepare("SELECT receipt_id FROM delivery_messages").get().receipt_id,
     );
-    f.net.close(initial.store);
     await f.restart();
-    f.dueOutbox("a");
-    const restored = sender(f, "a");
-    await restored.sender.sendOnce();
-    assert.equal(restored.sender.get(m.message_id).receipt.receipt_id, receipt);
-    assert.equal(
-      restored.sender.get(m.message_id).receipt.expires_at,
-      m.expires_at,
-    );
-    assert.equal(
-      restored.sender.get(m.message_id).recipient_id,
-      target.recipient_id,
-    );
+    const replayed = await f.client("a").submit(m);
+    assert.equal(replayed.receipt_id, receipt);
+    assert.equal(replayed.expires_at, m.expires_at);
+    assert.equal(replayed.recipient_id, target.recipient_id);
     assert.equal(
       f.net.tools.filter((tool) => tool === "hab_resolve").length,
       1,
@@ -399,15 +340,13 @@ test(
       ),
       1,
     );
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    await b.receiveOnce();
-    assert.equal(b.inbox().length, 1);
+    await receiveAndAck(f.client("b"), "ack-after-replay");
+    assert.equal(await f.client("b").poll(), null);
   },
 );
 
 test(
-  "journey: lost ACK response recovers the same receipt after server and private inbox restart",
+  "journey: lost ACK response recovers the same receipt after server restart",
   config,
   async (t) => {
     const f = await journey(t);
@@ -424,13 +363,9 @@ test(
       }
       return response;
     });
-    const initial = receiver(f, "b", cb);
-    await assert.rejects(
-      initial.receiver.receiveOnce(),
-      code("ack_transport_failed"),
-    );
-    assert.equal(initial.receiver.inbox()[0].receipt_confirmed, false);
-    assert.deepEqual(initial.receiver.inbox()[0].message, m);
+    const delivery = await cb.poll();
+    const ackReq = ack(delivery, "ack-lost-response");
+    await assert.rejects(cb.ack(ackReq), code("transport_failed"));
     const original = f.raw("delivery.sqlite", (db) =>
       db
         .prepare(
@@ -448,13 +383,10 @@ test(
       ),
       null,
     );
-    f.net.close(initial.store);
     await f.restart();
-    f.dueAck("b");
-    const restored = receiver(f, "b");
-    await restored.receiver.receiveOnce();
-    assert.equal(restored.receiver.inbox().length, 1);
-    assert.equal(restored.receiver.inbox()[0].receipt_confirmed, true);
+    const recovered = await f.client("b").ack(ackReq);
+    assert.equal(recovered.state, "acked");
+    assert.equal(recovered.receipt_id, original.receipt_id);
     assert.deepEqual(
       f.raw("delivery.sqlite", (db) =>
         db
@@ -466,45 +398,25 @@ test(
       original,
     );
     assert.equal(f.count("ack_receipts"), 1);
-    assert.equal(
-      f.raw(
-        "inbox-b.sqlite",
-        (db) => db.prepare("SELECT attempts FROM receiver_acks").get().attempts,
-      ),
-      2,
-    );
   },
 );
 
 test(
-  "journey: inbox failure sends no ACK; a later lease generation recovers the original payload",
+  "journey: unacked poll after restart redelivers under a later lease generation with original payload",
   config,
   async (t) => {
     const f = await journey(t);
     await f.enrollAll();
     const m = f.makeMessage("b");
     await f.client("a").submit(m);
-    const initial = receiver(f, "b");
-    const broken = new DurableReceiver(
-      {
-        claimAck: () => initial.store.claimAck(),
-        save() {
-          throw Error("synthetic local save failure");
-        },
-      },
-      f.client("b"),
-    );
-    await assert.rejects(broken.receiveOnce(), /synthetic local save failure/);
+    const first = await f.client("b").poll();
+    assert.equal(first.generation, 1);
     assert.equal(f.count("ack_receipts"), 0);
-    assert.equal(initial.receiver.inbox().length, 0);
-    assert.equal(f.net.tools.filter((tool) => tool === "hab_ack").length, 0);
-    f.net.close(initial.store);
     await f.restart();
     f.expireLeases();
-    const restored = receiver(f, "b");
-    await restored.receiver.receiveOnce();
-    assert.deepEqual(restored.receiver.inbox()[0].message, m);
-    assert.equal(restored.receiver.inbox()[0].receipt_confirmed, true);
+    const second = await receiveAndAck(f.client("b"), "ack-gen-2");
+    assert.deepEqual(second.message, { ...m, sender_id: f.agents.a.agent_id });
+    assert.equal(second.generation, 2);
     assert.equal(
       f.raw(
         "delivery.sqlite",
@@ -582,9 +494,8 @@ test(
       null,
     );
     state(f, "b", "active", "operator-resume");
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    assert.deepEqual(b.inbox()[0].message, m);
+    const delivered = await receiveAndAck(f.client("b"), "ack-resumed");
+    assert.deepEqual(delivered.message, { ...m, sender_id: f.agents.a.agent_id });
     assert.equal((await f.client("a").status(m.message_id)).state, "acked");
   },
 );
@@ -613,10 +524,12 @@ test(
     };
     block(true, "block-a-b");
     await f.restart();
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    assert.equal(b.inbox().length, 1);
-    assert.deepEqual(b.inbox()[0].message, other);
+    const deliveredOther = await receiveAndAck(f.client("b"), "ack-other");
+    assert.deepEqual(deliveredOther.message, {
+      ...other,
+      sender_id: f.agents.c.agent_id,
+    });
+    assert.equal(await f.client("b").poll(), null);
     assert.equal(
       (await f.client("a").status(first.message_id)).state,
       "pending",
@@ -626,12 +539,11 @@ test(
       code("unknown_address"),
     );
     block(false, "unblock-a-b");
-    await b.receiveOnce();
-    assert.equal(b.inbox().length, 2);
-    assert.deepEqual(
-      b.inbox().find((i) => i.sender_id === f.agents.a.agent_id).message,
-      first,
-    );
+    const deliveredFirst = await receiveAndAck(f.client("b"), "ack-first");
+    assert.deepEqual(deliveredFirst.message, {
+      ...first,
+      sender_id: f.agents.a.agent_id,
+    });
   },
 );
 
@@ -704,9 +616,8 @@ test(
     const replacement = f.net.clients("a2", f.agents.a);
     const m = f.makeMessage("b");
     await replacement.submit(m);
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    assert.equal(b.inbox()[0].sender_id, id);
+    const delivered = await receiveAndAck(f.client("b"), "ack-rotated");
+    assert.equal(delivered.message.sender_id, id);
     assert.equal(f.registry.inspect(f.admin, id).address, f.agents.a.address);
   },
 );
@@ -728,8 +639,7 @@ test(
       }),
       code("idempotency_conflict"),
     );
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
+    await receiveAndAck(f.client("b"), "ack-dup");
     const after = await f.client("a").submit(m);
     assert.equal(after.receipt_id, original.receipt_id);
     assert.equal(after.expires_at, m.expires_at);
@@ -756,10 +666,9 @@ test(
       },
     });
     await f.client("a").submit(m);
-    const { receiver: b } = receiver(f, "b");
-    await b.receiveOnce();
-    for (let i = 0; i < 3; i++) await b.receiveOnce();
-    assert.deepEqual(b.inbox()[0].message.body, m.body);
+    const delivered = await receiveAndAck(f.client("b"), "ack-untrusted");
+    for (let i = 0; i < 3; i++) assert.equal(await f.client("b").poll(), null);
+    assert.deepEqual(delivered.message.body, m.body);
     assert.equal(f.count("messages"), 1);
     assert.equal(f.count("hab_admin_requests"), before);
     const listed = await decode(
@@ -786,53 +695,6 @@ test(
     assert.equal(Boolean(attempted.error || attempted.result?.isError), true);
     assert.equal(f.count("hab_agents"), 3);
     // This checks the host's passive boundary, not external agents' guardrails or reply budgets.
-  },
-);
-
-test(
-  "journey: local application durably saves before inbox body release and subsequent polling is empty",
-  config,
-  async (t) => {
-    const f = await journey(t);
-    await f.enrollAll();
-    const m = f.makeMessage("b");
-    await f.client("a").submit(m);
-    const initial = receiver(f, "b");
-    await initial.receiver.receiveOnce();
-    const local = initial.receiver.inbox()[0];
-    f.raw("application.sqlite", (db) => {
-      db.exec(
-        "PRAGMA synchronous=FULL; CREATE TABLE saved(sender_id TEXT,message_id TEXT,body TEXT,PRIMARY KEY(sender_id,message_id))",
-      );
-      db.prepare("INSERT INTO saved VALUES(?,?,?)").run(
-        local.sender_id,
-        m.message_id,
-        JSON.stringify(local.message),
-      );
-    });
-    assert.equal(
-      initial.store.releaseBody(local.sender_id, m.message_id),
-      true,
-    );
-    f.net.close(initial.store);
-    await f.restart();
-    const restored = receiver(f, "b");
-    await restored.receiver.receiveOnce();
-    assert.equal(restored.receiver.inbox().length, 0);
-    assert.equal(
-      f.raw(
-        "application.sqlite",
-        (db) => db.prepare("SELECT count(*) n FROM saved").get().n,
-      ),
-      1,
-    );
-    assert.deepEqual(
-      f.raw("application.sqlite", (db) =>
-        JSON.parse(db.prepare("SELECT body FROM saved").get().body),
-      ),
-      m,
-    );
-    assert.equal(f.count("messages"), 1);
   },
 );
 

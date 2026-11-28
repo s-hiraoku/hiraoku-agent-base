@@ -14,11 +14,8 @@ import {
 import { HabHttpGateway } from "../src/hab/http.ts";
 import { McpHttpGateway } from "../src/host/mcp/http.ts";
 import { HabMcpClient } from "../src/hab/mcp-client.ts";
-import { DurableSender, DurableReceiver } from "../src/agent-sdk/index.ts";
 import { WriterAdmission } from "../src/host/mcp/writer-admission.ts";
 import { habWriterIdentity } from "../src/hab/writer-admission.ts";
-import { DatabaseSync } from "node:sqlite";
-import { join } from "node:path";
 
 async function direct(t, admission = false) {
   const f = await groupFixture(t);
@@ -175,7 +172,7 @@ test("selector capability is fail-closed if a host only supplies the legacy serv
 });
 
 test(
-  "native HTTP clients preserve their fixed address through durable send, reply, status and ACK",
+  "native HTTP clients preserve their fixed address through submit, reply, status and ACK",
   { timeout: 10000 },
   async (t) => {
     const f = await groupFixture(t),
@@ -190,15 +187,21 @@ test(
     const external = net.clients("b", f.external);
     const resolved = await first.resolve(f.external.address);
     const input = { ...message(), recipient_id: resolved.recipient_id };
-    const sender = new DurableSender(net.outbox("group-first", f.first), first);
-    const receiving = new DurableReceiver(
-      net.inbox("legacy-external", f.external),
-      external,
-    );
-    sender.enqueue(input);
-    await sender.sendOnce();
-    await receiving.receiveOnce();
-    assert.equal(receiving.inbox()[0].receipt_confirmed, true);
+    const sent = await first.submit(input);
+    assert.equal(sent.sender_id, f.first.agent_id);
+    const delivery = await external.poll();
+    assert.deepEqual(delivery.message, {
+      ...input,
+      sender_id: f.first.agent_id,
+    });
+    const acked = await external.ack({
+      sender_id: delivery.message.sender_id,
+      message_id: delivery.message.message_id,
+      generation: delivery.generation,
+      lease_token: delivery.lease_token,
+      request_id: "ack-external-1",
+    });
+    assert.equal(acked.state, "acked");
     assert.equal((await first.status(input.message_id)).state, "acked");
     const reply = {
       ...message("2".repeat(32)),
@@ -210,29 +213,26 @@ test(
         message_id: input.message_id,
       },
     };
-    const replying = new DurableSender(
-      net.outbox("legacy-external", f.external),
-      external,
-    );
-    const inbox = net.inbox("group-first", f.first);
-    const receiver = new DurableReceiver(inbox, first);
-    replying.enqueue(reply);
-    await replying.sendOnce();
+    await external.submit(reply);
     assert.equal(await second.poll(), null);
-    await receiver.receiveOnce();
-    assert.equal(receiver.inbox()[0].receipt_confirmed, true);
-    assert.deepEqual(receiver.inbox()[0].message, reply);
+    const replyDelivery = await first.poll();
+    assert.deepEqual(replyDelivery.message, {
+      ...reply,
+      sender_id: f.external.agent_id,
+    });
+    const replyAck = await first.ack({
+      sender_id: replyDelivery.message.sender_id,
+      message_id: replyDelivery.message.message_id,
+      generation: replyDelivery.generation,
+      lease_token: replyDelivery.lease_token,
+      request_id: "ack-first-1",
+    });
+    assert.equal(replyAck.state, "acked");
     await assert.rejects(net.clients("a", f.first).poll(), code("forbidden"));
     await assert.rejects(
       net.clients("b", f.first, globalThis.fetch, f.first.address).poll(),
       code("forbidden"),
     );
-    net.close(inbox);
-    const reopened = new DurableReceiver(
-      net.inbox("group-first", f.first),
-      net.clients("a", f.first, globalThis.fetch, f.first.address),
-    );
-    assert.equal(reopened.inbox()[0].receipt_confirmed, true);
     assert.equal((await external.status(reply.message_id)).state, "acked");
   },
 );
@@ -258,7 +258,7 @@ test(
 );
 
 test(
-  "lost acceptance resumes the original outbox and selected name after registry and HTTP restart",
+  "lost acceptance resumes the original message and selected name after registry and HTTP restart",
   { timeout: 10000 },
   async (t) => {
     const f = await groupFixture(t),
@@ -279,14 +279,9 @@ test(
       }
       return response;
     };
-    const outbox = net.outbox("recover-selected", f.first);
-    const before = new DurableSender(
-      outbox,
-      net.clients("a", f.first, transport, f.first.address),
-    );
+    const before = net.clients("a", f.first, transport, f.first.address);
     const input = { ...message(), recipient_id: f.external.agent_id };
-    before.enqueue(input);
-    await assert.rejects(before.sendOnce(), code("sender_transport_failed"));
+    await assert.rejects(before.submit(input), code("transport_failed"));
     assert.equal(f.count(), 1);
     const misconfigured = net.clients(
       "a",
@@ -296,26 +291,13 @@ test(
     );
     await assert.rejects(misconfigured.submit(input), code("forbidden"));
     assert.equal(f.count(), 1);
-    net.close(outbox);
-    const raw = new DatabaseSync(join(f.dir, "outbox-recover-selected.sqlite"));
-    try {
-      raw.exec("UPDATE outbox SET next_retry_at=0");
-    } finally {
-      raw.close();
-    }
     await net.stop();
     const registry = f.open();
     registry.migrate();
     await net.start(f.habFor(registry));
-    const after = new DurableSender(
-      net.outbox("recover-selected", f.first),
-      net.clients("a", f.first, transport, f.first.address),
-    );
-    await after.sendOnce();
-    assert.equal(
-      after.get(input.message_id).receipt.sender_id,
-      f.first.agent_id,
-    );
+    const after = net.clients("a", f.first, transport, f.first.address);
+    const recovered = await after.submit(input);
+    assert.equal(recovered.sender_id, f.first.agent_id);
     assert.equal(f.count(), 1);
     assert.ok(seen.length >= 2);
     assert.equal(
