@@ -1080,7 +1080,7 @@
     },
     {
       "path": "verification/design/document-review.md",
-      "sha256": "252391d2311f5bd119cadfa978d286d99ff6a6733806dded12b7be9be0b3a2ad",
+      "sha256": "c890bdd3a718c61504e19ed7e5012f2247a6419fd4b7f93167cea50b093d0af9",
       "role": "excluded",
       "review": "reviewed",
       "summary": "Generated HAB verification instructions/source-review synthesis, reviewed for scope, argv, evidence/cleanup and honest limitations; product requirements cite original adopted design instead.",
@@ -1308,6 +1308,14 @@
       "role": "context",
       "review": "reviewed",
       "summary": "Plan (not yet executed) for establishing receive/show/act across agents: PR order, dependencies, per-PR build and verification, owner decisions, and 2026-11-20 prototype evidence. A plan, not a decision; ADR-032 would record decisions."
+    },
+    {
+      "path": "docs/plans/receive-architecture-review.md",
+      "sha256": "ff5f0aa4d66abb44c20e53241b89e5916a794e28115c925f2ddf4dcfc99fb72e",
+      "role": "context",
+      "review": "reviewed",
+      "summary": "Architecture review and five-phase simplification and cloud-migration plan (not yet executed) covering per-agent receive paths, legacy first-generation and connectivity-check A2A inventory, outbound local wait streams, future host-stored file exchange, and CI design-verification gates. Context only; existing ADRs remain authoritative.",
+      "read_scope": "full"
     },
     {
       "path": "docs/receiver/wake-model.md",
