@@ -231,8 +231,9 @@ function open(configPath: string) {
   };
 }
 
-/** A polling product is late once this many of its intervals pass without a read. */
-export const POLL_OVERDUE_FACTOR = 2;
+// One threshold for `poll_overdue` here and for hab_discover presence (ADR-034).
+import { POLL_OVERDUE_FACTOR } from "../hab/presence.ts";
+export { POLL_OVERDUE_FACTOR };
 /** Mail older than this without being read is reported as `unread_waiting`. */
 export const UNREAD_WAITING_MS = 30 * 60_000;
 const iso = (ms: number | null | undefined) =>

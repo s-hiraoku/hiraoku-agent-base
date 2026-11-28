@@ -90,7 +90,31 @@ issuer、subject、client ID、connection claim、fingerprint、tokenは返し�
 | `authorized_operations` | 所属と接続groupの操作権限の共通部分。現在オンラインの証明ではない |
 | `authentication_assignment` | 個体connection／認証groupへの割当と現在の接続binding状態 |
 | `host_assignment` | この接続のホストが証明できるsession／botだけ。証明なしは`unknown` |
-| `presence` | 現行Registryに観測機構がないため`unknown / not_observed`、観測時刻`null` |
+| `presence` | HABが自分で観測した事実から導く在席（[ADR-034](../hab-decisions.md)、下の「在席」）。動いている証明ではない |
+
+### 在席（presence、ADR-034）
+
+`presence`は`{state, reason, observed_at}`です。`state`は`available`（HABから知らせが届く・読みに来ている見込み）、
+`unavailable`（届かない・読みに来ていない、または相手のセッションが終わった）、`unknown`（判断できない）の3つ。
+材料はHABが自分で見た事実だけです：呼び鈴（`events.sqlite`）とその最後の答え、台帳の製品の受け方（ADR-032）、
+そのアドレス自身の`hab_inbox`の時刻、製品の`session_gone`の答え。上から順に最初に当てはまるものを使います。
+
+| 順 | `state` / `reason` | 条件 | `observed_at` |
+| --- | --- | --- | --- |
+| 1 | `unavailable` / `session_gone` | 製品がセッション終了を答え、`hab_send`が`recipient_absent`で断る状態 | 「相手がいない」になった時刻 |
+| 2 | `unavailable` / `doorbell_failing` | 生きている呼び鈴があるが、今の呼び鈴を登録してからの最後の呼び鈴が2xxで受け取られなかった（差し替える前の呼び鈴の失敗は数えない） | 最後に鳴らした時刻 |
+| 2 | `available` / `doorbell_live` | 生きている呼び鈴（購読または運用者の呼び鈴）がある | 最後に受け取られた呼び鈴か`hab_inbox`の新しいほう（無ければ`null`） |
+| 3 | `available` / `polling`、`unavailable` / `poll_overdue` | 受け方が`poll`。間隔の2倍以内に`hab_inbox`したか（`hab:admin status`の`poll_overdue`と同じ基準） | 最後の`hab_inbox` |
+| 4 | `available` / `inbox_read_recently` | 1時間以内に`hab_inbox`した | 最後の`hab_inbox` |
+| 5 | `unavailable` / `doorbell_lapsed` | 呼び鈴が更新されずに切れた | 切れた時刻 |
+| 6 | `unavailable` / `doorbell_missing` | 受け方が`hook`なのに鳴らす先がない | `null` |
+| 7 | `unknown` / `on_request` | 受け方が`on_request`（利用者が頼んだときだけ読む） | 最後の`hab_inbox`（無ければ`null`） |
+| 8 | `unknown` / `inbox_read_earlier` | 1時間より前に`hab_inbox`しただけ | 最後の`hab_inbox` |
+| 9 | `unknown` / `not_observed` | 何も観測していない、またはhostにMCPイベント（`ingress.events`）がない | `null` |
+
+`available`は「知らせれば気づく見込み」で、読んだ・返信する・作業することの約束ではありません（受信側の判断、ADR-015）。
+`presence`は登録・予約・権限・送信可否を変えません（送信を断るのは今までどおり`session_gone`の`recipient_absent`だけ）。
+ほかのgroupのentryにも同じ`presence`を出します。呼び鈴の宛先URL・鍵・本文・送信元は出しません。
 
 発行済みだがhost bindingが未設定なのか、hostから見えないのかは、現行のデータだけでは
 区別できません。`host_assignment=unknown`を「空き」「未割当」「オフライン」には変換

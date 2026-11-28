@@ -635,6 +635,8 @@ test("operators can see when and why a recipient's doorbell stopped; subscribing
       delivered_at: null,
       inbox_read_at: null,
       absent_since: null,
+      // ADR-034: when the live subscription was registered.
+      live_since: now,
     },
   );
   // The callback is gone (410).
@@ -1819,4 +1821,124 @@ test("re-adding an ended operator doorbell does not ring for the old registratio
   await f.send("b", f.a.address, "new mail");
   await f.events.dispatch();
   assert.equal(calls, 3, "the replacement rings for new mail");
+});
+
+// ADR-034: hab_discover shows what HAB observed about each address as its presence.
+test("hab_discover presence follows reads, doorbells, the ledger and session_gone", async (t) => {
+  let now = Date.now();
+  let answer = () => 200;
+  const f = await setup(t, {
+    registry: {
+      discovery: { availability_namespaces: [], directory: "all_active" },
+    },
+    status: (p) => answer(p),
+    events: { now: () => now, quiet: false, rering: false },
+  });
+  const presence = async (who, address) => {
+    const body = await f.rpc(who, "tools/call", {
+      name: "hab_discover",
+      arguments: { action: "directory" },
+    });
+    assert.notEqual(body.result.isError, true, JSON.stringify(body));
+    return body.result.structuredContent.agents.find(
+      (agent) => agent.address === address,
+    ).presence;
+  };
+  assert.deepEqual(await presence("b", f.a.address), {
+    state: "unknown",
+    reason: "not_observed",
+    observed_at: null,
+  });
+  // Its own hab_inbox read: another group sees it as available too.
+  await f.rpc("a", "tools/call", { name: "hab_inbox", arguments: {} });
+  assert.deepEqual(await presence("b", f.a.address), {
+    state: "available",
+    reason: "inbox_read_recently",
+    observed_at: new Date(now).toISOString(),
+  });
+  // whoami's selected identity carries the same presence.
+  const self = await f.rpc("a", "tools/call", {
+    name: "hab_discover",
+    arguments: { action: "whoami" },
+  });
+  assert.equal(
+    self.result.structuredContent.selected_identity.presence.reason,
+    "inbox_read_recently",
+  );
+  // The ledger says a reads every 15 minutes, and it has not for an hour.
+  f.registry.setProductReceive(f.admin, {
+    request_id: "receive-poll",
+    agent_name: "grok-bot",
+    mode: "poll",
+    interval_ms: 15 * 60_000,
+  });
+  now += 60 * 60_000;
+  assert.equal((await presence("b", f.a.address)).reason, "poll_overdue");
+  // An operator doorbell that takes rings makes it reachable.
+  f.events.configureStatic([
+    { agent_id: f.a.agent_id, url: URL_A, secret: SECRET },
+  ]);
+  await f.send("b", f.a.address, "hello");
+  await f.events.dispatch();
+  assert.deepEqual(await presence("b", f.a.address), {
+    state: "available",
+    reason: "doorbell_live",
+    observed_at: new Date(now).toISOString(),
+  });
+  // A ring the callback did not take.
+  answer = () => 503;
+  now += 1000;
+  await f.send("b", f.a.address, "again");
+  await f.events.dispatch();
+  assert.equal((await presence("b", f.a.address)).reason, "doorbell_failing");
+  // The operator replaces the failing callback: its old failure no longer counts.
+  now += 1000;
+  f.events.configureStatic([
+    {
+      agent_id: f.a.agent_id,
+      url: "https://hooks.example.com/cb/replaced",
+      secret: SECRET,
+    },
+  ]);
+  assert.equal((await presence("b", f.a.address)).reason, "doorbell_live");
+  // Three session_gone answers: the address is absent and hab_send refuses it.
+  answer = () => GONE;
+  for (const text of ["one", "two", "three"]) {
+    // Past the retry backoff the failed ring left behind.
+    now += 10 * 60_000;
+    await f.send("b", f.a.address, text);
+    await f.events.dispatch();
+  }
+  assert.equal(f.events.isAbsent(f.a.address), true);
+  assert.equal((await presence("b", f.a.address)).state, "unavailable");
+  assert.equal((await presence("b", f.a.address)).reason, "session_gone");
+});
+
+test("a hab_inbox read on the loopback endpoint (no events, shared store) is recorded", async (t) => {
+  const f = await setup(t);
+  // As the host wires loopback /mcp: no MCP events, the same store as the absence policy.
+  const loopback = new HabHttpGateway(
+    f.hab,
+    policy,
+    { record() {}, note() {} },
+    f.verifier,
+    undefined,
+    "agent",
+    undefined,
+    f.events,
+  );
+  const read = await decode(
+    await loopback.fetch(
+      request(
+        "tools/call",
+        { name: "hab_inbox", arguments: {} },
+        { headers: { Authorization: "Bearer fixture-a" } },
+      ),
+    ),
+  );
+  assert.notEqual(read.result.isError, true, JSON.stringify(read));
+  assert.notEqual(
+    readDoorbells(f.store).get(f.a.agent_id)?.inbox_read_at ?? null,
+    null,
+  );
 });
