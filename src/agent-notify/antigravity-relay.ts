@@ -80,8 +80,8 @@ export const runAgentapi: RunAgentapi = (argv, timeoutMs) =>
 export interface RelayOptions {
   spool: string;
   log: string;
-  /** Default: $ANTIGRAVITY_AGENTAPI_EXE, else ~/.gemini/antigravity/bin/agentapi. */
-  agentapi?: string;
+  /** The command before `send-message`. Default: agentapiCommand(process.env). */
+  agentapi?: string | readonly string[];
   run?: RunAgentapi;
   now?: () => number;
   max_age_ms?: number;
@@ -96,9 +96,18 @@ export interface RelayOptions {
   ) => number;
 }
 
-export const agentapiPath = (env: NodeJS.ProcessEnv = process.env) =>
-  env.ANTIGRAVITY_AGENTAPI_EXE ||
-  join(homedir(), ".gemini", "antigravity", "bin", "agentapi");
+/**
+ * How agentapi is started. The app hands the sidecar `$ANTIGRAVITY_AGENTAPI_EXE`, which is
+ * its language server binary, not agentapi itself: agentapi is that binary's `agentapi`
+ * subcommand (Antigravity 2.35, Mac mini 2026-11-28; without it the send exits 2). The
+ * fallback `~/.gemini/antigravity/bin/agentapi` is a wrapper that adds the subcommand.
+ */
+export const agentapiCommand = (
+  env: NodeJS.ProcessEnv = process.env,
+): string[] =>
+  env.ANTIGRAVITY_AGENTAPI_EXE
+    ? [env.ANTIGRAVITY_AGENTAPI_EXE, "agentapi"]
+    : [join(homedir(), ".gemini", "antigravity", "bin", "agentapi")];
 
 /** Whether a process with this pid is running (EPERM: running under another user). */
 function alive(pid: number): boolean {
@@ -116,7 +125,7 @@ const isRequest = (name: string) =>
 export class AntigravityRelay {
   readonly #spool: string;
   readonly #log: string;
-  readonly #agentapi: string;
+  readonly #agentapi: readonly string[];
   readonly #run: RunAgentapi;
   readonly #now: () => number;
   readonly #maxAge: number;
@@ -126,7 +135,8 @@ export class AntigravityRelay {
   constructor(options: RelayOptions) {
     this.#spool = options.spool;
     this.#log = options.log;
-    this.#agentapi = options.agentapi ?? agentapiPath();
+    const command = options.agentapi ?? agentapiCommand();
+    this.#agentapi = typeof command === "string" ? [command] : [...command];
     this.#run = options.run ?? runAgentapi;
     this.#now = options.now ?? Date.now;
     this.#maxAge = options.max_age_ms ?? RELAY_MAX_AGE_MS;
@@ -310,7 +320,7 @@ export class AntigravityRelay {
     try {
       code = await this.#run(
         [
-          this.#agentapi,
+          ...this.#agentapi,
           "send-message",
           `--title=${request.title}`,
           request.conversation_id,

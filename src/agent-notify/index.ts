@@ -69,7 +69,7 @@ export {
   RELAY_DIRS,
   RELAY_KEEP_MS,
   RELAY_MAX_AGE_MS,
-  agentapiPath,
+  agentapiCommand,
   runAgentapi,
   runRelay,
 } from "./antigravity-relay.ts";
